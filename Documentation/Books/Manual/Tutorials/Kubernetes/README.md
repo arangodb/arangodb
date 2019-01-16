@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/kube-arangodb.git / docs/Manual/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/kube-arangodb.git / docs/Manual/ -->
 # Start ArangoDB on Kubernetes in 5 minutes
 
 Starting an ArangoDB database (either single server or full blown cluster)
@@ -13,6 +13,20 @@ this process.
 In this guide, we will explain what the ArangoDB Kubernetes Operator is,
 how to install it and how use it to deploy your first ArangoDB database
 in a Kubernetes cluster.
+
+First, you obviously need a Kubernetes cluster and the right credentials
+to access it. If you already have this, you can immediately skip to the
+next section. Since different cloud providers differ slightly in their
+Kubernetes offering, we have put together detailed tutorials for those
+platforms we officially support, follow the link for detailed setup
+instructions:
+
+ - [Amazon Elastic Kubernetes Service (EKS)](EKS.md)
+ - [Google Kubernetes Engine (GKE)](GKE.md)
+ - [Microsoft Azure Kubernetes Service (AKS)](AKS.md)
+
+Note that in particular the details of Role Based Access Control (RBAC)
+matter.
 
 ## What is `kube-arangodb`
 
@@ -38,7 +52,6 @@ For now, any recent Kubernetes cluster will do (e.g. `minikube`).
 Then run (replace `<version>` with the version of the operator that you want to install):
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/<version>/manifests/crd.yaml
 kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/<version>/manifests/arango-deployment.yaml
 # Optional
 kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/<version>/manifests/arango-storage.yaml

@@ -74,7 +74,7 @@ struct QueryResult {
   std::shared_ptr<arangodb::velocypack::Builder> extra;
   std::shared_ptr<transaction::Context> context;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

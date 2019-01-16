@@ -27,7 +27,8 @@
 #define ARANGOD_AQL_FILTER_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/FilterStats.h"
+#include "Aql/ExecutorInfos.h"
+#include "Aql/Stats.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
 
@@ -81,9 +82,8 @@ class FilterExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
- public:
-  Infos& _infos;
  private:
+  Infos& _infos;
   Fetcher& _fetcher;
 };
 

@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodbjs.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangojs.git / docs/Drivers/ -->
 # Cursor API
 
 _Cursor_ instances provide an abstraction over the HTTP API's limitations.
@@ -32,7 +32,7 @@ remaining result list.
 **Examples**
 
 ```js
-const cursor = await db._query('FOR x IN 1..5 RETURN x');
+const cursor = await db.query('FOR x IN 1..5 RETURN x');
 const result = await cursor.all()
 // result is an array containing the entire query result
 assert.deepEqual(result, [1, 2, 3, 4, 5]);
@@ -178,7 +178,7 @@ Advances the cursor by applying the function _fn_ to each value in the cursor's
 remaining result list until the cursor is exhausted or _fn_ returns a value that
 evaluates to `true`.
 
-Returns `true` if _fn_ returned a value that evalutes to `true`, or `false`
+Returns `true` if _fn_ returned a value that evaluates to `true`, or `false`
 otherwise.
 
 Equivalent to _Array.prototype.some_ (except async).

@@ -23,11 +23,11 @@
 
 #include <velocypack/Iterator.h>
 
-#include "Graphs.h"
 #include "Aql/AstNode.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Graph.h"
+#include "Graphs.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
@@ -62,12 +62,10 @@ void EdgeConditionBuilder::swapSides(AstNode* cond) {
     // If used correctly this class guarantuees that the last element
     // of the nary-and is the _from or _to part and is exchangable.
     TRI_ASSERT(_modCondition->numMembers() > 0);
-    auto changeNode =
-        _modCondition->getMemberUnchecked(_modCondition->numMembers() - 1);
+    auto changeNode = _modCondition->getMemberUnchecked(_modCondition->numMembers() - 1);
     TRI_ASSERT(changeNode == _fromCondition || changeNode == _toCondition);
 #endif
-    _modCondition->changeMember(_modCondition->numMembers() - 1,
-                                cond);
+    _modCondition->changeMember(_modCondition->numMembers() - 1, cond);
   } else {
     _modCondition->addMember(cond);
     _containsCondition = true;
@@ -93,24 +91,24 @@ AstNode* EdgeConditionBuilder::getInboundCondition() {
   return _modCondition;
 }
 
-EdgeConditionBuilderContainer::EdgeConditionBuilderContainer() :
-  EdgeConditionBuilder(nullptr) {
-    auto node = std::make_unique<AstNode>(NODE_TYPE_OPERATOR_NARY_AND);
-    _astNodes.emplace_back(node.get());
-    _modCondition = node.release();
+EdgeConditionBuilderContainer::EdgeConditionBuilderContainer()
+    : EdgeConditionBuilder(nullptr) {
+  auto node = std::make_unique<AstNode>(NODE_TYPE_OPERATOR_NARY_AND);
+  _astNodes.emplace_back(node.get());
+  _modCondition = node.release();
 
-    auto comp = std::make_unique<AstNode>(NODE_TYPE_VALUE);
-    comp->setValueType(VALUE_TYPE_STRING);
-    comp->setStringValue("", 0);
-    _astNodes.emplace_back(comp.get());
-    _compareNode = comp.release();
+  auto comp = std::make_unique<AstNode>(NODE_TYPE_VALUE);
+  comp->setValueType(VALUE_TYPE_STRING);
+  comp->setStringValue("", 0);
+  _astNodes.emplace_back(comp.get());
+  _compareNode = comp.release();
 
-    _var = _varGen.createTemporaryVariable();
+  _var = _varGen.createTemporaryVariable();
 
-    auto varNode = std::make_unique<AstNode>(NODE_TYPE_REFERENCE);
-    varNode->setData(_var);
-    _astNodes.emplace_back(varNode.get());
-    _varNode = varNode.release();
+  auto varNode = std::make_unique<AstNode>(NODE_TYPE_REFERENCE);
+  varNode->setData(_var);
+  _astNodes.emplace_back(varNode.get());
+  _varNode = varNode.release();
 }
 
 EdgeConditionBuilderContainer::~EdgeConditionBuilderContainer() {
@@ -157,4 +155,3 @@ Variable const* EdgeConditionBuilderContainer::getVariable() const {
 void EdgeConditionBuilderContainer::setVertexId(std::string const& id) {
   _compareNode->setStringValue(id.c_str(), id.length());
 }
-

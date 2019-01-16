@@ -1,0 +1,11 @@
+body {
+  p { line-height: 1.5em; }
+  span { font-weight: 700; }
+  a {
+    text-decoration: none;
+    &:hover {
+      text-decoration: underline;
+      font-size: (10px/3);
+    }
+  }
+}

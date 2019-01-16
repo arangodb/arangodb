@@ -33,6 +33,7 @@
 #include "Aql/ExecutionStats.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Aql/Stats.h"
 #include "OutputAqlItemRow.h"
 
 namespace arangodb {
@@ -156,6 +157,9 @@ class ExecutionBlockImpl : public ExecutionBlock {
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeWithoutTrace(
     size_t atMost);
 
+  std::unique_ptr<OutputAqlItemBlockShell> requestWrappedBlock(
+      size_t nrItems, RegisterId nrRegs);
+
  private:
 
   /**
@@ -181,12 +185,6 @@ class ExecutionBlockImpl : public ExecutionBlock {
   std::unique_ptr<OutputAqlItemRow> _outputItemRow;
 
 };
-
-// no-op statistics for all Executors that don't have custom stats.
-class NoStats {};
-inline ExecutionStats& operator+=(ExecutionStats& stats, NoStats const&) {
-  return stats;
-}
 
 }  // namespace aql
 }  // namespace arangodb

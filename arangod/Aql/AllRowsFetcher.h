@@ -32,21 +32,18 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
+class InputAqlItemBlockShell;
 class BlockFetcher;
 
 /**
  * @brief Interface for all AqlExecutors that do need all
  *        rows at a time in order to make progress.
- *        The guarantee is the following:
- *        If fetchAllRows returns a matrix the pointer to
- *        this matrix stays valid until the next call
- *        of fetchAllRows.
  */
 class AllRowsFetcher {
  public:
   explicit AllRowsFetcher(BlockFetcher& executionBlock);
 
-  TEST_VIRTUAL ~AllRowsFetcher();
+  TEST_VIRTUAL ~AllRowsFetcher() = default;
 
  protected:
   // only for testing! Does not initialize _blockFetcher!
@@ -88,7 +85,8 @@ class AllRowsFetcher {
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> fetchBlock();
+  std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
+  fetchBlock();
 };
 
 }  // namespace aql

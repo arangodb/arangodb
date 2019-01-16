@@ -47,18 +47,12 @@ class MMFilesCollectionKeys final : public CollectionKeys {
   MMFilesCollectionKeys(MMFilesCollectionKeys const&) = delete;
   MMFilesCollectionKeys& operator=(MMFilesCollectionKeys const&) = delete;
 
-  MMFilesCollectionKeys(
-    TRI_vocbase_t& vocbase,
-    std::unique_ptr<CollectionGuard> guard,
-    TRI_voc_tick_t blockerId,
-    double ttl
-  );
+  MMFilesCollectionKeys(TRI_vocbase_t& vocbase, std::unique_ptr<CollectionGuard> guard,
+                        TRI_voc_tick_t blockerId, double ttl);
 
   ~MMFilesCollectionKeys();
 
-  size_t count() const override {
-    return _vpack.size();
-  }
+  size_t count() const override { return _vpack.size(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initially creates the list of keys
@@ -68,8 +62,7 @@ class MMFilesCollectionKeys final : public CollectionKeys {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief hashes a chunk of keys
   //////////////////////////////////////////////////////////////////////////////
-  std::tuple<std::string, std::string, uint64_t> hashChunk(size_t,
-                                                           size_t) const override;
+  std::tuple<std::string, std::string, uint64_t> hashChunk(size_t, size_t) const override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dumps keys into the result
@@ -79,8 +72,9 @@ class MMFilesCollectionKeys final : public CollectionKeys {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dumps documents into the result
   //////////////////////////////////////////////////////////////////////////////
-  void dumpDocs(arangodb::velocypack::Builder& result, size_t chunk, size_t chunkSize,
-                size_t offsetInChunk, size_t maxChunkSize, arangodb::velocypack::Slice const& ids) const override;
+  void dumpDocs(arangodb::velocypack::Builder& result, size_t chunk,
+                size_t chunkSize, size_t offsetInChunk, size_t maxChunkSize,
+                arangodb::velocypack::Slice const& ids) const override;
 
  private:
   std::unique_ptr<arangodb::CollectionGuard> _guard;
@@ -90,6 +84,6 @@ class MMFilesCollectionKeys final : public CollectionKeys {
   std::vector<uint8_t const*> _vpack;
 };
 
-}
+}  // namespace arangodb
 
 #endif

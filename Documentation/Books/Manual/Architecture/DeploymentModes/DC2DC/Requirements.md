@@ -1,9 +1,10 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
 # Requirements
 
 To use _datacenter to datacenter replication_ you need the following:
 
-- Two datacenters, each running an ArangoDB Enterprise Edition cluster, version 3.3 or higher.
+- Two datacenters, each running an ArangoDB Enterprise Edition cluster,
+  version 3.3 or higher, using the RocksDB storage engine.
 - A network connection between both datacenters with accessible endpoints
   for several components (see individual components for details).
 - TLS certificates for ArangoSync master instances (can be self-signed).

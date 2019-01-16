@@ -21,3 +21,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BlockFetcher.h"
+
+using namespace arangodb::aql;
+
+std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
+BlockFetcher::fetchBlock() {
+  ExecutionState state;
+  std::unique_ptr<AqlItemBlock> block;
+  std::tie(state, block) =
+      upstreamBlock().getSome(ExecutionBlock::DefaultBatchSize());
+  if (block != nullptr) {
+    auto shell = std::make_shared<InputAqlItemBlockShell>(
+        itemBlockManager(), std::move(block), _inputRegisters);
+    return {state, shell};
+  } else {
+    return {state, nullptr};
+  }
+}

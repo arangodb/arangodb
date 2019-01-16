@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodbjs.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangojs.git / docs/Drivers/ -->
 # ArangoDB JavaScript Driver - Reference
 
 - [Database](Database/README.md)
@@ -19,6 +19,7 @@
   - [Indexes](Collection/Indexes.md)
   - [Simple Queries](Collection/SimpleQueries.md)
   - [Bulk Import](Collection/BulkImport.md)
+- [AQL Helpers](Aql.md)
 - [View Manipulation](ViewManipulation.md)
 - [Cursor](Cursor.md)
 - [Graph](Graph/README.md)

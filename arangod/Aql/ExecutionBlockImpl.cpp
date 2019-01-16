@@ -28,14 +28,16 @@
 #include "Basics/Common.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/InputAqlItemRow.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/ExecutionEngine.h"
+#include "Aql/InputAqlItemRow.h"
 
+#include "Aql/CalculationExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/SortExecutor.h"
+#include "Aql/ReturnExecutor.h"
 
 #include "Aql/SortRegister.h"
 
@@ -47,35 +49,33 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  ExecutionNode const* node,
                                                  typename Executor::Infos&& infos)
     : ExecutionBlock(engine, node),
-      _blockFetcher(this),
+      _blockFetcher(_dependencies, _engine->itemBlockManager(),
+                    infos.getInputRegisters(), infos.numberOfInputRegisters()),
       _rowFetcher(_blockFetcher),
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos) {}
 
-template<class Executor>
+template <class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
-  if(_outputItemRow){
+  if (_outputItemRow) {
     std::unique_ptr<AqlItemBlock> block = _outputItemRow->stealBlock();
-    if(block) {
-      AqlItemBlock* block_pointer = block.release();
-      _engine->itemBlockManager().returnBlock(block_pointer);
+    if (block != nullptr) {
+      _engine->itemBlockManager().returnBlock(std::move(block));
     }
   }
 }
 
 template <class Executor>
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
   auto result = getSomeWithoutTrace(atMost);
   return traceGetSomeEnd(result.first, std::move(result.second));
 }
 
-template<class Executor>
+template <class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
-
-  //silence tests -- we need to introduce new fauilure tests for fetchers
+  // silence tests -- we need to introduce new fauilure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -86,17 +86,16 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  if(!_outputItemRow) {
-    auto newBlock = this->requestBlock(atMost, _infos.numberOfOutputRegisters());
-    _outputItemRow = std::make_unique<OutputAqlItemRow>(
-      std::unique_ptr<AqlItemBlock>{newBlock}, _infos);
+  if (!_outputItemRow) {
+    auto newBlock = requestWrappedBlock(atMost, _infos.numberOfOutputRegisters());
+    _outputItemRow = std::make_unique<OutputAqlItemRow>(std::move(newBlock));
   }
 
   // TODO It's not very obvious that `state` will be initialized, because
   // it's not obvious that the loop will run at least once (e.g. after a
   // WAITING). It should, but I'd like that to be clearer. Initializing here
   // won't help much because it's unclear whether the value will be correct.
-  ExecutionState state;
+  ExecutionState state = ExecutionState::HASMORE;
   ExecutorStats executorStats{};
   std::unique_ptr<OutputAqlItemRow> row;  // holds temporary rows
 
@@ -140,8 +139,7 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
 }
 
 template <class Executor>
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(
-    size_t atMost) {
+std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t atMost) {
   // TODO IMPLEMENT ME, this is a stub!
 
   traceSkipSomeBegin(atMost);
@@ -159,26 +157,28 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(
   return traceSkipSomeEnd(res.first, skipped);
 }
 
-template<class Executor>
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-ExecutionBlockImpl<Executor>::traceGetSomeEnd(ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
+template <class Executor>
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Executor>::traceGetSomeEnd(
+    ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
   ExecutionBlock::traceGetSomeEnd(result.get(), state);
   return {state, std::move(result)};
 }
 
-template<class Executor>
-std::pair<ExecutionState, size_t>
-ExecutionBlockImpl<Executor>::traceSkipSomeEnd(ExecutionState state, size_t skipped) {
+template <class Executor>
+std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::traceSkipSomeEnd(
+    ExecutionState state, size_t skipped) {
   ExecutionBlock::traceSkipSomeEnd(skipped, state);
   return {state, skipped};
 }
 
 template <class Executor>
-std::pair<ExecutionState, Result>
-ExecutionBlockImpl<Executor>::initializeCursor(AqlItemBlock* items,
-                                               size_t pos) {
-  // re-initialize BlockFetcher
-  _blockFetcher = BlockFetcher(this);
+std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
+  // destroy and re-create the BlockFetcher
+  _blockFetcher.~BlockFetcher();
+  new (&_blockFetcher)
+      BlockFetcher(_dependencies, _engine->itemBlockManager(),
+                   _infos.getInputRegisters(), _infos.numberOfInputRegisters());
 
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
@@ -191,6 +191,20 @@ ExecutionBlockImpl<Executor>::initializeCursor(AqlItemBlock* items,
   return ExecutionBlock::initializeCursor(items, pos);
 }
 
+template <class Executor>
+std::unique_ptr<OutputAqlItemBlockShell> ExecutionBlockImpl<Executor>::requestWrappedBlock(
+    size_t nrItems, RegisterId nrRegs) {
+  AqlItemBlock* block = requestBlock(nrItems, nrRegs);
+  std::unique_ptr<OutputAqlItemBlockShell> blockShell =
+      std::make_unique<OutputAqlItemBlockShell>(_engine->itemBlockManager(),
+                                                std::unique_ptr<AqlItemBlock>{block},
+                                                _infos.getOutputRegisters(),
+                                                _infos.registersToKeep());
+  return blockShell;
+}
+
+template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;

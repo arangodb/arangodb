@@ -40,10 +40,8 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
  public:
   explicit DatabaseReplicationApplier(TRI_vocbase_t& vocbase);
 
-  DatabaseReplicationApplier(
-    ReplicationApplierConfiguration const& configuration,
-    TRI_vocbase_t& vocbase
-  );
+  DatabaseReplicationApplier(ReplicationApplierConfiguration const& configuration,
+                             TRI_vocbase_t& vocbase);
 
   ~DatabaseReplicationApplier();
 
@@ -62,17 +60,15 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
   /// @brief store the configuration for the applier
   void storeConfiguration(bool doSync) override;
 
-  /// @brief factory function for creating a database-specific replication applier
+  /// @brief factory function for creating a database-specific replication
+  /// applier
   static DatabaseReplicationApplier* create(TRI_vocbase_t& vocbase);
 
   /// @brief load a persisted configuration for the applier
-  static ReplicationApplierConfiguration loadConfiguration(
-    TRI_vocbase_t& vocbase
-  );
+  static ReplicationApplierConfiguration loadConfiguration(TRI_vocbase_t& vocbase);
 
   std::shared_ptr<InitialSyncer> buildInitialSyncer() const override;
-  std::shared_ptr<TailingSyncer> buildTailingSyncer(TRI_voc_tick_t initialTick, 
-                                                    bool useTick, 
+  std::shared_ptr<TailingSyncer> buildTailingSyncer(TRI_voc_tick_t initialTick, bool useTick,
                                                     TRI_voc_tick_t barrierId) const override;
 
  protected:
@@ -82,6 +78,6 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
   TRI_vocbase_t& _vocbase;
 };
 
-}
+}  // namespace arangodb
 
 #endif

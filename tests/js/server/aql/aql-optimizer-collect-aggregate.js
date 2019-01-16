@@ -427,6 +427,7 @@ function optimizerAggregateTestSuite () {
     testAggregateAllReferToCollectvariable : function () {
       assertQueryError(errors.ERROR_QUERY_VARIABLE_NAME_UNKNOWN.code, "FOR i IN " + c.name() + " COLLECT group = i.group AGGREGATE length = LENGTH(group) RETURN { group, length }");
       assertQueryError(errors.ERROR_QUERY_VARIABLE_NAME_UNKNOWN.code, "FOR j IN " + c.name() + " COLLECT doc = j AGGREGATE length = LENGTH(doc) RETURN doc");
+      assertQueryError(errors.ERROR_QUERY_VARIABLE_NAME_UNKNOWN.code, "FOR j IN " + c.name() + " COLLECT doc = j AGGREGATE length1 = LENGTH(1), length2 = LENGTH(length1) RETURN doc");
     },
 
 ////////////////////////////////////////////////////////////////////////////////

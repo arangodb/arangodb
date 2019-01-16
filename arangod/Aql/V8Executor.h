@@ -38,9 +38,10 @@ class V8Executor {
  public:
   /// @brief checks if a V8 exception has occurred and throws an appropriate C++
   /// exception from it if so
-  static void HandleV8Error(v8::TryCatch&, v8::Handle<v8::Value>&, arangodb::basics::StringBuffer*, bool duringCompile);
+  static void HandleV8Error(v8::TryCatch&, v8::Handle<v8::Value>&,
+                            arangodb::basics::StringBuffer*, bool duringCompile);
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

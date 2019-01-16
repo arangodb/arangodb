@@ -33,7 +33,6 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
-#include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Hints.h"
@@ -70,17 +69,15 @@ bool authorized(std::pair<std::string, std::shared_ptr<arangodb::Task>> const& t
 
   return (task.first == context->user());
 }
-}
+}  // namespace
 
 namespace arangodb {
 
 Mutex Task::_tasksLock;
 std::unordered_map<std::string, std::pair<std::string, std::shared_ptr<Task>>> Task::_tasks;
 
-std::shared_ptr<Task> Task::createTask(std::string const& id,
-                                       std::string const& name,
-                                       TRI_vocbase_t* vocbase,
-                                       std::string const& command,
+std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const& name,
+                                       TRI_vocbase_t* vocbase, std::string const& command,
                                        bool allowUseDatabase, int& ec) {
   if (id.empty()) {
     ec = TRI_ERROR_TASK_INVALID_ID;
@@ -101,8 +98,7 @@ std::shared_ptr<Task> Task::createTask(std::string const& id,
                                    // would fail Task constructor
 
   std::string user = ExecContext::CURRENT ? ExecContext::CURRENT->user() : "";
-  auto task =
-      std::make_shared<Task>(id, name, *vocbase, command, allowUseDatabase);
+  auto task = std::make_shared<Task>(id, name, *vocbase, command, allowUseDatabase);
   auto itr = _tasks.emplace(id, std::make_pair(user, std::move(task)));
 
   ec = TRI_ERROR_NO_ERROR;
@@ -154,9 +150,9 @@ std::shared_ptr<VPackBuilder> Task::registeredTasks() {
 
     for (auto& it : _tasks) {
       if (::authorized(it.second)) {
-      VPackObjectBuilder b2(builder.get());
-      it.second.second->toVelocyPack(*builder);
-    }
+        VPackObjectBuilder b2(builder.get());
+        it.second.second->toVelocyPack(*builder);
+      }
     }
   } catch (...) {
     return std::make_shared<VPackBuilder>();
@@ -166,13 +162,31 @@ std::shared_ptr<VPackBuilder> Task::registeredTasks() {
 }
 
 void Task::shutdownTasks() {
-  MUTEX_LOCKER(guard, _tasksLock);
-
-  for (auto& it : _tasks) {
-    it.second.second->cancel();
+  {
+    MUTEX_LOCKER(guard, _tasksLock);
+    for (auto& it : _tasks) {
+      it.second.second->cancel();
+    }
   }
 
-  _tasks.clear();
+  // wait for the tasks to be cleaned up
+  int iterations = 0;
+  while (true) {
+    size_t size;
+    {
+      MUTEX_LOCKER(guard, _tasksLock);
+      size = _tasks.size();
+    }
+
+    if (size == 0) {
+      break;
+    }
+
+    if (++iterations % 10 == 0) {
+      LOG_TOPIC(INFO, Logger::FIXME) << "waiting for " << size << " task(s) to complete";
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  }
 }
 
 void Task::removeTasksForDatabase(std::string const& name) {
@@ -212,9 +226,8 @@ bool Task::databaseMatches(std::string const& name) const {
   return (_dbGuard->database().name() == name);
 }
 
-Task::Task(std::string const& id, std::string const& name,
-           TRI_vocbase_t& vocbase, std::string const& command,
-           bool allowUseDatabase)
+Task::Task(std::string const& id, std::string const& name, TRI_vocbase_t& vocbase,
+           std::string const& command, bool allowUseDatabase)
     : _id(id),
       _name(name),
       _created(TRI_microtime()),
@@ -233,23 +246,21 @@ void Task::setOffset(double offset) {
 
 void Task::setPeriod(double offset, double period) {
   _offset = std::chrono::microseconds(static_cast<long long>(offset * 1000000));
-  _interval =
-      std::chrono::microseconds(static_cast<long long>(period * 1000000));
+  _interval = std::chrono::microseconds(static_cast<long long>(period * 1000000));
   _periodic.store(true);
 }
 
-void Task::setParameter(
-    std::shared_ptr<arangodb::velocypack::Builder> const& parameters) {
+void Task::setParameter(std::shared_ptr<arangodb::velocypack::Builder> const& parameters) {
   _parameters = parameters;
 }
 
 void Task::setUser(std::string const& user) { _user = user; }
 
-std::function<void(const asio::error_code&)> Task::callbackFunction() {
+std::function<void(bool cancelled)> Task::callbackFunction() {
   auto self = shared_from_this();
 
-  return [self, this](const asio::error_code& error) {
-    if (error) {
+  return [self, this](bool cancelled) {
+    if (cancelled) {
       MUTEX_LOCKER(guard, _tasksLock);
 
       auto itr = _tasks.find(_id);
@@ -276,38 +287,36 @@ std::function<void(const asio::error_code&)> Task::callbackFunction() {
     }
 
     // permissions might have changed since starting this task
-    if (SchedulerFeature::SCHEDULER->isStopping() || !allowContinue) {
-      Task::unregisterTask(_id, false);
+    if (application_features::ApplicationServer::isStopping() || !allowContinue) {
+      Task::unregisterTask(_id, true);
       return;
     }
 
     // now do the work:
-    SchedulerFeature::SCHEDULER->queue(
-        PriorityRequestLane(RequestLane::TASK_V8), [self, this, execContext] {
-          ExecContextScope scope(_user.empty() ? ExecContext::superuser()
-                                               : execContext.get());
+    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self, this, execContext] {
+      ExecContextScope scope(_user.empty() ? ExecContext::superuser()
+                                           : execContext.get());
+      work(execContext.get());
 
-          work(execContext.get());
-
-          if (_periodic.load() && !SchedulerFeature::SCHEDULER->isStopping()) {
-            // requeue the task
-            queue(_interval);
-          } else {
-            // in case of one-off tasks or in case of a shutdown, simply
-            // remove the task from the list
-            Task::unregisterTask(_id, false);
-          }
-        });
+      if (_periodic.load() && !application_features::ApplicationServer::isStopping()) {
+        // requeue the task
+        queue(_interval);
+      } else {
+        // in case of one-off tasks or in case of a shutdown, simply
+        // remove the task from the list
+        Task::unregisterTask(_id, true);
+      }
+    });
   };
 }
 
 void Task::start() {
-  TRI_ASSERT(ExecContext::CURRENT == nullptr ||
-             ExecContext::CURRENT->isAdminUser() ||
+  TRI_ASSERT(ExecContext::CURRENT == nullptr || ExecContext::CURRENT->isAdminUser() ||
              (!_user.empty() && ExecContext::CURRENT->user() == _user));
+
   {
-    MUTEX_LOCKER(lock, _timerMutex);
-    _timer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
+    MUTEX_LOCKER(lock, _taskHandleMutex);
+    _taskHandle.reset();
   }
 
   if (_offset.count() <= 0) {
@@ -319,20 +328,16 @@ void Task::start() {
 }
 
 void Task::queue(std::chrono::microseconds offset) {
-  MUTEX_LOCKER(lock, _timerMutex);
-  _timer->expires_from_now(offset);
-  _timer->async_wait(callbackFunction());
+  MUTEX_LOCKER(lock, _taskHandleMutex);
+  _taskHandle = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW,
+                                                        offset, callbackFunction());
 }
 
 void Task::cancel() {
   // this will prevent the task from dispatching itself again
   _periodic.store(false);
-
-  asio::error_code ec;
-  {
-    MUTEX_LOCKER(lock, _timerMutex);
-    _timer->cancel(ec);
-  }
+  MUTEX_LOCKER(lock, _taskHandleMutex);
+  _taskHandle.reset();
 }
 
 std::shared_ptr<VPackBuilder> Task::toVelocyPack() const {
@@ -367,8 +372,7 @@ void Task::toVelocyPack(VPackBuilder& builder) const {
 }
 
 void Task::work(ExecContext const* exec) {
-  auto context = V8DealerFeature::DEALER->enterContext(&(_dbGuard->database()),
-                                                       _allowUseDatabase);
+  auto context = V8DealerFeature::DEALER->enterContext(&(_dbGuard->database()), _allowUseDatabase);
 
   // note: the context might be 0 in case of shut-down
   if (context == nullptr) {
@@ -423,8 +427,8 @@ void Task::work(ExecContext const* exec) {
         }
       } catch (arangodb::basics::Exception const& ex) {
         LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-            << "caught exception in V8 user task: "
-            << TRI_errno_string(ex.code()) << " " << ex.what();
+            << "caught exception in V8 user task: " << TRI_errno_string(ex.code())
+            << " " << ex.what();
       } catch (std::bad_alloc const&) {
         LOG_TOPIC(ERR, arangodb::Logger::FIXME)
             << "caught exception in V8 user task: "

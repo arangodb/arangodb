@@ -94,10 +94,11 @@ function recoverySuite () {
     // / @brief test whether we still pick up the right autoincrement value
     // //////////////////////////////////////////////////////////////////////////////
 
-    testCollectionKeyGen: function () {
+    testCollectionKeyGenRocksDB: function () {
       var c, d;
 
       c = db._collection('UnitTestsRecovery1');
+      assertEqual(c.count(), 1000);
       d = c.save({ value: 1001});
       assertEqual("10010", d._key);
     }
@@ -116,6 +117,6 @@ function main (argv) {
     return 0;
   } else {
     jsunity.run(recoverySuite);
-    return jsunity.done().status ? 0 : 1;
+    return jsunity.writeDone().status ? 0 : 1;
   }
 }

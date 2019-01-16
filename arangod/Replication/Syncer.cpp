@@ -115,8 +115,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
   using arangodb::OperationResult;
   using arangodb::Result;
 
-  if (type ==
-      arangodb::TRI_replication_operation_e::REPLICATION_MARKER_DOCUMENT) {
+  if (type == arangodb::TRI_replication_operation_e::REPLICATION_MARKER_DOCUMENT) {
     // {"type":2300,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
     OperationOptions options;
@@ -169,12 +168,10 @@ arangodb::Result applyCollectionDumpMarkerInternal(
       return Result(opRes.result);
     } catch (arangodb::basics::Exception const& ex) {
       return Result(ex.code(),
-                    std::string("document insert/replace operation failed: ") +
-                        ex.what());
+                    std::string("document insert/replace operation failed: ") + ex.what());
     } catch (std::exception const& ex) {
       return Result(TRI_ERROR_INTERNAL,
-                    std::string("document insert/replace operation failed: ") +
-                        ex.what());
+                    std::string("document insert/replace operation failed: ") + ex.what());
     } catch (...) {
       return Result(
           TRI_ERROR_INTERNAL,
@@ -200,17 +197,15 @@ arangodb::Result applyCollectionDumpMarkerInternal(
 
       return Result(opRes.result);
     } catch (arangodb::basics::Exception const& ex) {
-      return Result(
-          ex.code(),
-          std::string("document remove operation failed: ") + ex.what());
+      return Result(ex.code(),
+                    std::string("document remove operation failed: ") + ex.what());
     } catch (std::exception const& ex) {
-      return Result(
-          TRI_ERROR_INTERNAL,
-          std::string("document remove operation failed: ") + ex.what());
+      return Result(TRI_ERROR_INTERNAL,
+                    std::string("document remove operation failed: ") + ex.what());
     } catch (...) {
-      return Result(
-          TRI_ERROR_INTERNAL,
-          std::string("document remove operation failed: unknown exception"));
+      return Result(TRI_ERROR_INTERNAL,
+                    std::string(
+                        "document remove operation failed: unknown exception"));
     }
   }
 
@@ -223,11 +218,8 @@ arangodb::Result applyCollectionDumpMarkerInternal(
 
 namespace arangodb {
 
-Syncer::JobSynchronizer::JobSynchronizer(std::shared_ptr<Syncer const> const& syncer) 
-    : _syncer(syncer), 
-      _gotResponse(false),
-      _jobsInFlight(0) {}
-  
+Syncer::JobSynchronizer::JobSynchronizer(std::shared_ptr<Syncer const> const& syncer)
+    : _syncer(syncer), _gotResponse(false), _jobsInFlight(0) {}
 
 Syncer::JobSynchronizer::~JobSynchronizer() {
   // signal that we have got something
@@ -238,16 +230,17 @@ Syncer::JobSynchronizer::~JobSynchronizer() {
   }
 
   // wait until all posted jobs have been completed/canceled
-  while (hasJobInFlight()) { 
+  while (hasJobInFlight()) {
     std::this_thread::sleep_for(std::chrono::microseconds(20000));
-    std::this_thread::yield(); 
+    std::this_thread::yield();
   }
 }
 
 /// @brief will be called whenever a response for the job comes in
-void Syncer::JobSynchronizer::gotResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response) noexcept {
+void Syncer::JobSynchronizer::gotResponse(
+    std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response) noexcept {
   CONDITION_LOCKER(guard, _condition);
-  _res.reset(); // no error!
+  _res.reset();  // no error!
   _response = std::move(response);
   _gotResponse = true;
 
@@ -269,11 +262,12 @@ void Syncer::JobSynchronizer::gotResponse(arangodb::Result&& res) noexcept {
 
 /// @brief the calling Syncer will call and block inside this function until
 /// there is a response or the syncer/server is shut down
-Result Syncer::JobSynchronizer::waitForResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response) {
+Result Syncer::JobSynchronizer::waitForResponse(
+    std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response) {
   while (true) {
     {
       CONDITION_LOCKER(guard, _condition);
-      
+
       if (!_gotResponse) {
         guard.wait(1 * 1000 * 1000);
       }
@@ -299,40 +293,57 @@ Result Syncer::JobSynchronizer::waitForResponse(std::unique_ptr<arangodb::httpcl
       break;
     }
   }
-      
+
   return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
 }
 
 void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
   // by indicating that we have posted an async job, the caller
   // will block on exit until all posted jobs have finished
-  jobPosted();
+  if (!jobPosted()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
+  }
 
   try {
     auto self = shared_from_this();
-    SchedulerFeature::SCHEDULER->post([this, self, cb]() {
+    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [this, self, cb]() {
       // whatever happens next, when we leave this here, we need to indicate
       // that there is no more posted job.
-      // otherwise the calling thread may block forever waiting on the posted jobs
-      // to finish
-      auto guard = scopeGuard([this]() {
-        jobDone();
-      });
+      // otherwise the calling thread may block forever waiting on the
+      // posted jobs to finish
+      auto guard = scopeGuard([this]() { jobDone(); });
 
       cb();
-    }, false);
+    });
   } catch (...) {
     // will get here only if Scheduler::post threw
     jobDone();
   }
 }
-    
-/// @brief notifies that a job was posted
-void Syncer::JobSynchronizer::jobPosted() {
-  CONDITION_LOCKER(guard, _condition);
 
-  TRI_ASSERT(_jobsInFlight == 0);
-  ++_jobsInFlight;
+/// @brief notifies that a job was posted
+/// returns false if job counter could not be increased (e.g. because
+/// the syncer was stopped/aborted already)
+bool Syncer::JobSynchronizer::jobPosted() {
+  while (true) {
+    CONDITION_LOCKER(guard, _condition);
+
+    // _jobsInFlight should be 0 in almost all cases, however, there
+    // is a small window in which the request has been processed already
+    // (i.e. after waitForResponse() has returned and before jobDone()
+    // has been called and has decreased _jobsInFlight). For this
+    // particular case, we simply wait for _jobsInFlight to become 0 again
+    if (_jobsInFlight == 0) {
+      ++_jobsInFlight;
+      return true;
+    }
+
+    if (_syncer->isAborted()) {
+      // syncer already stopped... no need to carry on here
+      return false;
+    }
+    guard.wait(10 * 1000);
+  }
 }
 
 /// @brief notifies that a job was done
@@ -341,6 +352,7 @@ void Syncer::JobSynchronizer::jobDone() {
 
   TRI_ASSERT(_jobsInFlight == 1);
   --_jobsInFlight;
+  _condition.signal();
 }
 
 /// @brief checks if there are jobs in flight (can be 0 or 1 job only)
@@ -351,17 +363,16 @@ bool Syncer::JobSynchronizer::hasJobInFlight() const noexcept {
   return _jobsInFlight > 0;
 }
 
-
-Syncer::SyncerState::SyncerState(
-    Syncer* syncer, ReplicationApplierConfiguration const& configuration)
-    : applier{configuration},
-      connection{syncer, configuration},
-      master{configuration} {}
+Syncer::SyncerState::SyncerState(Syncer* syncer, ReplicationApplierConfiguration const& configuration)
+    : applier{configuration}, connection{syncer, configuration}, master{configuration} {}
 
 Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     : _state{this, configuration} {
   if (!ServerState::instance()->isSingleServer() && !ServerState::instance()->isDBServer()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "the replication functionality is supposed to be invoked only on a single server or DB server");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "the replication functionality is supposed to be invoked only on a "
+        "single server or DB server");
   }
   if (!_state.applier._database.empty()) {
     // use name from configuration
@@ -382,9 +393,8 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
 }
 
 Syncer::~Syncer() {
-  try {
-    sendRemoveBarrier();
-  } catch (...) {
+  if (!_state.isChildSyncer) {
+    _state.barrier.remove(_state.connection);
   }
 }
 
@@ -409,32 +419,6 @@ TRI_voc_tick_t Syncer::stealBarrier() {
   _state.barrier.id = 0;
   _state.barrier.updateTime = 0;
   return id;
-}
-
-/// @brief send a "remove barrier" command
-Result Syncer::sendRemoveBarrier() {
-  if (_state.isChildSyncer || _state.barrier.id == 0) {
-    return Result();
-  }
-
-  try {
-    std::string const url = replutils::ReplicationUrl + "/barrier/" +
-                            basics::StringUtils::itoa(_state.barrier.id);
-
-    // send request
-    std::unique_ptr<httpclient::SimpleHttpResult> response(
-        _state.connection.client->retryRequest(rest::RequestType::DELETE_REQ,
-                                               url, nullptr, 0));
-
-    if (replutils::hasFailed(response.get())) {
-      return replutils::buildHttpError(response.get(), url, _state.connection);
-    }
-    _state.barrier.id = 0;
-    _state.barrier.updateTime = 0;
-    return Result();
-  } catch (...) {
-    return Result(TRI_ERROR_INTERNAL);
-  }
 }
 
 void Syncer::setAborted(bool value) { _state.connection.setAborted(value); }
@@ -467,12 +451,10 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
 
     if (vocbase != nullptr) {
-      _state.vocbases.emplace(std::piecewise_construct,
-                              std::forward_as_tuple(name),
+      _state.vocbases.emplace(std::piecewise_construct, std::forward_as_tuple(name),
                               std::forward_as_tuple(*vocbase));
     } else {
-      LOG_TOPIC(DEBUG, Logger::REPLICATION)
-          << "could not find database '" << name << "'";
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "could not find database '" << name << "'";
     }
 
     return vocbase;
@@ -497,8 +479,9 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
   }
 
   if (cid == 0) {
-    LOG_TOPIC(ERR, Logger::REPLICATION) << "Invalid replication response: Was unable to resolve"
-    << " collection from marker: " << slice.toJson();
+    LOG_TOPIC(ERR, Logger::REPLICATION)
+        << "Invalid replication response: Was unable to resolve"
+        << " collection from marker: " << slice.toJson();
     return nullptr;
   }
 
@@ -513,16 +496,14 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
   return ::getCollectionByIdOrName(vocbase, cid, cname);
 }
 
-Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx,
-                                         LogicalCollection* coll,
+Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx, LogicalCollection* coll,
                                          TRI_replication_operation_e type,
                                          VPackSlice const& slice) {
   if (_state.applier._lockTimeoutRetries > 0) {
     decltype(_state.applier._lockTimeoutRetries) tries = 0;
 
     while (true) {
-      Result res =
-          ::applyCollectionDumpMarkerInternal(_state, trx, coll, type, slice);
+      Result res = ::applyCollectionDumpMarkerInternal(_state, trx, coll, type, slice);
 
       if (res.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
         return res;
@@ -534,7 +515,9 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx,
         return res;
       }
 
-      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "got lock timeout while waiting for lock on collection '" << coll->name() << "', retrying...";
+      LOG_TOPIC(DEBUG, Logger::REPLICATION)
+          << "got lock timeout while waiting for lock on collection '"
+          << coll->name() << "', retrying...";
       std::this_thread::sleep_for(std::chrono::microseconds(50000));
       // retry
     }
@@ -565,8 +548,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   }
 
   TRI_col_type_e const type = static_cast<TRI_col_type_e>(
-      basics::VelocyPackHelper::getNumericValue<int>(slice, "type",
-                                                     TRI_COL_TYPE_DOCUMENT));
+      basics::VelocyPackHelper::getNumericValue<int>(slice, "type", TRI_COL_TYPE_DOCUMENT));
 
   // resolve collection by uuid, name, cid (in that order of preference)
   auto col = resolveCollection(vocbase, slice);
@@ -590,13 +572,9 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
 
   if (col != nullptr) {
     if (col->system()) {
-      TRI_ASSERT(!_state.master.simulate32Client() ||
-                 col->guid() == col->name());
-      SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(vocbase),
-        *col,
-        AccessMode::Type::WRITE
-      );
+      TRI_ASSERT(!_state.master.simulate32Client() || col->guid() == col->name());
+      SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
+                                      *col, AccessMode::Type::WRITE);
       trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
       trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
       Result res = trx.begin();
@@ -626,8 +604,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   s.openObject();
   s.add("isSystem", VPackValue(true));
 
-  if ((uuid.isString() && !_state.master.simulate32Client()) ||
-      forceRemoveCid) {  // need to use cid for 3.2 master
+  if ((uuid.isString() && !_state.master.simulate32Client()) || forceRemoveCid) {  // need to use cid for 3.2 master
     // if we received a globallyUniqueId from the remote, then we will always
     // use this id so we can discard the "cid" and "id" values for the
     // collection
@@ -637,9 +614,8 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
 
   s.close();
 
-  VPackBuilder merged =
-      VPackCollection::merge(slice, s.slice(), /*mergeValues*/ true,
-                             /*nullMeansRemove*/ true);
+  VPackBuilder merged = VPackCollection::merge(slice, s.slice(), /*mergeValues*/ true,
+                                               /*nullMeansRemove*/ true);
 
   // we need to remove every occurence of objectId as a key
   auto stripped = rocksutils::stripObjectIds(merged.slice());
@@ -718,36 +694,25 @@ Result Syncer::createIndex(VPackSlice const& slice) {
                              /*mergeValues*/ true, /*nullMeansRemove*/ true);
 
   try {
-    SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(*vocbase),
-      *col,
-      AccessMode::Type::WRITE
-    );
-    Result res = trx.begin();
-
-    if (!res.ok()) {
-      return res;
-    }
-
-    auto physical = trx.documentCollection()->getPhysical();
+    auto physical = col->getPhysical();
     TRI_ASSERT(physical != nullptr);
-    std::shared_ptr<arangodb::Index> idx;
-    res = physical->restoreIndex(&trx, merged.slice(), idx);
-    res = trx.finish(res);
 
-    return res;
+    std::shared_ptr<arangodb::Index> idx;
+    bool created = false;
+    idx = physical->createIndex(merged.slice(), /*restore*/ true, created);
+    TRI_ASSERT(idx != nullptr);
+
   } catch (arangodb::basics::Exception const& ex) {
-    return Result(
-        ex.code(),
-        std::string("caught exception while creating index: ") + ex.what());
+    return Result(ex.code(),
+                  std::string("caught exception while creating index: ") + ex.what());
   } catch (std::exception const& ex) {
-    return Result(
-        TRI_ERROR_INTERNAL,
-        std::string("caught exception while creating index: ") + ex.what());
+    return Result(TRI_ERROR_INTERNAL,
+                  std::string("caught exception while creating index: ") + ex.what());
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL,
                   "caught unknown exception while creating index");
   }
+  return Result();
 }
 
 Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
@@ -755,8 +720,7 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
     std::string id;
 
     if (slice.hasKey("data")) {
-      id =
-          basics::VelocyPackHelper::getStringValue(slice.get("data"), "id", "");
+      id = basics::VelocyPackHelper::getStringValue(slice.get("data"), "id", "");
     } else {
       id = basics::VelocyPackHelper::getStringValue(slice, "id", "");
     }
@@ -773,9 +737,9 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
       return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
 
-    auto* col = resolveCollection(*vocbase, slice).get();
+    auto col = resolveCollection(*vocbase, slice);
 
-    if (col == nullptr) {
+    if (!col) {
       return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
@@ -808,60 +772,72 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
 
   return r;
 }
-  
+
 /// @brief creates a view, based on the VelocyPack provided
-Result Syncer::createView(TRI_vocbase_t& vocbase,
-                          arangodb::velocypack::Slice const& slice) {
+Result Syncer::createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
   if (!slice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "collection slice is no object");
   }
-  
+
   VPackSlice nameSlice = slice.get(StaticStrings::DataSourceName);
+
   if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no name specified for view");
   }
-  VPackSlice guidSlice = slice.get("globallyUniqueId");
+
+  VPackSlice guidSlice = slice.get(StaticStrings::DataSourceGuid);
+
   if (!guidSlice.isString() || guidSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no guid specified for view");
   }
+
   VPackSlice typeSlice = slice.get(StaticStrings::DataSourceType);
+
   if (!typeSlice.isString() || typeSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no type specified for view");
   }
-  
+
   auto view = vocbase.lookupView(guidSlice.copyString());
-  if (view) { // identical view already exists
-    VPackSlice properties = slice.get("properties");
-    if (properties.isObject()) {
-      bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
-      return view->updateProperties(properties, false, doSync);
+
+  if (view) {  // identical view already exists
+    VPackSlice nameSlice = slice.get(StaticStrings::DataSourceName);
+
+    if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
+      auto res = view->rename(nameSlice.copyString());
+
+      if (!res.ok()) {
+        return res;
+      }
     }
-    return {};
+
+    return view->properties(slice, false);  // always a full-update
   }
-  
+
+  // check for name conflicts
   view = vocbase.lookupView(nameSlice.copyString());
-  if (view) { // resolve name conflict by deleting existing
-    Result res = vocbase.dropView(view->id(), /*dropSytem*/false);
+  if (view) {  // resolve name conflict by deleting existing
+    Result res = view->drop();
     if (res.fail()) {
       return res;
     }
   }
-  
+
   VPackBuilder s;
+
   s.openObject();
   s.add("id", VPackSlice::nullSlice());
   s.close();
-  
-  VPackBuilder merged =
-  VPackCollection::merge(slice, s.slice(), /*mergeValues*/ true,
-                         /*nullMeansRemove*/ true);
-  
+
+  VPackBuilder merged = VPackCollection::merge(slice, s.slice(), /*mergeValues*/ true,
+                                               /*nullMeansRemove*/ true);
+
   try {
-    vocbase.createView(merged.slice());
+    LogicalView::ptr view;  // ignore result
+    return LogicalView::create(view, vocbase, merged.slice());
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -869,18 +845,15 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL);
   }
-  
-  return Result();
 }
 
 /// @brief drops a view, based on the VelocyPack provided
-Result Syncer::dropView(arangodb::velocypack::Slice const& slice,
-                        bool reportError) {
+Result Syncer::dropView(arangodb::velocypack::Slice const& slice, bool reportError) {
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  
+
   VPackSlice guidSlice = slice.get("globallyUniqueId");
   if (guidSlice.isNone()) {
     guidSlice = slice.get("cuid");
@@ -889,11 +862,12 @@ Result Syncer::dropView(arangodb::velocypack::Slice const& slice,
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "no guid specified for view");
   }
-  
+
   try {
+    TRI_ASSERT(!ServerState::instance()->isCoordinator());
     auto view = vocbase->lookupView(guidSlice.copyString());
-    if (view != nullptr) { // ignore non-existing
-      return vocbase->dropView(view->id(), false);
+    if (view) {  // prevent dropping of system views ?
+      return view->drop();
     }
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
@@ -902,7 +876,7 @@ Result Syncer::dropView(arangodb::velocypack::Slice const& slice,
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL);
   }
-  
+
   return Result();
 }
 

@@ -28,11 +28,16 @@
 #include "catch.hpp"
 #include "fakeit.hpp"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterComm.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "tests/Mocks/StorageEngineMock.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -94,6 +99,21 @@ static std::shared_ptr<VPackBuilder> buildCountBody(uint64_t count) {
 }
 
 SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
+  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+  StorageEngineMock engine(server);
+  arangodb::EngineSelectorFeature::ENGINE = &engine;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  features.emplace_back(new arangodb::DatabaseFeature(server), false); // required for TRI_vocbase_t::dropCollection(...)
+  features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required for TRI_vocbase_t instantiation
+    
+  for (auto& f: features) {
+    arangodb::application_features::ApplicationServer::server->addFeature(f.first);
+  } 
+
+  for (auto& f: features) {
+    f.first->prepare();
+  }
+
   fakeit::Mock<ClusterComm> commMock;
   ClusterComm& cc = commMock.get();
 
@@ -106,12 +126,8 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
   std::shared_ptr<CollectionInfoCurrent> cic(&cicInst,
                                              [](CollectionInfoCurrent*) {});
 
-  fakeit::Mock<LogicalCollection> colMock;
-  LogicalCollection& col = colMock.get();
-
   std::string dbname = "UnitTestDB";
   std::string colName = "UnitTestCollection";
-  TRI_voc_cid_t cid = 1337;
   std::string cidString = "1337";
 
   std::string s1 = "s1234";
@@ -125,6 +141,10 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
   std::string dbserver1short = "DBServer1";
   std::string dbserver2short = "DBServer2";
   std::string dbserver3short = "DBServer3";
+  
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  auto json = arangodb::velocypack::Parser::fromJson("{ \"cid\" : \"1337\", \"name\": \"UnitTestCollection\" }");
+  arangodb::LogicalCollection col(vocbase, json->slice(), true);
 
   // Fake the aliases
   auto aliases =
@@ -135,6 +155,8 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
   // Fake the shard map
   auto shards = std::make_shared<ShardMap>();
   ShardMap currentShards;
+  
+  col.setShardMap(shards);
 
   // Fake the collections
   std::vector<std::shared_ptr<LogicalCollection>> allCollections;
@@ -166,12 +188,6 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         REQUIRE(cId == cidString);
         return cic;
       });
-
-  const_cast<std::string&>(col.name()).assign(colName);
-  fakeit::When(
-      ConstOverloadedMethod(colMock, shardIds, std::shared_ptr<ShardMap>()))
-      .AlwaysReturn(shards);
-  const_cast<TRI_voc_cid_t&>(col.id()) = cid;
 
   ShardDistributionReporter testee(
       std::shared_ptr<ClusterComm>(&cc, [](ClusterComm*) {}), &ci);
@@ -227,6 +243,8 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                       std::vector<ServerID>{dbserver2, dbserver1, dbserver3});
       shards->emplace(s3,
                       std::vector<ServerID>{dbserver3, dbserver1, dbserver2});
+  
+      col.setShardMap(shards);
 
       currentShards.emplace(
           s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
@@ -300,20 +318,20 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 response.answer_code = rest::ResponseCode::OK;
                 response.status = CL_COMM_RECEIVED;
 
-                // '/_api/collection/' + shard.shard + '/count'
+                // '/_db/UnitTestDB/_api/collection/' + shard.shard + '/count'
                 if (destination == "server:" + dbserver1) {
                   // off-sync follows s2,s3
-                  if (path == "/_api/collection/" + s2 + "/count") {
+                  if (path == "/_db/UnitTestDB/_api/collection/" + s2 + "/count") {
                     response.result = std::shared_ptr<SimpleHttpResult>(
                         &httpdb1s2Count, [](SimpleHttpResult*) {});
                   } else {
-                    REQUIRE(path == "/_api/collection/" + s3 + "/count");
+                    REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s3 + "/count");
                     response.result = std::shared_ptr<SimpleHttpResult>(
                         &httpdb1s3Count, [](SimpleHttpResult*) {});
                   }
                 } else if (destination == "server:" + dbserver2) {
                   // Leads s2
-                  REQUIRE(path == "/_api/collection/" + s2 + "/count");
+                  REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s2 + "/count");
                   response.result = std::shared_ptr<SimpleHttpResult>(
                       &httpdb2s2Count, [](SimpleHttpResult*) {});
                   leaderS2Response = response;
@@ -323,11 +341,11 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 } else if (destination == "server:" + dbserver3) {
                   // Leads s3
                   // off-sync follows s2
-                  if (path == "/_api/collection/" + s2 + "/count") {
+                  if (path == "/_db/UnitTestDB/_api/collection/" + s2 + "/count") {
                     response.result = std::shared_ptr<SimpleHttpResult>(
                         &httpdb3s2Count, [](SimpleHttpResult*) {});
                   } else {
-                    REQUIRE(path == "/_api/collection/" + s3 + "/count");
+                    REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s3 + "/count");
                     response.result = std::shared_ptr<SimpleHttpResult>(
                         &httpdb3s3Count, [](SimpleHttpResult*) {});
                     leaderS3Response = response;
@@ -843,6 +861,8 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
   WHEN("testing distribution for database") {
     GIVEN("A single collection of three shards, and 3 replicas") {
       shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
+  
+      col.setShardMap(shards);
 
       currentShards.emplace(s1, std::vector<ServerID>{dbserver1});
 
@@ -898,7 +918,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               std::shared_ptr<ClusterCommCallback> callback,
               ClusterCommTimeout timeout, bool singleRequest,
               ClusterCommTimeout initTimeout) -> OperationID {
-            REQUIRE(path == "/_api/collection/" + s1 + "/count");
+            REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
             OperationID opId = TRI_NewTickServer();
 
@@ -946,6 +966,8 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
   WHEN("testing collection distribution for database") {
     GIVEN("A single collection of three shards, and 3 replicas") {
       shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
+  
+      col.setShardMap(shards);
 
       currentShards.emplace(s1, std::vector<ServerID>{dbserver1});
 
@@ -1001,7 +1023,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               std::shared_ptr<ClusterCommCallback> callback,
               ClusterCommTimeout timeout, bool singleRequest,
               ClusterCommTimeout initTimeout) -> OperationID {
-            REQUIRE(path == "/_api/collection/" + s1 + "/count");
+            REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
             OperationID opId = TRI_NewTickServer();
 
@@ -1088,6 +1110,8 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
   WHEN("testing distribution for database") {
     GIVEN("An unhealthy cluster") {
       shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
+  
+      col.setShardMap(shards);
 
       currentShards.emplace(s1, std::vector<ServerID>{dbserver1});
 
@@ -1115,7 +1139,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout timeout, bool singleRequest,
                 ClusterCommTimeout initTimeout) -> OperationID {
-              REQUIRE(path == "/_api/collection/" + s1 + "/count");
+              REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
               OperationID opId = TRI_NewTickServer();
               coordId = coordTransactionID;
@@ -1220,7 +1244,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout timeout, bool singleRequest,
                 ClusterCommTimeout initTimeout) -> OperationID {
-              REQUIRE(path == "/_api/collection/" + s1 + "/count");
+              REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
               OperationID opId = TRI_NewTickServer();
               coordId = coordTransactionID;
@@ -1335,7 +1359,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout timeout, bool singleRequest,
                 ClusterCommTimeout initTimeout) -> OperationID {
-              REQUIRE(path == "/_api/collection/" + s1 + "/count");
+              REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
               OperationID opId = TRI_NewTickServer();
               coordId = coordTransactionID;
@@ -1411,6 +1435,8 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
   WHEN("testing collection distribution for database") {
     GIVEN("An unhealthy cluster") {
       shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
+  
+      col.setShardMap(shards);
 
       currentShards.emplace(s1, std::vector<ServerID>{dbserver1});
 
@@ -1438,7 +1464,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout timeout, bool singleRequest,
                 ClusterCommTimeout initTimeout) -> OperationID {
-              REQUIRE(path == "/_api/collection/" + s1 + "/count");
+              REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
               OperationID opId = TRI_NewTickServer();
               coordId = coordTransactionID;
@@ -1543,7 +1569,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout timeout, bool singleRequest,
                 ClusterCommTimeout initTimeout) -> OperationID {
-              REQUIRE(path == "/_api/collection/" + s1 + "/count");
+              REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
               OperationID opId = TRI_NewTickServer();
               coordId = coordTransactionID;
@@ -1658,7 +1684,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout timeout, bool singleRequest,
                 ClusterCommTimeout initTimeout) -> OperationID {
-              REQUIRE(path == "/_api/collection/" + s1 + "/count");
+              REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
               OperationID opId = TRI_NewTickServer();
               coordId = coordTransactionID;
@@ -1820,7 +1846,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                   std::shared_ptr<ClusterCommCallback> callback,
                   ClusterCommTimeout timeout, bool singleRequest,
                   ClusterCommTimeout initTimeout) -> OperationID {
-                REQUIRE(path == "/_api/collection/" + s1 + "/count");
+                REQUIRE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
                 OperationID opId = TRI_NewTickServer();
 
@@ -1878,6 +1904,10 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         }
       }*/
     }
+  }
+    
+  for (auto& f: features) {
+    f.first->unprepare();
   }
 }
 

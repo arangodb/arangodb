@@ -181,12 +181,15 @@
       var self = this;
       var query;
       var bindVars;
-      var tmp;
       var queryObj;
+
+      var pageSize = this.getPageSize();
+      if (pageSize === 'all') {
+        pageSize = this.MAX_SORT + 38000; // will result in 50k docs
+      }
+
       bindVars = {
-        '@collection': this.collectionID,
-        'offset': this.getOffset(),
-        'count': this.getPageSize()
+        '@collection': this.collectionID
       };
 
       // fetch just the first 25 attributes of the document
@@ -194,28 +197,21 @@
       query = 'FOR x IN @@collection LET att = APPEND(SLICE(ATTRIBUTES(x), 0, 25), "_key", true)';
       query += this.setFiltersForQuery(bindVars);
       // Sort result, only useful for a small number of docs
-      if (this.getTotal() < this.MAX_SORT) {
-        if (this.getSort() === '_key') {
-          query += ' SORT TO_NUMBER(x.' + this.getSort() + ') == 0 ? x.' +
-            this.getSort() + ' : TO_NUMBER(x.' + this.getSort() + ')';
-        } else if (this.getSort() !== '') {
-          query += ' SORT x.' + this.getSort();
-        }
+      if (this.getTotal() < this.MAX_SORT && this.getSort() !== '') {
+        query += ' SORT x.' + this.getSort();
       }
 
       if (bindVars.count !== 'all') {
-        query += ' LIMIT @offset, @count RETURN KEEP(x, att)';
-      } else {
-        tmp = {
-          '@collection': this.collectionID
-        };
-        bindVars = tmp;
-        query += ' RETURN KEEP(x, att)';
+        query += ' LIMIT @offset, @count';
+        bindVars.offset = this.getOffset();
+        bindVars.count = pageSize;
       }
+      query += ' RETURN KEEP(x, att)';
 
       queryObj = {
         query: query,
-        bindVars: bindVars
+        bindVars: bindVars,
+        batchSize: pageSize
       };
 
       if (this.filters.length > 0) {

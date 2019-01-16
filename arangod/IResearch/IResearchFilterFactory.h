@@ -28,49 +28,33 @@
 
 #include "search/filter.hpp"
 
-NS_BEGIN(iresearch)
+namespace iresearch {
 
-class boolean_filter; // forward declaration
+class boolean_filter;  // forward declaration
 
-NS_END // iresearch
+}  // namespace iresearch
 
-NS_BEGIN(arangodb)
-NS_BEGIN(aql)
+namespace arangodb {
+namespace aql {
 
-struct AstNode; // forward declaration
+struct AstNode;  // forward declaration
 
-NS_END // aql
+}  // namespace aql
 
-NS_BEGIN(iresearch)
+namespace iresearch {
 
 struct QueryContext;
 
 struct FilterFactory {
-  static irs::filter::ptr filter(TRI_voc_cid_t cid);
-  static irs::filter::ptr filter(TRI_voc_cid_t cid, TRI_voc_rid_t rid);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief create a filter matching 'cid' + 'rid' pair and append to 'buf'
-  /// @return the appended filter portion
-  ////////////////////////////////////////////////////////////////////////////////
-  static irs::filter& filter(
-    irs::boolean_filter& buf,
-    TRI_voc_cid_t cid,
-    TRI_voc_rid_t rid
-  );
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief determine if the 'node' can be converted into an iresearch filter
   ///        if 'filter' != nullptr then also append the iresearch filter there
   ////////////////////////////////////////////////////////////////////////////////
-  static bool filter(
-    irs::boolean_filter* filter,
-    QueryContext const& ctx,
-    arangodb::aql::AstNode const& node
-  );
-}; // FilterFactory
+  static bool filter(irs::boolean_filter* filter, QueryContext const& ctx,
+                     arangodb::aql::AstNode const& node);
+};  // FilterFactory
 
-NS_END // iresearch
-NS_END // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-#endif // ARANGOD_IRESEARCH__IRESEARCH_FILTER_FACTORY_H
+#endif  // ARANGOD_IRESEARCH__IRESEARCH_FILTER_FACTORY_H

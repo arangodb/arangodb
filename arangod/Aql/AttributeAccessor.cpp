@@ -36,7 +36,8 @@ namespace {
 
 class AttributeAccessorKey final : public AttributeAccessor {
  public:
-  explicit AttributeAccessorKey(Variable const* variable) : AttributeAccessor(variable) {}
+  explicit AttributeAccessorKey(Variable const* variable)
+      : AttributeAccessor(variable) {}
 
   AqlValue get(CollectionNameResolver const&, ExpressionContext* context, bool& mustDestroy) override {
     AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
@@ -46,7 +47,8 @@ class AttributeAccessorKey final : public AttributeAccessor {
 
 class AttributeAccessorId final : public AttributeAccessor {
  public:
-  explicit AttributeAccessorId(Variable const* variable) : AttributeAccessor(variable) {}
+  explicit AttributeAccessorId(Variable const* variable)
+      : AttributeAccessor(variable) {}
 
   AqlValue get(CollectionNameResolver const& resolver, ExpressionContext* context, bool& mustDestroy) override {
     AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
@@ -56,7 +58,8 @@ class AttributeAccessorId final : public AttributeAccessor {
 
 class AttributeAccessorFrom final : public AttributeAccessor {
  public:
-  explicit AttributeAccessorFrom(Variable const* variable) : AttributeAccessor(variable) {}
+  explicit AttributeAccessorFrom(Variable const* variable)
+      : AttributeAccessor(variable) {}
 
   AqlValue get(CollectionNameResolver const&, ExpressionContext* context, bool& mustDestroy) override {
     AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
@@ -66,7 +69,8 @@ class AttributeAccessorFrom final : public AttributeAccessor {
 
 class AttributeAccessorTo final : public AttributeAccessor {
  public:
-  explicit AttributeAccessorTo(Variable const* variable) : AttributeAccessor(variable) {}
+  explicit AttributeAccessorTo(Variable const* variable)
+      : AttributeAccessor(variable) {}
 
   AqlValue get(CollectionNameResolver const&, ExpressionContext* context, bool& mustDestroy) override {
     AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
@@ -76,7 +80,7 @@ class AttributeAccessorTo final : public AttributeAccessor {
 
 class AttributeAccessorSingle final : public AttributeAccessor {
  public:
-  explicit AttributeAccessorSingle(Variable const* variable, std::string&& path) 
+  explicit AttributeAccessorSingle(Variable const* variable, std::string&& path)
       : AttributeAccessor(variable), _path(std::move(path)) {}
 
   AqlValue get(CollectionNameResolver const& resolver, ExpressionContext* context, bool& mustDestroy) override {
@@ -91,7 +95,7 @@ class AttributeAccessorSingle final : public AttributeAccessor {
 
 class AttributeAccessorMulti final : public AttributeAccessor {
  public:
-  explicit AttributeAccessorMulti(Variable const* variable, std::vector<std::string>&& path) 
+  explicit AttributeAccessorMulti(Variable const* variable, std::vector<std::string>&& path)
       : AttributeAccessor(variable), _path(std::move(path)) {}
 
   AqlValue get(CollectionNameResolver const& resolver, ExpressionContext* context, bool& mustDestroy) override {
@@ -104,11 +108,10 @@ class AttributeAccessorMulti final : public AttributeAccessor {
   std::vector<std::string> const _path;
 };
 
-} // namespace
+}  // namespace
 
 /// @brief create the accessor
-AttributeAccessor::AttributeAccessor(
-    Variable const* variable)
+AttributeAccessor::AttributeAccessor(Variable const* variable)
     : _variable(variable) {}
 
 /// @brief replace the variable in the accessor
@@ -121,15 +124,17 @@ void AttributeAccessor::replaceVariable(std::unordered_map<VariableId, Variable 
   }
 }
 
-AttributeAccessor* AttributeAccessor::create(std::vector<std::string>&& path, Variable const* variable, bool dataIsFromCollection) {
+AttributeAccessor* AttributeAccessor::create(std::vector<std::string>&& path,
+                                             Variable const* variable,
+                                             bool dataIsFromCollection) {
   TRI_ASSERT(variable != nullptr);
   TRI_ASSERT(!path.empty());
 
   // determine accessor type
-  // it is only safe to use the optimized accessor functions for system attributes
-  // when the input data are collection documents. it is not safe to use them for
-  // non-collection data, as the optimized functions may easily create out-of-bounds
-  // accesses in that case
+  // it is only safe to use the optimized accessor functions for system
+  // attributes when the input data are collection documents. it is not safe to
+  // use them for non-collection data, as the optimized functions may easily
+  // create out-of-bounds accesses in that case
   if (path.size() == 1) {
     if (dataIsFromCollection && path[0] == StaticStrings::KeyString) {
       return new AttributeAccessorKey(variable);
@@ -143,6 +148,6 @@ AttributeAccessor* AttributeAccessor::create(std::vector<std::string>&& path, Va
       return new AttributeAccessorSingle(variable, std::move(path[0]));
     }
   }
-      
+
   return new AttributeAccessorMulti(variable, std::move(path));
 }

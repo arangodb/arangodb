@@ -46,7 +46,7 @@ namespace arangodb {
 namespace aql {
 class SortCondition;
 struct Variable;
-}
+}  // namespace aql
 
 class LogicalCollection;
 class MMFilesPrimaryIndex;
@@ -61,12 +61,10 @@ class MMFilesPersistentIndexIterator final : public IndexIterator {
   friend class MMFilesPersistentIndex;
 
  public:
-  MMFilesPersistentIndexIterator(LogicalCollection* collection,
-                                 transaction::Methods* trx,
+  MMFilesPersistentIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                                  arangodb::MMFilesPersistentIndex const* index,
                                  arangodb::MMFilesPrimaryIndex* primaryIndex,
-                                 rocksdb::OptimisticTransactionDB* db,
-                                 bool reverse,
+                                 rocksdb::OptimisticTransactionDB* db, bool reverse,
                                  arangodb::velocypack::Slice const& left,
                                  arangodb::velocypack::Slice const& right);
 
@@ -86,10 +84,8 @@ class MMFilesPersistentIndexIterator final : public IndexIterator {
   arangodb::MMFilesPrimaryIndex* _primaryIndex;
   rocksdb::OptimisticTransactionDB* _db;
   std::unique_ptr<rocksdb::Iterator> _cursor;
-  std::unique_ptr<arangodb::velocypack::Buffer<char>>
-      _leftEndpoint;  // Interval left border
-  std::unique_ptr<arangodb::velocypack::Buffer<char>>
-      _rightEndpoint;  // Interval right border
+  std::unique_ptr<arangodb::velocypack::Buffer<char>> _leftEndpoint;  // Interval left border
+  std::unique_ptr<arangodb::velocypack::Buffer<char>> _rightEndpoint;  // Interval right border
   bool const _reverse;
   bool _probe;
   std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
@@ -101,10 +97,8 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
  public:
   MMFilesPersistentIndex() = delete;
 
-  MMFilesPersistentIndex(
-    TRI_idx_iid_t iid, LogicalCollection& collection,
-    arangodb::velocypack::Slice const& info
-  );
+  MMFilesPersistentIndex(TRI_idx_iid_t iid, LogicalCollection& collection,
+                         arangodb::velocypack::Slice const& info);
 
   ~MMFilesPersistentIndex();
 
@@ -126,52 +120,41 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
   static constexpr size_t minimalPrefixSize() { return sizeof(TRI_voc_tick_t); }
 
   static constexpr size_t keyPrefixSize() {
-    return sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t) +
-           sizeof(TRI_idx_iid_t);
+    return sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t) + sizeof(TRI_idx_iid_t);
   }
 
   static std::string buildPrefix(TRI_voc_tick_t databaseId) {
     std::string value;
-    value.append(reinterpret_cast<char const*>(&databaseId),
-                 sizeof(TRI_voc_tick_t));
+    value.append(reinterpret_cast<char const*>(&databaseId), sizeof(TRI_voc_tick_t));
     return value;
   }
 
-  static std::string buildPrefix(TRI_voc_tick_t databaseId,
-                                 TRI_voc_cid_t collectionId) {
+  static std::string buildPrefix(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
     std::string value;
-    value.append(reinterpret_cast<char const*>(&databaseId),
-                 sizeof(TRI_voc_tick_t));
-    value.append(reinterpret_cast<char const*>(&collectionId),
-                 sizeof(TRI_voc_cid_t));
+    value.append(reinterpret_cast<char const*>(&databaseId), sizeof(TRI_voc_tick_t));
+    value.append(reinterpret_cast<char const*>(&collectionId), sizeof(TRI_voc_cid_t));
     return value;
   }
 
   static std::string buildPrefix(TRI_voc_tick_t databaseId,
-                                 TRI_voc_cid_t collectionId,
-                                 TRI_idx_iid_t indexId) {
+                                 TRI_voc_cid_t collectionId, TRI_idx_iid_t indexId) {
     std::string value;
     value.reserve(keyPrefixSize());
-    value.append(reinterpret_cast<char const*>(&databaseId),
-                 sizeof(TRI_voc_tick_t));
-    value.append(reinterpret_cast<char const*>(&collectionId),
-                 sizeof(TRI_voc_cid_t));
-    value.append(reinterpret_cast<char const*>(&indexId),
-                 sizeof(TRI_idx_iid_t));
+    value.append(reinterpret_cast<char const*>(&databaseId), sizeof(TRI_voc_tick_t));
+    value.append(reinterpret_cast<char const*>(&collectionId), sizeof(TRI_voc_cid_t));
+    value.append(reinterpret_cast<char const*>(&indexId), sizeof(TRI_idx_iid_t));
     return value;
   }
 
-  Result insert(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&,
-                OperationMode mode) override;
+  Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
+                velocypack::Slice const& doc, Index::OperationMode mode) override;
 
-  Result remove(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&,
-                OperationMode mode) override;
+  Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
+                velocypack::Slice const& doc, Index::OperationMode mode) override;
 
   void unload() override {}
 
-  int drop() override;
+  Result drop() override;
 
   /// @brief attempts to locate an entry in the index
   ///
@@ -190,15 +173,15 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
                              arangodb::aql::Variable const*, size_t, double&,
                              size_t&) const override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*,
-                                      ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;
 
-  arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
+                                              arangodb::aql::Variable const*) const override;
 };
-}
+
+}  // namespace arangodb
 
 #endif

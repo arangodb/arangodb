@@ -25,6 +25,7 @@
 #define ARANGOD_CONSENSUS_AGENT_H 1
 
 #include "Agency/AgencyCommon.h"
+#include "Agency/AgencyStrings.h"
 #include "Agency/AgentCallback.h"
 #include "Agency/AgentConfiguration.h"
 #include "Agency/AgentInterface.h"
@@ -42,9 +43,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 namespace consensus {
 
-class Agent final : public arangodb::Thread,
-                    public AgentInterface {
-
+class Agent final : public arangodb::Thread, public AgentInterface {
  public:
   /// @brief Construct with program options
   explicit Agent(config_t const&);
@@ -70,6 +69,13 @@ class Agent final : public arangodb::Thread,
 
   /// @brief Get timeoutMult:
   int64_t getTimeoutMult() const;
+
+  /**
+   * @brief add gossip peer to configuration
+   * @param   endpoint  new endpoint
+   * @return  true: if new endpoint, false: if already known
+   */
+  bool addGossipPeer(std::string const& endpoint);
 
   /// @brief Adjust timeoutMult:
   void adjustTimeoutMult(int64_t timeoutMult);
@@ -110,7 +116,7 @@ class Agent final : public arangodb::Thread,
   /// @brief Attempt write
   ///        Startup flag should NEVER be discarded solely for purpose of
   ///        persisting the agency configuration
-  write_ret_t write(query_t const&, bool discardStartup = false) override;
+  write_ret_t write(query_t const&, WriteMode const& wmode = WriteMode()) override;
 
   /// @brief Read from agency
   read_ret_t read(query_t const&);
@@ -134,7 +140,7 @@ class Agent final : public arangodb::Thread,
   ///        also used as heartbeat ($5.2).
   priv_rpc_ret_t recvAppendEntriesRPC(term_t term, std::string const& leaderId,
                                       index_t prevIndex, term_t prevTerm,
-                            index_t leaderCommitIndex, query_t const& queries);
+                                      index_t leaderCommitIndex, query_t const& queries);
 
   /// @brief Resign leadership
   void resign(term_t otherTerm = 0);
@@ -269,10 +275,11 @@ class Agent final : public arangodb::Thread,
   /// @brief Guarding taking over leadership
   void beginPrepareLeadership() { _preparing = 1; }
   void donePrepareLeadership() { _preparing = 2; }
-  void endPrepareLeadership()  {
+  void endPrepareLeadership() {
     _preparing = 0;
     _leaderSince = std::chrono::duration_cast<std::chrono::duration<int64_t>>(
-        std::chrono::steady_clock::now().time_since_epoch()).count();
+                       std::chrono::steady_clock::now().time_since_epoch())
+                       .count();
   }
   int getPrepareLeadership() { return _preparing; }
 
@@ -302,8 +309,11 @@ class Agent final : public arangodb::Thread,
   /// @brief Activate this agent in single agent mode.
   void activateAgency();
 
- private:
+  /// @brief add agent to configuration (from State after successful local
+  /// persistence)
+  void updateConfiguration(VPackSlice const&);
 
+ private:
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
 
@@ -423,7 +433,8 @@ class Agent final : public arangodb::Thread,
   /// For _ioLock: We put in assertions to ensure that when this lock is
   /// acquired we do not have the _tiLock.
 
-  /// @brief Inception thread getting an agent up to join RAFT from cmd or persistence
+  /// @brief Inception thread getting an agent up to join RAFT from cmd or
+  /// persistence
   std::unique_ptr<Inception> _inception;
 
   /// @brief Compactor
@@ -446,7 +457,7 @@ class Agent final : public arangodb::Thread,
   // lock for _ongoingTrxs
   arangodb::Mutex _trxsLock;
 };
-}
-}
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

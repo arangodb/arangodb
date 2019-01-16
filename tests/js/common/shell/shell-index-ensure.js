@@ -296,13 +296,13 @@ function ensureIndexSuite() {
       assertTrue(idx1.unique);
       assertTrue(idx1.sparse);
       assertEqual([ "b", "c" ], idx1.fields);
-      
+
       var idx2 = collection.ensureIndex({ type: "hash", unique: true, fields: [ "b", "c" ], sparse: false });
       assertEqual("hash", idx2.type);
       assertTrue(idx2.unique);
       assertFalse(idx2.sparse);
       assertEqual([ "b", "c" ], idx2.fields);
-      
+
       var idx3 = collection.ensureIndex({ type: "hash", unique: false, fields: [ "b", "c" ], sparse: false });
       assertEqual("hash", idx3.type);
       assertFalse(idx3.unique);
@@ -315,14 +315,14 @@ function ensureIndexSuite() {
       assertTrue(idx1.sparse);
       assertEqual([ "b", "c" ], res.fields);
       assertEqual(idx1.id, res.id);
-      
+
       res = collection.getIndexes()[collection.getIndexes().length - 2];
       assertEqual("hash", res.type);
       assertTrue(res.unique);
       assertFalse(idx2.sparse);
       assertEqual([ "b", "c" ], res.fields);
       assertEqual(idx2.id, res.id);
-      
+
       res = collection.getIndexes()[collection.getIndexes().length - 1];
       assertEqual("hash", res.type);
       assertFalse(res.unique);
@@ -424,15 +424,15 @@ function ensureIndexSuite() {
         assertEqual("test" + i, doc._key);
         assertEqual(i, doc.value);
       }
-      
+
       var query = "FOR doc IN " + collection.name() + " FILTER doc._key == 'test1' && doc.value == 1 RETURN doc";
       var st = db._createStatement({ query: query });
-     
-      var found = false; 
-      st.explain().plan.nodes.forEach(function(node) { 
+
+      var found = false;
+      st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
           assertTrue(node.indexes[0].type === "primary" || node.indexes[0].type === "hash");
-          found = true; 
+          found = true;
         }
       });
       assertTrue(found);
@@ -566,13 +566,13 @@ function ensureIndexSuite() {
       assertTrue(idx1.unique);
       assertTrue(idx1.sparse);
       assertEqual([ "b", "c" ], idx1.fields);
-      
+
       var idx2 = collection.ensureIndex({ type: "skiplist", unique: true, fields: [ "b", "c" ], sparse: false });
       assertEqual("skiplist", idx2.type);
       assertTrue(idx2.unique);
       assertFalse(idx2.sparse);
       assertEqual([ "b", "c" ], idx2.fields);
-      
+
       var idx3 = collection.ensureIndex({ type: "skiplist", unique: false, fields: [ "b", "c" ], sparse: false });
       assertEqual("skiplist", idx3.type);
       assertFalse(idx3.unique);
@@ -585,14 +585,14 @@ function ensureIndexSuite() {
       assertTrue(idx1.sparse);
       assertEqual([ "b", "c" ], res.fields);
       assertEqual(idx1.id, res.id);
-      
+
       res = collection.getIndexes()[collection.getIndexes().length - 2];
       assertEqual("skiplist", res.type);
       assertTrue(res.unique);
       assertFalse(idx2.sparse);
       assertEqual([ "b", "c" ], res.fields);
       assertEqual(idx2.id, res.id);
-      
+
       res = collection.getIndexes()[collection.getIndexes().length - 1];
       assertEqual("skiplist", res.type);
       assertFalse(res.unique);
@@ -627,12 +627,12 @@ function ensureIndexSuite() {
 
       var query = "FOR doc IN " + collection.name() + " FILTER doc._rev >= 0 SORT doc._rev RETURN doc";
       var st = db._createStatement({ query: query });
-     
-      var found = false; 
-      st.explain().plan.nodes.forEach(function(node) { 
+
+      var found = false;
+      st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
           assertEqual("skiplist", node.indexes[0].type);
-          found = true; 
+          found = true;
         }
       });
       assertTrue(found);
@@ -671,15 +671,15 @@ function ensureIndexSuite() {
         assertEqual("test" + i, doc._key);
         assertEqual(i, doc.value);
       }
-      
+
       var query = "FOR doc IN " + collection.name() + " FILTER doc._key >= 0 SORT doc._key RETURN doc";
       var st = db._createStatement({ query: query });
-     
-      var found = false; 
-      st.explain().plan.nodes.forEach(function(node) { 
+
+      var found = false;
+      st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("skiplist", node.indexes[0].type);
-          found = true; 
+          assertTrue([ "skiplist", "primary" ].includes(node.indexes[0].type), node.indexes[0].type + " is not in [ 'skiplist', 'primary' ]");
+          found = true;
         }
       });
       assertTrue(found);
@@ -721,12 +721,12 @@ function ensureIndexSuite() {
 
       var query = "FOR doc IN " + collection.name() + " FILTER doc._key == 'test1' && doc.value == 1 RETURN doc";
       var st = db._createStatement({ query: query });
-     
-      var found = false; 
-      st.explain().plan.nodes.forEach(function(node) { 
+
+      var found = false;
+      st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
           assertTrue(node.indexes[0].type === "primary" || node.indexes[0].type === "skiplist");
-          found = true; 
+          found = true;
         }
       });
       assertTrue(found);
@@ -964,12 +964,12 @@ function ensureIndexEdgesSuite() {
 
       var query = "FOR doc IN " + edge.name() + " FILTER doc._from >= 0 SORT doc._from RETURN doc";
       var st = db._createStatement({ query: query });
-     
-      var found = false; 
-      st.explain().plan.nodes.forEach(function(node) { 
+
+      var found = false;
+      st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
           assertEqual("skiplist", node.indexes[0].type);
-          found = true; 
+          found = true;
         }
       });
       assertTrue(found);
@@ -1001,12 +1001,12 @@ function ensureIndexEdgesSuite() {
 
       var query = "FOR doc IN " + edge.name() + " FILTER doc._to >= 0 SORT doc._to RETURN doc";
       var st = db._createStatement({ query: query });
-     
-      var found = false; 
-      st.explain().plan.nodes.forEach(function(node) { 
+
+      var found = false;
+      st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
           assertEqual("skiplist", node.indexes[0].type);
-          found = true; 
+          found = true;
         }
       });
       assertTrue(found);
@@ -1036,16 +1036,16 @@ function ensureIndexEdgesSuite() {
 
       assertEqual(idx.id, res.id);
 
-      var query = "FOR doc IN " + edge.name() + 
+      var query = "FOR doc IN " + edge.name() +
                   " FILTER doc._from == 'UnitTestsCollectionIdxVertex/test1' && " +
                   "doc._to == 'UnitTestsCollectionIdxVertex' RETURN doc";
       var st = db._createStatement({ query: query });
-     
-      var found = false; 
-      st.explain().plan.nodes.forEach(function(node) { 
+
+      var found = false;
+      st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
           assertTrue(node.indexes[0].type === "hash");
-          found = true; 
+          found = true;
         }
       });
       assertTrue(found);
@@ -1075,16 +1075,16 @@ function ensureIndexEdgesSuite() {
 
       assertEqual(idx.id, res.id);
 
-      var query = "FOR doc IN " + edge.name() + 
-                  " FILTER doc._from == 'UnitTestsCollectionIdxVertex/test1' && " + 
+      var query = "FOR doc IN " + edge.name() +
+                  " FILTER doc._from == 'UnitTestsCollectionIdxVertex/test1' && " +
                   "doc._to == 'UnitTestsCollectionIdxVertex' RETURN doc";
       var st = db._createStatement({ query: query });
-     
-      var found = false; 
-      st.explain().plan.nodes.forEach(function(node) { 
+
+      var found = false;
+      st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
           assertTrue(node.indexes[0].type === "skiplist");
-          found = true; 
+          found = true;
         }
       });
       assertTrue(found);

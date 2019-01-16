@@ -57,7 +57,7 @@ struct IRESEARCH_API attribute {
     type_id(const string_ref& name): name_(name) {}
     operator const type_id*() const { return this; }
     static bool exists(const string_ref& name);
-    static const type_id* get(const string_ref& name);
+    static const type_id* get(const string_ref& name) NOEXCEPT;
     const string_ref& name() const { return name_; }
 
    private:
@@ -73,10 +73,10 @@ struct IRESEARCH_API attribute {
 ///        static const attribute::type_id& type() NOEXCEPT
 ///          via DECLARE_ATTRIBUTE_TYPE()/DEFINE_ATTRIBUTE_TYPE(...)
 ///        static ptr make(Args&&... args)
-///          via DECLARE_FACTORY()/DECLARE_FACTORY_DEFAULT()
+///          via DECLARE_FACTORY()/DECLARE_FACTORY()
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API stored_attribute : attribute {
-  DECLARE_PTR(stored_attribute);
+  DECLARE_UNIQUE_PTR(stored_attribute);
   virtual ~stored_attribute() = default;
 };
 
@@ -505,14 +505,13 @@ class IRESEARCH_API attribute_store
   }
 
   template<typename T, typename... Args>
-  typename ref<T>::type& emplace(Args&&... args) {
+  typename ref<T>::type& try_emplace(bool& inserted, Args&&... args) {
     REGISTER_TIMER_DETAILED();
 
     typedef typename std::enable_if<
       std::is_base_of<stored_attribute, T>::value, T
     >::type type;
 
-    bool inserted;
     auto& attr = attribute_map::emplace(inserted, type::type());
 
     if (inserted) {
@@ -520,6 +519,12 @@ class IRESEARCH_API attribute_store
     }
 
     return reinterpret_cast<typename ref<T>::type&>(attr);
+  }
+
+  template<typename T, typename... Args>
+  typename ref<T>::type& emplace(Args&&... args) {
+    bool inserted;
+    return try_emplace<T>(inserted, std::forward<Args>(args)...);
   }
 }; // attribute_store
 
@@ -542,12 +547,34 @@ class pointer_wrapper {
     return *this;
   }
   FORCE_INLINE operator bool() const NOEXCEPT {
-    return p_ != nullptr;
+    return nullptr != p_;
+  }
+  FORCE_INLINE bool operator==(std::nullptr_t) const NOEXCEPT {
+    return nullptr == p_;
+  }
+  FORCE_INLINE bool operator!=(std::nullptr_t) const NOEXCEPT {
+    return !(*this == nullptr);
   }
 
  private:
   T* p_;
 }; // pointer_wrapper
+
+template<typename T>
+FORCE_INLINE bool operator==(
+    std::nullptr_t,
+    const pointer_wrapper<T>& rhs
+) NOEXCEPT {
+  return rhs == nullptr;
+}
+
+template<typename T>
+FORCE_INLINE bool operator!=(
+    std::nullptr_t,
+    const pointer_wrapper<T>& rhs
+) NOEXCEPT {
+  return rhs != nullptr;
+}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief storage of data pointers to attributes

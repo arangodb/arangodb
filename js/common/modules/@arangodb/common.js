@@ -38,14 +38,51 @@ Object.keys(internal.errors).forEach(function(key) {
   exports[key] = internal.errors[key].code;
 });
 
-exports.aql = function(strings, ...args) {
+function isAqlQuery(query) {
+  return Boolean(query && query.query && query.bindVars);
+}
+
+function isGeneratedAqlQuery(query) {
+  return isAqlQuery(query) && typeof query._source === "function";
+}
+
+function isAqlLiteral(literal) {
+  return Boolean(literal && typeof literal.toAQL === "function");
+}
+
+exports.aql = function aql(templateStrings, ...args) {
+  const strings = [...templateStrings];
   const bindVars = {};
   const bindVals = [];
   let query = strings[0];
   for (let i = 0; i < args.length; i++) {
     const rawValue = args[i];
     let value = rawValue;
-    if (rawValue && typeof rawValue.toAQL === 'function') {
+    if (isGeneratedAqlQuery(rawValue)) {
+      const src = rawValue._source();
+      if (src.args.length) {
+        query += src.strings[0];
+        args.splice(i, 1, ...src.args);
+        strings.splice(
+          i,
+          2,
+          strings[i] + src.strings[0],
+          ...src.strings.slice(1, src.args.length),
+          src.strings[src.args.length] + strings[i + 1]
+        );
+      } else {
+        query += rawValue.query + strings[i + 1];
+        args.splice(i, 1);
+        strings.splice(i, 2, strings[i] + rawValue.query + strings[i + 1]);
+      }
+      i -= 1;
+      continue;
+    }
+    if (rawValue === undefined) {
+      query += strings[i + 1];
+      continue;
+    }
+    if (isAqlLiteral(rawValue)) {
       query += `${rawValue.toAQL()}${strings[i + 1]}`;
       continue;
     }
@@ -62,11 +99,38 @@ exports.aql = function(strings, ...args) {
     }
     query += `@${name}${strings[i + 1]}`;
   }
-  return {query, bindVars};
+  return {
+    query,
+    bindVars,
+    _source: () => ({ strings, args })
+  };
 };
 
-exports.aql.literal = function(value) {
-  return {toAQL: () => value};
+exports.aql.literal = function (value) {
+  if (isAqlLiteral(value)) {
+    return value;
+  }
+  return {
+    toAQL() {
+      if (value === undefined) {
+        return "";
+      }
+      return String(value);
+    }
+  };
+};
+
+exports.aql.join = function (values, sep = " ") {
+  if (!values.length) {
+    return exports.aql``;
+  }
+  if (values.length === 1) {
+    return exports.aql`${values[0]}`;
+  }
+  return exports.aql(
+    ["", ...Array(values.length - 1).fill(sep), ""],
+    ...values
+  );
 };
 
 exports.errors = internal.errors;
@@ -84,20 +148,22 @@ exports.ArangoError = internal.ArangoError;
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.defineModule = function(path, file) {
-  var content;
-  var m;
-  var mc;
-
-  content = fs.read(file);
-
-  mc = internal.db._collection('_modules');
+  let content = fs.read(file);
+  let mc = internal.db._collection('_modules');
 
   if (mc === null) {
-    mc = internal.db._create('_modules', {isSystem: true});
+    // lazily create _modules collection if it does not yet exist
+    const DEFAULT_REPLICATION_FACTOR_SYSTEM = internal.DEFAULT_REPLICATION_FACTOR_SYSTEM;
+    mc = internal.db._create('_modules', {
+      isSystem: true,
+      journalSize: 1024 * 1024,
+      replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
+      distributeShardsLike: '_graphs'
+    });
   }
 
   path = module.normalize(path);
-  m = mc.firstExample({path: path});
+  let m = mc.firstExample({path: path});
 
   if (m === null) {
     mc.save({path: path, content: content});

@@ -1,5 +1,5 @@
-Features and Improvements
-=========================
+Features and Improvements in ArangoDB 3.4
+=========================================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 3.4. ArangoDB 3.4 also contains several bug fixes that are not listed
@@ -12,9 +12,9 @@ ArangoSearch is a sophisticated, integrated full-text search solution over
 a user-defined set of attributes and collections. It is the first type of
 view in ArangoDB.
 
-[ArangoSearch tutorial](https://www.arangodb.com/tutorials/arangosearch/)
-[ArangoSearch overview](../Views/ArangoSearch/README.md)
-[ArangoSearch in AQL](../../AQL/Views/ArangoSearch/index.html)
+- [ArangoSearch tutorial](https://www.arangodb.com/tutorials/arangosearch/)
+- [ArangoSearch overview](../Views/ArangoSearch/README.md)
+- [ArangoSearch in AQL](../../AQL/Views/ArangoSearch/index.html)
 
 
 New geo index implementation
@@ -28,8 +28,8 @@ complex geographical objects. The new implementation is much faster than the pre
 the RocksDB engine.
 
 Additionally, several AQL functions have been added to facilitate working with
-geographical data: `GEO_POINT`, `GEO_MULTIPOINT`, `GEO_POLYGON`, `GEO_LINESTRING` and
-`GEO_MULTILINESTRING`. These functions will produce GeoJSON objects.
+geographical data: `GEO_POINT`, `GEO_MULTIPOINT`, `GEO_LINESTRING`, `GEO_MULTILINESTRING`,
+`GEO_POLYGON` and `GEO_MULTIPOLYGON`. These functions will produce GeoJSON objects.
 
 Additionally there are new geo AQL functions `GEO_CONTAINS`, `GEO_INTERSECTS` and `GEO_EQUALS`
 for querying and comparing GeoJSON objects.
@@ -162,7 +162,7 @@ per-query/per-transaction basis.
 For AQL queries, all data-modification operations now support the `exclusive` option, e.g.
 
     FOR doc IN collection
-      UPDATE doc WITH { updated: true } OPTIONS { exclusive: true }
+      UPDATE doc WITH { updated: true } IN collection OPTIONS { exclusive: true }
 
 JavaScript-based transactions can specify which collections to lock exclusively in the
 `exclusive` sub-attribute of their `collections` attribute:
@@ -386,6 +386,16 @@ coordinator's startup.
 
 Previous versions of ArangoDB did not detect the usage of different storage
 engines in a cluster, but the runtime behavior of the cluster was undefined.
+
+### Advertised endpoints
+
+It is now possible to configure the endpoints advertised by the
+coordinators to clients to be different from the endpoints which are
+used for cluster internal communication. This is important for client
+drivers which refresh the list of endpoints during the lifetime of the
+cluster (which they should do!). In this way one can make the cluster
+advertise a load balancer or a separate set of IP addresses for external
+access. The new option is called `--cluster.my-advertised-endpoint`.
 
 ### Startup safety checks
 
@@ -640,6 +650,15 @@ Note that the default maximum value can be adjusted globally by setting the star
 option `--query.optimizer-max-plans` or on a per-query basis by setting a query's
 `maxNumberOfPlans` option.
 
+### Condition simplification
+
+The query optimizer rule `simplify-conditions` has been added to simplify certain
+expressions inside CalculationNodes, which can speed up runtime evaluation of these
+expressions.
+
+The optimizer rule `fuse-filters` has been added to merge adjacent FILTER conditions
+into a single FILTER condition where possible, allowing to save some runtime registers.
+
 ### Single document optimizations
 
 In a cluster, the cost of setting up a distributed query can be considerable for
@@ -738,18 +757,18 @@ are used later in the query. The optimizer will add automatic *KEEP* clauses to
 the COLLECT statement then if possible.
     
 For example, the query
-    
+
     FOR doc1 IN collection1
       FOR doc2 IN collection2
-	COLLECT x = doc1.x INTO g
-	RETURN { x, all: g[*].doc1.y }
+        COLLECT x = doc1.x INTO g
+        RETURN { x, all: g[*].doc1.y }
     
 will automatically be turned into
-    
+
     FOR doc1 IN collection1
       FOR doc2 IN collection2
-	COLLECT x = doc1.x INTO g KEEP doc1
-	RETURN { x, all: g[*].doc1.y }
+        COLLECT x = doc1.x INTO g KEEP doc1
+        RETURN { x, all: g[*].doc1.y }
    
 This prevents variable `doc2` from being temporarily stored in the variable `g`,
 which saves processing time and memory, especially for big result sets.
@@ -810,6 +829,53 @@ the optimizer in 3.4 will now be able to use a sparse index on `value`:
 The optimizer in 3.3 was not able to detect this, and refused to use sparse indexes
 for such queries.
 
+### Query results cache
+
+The AQL query results cache in ArangoDB 3.4 has got additional parameters to 
+control which queries should be stored in the cache.
+
+In addition to the already existing configuration option `--query.cache-entries`
+that controls the maximum number of query results cached in each database's
+query results cache, there now exist the following extra options:
+
+- `--query.cache-entries-max-size`: maximum cumulated size of the results stored
+  in each database's query results cache
+- `--query.cache-entry-max-size`: maximum size for an individual cache result
+- `--query.cache-include-system-collections`: whether or not results of queries
+  that involve system collections should be stored in the query results cache
+
+These options allow more effective control of the amount of memory used by the
+query results cache, and can be used to better utilitize the cache memory.
+
+The cache configuration can be changed at runtime using the `properties` function
+of the cache. For example, to limit the per-database number of cache entries to
+256 MB and to limit the per-database cumulated size of query results to 64 MB, 
+and the maximum size of each individual cache entry to 1MB, the following call
+could be used:
+
+```
+require("@arangodb/aql/cache").properties({
+  maxResults: 256,
+  maxResultsSize: 64 * 1024 * 1024,
+  maxEntrySize: 1024 * 1024,
+  includeSystem: false
+});
+```
+
+The contents of the query results cache can now also be inspected at runtime using 
+the cache's new `toArray` function:
+
+```
+require("@arangodb/aql/cache").toArray();
+```
+
+This will show all query results currently stored in the query results cache of
+the current database, along with their query strings, sizes, number of results
+and original query run times.
+
+The functionality is also available via HTTP REST APIs.
+
+
 ### Miscellaneous changes
 
 When creating query execution plans for a query, the query optimizer was fetching
@@ -857,7 +923,7 @@ undesired. Creating a streaming cursor for such queries will solve both problems
 Please note that streaming cursors will use resources all the time till you
 fetch the last chunk of results.
 
-Depending on the storage engine you use this has different consequences:
+Depending on the storage engine used this has different consequences:
 
 - **MMFiles**: While before collection locks would only be held during the creation of the cursor
   (the first request) and thus until the result set was well prepared,
@@ -866,27 +932,32 @@ Depending on the storage engine you use this has different consequences:
 
   While Multiple reads are possible, one write operation will effectively stop
   all other actions from happening on the collections in question.
-- **Rocksdb**: Reading occurs on the state of the data when the query
+- **RocksDB**: Reading occurs on the state of the data when the query
   was started. Writing however will happen during working with the cursor.
   Thus be prepared for possible conflicts if you have other writes on the collections,
   and probably overrule them by `ignoreErrors: True`, else the query
   will abort by the time the conflict happenes.
 
 Taking into account the above consequences, you shouldn't use streaming
-cursors light minded for data modification queries.
+cursors light-minded for data modification queries.
 
 Please note that the query options `cache`, `count` and `fullCount` will not work with streaming
 cursors. Additionally, the query statistics, warnings and profiling data will only be available
-when the last result batch for the query is sent.
+when the last result batch for the query is sent. Using a streaming cursor will also prevent
+the query results being stored in the AQL query results cache.
 
 By default, query cursors created via the cursor API are non-streaming in ArangoDB 3.4,
 but streaming can be enabled on a per-query basis by setting the `stream` attribute
 in the request to the cursor API at endpoint `/_api/cursor`.
 
-However, streaming cursors are enabled for the following parts of ArangoDB in 3.4:
+However, streaming cursors are enabled automatically for the following parts of ArangoDB in 3.4:
 
 * when exporting data from collections using the arangoexport binary
-* when using `db.<collection>.toArray()` from the Arango shell.
+* when using `db.<collection>.toArray()` from the Arango shell
+
+Please note that AQL queries consumed in a streaming fashion have their own, adjustable
+"slow query" threshold. That means the "slow query" threshold can be configured seperately for 
+regular queries and streaming queries.
 
 Native implementations
 ----------------------
@@ -963,6 +1034,16 @@ if possible, by adjusting the value of the `--ssl.protocol` startup option for t
 `arangod` server and all client tools.
 
 
+Distribution Packages
+---------------------
+
+In addition to the OS-specific packages (eg. _rpm_ for Red Hat / CentOS, _deb_ for
+Debian, NSIS installer for Windows etc.) starting from 3.4.0 new `tar.gz` archive packages
+are available for Linux and Mac. They correspond to the `.zip` packages for Windows,
+which can be used for portable installations, and to easily run different ArangoDB
+versions on the same machine (e.g. for testing).
+
+
 Client tools
 ------------
 
@@ -1036,3 +1117,16 @@ often undesired in logs anyway.
 Another positive side effect of turning off the escaping is that it will slightly
 reduce the CPU overhead for logging. However, this will only be noticable when the
 logging is set to a very verbose level (e.g. log levels debug or trace).
+
+
+### Active Failover
+
+The _Active Failover_ mode is now officially supported for multiple slaves.
+
+Additionally you can now send read-only requests to followers, so you can
+use them for read scaling. To make sure only requests that are intended for
+this use-case are served by the follower you need to add a
+`X-Arango-Allow-Dirty-Read: true` header to HTTP requests.
+
+For more information see
+[Active Failover Architecture](../Architecture/DeploymentModes/ActiveFailover/Architecture.md).

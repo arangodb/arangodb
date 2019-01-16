@@ -65,8 +65,9 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
     if (!application_features::ApplicationServer::isStopping()) {
       // only log errors if we are not already shutting down...
       // in case of shutdown this error is somewhat expected
-      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER) << "Callback getValues to agency was not successful: "
-               << result.errorCode() << " " << result.errorMessage();
+      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+          << "Callback getValues to agency was not successful: " << result.errorCode()
+          << " " << result.errorMessage();
     }
     return;
   }
@@ -80,26 +81,24 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
 
   if (needToAcquireMutex) {
     CONDITION_LOCKER(locker, _cv);
-    checkValue(newData, forceCheck);
+    checkValue(std::move(newData), forceCheck);
   } else {
-    checkValue(newData, forceCheck);
+    checkValue(std::move(newData), forceCheck);
   }
 }
 
-void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData,
-                                bool forceCheck) {
+void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData, bool forceCheck) {
   // Only called from refetchAndUpdate, we always have the mutex when
   // we get here!
   if (!_lastData || !_lastData->slice().equals(newData->slice()) || forceCheck) {
-    LOG_TOPIC(DEBUG, Logger::CLUSTER) << "AgencyCallback: Got new value "
-                                      << newData->slice().typeName() << " "
-                                      << newData->toJson()
-                                      << " forceCheck=" << forceCheck;
+    LOG_TOPIC(DEBUG, Logger::CLUSTER)
+        << "AgencyCallback: Got new value " << newData->slice().typeName()
+        << " " << newData->toJson() << " forceCheck=" << forceCheck;
     if (execute(newData)) {
       _lastData = newData;
     } else {
-      LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Callback was not successful for "
-                                        << newData->toJson();
+      LOG_TOPIC(DEBUG, Logger::CLUSTER)
+          << "Callback was not successful for " << newData->toJson();
     }
   }
 }
@@ -129,8 +128,8 @@ bool AgencyCallback::execute(std::shared_ptr<VPackBuilder> newData) {
 void AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
   // One needs to acquire the mutex of the condition variable
   // before entering this function!
-  if (!_cv.wait(static_cast<uint64_t>(maxTimeout * 1000000.0))
-    && application_features::ApplicationServer::isRetryOK()) {
+  if (!_cv.wait(static_cast<uint64_t>(maxTimeout * 1000000.0)) &&
+      application_features::ApplicationServer::isRetryOK()) {
     LOG_TOPIC(DEBUG, Logger::CLUSTER)
         << "Waiting done and nothing happended. Refetching to be sure";
     // mop: watches have not triggered during our sleep...recheck to be sure

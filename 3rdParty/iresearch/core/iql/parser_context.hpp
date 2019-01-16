@@ -28,7 +28,13 @@
 #include <unordered_map>
 #include <vector>
 #include "parser_common.hpp"
-#include "iql/parser.hh"
+
+MSVC_ONLY(__pragma(warning(push)))
+MSVC_ONLY(__pragma(warning(disable: 4146))) // unary minus operator applied to unsigned type, result still unsigned
+
+  #include "iql/parser.hh"
+
+MSVC_ONLY(__pragma(warning(pop)))
 
 namespace iresearch {
   namespace iql {

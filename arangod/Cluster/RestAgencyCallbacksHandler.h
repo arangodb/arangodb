@@ -38,19 +38,22 @@ namespace rest {
 
 class RestAgencyCallbacksHandler : public RestVocbaseBaseHandler {
  public:
-  RestAgencyCallbacksHandler(GeneralRequest* request,
-                             GeneralResponse* response,
+  RestAgencyCallbacksHandler(GeneralRequest* request, GeneralResponse* response,
                              AgencyCallbackRegistry* agencyCallbackRegistry);
 
  public:
-  char const* name() const override final { return "RestAgencyCallbacksHandler"; }
-  RequestLane lane() const override final { return RequestLane::AGENCY_CLUSTER; }
+  char const* name() const override final {
+    return "RestAgencyCallbacksHandler";
+  }
+  RequestLane lane() const override final {
+    return RequestLane::AGENCY_INTERNAL;
+  }
   RestStatus execute() override;
 
  private:
   AgencyCallbackRegistry* _agencyCallbackRegistry;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

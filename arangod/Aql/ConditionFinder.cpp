@@ -72,10 +72,8 @@ bool ConditionFinder::before(ExecutionNode* en) {
     }
 
     case EN::FILTER: {
-      std::vector<Variable const*> invars(en->getVariablesUsedHere());
-      TRI_ASSERT(invars.size() == 1);
       // register which variable is used in a FILTER
-      _filters.emplace(invars[0]->id);
+      _filters.emplace(ExecutionNode::castTo<FilterNode const*>(en)->inVariable()->id);
       break;
     }
 
@@ -127,8 +125,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
       }
 
       std::vector<transaction::Methods::IndexHandle> usedIndexes;
-      auto canUseIndex =
-          condition->findIndexes(node, usedIndexes, sortCondition.get());
+      auto canUseIndex = condition->findIndexes(node, usedIndexes, sortCondition.get());
 
       if (canUseIndex.first /*filtering*/ || canUseIndex.second /*sorting*/) {
         bool descending = false;
@@ -150,9 +147,9 @@ bool ConditionFinder::before(ExecutionNode* en) {
         // will clear out usedIndexes
         IndexIteratorOptions opts;
         opts.ascending = !descending;
-        std::unique_ptr<ExecutionNode> newNode(new IndexNode(
-            _plan, _plan->nextId(), node->collection(),
-            node->outVariable(), usedIndexes, std::move(condition), opts));
+        std::unique_ptr<ExecutionNode> newNode(
+            new IndexNode(_plan, _plan->nextId(), node->collection(),
+                          node->outVariable(), usedIndexes, std::move(condition), opts));
         TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
@@ -178,8 +175,8 @@ bool ConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
   return false;
 }
 
-bool ConditionFinder::handleFilterCondition(
-    ExecutionNode* en, std::unique_ptr<Condition> const& condition) {
+bool ConditionFinder::handleFilterCondition(ExecutionNode* en,
+                                            std::unique_ptr<Condition> const& condition) {
   bool foundCondition = false;
 
   for (auto& it : _variableDefinitions) {
@@ -251,14 +248,14 @@ bool ConditionFinder::handleFilterCondition(
   return true;
 }
 
-void ConditionFinder::handleSortCondition(
-    ExecutionNode* en, Variable const* outVar, std::unique_ptr<Condition> const& condition,
-    std::unique_ptr<SortCondition>& sortCondition) {
+void ConditionFinder::handleSortCondition(ExecutionNode* en, Variable const* outVar,
+                                          std::unique_ptr<Condition> const& condition,
+                                          std::unique_ptr<SortCondition>& sortCondition) {
   if (!en->isInInnerLoop()) {
     // we cannot optimize away a sort if we're in an inner loop ourselves
-    sortCondition.reset(new SortCondition(
-        _plan, _sorts, condition->getConstAttributes(outVar, false),
-        _variableDefinitions));
+    sortCondition.reset(new SortCondition(_plan, _sorts,
+                                          condition->getConstAttributes(outVar, false),
+                                          _variableDefinitions));
   } else {
     sortCondition.reset(new SortCondition());
   }

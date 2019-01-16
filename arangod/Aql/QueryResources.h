@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_QUERY_RESOURCES_H
 #define ARANGOD_AQL_QUERY_RESOURCES_H 1
 
-#include "Basics/Common.h"
 #include "Aql/ShortStringStorage.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
@@ -41,12 +41,10 @@ class QueryResources {
 
   explicit QueryResources(ResourceMonitor*);
   ~QueryResources();
- 
-  void steal();
-   
+
   /// @brief add a node to the list of nodes
   void addNode(AstNode*);
-  
+
   /// @brief register a string
   /// the string is freed when the query is destroyed
   char* registerString(char const* p, size_t length);
@@ -62,26 +60,29 @@ class QueryResources {
   char* registerEscapedString(char const* p, size_t length, size_t& outLength);
 
  private:
+  /// @brief registers a long string and takes over the ownership for it
   char* registerLongString(char* copy, size_t length);
 
  private:
   ResourceMonitor* _resourceMonitor;
-   
+
   /// @brief all nodes created in the AST - will be used for freeing them later
   std::vector<AstNode*> _nodes;
 
   /// @brief strings created in the query - used for easy memory deallocation
   std::vector<char*> _strings;
-  
+
   /// @brief cumulated length of strings in _strings
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   size_t _stringsLength;
+#endif
 
   /// @brief short string storage. uses less memory allocations for short
   /// strings
   ShortStringStorage _shortStringStorage;
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

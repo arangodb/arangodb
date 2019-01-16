@@ -108,20 +108,20 @@ function ReplicationApiSuite () {
       result = arango.POST_RAW("/_api/replication/keys?collection=" + cn + 
                                    "&batchId=" + batchObj.id, '{}', headers);
       assertEqual(200, result.code);
-      var keysObj = JSON.parse(result.body);
-      assertTrue(keysObj.hasOwnProperty("count"));
-      assertTrue(keysObj.hasOwnProperty("id"));
-      assertTrue(keysObj.count === 100);
+      const keysInfo = JSON.parse(result.body);
+      assertTrue(keysInfo.hasOwnProperty("count"));
+      assertTrue(keysInfo.hasOwnProperty("id"));
+      assertTrue(keysInfo.count === 100);
 
       // fetch keys
-      result = arango.PUT_RAW("/_api/replication/keys/"+ batchObj.id +
+      result = arango.PUT_RAW("/_api/replication/keys/"+ keysInfo.id +
                               "?collection=" + cn + "&type=keys", '{}', headers);
 
       assertEqual(200, result.code);
-      keysObj = JSON.parse(result.body);
-      assertTrue(Array.isArray(keysObj));
+      const keys = JSON.parse(result.body);
+      assertTrue(Array.isArray(keys));
 
-      result = arango.PUT_RAW("/_api/replication/keys/"+ batchObj.id +
+      result = arango.PUT_RAW("/_api/replication/keys/"+ keysInfo.id +
                               "?collection=" + cn +
                               "&type=keys" +
                               "&chunk=" + Math.pow(2,60) +
@@ -129,7 +129,7 @@ function ReplicationApiSuite () {
       assertEqual(400, result.code);
 
       // iterator should be invalid
-      result = arango.PUT_RAW("/_api/replication/keys/"+ batchObj.id +
+      result = arango.PUT_RAW("/_api/replication/keys/"+ keysInfo.id +
                               "?collection=" + cn +
                               "&type=keys" +
                               "&chunk=" + 5 +

@@ -103,12 +103,10 @@ class ExecutionBlock {
   /// if it returns an actual block, it must contain at least one item.
   /// getSome() also takes care of tracing and clearing registers; don't do it
   /// in getOrSkipSome() implementations.
-  virtual std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
-      size_t atMost);
+  virtual std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost);
 
   void traceGetSomeBegin(size_t atMost);
   void traceGetSomeEnd(AqlItemBlock const*, ExecutionState state);
-
 
   void traceSkipSomeBegin(size_t atMost);
   void traceSkipSomeEnd(size_t skipped, ExecutionState state);
@@ -154,8 +152,8 @@ class ExecutionBlock {
     return inheritRegisters(src, dst, row, 0);
   }
 
-  void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t srcRow,
-                        size_t dstRow);
+  void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst,
+                        size_t srcRow, size_t dstRow);
 
   /// @brief the following is internal to pull one more block and append it to
   /// our _buffer deque. Returns true if a new block was appended and false if
@@ -167,21 +165,18 @@ class ExecutionBlock {
   /// the idea is that somebody who wants to call the generic functionality
   /// in a derived class but wants to modify the results before the register
   /// cleanup can use this method, internal use only
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-  getSomeWithoutRegisterClearout(size_t atMost);
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeWithoutRegisterClearout(size_t atMost);
 
   /// @brief clearRegisters, clears out registers holding values that are no
   /// longer needed by later nodes
   void clearRegisters(AqlItemBlock* result);
-
 
   /// @brief generic method to get or skip some
   /// Does neither do tracing (traceGetSomeBegin/~End), nor call
   /// clearRegisters() - both is done in getSome(), which calls this via
   /// getSomeWithoutRegisterClearout(). The same must hold for all overriding
   /// implementations.
-  virtual std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost,
-                                                          bool skipping,
+  virtual std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
                                                           AqlItemBlock*& result,
                                                           size_t& skipped);
 
@@ -189,8 +184,8 @@ class ExecutionBlock {
   ///        Can either be HASMORE or DONE.
   ///        Guarantee is that if DONE is returned every subsequent call
   ///        to get/skipSome will NOT find mor documents.
-  ///        HASMORE is allowed to lie, so a next call to get/skipSome could return
-  ///        no more results.
+  ///        HASMORE is allowed to lie, so a next call to get/skipSome could
+  ///        return no more results.
   virtual ExecutionState getHasMoreState();
 
   /// @brief If the buffer is empty, calls getBlock(atMost). The return values
@@ -206,8 +201,7 @@ class ExecutionBlock {
   /// buffer if necessary. If a block was removed it is returned, and nullptr
   /// otherwise. The caller then owns the block (and therefore is responsible
   /// for calling returnBlock()).
-  AqlItemBlock* advanceCursor(size_t numInputRowsConsumed,
-                              size_t numOutputRowsCreated);
+  AqlItemBlock* advanceCursor(size_t numInputRowsConsumed, size_t numOutputRowsCreated);
 
  protected:
   /// @brief the execution engine
@@ -268,24 +262,9 @@ class ExecutionBlock {
   /// @brief Collects result blocks during ExecutionBlock::getOrSkipSome. Must
   /// be a member variable due to possible WAITING interruptions.
   aql::BlockCollector _collector;
-
-
- protected:
-  // friended for this->fetchBlock() (follows below)
-  friend BlockFetcher;
-
-  /**
-   * @brief Internal helper function that fetches the next block
-   *        of AqlItemRows from upstream.
-   *        Will be called by the Fetcher used by the current Executor.
-   *
-   * @return The upstream state, can be DONE, WAITING or HASMORE.
-   */
-  TEST_VIRTUAL
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> fetchBlock();
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

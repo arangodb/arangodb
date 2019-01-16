@@ -71,7 +71,7 @@
 
 extern const char* ARGV0; // defined in main.cpp
 
-NS_LOCAL
+namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -165,7 +165,7 @@ struct IResearchQueryExistsSetup {
   }
 }; // IResearchQuerySetup
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -264,11 +264,11 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
         "\"testCollection1\": { \"includeAllFields\": true, \"storeValues\": \"id\" }"
       "}}"
     );
-    CHECK((impl->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((impl->properties(updateJson->slice(), true).ok()));
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((2 == cids.size()));
-    impl->sync();
+    impl->commit();
   }
 
   // test non-existent (any)
@@ -1522,11 +1522,11 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
         "\"testCollection1\": { \"includeAllFields\": true, \"storeValues\": \"id\" }"
       "}}"
     );
-    CHECK((impl->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((impl->properties(updateJson->slice(), true).ok()));
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((2 == cids.size()));
-    impl->sync();
+    CHECK(impl->commit().ok());
   }
 
   // test non-existent (any)

@@ -24,10 +24,9 @@
 #ifndef ARANGOD_AQL_AGGREGATOR_H
 #define ARANGOD_AQL_AGGREGATOR_H 1
 
-#include "Basics/Common.h"
 #include "Aql/AqlValue.h"
+#include "Basics/Common.h"
 
-#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 namespace arangodb {
@@ -54,44 +53,48 @@ struct Aggregator {
 
   /// @brief creates an aggregator from a velocypack slice
   static std::unique_ptr<Aggregator> fromVPack(transaction::Methods*,
-                                               arangodb::velocypack::Slice const&, char const* nameAttribute);
+                                               arangodb::velocypack::Slice const&,
+                                               char const* nameAttribute);
+
+  /// @brief return a pointer to an aggregator factory for an aggregator type
+  /// throws if the aggregator cannot be found
+  static std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const* factoryFromTypeString(
+      std::string const& type);
 
   /// @brief translates an alias to an actual aggregator name
   /// returns the original value if the name was not an alias
   static std::string translateAlias(std::string const& name);
 
-  /// @brief name/type of aggregator to use for the DB server part of the aggregation when a 
-  /// COLLECT is pushed from coordinator to DB server.
-  /// for example, the MAX aggregator is commutative. it can be pushed from the coordinator
-  /// to the DB server and be used as a MAX aggregator there too.
-  /// other aggregators may need slight adjustment or type changes when they are pushed to
-  /// DB servers
-  /// an empty return value means that the aggregator is not suitable for being pushed to
-  /// a DB server
+  /// @brief name/type of aggregator to use for the DB server part of the
+  /// aggregation when a COLLECT is pushed from coordinator to DB server. for
+  /// example, the MAX aggregator is commutative. it can be pushed from the
+  /// coordinator to the DB server and be used as a MAX aggregator there too.
+  /// other aggregators may need slight adjustment or type changes when they are
+  /// pushed to DB servers an empty return value means that the aggregator is
+  /// not suitable for being pushed to a DB server
   static std::string pushToDBServerAs(std::string const& type);
-  
-  /// @brief name/type of aggregator to use for the coordinator part of the aggregation when a
-  /// COLLECT is pushed from coordinator to DB server.
-  /// for example, the COUNT aggregator is commutative. it can be pushed from the coordinator
-  /// to the DB server and be used there too. However, on the coordinator we must not use
-  /// COUNT on the aggregated results from the DB server, but use SUM instead
+
+  /// @brief name/type of aggregator to use for the coordinator part of the
+  /// aggregation when a COLLECT is pushed from coordinator to DB server. for
+  /// example, the COUNT aggregator is commutative. it can be pushed from the
+  /// coordinator to the DB server and be used there too. However, on the
+  /// coordinator we must not use COUNT on the aggregated results from the DB
+  /// server, but use SUM instead
   static std::string runOnCoordinatorAs(std::string const& type);
-  
-  /// @brief whether or not the aggregator name is supported and part of the public API. 
-  /// all internal-only aggregators count as not supported here
+
+  /// @brief whether or not the aggregator name is supported and part of the
+  /// public API. all internal-only aggregators count as not supported here
   static bool isValid(std::string const& type);
 
   /// @brief whether or not the aggregator requires any input or if the input
-  /// can be optimized away (note current: COUNT/LENGTH don't, all others do) 
+  /// can be optimized away (note current: COUNT/LENGTH don't, all others do)
   static bool requiresInput(std::string const& type);
 
  protected:
   transaction::Methods* trx;
-
-  arangodb::velocypack::Builder builder;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

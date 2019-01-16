@@ -8,6 +8,9 @@ var db = require('@arangodb').db,
   print = internal.print,
   colors = { };
 
+// max elements to print from array/objects
+const maxMembersToPrint = 20;
+
 let uniqueValue = 0;
 
 const anonymize = function(doc) {
@@ -37,15 +40,15 @@ const anonymize = function(doc) {
   return doc;
 };
 
-var stringBuilder = {
+let stringBuilder = {
   output: '',
+  prefix: '',
 
   appendLine: function (line) {
-    if (!line) {
-      this.output += '\n';
-    } else {
-      this.output += line + '\n';
+    if (line) {
+      this.output += this.prefix + line;
     }
+    this.output += '\n';
   },
 
   getOutput: function () {
@@ -54,6 +57,11 @@ var stringBuilder = {
 
   clearOutput: function () {
     this.output = '';
+  },
+
+  wrap: function (str, width) {
+    let re = '.{1,' + width + '}(\\s|$)|\\S+?(\\s|$)';
+    return str.match(new RegExp(re, 'g')).join('\n' + this.prefix).replace(/\n+/g, '\n ' + this.prefix);
   }
 
 };
@@ -151,12 +159,6 @@ function pad (n) {
   return new Array(n).join(' ');
 }
 
-function wrap (str, width) {
-  'use strict';
-  var re = '.{1,' + width + '}(\\s|$)|\\S+?(\\s|$)';
-  return str.match(new RegExp(re, 'g')).join('\n');
-}
-
 /* print functions */
 
 /* print query string */
@@ -171,7 +173,7 @@ function printQuery (query) {
   } else {
     stringBuilder.appendLine(section('Query String:'));
   }
-  stringBuilder.appendLine(' ' + value(wrap(query, 100).replace(/\n+/g, '\n ', query)));
+  stringBuilder.appendLine(' ' + value(stringBuilder.wrap(query, 100)));
   stringBuilder.appendLine();
 }
 
@@ -602,7 +604,7 @@ function printShortestPathDetails (shortestPaths) {
 }
 
 /* analyze and print execution plan */
-function processQuery (query, explain) {
+function processQuery (query, explain, planIndex) {
   'use strict';
   var nodes = { },
     parents = { },
@@ -614,8 +616,12 @@ function processQuery (query, explain) {
     maxCallsLen = String('Calls').length,
     maxItemsLen = String('Items').length,
     maxRuntimeLen = String('Runtime [s]').length,
-    plan = explain.plan,
     stats = explain.stats;
+    
+  let plan = explain.plan;
+  if (planIndex !== undefined) {
+    plan = explain.plans[planIndex];
+  }
 
   /// mode with actual runtime stats per node
   let profileMode = stats && stats.hasOwnProperty('nodes');
@@ -779,9 +785,9 @@ function processQuery (query, explain) {
         return value(JSON.stringify(node.value));
       case 'object':
         if (node.hasOwnProperty('subNodes')) {
-          if (node.subNodes.length > 20) {
-            // print only the first 20 values from the objects
-            return '{ ' + node.subNodes.slice(0, 20).map(buildExpression).join(', ') + ', ... }';
+          if (node.subNodes.length > maxMembersToPrint) {
+            // print only the first few values from the object
+            return '{ ' + node.subNodes.slice(0, maxMembersToPrint).map(buildExpression).join(', ') + ', ... }';
           }
           return '{ ' + node.subNodes.map(buildExpression).join(', ') + ' }';
         }
@@ -792,9 +798,9 @@ function processQuery (query, explain) {
         return '[ ' + buildExpression(node.subNodes[0]) + ' ] : ' + buildExpression(node.subNodes[1]);
       case 'array':
         if (node.hasOwnProperty('subNodes')) {
-          if (node.subNodes.length > 20) {
-            // print only the first 20 values from the array
-            return '[ ' + node.subNodes.slice(0, 20).map(buildExpression).join(', ') + ', ... ]';
+          if (node.subNodes.length > maxMembersToPrint) {
+            // print only the first few values from the array
+            return '[ ' + node.subNodes.slice(0, maxMembersToPrint).map(buildExpression).join(', ') + ', ... ]';
           }
           return '[ ' + node.subNodes.map(buildExpression).join(', ') + ' ]';
         }
@@ -877,6 +883,9 @@ function processQuery (query, explain) {
           return bracketize(node, node.subNodes.map(function (sub) { return buildExpression(sub); }).join(' && '));
         }
         return '';
+      case 'parameter':
+      case 'datasource parameter':
+        return value('@' + node.name);
       default:
         return 'unhandled node type (' + node.type + ')';
     }
@@ -1011,7 +1020,15 @@ function processQuery (query, explain) {
         if (node.condition && node.condition.hasOwnProperty('type')) {
           condition = ' ' + keyword('SEARCH') + ' ' + buildExpression(node.condition);
         }
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + condition + '   ' + annotation('/* view query */');
+
+        var scorers = '';
+        if (node.scorers && node.scorers.length > 0) {
+          scorers = keyword(' LET ' ) + node.scorers.map(function(scorer) {
+            return variableName(scorer) + ' = ' + buildExpression(scorer.node);
+          }).join(', ');
+        }
+
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + condition + scorers + '   ' + annotation('/* view query */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
         node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, false); });
@@ -1464,6 +1481,7 @@ function processQuery (query, explain) {
         'EnumerateViewNode',
         'IndexRangeNode',
         'IndexNode',
+        'TraversalNode',
         'SubqueryNode' ].indexOf(node.type) !== -1) {
       level++;
     } else if (isLeafNode && subqueries.length > 0) {
@@ -1594,8 +1612,23 @@ function explain(data, options, shouldPrint) {
 
   stringBuilder.clearOutput();
   let stmt = db._createStatement(data);
-  let result = stmt.explain(options); // TODO why is this there ?
-  processQuery(data.query, result);
+  let result = stmt.explain(options); 
+  if (options.allPlans) {
+    // multiple plans
+    for (let i = 0; i < result.plans.length; ++i) {
+      if (i > 0) {
+        stringBuilder.appendLine();
+      }
+      stringBuilder.appendLine(section("Plan #" + (i + 1) + " (estimated cost: " + result.plans[i].estimatedCost + ")"));
+      stringBuilder.prefix = ' ';
+      stringBuilder.appendLine();
+      processQuery(data.query, result, i);
+      stringBuilder.prefix = '';
+    }
+  } else {
+    // single plan
+    processQuery(data.query, result, undefined);
+  }
 
   if (shouldPrint === undefined || shouldPrint) {
     print(stringBuilder.getOutput());
@@ -1612,13 +1645,15 @@ function profileQuery(data, shouldPrint) {
     throw 'ArangoStatement needs initial data';
   }
   let options =  data.options || { };
+  options.silent = true;
+  options.allPlans = false; // always turn this off, as it will not work with profiling
   setColors(options.colors === undefined ? true : options.colors);
 
   stringBuilder.clearOutput();
   let stmt = db._createStatement(data);
   let cursor = stmt.execute();
   let extra = cursor.getExtra();
-  processQuery(data.query, extra);
+  processQuery(data.query, extra, undefined);
 
   if (shouldPrint === undefined || shouldPrint) {
     print(stringBuilder.getOutput());
@@ -1654,7 +1689,8 @@ function debug(query, bindVars, options) {
     version: db._version(true),
     database: db._name(),
     query: input,
-    collections: {}
+    collections: {},
+    views: {}
   };
 
   result.fancy = require('@arangodb/aql/explainer').explain(input, { colors: false }, false);
@@ -1708,31 +1744,45 @@ function debug(query, bindVars, options) {
   // add collection information
   collections.forEach(function(collection) {
     let c = db._collection(collection.name);
-    let examples;
-    if (input.options.examples) {
-      // include example data from collections
-      let max = 10; // default number of documents 
-      if (typeof input.options.examples === 'number') {
-        max = input.options.examples;
+    if (c === null) {
+      // probably a view...
+      let v = db._view(collection.name);
+      if (v === null) {
+        return;
       }
-      if (max > 100) {
-        max = 100;
-      } else if (max < 0) {
-        max = 0;
+      
+      result.views[collection.name] = { 
+        type: v.type(),
+        properties: v.properties()
+      };
+    } else {
+      // a collection
+      let examples;
+      if (input.options.examples) {
+        // include example data from collections
+        let max = 10; // default number of documents 
+        if (typeof input.options.examples === 'number') {
+          max = input.options.examples;
+        }
+        if (max > 100) {
+          max = 100;
+        } else if (max < 0) {
+          max = 0;
+        }
+        examples = db._query("FOR doc IN @@collection LIMIT @max RETURN doc", { max, "@collection": collection.name }).toArray();
+        if (input.options.anonymize) {
+          examples = examples.map(anonymize);
+        }
       }
-      examples = db._query("FOR doc IN @@collection LIMIT @max RETURN doc", { max, "@collection": collection.name }).toArray();
-      if (input.options.anonymize) {
-        examples = examples.map(anonymize);
-      }
+      result.collections[collection.name] = { 
+        type: c.type(),
+        properties: c.properties(),
+        indexes: c.getIndexes(true),
+        count: c.count(),
+        counts: c.count(true),
+        examples
+      };
     }
-    result.collections[collection.name] = { 
-      type: c.type(),
-      properties: c.properties(),
-      indexes: c.getIndexes(true),
-      count: c.count(),
-      counts: c.count(true),
-      examples
-    };
   });
   
   result.graphs = graphs;
@@ -1807,6 +1857,15 @@ function inspectDump(filename, outfile) {
       print("/* collection '" + collection + "' needs " + missing + " more document(s) */");
     }
     print();
+  });
+  print();
+
+  // views
+  print("/* views */");
+  Object.keys(data.views || {}).forEach(function(view) {
+    let details = data.views[view];
+    print("db._dropView(" + JSON.stringify(view) + ");");
+    print("db._createView(" + JSON.stringify(view) + ", " + JSON.stringify(details.type) + ", " + JSON.stringify(details.properties) + ");");
   });
   print();
   

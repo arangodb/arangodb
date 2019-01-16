@@ -54,29 +54,29 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (args[0]->IsObject()) {
       v8::Handle<v8::Object> obj = args[0]->ToObject();
       if (obj->Has(TRI_V8_ASCII_STRING(isolate, "waitForSync"))) {
-        waitForSync =
-        TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSync")));
+        waitForSync = TRI_ObjectToBoolean(
+            obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSync")));
       }
       if (obj->Has(TRI_V8_ASCII_STRING(isolate, "waitForCollector"))) {
         waitForCollector = TRI_ObjectToBoolean(
-                                               obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForCollector")));
+            obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForCollector")));
       }
       if (obj->Has(TRI_V8_ASCII_STRING(isolate, "maxWaitTime"))) {
         maxWaitTime = TRI_ObjectToDouble(
-                                         obj->Get(TRI_V8_ASCII_STRING(isolate, "maxWaitTime")));
+            obj->Get(TRI_V8_ASCII_STRING(isolate, "maxWaitTime")));
       }
     } else {
       waitForSync = TRI_ObjectToBoolean(args[0]);
-      
+
       if (args.Length() > 1) {
         waitForCollector = TRI_ObjectToBoolean(args[1]);
-        if (args.Length() > 3) { // ignore writeShutdownFile
-            maxWaitTime = TRI_ObjectToDouble(args[3]);
+        if (args.Length() > 3) {  // ignore writeShutdownFile
+          maxWaitTime = TRI_ObjectToDouble(args[3]);
         }
       }
     }
   }
-  
+
   int res = flushWalOnAllDBServers(waitForSync, waitForCollector, maxWaitTime);
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -87,8 +87,7 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 /// this is just a stub
-static void JS_WaitCollectorWal(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_WaitCollectorWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -98,8 +97,7 @@ static void JS_WaitCollectorWal(
 }
 
 /// this is just a stub
-static void JS_TransactionsWal(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_TransactionsWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -118,8 +116,7 @@ static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_RecalculateCounts(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_RecalculateCounts(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -128,8 +125,7 @@ static void JS_RecalculateCounts(
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_CompactCollection(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_CompactCollection(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -138,8 +134,7 @@ static void JS_CompactCollection(
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_EstimateCollectionSize(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_EstimateCollectionSize(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -188,22 +183,27 @@ void ClusterV8Functions::registerResources() {
       v8::Handle<v8::ObjectTemplate>::New(isolate, v8g->VocbaseColTempl);
   TRI_ASSERT(!rt.IsEmpty());
 
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "recalculateCount"),
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "recalculateCount"),
                        JS_RecalculateCounts, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "compact"),
-                       JS_CompactCollection);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "estimatedSize"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "compact"), JS_CompactCollection);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "estimatedSize"),
                        JS_EstimateCollectionSize);
 
   // add global WAL handling functions
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "WAL_FLUSH"),
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "WAL_FLUSH"),
                                JS_FlushWal, true);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "WAL_WAITCOLLECTOR"),
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "WAL_WAITCOLLECTOR"),
                                JS_WaitCollectorWal, true);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "WAL_PROPERTIES"),
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "WAL_PROPERTIES"),
                                JS_PropertiesWal, true);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "WAL_TRANSACTIONS"),
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "WAL_TRANSACTIONS"),
                                JS_TransactionsWal, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,

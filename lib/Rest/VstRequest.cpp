@@ -34,7 +34,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
-#include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
@@ -60,7 +59,7 @@ VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
 
 VPackSlice VstRequest::payload(VPackOptions const* options) {
   TRI_ASSERT(options != nullptr);
-  
+
   if (_contentType == ContentType::JSON) {
     if (!_vpackBuilder) {
       StringRef json = _message.payload();
@@ -75,7 +74,7 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
     StringRef vpack = _message.payload();
     if (!vpack.empty()) {
       if (!_validatedPayload) {
-        VPackOptions validationOptions = *options; // intentional copy
+        VPackOptions validationOptions = *options;  // intentional copy
         validationOptions.validateUtf8Strings = true;
         VPackValidator validator(&validationOptions);
         // will throw on error
@@ -91,21 +90,21 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
   if (!keySlice.isString() || !valSlice.isString()) {
     return;
   }
-  
+
   std::string value = valSlice.copyString();
   std::string key = StringUtils::tolower(keySlice.copyString());
   std::string val = StringUtils::tolower(value);
   static const char* mime = "application/json";
-  if (key == StaticStrings::Accept &&
-      val.length() >= 16 && memcmp(val.data(), mime, 16) == 0) {
+  if (key == StaticStrings::Accept && val.length() >= 16 &&
+      memcmp(val.data(), mime, 16) == 0) {
     _contentTypeResponse = ContentType::JSON;
     return;  // don't insert this header!!
-  } else if (key == StaticStrings::ContentTypeHeader &&
-             val.length() >= 16 && memcmp(val.data(), mime, 16) == 0) {
+  } else if (key == StaticStrings::ContentTypeHeader && val.length() >= 16 &&
+             memcmp(val.data(), mime, 16) == 0) {
     _contentType = ContentType::JSON;
     return;  // don't insert this header!!
   }
-  
+
   // must lower-case the header key
   _headers.emplace(std::move(key), std::move(value));
 }
@@ -117,25 +116,26 @@ void VstRequest::parseHeaderInformation() {
     LOG_TOPIC(WARN, Logger::COMMUNICATION) << "invalid VST message header";
     throw std::runtime_error("invalid VST message header");
   }
-  
+
   try {
     TRI_ASSERT(vHeader.isArray());
-    int version = vHeader.at(0).getInt();  //version
-    int type = vHeader.at(1).getInt();  //type
+    auto version = vHeader.at(0).getInt();                      // version
+    auto type = vHeader.at(1).getInt();                         // type
     _databaseName = vHeader.at(2).copyString();                 // database
     _type = meta::toEnum<RequestType>(vHeader.at(3).getInt());  // request type
     _requestPath = vHeader.at(4).copyString();  // request (path)
     VPackSlice params = vHeader.at(5);          // parameter
     VPackSlice meta = vHeader.at(6);            // meta
-    
+
     if (version != 1) {
-      LOG_TOPIC(WARN, Logger::COMMUNICATION) << "invalid version in vst message";
+      LOG_TOPIC(WARN, Logger::COMMUNICATION)
+          << "invalid version in vst message";
     }
     if (type != 1) {
       LOG_TOPIC(WARN, Logger::COMMUNICATION) << "not a VST request";
       return;
     }
-    
+
     for (auto const& it : VPackObjectIterator(params, true)) {
       if (it.value.isArray()) {
         vector<string> tmp;
@@ -147,7 +147,7 @@ void VstRequest::parseHeaderInformation() {
         _values.emplace(it.key.copyString(), it.value.copyString());
       }
     }
-    
+
     for (auto const& it : VPackObjectIterator(meta, true)) {
       setHeader(it.key, it.value);
     }
@@ -167,7 +167,7 @@ void VstRequest::parseHeaderInformation() {
         _fullUrl.push_back('&');
       }
     }
-    _fullUrl.pop_back(); // remove last &
+    _fullUrl.pop_back();  // remove last &
 
   } catch (std::exception const& e) {
     throw std::runtime_error(

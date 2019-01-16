@@ -39,14 +39,18 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
-    RegisterId inputRegister_, RegisterId outputRegister_,
+    RegisterId inputRegister, RegisterId outputRegister,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear, transaction::Methods* trx)
-    : ExecutorInfos({inputRegister_}, {outputRegister_}, nrInputRegisters,
-                    nrOutputRegisters, std::move(registersToClear)),
+    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(
+                        std::initializer_list<RegisterId>{inputRegister}),
+                    std::make_shared<std::unordered_set<RegisterId>>(
+                        std::initializer_list<RegisterId>{outputRegister}),
+                    nrInputRegisters, nrOutputRegisters,
+                    std::move(registersToClear)),
       _trx(trx),
-      _inputRegister(inputRegister_),
-      _outputRegister(outputRegister_) {
+      _inputRegister(inputRegister),
+      _outputRegister(outputRegister) {
   TRI_ASSERT(trx != nullptr);
 }
 
@@ -54,7 +58,12 @@ transaction::Methods* EnumerateListExecutorInfos::trx() const { return _trx; }
 
 EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher,
                                              EnumerateListExecutorInfos& infos)
-    : _infos(infos), _fetcher(fetcher), _rowState(ExecutionState::HASMORE) {};
+    : _infos(infos),
+      _fetcher(fetcher),
+      _currentRow{CreateInvalidInputRowHint{}},
+      _rowState(ExecutionState::HASMORE),
+      _inputArrayPosition(0),
+      _inputArrayLength(0){};
 
 std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(
     OutputAqlItemRow& output) {
@@ -112,7 +121,9 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
-      output.setValue(_infos.getOutputRegister(), _currentRow, innerValue);
+      output.setValue(
+          _infos.getOutputRegister(), _currentRow,
+          std::move(innerValue));  // NOLINT(performance-move-const-arg)
       // The output row (respectively the AqlItemBlock underneath) is now
       // responsible for the memory.
       guard.steal();

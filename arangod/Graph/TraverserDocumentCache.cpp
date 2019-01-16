@@ -27,9 +27,9 @@
 
 #include "Aql/AqlValue.h"
 
-#include "Cache/Common.h"
 #include "Cache/Cache.h"
 #include "Cache/CacheManagerFeature.h"
+#include "Cache/Common.h"
 #include "Cache/Finding.h"
 #include "Cluster/ServerState.h"
 #include "Graph/EdgeDocumentToken.h"
@@ -44,8 +44,9 @@ using namespace arangodb::graph;
 TraverserDocumentCache::TraverserDocumentCache(aql::Query* query)
     : TraverserCache(query), _cache(nullptr) {
   auto cacheManager = CacheManagerFeature::MANAGER;
-  TRI_ASSERT(cacheManager != nullptr);
-  _cache = cacheManager->createCache(cache::CacheType::Plain);
+  if (cacheManager != nullptr) {
+    _cache = cacheManager->createCache(cache::CacheType::Plain);
+  }
 }
 
 TraverserDocumentCache::~TraverserDocumentCache() {
@@ -103,8 +104,7 @@ void TraverserDocumentCache::insertEdgeIntoResult(EdgeDocumentToken const& idTok
   builder.add(lookupToken(idToken));
 }
 
-void TraverserDocumentCache::insertVertexIntoResult(StringRef idString,
-                                                    VPackBuilder& builder) {
+void TraverserDocumentCache::insertVertexIntoResult(StringRef idString, VPackBuilder& builder) {
   if (_cache != nullptr) {
     auto finding = lookup(idString);
     if (finding.found()) {
@@ -138,8 +138,8 @@ aql::AqlValue TraverserDocumentCache::fetchVertexAqlResult(StringRef idString) {
   return aql::AqlValue(lookupAndCache(idString));
 }
 
-void TraverserDocumentCache::insertDocument(
-    StringRef idString, arangodb::velocypack::Slice const& document) {
+void TraverserDocumentCache::insertDocument(StringRef idString,
+                                            arangodb::velocypack::Slice const& document) {
   ++_insertedDocuments;
   if (_cache != nullptr) {
     auto finding = lookup(idString);
@@ -155,14 +155,15 @@ void TraverserDocumentCache::insertDocument(
       if (value) {
         auto result = _cache->insert(value.get());
         if (!result.ok()) {
-          LOG_TOPIC(DEBUG, Logger::GRAPHS) << "Insert document into cache failed";
+          LOG_TOPIC(DEBUG, Logger::GRAPHS)
+              << "Insert document into cache failed";
         } else {
           // Cache is responsible.
-          // If this failed, well we do not store it and read it again next time.
+          // If this failed, well we do not store it and read it again next
+          // time.
           value.release();
         }
       }
     }
   }
 }
-

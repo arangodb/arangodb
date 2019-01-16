@@ -40,7 +40,7 @@ class QueryString;
 class VariableGenerator;
 
 struct PlanCacheEntry {
-  PlanCacheEntry(std::string&& queryString, 
+  PlanCacheEntry(std::string&& queryString,
                  std::shared_ptr<arangodb::velocypack::Builder>&& builder)
       : queryString(std::move(queryString)), builder(std::move(builder)) {}
 
@@ -79,7 +79,7 @@ class PlanCache {
   /// @brief cached query plans, organized per database
   std::unordered_map<TRI_vocbase_t*, std::unordered_map<uint64_t, std::shared_ptr<PlanCacheEntry>>> _plans;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

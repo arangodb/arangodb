@@ -57,12 +57,11 @@ inline constexpr std::size_t chunkHeaderLength(bool sendTotalLen) {
 // working version of single chunk message creation
 inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
     std::vector<VPackSlice> const& slices, bool isFirstChunk, uint32_t chunk,
-    uint64_t id, ProtocolVersion protocolVersion,
-    uint64_t totalMessageLength) {
+    uint64_t id, ProtocolVersion protocolVersion, uint64_t totalMessageLength) {
   using basics::StringBuffer;
 
-  bool sendTotalLen = protocolVersion != ProtocolVersion::VST_1_0 ||
-                      (isFirstChunk && chunk > 1);
+  bool sendTotalLen =
+      protocolVersion != ProtocolVersion::VST_1_0 || (isFirstChunk && chunk > 1);
   // if we speak VST_1_0 and have more than one chunk and the chunk
   // is the first then we are sending the first in a series. if this
   // condition is true we also send extra 8 bytes for the messageLength
@@ -84,8 +83,7 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
   uint32_t chunkLength =
       dataLength + static_cast<uint32_t>(chunkHeaderLength(sendTotalLen));
 
-  auto buffer =
-      std::make_unique<StringBuffer>(chunkLength, false);
+  auto buffer = std::make_unique<StringBuffer>(chunkLength, false);
 
   LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "chunkLength: " << chunkLength;
   appendLittleEndian(buffer.get(), chunkLength);
@@ -98,9 +96,11 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
 
   // append data in slices
   for (auto const& slice : slices) {
-    try{
-      LOG_TOPIC(TRACE, Logger::COMMUNICATION) << slice.toJson() << " , " << slice.byteSize();
-    } catch(...){}
+    try {
+      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+          << slice.toJson() << " , " << slice.byteSize();
+    } catch (...) {
+    }
     buffer->appendText(slice.startAs<char>(), slice.byteSize());
   }
 
@@ -110,13 +110,12 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
 // helper functions for sending chunks when given a string buffer as input
 // working version of single chunk message creation
 inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
-    char const* data, std::size_t begin, std::size_t end, bool isFirstChunk,
-    uint32_t chunk, uint64_t id, ProtocolVersion protocolVersion,
-    uint64_t totalMessageLength) {
+    char const* data, std::size_t begin, std::size_t end, bool isFirstChunk, uint32_t chunk,
+    uint64_t id, ProtocolVersion protocolVersion, uint64_t totalMessageLength) {
   using basics::StringBuffer;
 
-  bool sendTotalLen = protocolVersion != ProtocolVersion::VST_1_0 ||
-                      (isFirstChunk && chunk > 1);
+  bool sendTotalLen =
+      protocolVersion != ProtocolVersion::VST_1_0 || (isFirstChunk && chunk > 1);
   // if we speak VST_1_0 and have more than one chunk and the chunk
   // is the first then we are sending the first in a series. if this
   // condition is true we also send extra 8 bytes for the messageLength
@@ -134,8 +133,7 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
   uint32_t chunkLength =
       dataLength + static_cast<uint32_t>(chunkHeaderLength(sendTotalLen));
 
-  auto buffer =
-      std::make_unique<StringBuffer>(chunkLength, false);
+  auto buffer = std::make_unique<StringBuffer>(chunkLength, false);
 
   appendLittleEndian(buffer.get(), chunkLength);
   appendLittleEndian(buffer.get(), chunk);
@@ -152,12 +150,11 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
 
 // this function will be called when we send multiple compressed
 // or uncompressed chunks
-inline void send_many(
-    std::vector<std::unique_ptr<basics::StringBuffer>>& resultVecRef,
-    uint64_t id, std::size_t maxChunkBytes,
-    std::unique_ptr<basics::StringBuffer> completeMessage,
-    std::size_t uncompressedCompleteMessageLength,
-    ProtocolVersion protocolVersion) {
+inline void send_many(std::vector<std::unique_ptr<basics::StringBuffer>>& resultVecRef,
+                      uint64_t id, std::size_t maxChunkBytes,
+                      std::unique_ptr<basics::StringBuffer> completeMessage,
+                      std::size_t uncompressedCompleteMessageLength,
+                      ProtocolVersion protocolVersion) {
   uint64_t totalLen = completeMessage->length();
   std::size_t offsetBegin = 0;
   std::size_t offsetEnd = maxChunkBytes - chunkHeaderLength(true);
@@ -166,8 +163,7 @@ inline void send_many(
 
   uint32_t numberOfChunks = 1;
   {  // calculate the number of chunks that will be send
-    std::size_t bytesToSend = totalLen - maxChunkBytes +
-                              chunkHeaderLength(true);  // data for first chunk
+    std::size_t bytesToSend = totalLen - maxChunkBytes + chunkHeaderLength(true);  // data for first chunk
     while (bytesToSend >= maxBytes) {
       bytesToSend -= maxBytes;
       ++numberOfChunks;
@@ -177,11 +173,12 @@ inline void send_many(
     }
   }
 
+  resultVecRef.reserve(numberOfChunks);
+
   // send first
   resultVecRef.push_back(
-      createChunkForNetworkDetail(completeMessage->c_str(), offsetBegin,
-                                  offsetEnd, true, numberOfChunks, id,
-                                  protocolVersion, totalLen));
+      createChunkForNetworkDetail(completeMessage->c_str(), offsetBegin, offsetEnd, true,
+                                  numberOfChunks, id, protocolVersion, totalLen));
 
   std::uint32_t chunkNumber = 0;
   while (offsetEnd + maxBytes <= totalLen) {
@@ -189,18 +186,16 @@ inline void send_many(
     offsetBegin = offsetEnd;
     offsetEnd += maxBytes;
     chunkNumber++;
-    resultVecRef.push_back(createChunkForNetworkDetail(
-        completeMessage->c_str(), offsetBegin, offsetEnd, false, chunkNumber,
-        id, protocolVersion, totalLen));
+    resultVecRef.push_back(
+        createChunkForNetworkDetail(completeMessage->c_str(), offsetBegin, offsetEnd, false,
+                                    chunkNumber, id, protocolVersion, totalLen));
   }
 
   if (offsetEnd < totalLen) {
-    resultVecRef.push_back(createChunkForNetworkDetail(
-        completeMessage->c_str(), offsetEnd, totalLen, false, ++chunkNumber,
-        id, protocolVersion, totalLen));
+    resultVecRef.push_back(
+        createChunkForNetworkDetail(completeMessage->c_str(), offsetEnd, totalLen, false,
+                                    ++chunkNumber, id, protocolVersion, totalLen));
   }
-
-  return;
 }
 
 // this function will be called by client code
@@ -223,10 +218,9 @@ inline std::vector<std::unique_ptr<basics::StringBuffer>> createChunkForNetwork(
   if (payloadLength < maxChunkBytes - chl) {
     // one chunk uncompressed
     rv.push_back(createChunkForNetworkDetail(slices, true, 1, messageid,
-                 protocolVersion, chl + payloadLength));
-    return rv;
+                                             protocolVersion, chl + payloadLength));
   } else {
-    // here we enter the domain of multichunck
+    // here we enter the domain of multichunk
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
         << "VstCommTask: sending multichunk message";
 
@@ -239,24 +233,24 @@ inline std::vector<std::unique_ptr<basics::StringBuffer>> createChunkForNetwork(
     // now we will build one big buffer and split it into pieces
 
     // reserve buffer
-    auto vstPayload = std::make_unique<basics::StringBuffer>(
-        payloadLength, false);
+    auto vstPayload = std::make_unique<basics::StringBuffer>(payloadLength, false);
 
     // fill buffer
     for (auto const& slice : slices) {
-      try{
-        LOG_TOPIC(TRACE, Logger::COMMUNICATION) << slice.toJson() << " , " << slice.byteSize();
-      } catch(...){}
+      try {
+        LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+            << slice.toJson() << " , " << slice.byteSize();
+      } catch (...) {
+      }
       vstPayload->appendText(slice.startAs<char>(), slice.byteSize());
     }
 
     // create chunks
-    send_many(rv, messageid, maxChunkBytes, std::move(vstPayload),
-              payloadLength, protocolVersion);
+    send_many(rv, messageid, maxChunkBytes, std::move(vstPayload), payloadLength, protocolVersion);
   }
   return rv;
 }
 
-}
+}  // namespace arangodb
 
 #endif

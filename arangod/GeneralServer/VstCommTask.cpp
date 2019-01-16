@@ -61,9 +61,10 @@ inline void validateMessage(char const* vpStart, char const* vpEnd) {
 
   VPackSlice slice = VPackSlice(vpStart);
   if (!slice.isArray() || slice.length() < 2) {
-    throw std::runtime_error("VST message does not contain a valid request header");
+    throw std::runtime_error(
+        "VST message does not contain a valid request header");
   }
-  
+
   VPackSlice vSlice = slice.at(0);
   if (!vSlice.isNumber<short>() || vSlice.getNumber<int>() != 1) {
     throw std::runtime_error("VST message header has an unsupported version");
@@ -74,14 +75,11 @@ inline void validateMessage(char const* vpStart, char const* vpEnd) {
   }
 }
 
-
-VstCommTask::VstCommTask(Scheduler* scheduler, GeneralServer* server,
+VstCommTask::VstCommTask(GeneralServer& server, GeneralServer::IoContext& context,
                          std::unique_ptr<Socket> socket, ConnectionInfo&& info,
-                         double timeout, ProtocolVersion protocolVersion,
-                         bool skipInit)
-    : Task(scheduler, "VstCommTask"),
-      GeneralCommTask(scheduler, server, std::move(socket), std::move(info), timeout,
-                      skipInit),
+                         double timeout, ProtocolVersion protocolVersion, bool skipInit)
+    : IoTask(server, context, "VstCommTask"),
+      GeneralCommTask(server, context, std::move(socket), std::move(info), timeout, skipInit),
       _authorized(!_auth->isActive()),
       _authMethod(rest::AuthenticationMethod::NONE),
       _authenticatedUser(),
@@ -91,18 +89,26 @@ VstCommTask::VstCommTask(Scheduler* scheduler, GeneralServer* server,
   // ATTENTION <- this is required so we do not lose information during a resize
   _readBuffer.reserve(_bufferLength);
 
-  _maxChunkSize = arangodb::application_features::ApplicationServer::getFeature<
-      ServerFeature>("Server")
-      ->vstMaxSize();
+  _maxChunkSize = arangodb::application_features::ApplicationServer::getFeature<ServerFeature>(
+                      "Server")
+                      ->vstMaxSize();
+}
+
+// whether or not this task can mix sync and async I/O
+bool VstCommTask::canUseMixedIO() const {
+  // in case SSL is used, we cannot use a combination of sync and async I/O
+  // because that will make TLS fall apart
+  return !_peer->isEncrypted();
 }
 
 /// @brief send simple response including response body
-void VstCommTask::addSimpleResponse(rest::ResponseCode code, rest::ContentType respType,
-                                    uint64_t messageId, velocypack::Buffer<uint8_t>&& buffer) {
+void VstCommTask::addSimpleResponse(rest::ResponseCode code,
+                                    rest::ContentType respType, uint64_t messageId,
+                                    velocypack::Buffer<uint8_t>&& buffer) {
   VstResponse resp(code, messageId);
-  TRI_ASSERT(respType == rest::ContentType::VPACK); // or not ?
+  TRI_ASSERT(respType == rest::ContentType::VPACK);  // or not ?
   resp.setContentType(respType);
-  
+
   try {
     if (!buffer.empty()) {
       resp.setPayload(std::move(buffer), true, VPackOptions::Defaults);
@@ -113,14 +119,13 @@ void VstCommTask::addSimpleResponse(rest::ResponseCode code, rest::ContentType r
   }
 }
 
-void VstCommTask::addResponse(GeneralResponse& baseResponse,
-                              RequestStatistics* stat) {
+void VstCommTask::addResponse(GeneralResponse& baseResponse, RequestStatistics* stat) {
   TRI_ASSERT(_peer->runningInThisThread());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    VstResponse& response = dynamic_cast<VstResponse&>(baseResponse);
+  VstResponse& response = dynamic_cast<VstResponse&>(baseResponse);
 #else
-    VstResponse& response = static_cast<VstResponse&>(baseResponse);
+  VstResponse& response = static_cast<VstResponse&>(baseResponse);
 #endif
 
   finishExecution(baseResponse);
@@ -134,9 +139,9 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
     slices.push_back(response_message._header);
 
     for (auto& payload : response_message._payloads) {
-      LOG_TOPIC(TRACE, Logger::REQUESTS) << "\"vst-request-result\",\""
-                                         << (void*)this << "/" << mid << "\","
-                                         << payload.toJson() << "\"";
+      LOG_TOPIC(TRACE, Logger::REQUESTS)
+          << "\"vst-request-result\",\"" << (void*)this << "/" << mid << "\","
+          << payload.toJson() << "\"";
 
       slices.push_back(payload);
     }
@@ -146,12 +151,11 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
   }
 
   // set some sensible maxchunk size and compression
-  auto buffers = createChunkForNetwork(slices, mid, _maxChunkSize,
-                                       _protocolVersion);
+  auto buffers = createChunkForNetwork(slices, mid, _maxChunkSize, _protocolVersion);
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
 
-  if (stat != nullptr && arangodb::Logger::isEnabled(arangodb::LogLevel::TRACE,
-                                                     Logger::REQUESTS)) {
+  if (stat != nullptr &&
+      arangodb::Logger::isEnabled(arangodb::LogLevel::TRACE, Logger::REQUESTS)) {
     LOG_TOPIC(DEBUG, Logger::REQUESTS)
         << "\"vst-request-statistics\",\"" << (void*)this << "\",\""
         << VstRequest::translateVersion(_protocolVersion) << "\","
@@ -177,7 +181,7 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
       ++c;
     }
   }
-  
+
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
       << "\"vst-request-end\",\"" << (void*)this << "/" << mid << "\",\""
@@ -185,9 +189,9 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
       << VstRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response.responseCode()) << ","
       << "\"," << Logger::FIXED(totalTime, 6);
-  
+
   // process remaining requests ?
-  //processAll();
+  // processAll();
 }
 
 static uint32_t readLittleEndian32bit(char const* p) {
@@ -214,8 +218,7 @@ VstCommTask::ChunkHeader VstCommTask::readChunkHeader() {
   auto cursor = _readBuffer.begin() + _processReadVariables._readBufferOffset;
 
   header._chunkLength = readLittleEndian32bit(cursor);
-  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "chunkLength: "
-                                          << header._chunkLength;
+  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "chunkLength: " << header._chunkLength;
   cursor += sizeof(header._chunkLength);
 
   uint32_t chunkX = readLittleEndian32bit(cursor);
@@ -227,8 +230,7 @@ VstCommTask::ChunkHeader VstCommTask::readChunkHeader() {
   LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "chunk: " << header._chunk;
 
   header._messageID = readLittleEndian64bit(cursor);
-  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "message id: "
-                                          << header._messageID;
+  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "message id: " << header._messageID;
   cursor += sizeof(header._messageID);
 
   // extract total len of message
@@ -240,8 +242,8 @@ VstCommTask::ChunkHeader VstCommTask::readChunkHeader() {
     header._messageLength = 0;  // not needed for old protocol
   }
 
-  header._headerLength = std::distance(
-      _readBuffer.begin() + _processReadVariables._readBufferOffset, cursor);
+  header._headerLength =
+      std::distance(_readBuffer.begin() + _processReadVariables._readBufferOffset, cursor);
 
   return header;
 }
@@ -265,16 +267,14 @@ bool VstCommTask::isChunkComplete(char* start) {
   return true;
 }
 
-void VstCommTask::handleAuthHeader(VPackSlice const& header,
-                                   uint64_t messageId) {
-  
+void VstCommTask::handleAuthHeader(VPackSlice const& header, uint64_t messageId) {
   std::string authString;
   std::string user = "";
   _authorized = false;
   _authMethod = AuthenticationMethod::NONE;
 
   std::string encryption = header.at(2).copyString();
-  if (encryption == "jwt") {// doing JWT
+  if (encryption == "jwt") {  // doing JWT
     authString = header.at(3).copyString();
     _authMethod = AuthenticationMethod::JWT;
   } else if (encryption == "plain") {
@@ -285,26 +285,26 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
   } else {
     LOG_TOPIC(ERR, Logger::REQUESTS) << "Unknown VST encryption type";
   }
-  
+
   auto entry = _auth->tokenCache().checkAuthentication(_authMethod, authString);
   _authorized = entry.authenticated();
-  
+
   if (_authorized || !_auth->isActive()) {
     _authenticatedUser = std::move(entry._username);
     // simon: drivers expect a response for their auth request
-    addErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, messageId, TRI_ERROR_NO_ERROR,
-                     "auth successful");
+    addErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, messageId,
+                     TRI_ERROR_NO_ERROR, "auth successful");
   } else {
     _authenticatedUser.clear();
-    addErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK, messageId,
-                     TRI_ERROR_HTTP_UNAUTHORIZED);
+    addErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK,
+                     messageId, TRI_ERROR_HTTP_UNAUTHORIZED);
   }
 }
 
 // reads data from the socket
 bool VstCommTask::processRead(double startTime) {
   TRI_ASSERT(_peer->runningInThisThread());
-  
+
   auto& prv = _processReadVariables;
   auto chunkBegin = _readBuffer.begin() + prv._readBufferOffset;
   if (chunkBegin == nullptr || !isChunkComplete(chunkBegin)) {
@@ -327,14 +327,12 @@ bool VstCommTask::processRead(double startTime) {
 
   if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
     // CASE 1: message is in one chunk
-    if (!getMessageFromSingleChunk(chunkHeader, message, doExecute,
-                                   vpackBegin, chunkEnd)) {
-      return false; // error, closeTask was called
+    if (!getMessageFromSingleChunk(chunkHeader, message, doExecute, vpackBegin, chunkEnd)) {
+      return false;  // error, closeTask was called
     }
   } else {
-    if (!getMessageFromMultiChunks(chunkHeader, message, doExecute,
-                                   vpackBegin, chunkEnd)) {
-      return false; // error, closeTask was called
+    if (!getMessageFromMultiChunks(chunkHeader, message, doExecute, vpackBegin, chunkEnd)) {
+      return false;  // error, closeTask was called
     }
   }
 
@@ -351,25 +349,30 @@ bool VstCommTask::processRead(double startTime) {
   if (doExecute) {
     VPackSlice header = message.header();
 
-    LOG_TOPIC(DEBUG, Logger::REQUESTS)
-        << "\"vst-request-header\",\"" << (void*)this << "/"
-        << chunkHeader._messageID << "\"," << message.header().toJson() << "\"";
+    if (Logger::logRequestParameters()) {
+      LOG_TOPIC(DEBUG, Logger::REQUESTS)
+          << "\"vst-request-header\",\"" << (void*)this << "/"
+          << chunkHeader._messageID << "\"," << message.header().toJson() << "\"";
 
-    /*LOG_TOPIC(DEBUG, Logger::REQUESTS)
-        << "\"vst-request-payload\",\"" << (void*)this << "/"
-        << chunkHeader._messageID << "\"," << VPackSlice(message.payload()).toJson()
-        << "\"";*/
+      /*LOG_TOPIC(DEBUG, Logger::REQUESTS)
+          << "\"vst-request-payload\",\"" << (void*)this << "/"
+          << chunkHeader._messageID << "\"," <<
+         VPackSlice(message.payload()).toJson()
+          << "\"";
+      */
+    }
 
     // get type of request, message header is validated earlier
     TRI_ASSERT(header.isArray() && header.length() >= 2);
-    TRI_ASSERT(header.at(1).isNumber<int>()); // va
-    
+    TRI_ASSERT(header.at(1).isNumber<int>());  // va
+
     int type = header.at(1).getNumber<int>();
+
     // handle request types
-    if (type == 1000) { // auth
+    if (type == 1000) {  // auth
       handleAuthHeader(header, chunkHeader._messageID);
-    } else if (type == 1) { // request
-      
+    } else if (type == 1) {  // request
+
       // the handler will take ownership of this pointer
       auto req = std::make_unique<VstRequest>(_connectionInfo, std::move(message),
                                               chunkHeader._messageID);
@@ -380,17 +383,20 @@ bool VstCommTask::processRead(double startTime) {
         // if we don't call checkAuthentication we need to refresh
         _auth->userManager()->refreshUser(_authenticatedUser);
       }
-      
+
       RequestFlow cont = prepareExecution(*req.get());
+
       if (cont == RequestFlow::Continue) {
         auto resp = std::make_unique<VstResponse>(rest::ResponseCode::SERVER_ERROR,
                                                   chunkHeader._messageID);
         resp->setContentTypeRequested(req->contentTypeResponse());
         executeRequest(std::move(req), std::move(resp));
       }
-    } else { // not supported on server
-      LOG_TOPIC(ERR, Logger::REQUESTS) << "\"vst-request-header\",\"" << (void*)this << "/"
-      << chunkHeader._messageID << "\"," << message.header().toJson() << "\"" << " is unsupported";
+    } else {  // not supported on server
+      LOG_TOPIC(ERR, Logger::REQUESTS)
+          << "\"vst-request-header\",\"" << (void*)this << "/"
+          << chunkHeader._messageID << "\"," << message.header().toJson() << "\""
+          << " is unsupported";
       addSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
                         chunkHeader._messageID, VPackBuffer<uint8_t>());
       return false;
@@ -420,17 +426,16 @@ void VstCommTask::closeTask(rest::ResponseCode code) {
   closeStream();
 }
 
-std::unique_ptr<GeneralResponse> VstCommTask::createResponse(
-    rest::ResponseCode responseCode, uint64_t messageId) {
-  return std::unique_ptr<GeneralResponse>(
-      new VstResponse(responseCode, messageId));
+std::unique_ptr<GeneralResponse> VstCommTask::createResponse(rest::ResponseCode responseCode,
+                                                             uint64_t messageId) {
+  return std::unique_ptr<GeneralResponse>(new VstResponse(responseCode, messageId));
 }
 
 // Returns true if and only if there was no error, if false is returned,
 // the connection is closed
-bool VstCommTask::getMessageFromSingleChunk(
-    ChunkHeader const& chunkHeader, VstInputMessage& message, bool& doExecute,
-    char const* vpackBegin, char const* chunkEnd) {
+bool VstCommTask::getMessageFromSingleChunk(ChunkHeader const& chunkHeader,
+                                            VstInputMessage& message, bool& doExecute,
+                                            char const* vpackBegin, char const* chunkEnd) {
   // add agent for this new message
 
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
@@ -464,9 +469,9 @@ bool VstCommTask::getMessageFromSingleChunk(
 
 // Returns true if and only if there was no error, if false is returned,
 // the connection is closed
-bool VstCommTask::getMessageFromMultiChunks(
-    ChunkHeader const& chunkHeader, VstInputMessage& message, bool& doExecute,
-    char const* vpackBegin, char const* chunkEnd) {
+bool VstCommTask::getMessageFromMultiChunks(ChunkHeader const& chunkHeader,
+                                            VstInputMessage& message, bool& doExecute,
+                                            char const* vpackBegin, char const* chunkEnd) {
   // CASE 2:  message is in multiple chunks
   auto incompleteMessageItr = _incompleteMessages.find(chunkHeader._messageID);
 
@@ -486,9 +491,8 @@ bool VstCommTask::getMessageFromMultiChunks(
     }
 
     // TODO: is a 32bit value sufficient for the messageLength here?
-    IncompleteVPackMessage message(
-        static_cast<uint32_t>(chunkHeader._messageLength),
-        chunkHeader._chunk /*number of chunks*/);
+    IncompleteVPackMessage message(static_cast<uint32_t>(chunkHeader._messageLength),
+                                   chunkHeader._chunk /*number of chunks*/);
     message._buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
     auto insertPair = _incompleteMessages.emplace(
         std::make_pair(chunkHeader._messageID, std::move(message)));
@@ -521,9 +525,9 @@ bool VstCommTask::getMessageFromMultiChunks(
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                               << "chunk completes a message";
       try {
-         validateMessage(reinterpret_cast<char const*>(im._buffer.data()),
-                         reinterpret_cast<char const*>(im._buffer.data() +
-                                                       im._buffer.byteSize()));
+        validateMessage(reinterpret_cast<char const*>(im._buffer.data()),
+                        reinterpret_cast<char const*>(im._buffer.data() +
+                                                      im._buffer.byteSize()));
       } catch (std::exception const& e) {
         addErrorResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
                          chunkHeader._messageID, TRI_ERROR_BAD_PARAMETER, e.what());

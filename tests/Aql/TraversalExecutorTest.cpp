@@ -24,6 +24,7 @@
 #include "catch.hpp"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemBlockShell.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/ExecutorInfos.h"
@@ -99,6 +100,7 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
 
   ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager{&monitor};
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
 
   TraverserOptions traversalOptions(fakedQuery.get());
@@ -108,7 +110,15 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
   auto traverserPtr = std::make_unique<TraverserHelper>(&traversalOptions, trx, &mdr);
 
   auto traverser = traverserPtr.get();
-  TraversalExecutorInfos infos({0}, {1}, 1, 2, {}, std::move(traverserPtr));
+  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
+      std::initializer_list<RegisterId>{0});
+  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
+      std::initializer_list<RegisterId>{1});
+
+  TraversalExecutorInfos infos(inputRegisters, outputRegisters, 1, 2, {}, std::move(traverserPtr));
+  auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
+      itemBlockManager, std::move(block), infos.getOutputRegisters(),
+      infos.registersToKeep());
 
   GIVEN("there are no rows upstream") {
     VPackBuilder input;
@@ -119,7 +129,7 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
       TraversalStats stats{};
 
       THEN("the executor should return DONE and no result") {
-        OutputAqlItemRow result(std::move(block), infos);
+        OutputAqlItemRow result(std::move(outputBlockShell));
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -132,7 +142,7 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
       TraversalStats stats{};
 
       THEN("the executor should first return WAIT and no result") {
-        OutputAqlItemRow result(std::move(block), infos);
+        OutputAqlItemRow result(std::move(outputBlockShell));
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -160,7 +170,7 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
       WHEN("no edges are connected to vertices") {
 
         THEN("the executor should fetch all rows, but not return") {
-          OutputAqlItemRow row(std::move(block), infos);
+          OutputAqlItemRow row(std::move(outputBlockShell));
 
           std::tie(state, stats) = testee.produceRow(row);
           REQUIRE(state == ExecutionState::DONE);
@@ -193,7 +203,7 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
       WHEN("no edges are connected to vertices") {
 
         THEN("the executor should fetch all rows, but not return") {
-          OutputAqlItemRow row(std::move(block), infos);
+          OutputAqlItemRow row(std::move(outputBlockShell));
 
           for (size_t i = 0; i < 3; ++i) {
             // We expect to wait 3 times

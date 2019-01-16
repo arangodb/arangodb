@@ -35,18 +35,19 @@ namespace arangodb {
 // SSL protocol methods
 enum SslProtocol {
   SSL_UNKNOWN = 0,
-  // removed SSL_V2 here, because newer versions of OpenSSL do not
-  // include it by default.
+  // newer versions of OpenSSL do not support SSLv2 by default.
   // from https://www.openssl.org/news/cl110.txt:
   //   Changes between 1.0.2f and 1.0.2g [1 Mar 2016]
-  //   * Disable SSLv2 default build, default negotiation and weak ciphers.  SSLv2
-  //     is by default disabled at build-time.  Builds that are not configured with
-  //     "enable-ssl2" will not support SSLv2.  
-  // SSL_V2 = 1,
+  //   * Disable SSLv2 default build, default negotiation and weak ciphers.
+  //   SSLv2
+  //     is by default disabled at build-time.  Builds that are not configured
+  //     with "enable-ssl2" will not support SSLv2.
+  SSL_V2 = 1,  // unsupported in ArangoDB!!
   SSL_V23 = 2,
   SSL_V3 = 3,
   TLS_V1 = 4,
   TLS_V12 = 5,
+  TLS_V13 = 6,
 
   SSL_LAST
 };
@@ -57,12 +58,18 @@ enum SslProtocol {
 #define SSL_CONST const
 #endif
 
-asio::ssl::context sslContext(
-    SslProtocol, std::string const& keyfile);
+/// @brief returns a set with all available SSL protocols
+std::unordered_set<uint64_t> availableSslProtocols();
+
+/// @brief returns a string description the available SSL protocols
+std::string availableSslProtocolsDescription();
+
+asio_ns::ssl::context sslContext(SslProtocol, std::string const& keyfile);
 
 std::string protocolName(SslProtocol protocol);
 
 std::string lastSSLError();
-}
+
+}  // namespace arangodb
 
 #endif

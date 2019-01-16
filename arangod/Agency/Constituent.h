@@ -43,8 +43,8 @@ class QueryRegistry;
 namespace consensus {
 
 static inline double steadyClockToDouble() {
-  return std::chrono::duration<double>(
-    std::chrono::steady_clock::now().time_since_epoch()).count();
+  return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch())
+      .count();
 }
 
 class Agent;
@@ -93,7 +93,7 @@ class Constituent : public Thread {
   // Configuration
   config_t const& config() const;
 
-  // Become follower, if t is > 0, termNoLock is called and _term and 
+  // Become follower, if t is > 0, termNoLock is called and _term and
   // _votedFor is set as a consequence. If t is 0, neither _term nor
   // _votedFor are adjusted! This, or calling term or termNoLock is the
   // only way to change _term or _votedFor that is allowed!
@@ -150,17 +150,17 @@ class Constituent : public Thread {
   TRI_vocbase_t* _vocbase;
   aql::QueryRegistry* _queryRegistry;
 
-  term_t _term;            // term number
+  term_t _term;  // term number
 
-  std::string _leaderID; // Current leader
-  std::string _id;       // My own id
+  std::string _leaderID;  // Current leader
+  std::string _id;        // My own id
 
   // Last time an AppendEntriesRPC message has arrived, this is used to
   // organize out-of-patience in the follower:
   std::atomic<double> _lastHeartbeatSeen;
 
-  role_t _role;  // My role
-  Agent* _agent; // My boss
+  role_t _role;           // My role
+  Agent* _agent;          // My boss
   std::string _votedFor;  // indicates whether or not we have voted for
                           // anybody in this term, we will always reset
                           // this to NO_LEADER if _term is advanced
@@ -176,10 +176,10 @@ class Constituent : public Thread {
                                             // when an AgentCallback
                                             // arrives
   mutable arangodb::Mutex _termVoteLock;
-    // This mutex protects _term, _votedFor, _role and _leaderID, note that
-    // all this Constituent data is usually only accessed from the Constituent
-    // thread. However, the AgentCallback is executed in a Scheduler thread
-    // which calls methods of Constituent. This is why we need mutexes here.
+  // This mutex protects _term, _votedFor, _role and _leaderID, note that
+  // all this Constituent data is usually only accessed from the Constituent
+  // thread. However, the AgentCallback is executed in a Scheduler thread
+  // which calls methods of Constituent. This is why we need mutexes here.
 
   // Keep track of times of last few elections:
   mutable arangodb::Mutex _recentElectionsMutex;
@@ -192,9 +192,8 @@ class Constituent : public Thread {
 
   /// @brief _heartBeatMutex, protection for _lastHeartbeatSent
   mutable arangodb::Mutex _heartBeatMutex;
-
 };
-}
-}
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

@@ -30,24 +30,24 @@ class Result {
  public:
   Result();
 
-  Result(bool avoidCastingErrors) = delete;
+  Result(bool /*avoidCastingErrors*/) = delete;
 
   Result(int errorNumber);
 
   Result(int errorNumber, std::string const& errorMessage);
-    
+
   /**
    * @brief Construct with error number and message
    * @param  errorNumber   Said error number
    * @param  errorMessage  Said error message
    */
   Result(int errorNumber, std::string&& errorMessage);
-  
+
   /**
    * @brief Construct as copy
    * @param  other  To copy from
    */
-  Result(Result const& other); 
+  Result(Result const& other);
 
   /**
    * @brief Construct as clone
@@ -61,7 +61,7 @@ class Result {
    * @return        Refernce to ourselves
    */
   Result& operator=(Result const& other);
-  
+
   /**
    * @brief Assignment operator
    * @param  other  To assign from
@@ -75,7 +75,6 @@ class Result {
   virtual ~Result();
 
  public:
-
   /**
    * @brief  Nomen est omen
    * @return OK?
@@ -112,7 +111,7 @@ class Result {
    * @return            Reference to ourselves
    */
   Result& reset(int errorNumber = TRI_ERROR_NO_ERROR);
-    
+
   /**
    * @brief  Reset to specific error number with message.
    *         If ok, error message is cleared.
@@ -121,7 +120,7 @@ class Result {
    * @return            Reference to ourselves
    */
   Result& reset(int errorNumber, std::string const& errorMessage);
-  
+
   /**
    * @brief  Reset to specific error number with message.
    *         If ok, error message is cleared.
@@ -149,20 +148,30 @@ class Result {
    * @brief  Get error message
    * @return Our error message
    */
-  virtual std::string errorMessage() const&;
+  std::string errorMessage() const&;
 
   /**
    * @brief  Get error message
    * @return Our error message
    */
-  virtual std::string errorMessage() &&;
+  std::string errorMessage() &&;
 
- protected:
+  template <typename S>
+  void resetErrorMessage(S&& msg) {
+    _errorMessage.assign(std::forward<S>(msg));
+  }
+
+  template <typename S>
+  void appendErrorMessage(S&& msg) {
+    _errorMessage.append(std::forward<S>(msg));
+  }
+
+ private:
   int _errorNumber;
   std::string _errorMessage;
 };
 
-}
+}  // namespace arangodb
 
 /**
  * @brief  Print to output stream

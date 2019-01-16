@@ -30,6 +30,7 @@ AQLFeaturePhase::AQLFeaturePhase(ApplicationServer& server)
   setOptional(false);
   startsAfter("V8Phase");
 
+  startsAfter("CommunicationPhase");
   startsAfter("Aql");
   startsAfter("AQLFunctions");
   startsAfter("IResearchAnalyzer");
@@ -41,5 +42,5 @@ AQLFeaturePhase::AQLFeaturePhase(ApplicationServer& server)
   startsAfter("TraverserEngineRegistry");
 }
 
-} // application_features
-} // arangodb
+}  // namespace application_features
+}  // namespace arangodb

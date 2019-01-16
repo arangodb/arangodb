@@ -24,7 +24,9 @@
 #define ARANGOD_AQL_BLOCK_FETCHER_H
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemBlockShell.h"
 #include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
 #include "Basics/Exceptions.h"
 
@@ -40,30 +42,64 @@ namespace aql {
  */
 class BlockFetcher {
  public:
-  explicit BlockFetcher(ExecutionBlock* executionBlock_)
-      : _executionBlock(executionBlock_){};
+  /**
+   * @brief Interface to fetch AqlItemBlocks from upstream with getSome that
+   *        wraps them into InputAqlItemBlockShells.
+   * @param dependencies Dependencies of the current ExecutionBlock. Must
+   *                     contain EXACTLY ONE element. Otherwise, BlockFetcher
+   *                     may be instantiated, but never used. It is allowed to
+   *                     pass a reference to an empty vector, but as soon as
+   *                     the BlockFetcher is used, the condition must be
+   *                     satisfied.
+   * @param itemBlockManager All blocks fetched via dependencies[0]->getSome()
+   *                         will later be returned to this AqlItemBlockManager.
+   * @param inputRegisters Set of registers the current ExecutionBlock is
+   *                       allowed to read.
+   * @param nrInputRegisters Total number of registers of the AqlItemBlocks
+   *                         here. Called nrInputRegisters to discern between
+   *                         the widths of input and output blocks.
+   *
+   * The constructor MAY NOT access the dependencies, nor the itemBlockManager.
+   * This is because the dependencies will be added to the ExecutionBlock only
+   * after construction, and to allow derived subclasses for testing (read
+   * BlockFetcherMock) to create them *after* the parent class was constructed.
+   */
+  BlockFetcher(
+      std::vector<ExecutionBlock*> const& dependencies,
+      AqlItemBlockManager& itemBlockManager,
+      std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters,
+      RegisterId nrInputRegisters)
+      : _dependencies(dependencies),
+        _itemBlockManager(itemBlockManager),
+        _inputRegisters(std::move(inputRegisters)),
+        _nrInputRegisters(nrInputRegisters) {}
 
   TEST_VIRTUAL ~BlockFetcher() = default;
 
-  TEST_VIRTUAL inline std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-  fetchBlock() {
-    return _executionBlock->fetchBlock();
-  };
+  TEST_VIRTUAL
+  std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
+  fetchBlock();
 
-  TEST_VIRTUAL inline void returnBlock(
-      std::unique_ptr<AqlItemBlock> block) noexcept {
-    AqlItemBlock* blockPtr = block.get();
-    _executionBlock->returnBlockUnlessNull(blockPtr);
-    TRI_ASSERT(blockPtr == nullptr);
-    block.release();
-  };
+  TEST_VIRTUAL inline RegisterId getNrInputRegisters() const {
+    return _nrInputRegisters;
+  }
 
-  TEST_VIRTUAL inline RegisterId getNrInputRegisters() {
-    return _executionBlock->getNrInputRegisters();
+ protected:
+  AqlItemBlockManager& itemBlockManager() { return _itemBlockManager; }
+  AqlItemBlockManager const& itemBlockManager() const {
+    return _itemBlockManager;
+  }
+
+  ExecutionBlock& upstreamBlock() {
+    TRI_ASSERT(_dependencies.size() == 1);
+    return *_dependencies[0];
   }
 
  private:
-  ExecutionBlock* _executionBlock;
+  std::vector<ExecutionBlock*> const& _dependencies;
+  AqlItemBlockManager& _itemBlockManager;
+  std::shared_ptr<const std::unordered_set<RegisterId>> const _inputRegisters;
+  RegisterId const _nrInputRegisters;
 };
 
 }  // namespace aql

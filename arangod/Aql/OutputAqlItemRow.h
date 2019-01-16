@@ -26,8 +26,6 @@
 #ifndef ARANGOD_AQL_OUTPUT_AQL_ITEM_ROW_H
 #define ARANGOD_AQL_OUTPUT_AQL_ITEM_ROW_H
 
-#include "Aql/AqlItemBlock.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -35,6 +33,7 @@
 namespace arangodb {
 namespace aql {
 
+class OutputAqlItemBlockShell;
 struct AqlValue;
 
 /**
@@ -46,71 +45,81 @@ struct AqlValue;
  */
 class OutputAqlItemRow {
  public:
-  OutputAqlItemRow(std::unique_ptr<AqlItemBlock> block,
-                   const ExecutorInfos& executorInfos);
+  explicit OutputAqlItemRow(
+      std::unique_ptr<OutputAqlItemBlockShell> blockShell);
 
+  // Clones the given AqlValue
   void setValue(RegisterId registerId, InputAqlItemRow const& sourceRow,
-                AqlValue const&);
+                AqlValue const& value);
+
+  // Copies the given AqlValue. If it holds external memory, it will be
+  // destroyed when the block is destroyed.
+  // Note that there is no real move happening here, just a trivial copy of
+  // the passed AqlValue. However, that means the output block will take
+  // responsibility of possibly referenced external memory.
+  void setValue(RegisterId registerId, InputAqlItemRow const& sourceRow,
+                AqlValue&& value);
 
   void copyRow(InputAqlItemRow const& sourceRow);
 
-  std::size_t getNrRegisters() const { return _block->getNrRegs(); }
+  std::size_t getNrRegisters() const;
 
   /**
    * @brief May only be called after all output values in the current row have
    * been set, or in case there are zero output registers, after copyRow has
    * been called.
    */
-  void advanceRow() {
-    TRI_ASSERT(produced());
-    if (!allValuesWritten()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS);
-    }
-    if (!_inputRowCopied) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INPUT_REGISTERS_NOT_COPIED);
-    }
-    ++_baseIndex;
-    _inputRowCopied = false;
-    _numValuesWritten = 0;
-  }
+  void advanceRow();
 
   // returns true if row was produced
   bool produced() const {
     return allValuesWritten() && _inputRowCopied;
   }
 
-  std::unique_ptr<AqlItemBlock> stealBlock() {
-    if (numRowsWritten() == 0) {
-      // blocks may not be empty
-      _block.reset(nullptr);
-    } else {
-      _block->shrink(numRowsWritten());
-    }
-    return std::move(_block);
-  }
+  /**
+  * @brief Steal the AqlItemBlock held by the OutputAqlItemRow. The returned
+  *        block will contain exactly the number of written rows. e.g., if 42
+  *        rows were written, block->size() will be 42, even if the original
+  *        block was larger.
+  *        The block will never be empty. If no rows were written, this will
+  *        return a nullptr.
+  *        After stealBlock(), the OutputAqlItemRow is unusable!
+  */
+  std::unique_ptr<AqlItemBlock> stealBlock();
 
-  bool isFull() { return numRowsWritten() >= _block->size(); }
+  bool isFull();
 
+  /**
+  * @brief Returns the number of rows that were fully written.
+  */
   size_t numRowsWritten() const noexcept {
+    // If the current line was fully written, the number of fully written rows
+    // is the index plus one.
     if (produced()) {
       return _baseIndex + 1;
     }
 
+    // If the current line was not fully written, the last one was, so the
+    // number of fully written rows is (_baseIndex - 1) + 1.
     return _baseIndex;
+
+    // Disregarding unsignedness, we could also write:
+    //   lastWrittenIndex = produced()
+    //     ? _baseIndex
+    //     : _baseIndex - 1;
+    //   return lastWrittenIndex + 1;
   }
 
  private:
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
-  std::unique_ptr<AqlItemBlock> _block;
+  std::unique_ptr<OutputAqlItemBlockShell> _blockShell;
 
   /**
    * @brief The offset into the AqlItemBlock. In other words, the row's index.
    */
   size_t _baseIndex;
-
-  ExecutorInfos const& _executorInfos;
 
   /**
    * @brief Whether the input registers were copied from a source row.
@@ -135,22 +144,16 @@ class OutputAqlItemRow {
     return numRowsWritten();
   }
 
-  ExecutorInfos const& executorInfos() const {
-    return _executorInfos;
-  }
-
-  size_t numRegistersToWrite() const {
-    return executorInfos().getOutputRegisters().size();
-  }
+  size_t numRegistersToWrite() const;
 
   bool allValuesWritten() const {
     return _numValuesWritten == numRegistersToWrite();
   };
 
-  bool isOutputRegister(RegisterId regId) {
-    auto const& outRegs = executorInfos().getOutputRegisters();
-    return outRegs.find(regId) != outRegs.end();
-  }
+  bool isOutputRegister(RegisterId regId);
+
+  AqlItemBlock const& block() const;
+  AqlItemBlock& block();
 };
 
 }  // namespace aql

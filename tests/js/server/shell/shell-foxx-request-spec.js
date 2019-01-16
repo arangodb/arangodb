@@ -1,5 +1,6 @@
 /* global describe, it */
 'use strict';
+const resolvePath = require('path').resolve;
 const expect = require('chai').expect;
 const crypto = require('@arangodb/crypto');
 const SyntheticRequest = require('@arangodb/foxx/router/request');
@@ -539,6 +540,38 @@ describe('SyntheticRequest', function () {
       const req = new SyntheticRequest(rawReq, {mount: '/foxx'});
       expect(req.makeAbsolute('../another/place')).to.equal(
         'https://www.example.com:9999/_db/bananas/another/place'
+      );
+    });
+    it('correctly handles unix sockets', function () {
+      const socketPath = require('internal').platform.substr(0, 3) === 'win'
+        ? "C:\\tmp\\arangod.sock"
+        : "/tmp/arangod.sock";
+      const rawReq = createNativeRequest({
+        db: 'bananas',
+        mount: '/foxx',
+        path: '/some/place/special',
+        search: '?a=1&b=2',
+        protocol: 'https',
+        socketPath
+      });
+      const req = new SyntheticRequest(rawReq, {mount: '/foxx'});
+      expect(req.makeAbsolute('../another/place')).to.equal(
+        `https://unix:${socketPath}:/_db/bananas/another/place`
+      );
+    });
+    it('correctly handles relative unix sockets', function () {
+      const rawReq = createNativeRequest({
+        db: 'bananas',
+        mount: '/foxx',
+        path: '/some/place/special',
+        search: '?a=1&b=2',
+        protocol: 'https',
+        socketPath: 'arangod.sock'
+      });
+      const absPath = resolvePath('arangod.sock');
+      const req = new SyntheticRequest(rawReq, {mount: '/foxx'});
+      expect(req.makeAbsolute('../another/place')).to.equal(
+        `https://unix:${absPath}:/_db/bananas/another/place`
       );
     });
   });

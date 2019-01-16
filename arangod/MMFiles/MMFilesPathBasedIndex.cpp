@@ -35,37 +35,30 @@
 
 using namespace arangodb;
 
-/// @brief the _key attribute, which, when used in an index, will implictly make it unique
-static std::vector<arangodb::basics::AttributeName> const KeyAttribute
-     {arangodb::basics::AttributeName("_key", false)};
-
 /// @brief create the index
-MMFilesPathBasedIndex::MMFilesPathBasedIndex(
-    TRI_idx_iid_t iid,
-    arangodb::LogicalCollection& collection,
-    arangodb::velocypack::Slice const& info,
-    size_t baseSize,
-    bool allowPartialIndex
-)
+MMFilesPathBasedIndex::MMFilesPathBasedIndex(TRI_idx_iid_t iid,
+                                             arangodb::LogicalCollection& collection,
+                                             arangodb::velocypack::Slice const& info,
+                                             size_t baseSize, bool allowPartialIndex)
     : MMFilesIndex(iid, collection, info),
-      _deduplicate(arangodb::basics::VelocyPackHelper::getBooleanValue(
-          info, "deduplicate", true)),
+      _deduplicate(
+          arangodb::basics::VelocyPackHelper::getBooleanValue(info,
+                                                              "deduplicate", true)),
       _allowPartialIndex(allowPartialIndex) {
   TRI_ASSERT(!_fields.empty());
 
   TRI_ASSERT(iid != 0);
-      
+
   fillPaths(_paths, _expanding);
 
   TRI_ASSERT(baseSize > 0);
-  
-  _allocator.reset(new FixedSizeAllocator(baseSize + sizeof(MMFilesIndexElementValue) * numPaths()));
+
+  _allocator.reset(new FixedSizeAllocator(
+      baseSize + sizeof(MMFilesIndexElementValue) * numPaths()));
 }
 
 /// @brief destroy the index
-MMFilesPathBasedIndex::~MMFilesPathBasedIndex() {
-  _allocator->deallocateAll();
-}
+MMFilesPathBasedIndex::~MMFilesPathBasedIndex() { _allocator->deallocateAll(); }
 
 void MMFilesPathBasedIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
@@ -77,51 +70,20 @@ void MMFilesPathBasedIndex::toVelocyPack(VPackBuilder& builder,
                                          std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
   Index::toVelocyPack(builder, flags);
-  builder.add(
-    arangodb::StaticStrings::IndexUnique,
-    arangodb::velocypack::Value(_unique)
-  );
-  builder.add(
-    arangodb::StaticStrings::IndexSparse,
-    arangodb::velocypack::Value(_sparse)
-  );
+  builder.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(_unique));
+  builder.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(_sparse));
   builder.add("deduplicate", VPackValue(_deduplicate));
   builder.close();
 }
 
-/// @brief whether or not the index is implicitly unique
-/// this can be the case if the index is not declared as unique, but contains a 
-/// unique attribute such as _key
-bool MMFilesPathBasedIndex::implicitlyUnique() const {
-  if (_unique) {
-    // a unique index is always unique
-    return true;
-  }
-  if (_useExpansion) {
-    // when an expansion such as a[*] is used, the index may not be unique, even
-    // if it contains attributes that are guaranteed to be unique
-    return false;
-  }
-
-  for (auto const& it : _fields) {
-    // if _key is contained in the index fields definition, then the index is
-    // implicitly unique
-    if (it == KeyAttribute) {
-      return true;
-    }
-  }
-
-  // _key not contained
-  return false;
-}
-
 /// @brief helper function to insert a document into any index type
-template<typename T>
+template <typename T>
 int MMFilesPathBasedIndex::fillElement(std::vector<T*>& elements,
                                        LocalDocumentId const& documentId,
                                        VPackSlice const& doc) {
   if (doc.isNone()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "encountered invalid marker with slice of type None";
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "encountered invalid marker with slice of type None";
     return TRI_ERROR_INTERNAL;
   }
 
@@ -209,8 +171,7 @@ int MMFilesPathBasedIndex::fillElement(std::vector<T*>& elements,
 }
 
 /// @brief helper function to create the sole index value insert
-std::vector<std::pair<VPackSlice, uint32_t>> MMFilesPathBasedIndex::buildIndexValue(
-    VPackSlice const documentSlice) {
+std::vector<std::pair<VPackSlice, uint32_t>> MMFilesPathBasedIndex::buildIndexValue(VPackSlice const documentSlice) {
   size_t const n = _paths.size();
 
   std::vector<std::pair<VPackSlice, uint32_t>> result;
@@ -227,9 +188,11 @@ std::vector<std::pair<VPackSlice, uint32_t>> MMFilesPathBasedIndex::buildIndexVa
         break;
       }
       // null, note that this will be copied later!
-      result.emplace_back(arangodb::velocypack::Slice::nullSlice(), 0); // fake offset 0
+      result.emplace_back(arangodb::velocypack::Slice::nullSlice(),
+                          0);  // fake offset 0
     } else {
-      result.emplace_back(slice, static_cast<uint32_t>(slice.start() - documentSlice.start()));
+      result.emplace_back(slice, static_cast<uint32_t>(slice.start() -
+                                                       documentSlice.start()));
     }
   }
   return result;
@@ -248,7 +211,7 @@ void MMFilesPathBasedIndex::buildIndexValues(
     return;
   }
 
-  if (_expanding[level] == -1) {   // the trivial, non-expanding case
+  if (_expanding[level] == -1) {  // the trivial, non-expanding case
     VPackSlice slice = document.get(_paths[level]);
     if (slice.isNone() || slice.isNull()) {
       if (_sparse) {
@@ -256,7 +219,8 @@ void MMFilesPathBasedIndex::buildIndexValues(
       }
       sliceStack.emplace_back(arangodb::velocypack::Slice::nullSlice(), 0);
     } else {
-      sliceStack.emplace_back(slice, static_cast<uint32_t>(slice.start() - document.start()));
+      sliceStack.emplace_back(slice,
+                              static_cast<uint32_t>(slice.start() - document.start()));
     }
     buildIndexValues(document, level + 1, toInsert, sliceStack);
     sliceStack.pop_back();
@@ -304,17 +268,16 @@ void MMFilesPathBasedIndex::buildIndexValues(
     return;
   }
 
-  std::unordered_set<VPackSlice,
-                     arangodb::basics::VelocyPackHelper::VPackHash,
-                     arangodb::basics::VelocyPackHelper::VPackEqual>
+  std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual>
       seen(2, arangodb::basics::VelocyPackHelper::VPackHash(),
-              arangodb::basics::VelocyPackHelper::VPackEqual());
+           arangodb::basics::VelocyPackHelper::VPackEqual());
 
   auto moveOn = [&](VPackSlice something) -> void {
     auto it = seen.find(something);
     if (it == seen.end()) {
       seen.insert(something);
-      sliceStack.emplace_back(something, static_cast<uint32_t>(something.start() - document.start()));
+      sliceStack.emplace_back(something, static_cast<uint32_t>(something.start() -
+                                                               document.start()));
       buildIndexValues(document, level + 1, toInsert, sliceStack);
       sliceStack.pop_back();
     } else if (_unique && !_deduplicate) {
@@ -355,7 +318,7 @@ void MMFilesPathBasedIndex::buildIndexValues(
 
 /// @brief helper function to transform AttributeNames into strings.
 void MMFilesPathBasedIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
-                               std::vector<int>& expanding) {
+                                      std::vector<int>& expanding) {
   paths.clear();
   expanding.clear();
   for (std::vector<arangodb::basics::AttributeName> const& list : _fields) {
@@ -375,8 +338,10 @@ void MMFilesPathBasedIndex::fillPaths(std::vector<std::vector<std::string>>& pat
 }
 
 // template instanciations for fillElement
-template
-int MMFilesPathBasedIndex::fillElement(std::vector<MMFilesHashIndexElement*>&, LocalDocumentId const&, VPackSlice const& doc);
+template int MMFilesPathBasedIndex::fillElement(std::vector<MMFilesHashIndexElement*>&,
+                                                LocalDocumentId const&,
+                                                VPackSlice const& doc);
 
-template
-int MMFilesPathBasedIndex::fillElement(std::vector<MMFilesSkiplistIndexElement*>&, LocalDocumentId const&, VPackSlice const& doc);
+template int MMFilesPathBasedIndex::fillElement(std::vector<MMFilesSkiplistIndexElement*>&,
+                                                LocalDocumentId const&,
+                                                VPackSlice const& doc);

@@ -45,8 +45,7 @@ using namespace arangodb::consensus;
 ////////////////////////////////////////////////////////////////////////////////
 
 RestAgencyPrivHandler::RestAgencyPrivHandler(GeneralRequest* request,
-                                             GeneralResponse* response,
-                                             Agent* agent)
+                                             GeneralResponse* response, Agent* agent)
     : RestBaseHandler(request, response), _agent(agent) {}
 
 inline RestStatus RestAgencyPrivHandler::reportErrorEmptyRequest() {
@@ -62,8 +61,7 @@ inline RestStatus RestAgencyPrivHandler::reportTooManySuffices() {
   return RestStatus::DONE;
 }
 
-inline RestStatus RestAgencyPrivHandler::reportBadQuery(
-    std::string const& message) {
+inline RestStatus RestAgencyPrivHandler::reportBadQuery(std::string const& message) {
   generateError(rest::ResponseCode::BAD, 400, message);
   return RestStatus::DONE;
 }
@@ -75,6 +73,52 @@ inline RestStatus RestAgencyPrivHandler::reportMethodNotAllowed() {
 
 inline RestStatus RestAgencyPrivHandler::reportGone() {
   generateError(rest::ResponseCode::GONE, 410);
+  return RestStatus::DONE;
+}
+
+RestStatus RestAgencyPrivHandler::reportMessage(rest::ResponseCode code,
+                                                std::string const& message) {
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << message;
+  Builder body;
+  {
+    VPackObjectBuilder b(&body);
+    body.add("message", VPackValue(message));
+  }
+  generateResult(code, body.slice());
+  return RestStatus::DONE;
+}
+
+void RestAgencyPrivHandler::redirectRequest(std::string const& leaderId) {
+  try {
+    std::string url = Endpoint::uriForm(_agent->config().poolAt(leaderId));
+    _response->setResponseCode(rest::ResponseCode::TEMPORARY_REDIRECT);
+    _response->setHeaderNC(StaticStrings::Location, url);
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending 307 redirect to " << url;
+  } catch (std::exception const&) {
+    reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
+  }
+}
+
+RestStatus RestAgencyPrivHandler::reportError(VPackSlice error) {
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << error.toJson();
+  rest::ResponseCode code;
+  try {
+    code = rest::ResponseCode(error.get(StaticStrings::Code).getNumber<int>());
+    generateResult(code, error);
+  } catch (std::exception const& e) {
+    std::string errstr("Failure reporting error ");
+    errstr += error.toJson() + " " + e.what();
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder o(&builder);
+      builder.add(StaticStrings::Error, VPackValue(true));
+      builder.add(StaticStrings::Code, VPackValue(500));
+      builder.add(StaticStrings::ErrorNum, VPackValue(500));
+      builder.add(StaticStrings::ErrorMessage, VPackValue(errstr));
+    }
+    LOG_TOPIC(ERR, Logger::AGENCY) << errstr;
+    generateResult(rest::ResponseCode::SERVER_ERROR, builder.slice());
+  }
   return RestStatus::DONE;
 }
 
@@ -103,12 +147,11 @@ RestStatus RestAgencyPrivHandler::execute() {
         int64_t senderTimeStamp = 0;
         readValue("senderTimeStamp", senderTimeStamp);  // ignore if not given
         if (readValue("term", term) && readValue("leaderId", id) &&
-            readValue("prevLogIndex", prevLogIndex) &&
-            readValue("prevLogTerm", prevLogTerm) &&
+            readValue("prevLogIndex", prevLogIndex) && readValue("prevLogTerm", prevLogTerm) &&
             readValue("leaderCommit", leaderCommit)) {  // found all values
-          auto ret = _agent->recvAppendEntriesRPC(
-            term, id, prevLogIndex, prevLogTerm, leaderCommit,
-            _request->toVelocyPackBuilderPtr());
+          auto ret = _agent->recvAppendEntriesRPC(term, id, prevLogIndex,
+                                                  prevLogTerm, leaderCommit,
+                                                  _request->toVelocyPackBuilderPtr());
           result.add("success", VPackValue(ret.success));
           result.add("term", VPackValue(ret.term));
           result.add("senderTimeStamp", VPackValue(senderTimeStamp));
@@ -121,9 +164,8 @@ RestStatus RestAgencyPrivHandler::execute() {
         if (readValue("term", term) && readValue("candidateId", id) &&
             readValue("prevLogIndex", prevLogIndex) &&
             readValue("prevLogTerm", prevLogTerm)) {
-          priv_rpc_ret_t ret =
-              _agent->requestVote(term, id, prevLogIndex, prevLogTerm, nullptr,
-                                  timeoutMult);
+          priv_rpc_ret_t ret = _agent->requestVote(term, id, prevLogIndex, prevLogTerm,
+                                                   nullptr, timeoutMult);
           result.add("term", VPackValue(ret.term));
           result.add("voteGranted", VPackValue(ret.success));
         }
@@ -132,8 +174,8 @@ RestStatus RestAgencyPrivHandler::execute() {
           return reportMethodNotAllowed();
         }
         if (readValue("term", term) && readValue("agencyId", id)) {
-          priv_rpc_ret_t ret = _agent->requestVote(
-              term, id, 0, 0, _request->toVelocyPackBuilderPtr(), -1);
+          priv_rpc_ret_t ret =
+              _agent->requestVote(term, id, 0, 0, _request->toVelocyPackBuilderPtr(), -1);
           result.add("term", VPackValue(ret.term));
           result.add("voteGranted", VPackValue(ret.success));
         } else {
@@ -143,22 +185,33 @@ RestStatus RestAgencyPrivHandler::execute() {
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
+
         query_t query = _request->toVelocyPackBuilderPtr();
         try {
           query_t ret = _agent->gossip(query);
+          auto slice = ret->slice();
+          LOG_TOPIC(DEBUG, Logger::AGENCY)
+              << "Responding to gossip request " << query->toJson() << " with "
+              << slice.toJson();
+          if (slice.hasKey(StaticStrings::Error)) {
+            return reportError(slice);
+          }
+          if (slice.hasKey("redirect")) {
+            redirectRequest(slice.get("id").copyString());
+            return RestStatus::DONE;
+          }
           for (auto const& obj : VPackObjectIterator(ret->slice())) {
             result.add(obj.key.copyString(), obj.value);
           }
         } catch (std::exception const& e) {
-          return reportBadQuery(e.what());
+          LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
         }
       } else if (suffixes[0] == "activeAgents") {
         if (_request->requestType() != rest::RequestType::GET) {
           return reportMethodNotAllowed();
         }
         if (_agent->leaderID() != NO_LEADER) {
-          result.add("active",
-                     _agent->config().activeAgentsToBuilder()->slice());
+          result.add("active", _agent->config().activeAgentsToBuilder()->slice());
         }
       } else if (suffixes[0] == "inform") {
         query_t query = _request->toVelocyPackBuilderPtr();

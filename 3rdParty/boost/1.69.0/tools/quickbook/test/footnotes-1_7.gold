@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE article PUBLIC "-//Boost//DTD BoostBook XML V1.0//EN" "http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<article id="footnotes" last-revision="DEBUG MODE Date: 2000/12/20 12:00:00 $" xmlns:xi="http://www.w3.org/2001/XInclude">
+  <title>Footnotes</title>
+  <section id="footnotes.first">
+    <title><link linkend="footnotes.first">First Section</link></title>
+    <para>
+      Some<footnote id="footnotes.first.f0">
+      <para>
+        First footnote
+      </para>
+      </footnote> normal<footnote id="footnotes.first.f1">
+      <para>
+        Second footnote
+      </para>
+      </footnote> footnotes<footnote id="footnotes.first.f2">
+      <para>
+        Third footnote
+      </para>
+      </footnote>.
+    </para>
+  </section>
+  <section id="footnotes.second">
+    <title><link linkend="footnotes.second">Second Section</link></title>
+    <para>
+      Some<footnote id="f1"><para>Boostbook footnote</para></footnote>
+boostbook<footnote><para>Footnote without id</para></footnote>
+footnotes<footnote><para>Another footnote without an id</para></footnote>.
+    </para>
+  </section>
+</article>

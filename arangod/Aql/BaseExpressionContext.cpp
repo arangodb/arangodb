@@ -22,16 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BaseExpressionContext.h"
-#include "Basics/Exceptions.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Variable.h"
+#include "Basics/Exceptions.h"
 
 using namespace arangodb::aql;
-
-size_t BaseExpressionContext::numRegisters() const {
-  return _regs->size();
-}
 
 AqlValue const& BaseExpressionContext::getRegisterValue(size_t i) const {
   return _argv->getValueReference(_startPos, (*_regs)[i]);
@@ -41,23 +37,24 @@ Variable const* BaseExpressionContext::getVariable(size_t i) const {
   return (*_vars)[i];
 }
 
-AqlValue BaseExpressionContext::getVariableValue(Variable const* variable, bool doCopy, bool& mustDestroy) const {
-  mustDestroy = false;
-
+AqlValue BaseExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
+                                                 bool& mustDestroy) const {
   TRI_ASSERT(_vars != nullptr);
   TRI_ASSERT(_regs != nullptr);
   TRI_ASSERT(_argv != nullptr);
 
   size_t i = 0;
-  for (auto it = (*_vars).begin(); it != (*_vars).end(); ++it, ++i) {
-    if ((*it)->id == variable->id) {
+  for (auto const& v : *_vars) {
+    if (v->id == variable->id) {
       TRI_ASSERT(i < _regs->size());
       if (doCopy) {
         mustDestroy = true;  // as we are copying
         return _argv->getValueReference(_startPos, (*_regs)[i]).clone();
       }
+      mustDestroy = false;
       return _argv->getValueReference(_startPos, (*_regs)[i]);
     }
+    ++i;
   }
 
   std::string msg("variable not found '");

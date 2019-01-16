@@ -43,8 +43,9 @@ set_target_properties(${IResearchUtil_TARGET_NAME}
 )
 
 target_link_libraries(${IResearchUtil_TARGET_NAME}
-  ${IResearch_TARGET_NAME}-static
+  ${IResearch_TARGET_NAME}-static-allinone
   ${PTHREAD_LIBRARY}
+  ${ATOMIC_LIBRARY}
 )
 
 target_compile_features(${IResearchUtil_TARGET_NAME}
@@ -101,8 +102,9 @@ if (NOT MSVC AND GCC_VERSION VERSION_LESS 4.9)
 endif()
 
 target_link_libraries(${IResearchBencmarks_TARGET_NAME}
-  ${IResearch_TARGET_NAME}-static
+  ${IResearch_TARGET_NAME}-static-allinone
   ${PTHREAD_LIBRARY}
+  ${ATOMIC_LIBRARY}
   ${REGEX_LIBRARY}
 )
 

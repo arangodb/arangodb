@@ -25,9 +25,9 @@
 
 #include "Basics/Common.h"
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
-NS_BEGIN(kludge)
+namespace arangodb {
+namespace iresearch {
+namespace kludge {
 
 const char TYPE_DELIMITER = '\0';
 const char ANALYZER_DELIMITER = '\1';
@@ -36,13 +36,9 @@ irs::string_ref const NULL_SUFFIX("\0_n", 3);
 irs::string_ref const BOOL_SUFFIX("\0_b", 3);
 irs::string_ref const NUMERIC_SUFFIX("\0_d", 3);
 
-void mangleType(std::string& name) {
-  name += TYPE_DELIMITER;
-}
+void mangleType(std::string& name) { name += TYPE_DELIMITER; }
 
-void mangleAnalyzer(std::string& name) {
-  name += ANALYZER_DELIMITER;
-}
+void mangleAnalyzer(std::string& name) { name += ANALYZER_DELIMITER; }
 
 void mangleNull(std::string& name) {
   name.append(NULL_SUFFIX.c_str(), NULL_SUFFIX.size());
@@ -69,10 +65,10 @@ void demangleStringField(std::string& name, AnalyzerPool const& pool) {
   name.resize(name.size() - suffixSize);
 }
 
-NS_END // kludge
-NS_END // iresearch
-NS_END // arangodb
+}  // namespace kludge
+}  // namespace iresearch
+}  // namespace arangodb
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
+// --SECTION-- END-OF-FILE
 // -----------------------------------------------------------------------------

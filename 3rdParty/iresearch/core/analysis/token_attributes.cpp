@@ -144,8 +144,11 @@ float_t norm::read() const {
 REGISTER_ATTRIBUTE(iresearch::position);
 DEFINE_ATTRIBUTE_TYPE(position);
 
-position::impl::impl(size_t reserve_attrs)
-  : attrs_(reserve_attrs) {
+position::position(size_t reserve_attrs): attrs_(reserve_attrs) {
 }
 
 NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

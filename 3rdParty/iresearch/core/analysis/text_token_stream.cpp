@@ -537,7 +537,7 @@ bool text_token_stream::reset(const string_ref& data) {
 
   if (!state_->transliterator) {
     // transliteration rule taken verbatim from: http://userguide.icu-project.org/transforms/general
-    static UnicodeString collationRule("NFD; [:Nonspacing Mark:] Remove; NFC");
+    UnicodeString collationRule("NFD; [:Nonspacing Mark:] Remove; NFC"); // do not allocate statically since it causes memory leaks in ICU
 
     // reusable object owned by *this
     state_->transliterator.reset(

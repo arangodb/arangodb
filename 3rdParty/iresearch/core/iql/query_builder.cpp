@@ -269,8 +269,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
     template<typename... Args>
     static ptr make(Args&&... args) {
-      PTR_NAMED(LinkNode, ptr, std::forward<Args>(args)...);
-      return ptr;
+      return irs::memory::make_unique<LinkNode>(std::forward<Args>(args)...);
     }
 
    private:
@@ -281,7 +280,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
   class RootNode: public iresearch::Or {
    public:
-    DECLARE_FACTORY_DEFAULT();
+    DECLARE_FACTORY();
 
    private:
     friend parse_context;

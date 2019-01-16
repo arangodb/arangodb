@@ -23,17 +23,23 @@
 #include "AqlItemMatrix.h"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemBlockShell.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/InputAqlItemRow.h"
+
+#include <lib/Logger/Logger.h>
+
+#include <math.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlItemMatrix::AqlItemMatrix(size_t nrRegs_) : _size(0), _nrRegs(nrRegs_) {}
+AqlItemMatrix::AqlItemMatrix(size_t nrRegs) : _size(0), _nrRegs(nrRegs) {}
 
-void AqlItemMatrix::addBlock(std::unique_ptr<AqlItemBlock> block) {
-  TRI_ASSERT(block->getNrRegs() == getNrRegisters());
-  size_t blockSize = block->size();
-  _blocks.emplace_back(std::move(block));
+void AqlItemMatrix::addBlock(std::shared_ptr<InputAqlItemBlockShell> blockShell) {
+  TRI_ASSERT(blockShell->block().getNrRegs() == getNrRegisters());
+  size_t blockSize = blockShell->block().size();
+  _blocks.emplace_back(_size, std::move(blockShell));
   _size += blockSize;
 }
 
@@ -45,28 +51,81 @@ bool AqlItemMatrix::empty() const {
   return _blocks.empty();
 }
 
-std::unique_ptr<InputAqlItemRow> AqlItemMatrix::getRow(size_t index) const {
+InputAqlItemRow AqlItemMatrix::getRow(size_t index) const {
   TRI_ASSERT(index < _size);
+  TRI_ASSERT(!empty());
 
-  for (auto it = _blocks.begin(); it != _blocks.end() ; ++it) {
-    AqlItemBlock* block_ptr = it->get();
-    TRI_ASSERT(block_ptr != nullptr);
+  // Most blocks will have DefaultBatchSize
+  size_t mostLikelyIndex = (std::min)(
+      static_cast<size_t>(floor(index / ExecutionBlock::DefaultBatchSize())),
+      _blocks.size() - 1);
 
-    InputAqlItemRow::AqlItemBlockId blockId = it - _blocks.begin();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  size_t iterations = 0;
+#endif
+  size_t minIndex = 0;
+  size_t maxIndex = _blocks.size() - 1;
 
-    if (index < block_ptr->size()) {
-        return std::make_unique<InputAqlItemRow>(block_ptr, index, blockId);
+  // Under the assumption that all but the last block will have the
+  // DefaultBatchSize size, this algorithm will hit the correct block in the
+  // first attempt.
+  // As a fallback, it does a binary search on the blocks.
+  while (true) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    ++iterations;
+    TRI_ASSERT(iterations < _blocks.size() * 2);
+#endif
+    TRI_ASSERT(minIndex >= 0 && minIndex <= maxIndex);
+    TRI_ASSERT(maxIndex < _blocks.size());
+    TRI_ASSERT(mostLikelyIndex <= maxIndex);
+    TRI_ASSERT(mostLikelyIndex >= minIndex);
+    auto& candidate = _blocks[mostLikelyIndex];
+    TRI_ASSERT(candidate.second != nullptr);
+    if (index < candidate.first) {
+      // This block starts after the requested index, go left.
+      // Assert that there is a left to go to. This could only go wrong if the
+      // candidate.first values are wrong.
+      TRI_ASSERT(mostLikelyIndex > 0);
+      // To assure yourself of the correctness, remember that / rounds down and
+      // 0 <= mostLikelyIndex / 2 < mostLikelyIndex
+      // Narrow down upper Border
+      maxIndex = mostLikelyIndex;
+
+      mostLikelyIndex = minIndex + (mostLikelyIndex - minIndex) / 2;
+    } else if (index >= candidate.first + candidate.second->block().size()) {
+      minIndex = mostLikelyIndex;
+      // This block ends before the requested index, go right.
+      // Assert that there is a right to go to. This could only go wrong if the
+      // candidate.first values are wrong.
+      TRI_ASSERT(mostLikelyIndex < _blocks.size() - 1);
+      // To assure yourself of the correctness, remember that / rounds down,
+      // numBlocksRightFromHere >= 1 (see assert above) and
+      //   0
+      //   <= numBlocksRightFromHere / 2
+      //   < numBlocksRightFromHere
+      // . Therefore
+      //   mostLikelyIndex
+      //   < mostLikelyIndex + 1 + numBlocksRightFromHere / 2
+      //   < _blocks.size()
+      // .
+      //
+      // Please do not bother to shorten the following expression, the
+      // compilers are perfectly capable of doing that, and here the correctness
+      // is easier to see.
+      size_t const numBlocksRightFromHere = maxIndex < mostLikelyIndex;
+      mostLikelyIndex += 1 + numBlocksRightFromHere / 2;
+    } else {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      LOG_TOPIC_IF(WARN, Logger::AQL, iterations > 1)
+        << "Suboptimal AqlItemMatrix index lookup: Did "
+        << iterations << " iterations.";
+#endif
+      // Got it
+      return InputAqlItemRow{candidate.second, index - candidate.first};
     }
-
-    // Jump over this block
-    index -= block_ptr->size();
   }
+
   // We have asked for a row outside of this Vector
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Internal Aql Logic Error: An executor block is reading out of bounds.");
 }
 
-std::vector<std::unique_ptr<AqlItemBlock>>&& AqlItemMatrix::stealBlocks() {
-  _size = 0;
-  _nrRegs = 0;
-  return std::move(_blocks);
-}

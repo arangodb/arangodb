@@ -301,7 +301,7 @@ function hasIResearch (db) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       //FIXME: remove IF block after renaming will work in cluster
-                      if (e.errorNum === 1203 || e.errorNum === 1470) {
+                      if (e.errorNum === 1470) {
                         global.KEY_SET('${keySpaceId}', '${name}_no_cluster_rename', true);
                         global.KEY_SET('${keySpaceId}', '${name}_status', true);
                       } else {

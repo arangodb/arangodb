@@ -774,8 +774,7 @@ protected:
   }
 
   virtual irs::format::ptr get_codec() override {
-    static irs::version10::format FORMAT;
-    return irs::format::ptr(&FORMAT, [](irs::format*)->void{});
+    return irs::formats::get("1_0");
   }
 };
 
@@ -800,8 +799,7 @@ protected:
   }
 
   virtual irs::format::ptr get_codec() override {
-    static irs::version10::format FORMAT;
-    return irs::format::ptr(&FORMAT, [](irs::format*)->void{});
+    return irs::formats::get("1_0");
   }
 };
 

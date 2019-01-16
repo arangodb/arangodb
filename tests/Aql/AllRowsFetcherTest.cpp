@@ -44,7 +44,8 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
 
   GIVEN("there are no blocks upstream") {
     VPackBuilder input;
-    BlockFetcherMock blockFetcherMock{0};
+    ResourceMonitor monitor;
+    BlockFetcherMock blockFetcherMock{monitor, 0};
 
     WHEN("the producer does not wait") {
       blockFetcherMock.shouldReturn(ExecutionState::DONE, nullptr);
@@ -69,7 +70,6 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
       REQUIRE(blockFetcherMock.allBlocksFetched());
-      REQUIRE(blockFetcherMock.allFetchedBlocksReturned());
       REQUIRE(blockFetcherMock.numFetchBlockCalls() == 1);
     }
 
@@ -103,15 +103,14 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
       REQUIRE(blockFetcherMock.allBlocksFetched());
-      REQUIRE(blockFetcherMock.allFetchedBlocksReturned());
       REQUIRE(blockFetcherMock.numFetchBlockCalls() == 2);
     }
   }
 
   GIVEN("A single upstream block with a single row") {
     VPackBuilder input;
-    BlockFetcherMock blockFetcherMock{1};
     ResourceMonitor monitor;
+    BlockFetcherMock blockFetcherMock{monitor, 1};
 
     std::unique_ptr<AqlItemBlock> block = buildBlock<1>(&monitor, {{42}});
 
@@ -128,7 +127,7 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
           REQUIRE(matrix->getNrRegisters() == 1);
           REQUIRE(!matrix->empty());
           REQUIRE(matrix->size() == 1);
-          REQUIRE(matrix->getRow(0)->getValue(0).slice().getInt() == 42);
+          REQUIRE(matrix->getRow(0).getValue(0).slice().getInt() == 42);
 
           AND_THEN("null should be returned") {
             std::tie(state, matrix) = testee.fetchAllRows();
@@ -140,7 +139,6 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
       REQUIRE(blockFetcherMock.allBlocksFetched());
-      REQUIRE(blockFetcherMock.allFetchedBlocksReturned());
       REQUIRE(blockFetcherMock.numFetchBlockCalls() == 1);
     }
 
@@ -158,7 +156,7 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
           REQUIRE(matrix->getNrRegisters() == 1);
           REQUIRE(!matrix->empty());
           REQUIRE(matrix->size() == 1);
-          REQUIRE(matrix->getRow(0)->getValue(0).slice().getInt() == 42);
+          REQUIRE(matrix->getRow(0).getValue(0).slice().getInt() == 42);
 
           AND_THEN("null should be returned") {
             std::tie(state, matrix) = testee.fetchAllRows();
@@ -170,7 +168,6 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
       REQUIRE(blockFetcherMock.allBlocksFetched());
-      REQUIRE(blockFetcherMock.allFetchedBlocksReturned());
       REQUIRE(blockFetcherMock.numFetchBlockCalls() == 2);
     }
 
@@ -193,7 +190,7 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
             REQUIRE(!matrix->empty());
             REQUIRE(matrix->size() == 1);
             REQUIRE(matrix->getNrRegisters() == 1);
-            REQUIRE(matrix->getRow(0)->getValue(0).slice().getInt() == 42);
+            REQUIRE(matrix->getRow(0).getValue(0).slice().getInt() == 42);
 
             AND_THEN("null should be returned") {
               std::tie(state, matrix) = testee.fetchAllRows();
@@ -206,7 +203,6 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
       REQUIRE(blockFetcherMock.allBlocksFetched());
-      REQUIRE(blockFetcherMock.allFetchedBlocksReturned());
       REQUIRE(blockFetcherMock.numFetchBlockCalls() == 2);
     }
 
@@ -230,7 +226,7 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
             REQUIRE(!matrix->empty());
             REQUIRE(matrix->size() == 1);
             REQUIRE(matrix->getNrRegisters() == 1);
-            REQUIRE(matrix->getRow(0)->getValue(0).slice().getInt() == 42);
+            REQUIRE(matrix->getRow(0).getValue(0).slice().getInt() == 42);
 
             AND_THEN("null should be returned") {
               std::tie(state, matrix) = testee.fetchAllRows();
@@ -243,7 +239,6 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
       REQUIRE(blockFetcherMock.allBlocksFetched());
-      REQUIRE(blockFetcherMock.allFetchedBlocksReturned());
       REQUIRE(blockFetcherMock.numFetchBlockCalls() == 3);
     }
   }
@@ -252,7 +247,7 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
   // specification should be compared with the actual output.
   GIVEN("there are multiple blocks upstream") {
     ResourceMonitor monitor;
-    BlockFetcherMock blockFetcherMock{1};
+    BlockFetcherMock blockFetcherMock{monitor, 1};
 
     // three 1-column matrices with 3, 2 and 1 rows, respectively
     std::unique_ptr<AqlItemBlock> block1 = buildBlock<1>(&monitor, {{{1}}, {{2}}, {{3}}}),
@@ -278,7 +273,9 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
           for (int64_t i = 0; i < 6; i++) {
             int64_t rowIdx = i;
             int64_t rowValue = i+1;
-            REQUIRE(matrix->getRow(rowIdx)->getValue(0).slice().getInt() == rowValue);
+            auto row = matrix->getRow(rowIdx);
+            REQUIRE(row.isInitialized());
+            REQUIRE(row.getValue(0).slice().getInt() == rowValue);
           }
 
           AND_THEN("null should be returned") {
@@ -291,7 +288,6 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
       REQUIRE(blockFetcherMock.allBlocksFetched());
-      REQUIRE(blockFetcherMock.allFetchedBlocksReturned());
       REQUIRE(blockFetcherMock.numFetchBlockCalls() == 3);
     }
 
@@ -329,7 +325,7 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
             for (int64_t i = 0; i < 6; i++) {
               int64_t rowIdx = i;
               int64_t rowValue = i+1;
-              REQUIRE(matrix->getRow(rowIdx)->getValue(0).slice().getInt() == rowValue);
+              REQUIRE(matrix->getRow(rowIdx).getValue(0).slice().getInt() == rowValue);
             }
 
             AND_THEN("null should be returned") {
@@ -343,7 +339,6 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
       REQUIRE(blockFetcherMock.allBlocksFetched());
-      REQUIRE(blockFetcherMock.allFetchedBlocksReturned());
       REQUIRE(blockFetcherMock.numFetchBlockCalls() == 6);
     }
 
@@ -384,7 +379,7 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
             for (int64_t i = 0; i < 6; i++) {
               int64_t rowIdx = i;
               int64_t rowValue = i+1;
-              REQUIRE(matrix->getRow(rowIdx)->getValue(0).slice().getInt() == rowValue);
+              REQUIRE(matrix->getRow(rowIdx).getValue(0).slice().getInt() == rowValue);
             }
 
             AND_THEN("null should be returned") {
@@ -398,7 +393,6 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
       REQUIRE(blockFetcherMock.allBlocksFetched());
-      REQUIRE(blockFetcherMock.allFetchedBlocksReturned());
       REQUIRE(blockFetcherMock.numFetchBlockCalls() == 7);
     }
   }

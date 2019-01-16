@@ -30,6 +30,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SortRegister.h"
+#include "Aql/Stats.h"
 
 #include <algorithm>
 
@@ -52,13 +53,13 @@ class OurLessThan {
 
   bool operator()(size_t const& a,
                   size_t const& b) const {
-    auto left = _input.getRow(a);
-    auto right = _input.getRow(b);
+    InputAqlItemRow left = _input.getRow(a);
+    InputAqlItemRow right = _input.getRow(b);
     for (auto const& reg : _sortRegisters) {
-      auto const& lhs = left->getValue(reg.reg);
-      auto const& rhs = right->getValue(reg.reg);
+      AqlValue const& lhs = left.getValue(reg.reg);
+      AqlValue const& rhs = right.getValue(reg.reg);
 
-#ifdef USE_IRESEARCH
+#if 0 // #ifdef USE_IRESEARCH
       TRI_ASSERT(reg.comparator);
       int const cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
 #else
@@ -83,11 +84,11 @@ class OurLessThan {
 
 }
 
-static std::unordered_set<RegisterId> mapSortRegistersToRegisterIds(
+static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegisterIds(
     std::vector<SortRegister> const& sortRegisters) {
-  std::unordered_set<RegisterId> set{};
+  auto set = std::make_shared<std::unordered_set<RegisterId>>();
   std::transform(sortRegisters.begin(), sortRegisters.end(),
-                 std::inserter(set, set.begin()),
+                 std::inserter(*set, set->begin()),
                  [](SortRegister const& sortReg) { return sortReg.reg; });
   return set;
 }
@@ -97,7 +98,7 @@ SortExecutorInfos::SortExecutorInfos(
     RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear, transaction::Methods* trx,
     bool stable)
-    : ExecutorInfos(mapSortRegistersToRegisterIds(sortRegisters), {},
+    : ExecutorInfos(mapSortRegistersToRegisterIds(sortRegisters), nullptr,
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear)),
       _trx(trx),
@@ -153,8 +154,8 @@ std::pair<ExecutionState, NoStats> SortExecutor::produceRow(
     // Bail out on no elements
     return {ExecutionState::DONE, NoStats{}};
   }
-  auto inRow = _input->getRow(_sortedIndexes[_returnNext]);
-  output.copyRow(*inRow);
+  InputAqlItemRow inRow = _input->getRow(_sortedIndexes[_returnNext]);
+  output.copyRow(inRow);
   _returnNext++;
   if (_returnNext >= _sortedIndexes.size()) {
     return {ExecutionState::DONE, NoStats{}};

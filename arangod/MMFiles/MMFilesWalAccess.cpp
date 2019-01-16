@@ -43,8 +43,7 @@
 using namespace arangodb;
 using namespace arangodb::mmfilesutils;
 
-Result MMFilesWalAccess::tickRange(
-    std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const {
+Result MMFilesWalAccess::tickRange(std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const {
   auto const ranges = MMFilesLogfileManager::instance()->ranges();
   if (!ranges.empty()) {
     minMax.first = ranges[0].tickMin;
@@ -83,28 +82,26 @@ TRI_voc_tick_t MMFilesWalAccess::lastTick() const {
 
 /// should return the list of transactions started, but not committed in that
 /// range (range can be adjusted)
-WalAccessResult MMFilesWalAccess::openTransactions(
-    uint64_t tickStart, uint64_t tickEnd, WalAccess::Filter const& filter,
-    TransactionCallback const& cb) const {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-      << "determining transactions, tick range " << tickStart << " - "
-      << tickEnd;
+WalAccessResult MMFilesWalAccess::openTransactions(WalAccess::Filter const& filter,
+                                                   TransactionCallback const& cb) const {
+  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+      << "determining transactions, tick range " << filter.tickStart << " - "
+      << filter.tickEnd;
 
   std::unordered_map<TRI_voc_tid_t, TRI_voc_tick_t> transactions;
 
+  MMFilesLogfileManager* mgr = MMFilesLogfileManager::instance();
   // ask the logfile manager which datafiles qualify
   bool fromTickIncluded = false;
-  std::vector<arangodb::MMFilesWalLogfile*> logfiles =
-      MMFilesLogfileManager::instance()->getLogfilesForTickRange(
-          tickStart, tickEnd, fromTickIncluded);
+  auto logfiles = mgr->getLogfilesForTickRange(filter.tickStart, filter.tickEnd, fromTickIncluded);
   // always return the logfiles we have used
-  TRI_DEFER(MMFilesLogfileManager::instance()->returnLogfiles(logfiles));
+  TRI_DEFER(mgr->returnLogfiles(logfiles));
 
   // setup some iteration state
   TRI_voc_tick_t lastFoundTick = 0;
   WalAccessResult res;
 
-  // LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "found logfiles: " <<
+  // LOG_TOPIC(INFO, arangodb::Logger::REPLICATION) << "found logfiles: " <<
   // logfiles.size();
 
   try {
@@ -115,10 +112,10 @@ WalAccessResult MMFilesWalAccess::openTransactions(
 
       char const* ptr;
       char const* end;
-      MMFilesLogfileManager::instance()->getActiveLogfileRegion(logfile, ptr,
-                                                                end);
+      MMFilesLogfileManager::instance()->getActiveLogfileRegion(logfile, ptr, end);
 
-      // LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "scanning logfile " << i;
+      // LOG_TOPIC(INFO, arangodb::Logger::REPLICATION) << "scanning logfile "
+      // << i;
       while (ptr < end) {
         auto const* marker = reinterpret_cast<MMFilesMarker const*>(ptr);
 
@@ -139,12 +136,12 @@ WalAccessResult MMFilesWalAccess::openTransactions(
         // get the marker's tick and check whether we should include it
         TRI_voc_tick_t const foundTick = marker->getTick();
 
-        if (foundTick <= tickStart) {
+        if (foundTick <= filter.tickStart) {
           // marker too old
           continue;
         }
 
-        if (foundTick > tickEnd) {
+        if (foundTick > filter.tickEnd) {
           // marker too new
           break;
         }
@@ -179,10 +176,9 @@ WalAccessResult MMFilesWalAccess::openTransactions(
       }
     }
 
-    // LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "found transactions: " <<
-    // transactions.size();
-    // LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "last tick: " <<
-    // lastFoundTick;
+    // LOG_TOPIC(INFO, arangodb::Logger::REPLICATION) << "found transactions: "
+    // << transactions.size(); LOG_TOPIC(INFO, arangodb::Logger::REPLICATION) <<
+    // "last tick: " << lastFoundTick;
     for (auto const& it : transactions) {
       if (it.second - 1 < lastFoundTick) {
         lastFoundTick = it.second - 1;
@@ -190,22 +186,19 @@ WalAccessResult MMFilesWalAccess::openTransactions(
       cb(it.first, it.second);
     }
 
-    MMFilesLogfileManagerState const state =
-        MMFilesLogfileManager::instance()->state();
+    MMFilesLogfileManagerState const state = MMFilesLogfileManager::instance()->state();
     res.reset(TRI_ERROR_NO_ERROR, fromTickIncluded, lastFoundTick, 0,
               /*latest*/ state.lastCommittedTick);
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "caught exception while determining open transactions: "
-        << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+        << "caught exception while determining open transactions: " << ex.what();
     res.reset(ex.code(), false, 0, 0, 0);
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "caught exception while determining open transactions: "
-        << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+        << "caught exception while determining open transactions: " << ex.what();
     res.reset(TRI_ERROR_INTERNAL, false, 0, 0, 0);
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
         << "caught unknown exception while determining open transactions";
     res.reset(TRI_ERROR_INTERNAL, false, 0, 0, 0);
   }
@@ -214,8 +207,7 @@ WalAccessResult MMFilesWalAccess::openTransactions(
 }
 
 struct MMFilesWalAccessContext : WalAccessContext {
-  MMFilesWalAccessContext(WalAccess::Filter const& f,
-                          WalAccess::MarkerCallback const& c)
+  MMFilesWalAccessContext(WalAccess::Filter const& f, WalAccess::MarkerCallback const& c)
       : WalAccessContext(f, c) {}
 
   /// @brief whether or not a marker belongs to a transaction
@@ -226,23 +218,20 @@ struct MMFilesWalAccessContext : WalAccessContext {
     }
 
     // then check if the marker belongs to the "correct" database
-    if (_filter.vocbase != 0 &&
-        _filter.vocbase != MMFilesDatafileHelper::DatabaseId(marker)) {
+    if (_filter.vocbase != 0 && _filter.vocbase != MMFilesDatafileHelper::DatabaseId(marker)) {
       return false;
     }
     return true;
   }
-  
+
   bool isViewWalMarker(MMFilesMarker const* marker) const {
     MMFilesMarkerType t = marker->getType();
     return t == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
-           t == TRI_DF_MARKER_VPACK_DROP_VIEW ||
-           t == TRI_DF_MARKER_VPACK_CHANGE_VIEW;
+           t == TRI_DF_MARKER_VPACK_DROP_VIEW || t == TRI_DF_MARKER_VPACK_CHANGE_VIEW;
   }
 
   /// @brief whether or not a marker is replicated
-  bool mustReplicateWalMarker(MMFilesMarker const* marker,
-                              TRI_voc_tick_t databaseId,
+  bool mustReplicateWalMarker(MMFilesMarker const* marker, TRI_voc_tick_t databaseId,
                               TRI_voc_cid_t datasourceId) {
     // first check the marker type
     if (!MustReplicateWalMarkerType(marker, true)) {
@@ -265,8 +254,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
         // will not find anything for a view
         LogicalCollection* collection = loadCollection(databaseId, datasourceId);
         if (collection != nullptr) {  // db may be already dropped
-          if (TRI_ExcludeCollectionReplication(collection->name(),
-                                               _filter.includeSystem)) {
+          if (TRI_ExcludeCollectionReplication(collection->name(), _filter.includeSystem)) {
             return false;
           }
         }
@@ -304,8 +292,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
     TRI_replication_operation_e tt = TranslateType(marker);
     _builder.add("type", VPackValue(static_cast<uint64_t>(tt)));
 
-    if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
-        type == TRI_DF_MARKER_VPACK_REMOVE ||
+    if (type == TRI_DF_MARKER_VPACK_DOCUMENT || type == TRI_DF_MARKER_VPACK_REMOVE ||
         type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
         type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
         type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
@@ -331,8 +318,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
                        MMFilesDatafileHelper::VPackOffset(type));
       _builder.add("db", VPackValue(vocbase->name()));
       _builder.add("cuid", slice.get("cuid"));
-    } else if (type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
-               type == TRI_DF_MARKER_VPACK_CHANGE_VIEW) {
+    } else if (type == TRI_DF_MARKER_VPACK_CREATE_VIEW || type == TRI_DF_MARKER_VPACK_CHANGE_VIEW) {
       TRI_ASSERT(databaseId != 0);
       TRI_vocbase_t* vocbase = loadVocbase(databaseId);
       if (vocbase == nullptr) {
@@ -341,11 +327,11 @@ struct MMFilesWalAccessContext : WalAccessContext {
       }
       auto view = vocbase->lookupView(datasourceId);
       if (!view) {
-        return TRI_ERROR_NO_ERROR; // ignore marker
+        return TRI_ERROR_NO_ERROR;  // ignore marker
       }
       _builder.add("db", VPackValue(vocbase->name()));
       _builder.add("cuid", VPackValue(view->guid()));
-      
+
     } else {
       TRI_ASSERT(databaseId != 0);
       TRI_vocbase_t* vocbase = loadVocbase(databaseId);
@@ -356,7 +342,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
 
       _builder.add("db", VPackValue(vocbase->name()));
 
-      if (datasourceId > 0) { // will not find anything for a view
+      if (datasourceId > 0) {  // will not find anything for a view
         LogicalCollection* col = loadCollection(databaseId, datasourceId);
         if (col == nullptr) {
           return TRI_ERROR_NO_ERROR;  // ignore dropped collections
@@ -393,8 +379,8 @@ struct MMFilesWalAccessContext : WalAccessContext {
       }
 
       default: {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got invalid marker of type "
-                                                << static_cast<int>(type);
+        LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+            << "got invalid marker of type " << static_cast<int>(type);
         TRI_ASSERT(false);
         return TRI_ERROR_INTERNAL;
       }
@@ -408,15 +394,15 @@ struct MMFilesWalAccessContext : WalAccessContext {
     return TRI_ERROR_NO_ERROR;
   }
 
-  WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd, size_t chunkSize) {
-    MMFilesLogfileManagerState const state =
-        MMFilesLogfileManager::instance()->state();
+  WalAccessResult tail(size_t chunkSize) {
+    MMFilesLogfileManagerState const state = MMFilesLogfileManager::instance()->state();
 
     // ask the logfile manager which datafiles qualify
     bool fromTickIncluded = false;
     std::vector<arangodb::MMFilesWalLogfile*> logfiles =
-        MMFilesLogfileManager::instance()->getLogfilesForTickRange(
-            tickStart, tickEnd, fromTickIncluded);
+        MMFilesLogfileManager::instance()->getLogfilesForTickRange(_filter.tickStart,
+                                                                   _filter.tickEnd,
+                                                                   fromTickIncluded);
     // always return the logfiles we have used
     TRI_DEFER(MMFilesLogfileManager::instance()->returnLogfiles(logfiles));
 
@@ -438,8 +424,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
 
         char const* ptr;
         char const* end;
-        MMFilesLogfileManager::instance()->getActiveLogfileRegion(logfile, ptr,
-                                                                  end);
+        MMFilesLogfileManager::instance()->getActiveLogfileRegion(logfile, ptr, end);
 
         while (ptr < end) {
           auto const* marker = reinterpret_cast<MMFilesMarker const*>(ptr);
@@ -457,17 +442,14 @@ struct MMFilesWalAccessContext : WalAccessContext {
           if (type == TRI_DF_MARKER_PROLOGUE) {
             lastDatabaseId = MMFilesDatafileHelper::DatabaseId(marker);
             lastCollectionId = MMFilesDatafileHelper::CollectionId(marker);
-          } else if (type == TRI_DF_MARKER_HEADER ||
-                     type == TRI_DF_MARKER_FOOTER) {
+          } else if (type == TRI_DF_MARKER_HEADER || type == TRI_DF_MARKER_FOOTER) {
             lastDatabaseId = 0;
             lastCollectionId = 0;
           } else if (type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION) {
             // fill collection name cache
-            TRI_voc_tick_t databaseId =
-                MMFilesDatafileHelper::DatabaseId(marker);
+            TRI_voc_tick_t databaseId = MMFilesDatafileHelper::DatabaseId(marker);
             TRI_ASSERT(databaseId != 0);
-            TRI_voc_cid_t collectionId =
-                MMFilesDatafileHelper::CollectionId(marker);
+            TRI_voc_cid_t collectionId = MMFilesDatafileHelper::CollectionId(marker);
             TRI_ASSERT(collectionId != 0);
 
             // this will cache the vocbase and collection for this run
@@ -481,35 +463,33 @@ struct MMFilesWalAccessContext : WalAccessContext {
 
           // get the marker's tick and check whether we should include it
           TRI_voc_tick_t foundTick = marker->getTick();
-        
-          if (foundTick <= tickEnd) {
+
+          if (foundTick <= _filter.tickEnd) {
             lastScannedTick = foundTick;
           }
 
-          if (foundTick <= tickStart) {
+          if (foundTick <= _filter.tickStart) {
             // marker too old
             continue;
           }
 
-          if (foundTick >= tickEnd) {
+          if (foundTick >= _filter.tickEnd) {
             hasMore = false;
 
-            if (foundTick > tickEnd) {
+            if (foundTick > _filter.tickEnd) {
               // marker too new
               break;
             }
           }
 
           TRI_voc_tick_t databaseId;
-          TRI_voc_cid_t  datasourceId;
-          if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
-              type == TRI_DF_MARKER_VPACK_REMOVE) {
+          TRI_voc_cid_t datasourceId;
+          if (type == TRI_DF_MARKER_VPACK_DOCUMENT || type == TRI_DF_MARKER_VPACK_REMOVE) {
             databaseId = lastDatabaseId;
             datasourceId = lastCollectionId;
           } else {
             databaseId = MMFilesDatafileHelper::DatabaseId(marker);
-            if (type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
-                type == TRI_DF_MARKER_VPACK_CHANGE_VIEW) {
+            if (type == TRI_DF_MARKER_VPACK_CREATE_VIEW || type == TRI_DF_MARKER_VPACK_CHANGE_VIEW) {
               datasourceId = MMFilesDatafileHelper::ViewId(marker);
             } else {
               datasourceId = MMFilesDatafileHelper::CollectionId(marker);
@@ -540,44 +520,42 @@ struct MMFilesWalAccessContext : WalAccessContext {
         }
       }
     } catch (arangodb::basics::Exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
           << "caught exception while dumping replication log: " << ex.what();
       res = ex.code();
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
           << "caught exception while dumping replication log: " << ex.what();
       res = TRI_ERROR_INTERNAL;
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
           << "caught unknown exception while dumping replication log";
       res = TRI_ERROR_INTERNAL;
     }
 
-    return WalAccessResult(res, fromTickIncluded, lastFoundTick, lastScannedTick,
-                           state.lastCommittedTick);
+    return WalAccessResult(res, fromTickIncluded, lastFoundTick,
+                           lastScannedTick, state.lastCommittedTick);
   }
 };
 
 /// Tails the wall, this will already sanitize the
-WalAccessResult MMFilesWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
-                                       size_t chunkSize,
-                                       TRI_voc_tid_t barrierId,
-                                       WalAccess::Filter const& filter,
+WalAccessResult MMFilesWalAccess::tail(WalAccess::Filter const& filter,
+                                       size_t chunkSize, TRI_voc_tid_t barrierId,
                                        MarkerCallback const& callback) const {
-  /*OG_TOPIC(WARN, Logger::FIXME)
+  /*OG_TOPIC(WARN, Logger::REPLICATION)
       << "1. Starting tailing: tickStart " << tickStart << " tickEnd "
       << tickEnd << " chunkSize " << chunkSize << " includeSystem "
       << filter.includeSystem << " firstRegularTick" <<
      filter.firstRegularTick;*/
 
   LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
-      << "dumping log, tick range " << tickStart << " - " << tickEnd;
+      << "dumping log, tick range " << filter.tickStart << " - " << filter.tickEnd;
 
   if (barrierId > 0) {
     // extend the WAL logfile barrier
     MMFilesLogfileManager::instance()->extendLogfileBarrier(barrierId, 180,
-                                                            tickStart);
+                                                            filter.tickStart);
   }
   MMFilesWalAccessContext ctx(filter, callback);
-  return ctx.tail(tickStart, tickEnd, chunkSize);
+  return ctx.tail(chunkSize);
 }

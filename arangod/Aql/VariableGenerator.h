@@ -24,9 +24,9 @@
 #ifndef ARANGOD_AQL_VARIABLE_GENERATOR_H
 #define ARANGOD_AQL_VARIABLE_GENERATOR_H 1
 
-#include "Basics/Common.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
@@ -35,7 +35,7 @@ class VariableGenerator {
  public:
   /// @brief create the generator
   VariableGenerator();
-  
+
   VariableGenerator(VariableGenerator const& other) = delete;
   VariableGenerator& operator=(VariableGenerator const& other) = delete;
 
@@ -90,7 +90,7 @@ class VariableGenerator {
   /// @brief the next assigned variable id
   VariableId _id;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

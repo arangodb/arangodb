@@ -112,6 +112,17 @@ it is to be expected that certain functionality (e.g. some API endpoints, the
 WebUI, some AQL functions etc) will be missing or severely broken. Nevertheless
 you may whish to reduce the footprint of ArangoDB by disabling V8.
 
-This option is expected to **only** work reliably on a _single server_,
-_agency_ or in an _active failover_ setup. Do not try to use this feature on a
-_coordinator_, or _cluster database server_.
+This option is expected to **only** work reliably on a _single server_, _DBServer_,
+or _agency_. Do not try to use this feature on a _coordinator_ or in the _ActiveFailover_ setup.
+
+### Copy JavaScript Installation files
+
+```
+--javascript.copy-installation bool
+```
+
+Copy contents of 'javascript.startup-directory' on first start of the server. This option
+is intended to be useful for _rolling upgrades_. Setting this to _true_ means that you can
+upgrade the underlying ArangoDB packages, without influencing the running _arangod_ instance.
+Setting this value does only make sense if you use ArangoDB outside of a container solution,
+like Docker, Kubernetes, etc.

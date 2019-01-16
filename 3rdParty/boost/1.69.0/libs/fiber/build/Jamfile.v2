@@ -1,0 +1,148 @@
+# Boost.Fiber Library Build Jamfile
+
+#          Copyright Oliver Kowalke 2013.
+# Distributed under the Boost Software License, Version 1.0.
+#    (See accompanying file LICENSE_1_0.txt or copy at
+#          http://www.boost.org/LICENSE_1_0.txt)
+
+import feature ;
+import modules ;
+import testing ;
+import toolset ;
+import ../../config/checks/config : requires ;
+
+feature.feature numa : on : optional propagated composite ;
+feature.compose <numa>on : <define>BOOST_USE_NUMA ;
+
+project boost/fiber
+    : requirements
+      <library>/boost/context//boost_context
+      <library>/boost/filesystem//boost_filesystem
+      <target-os>solaris:<linkflags>"-llgrp"
+      <target-os>windows:<define>_WIN32_WINNT=0x0601
+      <toolset>gcc,<segmented-stacks>on:<cxxflags>-fsplit-stack
+      <toolset>gcc,<segmented-stacks>on:<cxxflags>-DBOOST_USE_SEGMENTED_STACKS
+      <toolset>clang,<segmented-stacks>on:<cxxflags>-fsplit-stack
+      <toolset>clang,<segmented-stacks>on:<cxxflags>-DBOOST_USE_SEGMENTED_STACKS
+      <link>shared:<define>BOOST_FIBERS_DYN_LINK=1
+      <define>BOOST_FIBERS_SOURCE
+      <threading>multi
+    : usage-requirements
+      <link>shared:<define>BOOST_FIBERS_DYN_LINK=1
+      <optimization>speed:<define>BOOST_DISABLE_ASSERTS
+      <variant>release:<define>BOOST_DISABLE_ASSERTS
+    : source-location ../src
+    ;
+
+rule numa ( properties * )
+{
+    local result  ;
+    if ( <numa>on in $(properties) )
+    {
+        result = <numa>on ;
+    }
+    else
+    {
+        result = <build>no ;
+    }
+    return $(result) ;
+}
+
+lib boost_fiber
+    : algo/algorithm.cpp
+      algo/round_robin.cpp
+      algo/shared_work.cpp
+      algo/work_stealing.cpp
+      barrier.cpp
+      condition_variable.cpp
+      context.cpp
+      fiber.cpp
+      future.cpp
+      mutex.cpp
+      properties.cpp
+      recursive_mutex.cpp
+      recursive_timed_mutex.cpp
+      timed_mutex.cpp
+      scheduler.cpp
+    : <link>shared:<library>../../context/build//boost_context
+    [ requires cxx11_auto_declarations
+               cxx11_constexpr
+               cxx11_defaulted_functions
+               cxx11_final
+               cxx11_hdr_mutex
+               cxx11_hdr_tuple
+               cxx11_lambdas
+               cxx11_noexcept
+               cxx11_nullptr
+               cxx11_rvalue_references
+               cxx11_template_aliases
+               cxx11_thread_local
+               cxx11_variadic_templates ]
+    ;
+
+
+alias numa_sources
+    : numa/aix/pin_thread.cpp
+      numa/aix/topology.cpp
+    : <target-os>aix
+    ;
+
+alias numa_sources
+    : numa/freebsd/pin_thread.cpp
+      numa/freebsd/topology.cpp
+    : <target-os>freebsd
+    ;
+
+alias numa_sources
+    : numa/hpux/pin_thread.cpp
+      numa/hpux/topology.cpp
+    : <target-os>hpux
+    ;
+
+alias numa_sources
+    : numa/linux/pin_thread.cpp
+      numa/linux/topology.cpp
+    : <target-os>linux
+    ;
+
+alias numa_sources
+    : numa/solaris/pin_thread.cpp
+      numa/solaris/topology.cpp
+    : <target-os>solaris
+    ;
+
+alias numa_sources
+    : numa/windows/pin_thread.cpp
+      numa/windows/topology.cpp
+    : <target-os>windows
+    ;
+
+alias numa_sources
+    : numa/pin_thread.cpp
+      numa/topology.cpp
+    ;
+
+explicit numa_sources ;
+
+lib boost_fiber_numa
+    : numa_sources
+      numa/algo/work_stealing.cpp
+    : 
+    <conditional>@numa
+    [ requires cxx11_auto_declarations
+               cxx11_constexpr
+               cxx11_defaulted_functions
+               cxx11_final
+               cxx11_hdr_mutex
+               cxx11_hdr_tuple
+               cxx11_lambdas
+               cxx11_noexcept
+               cxx11_nullptr
+               cxx11_rvalue_references
+               cxx11_template_aliases
+               cxx11_thread_local
+               cxx11_variadic_templates ]
+    ;
+
+
+boost-install boost_fiber boost_fiber_numa ;

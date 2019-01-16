@@ -46,9 +46,9 @@ class format_test_case_base : public index_test_base {
  public:  
   class postings;
 
-  class position: public irs::position::impl {
+  class position: public irs::position {
    public:
-    position(const irs::flags& features) {
+    position(const irs::flags& features): irs::position(2) {
       if (features.check<irs::offset>()) {
         attrs_.emplace(offs_);
       }
@@ -64,7 +64,8 @@ class format_test_case_base : public index_test_base {
 
     bool next() override {
       if (begin_ == end_) {
-        begin_ = irs::position::NO_MORE;
+        begin_ = irs::type_limits<irs::type_t::pos_t>::eof();
+
         return false;
       }
 
@@ -86,7 +87,7 @@ class format_test_case_base : public index_test_base {
    private:
     friend class postings;
 
-    uint32_t begin_{ irs::position::INVALID };
+    uint32_t begin_{ irs::type_limits<irs::type_t::pos_t>::invalid() };
     uint32_t end_;
     irs::offset offs_{};
     irs::payload pay_{};
@@ -98,50 +99,47 @@ class format_test_case_base : public index_test_base {
     typedef std::vector<irs::doc_id_t> docs_t;
     typedef std::vector<irs::cost::cost_t> costs_t;
 
-    postings(const docs_t::const_iterator& begin, const docs_t::const_iterator& end, 
+    postings(
+        const docs_t::const_iterator& begin,
+        const docs_t::const_iterator& end,
         const irs::flags& features = irs::flags::empty_instance()
     )
-      : next_(begin), end_(end) {
+      : next_(begin), end_(end), pos_(features) {
       if (features.check<irs::frequency>()) {
         freq_.value = 10;
         attrs_.emplace<irs::frequency>(freq_);
 
         if (features.check<irs::position>()) {
-          position_.reset(irs::memory::make_unique<position>(features));
-          attrs_.emplace(position_);
-          pos_ = static_cast<position*>(position_.get());
+          attrs_.emplace(pos_);
         }
       }
     }
 
-    bool next() {      
+    bool next() override {
       if (next_ == end_) {
         doc_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
         return false;
       }
 
       doc_ = *next_;
-
-      if (pos_) {
-        pos_->begin_ = doc_;
-        pos_->end_ = pos_->begin_ + 10;
-        pos_->clear();
-      }
-
+      pos_.begin_ = doc_;
+      pos_.end_ = pos_.begin_ + 10;
+      pos_.clear();
       ++next_;
+
       return true;
     }
 
-    irs::doc_id_t value() const {
+    irs::doc_id_t value() const override {
       return doc_;
     }
 
-    irs::doc_id_t seek(irs::doc_id_t target) {
+    irs::doc_id_t seek(irs::doc_id_t target) override {
       irs::seek(*this, target);
       return value();
     }
 
-    const irs::attribute_view& attributes() const NOEXCEPT {
+    const irs::attribute_view& attributes() const NOEXCEPT override {
       return attrs_;
     }
 
@@ -149,9 +147,8 @@ class format_test_case_base : public index_test_base {
     irs::attribute_view attrs_;
     docs_t::const_iterator next_;
     docs_t::const_iterator end_;
-    position* pos_{};
     irs::frequency freq_;
-    irs::position position_;
+    tests::format_test_case_base::position pos_;
     irs::doc_id_t doc_{ irs::type_limits<irs::type_t::doc_id_t>::invalid() };
   }; // postings 
 
@@ -205,7 +202,7 @@ class format_test_case_base : public index_test_base {
 
   void assert_no_directory_artifacts(
     const iresearch::directory& dir,
-    iresearch::format& codec,
+    const iresearch::format& codec,
     const std::unordered_set<std::string>& expect_additional = std::unordered_set<std::string> ()
   ) {
     std::vector<std::string> dir_files;
@@ -273,7 +270,7 @@ class format_test_case_base : public index_test_base {
     // cleanup on refcount decrement (old files not in use)
     {
       // create writer to directory
-      auto writer = iresearch::index_writer::make(*dir, codec(), iresearch::OPEN_MODE::OM_CREATE);
+      auto writer = iresearch::index_writer::make(*dir, codec(), iresearch::OM_CREATE);
 
       // initialize directory
       {
@@ -310,7 +307,7 @@ class format_test_case_base : public index_test_base {
 
       // delete record from first segment (creating new index_meta file + doc_mask file, remove old)
       {
-        writer->remove(*(query_doc1.filter));
+        writer->documents().remove(*(query_doc1.filter));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec());
@@ -318,7 +315,7 @@ class format_test_case_base : public index_test_base {
 
       // delete all record from first segment (creating new index_meta file, remove old meta + unused segment)
       {
-        writer->remove(*(query_doc2.filter));
+        writer->documents().remove(*(query_doc2.filter));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec());
@@ -326,7 +323,7 @@ class format_test_case_base : public index_test_base {
 
       // delete all records from second segment (creating new index_meta file, remove old meta + unused segment)
       {
-        writer->remove(*(query_doc2.filter));
+        writer->documents().remove(*(query_doc2.filter));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec());
@@ -348,7 +345,7 @@ class format_test_case_base : public index_test_base {
     // cleanup on refcount decrement (old files still in use)
     {
       // create writer to directory
-      auto writer = iresearch::index_writer::make(*dir, codec(), iresearch::OPEN_MODE::OM_CREATE);
+      auto writer = iresearch::index_writer::make(*dir, codec(), iresearch::OM_CREATE);
 
       // initialize directory
       {
@@ -378,7 +375,7 @@ class format_test_case_base : public index_test_base {
 
       // delete record from first segment (creating new doc_mask file)
       {
-        writer->remove(*(query_doc1.filter));
+        writer->documents().remove(*(query_doc1.filter));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec());
@@ -417,7 +414,7 @@ class format_test_case_base : public index_test_base {
 
       // delete record from first segment (creating new doc_mask file, not-remove old)
       {
-        writer->remove(*(query_doc2.filter));
+        writer->documents().remove(*(query_doc2.filter));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec(), reader_files);
@@ -425,7 +422,7 @@ class format_test_case_base : public index_test_base {
 
       // delete all record from first segment (creating new index_meta file, remove old meta but leave first segment)
       {
-        writer->remove(*(query_doc3.filter));
+        writer->documents().remove(*(query_doc3.filter));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec(), reader_files);
@@ -433,7 +430,7 @@ class format_test_case_base : public index_test_base {
 
       // delete all records from second segment (creating new index_meta file, remove old meta + unused segment)
       {
-        writer->remove(*(query_doc4.filter));
+        writer->documents().remove(*(query_doc4.filter));
         writer->commit();
         iresearch::directory_cleaner::clean(*dir); // clean unused files
         assert_no_directory_artifacts(*dir, *codec(), reader_files);
@@ -463,7 +460,7 @@ class format_test_case_base : public index_test_base {
     {
       // fill directory
       {
-        auto writer = iresearch::index_writer::make(*dir, codec(), iresearch::OPEN_MODE::OM_CREATE);
+        auto writer = iresearch::index_writer::make(*dir, codec(), iresearch::OM_CREATE);
 
         writer->commit(); // initialize directory
         ASSERT_TRUE(insert(*writer,
@@ -480,7 +477,7 @@ class format_test_case_base : public index_test_base {
           doc3->stored.begin(), doc3->stored.end()
         ));
         writer->commit(); // add second segment
-        writer->remove(*(query_doc1.filter));
+        writer->documents().remove(*(query_doc1.filter));
         writer->commit(); // remove first segment
       }
 
@@ -498,7 +495,7 @@ class format_test_case_base : public index_test_base {
       ASSERT_TRUE(dir->exists(exists, "dummy.file.2") && exists);
 
       // open writer
-      auto writer = iresearch::index_writer::make(*dir, codec(), iresearch::OPEN_MODE::OM_CREATE);
+      auto writer = iresearch::index_writer::make(*dir, codec(), iresearch::OM_CREATE);
 
       // if directory has files (for fs directory) then ensure only valid meta+segments loaded
       ASSERT_TRUE(dir->exists(exists, "dummy.file.1") && !exists);
@@ -537,9 +534,7 @@ class format_test_case_base : public index_test_base {
       irs::flush_state state;
       state.dir = &dir();
       state.doc_count = 100;
-      state.fields_count = 1;
       state.name = "segment_name";
-      state.ver = IRESEARCH_VERSION;
       state.features = &field.features;
 
       // should use sorted terms on write
@@ -766,35 +761,79 @@ class format_test_case_base : public index_test_base {
   }
 
   void segment_meta_read_write() {
-    iresearch::segment_meta meta;
-    meta.name = "meta_name";
-    meta.docs_count = 453;
-    meta.version = 100;
-
-    meta.files.emplace("file1");
-    meta.files.emplace("index_file2");
-    meta.files.emplace("file3");
-    meta.files.emplace("stored_file4");
-
-    // write segment meta
+    // read valid meta
     {
-      auto writer = codec()->get_segment_meta_writer();
-      writer->write(dir(), meta);
+      iresearch::segment_meta meta;
+      meta.name = "meta_name";
+      meta.docs_count = 453;
+      meta.live_docs_count = 345;
+      meta.size = 666;
+      meta.version = 100;
+      meta.column_store = true;
+
+      meta.files.emplace("file1");
+      meta.files.emplace("index_file2");
+      meta.files.emplace("file3");
+      meta.files.emplace("stored_file4");
+
+      std::string filename;
+
+      // write segment meta
+      {
+        auto writer = codec()->get_segment_meta_writer();
+        writer->write(dir(), filename, meta);
+      }
+
+      // read segment meta
+      {
+        irs::segment_meta read_meta;
+        read_meta.name = meta.name;
+        read_meta.version = 100;
+
+        auto reader = codec()->get_segment_meta_reader();
+        reader->read(dir(), read_meta);
+        ASSERT_EQ(meta.codec, read_meta.codec); // codec stays nullptr
+        ASSERT_EQ(meta.name, read_meta.name);
+        ASSERT_EQ(meta.docs_count, read_meta.docs_count);
+        ASSERT_EQ(meta.live_docs_count, read_meta.live_docs_count);
+        ASSERT_EQ(meta.version, read_meta.version);
+        ASSERT_EQ(meta.size, read_meta.size);
+        ASSERT_EQ(meta.files, read_meta.files);
+        ASSERT_EQ(meta.column_store, read_meta.column_store);
+      }
     }
 
-    // read segment meta
+    // read broken meta (live_docs_count > docs_count)
     {
-      irs::segment_meta read_meta;
-      read_meta.name = meta.name;
-      read_meta.version = 100;
+      iresearch::segment_meta meta;
+      meta.name = "broken_meta_name";
+      meta.docs_count = 453;
+      meta.live_docs_count = 1345;
+      meta.size = 666;
+      meta.version = 100;
 
-      auto reader = codec()->get_segment_meta_reader();
-      reader->read(dir(), read_meta);
-      ASSERT_EQ(meta.codec, read_meta.codec); // codec stays nullptr
-      ASSERT_EQ(meta.name, read_meta.name);
-      ASSERT_EQ(meta.docs_count, read_meta.docs_count);
-      ASSERT_EQ(meta.version, read_meta.version);
-      ASSERT_EQ(meta.files, read_meta.files);
+      meta.files.emplace("file1");
+      meta.files.emplace("index_file2");
+      meta.files.emplace("file3");
+      meta.files.emplace("stored_file4");
+
+      std::string filename;
+
+      // write segment meta
+      {
+        auto writer = codec()->get_segment_meta_writer();
+        writer->write(dir(), filename, meta);
+      }
+
+      // read segment meta
+      {
+        irs::segment_meta read_meta;
+        read_meta.name = meta.name;
+        read_meta.version = 100;
+
+        auto reader = codec()->get_segment_meta_reader();
+        ASSERT_THROW(reader->read(dir(), read_meta), irs::index_error);
+      }
     }
   }
 
@@ -807,36 +846,216 @@ class format_test_case_base : public index_test_base {
     {
       auto writer = codec()->get_document_mask_writer();
 
-      writer->prepare(dir(), meta);
-      writer->begin(static_cast<uint32_t>(mask_set.size())); // only 6 values
-
-      for (auto& mask : mask_set) {
-        writer->write(mask);
-      }
-
-      writer->end();
+      writer->write(dir(), meta, mask_set);
     }
 
     // read document_mask
     {
       auto reader = codec()->get_document_mask_reader();
-      auto expected = mask_set;
+      irs::document_mask expected;
+      EXPECT_TRUE(reader->read(dir(), meta, expected));
+      for (auto id : mask_set) {
+        EXPECT_EQ(1, expected.erase(id));
+      }
+      EXPECT_TRUE(expected.empty());
+    }
+  }
 
-      EXPECT_EQ(true, reader->prepare(dir(), meta));
+  void sparse_column_dense_block() {
+    iresearch::segment_meta seg("_1", codec());
 
-      auto count = reader->begin();
+    size_t column_id;
+    const irs::bytes_ref payload(irs::ref_cast<irs::byte_type>(irs::string_ref("abcd")));
 
-      EXPECT_EQ(expected.size(), count);
+    // write docs
+    {
 
-      for (; count > 0; --count) {
-        iresearch::doc_id_t mask;
+      auto writer = codec()->get_columnstore_writer();
+      writer->prepare(dir(), seg);
+      auto column = writer->push_column();
+      column_id = column.first;
+      auto& column_handler = column.second;
 
-        reader->read(mask);
-        EXPECT_EQ(true, expected.erase(mask) != 0);
+      auto id = irs::type_limits<irs::type_t::doc_id_t>::min();
+
+      for (; id <= 1024; ++id, ++seg.docs_count) {
+        auto& stream = column_handler(id);
+        stream.write_bytes(payload.c_str(), payload.size());
       }
 
-      EXPECT_EQ(true, expected.empty());
-      reader->end();
+      ++id; // gap
+
+      for (; id <= 2037; ++id, ++seg.docs_count) {
+        auto& stream = column_handler(id);
+        stream.write_bytes(payload.c_str(), payload.size());
+      }
+
+      ASSERT_TRUE(writer->commit());
+    }
+
+    // read documents
+    {
+      irs::bytes_ref actual_value;
+
+      // check 1st segment
+      {
+        auto reader = codec()->get_columnstore_reader();
+        ASSERT_TRUE(reader->prepare(dir(), seg));
+
+        auto column = reader->column(column_id);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
+
+        irs::doc_id_t id = 0;
+        ASSERT_FALSE(values(0, actual_value));
+
+        for (++id; id < seg.docs_count; ++id) {
+          if (id == 1025) {
+            // gap
+            ASSERT_FALSE(values(id, actual_value));
+          } else {
+            ASSERT_TRUE(values(id, actual_value));
+            ASSERT_EQ(payload, actual_value);
+          }
+        }
+      }
+    }
+  }
+
+  void columns_dense_mask() {
+    iresearch::segment_meta seg("_1", codec());
+    const irs::doc_id_t MAX_DOC = 1026;
+
+    size_t column_id;
+
+    // write docs
+    {
+      auto writer = codec()->get_columnstore_writer();
+      writer->prepare(dir(), seg);
+      auto column = writer->push_column();
+      column_id = column.first;
+      auto& column_handler = column.second;
+
+      for (auto id = irs::type_limits<irs::type_t::doc_id_t>::min(); id <= MAX_DOC; ++id, ++seg.docs_count) {
+        column_handler(id);
+      }
+
+      ASSERT_TRUE(writer->commit());
+    }
+
+    // read documents
+    {
+      irs::bytes_ref actual_value;
+
+      // check 1st segment
+      {
+        auto reader_1 = codec()->get_columnstore_reader();
+        ASSERT_TRUE(reader_1->prepare(dir(), seg));
+
+        auto column = reader_1->column(column_id);
+        ASSERT_NE(nullptr, column);
+        auto values = column->values();
+
+        for (irs::doc_id_t id = 0; id < seg.docs_count; ) {
+          ASSERT_TRUE(values(++id, actual_value));
+          ASSERT_TRUE(actual_value.null());
+        }
+      }
+    }
+  }
+
+  void columns_read_write_same_col_empty_repeat() {
+    struct csv_doc_template: public csv_doc_generator::doc_template {
+      virtual void init() {
+        clear();
+        reserve(3);
+        insert(std::make_shared<tests::templates::string_field>("id"));
+        insert(std::make_shared<tests::templates::string_field>("name"));
+      }
+
+      virtual void value(size_t idx, const irs::string_ref& value) {
+        auto& field = indexed.get<tests::templates::string_field>(idx);
+
+        // amount of data written per doc_id is < sizeof(doc_id)
+        field.value(irs::string_ref("x", idx)); // length 0 or 1
+      }
+      virtual void end() {}
+      virtual void reset() {}
+    } doc_template; // two_columns_doc_template
+
+    tests::csv_doc_generator gen(resource("simple_two_column.csv"), doc_template);
+    iresearch::segment_meta seg("_1", nullptr);
+
+    seg.codec = codec();
+
+    std::unordered_map<std::string, iresearch::columnstore_writer::column_t> columns;
+
+    // write documents
+    {
+      auto writer = codec()->get_columnstore_writer();
+      iresearch::doc_id_t id = 0;
+      writer->prepare(dir(), seg);
+
+      for (const document* doc; seg.docs_count < 30000 && (doc = gen.next());) {
+        ++id;
+
+        for (auto& field : doc->stored) {
+          const auto res = columns.emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(std::string(field.name())),
+            std::forward_as_tuple()
+          );
+
+          if (res.second) {
+            res.first->second = writer->push_column();
+          }
+
+          auto& column = res.first->second.second;
+          auto& stream = column(id);
+
+          field.write(stream);
+
+          // repeat requesting the same column without writing anything
+          for (size_t i = 10; i; --i) {
+            column(id);
+          }
+        }
+
+        ++seg.docs_count;
+      }
+
+      ASSERT_TRUE(writer->commit());
+
+      gen.reset();
+    }
+
+    // read documents
+    {
+      irs::bytes_ref actual_value;
+
+      // check 1st segment
+      {
+        auto reader_1 = codec()->get_columnstore_reader();
+        ASSERT_TRUE(reader_1->prepare(dir(), seg));
+
+        auto id_column = reader_1->column(columns["id"].first);
+        ASSERT_NE(nullptr, id_column);
+        auto id_values = id_column->values();
+
+        auto name_column = reader_1->column(columns["name"].first);
+        ASSERT_NE(nullptr, name_column);
+        auto name_values = name_column->values();
+
+        gen.reset();
+        irs::doc_id_t i = 0;
+        for (const document* doc; i < seg.docs_count && (doc = gen.next());) {
+          ++i;
+          ASSERT_TRUE(id_values(i, actual_value));
+          ASSERT_EQ(doc->stored.get<tests::templates::string_field>(0).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
+          ASSERT_TRUE(name_values(i, actual_value));
+          ASSERT_EQ(doc->stored.get<tests::templates::string_field>(1).value(), irs::to_string<irs::string_ref>(actual_value.c_str()));
+        }
+      }
     }
   }
 
@@ -900,7 +1119,7 @@ class format_test_case_base : public index_test_base {
         ++seg_1.docs_count;
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
 
       gen.reset();
 
@@ -929,7 +1148,7 @@ class format_test_case_base : public index_test_base {
         ++seg_2.docs_count;
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
 
       // write 3rd segment
       id = 0;
@@ -956,7 +1175,7 @@ class format_test_case_base : public index_test_base {
         ++seg_3.docs_count;
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // read documents
@@ -1064,13 +1283,15 @@ class format_test_case_base : public index_test_base {
     // read meta from segment _1
     {
       auto reader = codec()->get_column_meta_reader();
-      iresearch::field_id actual_count = 0;
+      size_t actual_count = 0;
+      irs::field_id actual_max_id = 0;
       irs::segment_meta seg_meta;
 
       seg_meta.name = "_1";
 
-      ASSERT_TRUE(reader->prepare(dir(), seg_meta, actual_count));
+      ASSERT_TRUE(reader->prepare(dir(), seg_meta, actual_count, actual_max_id));
       ASSERT_EQ(3, actual_count);
+      ASSERT_EQ(2, actual_max_id);
 
       iresearch::column_meta meta;
       ASSERT_TRUE(reader->read(meta));
@@ -1088,13 +1309,15 @@ class format_test_case_base : public index_test_base {
     // read meta from segment _2
     {
       auto reader = codec()->get_column_meta_reader();
-      iresearch::field_id actual_count = 0;
+      size_t actual_count = 0;
+      irs::field_id actual_max_id = 0;
       irs::segment_meta seg_meta;
 
       seg_meta.name = "_2";
 
-      ASSERT_TRUE(reader->prepare(dir(), seg_meta, actual_count));
+      ASSERT_TRUE(reader->prepare(dir(), seg_meta, actual_count, actual_max_id));
       ASSERT_EQ(3, actual_count);
+      ASSERT_EQ(2, actual_max_id);
 
       iresearch::column_meta meta;
       ASSERT_TRUE(reader->read(meta));
@@ -1114,6 +1337,7 @@ class format_test_case_base : public index_test_base {
     iresearch::segment_meta meta0("_1", nullptr);
     meta0.version = 42;
     meta0.docs_count = 89;
+    meta0.live_docs_count = 67;
     meta0.codec = codec();
 
     std::vector<std::string> files;
@@ -1130,12 +1354,12 @@ class format_test_case_base : public index_test_base {
     // add columns
     {
       auto writer = codec()->get_columnstore_writer();
-      ASSERT_TRUE(writer->prepare(dir(), meta0));
+      writer->prepare(dir(), meta0);
       column0_id = writer->push_column().first;
       ASSERT_EQ(0, column0_id);
       column1_id = writer->push_column().first;
       ASSERT_EQ(1, column1_id);
-      ASSERT_FALSE(writer->flush()); // flush empty columns
+      ASSERT_FALSE(writer->commit()); // flush empty columns
     }
 
     files.clear();
@@ -1144,9 +1368,7 @@ class format_test_case_base : public index_test_base {
 
     {
       auto reader = codec()->get_columnstore_reader();
-      bool seen;
-      ASSERT_TRUE(reader->prepare(dir(), meta0, &seen));
-      ASSERT_FALSE(seen); // no columns found
+      ASSERT_FALSE(reader->prepare(dir(), meta0)); // no columns found
 
       irs::bytes_ref actual_value;
 
@@ -1157,9 +1379,198 @@ class format_test_case_base : public index_test_base {
     }
   }
 
-  void columns_read_write() {
-    irs::fields_data fdata;
+  void dense_or_sparse_fixed_offset_border_case() {
+    // border case for dense/sparse fixed offset columns, e.g.
+    // |-----|------------|  |-----|------------|
+    // |doc  | value_size |  |doc  | value_size |
+    // |-----|------------|  |-----|------------|
+    // | 1   | 0          |  | 1   | 0          |
+    // | 2   | 16         |  | 4   | 16         |
+    // |-----|------------|  |-----|------------|
 
+    irs::segment_meta meta0("_fixed_offset_columns", nullptr);
+    meta0.version = 0;
+    meta0.docs_count = 2;
+    meta0.live_docs_count = 2;
+    meta0.codec = codec();
+
+    const uint64_t keys[] = { 42, 42 };
+    const irs::bytes_ref keys_ref (
+      reinterpret_cast<const irs::byte_type*>(&keys),
+      sizeof keys
+    );
+
+    irs::columnstore_writer::column_t dense_fixed_offset_column;
+    irs::columnstore_writer::column_t sparse_fixed_offset_column;
+
+    {
+      // write columns values
+      auto writer = codec()->get_columnstore_writer();
+      writer->prepare(dir(), meta0);
+
+      dense_fixed_offset_column = writer->push_column();
+      sparse_fixed_offset_column = writer->push_column();
+
+      irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
+
+      // write first document
+      {
+        dense_fixed_offset_column.second(doc);
+        sparse_fixed_offset_column.second(doc);
+      }
+
+      // write second document
+      {
+        {
+          auto& stream = dense_fixed_offset_column.second(doc+1);
+
+          stream.write_bytes(
+            reinterpret_cast<const irs::byte_type*>(&keys),
+            sizeof keys
+          );
+        }
+
+        {
+          auto& stream = sparse_fixed_offset_column.second(doc+3);
+
+          stream.write_bytes(
+            reinterpret_cast<const irs::byte_type*>(&keys),
+            sizeof keys
+          );
+        }
+      }
+
+      ASSERT_TRUE(writer->commit());
+    }
+
+    // dense fixed offset column
+    {
+      auto reader = codec()->get_columnstore_reader();
+      ASSERT_TRUE(reader->prepare(dir(), meta0));
+
+      auto column = reader->column(dense_fixed_offset_column.first);
+      ASSERT_NE(nullptr, column);
+
+      std::vector<std::pair<irs::doc_id_t, irs::bytes_ref>> expected_values {
+        { irs::type_limits<irs::type_t::doc_id_t>::min(), irs::bytes_ref::NIL },
+        { irs::type_limits<irs::type_t::doc_id_t>::min()+1, keys_ref },
+      };
+
+      // check iterator
+      {
+        auto it = column->iterator();
+        auto payload = it->attributes().get<irs::payload_iterator>();
+
+        for (auto& expected_value : expected_values) {
+          ASSERT_TRUE(it->next());
+          ASSERT_EQ(expected_value.first, it->value());
+          ASSERT_TRUE(payload->next());
+          ASSERT_EQ(expected_value.second, payload->value());
+        }
+
+        ASSERT_FALSE(it->next());
+        ASSERT_FALSE(payload->next());
+      }
+
+      // check visit
+      {
+        auto expected_value = expected_values.begin();
+
+        const auto res = column->visit([&expected_value](irs::doc_id_t actual_doc, const irs::bytes_ref& actual_value) {
+          if (expected_value->first != actual_doc) {
+            return false;
+          }
+
+          if (expected_value->second != actual_value) {
+            return false;
+          }
+
+          ++expected_value;
+
+          return true;
+        });
+
+        ASSERT_TRUE(res);
+
+        ASSERT_EQ(expected_values.end(), expected_value);
+      }
+
+      // random read
+      {
+        irs::bytes_ref actual_value;
+        auto values = column->values();
+
+        for (auto& expected_value : expected_values) {
+          ASSERT_TRUE(values(expected_value.first, actual_value));
+          ASSERT_EQ(expected_value.second, actual_value);
+        }
+      }
+    }
+
+    // sparse fixed offset column
+    {
+      auto reader = codec()->get_columnstore_reader();
+      ASSERT_TRUE(reader->prepare(dir(), meta0));
+
+      auto column = reader->column(sparse_fixed_offset_column.first);
+      ASSERT_NE(nullptr, column);
+
+      std::vector<std::pair<irs::doc_id_t, irs::bytes_ref>> expected_values {
+        { irs::type_limits<irs::type_t::doc_id_t>::min(), irs::bytes_ref::NIL },
+        { irs::type_limits<irs::type_t::doc_id_t>::min()+3, keys_ref },
+      };
+
+      // check iterator
+      {
+        auto it = column->iterator();
+        auto payload = it->attributes().get<irs::payload_iterator>();
+
+        for (auto& expected_value : expected_values) {
+          ASSERT_TRUE(it->next());
+          ASSERT_EQ(expected_value.first, it->value());
+          ASSERT_TRUE(payload->next());
+          ASSERT_EQ(expected_value.second, payload->value());
+        }
+
+        ASSERT_FALSE(it->next());
+        ASSERT_FALSE(payload->next());
+      }
+
+      // check visit
+      {
+        auto expected_value = expected_values.begin();
+
+        ASSERT_TRUE(column->visit([&expected_value](irs::doc_id_t actual_doc, const irs::bytes_ref& actual_value) {
+          if (expected_value->first != actual_doc) {
+            return false;
+          }
+
+          if (expected_value->second != actual_value) {
+            return false;
+          }
+
+          ++expected_value;
+
+          return true;
+        }));
+
+        ASSERT_EQ(expected_values.end(), expected_value);
+      }
+
+      // random read
+      {
+        irs::bytes_ref actual_value;
+        auto values = column->values();
+
+        for (auto& expected_value : expected_values) {
+          ASSERT_TRUE(values(expected_value.first, actual_value));
+          ASSERT_EQ(expected_value.second, actual_value);
+        }
+      }
+    }
+  }
+
+  void columns_read_write() {
     iresearch::field_id segment0_field0_id;
     iresearch::field_id segment0_field1_id;
     iresearch::field_id segment0_empty_column_id;
@@ -1173,19 +1584,19 @@ class format_test_case_base : public index_test_base {
     iresearch::segment_meta meta0("_1", nullptr);
     meta0.version = 42;
     meta0.docs_count = 89;
+    meta0.live_docs_count = 67;
     meta0.codec = codec();
 
     iresearch::segment_meta meta1("_2", nullptr);
     meta1.version = 23;
     meta1.docs_count = 115;
+    meta1.live_docs_count = 111;
     meta1.codec = codec();
 
     // read attributes from empty directory
     {
       auto reader = codec()->get_columnstore_reader();
-      bool seen;
-      ASSERT_TRUE(reader->prepare(dir(), meta1, &seen));
-      ASSERT_FALSE(seen); // no attributes found
+      ASSERT_FALSE(reader->prepare(dir(), meta1)); // no attributes found
 
       // try to get invalild column
       ASSERT_EQ(nullptr, reader->column(iresearch::type_limits<iresearch::type_t::field_id_t>::invalid()));
@@ -1196,7 +1607,7 @@ class format_test_case_base : public index_test_base {
 
     // write _1 segment
     {
-      ASSERT_TRUE(writer->prepare(dir(), meta0));
+      writer->prepare(dir(), meta0);
 
       auto field0 = writer->push_column();
       segment0_field0_id = field0.first;
@@ -1224,19 +1635,19 @@ class format_test_case_base : public index_test_base {
 
       // column==field0
       {
-        auto& stream = field0_writer(0);
-        irs::write_string(stream, irs::string_ref("field0_doc0")); // doc==0
+        auto& stream = field0_writer(1);
+        irs::write_string(stream, irs::string_ref("field0_doc0")); // doc==1
       }
 
       // column==field4
       {
-        auto& stream = field4_writer((std::numeric_limits<irs::doc_id_t>::min)()); // doc==0
+        auto& stream = field4_writer(1); // doc==1
         irs::write_string(stream, irs::string_ref("field4_doc_min"));
       }
 
       // column==field1, multivalued attribute
       {
-        auto& stream = field1_writer(0); // doc==0
+        auto& stream = field1_writer(1); // doc==1
         irs::write_string(stream, irs::string_ref("field1_doc0"));
         irs::write_string(stream, irs::string_ref("field1_doc0_1"));
       }
@@ -1245,7 +1656,7 @@ class format_test_case_base : public index_test_base {
       {
         // rollback
         {
-          auto& stream = field2_writer(0); // doc==0
+          auto& stream = field2_writer(1); // doc==1
           irs::write_string(stream, irs::string_ref("invalid_string"));
           stream.reset(); // rollback changes
           stream.reset(); // rollback changes
@@ -1258,7 +1669,7 @@ class format_test_case_base : public index_test_base {
 
       // column==field0, rollback
       {
-        auto& stream = field0_writer(1); // doc==1
+        auto& stream = field0_writer(2); // doc==2
         irs::write_string(stream, irs::string_ref("field0_doc1"));
         stream.reset();
       }
@@ -1290,12 +1701,12 @@ class format_test_case_base : public index_test_base {
         }
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // write _2 segment, reuse writer
     {
-      ASSERT_TRUE(writer->prepare(dir(), meta1));
+      writer->prepare(dir(), meta1);
 
       auto field0 = writer->push_column();
       segment1_field0_id = field0.first;
@@ -1312,26 +1723,26 @@ class format_test_case_base : public index_test_base {
 
       // column==field3
       {
-        auto& stream = field2_writer(0); // doc==0
+        auto& stream = field2_writer(1); // doc==1
         irs::write_string(stream, irs::string_ref("segment_2_field3_doc0"));
       }
 
       // column==field1, multivalued attribute
       {
-        auto& stream = field0_writer(0); // doc==0
+        auto& stream = field0_writer(1); // doc==1
         irs::write_string(stream, irs::string_ref("segment_2_field1_doc0"));
       }
 
       // column==field2, rollback
       {
-        auto& stream = field1_writer(0);
+        auto& stream = field1_writer(1);
         irs::write_string(stream, irs::string_ref("segment_2_field2_doc0"));
         stream.reset(); // rollback
       }
 
       // column==field3, rollback
       {
-        auto& stream = field2_writer(1); // doc==1
+        auto& stream = field2_writer(2); // doc==2
         irs::write_string(stream, irs::string_ref("segment_2_field0_doc1"));
         stream.reset(); // rollback
       }
@@ -1349,7 +1760,7 @@ class format_test_case_base : public index_test_base {
         stream.reset(); // rollback
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // read columns values from segment _1
@@ -1367,14 +1778,15 @@ class format_test_case_base : public index_test_base {
         ASSERT_NE(nullptr, column_reader);
         auto column = column_reader->values();
 
-        ASSERT_TRUE(column((std::numeric_limits<irs::doc_id_t>::min)(), actual_value)); // check doc==min, column==field4
+        ASSERT_FALSE(column((std::numeric_limits<irs::doc_id_t>::min)(), actual_value)); // check doc==min, column==field4
+        ASSERT_TRUE(column(1, actual_value)); // check doc==1, column==field4
         ASSERT_EQ("field4_doc_min", irs::to_string<irs::string_ref>(actual_value.c_str()));
       }
 
       // visit field0 values (not cached)
       {
         std::unordered_map<irs::string_ref, iresearch::doc_id_t> expected_values = {
-          {"field0_doc0", 0},
+          {"field0_doc0", 1},
           {"field0_doc2", 2},
           {"field0_doc33", 33}
         };
@@ -1406,7 +1818,7 @@ class format_test_case_base : public index_test_base {
       // partailly visit field0 values (not cached)
       {
         std::unordered_map<irs::string_ref, iresearch::doc_id_t> expected_values = {
-          {"field0_doc0", 0},
+          {"field0_doc0", 1},
           {"field0_doc2", 2},
           {"field0_doc33", 33}
         };
@@ -1454,7 +1866,7 @@ class format_test_case_base : public index_test_base {
 
         // read (not cached)
         {
-          ASSERT_TRUE(column(0, actual_value)); // check doc==0, column==field0
+          ASSERT_TRUE(column(1, actual_value)); // check doc==1, column==field0
           ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
           ASSERT_FALSE(column(5, actual_value)); // doc without value in field0
           ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -1464,7 +1876,7 @@ class format_test_case_base : public index_test_base {
 
         // read (cached)
         {
-          ASSERT_TRUE(column(0, actual_value)); // check doc==0, column==field0
+          ASSERT_TRUE(column(1, actual_value)); // check doc==0, column==field0
           ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
           ASSERT_FALSE(column(5, actual_value)); // doc without value in field0
           ASSERT_EQ("field0_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -1476,7 +1888,7 @@ class format_test_case_base : public index_test_base {
       // visit field0 values (cached)
       {
         std::unordered_map<irs::string_ref, iresearch::doc_id_t> expected_values = {
-          {"field0_doc0", 0},
+          {"field0_doc0", 1},
           {"field0_doc2", 2},
           {"field0_doc33", 33}
         };
@@ -1519,7 +1931,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
-          {"field0_doc0", 0},
+          {"field0_doc0", 1},
           {"field0_doc2", 2},
           {"field0_doc33", 33}
         };
@@ -1555,8 +1967,8 @@ class format_test_case_base : public index_test_base {
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<std::pair<irs::string_ref, std::pair<irs::doc_id_t, irs::doc_id_t>>> expected_values = {
-          {"field0_doc0", { 0, 0 } },
-          {"field0_doc2", { 1, 2 } }, {"field0_doc2", { 2, 2 } },
+          {"field0_doc0", { 0, 1 } },
+          {"field0_doc2", { 2, 2 } },
           {"field0_doc33",{ 22, 33 }}, {"field0_doc33", { 33, 33 } }
         };
 
@@ -1590,7 +2002,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<std::pair<std::vector<irs::string_ref>, irs::doc_id_t>> expected_values = {
-          { { "field1_doc0", "field1_doc0_1" }, 0},
+          { { "field1_doc0", "field1_doc0_1" }, 1},
           { { "field1_doc12_1", "field1_doc12_2" }, 12 }
         };
 
@@ -1629,12 +2041,11 @@ class format_test_case_base : public index_test_base {
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<std::pair<std::vector<irs::string_ref>, std::pair<irs::doc_id_t, irs::doc_id_t>>> expected_values = {
-          { { "field1_doc0", "field1_doc0_1" }, { 0, 0 } }, { { "field1_doc0", "field1_doc0_1" }, { 0, 0 } },
+          { { "field1_doc0", "field1_doc0_1" }, { 0, 1 } },
           { { "field1_doc12_1", "field1_doc12_2" }, { 1, 12 } }, { { "field1_doc12_1", "field1_doc12_2" }, { 3, 12 } }, { { "field1_doc12_1", "field1_doc12_2" }, { 12, 12 } }
         };
 
         for (auto& expected : expected_values) {
-          const auto target = expected.second.first;
           const auto expected_doc = expected.second.second;
           const auto& expected_value = expected.first;
 
@@ -1666,15 +2077,19 @@ class format_test_case_base : public index_test_base {
 
         // read compound column value
         // check doc==0, column==field1
-        ASSERT_TRUE(column(0, actual_value)); in.reset(actual_value);
+        ASSERT_TRUE(column(1, actual_value)); in.reset(actual_value);
         ASSERT_EQ("field1_doc0", irs::read_string<std::string>(in));
         ASSERT_EQ("field1_doc0_1", irs::read_string<std::string>(in));
+
+        ASSERT_FALSE(column(2, actual_value));
 
         // read overwritten compund value
         // check doc==12, column==field1
         ASSERT_TRUE(column(12, actual_value)); in.reset(actual_value);
         ASSERT_EQ("field1_doc12_1", irs::read_string<std::string>(in));
         ASSERT_EQ("field1_doc12_2", irs::read_string<std::string>(in));
+
+        ASSERT_FALSE(column(13, actual_value));
 
         // read by invalid key
         ASSERT_FALSE(column(iresearch::type_limits<iresearch::type_t::doc_id_t>::eof(), actual_value));
@@ -1793,7 +2208,6 @@ class format_test_case_base : public index_test_base {
         };
 
         for (auto& expected : expected_values) {
-          const auto target = expected.second.first;
           const auto expected_doc = expected.second.second;
           const auto expected_value = expected.first;
 
@@ -1835,7 +2249,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
-          {"segment_2_field1_doc0", 0},
+          {"segment_2_field1_doc0", 1},
           {"segment_2_field1_doc12", 12}
         };
 
@@ -1870,7 +2284,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<std::pair<irs::string_ref, std::pair<irs::doc_id_t, irs::doc_id_t>>> expected_values = {
-          {"segment_2_field1_doc0", { 0, 0 } },
+          {"segment_2_field1_doc0", { 0, 1 } },
           {"segment_2_field1_doc12", { 12, 12} }
         };
 
@@ -1900,7 +2314,7 @@ class format_test_case_base : public index_test_base {
         auto column_reader = reader->column(segment1_field0_id);
         ASSERT_NE(nullptr, column_reader);
         auto column = column_reader->values();
-        ASSERT_TRUE(column(0, actual_value)); // check doc==0, column==field0
+        ASSERT_TRUE(column(1, actual_value)); // check doc==1, column==field0
         ASSERT_EQ("segment_2_field1_doc0", irs::to_string<irs::string_ref>(actual_value.c_str()));
         ASSERT_TRUE(column(12, actual_value)); // check doc==12, column==field1
         ASSERT_EQ("segment_2_field1_doc12", irs::to_string<irs::string_ref>(actual_value.c_str()));
@@ -1922,7 +2336,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
-          {"segment_2_field1_doc0", 0},
+          {"segment_2_field1_doc0", 1},
           {"segment_2_field1_doc12", 12}
         };
 
@@ -1960,12 +2374,14 @@ class format_test_case_base : public index_test_base {
 
       id = column.first; 
       auto& handle = column.second;
-      handle(0); ++segment.docs_count;
+      // we don't support irs::type_limits<<irs::type_t::doc_id_t>::invalid() key value
+      handle(2); ++segment.docs_count;
       handle(4); ++segment.docs_count;
       handle(8); ++segment.docs_count;
       handle(9); ++segment.docs_count;
+      // we don't support irs::type_limits<<irs::type_t::doc_id_t>::eof() key value
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // check previously written mask
@@ -1981,7 +2397,7 @@ class format_test_case_base : public index_test_base {
         auto column = reader->column(id);
         ASSERT_NE(nullptr, column);
         auto mask = column->values();
-        ASSERT_TRUE(mask(0, actual_value));
+        ASSERT_FALSE(mask(0, actual_value));
         ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
         ASSERT_FALSE(mask(1, actual_value));
         ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
@@ -1994,6 +2410,10 @@ class format_test_case_base : public index_test_base {
         ASSERT_TRUE(mask(8, actual_value));
         ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
         ASSERT_TRUE(mask(9, actual_value));
+        ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
+        ASSERT_FALSE(mask(irs::type_limits<irs::type_t::doc_id_t>::eof(), actual_value));
+        ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
+        ASSERT_TRUE(mask(2, actual_value));
         ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
       }
 
@@ -2011,8 +2431,8 @@ class format_test_case_base : public index_test_base {
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<std::pair<irs::doc_id_t, irs::doc_id_t>> expected_values = {
-          { 0, 0 },
-          { 1, 4 }, { 3, 4 }, { 4, 4 },
+          { 0, 2 }, { 2, 2 },
+          { 3, 4 }, { 4, 4 },
           { 5, 8 },
           { 9, 9 },
           { 10, irs::type_limits<irs::type_t::doc_id_t>::eof() },
@@ -2049,7 +2469,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<irs::doc_id_t> expected_values = {
-          0, 4, 8, 9
+          2, 4, 8, 9
         };
 
         size_t i = 0;
@@ -2090,7 +2510,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<irs::doc_id_t> expected_values = {
-          0, 4, 8, 9
+          2, 4, 8, 9
         };
 
         size_t i = 0;
@@ -2112,7 +2532,7 @@ class format_test_case_base : public index_test_base {
         auto column = reader->column(id);
         ASSERT_NE(nullptr, column);
         auto mask = column->values();
-        ASSERT_TRUE(mask(0, actual_value));
+        ASSERT_FALSE(mask(0, actual_value));
         ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
         ASSERT_FALSE(mask(1, actual_value));
         ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
@@ -2123,6 +2543,8 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(mask(6, actual_value));
         ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
         ASSERT_TRUE(mask(8, actual_value));
+        ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
+        ASSERT_TRUE(mask(2, actual_value));
         ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
         ASSERT_TRUE(mask(9, actual_value));
         ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
@@ -2142,7 +2564,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<irs::doc_id_t> expected_values = {
-          0, 4, 8, 9
+          2, 4, 8, 9
         };
 
         size_t i = 0;
@@ -2189,14 +2611,6 @@ class format_test_case_base : public index_test_base {
       id = column.first;
 
       {
-        auto& out = column.second(0);
-        stream.read(field.buf, sizeof field.buf);
-        ASSERT_FALSE(!stream); // ensure that all requested data has been read
-        ASSERT_TRUE(field.write(out)); // must be written
-        ++segment.docs_count;
-      }
-
-      {
         auto& out = column.second(1);
         stream.read(field.buf, sizeof field.buf);
         ASSERT_FALSE(!stream); // ensure that all requested data has been read
@@ -2204,7 +2618,15 @@ class format_test_case_base : public index_test_base {
         ++segment.docs_count;
       }
 
-      ASSERT_TRUE(writer->flush());
+      {
+        auto& out = column.second(2);
+        stream.read(field.buf, sizeof field.buf);
+        ASSERT_FALSE(!stream); // ensure that all requested data has been read
+        ASSERT_TRUE(field.write(out)); // must be written
+        ++segment.docs_count;
+      }
+
+      ASSERT_TRUE(writer->commit());
     }
 
     // read big document
@@ -2226,13 +2648,13 @@ class format_test_case_base : public index_test_base {
         std::memset(field.buf, 0, sizeof field.buf); // clear buffer
         stream.read(field.buf, sizeof field.buf);
         ASSERT_TRUE(bool(stream));
-        ASSERT_TRUE(values(0, actual_value));
+        ASSERT_TRUE(values(1, actual_value));
         ASSERT_EQ(irs::string_ref(field.buf, sizeof field.buf), irs::ref_cast<char>(actual_value));
 
         std::memset(field.buf, 0, sizeof field.buf); // clear buffer
         stream.read(field.buf, sizeof field.buf);
         ASSERT_TRUE(bool(stream));
-        ASSERT_TRUE(values(1, actual_value));
+        ASSERT_TRUE(values(2, actual_value));
         ASSERT_EQ(irs::string_ref(field.buf, sizeof field.buf), irs::ref_cast<char>(actual_value));
       }
 
@@ -2257,7 +2679,7 @@ class format_test_case_base : public index_test_base {
         std::memset(field.buf, 0, sizeof field.buf); // clear buffer
         stream.read(field.buf, sizeof field.buf);
         ASSERT_TRUE(bool(stream));
-        ASSERT_EQ(0, it->value());
+        ASSERT_EQ(1, it->value());
         ASSERT_EQ(irs::string_ref(field.buf, sizeof field.buf), irs::ref_cast<char>(payload->value()));
 
         ASSERT_TRUE(it->next());
@@ -2265,7 +2687,7 @@ class format_test_case_base : public index_test_base {
         std::memset(field.buf, 0, sizeof field.buf); // clear buffer
         stream.read(field.buf, sizeof field.buf);
         ASSERT_TRUE(bool(stream));
-        ASSERT_EQ(1, it->value());
+        ASSERT_EQ(2, it->value());
         ASSERT_EQ(irs::string_ref(field.buf, sizeof field.buf), irs::ref_cast<char>(payload->value()));
 
         ASSERT_FALSE(it->next());
@@ -2287,14 +2709,14 @@ class format_test_case_base : public index_test_base {
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
         ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
-        ASSERT_EQ(0, it->seek(0));
+        ASSERT_EQ(1, it->seek(0));
         ASSERT_TRUE(payload->next());
         std::memset(field.buf, 0, sizeof field.buf); // clear buffer
         stream.read(field.buf, sizeof field.buf);
         ASSERT_TRUE(bool(stream));
         ASSERT_EQ(irs::string_ref(field.buf, sizeof field.buf), irs::ref_cast<char>(payload->value()));
 
-        ASSERT_EQ(1, it->seek(1));
+        ASSERT_EQ(2, it->seek(2));
         ASSERT_TRUE(payload->next());
         std::memset(field.buf, 0, sizeof field.buf); // clear buffer
         stream.read(field.buf, sizeof field.buf);
@@ -2415,7 +2837,7 @@ class format_test_case_base : public index_test_base {
         ++meta.docs_count;
       }
 
-      ASSERT_TRUE(writer->flush());
+      ASSERT_TRUE(writer->commit());
     }
 
     // read stored documents

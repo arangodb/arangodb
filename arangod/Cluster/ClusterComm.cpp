@@ -32,7 +32,6 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
-#include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/SimpleHttpCommunicatorResult.h"
 #include "Transaction/Methods.h"
@@ -71,8 +70,7 @@ std::atomic<int> arangodb::ClusterComm::_theInstanceInit(0);
 /// @brief routine to set the destination
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterCommResult::setDestination(std::string const& dest,
-                                       bool logConnectionErrors) {
+void ClusterCommResult::setDestination(std::string const& dest, bool logConnectionErrors) {
   // This sets result.shardId, result.serverId and result.endpoint,
   // depending on what dest is. Note that if a shardID is given, the
   // responsible server is looked up, if a serverID is given, the endpoint
@@ -90,10 +88,10 @@ void ClusterCommResult::setDestination(std::string const& dest,
         status = CL_COMM_BACKEND_UNAVAILABLE;
         if (logConnectionErrors) {
           LOG_TOPIC(ERR, Logger::CLUSTER)
-            << "cannot find responsible server for shard '" << shardID << "'";
+              << "cannot find responsible server for shard '" << shardID << "'";
         } else {
           LOG_TOPIC(INFO, Logger::CLUSTER)
-            << "cannot find responsible server for shard '" << shardID << "'";
+              << "cannot find responsible server for shard '" << shardID << "'";
         }
         return;
       }
@@ -114,11 +112,9 @@ void ClusterCommResult::setDestination(std::string const& dest,
     status = CL_COMM_BACKEND_UNAVAILABLE;
     errorMessage = "did not understand destination'" + dest + "'";
     if (logConnectionErrors) {
-      LOG_TOPIC(ERR, Logger::CLUSTER)
-        << "did not understand destination '" << dest << "'";
+      LOG_TOPIC(ERR, Logger::CLUSTER) << "did not understand destination '" << dest << "'";
     } else {
-      LOG_TOPIC(INFO, Logger::CLUSTER)
-        << "did not understand destination '" << dest << "'";
+      LOG_TOPIC(INFO, Logger::CLUSTER) << "did not understand destination '" << dest << "'";
     }
     return;
   }
@@ -133,10 +129,10 @@ void ClusterCommResult::setDestination(std::string const& dest,
     errorMessage = "did not find endpoint of server '" + serverID + "'";
     if (logConnectionErrors) {
       LOG_TOPIC(ERR, Logger::CLUSTER)
-        << "did not find endpoint of server '" << serverID << "'";
+          << "did not find endpoint of server '" << serverID << "'";
     } else {
       LOG_TOPIC(INFO, Logger::CLUSTER)
-        << "did not find endpoint of server '" << serverID << "'";
+          << "did not find endpoint of server '" << serverID << "'";
     }
   }
 }
@@ -230,7 +226,7 @@ char const* ClusterCommResult::stringifyStatus(ClusterCommOpStatus status) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterComm::ClusterComm()
-    : _backgroundThread(nullptr),
+    : _roundRobin(0),
       _logConnectionErrors(false),
       _authenticationEnabled(false),
       _jwtAuthorization("") {
@@ -242,32 +238,21 @@ ClusterComm::ClusterComm()
     _authenticationEnabled = true;
     _jwtAuthorization = "bearer " + token;
   }
-
-  _communicator = std::make_shared<communicator::Communicator>();
 }
 
 /// @brief Unit test constructor
 ClusterComm::ClusterComm(bool ignored)
-    : _backgroundThread(nullptr),
+    : _roundRobin(0),
       _logConnectionErrors(false),
       _authenticationEnabled(false),
-      _jwtAuthorization("") {
-
-  //_communicator = std::make_shared<communicator::Communicator>();
-
-} // ClusterComm::ClusterComm(bool)
+      _jwtAuthorization("") {}  // ClusterComm::ClusterComm(bool)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClusterComm destructor
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterComm::~ClusterComm() {
-  if (_backgroundThread != nullptr) {
-    _backgroundThread->beginShutdown();
-    delete _backgroundThread;
-    _backgroundThread = nullptr;
-  }
-
+  stopBackgroundThreads();
   cleanupAllQueues();
 }
 
@@ -314,8 +299,8 @@ std::shared_ptr<ClusterComm> ClusterComm::instance() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::initialize() {
-  auto i = instance();   // this will create the static instance
-  i->startBackgroundThread();
+  auto i = instance();  // this will create the static instance
+  i->startBackgroundThreads();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -323,22 +308,55 @@ void ClusterComm::initialize() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::cleanup() {
-  _theInstance.reset();    // no more operations will be started, but running
-                           // ones have their copy of the shared_ptr
+  if (!_theInstance) {
+    return;
+  }
+
+  _theInstance.reset();  // no more operations will be started, but running
+                         // ones have their copy of the shared_ptr
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start the communication background thread
+/// @brief start the communication background threads
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterComm::startBackgroundThread() {
-  _backgroundThread = new ClusterCommThread();
+void ClusterComm::startBackgroundThreads() {
+  for (unsigned loop = 0; loop < (TRI_numberProcessors() / 8 + 1); ++loop) {
+    ClusterCommThread* thread = new ClusterCommThread();
 
-  if (!_backgroundThread->start()) {
-    LOG_TOPIC(FATAL, Logger::CLUSTER)
-      << "ClusterComm background thread does not work";
-    FATAL_ERROR_EXIT();
+    if (thread->start()) {
+      _backgroundThreads.push_back(thread);
+    } else {
+      LOG_TOPIC(FATAL, Logger::CLUSTER)
+          << "ClusterComm background thread does not work";
+      FATAL_ERROR_EXIT();
+    }  // else
+  }    // for
+}
+
+void ClusterComm::stopBackgroundThreads() {
+  // pass 1:  tell all background threads to stop
+  for (ClusterCommThread* thread : _backgroundThreads) {
+    thread->beginShutdown();
+  }  // for
+
+  // pass 2:  verify each thread is stopped, wait if necessary
+  //          (happens in destructor)
+  for (ClusterCommThread* thread : _backgroundThreads) {
+    delete thread;
   }
+
+  _backgroundThreads.clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief choose next communicator via round robin
+////////////////////////////////////////////////////////////////////////////////
+std::shared_ptr<communicator::Communicator> ClusterComm::communicator() {
+  unsigned index;
+
+  index = (++_roundRobin) % _backgroundThreads.size();
+  return _backgroundThreads[index]->communicator();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -386,7 +404,13 @@ OperationID ClusterComm::getOperationID() { return TRI_NewTickServer(); }
 ///
 /// There are two timeout arguments. `timeout` is the globale timeout
 /// specifying after how many seconds the complete operation must be
-/// completed. `connectTimeout` is the Timeout for initially opening a connection
+/// completed. `initTimeout` is a second timeout, which is used to
+/// limit the time to send the initial request away. If `initTimeout`
+/// is negative (as for example in the default value), then `initTimeout`
+/// is taken to be the same as `timeout`. The idea behind the two timeouts
+/// is to be able to specify correct behaviour for automatic failover.
+/// The idea is that if the initial request cannot be sent within
+/// `initTimeout`, one can retry after a potential failover.
 ////////////////////////////////////////////////////////////////////////////////
 
 OperationID ClusterComm::asyncRequest(
@@ -395,7 +419,7 @@ OperationID ClusterComm::asyncRequest(
     std::shared_ptr<std::string const> body,
     std::unordered_map<std::string, std::string> const& headerFields,
     std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
-    bool singleRequest, ClusterCommTimeout connectTimeout) {
+    bool singleRequest, ClusterCommTimeout initTimeout) {
   auto prepared = prepareRequest(destination, reqtype, body.get(), headerFields);
   std::shared_ptr<ClusterCommResult> result(prepared.first);
   result->coordTransactionID = coordTransactionID;
@@ -403,38 +427,33 @@ OperationID ClusterComm::asyncRequest(
 
   std::unique_ptr<HttpRequest> request;
   if (prepared.second == nullptr) {
-    request.reset(HttpRequest::createHttpRequest(ContentType::JSON, "", 0, ClusterCommRequest::noHeaders));
-    request->setRequestType(reqtype); // mop: a fake but a good one
+    request.reset(HttpRequest::createHttpRequest(ContentType::JSON, "", 0,
+                                                 ClusterCommRequest::noHeaders));
+    request->setRequestType(reqtype);  // mop: a fake but a good one
   } else {
     request.reset(prepared.second);
   }
 
   communicator::Options opt;
-  opt.connectionTimeout = connectTimeout;
+  opt.connectionTimeout = initTimeout;
   opt.requestTimeout = timeout;
 
   Callbacks callbacks;
   bool doLogConnectionErrors = logConnectionErrors();
+  callbacks._scheduleMe = scheduleMe;
 
   if (callback) {
-    callbacks._onError = [callback, result, doLogConnectionErrors, this](int errorCode, std::unique_ptr<GeneralResponse> response) {
+    callbacks._onError = [callback, result, doLogConnectionErrors, this,
+                          initTimeout](int errorCode, std::unique_ptr<GeneralResponse> response) {
       {
         CONDITION_LOCKER(locker, somethingReceived);
         responses.erase(result->operationID);
       }
       result->fromError(errorCode, std::move(response));
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
-        if (doLogConnectionErrors) {
-          LOG_TOPIC(ERR, Logger::CLUSTER)
-            << "cannot create connection to server '" << result->serverID
-            << "' at endpoint '" << result->endpoint << "'";
-        } else {
-          LOG_TOPIC(INFO, Logger::CLUSTER)
-            << "cannot create connection to server '" << result->serverID
-            << "' at endpoint '" << result->endpoint << "'";
-        }
+        logConnectionError(doLogConnectionErrors, result.get(), initTimeout, __LINE__);
       }
-      /*bool ret =*/ ((*callback.get())(result.get()));
+      /*bool ret =*/((*callback.get())(result.get()));
       // TRI_ASSERT(ret == true);
     };
     callbacks._onSuccess = [callback, result, this](std::unique_ptr<GeneralResponse> response) {
@@ -444,23 +463,16 @@ OperationID ClusterComm::asyncRequest(
       }
       TRI_ASSERT(response.get() != nullptr);
       result->fromResponse(std::move(response));
-      /*bool ret =*/ ((*callback.get())(result.get()));
-      //TRI_ASSERT(ret == true);
+      /*bool ret =*/((*callback.get())(result.get()));
+      // TRI_ASSERT(ret == true);
     };
   } else {
-    callbacks._onError = [result, doLogConnectionErrors, this](int errorCode, std::unique_ptr<GeneralResponse> response) {
+    callbacks._onError = [result, doLogConnectionErrors, this,
+                          initTimeout](int errorCode, std::unique_ptr<GeneralResponse> response) {
       CONDITION_LOCKER(locker, somethingReceived);
       result->fromError(errorCode, std::move(response));
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
-        if (doLogConnectionErrors) {
-          LOG_TOPIC(ERR, Logger::CLUSTER)
-            << "cannot create connection to server '" << result->serverID
-            << "' at endpoint '" << result->endpoint << "'";
-        } else {
-          LOG_TOPIC(INFO, Logger::CLUSTER)
-            << "cannot create connection to server '" << result->serverID
-            << "' at endpoint '" << result->endpoint << "'";
-        }
+        logConnectionError(doLogConnectionErrors, result.get(), initTimeout, __LINE__);
       }
       somethingReceived.broadcast();
     };
@@ -474,8 +486,9 @@ OperationID ClusterComm::asyncRequest(
 
   TRI_ASSERT(request != nullptr);
   CONDITION_LOCKER(locker, somethingReceived);
-  auto ticketId = _communicator->addRequest(createCommunicatorDestination(result->endpoint, path),
-               std::move(request), callbacks, opt);
+  auto ticketId =
+      communicator()->addRequest(createCommunicatorDestination(result->endpoint, path),
+                                 std::move(request), callbacks, opt);
 
   result->operationID = ticketId;
   responses.emplace(ticketId, AsyncResponse{TRI_microtime(), result});
@@ -503,14 +516,13 @@ OperationID ClusterComm::asyncRequest(
 
 std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     CoordTransactionID const coordTransactionID, std::string const& destination,
-    arangodb::rest::RequestType reqtype, std::string const& path,
-    std::string const& body,
+    arangodb::rest::RequestType reqtype, std::string const& path, std::string const& body,
     std::unordered_map<std::string, std::string> const& headerFields,
     ClusterCommTimeout timeout) {
   auto prepared = prepareRequest(destination, reqtype, &body, headerFields);
   std::unique_ptr<ClusterCommResult> result(prepared.first);
-  // mop: this is used to distinguish a syncRequest from an asyncRequest while processing
-  // the answer...
+  // mop: this is used to distinguish a syncRequest from an asyncRequest while
+  // processing the answer...
   result->single = true;
 
   if (prepared.second == nullptr) {
@@ -523,36 +535,32 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
   bool doLogConnectionErrors = logConnectionErrors();
 
   bool wasSignaled = false;
-  communicator::Callbacks callbacks([&cv, &result, &wasSignaled](std::unique_ptr<GeneralResponse> response) {
-    CONDITION_LOCKER(isen, cv);
-    result->fromResponse(std::move(response));
-    wasSignaled = true;
-    cv.signal();
-  }, [&cv, &result, &doLogConnectionErrors, &wasSignaled](int errorCode, std::unique_ptr<GeneralResponse> response) {
-      CONDITION_LOCKER(isen, cv);
-      result->fromError(errorCode, std::move(response));
-      if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
-        if (doLogConnectionErrors) {
-          LOG_TOPIC(ERR, Logger::CLUSTER)
-            << "cannot create connection to server '" << result->serverID
-            << "' at endpoint '" << result->endpoint << "'";
-        } else {
-          LOG_TOPIC(INFO, Logger::CLUSTER)
-            << "cannot create connection to server '" << result->serverID
-            << "' at endpoint '" << result->endpoint << "'";
+  communicator::Callbacks callbacks(
+      [&cv, &result, &wasSignaled](std::unique_ptr<GeneralResponse> response) {
+        CONDITION_LOCKER(isen, cv);
+        result->fromResponse(std::move(response));
+        wasSignaled = true;
+        cv.signal();
+      },
+      [&cv, &result, &doLogConnectionErrors,
+       &wasSignaled](int errorCode, std::unique_ptr<GeneralResponse> response) {
+        CONDITION_LOCKER(isen, cv);
+        result->fromError(errorCode, std::move(response));
+        if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
+          logConnectionError(doLogConnectionErrors, result.get(), 0.0, __LINE__);
         }
-      }
-      wasSignaled = true;
-      cv.signal();
-  });
+        wasSignaled = true;
+        cv.signal();
+      });
+  callbacks._scheduleMe = scheduleMe;
 
   communicator::Options opt;
   opt.requestTimeout = timeout;
   TRI_ASSERT(request != nullptr);
   result->status = CL_COMM_SENDING;
   CONDITION_LOCKER(isen, cv);
-  _communicator->addRequest(createCommunicatorDestination(result->endpoint, path),
-               std::move(request), callbacks, opt);
+  communicator()->addRequest(createCommunicatorDestination(result->endpoint, path),
+                             std::move(request), callbacks, opt);
 
   while (!wasSignaled) {
     cv.wait(100000);
@@ -566,8 +574,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
 
 bool ClusterComm::match(CoordTransactionID const coordTransactionID,
                         ShardID const& shardID, ClusterCommResult* res) {
-  return ((0 == coordTransactionID ||
-           coordTransactionID == res->coordTransactionID) &&
+  return ((0 == coordTransactionID || coordTransactionID == res->coordTransactionID) &&
           (shardID == "" || shardID == res->shardID));
 }
 
@@ -621,10 +628,10 @@ ClusterCommResult const ClusterComm::enquire(communicator::Ticket const ticketId
 /// If timeout parameter is 0.0, code waits forever for a response (or error)
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterCommResult const ClusterComm::wait(
-    CoordTransactionID const coordTransactionID, communicator::Ticket const ticketId,
-    ShardID const& shardID, ClusterCommTimeout timeout) {
-
+ClusterCommResult const ClusterComm::wait(CoordTransactionID const coordTransactionID,
+                                          communicator::Ticket const ticketId,
+                                          ShardID const& shardID,
+                                          ClusterCommTimeout timeout) {
   ResponseIterator i, i_erase;
   AsyncResponse response;
   bool match_good, status_ready;
@@ -652,14 +659,14 @@ ClusterCommResult const ClusterComm::wait(
           status_ready = (CL_COMM_SUBMITTED != return_result.status);
           if (status_ready) {
             i_erase = i;
-          } // if
-        } // if
-      } // for
+          }  // if
+        }    // if
+      }      // for
 
       // only delete from list after leaving loop
       if (responses.end() != i_erase) {
         responses.erase(i_erase);
-      } // if
+      }  // if
     } else {
       TRI_ASSERT(ticketId != 0);
       i = responses.find(ticketId);
@@ -671,15 +678,15 @@ ClusterCommResult const ClusterComm::wait(
         match_good = true;
         if (status_ready) {
           responses.erase(i);
-        } // if
+        }  // if
       } else {
         // Nothing known about this operation, return with failure:
         return_result.operationID = ticketId;
         // does res.coordTransactionID need to be set here too?
         return_result.status = CL_COMM_DROPPED;
         // tell Dispatcher that we are back in business
-      } // else
-    } // else
+      }  // else
+    }    // else
 
     // at least one match, but no one ready
     if (match_good && !status_ready) {
@@ -687,7 +694,8 @@ ClusterCommResult const ClusterComm::wait(
       ClusterCommTimeout now = TRI_microtime();
       if (now < endTime || 0.0 == timeout) {
         // convert to microseconds, use 10 second safety poll if no timeout
-        uint64_t micros = static_cast<uint64_t>(0.0 != timeout ? ((endTime - now) * 1000000.0) : 10000000);
+        uint64_t micros = static_cast<uint64_t>(
+            0.0 != timeout ? ((endTime - now) * 1000000.0) : 10000000);
         somethingReceived.wait(micros);
       } else {
         // time is up, leave
@@ -695,10 +703,10 @@ ClusterCommResult const ClusterComm::wait(
         // does res.coordTransactionID need to be set here too?
         return_result.status = CL_COMM_TIMEOUT;
         match_good = false;
-      } // else
-    } // if
+      }  // else
+    }    // if
 
-  } while(!status_ready && match_good);
+  } while (!status_ready && match_good);
 
   return return_result;
 }
@@ -798,28 +806,6 @@ void ClusterComm::cleanupAllQueues() {
   }
 }
 
-ClusterCommThread::ClusterCommThread() : Thread("ClusterComm"), _cc(nullptr) {
-  _cc = ClusterComm::instance().get();
-}
-
-ClusterCommThread::~ClusterCommThread() { shutdown(); }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief begin shutdown sequence
-////////////////////////////////////////////////////////////////////////////////
-
-void ClusterCommThread::beginShutdown() {
-  // Note that this is called from the destructor of the ClusterComm singleton
-  // object. This means that our pointer _cc is still valid and the condition
-  // variable in it is still OK. However, this method is called from a
-  // different thread than the ClusterCommThread. Therefore we can still
-  // use the condition variable to wake up the ClusterCommThread.
-  Thread::beginShutdown();
-
-  CONDITION_LOCKER(guard, _cc->somethingToSend);
-  guard.signal();
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this method performs the given requests described by the vector
 /// of ClusterCommRequest structs in the following way: all requests are
@@ -864,8 +850,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
   try {
     while (true) {
       now = TRI_microtime();
-      if (now > endTime ||
-          application_features::ApplicationServer::isStopping()) {
+      if (now > endTime || application_features::ApplicationServer::isStopping()) {
         break;
       }
       if (nrDone >= requests.size()) {
@@ -886,11 +871,11 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
 
             dueTime[i] = endTime + 10;
             double localTimeout = endTime - now;
-            OperationID opId = asyncRequest(
-                coordinatorTransactionID, requests[i].destination,
-                requests[i].requestType, requests[i].path, requests[i].getBodyShared(),
-                requests[i].getHeaders(), nullptr, localTimeout, false,
-                2.0);
+            OperationID opId =
+                asyncRequest(coordinatorTransactionID, requests[i].destination,
+                             requests[i].requestType, requests[i].path,
+                             requests[i].getBodyShared(), requests[i].getHeaders(),
+                             nullptr, localTimeout, false, 2.0);
 
             TRI_ASSERT(opId != 0);
             opIDtoIndex.insert(std::make_pair(opId, i));
@@ -914,7 +899,8 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         // is in flight, this is possible, since we might have scheduled
         // a retry later than now and simply wait till then
         if (now < actionNeeded) {
-          std::this_thread::sleep_for(std::chrono::microseconds((unsigned long long) ((actionNeeded - now) * 1000000.0)));
+          std::this_thread::sleep_for(std::chrono::microseconds(
+              (unsigned long long)((actionNeeded - now) * 1000000.0)));
         }
         continue;
       }
@@ -922,7 +908,8 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
       auto it = opIDtoIndex.find(res.operationID);
       if (it == opIDtoIndex.end()) {
         // Ooops, we got a response to which we did not send the request
-        LOG_TOPIC(TRACE, Logger::CLUSTER) << "Received ClusterComm response for a request we did not send!";
+        LOG_TOPIC(TRACE, Logger::CLUSTER)
+            << "Received ClusterComm response for a request we did not send!";
         continue;
       }
       size_t index = it->second;
@@ -930,12 +917,10 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
       if (retryOnCollNotFound) {
         // If this flag is set we treat a 404 collection not found as
         // a CL_COMM_BACKEND_UNAVAILABLE, which leads to a retry:
-        if (res.status == CL_COMM_RECEIVED &&
-            res.answer_code == rest::ResponseCode::NOT_FOUND) {
+        if (res.status == CL_COMM_RECEIVED && res.answer_code == rest::ResponseCode::NOT_FOUND) {
           VPackSlice payload = res.answer->payload();
           VPackSlice errorNum = payload.get(StaticStrings::ErrorNum);
-          if (errorNum.isInteger() &&
-              errorNum.getInt() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+          if (errorNum.isInteger() && errorNum.getInt() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
             res.status = CL_COMM_BACKEND_UNAVAILABLE;
             // This is a fake, but it will lead to a retry. If we timeout
             // here and now, then the customer will get this result.
@@ -953,10 +938,10 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
             res.answer_code == rest::ResponseCode::NO_CONTENT) {
           nrGood++;
         }
-        LOG_TOPIC(TRACE, Logger::CLUSTER) << "ClusterComm::performRequests: "
-          << "got answer from " << requests[index].destination << ":"
-          << requests[index].path << " with return code "
-          << (int)res.answer_code;
+        LOG_TOPIC(TRACE, Logger::CLUSTER)
+            << "ClusterComm::performRequests: "
+            << "got answer from " << requests[index].destination << ":"
+            << requests[index].path << " with return code " << (int)res.answer_code;
       } else if (res.status == CL_COMM_BACKEND_UNAVAILABLE ||
                  (res.status == CL_COMM_TIMEOUT && !res.sendWasComplete)) {
         // Note that this case includes the refusal of a leader to accept
@@ -977,21 +962,24 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
           requests[index].done = true;
           nrDone++;
         }
-        LOG_TOPIC(ERR, Logger::CLUSTER) << "ClusterComm::performRequests: "
+        LOG_TOPIC(ERR, Logger::CLUSTER)
+            << "ClusterComm::performRequests: "
             << "got BACKEND_UNAVAILABLE or TIMEOUT from "
             << requests[index].destination << ":" << requests[index].path;
       } else {  // a "proper error" which has to be returned to the client
         requests[index].result = res;
         requests[index].done = true;
         nrDone++;
-        LOG_TOPIC(ERR, Logger::CLUSTER) << "ClusterComm::performRequests: "
+        LOG_TOPIC(ERR, Logger::CLUSTER)
+            << "ClusterComm::performRequests: "
             << "got no answer from " << requests[index].destination << ":"
-            << requests[index].path << " with status " << res.stringifyStatus(res.status);
+            << requests[index].path << " with status "
+            << res.stringifyStatus(res.status);
       }
     }
   } catch (...) {
     LOG_TOPIC(ERR, Logger::CLUSTER) << "ClusterComm::performRequests: "
-        << "caught exception, ignoring...";
+                                    << "caught exception, ignoring...";
   }
 
   // We only get here if the global timeout was triggered, not all
@@ -1025,17 +1013,206 @@ void ClusterComm::fireAndForgetRequests(std::vector<ClusterCommRequest> const& r
 
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
 
-  constexpr double shortTimeout = 10.0; // Picked arbitrarily
+  constexpr double shortTimeout = 10.0;  // Picked arbitrarily
   for (auto const& req : requests) {
     asyncRequest(coordinatorTransactionID, req.destination, req.requestType,
-                 req.path, req.getBodyShared(), req.getHeaders(), nullptr, shortTimeout, false,
-                 2.0);
+                 req.path, req.getBodyShared(), req.getHeaders(), nullptr,
+                 shortTimeout, false, 2.0);
   }
   // Forget about it
   drop(coordinatorTransactionID, 0, "");
 }
 
-communicator::Destination ClusterComm::createCommunicatorDestination(std::string const& endpoint, std::string const& path) {
+class SharedRequestsState : public ClusterCommCallback,
+                            public std::enable_shared_from_this<SharedRequestsState> {
+ public:
+  SharedRequestsState(std::vector<ClusterCommRequest>&& reqs, ClusterCommTimeout timeout,
+                      bool retryNotFound, ClusterComm::AsyncCallback const& cb)
+      : _requests(std::move(reqs)),
+        _startTime(TRI_microtime()),
+        _endTime(_startTime + timeout),
+        _retryOnCollNotFound(retryNotFound),
+        _coordTransactionID(TRI_NewTickServer()),
+        _callback(cb) {
+    for (size_t i = 0; i < _requests.size(); ++i) {
+      dueTime.push_back(_startTime);
+    }
+  }
+
+ private:
+  std::mutex mutex;
+
+  std::vector<ClusterCommRequest> _requests;
+  ClusterCommTimeout const _startTime;
+  ClusterCommTimeout const _endTime;
+  const bool _retryOnCollNotFound;
+  CoordTransactionID _coordTransactionID;
+  ClusterComm::AsyncCallback _callback;
+
+  Scheduler::WorkHandle _handle;
+  std::unordered_map<OperationID, size_t> opIDtoIndex;
+  std::vector<ClusterCommTimeout> dueTime;
+  size_t nrDone = 0;
+  size_t nrGood = 0;
+
+ public:
+  // scheduler requests that are due
+  void performTasks(bool lock) {
+    std::unique_lock<std::mutex> guard(mutex, std::defer_lock);
+    if (lock) {
+      guard.lock();
+    }
+
+    double now = TRI_microtime();
+    if (now > _endTime || nrDone == _requests.size() ||
+        application_features::ApplicationServer::isStopping()) {
+      finishExecution();
+      return;  // we are done
+    }
+
+    auto cc = ClusterComm::instance();
+
+    double actionNeeded = _endTime;
+    for (size_t i = 0; i < _requests.size(); i++) {
+      ClusterCommRequest const& req = _requests[i];
+      if (!req.done && dueTime[i] != 0) {
+        if (now >= dueTime[i]) {
+          LOG_TOPIC(TRACE, Logger::CLUSTER)
+              << "ClusterComm::asyncPerformRequests: sending request to "
+              << req.destination << ":" << req.path << "body:" << req.getBody();
+
+          dueTime[i] = _endTime + 1;  // after endTime
+          double localTimeout = _endTime - now;
+          OperationID opId =
+              cc->asyncRequest(_coordTransactionID, req.destination, req.requestType,
+                               req.path, req.getBodyShared(), req.getHeaders(),
+                               shared_from_this(), localTimeout, false, 2.0);
+          TRI_ASSERT(opId != 0);
+          std::lock_guard<std::mutex> guard(mutex);
+          opIDtoIndex.insert(std::make_pair(opId, i));
+
+        } else if (dueTime[i] < actionNeeded) {
+          actionNeeded = dueTime[i];
+        }
+      }
+    }
+
+    TRI_ASSERT(actionNeeded >= now);
+
+    // TODO what about a shutdown, this will leak ??
+    auto self = shared_from_this();
+    auto duration = std::chrono::duration<double>(actionNeeded);
+
+    _handle = SchedulerFeature::SCHEDULER->queueDelay(
+        RequestLane::CLUSTER_INTERNAL,
+        std::chrono::duration_cast<std::chrono::nanoseconds>(duration),
+        [self, this](bool cancelled) {
+          if (!cancelled) {
+            this->performTasks(true);
+          }
+        });
+  }
+
+ private:
+  void finishExecution() {
+    if (nrDone < _requests.size()) {
+      // We only get here if the global timeout was triggered, not all
+      // requests are marked by done!
+      ClusterComm::instance()->drop(_coordTransactionID, 0, "");
+    }
+    _handle.reset();
+    TRI_ASSERT(_callback);
+    _callback(_requests, nrDone, nrGood);
+  }
+
+  bool operator()(ClusterCommResult* res) override {
+    std::lock_guard<std::mutex> guard(mutex);
+    auto it = opIDtoIndex.find(res->operationID);
+    TRI_ASSERT(it != opIDtoIndex.end());
+    TRI_ASSERT(res->status != CL_COMM_DROPPED);
+
+    size_t index = it->second;
+    ClusterCommRequest& req = _requests[index];
+
+    if (_retryOnCollNotFound) {
+      // If this flag is set we treat a 404 collection not found as
+      // a CL_COMM_BACKEND_UNAVAILABLE, which leads to a retry:
+      if (res->status == CL_COMM_RECEIVED && res->answer_code == rest::ResponseCode::NOT_FOUND) {
+        VPackSlice payload = res->answer->payload();
+        VPackSlice errorNum = payload.get(StaticStrings::ErrorNum);
+        if (errorNum.isInteger() && errorNum.getInt() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+          res->status = CL_COMM_BACKEND_UNAVAILABLE;
+          // This is a fake, but it will lead to a retry. If we timeout
+          // here and now, then the customer will get this result.
+        }
+      }
+    }
+
+    if (res->status == CL_COMM_RECEIVED) {
+      req.result = *res;  // TODO move ???
+      req.done = true;
+      nrDone++;
+      if (res->answer_code == rest::ResponseCode::OK ||
+          res->answer_code == rest::ResponseCode::CREATED ||
+          res->answer_code == rest::ResponseCode::ACCEPTED ||
+          res->answer_code == rest::ResponseCode::NO_CONTENT) {
+        nrGood++;
+      }
+      LOG_TOPIC(TRACE, Logger::CLUSTER)
+          << "ClusterComm::performRequests: "
+          << "got answer from " << req.destination << ":" << req.path
+          << " with return code " << (int)res->answer_code;
+    } else if (res->status == CL_COMM_BACKEND_UNAVAILABLE ||
+               (res->status == CL_COMM_TIMEOUT && !res->sendWasComplete)) {
+      // Note that this case includes the refusal of a leader to accept
+      // the operation, in which we have to flush ClusterInfo:
+      ClusterInfo::instance()->loadCurrent();
+      req.result = *res;  // TODO move ???
+      double now = TRI_microtime();
+
+      // In this case we will retry:
+      double tryAgainAfter = now - _startTime;
+      if (tryAgainAfter < 0.2) {
+        tryAgainAfter = 0.2;
+      } else if (tryAgainAfter > 10.0) {
+        tryAgainAfter = 10.0;
+      }
+      dueTime[index] = tryAgainAfter + now;
+      if (dueTime[index] >= _endTime) {
+        req.done = true;
+        nrDone++;
+      }
+      LOG_TOPIC(ERR, Logger::CLUSTER)
+          << "ClusterComm::performRequests: "
+          << "got BACKEND_UNAVAILABLE or TIMEOUT from " << req.destination
+          << ":" << req.path;
+    } else {  // a "proper error" which has to be returned to the client
+      req.result = *res;
+      req.done = true;
+      nrDone++;
+      LOG_TOPIC(ERR, Logger::CLUSTER)
+          << "ClusterComm::performRequests: "
+          << "got no answer from " << req.destination << ":" << req.path
+          << " with status " << ClusterCommResult::stringifyStatus(res->status);
+    }
+
+    performTasks(false);
+
+    return true;
+  }
+};
+
+void ClusterComm::performAsyncRequests(std::vector<ClusterCommRequest>&& reqs,
+                                       ClusterCommTimeout timeout, bool retryOnCollNotFound,
+                                       AsyncCallback const& cb) {
+  TRI_ASSERT(cb);
+  auto state = std::make_shared<SharedRequestsState>(std::move(reqs), timeout,
+                                                     retryOnCollNotFound, cb);
+  state->performTasks(true);
+}
+
+communicator::Destination ClusterComm::createCommunicatorDestination(std::string const& endpoint,
+                                                                     std::string const& path) {
   std::string httpEndpoint;
   if (endpoint.substr(0, 6) == "tcp://") {
     httpEndpoint = "http://" + endpoint.substr(6);
@@ -1046,9 +1223,10 @@ communicator::Destination ClusterComm::createCommunicatorDestination(std::string
   return communicator::Destination{httpEndpoint};
 }
 
-std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::string const& destination,
-      arangodb::rest::RequestType reqtype, std::string const* body,
-      std::unordered_map<std::string, std::string> const& headerFields) {
+std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(
+    std::string const& destination, arangodb::rest::RequestType reqtype,
+    std::string const* body,
+    std::unordered_map<std::string, std::string> const& headerFields) {
   HttpRequest* request = nullptr;
   auto result = std::make_unique<ClusterCommResult>();
   result->setDestination(destination, logConnectionErrors());
@@ -1061,7 +1239,7 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
   addAuthorization(&headersCopy);
   TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
   headersCopy[StaticStrings::HLCHeader] =
-    arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp);
+      arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp);
 
   auto state = ServerState::instance();
 
@@ -1086,11 +1264,11 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
 #endif
 #endif
 
-  
   if (body == nullptr) {
     request = HttpRequest::createHttpRequest(ContentType::JSON, "", 0, headersCopy);
   } else {
-    request = HttpRequest::createHttpRequest(ContentType::JSON, body->data(), body->size(), headersCopy);
+    request = HttpRequest::createHttpRequest(ContentType::JSON, body->data(),
+                                             body->size(), headersCopy);
   }
   request->setRequestType(reqtype);
 
@@ -1107,8 +1285,8 @@ void ClusterComm::addAuthorization(std::unordered_map<std::string, std::string>*
 std::vector<communicator::Ticket> ClusterComm::activeServerTickets(std::vector<std::string> const& servers) {
   std::vector<communicator::Ticket> tickets;
   CONDITION_LOCKER(locker, somethingReceived);
-  for (auto const& it: responses) {
-    for (auto const& server: servers) {
+  for (auto const& it : responses) {
+    for (auto const& server : servers) {
       if (it.second.result && it.second.result->serverID == server) {
         tickets.push_back(it.first);
       }
@@ -1118,8 +1296,37 @@ std::vector<communicator::Ticket> ClusterComm::activeServerTickets(std::vector<s
 }
 
 void ClusterComm::disable() {
-   _communicator->disable();
-   _communicator->abortRequests();
+  for (ClusterCommThread* thread : _backgroundThreads) {
+    thread->communicator()->disable();
+    thread->communicator()->abortRequests();
+  }
+}
+
+void ClusterComm::scheduleMe(std::function<void()> task) {
+  arangodb::SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL, task);
+}
+
+ClusterCommThread::ClusterCommThread() : Thread("ClusterComm"), _cc(nullptr) {
+  _cc = ClusterComm::instance().get();
+  _communicator = std::make_shared<communicator::Communicator>();
+}
+
+ClusterCommThread::~ClusterCommThread() { shutdown(); }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief begin shutdown sequence
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterCommThread::beginShutdown() {
+  // Note that this is called from the destructor of the ClusterComm singleton
+  // object. This means that our pointer _cc is still valid and the condition
+  // variable in it is still OK. However, this method is called from a
+  // different thread than the ClusterCommThread. Therefore we can still
+  // use the condition variable to wake up the ClusterCommThread.
+  Thread::beginShutdown();
+
+  CONDITION_LOCKER(guard, _cc->somethingToSend);
+  guard.signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1131,36 +1338,56 @@ void ClusterCommThread::abortRequestsToFailedServers() {
   auto failedServers = ci->getFailedServers();
   if (failedServers.size() > 0) {
     auto ticketIds = _cc->activeServerTickets(failedServers);
-    for (auto const& ticketId: ticketIds) {
-      _cc->communicator()->abortRequest(ticketId);
+    for (auto const& ticketId : ticketIds) {
+      _communicator->abortRequest(ticketId);
     }
   }
 }
 
 void ClusterCommThread::run() {
+  TRI_ASSERT(_communicator != nullptr);
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "starting ClusterComm thread";
-
   auto lastAbortCheck = std::chrono::steady_clock::now();
   while (!isStopping()) {
     try {
-      if (std::chrono::steady_clock::now() - lastAbortCheck > std::chrono::duration<double>(3.0)) {
+      if (std::chrono::steady_clock::now() - lastAbortCheck >
+          std::chrono::duration<double>(3.0)) {
         abortRequestsToFailedServers();
         lastAbortCheck = std::chrono::steady_clock::now();
       }
-      _cc->communicator()->work_once();
-      _cc->communicator()->wait();
+      _communicator->work_once();
+      _communicator->wait();
       LOG_TOPIC(TRACE, Logger::CLUSTER) << "done waiting in ClusterCommThread";
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in ClusterCommThread: " << ex.what();
+      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+          << "caught exception in ClusterCommThread: " << ex.what();
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception in ClusterCommThread";
+      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+          << "caught unknown exception in ClusterCommThread";
     }
   }
-  _cc->communicator()->abortRequests();
-  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "waiting for curl to stop remaining handles";
-  while (_cc->communicator()->work_once() > 0) {
+  _communicator->abortRequests();
+  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+      << "waiting for curl to stop remaining handles";
+  while (_communicator->work_once() > 0) {
     std::this_thread::sleep_for(std::chrono::microseconds(10));
   }
 
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "stopped ClusterComm thread";
+}
+
+/// @brief logs a connection error (backend unavailable)
+void ClusterComm::logConnectionError(bool useErrorLogLevel, ClusterCommResult const* result,
+                                     double timeout, int /*line*/) {
+  std::string msg = "cannot create connection to server";
+  if (!result->serverID.empty()) {
+    msg += ": '" + result->serverID + '\'';
+  }
+  msg += " at endpoint " + result->endpoint + "', timeout: " + std::to_string(timeout);
+
+  if (useErrorLogLevel) {
+    LOG_TOPIC(ERR, Logger::CLUSTER) << msg;
+  } else {
+    LOG_TOPIC(INFO, Logger::CLUSTER) << msg;
+  }
 }

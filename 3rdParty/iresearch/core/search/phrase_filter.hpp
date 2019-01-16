@@ -46,7 +46,7 @@ class IRESEARCH_API by_phrase : public filter {
   static const flags& required();
 
   DECLARE_FILTER_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   by_phrase();
 

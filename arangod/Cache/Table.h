@@ -126,8 +126,7 @@ class Table : public std::enable_shared_from_this<Table> {
   /// the auxiliary table. The second member of the returned pair is the source
   /// table for the bucket returned as the first member.
   //////////////////////////////////////////////////////////////////////////////
-  std::pair<void*, Table*> fetchAndLockBucket(
-      uint32_t hash, uint64_t maxTries = UINT64_MAX);
+  std::pair<void*, Table*> fetchAndLockBucket(uint32_t hash, uint64_t maxTries = UINT64_MAX);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Sets the auxiliary table.

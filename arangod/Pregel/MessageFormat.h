@@ -82,6 +82,6 @@ struct NumberMessageFormat : public MessageFormat<M> {
     arrayBuilder.add(VPackValue(val));
   }
 };
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 #endif

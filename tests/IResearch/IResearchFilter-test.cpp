@@ -68,7 +68,7 @@
 #include "search/boolean_filter.hpp"
 #include "search/phrase_filter.hpp"
 
-NS_LOCAL
+namespace {
 
 struct TestAttribute: public irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();
@@ -126,7 +126,7 @@ class TestAnalyzer: public irs::analysis::analyzer {
 DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestCharAnalyzer");
 REGISTER_ANALYZER_JSON(TestAnalyzer, TestAnalyzer::make);
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down

@@ -32,7 +32,7 @@ NS_BEGIN(analysis)
 
 class IRESEARCH_API analyzer: public token_stream {
  public:
-  DECLARE_SPTR(analyzer);
+  DECLARE_SHARED_PTR(analyzer);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @class type_id

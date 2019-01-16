@@ -92,12 +92,12 @@ filter::prepared::ptr by_prefix::prepare(
 
   scorer.score(rdr, ord);
 
-  auto q = memory::make_unique<range_query>(std::move(states));
+  auto q = memory::make_shared<range_query>(std::move(states));
 
   // apply boost
   irs::boost::apply(q->attributes(), this->boost() * boost);
 
-  return IMPLICIT_MOVE_WORKAROUND(q);
+  return q;
 }
 
 DEFINE_FILTER_TYPE(by_prefix)

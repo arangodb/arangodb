@@ -27,6 +27,7 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
+#include "Basics/HashSet.h"
 
 namespace arangodb {
 namespace aql {
@@ -35,8 +36,7 @@ struct Variable;
 /// @brief condition finder
 class ConditionFinder : public WalkerWorker<ExecutionNode> {
  public:
-  ConditionFinder(ExecutionPlan* plan,
-                  std::unordered_map<size_t, ExecutionNode*>* changes,
+  ConditionFinder(ExecutionPlan* plan, std::unordered_map<size_t, ExecutionNode*>* changes,
                   bool* hasEmptyResult, bool viewMode)
       : _plan(plan),
         _variableDefinitions(),
@@ -52,8 +52,7 @@ class ConditionFinder : public WalkerWorker<ExecutionNode> {
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final;
 
  protected:
-  bool handleFilterCondition(ExecutionNode* en,
-                             std::unique_ptr<Condition> const& condition);
+  bool handleFilterCondition(ExecutionNode* en, std::unique_ptr<Condition> const& condition);
   void handleSortCondition(ExecutionNode* en, Variable const* outVar,
                            std::unique_ptr<Condition> const& condition,
                            std::unique_ptr<SortCondition>& sortCondition);
@@ -61,7 +60,7 @@ class ConditionFinder : public WalkerWorker<ExecutionNode> {
  private:
   ExecutionPlan* _plan;
   std::unordered_map<VariableId, AstNode const*> _variableDefinitions;
-  std::unordered_set<VariableId> _filters;
+  arangodb::HashSet<VariableId> _filters;
   std::vector<std::pair<Variable const*, bool>> _sorts;
   // note: this class will never free the contents of this map
   std::unordered_map<size_t, ExecutionNode*>* _changes;

@@ -26,9 +26,7 @@
 using namespace arangodb;
 using namespace arangodb::transaction;
 
-CountCache::CountCache() 
-   : count(CountCache::NotPopulated), 
-     timestamp(0.0) {}
+CountCache::CountCache() : count(CountCache::NotPopulated), timestamp(0.0) {}
 
 int64_t CountCache::get() const {
   return count.load(std::memory_order_relaxed);

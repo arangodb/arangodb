@@ -46,7 +46,8 @@ class SingletonBlock final : public ExecutionBlock {
 
  private:
   std::pair<ExecutionState, arangodb::Result> getOrSkipSome(size_t atMost, bool skipping,
-                                                            AqlItemBlock*& result, size_t& skipped) override;
+                                                            AqlItemBlock*& result,
+                                                            size_t& skipped) override;
 
   /// @brief _inputRegisterValues
   std::unique_ptr<AqlItemBlock> _inputRegisterValues;
@@ -56,8 +57,7 @@ class SingletonBlock final : public ExecutionBlock {
 
 class LimitBlock final : public ExecutionBlock {
  private:
-
-   enum class State { INITFULLCOUNT, SKIPPING, RETURNING, DONE };
+  enum class State { INITFULLCOUNT, SKIPPING, RETURNING, DONE };
 
  public:
   LimitBlock(ExecutionEngine* engine, LimitNode const* ep)
@@ -71,14 +71,14 @@ class LimitBlock final : public ExecutionBlock {
         _limitSkipped(0),
         _result(nullptr) {}
 
-  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) final override;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items,
+                                                     size_t pos) final override;
 
   std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
                                                   AqlItemBlock*& result_,
                                                   size_t& skipped) override;
 
  protected:
-
   ExecutionState getHasMoreState() override;
 
  private:
@@ -109,27 +109,6 @@ class LimitBlock final : public ExecutionBlock {
   std::unique_ptr<AqlItemBlock> _result;
 };
 
-class ReturnBlock final : public ExecutionBlock {
- public:
-  ReturnBlock(ExecutionEngine* engine, ReturnNode const* ep)
-      : ExecutionBlock(engine, ep), _returnInheritedResults(false) {}
-
-  /// @brief getSome
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
-
-  /// @brief make the return block return the results inherited from above,
-  /// without creating new blocks
-  /// returns the id of the register the final result can be found in
-  RegisterId returnInheritedResults();
-
- private:
-  /// @brief if set to true, the return block will return the AqlItemBlocks it
-  /// gets from above directly. if set to false, the return block will create a
-  /// new AqlItemBlock with one output register and copy the data from its input
-  /// block into it
-  bool _returnInheritedResults;
-};
-
 class NoResultsBlock final : public ExecutionBlock {
  public:
   NoResultsBlock(ExecutionEngine* engine, ExecutionNode const* ep)
@@ -140,12 +119,12 @@ class NoResultsBlock final : public ExecutionBlock {
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
  private:
-  std::pair<ExecutionState, arangodb::Result> getOrSkipSome(
-      size_t atMost, bool skipping, AqlItemBlock*& result,
-      size_t& skipped) override;
+  std::pair<ExecutionState, arangodb::Result> getOrSkipSome(size_t atMost, bool skipping,
+                                                            AqlItemBlock*& result,
+                                                            size_t& skipped) override;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif
