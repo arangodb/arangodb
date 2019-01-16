@@ -100,6 +100,17 @@ std::unordered_map<int, std::string const> const typeNames{
 #endif
 };
 
+// FIXME -- this temporary function should be
+// replaced by a ExecutionNode member variable
+// that shows the subquery depth and if filled
+// during register planning
+bool isInSubQuery(ExecutionNode const* node) {
+  while (node->hasParent()) {
+    node = node->getFirstParent();
+  }
+  return node->plan()->root() != node;
+}
+
 }  // namespace
 
 /// @brief resolve nodeType to a string.
@@ -1387,6 +1398,8 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
+
+  LOG_DEVEL << std::boolalpha << "limit in subquery: " << isInSubQuery(this);
 
   LimitExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
                            getRegisterPlan()->nrRegs[getDepth()],
