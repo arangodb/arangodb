@@ -5,7 +5,9 @@ v3.4.3 (2019-xx-xx)
 
 * added `--environment.delete` to allow to hide environment variables from
   sub-processes or V8
-	
+
+* hide senstive program options like ldap password from V8
+
 v3.4.2 (2019-01-15)
 -------------------
 
@@ -15,7 +17,7 @@ v3.4.2 (2019-01-15)
 * fix issue #7903: Regression on ISO8601 string compatibility in AQL
 
   millisecond parts of AQL date values were limited to up to 3 digits.
-  Now the length of the millisecond part is unrestricted, but the 
+  Now the length of the millisecond part is unrestricted, but the
   millisecond precision is still limited to up to 3 digits.
 
 * fix issue #7900: Bind values of `null` are not replaced by
