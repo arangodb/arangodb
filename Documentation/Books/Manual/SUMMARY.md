@@ -88,6 +88,7 @@
   * [Arangoexport](Programs/Arangoexport/README.md)
     * [Examples](Programs/Arangoexport/Examples.md)
     * [Options](Programs/Arangoexport/Options.md)
+  * [ArangoSync](Programs/Arangosync/README.md)
   * [Arangobench](Programs/Arangobench/README.md)
     * [Examples](Programs/Arangobench/Examples.md)
     * [Options](Programs/Arangobench/Options.md)
