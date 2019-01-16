@@ -50,8 +50,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager(&monitor);
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
-  auto outputRegisters =
-      std::make_shared<const std::unordered_set<RegisterId>>(0);
+  auto outputRegisters = make_shared_unordered_set();
   auto& registersToKeep = outputRegisters;
   auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
       itemBlockManager, std::move(block), outputRegisters, registersToKeep);

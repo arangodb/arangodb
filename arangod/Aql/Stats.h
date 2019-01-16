@@ -17,18 +17,50 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
+/// @author Tobias Goedderz
+/// @author Michael Hackstein
+/// @author Heiko Kernbach
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_FILTER_STATS_H
-#define ARANGOD_AQL_FILTER_STATS_H
+#ifndef ARANGOD_AQL_STATS_H
+#define ARANGOD_AQL_STATS_H 1
 
-#include <cstddef>
-#include "ExecutionStats.h"
-
+#include "Aql/ExecutionStats.h"
 
 namespace arangodb {
 namespace aql {
+
+// no-op statistics for all Executors that don't have custom stats.
+class NoStats {};
+
+inline ExecutionStats& operator+=(ExecutionStats& stats, NoStats const&) {
+  return stats;
+}
+
+
+class CountStats {
+ public:
+  CountStats() noexcept : _counted(0) {}
+
+  void setCounted(std::size_t counted) noexcept { _counted = counted; }
+
+  void addCounted(std::size_t counted) noexcept { _counted += counted; }
+
+  void incrCounted() noexcept { _counted++; }
+
+  std::size_t getCounted() const noexcept { return _counted; }
+
+ private:
+  std::size_t _counted;
+};
+
+inline ExecutionStats& operator+=(ExecutionStats& executionStats,
+                                  CountStats const& filterStats) noexcept {
+  executionStats.count += filterStats.getCounted();
+  return executionStats;
+}
+
 
 class FilterStats {
  public:
@@ -52,7 +84,6 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
   return executionStats;
 }
 
-}
-}
-
-#endif // ARANGOD_AQL_FILTER_STATS_H
+}  // namespace aql
+}  // namespace arangodb
+#endif

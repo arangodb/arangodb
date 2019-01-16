@@ -28,7 +28,7 @@
 
 #include "Aql/ExecutorInfos.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/FilterStats.h"
+#include "Aql/Stats.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
 

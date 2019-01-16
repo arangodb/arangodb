@@ -17,63 +17,60 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Goedderz
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TEST_EXECUTOR_H
-#define ARANGOD_AQL_TEST_EXECUTOR_H
+#ifndef ARANGOD_AQL_CALACULATION_EXECUTOR_H
+#define ARANGOD_AQL_CALACULATION_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/Stats.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/types.h"
-
-#include <memory>
 
 namespace arangodb {
+namespace transaction {
+class Methods;
+}
+
 namespace aql {
 
-class InputAqlItemRow;
 class ExecutorInfos;
+class InputAqlItemRow;
+class NoStats;
 class SingleRowFetcher;
+class Expression;
+class Query;
+struct Variable;
 
-class TestExecutorHelperInfos : public ExecutorInfos {
- public:
-  TestExecutorHelperInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
-                      RegisterId nrOutputRegisters,
-                      std::unordered_set<RegisterId> registersToClear);
+struct CalculationExecutorInfos : public ExecutorInfos {
+  CalculationExecutorInfos(RegisterId outputRegister, RegisterId nrInputRegisters,
+                           RegisterId nrOutputRegisters,
+                           std::unordered_set<RegisterId> registersToClear, Query*,
+                           Expression*, std::vector<Variable const*>&& expInVars,
+                           std::vector<RegisterId>&& expInRegs);
 
-  TestExecutorHelperInfos() = delete;
-  TestExecutorHelperInfos(TestExecutorHelperInfos &&) = default;
-  TestExecutorHelperInfos(TestExecutorHelperInfos const&) = delete;
-  ~TestExecutorHelperInfos() = default;
+  CalculationExecutorInfos() = delete;
+  CalculationExecutorInfos(CalculationExecutorInfos&&) = default;
+  CalculationExecutorInfos(CalculationExecutorInfos const&) = delete;
+  ~CalculationExecutorInfos() = default;
 
-  RegisterId getInputRegister() const noexcept { return _inputRegister; };
+  RegisterId _outputRegisterId;
 
- private:
-  // This is exactly the value in the parent member ExecutorInfo::_inRegs,
-  // respectively getInputRegisters().
-  RegisterId _inputRegister;
+  Query* _query;
+  Expression* _expression;
+  std::vector<Variable const*> _expInVars;  // input variables for expresseion
+  std::vector<RegisterId> _expInRegs;       // input registers for expression
+  bool _isReference;
 };
 
-/**
- * @brief Implementation of Filter Node
- */
-class TestExecutorHelper {
+class CalculationExecutor {
  public:
   using Fetcher = SingleRowFetcher;
-  using Infos = TestExecutorHelperInfos;
-  using Stats = FilterStats;
+  using Infos = CalculationExecutorInfos;
+  using Stats = NoStats;
 
-  TestExecutorHelper() = delete;
-  TestExecutorHelper(TestExecutorHelper&&) = default;
-  TestExecutorHelper(TestExecutorHelper const&) = delete;
-  TestExecutorHelper(Fetcher& fetcher, Infos&);
-  ~TestExecutorHelper();
+  CalculationExecutor(Fetcher& fetcher, CalculationExecutorInfos&);
+  ~CalculationExecutor() = default;
 
   /**
    * @brief produce the next Row of Aql Values.
@@ -83,10 +80,13 @@ class TestExecutorHelper {
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
  public:
-  Infos& _infos;
+  CalculationExecutorInfos& _infos;
+
  private:
   Fetcher& _fetcher;
-  bool _returnedDone = false;
+
+  InputAqlItemRow _currentRow;
+  ExecutionState _rowState;
 };
 
 }  // namespace aql

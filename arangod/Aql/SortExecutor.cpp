@@ -30,6 +30,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SortRegister.h"
+#include "Aql/Stats.h"
 
 #include <algorithm>
 
