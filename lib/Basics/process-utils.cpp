@@ -1162,11 +1162,6 @@ static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
   if (kill(pid, 0) == 0) {
     ExternalProcess* external = new ExternalProcess();
 
-    if (external == nullptr) {
-      // gracefully handle out of memory
-      return nullptr;
-    }
-
     external->_pid = pid;
     external->_status = TRI_EXT_RUNNING;
 
@@ -1185,11 +1180,6 @@ static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
   hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
   if (hProcess != nullptr) {
     ExternalProcess* external = new ExternalProcess();
-
-    if (external == nullptr) {
-      // gracefully handle out of memory
-      return nullptr;
-    }
 
     external->_pid = pid;
     external->_status = TRI_EXT_RUNNING;
@@ -1259,8 +1249,9 @@ static e_sig_action whatDoesSignal(int signal) {
   switch (signal) {
     case SIGHUP:  //    1       Term    Hangup detected on controlling terminal
       return logrotate;  //             or death of controlling process
-                         //                 we say this is non-deadly since we should do a logrotate.
-    case SIGINT:  //    2       Term    Interrupt from keyboard
+                         //                 we say this is non-deadly since we
+                         //                 should do a logrotate.
+    case SIGINT:         //    2       Term    Interrupt from keyboard
       return term;
     case SIGQUIT:  //    3       Core    Quit from keyboard
     case SIGILL:   //    4       Core    Illegal Instruction
@@ -1439,6 +1430,15 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool i
   return TRI_CheckExternalProcess(pid, false);
 }
 
+
+#ifdef _WIN32
+typedef LONG (NTAPI *NtSuspendProcess)(IN HANDLE ProcessHandle);
+typedef LONG (NTAPI *NtResumeProcess)(IN HANDLE ProcessHandle);
+
+NtSuspendProcess pfnNtSuspendProcess = (NtSuspendProcess)GetProcAddress(GetModuleHandle("ntdll"), "NtSuspendProcess");
+NtResumeProcess pfnNtResumeProcess = (NtResumeProcess)GetProcAddress(GetModuleHandle("ntdll"), "NtResumeProcess");
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stops an external process, only on Unix
 ////////////////////////////////////////////////////////////////////////////////
@@ -1449,7 +1449,17 @@ bool TRI_SuspendExternalProcess(ExternalId pid) {
 #ifndef _WIN32
   return 0 == kill(pid._pid, SIGSTOP);
 #else
-  return true;
+  TRI_ERRORBUF;
+  
+  HANDLE processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid._pid);
+  bool rc = pfnNtSuspendProcess(processHandle) == 0;
+  if (!rc) {
+    TRI_SYSTEM_ERROR();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) <<
+      "suspending of '" << pid._pid << "' failed, error: " << GetLastError() << " " << TRI_GET_ERRORBUF;
+  }
+  CloseHandle(processHandle);
+  return rc;
 #endif
 }
 
@@ -1463,7 +1473,17 @@ bool TRI_ContinueExternalProcess(ExternalId pid) {
 #ifndef _WIN32
   return 0 == kill(pid._pid, SIGCONT);
 #else
-  return true;
+  TRI_ERRORBUF;
+
+  HANDLE processHandle = OpenProcess(PROCESS_SUSPEND_RESUME, FALSE, pid._pid);
+  bool rc = processHandle != NULL && pfnNtResumeProcess(processHandle) == 0;
+  if (!rc) {
+    TRI_SYSTEM_ERROR();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) <<
+      "resuming of '" << pid._pid << "' failed, error: " << GetLastError() << " " << TRI_GET_ERRORBUF;
+  }
+  CloseHandle(processHandle);
+  return rc;
 #endif
 }
 
