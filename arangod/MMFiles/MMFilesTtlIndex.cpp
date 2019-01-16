@@ -34,7 +34,14 @@ MMFilesTtlIndex::MMFilesTtlIndex(
     arangodb::velocypack::Slice const& info
 )
     : MMFilesSkiplistIndex(iid, collection, info),
-      _expireAfter(info.get(StaticStrings::IndexExpireAfter).getNumericValue<double>()) {}
+      _expireAfter(info.get(StaticStrings::IndexExpireAfter).getNumericValue<double>()) {
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // ttl index must always be non-unique, but sparse
+  TRI_ASSERT(!info.get(StaticStrings::IndexUnique).getBool()); 
+  TRI_ASSERT(info.get(StaticStrings::IndexSparse).getBool()); 
+#endif
+}
 
 MMFilesTtlIndex::~MMFilesTtlIndex() {}
 

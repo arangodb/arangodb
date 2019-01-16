@@ -166,6 +166,8 @@ class EdgeIndexMock final : public arangodb::Index {
   IndexType type() const override { return Index::TRI_IDX_TYPE_EDGE_INDEX; }
 
   char const* typeName() const override { return "edge"; }
+  
+  bool isPersistent() const override { return false; }
 
   bool canBeDropped() const override { return false; }
 

@@ -470,7 +470,9 @@ class ExecutionNode {
 
    public:
     RegisterPlan() : depth(0), totalNrRegs(0), me(nullptr) {
+      nrRegsHere.reserve(8);
       nrRegsHere.emplace_back(0);
+      nrRegs.reserve(8);
       nrRegs.emplace_back(0);
     }
 

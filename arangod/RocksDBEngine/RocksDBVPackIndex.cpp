@@ -28,8 +28,7 @@
 #include "Aql/SortCondition.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/PersistentIndexAttributeMatcher.h"
-#include "Indexes/SkiplistIndexAttributeMatcher.h"
+#include "Indexes/SortedIndexAttributeMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -907,7 +906,7 @@ bool RocksDBVPackIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex, size_t& estimatedItems, double& estimatedCost) const {
-  return SkiplistIndexAttributeMatcher::supportsFilterCondition(allIndexes, this,
+  return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this,
                                                                 node, reference,
                                                                 itemsInIndex, estimatedItems,
                                                                 estimatedCost);
@@ -917,15 +916,15 @@ bool RocksDBVPackIndex::supportsSortCondition(arangodb::aql::SortCondition const
                                               arangodb::aql::Variable const* reference,
                                               size_t itemsInIndex, double& estimatedCost,
                                               size_t& coveredAttributes) const {
-  return PersistentIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
-                                                                itemsInIndex, estimatedCost,
-                                                                coveredAttributes);
+  return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
+                                                              itemsInIndex, estimatedCost,
+                                                              coveredAttributes);
 }
 
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(
     arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference) const {
-  return SkiplistIndexAttributeMatcher::specializeCondition(this, node, reference);
+  return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
 }
 
 IndexIterator* RocksDBVPackIndex::iteratorForCondition(
@@ -958,7 +957,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     std::unordered_set<std::string> nonNullAttributes;
     size_t unused = 0;
 
-    SkiplistIndexAttributeMatcher::matchAttributes(this, node, reference, found,
+    SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found,
                                                    unused, nonNullAttributes, true);
 
     // found contains all attributes that are relevant for this node.

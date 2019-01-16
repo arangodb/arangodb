@@ -30,8 +30,7 @@
 #include "Cache/CachedValue.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ServerState.h"
-#include "Indexes/PersistentIndexAttributeMatcher.h"
-#include "Indexes/SkiplistIndexAttributeMatcher.h"
+#include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -531,7 +530,7 @@ bool RocksDBPrimaryIndex::supportsFilterCondition(
   std::unordered_set<std::string> nonNullAttributes;
 
   std::size_t values = 0;
-  SkiplistIndexAttributeMatcher::matchAttributes(this, node, reference, found,
+  SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found,
                                                  values, nonNullAttributes,
                                                  /*skip evaluation (during execution)*/ false);
   estimatedItems = values;
@@ -542,9 +541,9 @@ bool RocksDBPrimaryIndex::supportsSortCondition(arangodb::aql::SortCondition con
                                                 arangodb::aql::Variable const* reference,
                                                 size_t itemsInIndex, double& estimatedCost,
                                                 size_t& coveredAttributes) const {
-  return PersistentIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
-                                                                itemsInIndex, estimatedCost,
-                                                                coveredAttributes);
+  return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
+                                                              itemsInIndex, estimatedCost,
+                                                              coveredAttributes);
 }
 
 /// @brief creates an IndexIterator for the given Condition
@@ -753,7 +752,7 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* RocksDBPrimaryIndex::specializeCondition(
     arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference) const {
-  return SkiplistIndexAttributeMatcher::specializeCondition(this, node, reference);
+  return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
 }
 
 /// @brief create the iterator, for a single attribute, IN operator

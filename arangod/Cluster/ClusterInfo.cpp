@@ -2553,7 +2553,7 @@ int ClusterInfo::ensureIndexCoordinatorInner(std::string const& databaseName,
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard(
       [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
-
+                           
   AgencyOperation newValue(planIndexesKey, AgencyValueOperationType::PUSH,
                            newIndexBuilder.slice());
   AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
@@ -2571,6 +2571,8 @@ int ClusterInfo::ensureIndexCoordinatorInner(std::string const& databaseName,
       errorMsg += trx.toJson();
       errorMsg += " ResultCode: " + std::to_string(result.errorCode()) + " ";
       errorMsg += " HttpCode: " + std::to_string(result.httpCode()) + " ";
+      errorMsg += " ErrorMessage: " + result.errorMessage() + " ";
+      errorMsg += " ErrorDetails: " + result.errorDetails() + " ";
       errorMsg += std::string(__FILE__) + ":" + std::to_string(__LINE__);
     }
     return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN;
@@ -2587,7 +2589,7 @@ int ClusterInfo::ensureIndexCoordinatorInner(std::string const& databaseName,
     {
       // Copy over all elements in slice.
       VPackObjectBuilder b(&resultBuilder);
-      resultBuilder.add("isSmart", VPackValue(true));
+      resultBuilder.add(StaticStrings::IsSmart, VPackValue(true));
     }
     loadCurrent();
     return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);

@@ -6323,7 +6323,7 @@ struct GeoIndexInfo {
 
 // checks 2 parameters of distance function if they represent a valid access to
 // latitude and longitude attribute of the geo index.
-// disance(a,b,c,d) - possible pairs are (a,b) and (c,d)
+// distance(a,b,c,d) - possible pairs are (a,b) and (c,d)
 static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
                                  AstNode const* lngArg, bool supportLegacy,
                                  GeoIndexInfo& info) {

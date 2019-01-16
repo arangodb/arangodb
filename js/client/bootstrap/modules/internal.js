@@ -124,6 +124,33 @@ let appendHeaders = function(appender, headers) {
 
     throw 'not connected';
   };
+  
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief returns TTL statistics
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.ttlStatistics = function () {
+    if (exports.arango) {
+      return exports.arango.GET('/_api/ttl/statistics').result;
+    }
+
+    throw 'not connected';
+  };
+  
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief returns or sets TTL properties
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.ttlProperties = function (properties) {
+    if (exports.arango) {
+      if (properties !== undefined) {
+        return exports.arango.PUT('/_api/ttl/properties', properties).result;
+      }
+      return exports.arango.GET('/_api/ttl/properties').result;
+    }
+
+    throw 'not connected';
+  };
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief logs a request in curl format

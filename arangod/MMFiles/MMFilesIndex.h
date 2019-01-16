@@ -55,7 +55,7 @@ class MMFilesIndex : public Index {
     unload();
   }
 
-  virtual bool isPersistent() const { return false; };
+  virtual bool isPersistent() const override { return false; }
 };
 }  // namespace arangodb
 

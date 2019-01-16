@@ -44,6 +44,7 @@ class Slice;
 }  // namespace velocypack
 
 struct OperationOptions;
+struct TtlStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a copy of all HTTP headers to forward
@@ -235,6 +236,9 @@ int truncateCollectionOnCoordinator(std::string const& dbname, std::string const
 
 int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector,
                            double maxWaitTime = -1.0);
+
+/// @brief get TTL statistics from all DBservers and aggregate them
+Result getTtlStatisticsFromAllDBServers(TtlStatistics& stats);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the active journals for the collection on all DBservers

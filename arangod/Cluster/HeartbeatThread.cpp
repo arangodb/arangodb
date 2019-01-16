@@ -612,7 +612,7 @@ void HeartbeatThread::runSingleServer() {
       if (!leader.isString() || leader.getStringLength() == 0) {
         // Case 1: No leader in agency. Race for leadership
         // ONLY happens on the first startup. Supervision performs failovers
-        LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Leadership vaccuum detected, "
+        LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Leadership vacuum detected, "
                                            << "attempting a takeover";
 
         // if we stay a slave, the redirect will be turned on again
@@ -663,9 +663,6 @@ void HeartbeatThread::runSingleServer() {
         }
         lastTick = EngineSelectorFeature::ENGINE->currentTick();
         
-        // server is now responsible for expiring outdated documents
-        ttlFeature->activate();
-
         // put the leader in optional read-only mode
         auto readOnlySlice = response.get(
             std::vector<std::string>({AgencyCommManager::path(), "Readonly"}));
@@ -679,13 +676,17 @@ void HeartbeatThread::runSingleServer() {
               << "Successful leadership takeover: "
               << "All your base are belong to us";
         }
+        
+        // server is now responsible for expiring outdated documents
+        ttlFeature->activate();
+
         continue;  // nothing more to do
       }
 
       // Case 3: Current server is follower, should not get here otherwise
       std::string const leaderStr = leader.copyString();
       TRI_ASSERT(!leaderStr.empty());
-      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Following: " << leader;
+      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Following: " << leaderStr;
         
       // server is not responsible anymore for expiring outdated documents
       ttlFeature->deactivate();
@@ -708,7 +709,7 @@ void HeartbeatThread::runSingleServer() {
         // follower. We wait for all ongoing ops to stop, and make sure nothing
         // is committed
         LOG_TOPIC(INFO, Logger::HEARTBEAT)
-            << "Detected leader to follower switch";
+            << "Detected leader to follower switch, now following " << leaderStr;
         TRI_ASSERT(!applier->isActive());
         applier->forget();  // make sure applier is doing a resync
 

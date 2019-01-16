@@ -234,6 +234,10 @@ class Index {
   /// contents are the same
   static bool Compare(velocypack::Slice const& lhs, velocypack::Slice const& rhs);
 
+  /// @brief whether or not the index is persistent (storage on durable media)
+  /// or not (RAM only)
+  virtual bool isPersistent() const = 0;
+
   virtual bool canBeDropped() const = 0;
 
   /// @brief whether or not the index provides an iterator that can extract

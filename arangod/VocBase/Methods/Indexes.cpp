@@ -64,8 +64,8 @@ Result Indexes::getIndex(LogicalCollection const* collection,
   // do some magic to parse the iid
   std::string name;
   VPackSlice id = indexId;
-  if (id.isObject() && id.hasKey("id")) {
-    id = id.get("id");
+  if (id.isObject() && id.hasKey(StaticStrings::IndexId)) {
+    id = id.get(StaticStrings::IndexId);
   }
   if (id.isString()) {
     std::regex re = std::regex("^([a-zA-Z0-9\\-_]+)\\/([0-9]+)$", std::regex::ECMAScript);
@@ -84,7 +84,7 @@ Result Indexes::getIndex(LogicalCollection const* collection,
   Result res = Indexes::getAll(collection, Index::makeFlags(), /*withHidden*/ true, tmp);
   if (res.ok()) {
     for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
-      if (index.get("id").compareString(name) == 0) {
+      if (index.get(StaticStrings::IndexId).compareString(name) == 0) {
         out.add(index);
         return Result();
       }
@@ -122,7 +122,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
     tmp.openArray();
     for (VPackSlice const& s : VPackArrayIterator(tmpInner.slice())) {
-      auto id = StringRef(s.get("id"));
+      auto id = StringRef(s.get(StaticStrings::IndexId));
       auto found = std::find_if(estimates.begin(), estimates.end(),
                                 [&id](std::pair<std::string, double> const& v) {
                                   return id == v.first;
@@ -259,7 +259,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
                                VPackSlice const& definition, bool create,
                                VPackBuilder& output) {
   TRI_ASSERT(collection != nullptr);
-  
+    
   Result res;
   bool created = false;
   std::shared_ptr<arangodb::Index> idx;
@@ -339,7 +339,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
   auto res =
       engine->indexFactory().enhanceIndexDefinition(input, normalized, create,
                                                     ServerState::instance()->isCoordinator());
-
+  
   if (!res.ok()) {
     return res;
   }
@@ -427,10 +427,10 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
     collection->flushClusterIndexEstimates();
 
     // the cluster won't set a proper id value
-    std::string iid = tmp.slice().get("id").copyString();
+    std::string iid = tmp.slice().get(StaticStrings::IndexId).copyString();
     VPackBuilder b;
     b.openObject();
-    b.add("id", VPackValue(collection->name() + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
+    b.add(StaticStrings::IndexId, VPackValue(collection->name() + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
     b.close();
     output = VPackCollection::merge(tmp.slice(), b.slice(), false);
     return res;
@@ -519,7 +519,7 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
 
   // extract the index identifier from an object
   else if (val.isObject()) {
-    VPackSlice iidVal = val.get("id");
+    VPackSlice iidVal = val.get(StaticStrings::IndexId);
 
     if (!ExtractIndexHandle(iidVal, collectionName, iid)) {
       return Result(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);

@@ -792,6 +792,11 @@ ExecutionNode::RegisterPlan::RegisterPlan(RegisterPlan const& v, unsigned int ne
       depth(newdepth + 1),
       totalNrRegs(v.nrRegs[newdepth]),
       me(nullptr) {
+  if (depth + 1 < 8) {
+    // do a minium initial allocation to avoid frequent reallocations
+    nrRegsHere.reserve(8);
+    nrRegs.reserve(8);
+  }
   nrRegsHere.resize(depth + 1);
   nrRegsHere.back() = 0;
   // create a copy of the last value here

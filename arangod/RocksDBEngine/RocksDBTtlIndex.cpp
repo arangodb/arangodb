@@ -37,17 +37,25 @@ RocksDBTtlIndex::RocksDBTtlIndex(
     arangodb::velocypack::Slice const& info
 )
     : RocksDBSkiplistIndex(iid, coll, info),
-      _expireAfter(info.get(StaticStrings::IndexExpireAfter).getNumericValue<double>()) {}
+      _expireAfter(info.get(StaticStrings::IndexExpireAfter).getNumericValue<double>()) {
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // ttl index must always be non-unique, but sparse
+  TRI_ASSERT(!info.get(StaticStrings::IndexUnique).getBool()); 
+  TRI_ASSERT(info.get(StaticStrings::IndexSparse).getBool()); 
+#endif
+}
 
 void RocksDBTtlIndex::toVelocyPack(arangodb::velocypack::Builder& builder,
                                    std::underlying_type<Index::Serialize>::type flags) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
+  // always non-unique, always sparse
   builder.add(
     arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(false)
   );
   builder.add(
-    arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(false)
+    arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(true)
   );
   builder.add(StaticStrings::IndexExpireAfter, VPackValue(_expireAfter));
   builder.close();

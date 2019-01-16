@@ -76,6 +76,7 @@ namespace arangodb {
 bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
                              arangodb::velocypack::Slice const& lhs,
                              arangodb::velocypack::Slice const& rhs) const {
+
   // unique must be identical if present
   auto value = lhs.get(arangodb::StaticStrings::IndexUnique);
 
@@ -184,6 +185,7 @@ Result IndexFactory::emplace(std::string const& type, IndexTypeFactory const& fa
 Result IndexFactory::enhanceIndexDefinition(velocypack::Slice const definition,
                                             velocypack::Builder& normalized,
                                             bool isCreation, bool isCoordinator) const {
+
   auto type = definition.get(StaticStrings::IndexType);
 
   if (!type.isString()) {
@@ -432,8 +434,9 @@ Result IndexFactory::enhanceJsonIndexTtl(VPackSlice definition,
   Result res = processIndexFields(definition, builder, 1, 1, create, false);
  
   if (res.ok()) {
-    builder.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(true));
+    // a TTL index is always non-unique but sparse!
     builder.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(false));
+    builder.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(true));
 
     VPackSlice v = definition.get(StaticStrings::IndexExpireAfter);
     if (!v.isNumber()) {
@@ -443,8 +446,6 @@ Result IndexFactory::enhanceJsonIndexTtl(VPackSlice definition,
     if (d < 0.0) {
       return Result(TRI_ERROR_BAD_PARAMETER, "expireAfter attribute must greater equal to zero");
     }
-    builder.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(true));
-    builder.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(false));
     builder.add(arangodb::StaticStrings::IndexExpireAfter, v);
   }
 

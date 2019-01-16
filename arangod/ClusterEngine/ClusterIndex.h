@@ -73,6 +73,8 @@ class ClusterIndex : public Index {
   void load() override {}
   void unload() override {}
   size_t memory() const override { return 0; }
+  
+  bool isPersistent() const override;
 
   Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
                 velocypack::Slice const& doc, Index::OperationMode mode) override {

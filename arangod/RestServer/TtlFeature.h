@@ -26,11 +26,10 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Mutex.h"
 
-#include <chrono>
-
 namespace arangodb {
 namespace velocypack {
 class Builder;
+class Slice;
 }
 
 class TtlThread;
@@ -39,19 +38,30 @@ struct TtlStatistics {
   // number of times the background thread was running
   uint64_t runs = 0;
   // number of documents removed
-  uint64_t removed = 0;
+  uint64_t documentsRemoved = 0;
   // number of times the background thread stopped prematurely because it hit the configured limit
-  uint64_t reachedLimit = 0;
-
+  uint64_t limitReached = 0;
 
   TtlStatistics& operator+=(TtlStatistics const& other) {
     runs += other.runs;
-    removed += other.removed;
-    reachedLimit += other.reachedLimit;
+    documentsRemoved += other.documentsRemoved;
+    limitReached += other.limitReached;
     return *this;
   }
+  
+  TtlStatistics& operator+=(arangodb::velocypack::Slice const& other);
 
   void toVelocyPack(arangodb::velocypack::Builder&) const;
+};
+  
+struct TtlProperties {
+  uint64_t frequency = 30 * 1000; // milliseconds
+  uint64_t maxTotalRemoves = 1000000;
+  uint64_t maxCollectionRemoves = 1000000;
+  bool onlyLoadedCollections = true;
+  
+  void toVelocyPack(arangodb::velocypack::Builder&, bool isActive) const;
+  Result fromVelocyPack(arangodb::velocypack::Slice const&);
 };
 
 class TtlFeature final : public application_features::ApplicationFeature {
@@ -66,30 +76,34 @@ class TtlFeature final : public application_features::ApplicationFeature {
   void stop() override final;
 
   /// @brief turn expiring/removing outdated documents on
-  void activate() { _active = true; }
-  /// @brief turn expiring/removing outdated documents off
-  void deactivate() { _active = false; }
+  void activate();
+  /// @brief turn expiring/removing outdated documents off, blocks until
+  /// the TTL thread has left the actual document removal routine
+  void deactivate();
   /// @brief whether or not expiring/removing outdated documents is currently turned on
-  bool isActive() const { return _active; }
-
-  TtlStatistics stats() const;
+  bool isActive() const;
 
   void statsToVelocyPack(arangodb::velocypack::Builder& builder) const;
 
   void updateStats(TtlStatistics const& stats);
   
+  void propertiesToVelocyPack(arangodb::velocypack::Builder& builder) const;
+  Result propertiesFromVelocyPack(arangodb::velocypack::Slice const& slice);
+  
+  TtlProperties properties() const;
+  
  private:
   void shutdownThread() noexcept;
   
  private:
-  uint64_t _frequency;
-  uint64_t _maxTotalRemoves;
-  uint64_t _maxCollectionRemoves;
-  bool _onlyLoadedCollections;
-  std::atomic<bool> _active;
+  // protects _properties and _active
+  mutable Mutex _propertiesMutex;
+  TtlProperties _properties;
+  bool _active;
 
   std::shared_ptr<TtlThread> _thread;
 
+  // protects _statistics
   mutable Mutex _statisticsMutex; 
   TtlStatistics _statistics;
 };
