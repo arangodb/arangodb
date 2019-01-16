@@ -742,9 +742,7 @@ class LimitNode : public ExecutionNode {
 
  public:
   LimitNode(ExecutionPlan* plan, size_t id, size_t offset, size_t limit)
-      : ExecutionNode(plan, id), _offset(offset), _limit(limit), _fullCount(false) {
-    TRI_ASSERT(_inVariable != nullptr);
-  }
+      : ExecutionNode(plan, id), _offset(offset), _limit(limit), _fullCount(false) {}
 
   LimitNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
