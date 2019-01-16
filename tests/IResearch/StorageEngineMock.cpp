@@ -215,7 +215,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::LocalDocumentId const& documentId,
       arangodb::velocypack::Slice const& doc,
       OperationMode
-  ) override {
+  ) {
     if (!doc.isObject()) {
       return { TRI_ERROR_INTERNAL };
     }
@@ -243,7 +243,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::LocalDocumentId const&,
       arangodb::velocypack::Slice const& doc,
       OperationMode
-  ) override {
+  ) {
     if (!doc.isObject()) {
       return { TRI_ERROR_INTERNAL };
     }
@@ -598,7 +598,8 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::v
   auto res = trx.begin();
   TRI_ASSERT(res.ok());
 
-  index->batchInsert(trx, docs, taskQueuePtr);
+  auto* l = reinterpret_cast<arangodb::iresearch::IResearchLink*>(index.get());
+  l->batchInsert(trx, docs, taskQueuePtr);
 
   if (TRI_ERROR_NO_ERROR != taskQueue.status()) {
     return nullptr;
@@ -689,8 +690,30 @@ arangodb::Result PhysicalCollectionMock::insert(
   result.setUnmanaged(documents.back().first.data(), docId);
 
   for (auto& index : _indexes) {
-    if (!index->insert(*trx, docId, arangodb::velocypack::Slice(result.vpack()), arangodb::Index::OperationMode::normal).ok()) {
-      return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+    if (index->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+      auto* l = static_cast<EdgeIndexMock*>(index.get());
+      if (!l->insert(*trx, docId, arangodb::velocypack::Slice(result.vpack()),
+                     arangodb::Index::OperationMode::normal).ok()) {
+        return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+      }
+    } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+      
+      if (arangodb::ServerState::instance()->isCoordinator()) {
+        auto* l = static_cast<arangodb::iresearch::IResearchLinkCoordinator*>(index.get());
+        if (!l->insert(*trx, docId, arangodb::velocypack::Slice(result.vpack()),
+                       arangodb::Index::OperationMode::normal).ok()) {
+          return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+        }
+      } else {
+        auto* l = static_cast<arangodb::iresearch::IResearchMMFilesLink*>(index.get());
+        if (!l->insert(*trx, docId, arangodb::velocypack::Slice(result.vpack()),
+                       arangodb::Index::OperationMode::normal).ok()) {
+          return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+        }
+      }
+      
+    } else { // unsupported
+      TRI_ASSERT(false);
     }
   }
 
