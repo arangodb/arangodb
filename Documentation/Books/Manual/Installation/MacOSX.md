@@ -84,18 +84,11 @@ also need to update Homebrew executing the command `brew update`.
 Package Installation
 --------------------
 
+We provide a command-line app called *ArangoDB-CLI*.
 Visit the official [Download](https://www.arangodb.com/download) page of the
 ArangoDB website and download the *DMG* Package for macOS.
 
-### Graphical App
-
-We provide a graphical app. You can install the application *ArangoDB* in
-your application folder.
-
-### Command line App
-
-We provide a command-line app. You can install the application *ArangoDB-CLI*
-in your application folder.
+You can install the application in your application folder.
 
 Starting the application will start the server and open a terminal window
 showing you the log-file.
