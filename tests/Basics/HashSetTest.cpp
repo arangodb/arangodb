@@ -282,7 +282,45 @@ SECTION("test_many") {
 }
 
 /// @brief test copying
-SECTION("test_copy_construct") {
+SECTION("test_copy_construct_local") {
+  arangodb::HashSet<int> values;
+  
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  
+  for (int i = 0; i < 2; ++i) {
+    values.insert(i);
+  }
+
+  // copy 
+  arangodb::HashSet<int> copy(values);
+
+  CHECK(values.size() == 2); 
+  CHECK(!values.empty());
+  
+  CHECK(copy.size() == 2); 
+  CHECK(!copy.empty());
+
+  for (int i = 0; i < 2; ++i) {
+    CHECK(values.find(i) != values.end());
+    CHECK(copy.find(i) != copy.end());
+  }
+
+  values.clear();
+  
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  CHECK(copy.size() == 2); 
+  CHECK(!copy.empty());
+  
+  for (int i = 0; i < 2; ++i) {
+    CHECK(values.find(i) == values.end());
+    CHECK(copy.find(i) != copy.end());
+  }
+}
+
+/// @brief test copying
+SECTION("test_copy_construct_heap") {
   arangodb::HashSet<int> values;
   
   CHECK(values.size() == 0); 
@@ -320,7 +358,45 @@ SECTION("test_copy_construct") {
 }
 
 /// @brief test copying
-SECTION("test_copy_assign") {
+SECTION("test_copy_assign_local") {
+  arangodb::HashSet<int> values;
+  
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  
+  for (int i = 0; i < 2; ++i) {
+    values.insert(i);
+  }
+
+  // copy 
+  arangodb::HashSet<int> copy = values;
+
+  CHECK(values.size() == 2); 
+  CHECK(!values.empty());
+  
+  CHECK(copy.size() == 2); 
+  CHECK(!copy.empty());
+
+  for (int i = 0; i < 2; ++i) {
+    CHECK(values.find(i) != values.end());
+    CHECK(copy.find(i) != copy.end());
+  }
+
+  values.clear();
+  
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  CHECK(copy.size() == 2); 
+  CHECK(!copy.empty());
+  
+  for (int i = 0; i < 2; ++i) {
+    CHECK(values.find(i) == values.end());
+    CHECK(copy.find(i) != copy.end());
+  }
+}
+
+/// @brief test copying
+SECTION("test_copy_assign_heap") {
   arangodb::HashSet<int> values;
   
   CHECK(values.size() == 0); 
@@ -358,7 +434,33 @@ SECTION("test_copy_assign") {
 }
 
 /// @brief test moving
-SECTION("test_move_construct") {
+SECTION("test_move_construct_local") {
+  arangodb::HashSet<int> values;
+  
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  
+  for (int i = 0; i < 2; ++i) {
+    values.insert(i);
+  }
+
+  // move
+  arangodb::HashSet<int> copy(std::move(values));
+
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  
+  CHECK(copy.size() == 2); 
+  CHECK(!copy.empty());
+
+  for (int i = 0; i < 2; ++i) {
+    CHECK(values.find(i) == values.end());
+    CHECK(copy.find(i) != copy.end());
+  }
+}
+
+/// @brief test moving
+SECTION("test_move_construct_heap") {
   arangodb::HashSet<int> values;
   
   CHECK(values.size() == 0); 
@@ -384,7 +486,33 @@ SECTION("test_move_construct") {
 }
 
 /// @brief test moving
-SECTION("test_move_assign") {
+SECTION("test_move_assign_local") {
+  arangodb::HashSet<int> values;
+  
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  
+  for (int i = 0; i < 2; ++i) {
+    values.insert(i);
+  }
+
+  // move
+  arangodb::HashSet<int> copy = std::move(values);
+
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  
+  CHECK(copy.size() == 2); 
+  CHECK(!copy.empty());
+
+  for (int i = 0; i < 2; ++i) {
+    CHECK(values.find(i) == values.end());
+    CHECK(copy.find(i) != copy.end());
+  }
+}
+
+/// @brief test moving
+SECTION("test_move_assign_heap") {
   arangodb::HashSet<int> values;
   
   CHECK(values.size() == 0); 
