@@ -21,11 +21,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnvironmentFeature.h"
+
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/process-utils.h"
 #include "Logger/Logger.h"
+#include "ProgramOptions/ProgramOptions.h"
 
 #ifdef __linux__
 #include <sys/sysinfo.h>
@@ -34,7 +36,6 @@
 using namespace arangodb::basics;
 
 namespace arangodb {
-
 EnvironmentFeature::EnvironmentFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Environment") {
   setOptional(true);
@@ -42,7 +43,19 @@ EnvironmentFeature::EnvironmentFeature(application_features::ApplicationServer& 
   startsAfter("MaxMapCount");
 }
 
+void EnvironmentFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
+  options->addSection("environment", "Configure the environment");
+
+  options->addOption("--environment.delete",
+                     "delete the variables from the environment",
+                     new options::VectorParameter<options::StringParameter>(&_envDelete));
+}
+
 void EnvironmentFeature::prepare() {
+  for (auto env : _envDelete) {
+    utilities::unsetenv(env.c_str());
+  }
+
 #ifdef __linux__
   try {
     if (basics::FileUtils::exists("/proc/version")) {

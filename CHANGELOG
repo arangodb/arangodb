@@ -1,3 +1,11 @@
+v3.4.3 (2019-xx-xx)
+-------------------
+
+* removed logging of JWT token
+
+* added `--environment.delete` to allow to hide environment variables from
+  sub-processes or V8
+	
 v3.4.2 (2019-01-15)
 -------------------
 

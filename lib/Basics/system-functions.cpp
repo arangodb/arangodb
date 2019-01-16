@@ -170,6 +170,40 @@ size_t TRI_numberProcessors() {
   return static_cast<size_t>(std::thread::hardware_concurrency());
 }
 
+
+bool TRI_GETENV(char const* which, std::string& value) {
+#ifdef _WIN32
+  UnicodeString uwhich(which);
+  wchar_t const* v = _wgetenv(uwhich.getTerminatedBuffer());
+
+  if (v == nullptr) {
+    return false;
+  }
+  value.clear();
+  UnicodeString vu(v);
+  vu.toUTF8String<std::string>(value);
+  return true;
+#else
+  char const* v = getenv(which);
+
+  if (v == nullptr) {
+    return false;
+  }
+  value.clear();
+  value = v;
+  return true;
+#endif
+}
+
+void arangodb::utilities::unsetenv(char const* which) {
+#ifdef _WIN32
+  UnicodeString uwhich(which + "=");
+  _wputenv(uwhich.getTerminatedBuffer());
+#else
+  ::unsetenv(which);
+#endif
+}
+
 std::string arangodb::utilities::timeString(char sep, char fin) {
   time_t tt = time(nullptr);
   struct tm tb;

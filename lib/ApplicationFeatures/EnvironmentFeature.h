@@ -31,7 +31,11 @@ class EnvironmentFeature final : public application_features::ApplicationFeature
  public:
   explicit EnvironmentFeature(application_features::ApplicationServer& server);
 
+  void collectOptions(std::shared_ptr<options::ProgramOptions> options);
   void prepare() override final;
+
+ private:
+  std::vector<std::string> _envDelete;
 };
 
 }  // namespace arangodb

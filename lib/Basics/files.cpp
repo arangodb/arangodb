@@ -2356,27 +2356,3 @@ void TRI_InitializeFiles() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownFiles() {}
-
-bool TRI_GETENV(char const* which, std::string& value) {
-#ifdef _WIN32
-  UnicodeString uwhich(which);
-  wchar_t const* v = _wgetenv(uwhich.getTerminatedBuffer());
-
-  if (v == nullptr) {
-    return false;
-  }
-  value.clear();
-  UnicodeString vu(v);
-  vu.toUTF8String<std::string>(value);
-  return true;
-#else
-  char const* v = getenv(which);
-
-  if (v == nullptr) {
-    return false;
-  }
-  value.clear();
-  value = v;
-  return true;
-#endif
-}

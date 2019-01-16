@@ -56,8 +56,12 @@ double TRI_microtime();
 // number of processors or 0
 size_t TRI_numberProcessors();
 
+bool TRI_GETENV(char const* which, std::string& value);
+
 namespace arangodb {
 namespace utilities {
+  void unsetenv(char const* which);
+
 // return the current time as string in format "YYYY-MM-DDTHH:MM:SSZ"
 std::string timeString(char sep = 'T', char fin = 'Z');
 
