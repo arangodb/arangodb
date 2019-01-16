@@ -123,10 +123,19 @@ void toVelocyPack(velocypack::Builder& builder,
                   arangodb::iresearch::IResearchViewNode::Options const& options) {
   VPackObjectBuilder objectScope(&builder);
   builder.add("waitForSync", VPackValue(options.forceSync));
+  builder.add("restrictSources", VPackValue(options.restrictSources));
+
+  if (options.restrictSources) {
+    VPackArrayBuilder arrayScope(&builder, "collections");
+    for (aql::Collection const* source : options.sources) {
+      builder.add(VPackValue(source->name()));
+    }
+  }
 }
 
 bool fromVelocyPack(velocypack::Slice optionsSlice,
-                    arangodb::iresearch::IResearchViewNode::Options& options) {
+                    arangodb::iresearch::IResearchViewNode::Options& options,
+                    aql::Query& query) {
   if (!optionsSlice.isObject()) {
     return false;
   }
@@ -142,22 +151,142 @@ bool fromVelocyPack(velocypack::Slice optionsSlice,
     options.forceSync = optionSlice.getBool();
   }
 
+  // restrictSources
+  {
+    auto const optionSlice = optionsSlice.get("restrictSources");
+
+    if (!optionSlice.isBool()) {
+      return false;
+    }
+
+    options.restrictSources = optionSlice.getBool();
+  }
+
+  // sources
+  if (options.restrictSources) {
+    auto const optionSlice = optionsSlice.get("collections");
+
+    if (!optionSlice.isArray()) {
+      return false;
+    }
+
+    auto* collections = query.collections();
+    TRI_ASSERT(collections);
+
+    for (auto idSlice : VPackArrayIterator(optionSlice)) {
+      if (idSlice.isString()) {
+        return false;
+      }
+
+      auto const cid = idSlice.copyString();
+      auto* dataSource = collections->get(cid);
+
+      if (!dataSource) {
+        return false;
+      }
+
+      options.sources.insert(dataSource);
+    }
+  }
+
   return true;
 }
 
-bool parseOptions(aql::AstNode const* optionsNode,
+bool parseOptions(aql::Query& query,
+                  aql::AstNode const* optionsNode,
                   arangodb::iresearch::IResearchViewNode::Options& options,
                   std::string& error) {
-  typedef bool (*OptionHandler)(aql::AstNode const&,
+  typedef bool (*OptionHandler)(aql::Query&,
+                                aql::AstNode const&,
                                 arangodb::iresearch::IResearchViewNode::Options&,
                                 std::string&);
 
   static std::map<irs::string_ref, OptionHandler> const Handlers{
-      {"waitForSync", [](aql::AstNode const& value,
+      {"collections", [](aql::Query& query,
+                     aql::AstNode const& value,
+                     arangodb::iresearch::IResearchViewNode::Options& options,
+                     std::string& error) {
+        if (value.isNullValue()) {
+          // have nothing to restrict
+          return true;
+        }
+
+        if (!value.isArray()) {
+           error = "null value or array of strings or numbers is expected for option 'collections'";
+           return false;
+        }
+
+        aql::Collection const* dataSource = nullptr;
+        auto& resolver = query.resolver();
+
+        for (size_t i = 0, n = value.numMembers(); i < n; ++i) {
+          auto const* sub = value.getMemberUnchecked(i);
+          TRI_ASSERT(sub);
+
+          switch (sub->value.type) {
+            case aql::VALUE_TYPE_INT: {
+              auto const cid = TRI_voc_cid_t(sub->getIntValue(true));
+              auto logicalDataSource = resolver.getCollection(cid);
+
+              if (!logicalDataSource) {
+                error = "invalid data source id '"
+                        + arangodb::basics::StringUtils::itoa(cid)
+                        + "' while parsing option 'collections'";
+                return false;
+              }
+
+              dataSource = query.collections()->get(logicalDataSource->name());
+
+              if (!dataSource) {
+                error = "invalid data source id '"
+                        + arangodb::basics::StringUtils::itoa(cid)
+                        + "' while parsing option 'collections'";
+                return false;
+              }
+
+              break;
+            }
+
+            case aql::VALUE_TYPE_STRING: {
+              auto name = sub->getString();
+              dataSource = query.collections()->get(name);
+
+              if (!dataSource) {
+                // check if TRI_voc_cid_t is passed as string
+                name = resolver.getCollectionName(name);
+
+                dataSource = query.collections()->get(name);
+
+                if (!dataSource) {
+                  error = "invalid data source name '"
+                          + name
+                          + "' while parsing option 'collections'";
+                  return false;
+                }
+              }
+
+              break;
+            }
+
+            default: {
+              error = "null value or array of strings or numbers is expected for option 'collections'";
+              return false;
+            }
+          }
+
+          options.sources.insert(dataSource);
+        }
+
+        options.restrictSources = true;
+
+        return true;
+      }},
+      {"waitForSync", [](aql::Query& /*resolver*/,
+                         aql::AstNode const& value,
                          arangodb::iresearch::IResearchViewNode::Options& options,
                          std::string& error) {
          if (!value.isValueType(aql::VALUE_TYPE_BOOL)) {
-           error = "boolean value expected for 'waitForSync'";
+           error = "boolean value expected for option 'waitForSync'";
            return false;
          }
 
@@ -198,7 +327,7 @@ bool parseOptions(aql::AstNode const* optionsNode,
 
     auto const* value = attribute->getMemberUnchecked(0);
 
-    if (!value || !value->isConstant() || !handler->second(*value, options, error)) {
+    if (!value || !value->isConstant() || !handler->second(query, *value, options, error)) {
       // can't handle attribute
       return false;
     }
@@ -292,6 +421,58 @@ std::function<bool(TRI_voc_cid_t)> const viewIsEmpty = [](TRI_voc_cid_t) {
   return false;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief index reader implementation over multiple irs::index_reader
+/// @note it is assumed that ViewState resides in the same
+///       TransactionState as the IResearchView ViewState, therefore a separate
+///       lock is not required to be held
+////////////////////////////////////////////////////////////////////////////////
+class Snapshot : public arangodb::iresearch::IResearchView::Snapshot {
+ public:
+  typedef std::vector<std::pair<TRI_voc_cid_t, irs::sub_reader const*>> readers_t;
+
+  Snapshot(
+      readers_t&& readers,
+      uint64_t docs_count,
+      uint64_t live_docs_count
+  ) NOEXCEPT
+    : readers_(std::move(readers)),
+      docs_count_(docs_count),
+      live_docs_count_(live_docs_count) {
+  }
+
+  // returns corresponding sub-reader
+  virtual const irs::sub_reader& operator[](size_t i) const NOEXCEPT override {
+    assert(i < readers_.size());
+    return *(readers_[i].second);
+  }
+
+  virtual TRI_voc_cid_t cid(size_t i) const NOEXCEPT override {
+    assert(i < readers_.size());
+    return readers_[i].first;
+  }
+
+  // maximum number of documents
+  virtual uint64_t docs_count() const NOEXCEPT override {
+    return docs_count_;
+  }
+
+  // number of live documents
+  virtual uint64_t live_docs_count() const NOEXCEPT override {
+    return live_docs_count_;
+  }
+
+  // returns total number of opened writers
+  virtual size_t size() const NOEXCEPT override {
+    return readers_.size();
+  }
+
+ private:
+  readers_t readers_;
+  uint64_t docs_count_;
+  uint64_t live_docs_count_;
+}; // Snapshot
+
 }  // namespace
 
 namespace arangodb {
@@ -319,9 +500,12 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, size_t id,
   TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
   TRI_ASSERT(LogicalView::category() == _view->category());
 
+  auto* ast = plan.getAst();
+  TRI_ASSERT(ast && ast->query());
+
   // FIXME any other way to validate options before object creation???
   std::string error;
-  if (!parseOptions(options, _options, error)) {
+  if (!parseOptions(*ast->query(), options, _options, error)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "invalid ArangoSearch options provided: " + error);
   }
@@ -397,7 +581,8 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
   }
 
   // options
-  if (!::fromVelocyPack(base.get("options"), _options)) {
+  TRI_ASSERT(plan.getAst() && plan.getAst()->query());
+  if (!::fromVelocyPack(base.get("options"), _options, *plan.getAst()->query())) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "failed to parse 'IResearchViewNode' options";
   }
@@ -499,21 +684,29 @@ std::vector<std::reference_wrapper<aql::Collection const>> IResearchViewNode::co
 
   std::vector<std::reference_wrapper<aql::Collection const>> viewCollections;
 
-  auto visitor = [&viewCollections, collections](TRI_voc_cid_t cid) -> bool {
-    auto const id = basics::StringUtils::itoa(cid);
-    auto const* collection = collections->get(id);
-
-    if (collection) {
-      viewCollections.push_back(*collection);
-    } else {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "collection with id '" << id << "' is not registered with the query";
+  if (_options.restrictSources) {
+    viewCollections.reserve(_options.sources.size());
+    for (aql::Collection const* source : _options.sources) {
+      TRI_ASSERT(source);
+      viewCollections.push_back(*source);
     }
+  } else {
+    auto visitor = [&viewCollections, collections](TRI_voc_cid_t cid) -> bool {
+      auto const id = basics::StringUtils::itoa(cid);
+      auto const* collection = collections->get(id);
 
-    return true;
-  };
+      if (collection) {
+        viewCollections.push_back(*collection);
+      } else {
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+            << "collection with id '" << id << "' is not registered with the query";
+      }
 
-  _view->visitCollections(visitor);
+      return true;
+    };
+
+    _view->visitCollections(visitor);
+  }
 
   return viewCollections;
 }
@@ -577,11 +770,12 @@ bool IResearchViewNode::filterConditionIsEmpty() const noexcept {
 std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     aql::ExecutionEngine& engine,
     std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&) const {
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::instance()->isCoordinator()
+      || (_options.restrictSources && _options.sources.empty())) {
     // coordinator in a cluster: empty view case
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(this->empty());
+    TRI_ASSERT(!ServerState::instance()->isCoordinator() || this->empty());
 #endif
 
     return std::make_unique<aql::NoResultsBlock>(&engine, this);
@@ -599,8 +793,10 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                    "IResearchView ExecutionBlock");
   }
 
-  auto& view = *this->view();
-  IResearchView::Snapshot const* reader;
+  auto& view = LogicalView::cast<IResearchView>(*this->view());
+
+  typedef std::shared_ptr<IResearchView::Snapshot const> SnapshotPtr;
+  std::shared_ptr<IResearchView::Snapshot const> reader;
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "Start getting snapshot for view '" << view.name() << "'";
@@ -608,8 +804,10 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   if (ServerState::instance()->isDBServer()) {
     // there are no cluster-wide transactions,
     // no place to store snapshot
-    static IResearchView::SnapshotMode const SNAPSHOT[]{IResearchView::SnapshotMode::FindOrCreate,
-                                                        IResearchView::SnapshotMode::SyncAndReplace};
+    static IResearchView::SnapshotMode const SNAPSHOT[]{
+      IResearchView::SnapshotMode::FindOrCreate,
+      IResearchView::SnapshotMode::SyncAndReplace};
+
     std::unordered_set<TRI_voc_cid_t> collections;
     auto& resolver = engine.getQuery()->resolver();
 
@@ -625,15 +823,17 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       collections.emplace(collection->id());
     }
 
-    reader = LogicalView::cast<IResearchView>(view).snapshot(
-        *trx, SNAPSHOT[size_t(_options.forceSync)], &collections);
+    // use aliasing ctor
+    reader = SnapshotPtr(SnapshotPtr(),
+                         view.snapshot(*trx, SNAPSHOT[size_t(_options.forceSync)], &collections));
   } else {
-    static IResearchView::SnapshotMode const SNAPSHOT[]{IResearchView::SnapshotMode::Find,
-                                                        IResearchView::SnapshotMode::SyncAndReplace};
+    static IResearchView::SnapshotMode const SNAPSHOT[]{
+      IResearchView::SnapshotMode::Find,
+      IResearchView::SnapshotMode::SyncAndReplace};
 
-    reader =
-        LogicalView::cast<IResearchView>(view).snapshot(*trx,
-                                                        SNAPSHOT[size_t(_options.forceSync)]);
+    // use aliasing ctor
+    reader = SnapshotPtr(SnapshotPtr(),
+                         view.snapshot(*trx, SNAPSHOT[size_t(_options.forceSync)]));
   }
 
   if (!reader) {
@@ -647,16 +847,59 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                    "arangosearch view ExecutionBlock");
   }
 
+  if (_options.restrictSources && !ServerState::instance()->isDBServer()) {
+    // filter out restricted collections
+    arangodb::HashSet<TRI_voc_cid_t> collections;
+    auto& resolver = engine.getQuery()->resolver();
+
+    for (auto* source : _options.sources) {
+      auto collection = resolver.getCollection(source->name());
+
+      if (!collection) {
+        THROW_ARANGO_EXCEPTION(
+              arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                               std::string("failed to find collection by name '") + source->name() + "'"));
+      }
+
+      collections.emplace(collection->id());
+    }
+
+    // reassemble reader
+    Snapshot::readers_t readers;
+    size_t docs_count = 0;
+    size_t live_docs_count = 0;
+
+    for (size_t i = 0, size = reader->size(); i < size; ++i) {
+      auto const cid = reader->cid(i);
+
+      if (!collections.contains(cid)) {
+        continue;
+      }
+
+      auto& segment = (*reader)[i];
+      docs_count += segment.docs_count();
+      live_docs_count += segment.live_docs_count();
+
+      readers.emplace_back(cid, &segment);
+    }
+
+    if (readers.empty()) {
+      return std::make_unique<aql::NoResultsBlock>(&engine, this);
+    }
+
+    reader = std::make_shared<Snapshot>(std::move(readers), docs_count, live_docs_count);
+  }
+
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "Finish getting snapshot for view '" << view.name() << "'";
 
   if (_scorers.empty()) {
     // unordered case
-    return std::make_unique<IResearchViewUnorderedBlock>(*reader, engine, *this);
+    return std::make_unique<IResearchViewUnorderedBlock>(reader, engine, *this);
   }
 
   // generic case
-  return std::make_unique<IResearchViewBlock>(*reader, engine, *this);
+  return std::make_unique<IResearchViewBlock>(reader, engine, *this);
 }
 
 }  // namespace iresearch

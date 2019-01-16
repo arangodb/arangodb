@@ -32,6 +32,7 @@
 namespace arangodb {
 
 namespace aql {
+struct Collection;
 class ExecutionBlock;
 class ExecutionEngine;
 }  // namespace aql
@@ -45,6 +46,12 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
  public:
   /// @brief node options
   struct Options {
+    /// @brief a list of data sources to restrict a query
+    arangodb::HashSet<aql::Collection const*> sources;
+
+    /// @brief use the list of sources to restrict a query
+    bool restrictSources{false};
+
     /// @brief sync view before querying to get the latest index snapshot
     bool forceSync{false};
   };  // Options
