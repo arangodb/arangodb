@@ -34,8 +34,10 @@ Future<T> makeFuture(Try<T>&& t) {
   return Future<T>(detail::SharedState<T>::make(std::move(t)));
 }
 
-Future<Unit> makeFuture() { return Future<Unit>(unit); }
+/// Make a complete void future
+Future<Unit> makeFuture();
 
+/// Make a completed Future by moving in a value. e.g.
 template <class T>
 Future<typename std::decay<T>::type> makeFuture(T&& t) {
   return makeFuture(Try<typename std::decay<T>::type>(std::forward<T>(t)));
@@ -71,6 +73,87 @@ template <typename F, typename R = std::result_of_t<F()>>
 typename std::enable_if<!isFuture<R>::value, Future<R>>::type makeFutureWith(F&& func) {
   return makeFuture<R>(
       makeTryWith([&func]() mutable { return std::forward<F>(func)(); }));
+}
+
+namespace detail {
+
+template <typename F>
+void _foreach(F&&, size_t) {}
+
+template <typename F, typename Arg, typename... Args>
+void _foreach(F&& f, size_t i, Arg&& arg, Args&&... args) {
+  f(i, std::forward<Arg>(arg));
+  _foreach(i + 1, std::forward<F>(f), std::forward<Args>(args)...);
+}
+
+template <typename F, typename... Args>
+void foreach (F&& f, Args && ... args) {
+  _foreach(std::forward<F>(f), 0, args...);
+}
+};  // namespace detail
+
+/// @brief When all the input Futures complete, the returned Future will complete.
+/// Errors do not cause early termination; this Future will always succeed
+/// after all its Futures have finished (whether successfully or with an
+/// error).
+/// The Futures are moved in, so your copies are invalid. If you need to
+/// chain further from these Futures, use the variant with an output iterator.
+/// This function is thread-safe for Futures running on different threads.
+/// It will complete in whichever thread the last Future completes in.
+/// @return for (Future<T1>, Future<T2>, ...) input is Future<std::tuple<Try<T1>, Try<T2>, ...>>.
+//template <typename... Fs>
+//Future<std::tuple<Try<typename isFuture<Fs>::inner>...>> collectAll(Fs&&... fs) {
+//  using Result = std::tuple<Try<typename isFuture<Fs>::inner>...>;
+//  struct Context {
+//    ~Context() { p.setValue(std::move(results)); }
+//    Promise<Result> p;
+//    Result results;
+//  };
+//  auto ctx = std::make_shared<Context>();
+//
+//  detail::foreach (
+//      [&](auto i, auto&& f) {
+//        f.then([i, ctx](auto&& t) { std::get<i>(ctx->results) = std::move(t); });
+//      },
+//      std::move(fs)...);
+//  return ctx->p.getFuture();
+//}
+
+/// @brief When all the input Futures complete, the returned Future will
+/// complete. Errors do not cause early termination; this Future will always
+/// succeed after all its Futures have finished (whether successfully or with an
+/// error).
+/// The Futures are moved in, so your copies are invalid. If you need to
+/// chain further from these Futures, use the variant with an output iterator.
+/// This function is thread-safe for Futures running on different threads. But
+/// if you are doing anything non-trivial after, you will probably want to
+/// follow with `via(executor)` because it will complete in whichever thread the
+/// last Future completes in.
+/// The return type for Future<T> input is a Future<std::vector<Try<T>>>
+template <class InputIterator>
+Future<std::vector<Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>> collectAll(
+    InputIterator first, InputIterator last) {
+  using FT = typename std::iterator_traits<InputIterator>::value_type;
+  using T = typename FT::value_type;
+
+  struct Context {
+    explicit Context(size_t n) : results(n) {}
+    ~Context() { p.setValue(std::move(results)); }
+    Promise<std::vector<Try<T>>> p;
+    std::vector<Try<T>> results;
+  };
+
+  auto ctx = std::make_shared<Context>(size_t(std::distance(first, last)));
+  for (size_t i = 0; first != last; ++first, ++i) {
+    first->thenFinal([i, ctx](auto&& t) { ctx->results[i] = std::move(t); });
+  }
+
+  return ctx->p.getFuture();
+}
+
+template <class Collection>
+auto collectAll(Collection&& c) -> decltype(collectAll(c.begin(), c.end())) {
+  return collectAll(c.begin(), c.end());
 }
 
 }  // namespace futures
