@@ -243,7 +243,7 @@ void RequestItem::prepareForNetwork(VSTVersion vstVersion) {
   assert(!_requestMetadata.empty());
   // message header has to go into the first chunk
   asio_ns::const_buffer header(_requestMetadata.data(),
-                                   _requestMetadata.byteSize());
+                               _requestMetadata.byteSize());
   asio_ns::const_buffer payload = _request->payload();
   
   prepareForNetwork(vstVersion, header, payload);

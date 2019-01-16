@@ -28,11 +28,11 @@
 #include "ApplicationFeatures/GreetingsPhase.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
-#include "RestServer/FileDescriptorsFeature.h"
-#include "Scheduler/SchedulerFeature.h"
-#include "Scheduler/Scheduler.h"
 
 #include "catch.hpp"
+
+#include <condition_variable>
+#include <mutex>
 
 using namespace arangodb::futures;
 
@@ -74,56 +74,6 @@ namespace {
   Future<int> onErrorHelperGeneric(const std::exception&) {
     return makeFuture(20);
   }
-  
-  /*struct SchedulerTestSetup {
-    arangodb::application_features::ApplicationServer server;
-    
-    SchedulerTestSetup() : server(nullptr, nullptr) {
-      using namespace arangodb::application_features;
-      std::vector<ApplicationFeature*> features;
-      
-      features.emplace_back(new GreetingsFeaturePhase(server, false));
-      features.emplace_back(new arangodb::FileDescriptorsFeature(server));
-      features.emplace_back(new arangodb::SchedulerFeature(server));
-      
-      for (auto& f : features) {
-        ApplicationServer::server->addFeature(f);
-      }
-      ApplicationServer::server->setupDependencies(false);
-      
-      ApplicationServer::setStateUnsafe(ServerState::IN_WAIT);
-      
-      auto orderedFeatures = server.getOrderedFeatures();
-      for (auto& f : orderedFeatures) {
-        f->prepare();
-      }
-      
-      for (auto& f : orderedFeatures) {
-        f->start();
-      }
-      
-    }
-    
-    ~SchedulerTestSetup() {
-      using namespace arangodb::application_features;
-      ApplicationServer::setStateUnsafe(ServerState::IN_STOP);
-      
-      auto orderedFeatures = server.getOrderedFeatures();
-      for (auto& f : orderedFeatures) {
-        f->beginShutdown();
-      }
-      for (auto& f : orderedFeatures) {
-        f->stop();
-      }
-      for (auto& f : orderedFeatures) {
-        f->unprepare();
-      }
-      
-      arangodb::application_features::ApplicationServer::server = nullptr;
-    }
-    
-    std::vector<std::unique_ptr<arangodb::application_features::ApplicationFeature*>> features;
-  };*/
 } // namespace
 
 
