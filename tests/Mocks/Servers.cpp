@@ -31,7 +31,6 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
-#include "Transaction/Methods.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -41,6 +40,8 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Sharding/ShardingFeature.h"
+#include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
 
@@ -141,6 +142,15 @@ MockAqlServer::~MockAqlServer() {
   arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
 }
 
+arangodb::transaction::Methods* MockAqlServer::createFakeTransaction() const {
+  std::vector<std::string> noCollections{};
+  transaction::Options opts;
+  return new arangodb::transaction::Methods(transaction::StandaloneContext::Create(
+                                                getSystemDatabase()),
+                                            noCollections, noCollections,
+                                            noCollections, opts);
+}
+
 std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery() const {
   auto bindParams = std::make_shared<VPackBuilder>();
   bindParams->openObject();
@@ -149,7 +159,9 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery() const {
   queryOptions->openObject();
   queryOptions->close();
   aql::QueryString fakeQueryString("");
-  return std::make_unique<arangodb::aql::Query>(
+  auto query = std::make_unique<arangodb::aql::Query>(
       false, getSystemDatabase(), fakeQueryString, bindParams, queryOptions,
       arangodb::aql::QueryPart::PART_DEPENDENT);
+  query->injectTransaction(createFakeTransaction());
+  return query;
 }

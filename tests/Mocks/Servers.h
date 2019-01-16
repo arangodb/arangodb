@@ -30,6 +30,10 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
+namespace transaction {
+class Methods;
+}
+
 namespace aql {
 class Query;
 }
@@ -70,6 +74,7 @@ class MockAqlServer : public MockServer {
     MockAqlServer();
     ~MockAqlServer();
 
+    arangodb::transaction::Methods* createFakeTransaction() const;
     std::unique_ptr<arangodb::aql::Query> createFakeQuery() const;
 };
 
