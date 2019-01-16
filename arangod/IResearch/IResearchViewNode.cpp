@@ -31,6 +31,7 @@
 #include "Aql/SortCondition.h"
 #include "AqlHelper.h"
 #include "Basics/StringUtils.h"
+#include "Basics/NumberUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "IResearchCommon.h"
 #include "IResearchView.h"
@@ -127,8 +128,8 @@ void toVelocyPack(velocypack::Builder& builder,
 
   if (options.restrictSources) {
     VPackArrayBuilder arrayScope(&builder, "collections");
-    for (aql::Collection const* source : options.sources) {
-      builder.add(VPackValue(source->name()));
+    for (auto const cid : options.sources) {
+      builder.add(VPackValue(cid));
     }
   }
 }
@@ -174,18 +175,17 @@ bool fromVelocyPack(velocypack::Slice optionsSlice,
     TRI_ASSERT(collections);
 
     for (auto idSlice : VPackArrayIterator(optionSlice)) {
-      if (idSlice.isString()) {
+      if (idSlice.isNumber()) {
         return false;
       }
 
-      auto const cid = idSlice.copyString();
-      auto* dataSource = collections->get(cid);
+      auto const cid = idSlice.getNumber<TRI_voc_cid_t>();
 
-      if (!dataSource) {
+      if (!cid) {
         return false;
       }
 
-      options.sources.insert(dataSource);
+      options.sources.insert(cid);
     }
   }
 
@@ -193,95 +193,104 @@ bool fromVelocyPack(velocypack::Slice optionsSlice,
 }
 
 bool parseOptions(aql::Query& query,
+                  arangodb::iresearch::IResearchView const& view,
                   aql::AstNode const* optionsNode,
                   arangodb::iresearch::IResearchViewNode::Options& options,
                   std::string& error) {
   typedef bool (*OptionHandler)(aql::Query&,
+                                arangodb::iresearch::IResearchView const&,
                                 aql::AstNode const&,
                                 arangodb::iresearch::IResearchViewNode::Options&,
                                 std::string&);
 
   static std::map<irs::string_ref, OptionHandler> const Handlers{
       {"collections", [](aql::Query& query,
-                     aql::AstNode const& value,
-                     arangodb::iresearch::IResearchViewNode::Options& options,
-                     std::string& error) {
+                         arangodb::iresearch::IResearchView const& view,
+                         aql::AstNode const& value,
+                         arangodb::iresearch::IResearchViewNode::Options& options,
+                         std::string& error) {
         if (value.isNullValue()) {
           // have nothing to restrict
           return true;
         }
 
         if (!value.isArray()) {
-           error = "null value or array of strings or numbers is expected for option 'collections'";
+           error = "null value or array of strings or numbers"
+                   " is expected for option 'collections'";
            return false;
         }
 
-        aql::Collection const* dataSource = nullptr;
         auto& resolver = query.resolver();
+        auto& sources = options.sources;
+//        arangodb::HashSet<TRI_voc_cid_t> sources;
 
+        // get list of CIDs for restricted collections
         for (size_t i = 0, n = value.numMembers(); i < n; ++i) {
           auto const* sub = value.getMemberUnchecked(i);
           TRI_ASSERT(sub);
 
           switch (sub->value.type) {
             case aql::VALUE_TYPE_INT: {
-              auto const cid = TRI_voc_cid_t(sub->getIntValue(true));
-              auto logicalDataSource = resolver.getCollection(cid);
-
-              if (!logicalDataSource) {
-                error = "invalid data source id '"
-                        + arangodb::basics::StringUtils::itoa(cid)
-                        + "' while parsing option 'collections'";
-                return false;
-              }
-
-              dataSource = query.collections()->get(logicalDataSource->name());
-
-              if (!dataSource) {
-                error = "invalid data source id '"
-                        + arangodb::basics::StringUtils::itoa(cid)
-                        + "' while parsing option 'collections'";
-                return false;
-              }
-
+              sources.insert(TRI_voc_cid_t(sub->getIntValue(true)));
               break;
             }
 
             case aql::VALUE_TYPE_STRING: {
               auto name = sub->getString();
-              dataSource = query.collections()->get(name);
 
-              if (!dataSource) {
+              auto collection = resolver.getCollection(name);
+
+              if (!collection) {
                 // check if TRI_voc_cid_t is passed as string
-                name = resolver.getCollectionName(name);
+                auto const cid = arangodb::NumberUtils::atoi_zero<TRI_voc_cid_t>(
+                  name.data(), name.data() + name.size()
+                );
 
-                dataSource = query.collections()->get(name);
+                collection = resolver.getCollection(cid);
 
-                if (!dataSource) {
-                  error = "invalid data source name '"
-                          + name
+                if (!collection) {
+                  error = "invalid data source name '" + name
                           + "' while parsing option 'collections'";
                   return false;
                 }
               }
 
+              sources.insert(collection->id());
               break;
             }
 
             default: {
-              error = "null value or array of strings or numbers is expected for option 'collections'";
+              error = "null value or array of strings or numbers"
+                      " is expected for option 'collections'";
               return false;
             }
           }
-
-          options.sources.insert(dataSource);
         }
 
+        // check if CIDs are valid
+        size_t sourcesFound = 0;
+        auto checkCids = [&sources, &sourcesFound](TRI_voc_cid_t cid) {
+          sourcesFound += size_t(sources.contains(cid));
+          return true;
+        };
+        view.visitCollections(checkCids);
+
+        if (sourcesFound != sources.size()) {
+          error = "only " + basics::StringUtils::itoa(sourcesFound)
+                  + " out of " + basics::StringUtils::itoa(sources.size())
+                  + " provided collection(s) in option 'collections' are registered with the view '"
+                  + view.name() + "'";
+          return false;
+        }
+
+        // parsing is done
+//        options.sources = std::move(sources);
         options.restrictSources = true;
 
         return true;
       }},
       {"waitForSync", [](aql::Query& /*resolver*/,
+                         arangodb::iresearch::IResearchView const& /*view*/,
                          aql::AstNode const& value,
                          arangodb::iresearch::IResearchViewNode::Options& options,
                          std::string& error) {
@@ -327,7 +336,7 @@ bool parseOptions(aql::Query& query,
 
     auto const* value = attribute->getMemberUnchecked(0);
 
-    if (!value || !value->isConstant() || !handler->second(query, *value, options, error)) {
+    if (!value || !value->isConstant() || !handler->second(query, view, *value, options, error)) {
       // can't handle attribute
       return false;
     }
@@ -504,8 +513,9 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, size_t id,
   TRI_ASSERT(ast && ast->query());
 
   // FIXME any other way to validate options before object creation???
+  auto& viewImpl = LogicalView::cast<IResearchView>(*_view);
   std::string error;
-  if (!parseOptions(*ast->query(), options, _options, error)) {
+  if (!parseOptions(*ast->query(), viewImpl, options, _options, error)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "invalid ArangoSearch options provided: " + error);
   }
@@ -684,27 +694,26 @@ std::vector<std::reference_wrapper<aql::Collection const>> IResearchViewNode::co
 
   std::vector<std::reference_wrapper<aql::Collection const>> viewCollections;
 
+  auto visitor = [&viewCollections, collections](TRI_voc_cid_t cid) -> bool {
+    auto const id = basics::StringUtils::itoa(cid);
+    auto const* collection = collections->get(id);
+
+    if (collection) {
+      viewCollections.push_back(*collection);
+    } else {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "collection with id '" << id << "' is not registered with the query";
+    }
+
+    return true;
+  };
+
   if (_options.restrictSources) {
     viewCollections.reserve(_options.sources.size());
-    for (aql::Collection const* source : _options.sources) {
-      TRI_ASSERT(source);
-      viewCollections.push_back(*source);
+    for (auto const cid : _options.sources) {
+      visitor(cid);
     }
   } else {
-    auto visitor = [&viewCollections, collections](TRI_voc_cid_t cid) -> bool {
-      auto const id = basics::StringUtils::itoa(cid);
-      auto const* collection = collections->get(id);
-
-      if (collection) {
-        viewCollections.push_back(*collection);
-      } else {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-            << "collection with id '" << id << "' is not registered with the query";
-      }
-
-      return true;
-    };
-
     _view->visitCollections(visitor);
   }
 
@@ -848,22 +857,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   }
 
   if (_options.restrictSources && !ServerState::instance()->isDBServer()) {
-    // filter out restricted collections
-    arangodb::HashSet<TRI_voc_cid_t> collections;
-    auto& resolver = engine.getQuery()->resolver();
-
-    for (auto* source : _options.sources) {
-      auto collection = resolver.getCollection(source->name());
-
-      if (!collection) {
-        THROW_ARANGO_EXCEPTION(
-              arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                               std::string("failed to find collection by name '") + source->name() + "'"));
-      }
-
-      collections.emplace(collection->id());
-    }
-
     // reassemble reader
     Snapshot::readers_t readers;
     size_t docs_count = 0;
@@ -872,7 +865,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     for (size_t i = 0, size = reader->size(); i < size; ++i) {
       auto const cid = reader->cid(i);
 
-      if (!collections.contains(cid)) {
+      if (!_options.sources.contains(cid)) {
         continue;
       }
 
