@@ -11,4 +11,4 @@ Deploying Options by ArangoDB _Deployment Mode_
 Also see:
 
 - [Single Instance vs. Cluster](../Architecture/SingleInstanceVsCluster.md)
-- [Migrating from a Single Instance to a Cluster](MigratingSingleInstanceCluster.md)
+- [Migrating from Single Instance to Cluster](MigratingSingleInstanceCluster.md)
