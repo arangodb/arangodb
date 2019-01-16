@@ -12,6 +12,7 @@ The full ArangoDB package ships with the following programs and tools:
 | `arangorestore` | Tool to [load backups](Arangorestore/README.md) back into an ArangoDB database.
 | `arangoimport`  | [Bulk importer](Arangoimport/README.md) for the ArangoDB server. It supports JSON and CSV.
 | `arangoexport`  | [Bulk exporter](Arangoexport/README.md) for the ArangoDB server. It supports JSON, CSV and XML.
+| `arangosync`    | Manages [datacenter to datacenter replication](Arangosync/README.md) (Enterprise Edition only).
 | `arango-dfdb`   | [Datafile debugger](Arango-dfdb/README.md) for ArangoDB (MMFiles storage engine only).
 | `arangobench`   | [Benchmark and test tool](Arangobench/README.md). It can be used for performance and server function testing.
 | `arangoinspect` | [Inspection tool](Arangoinspect/README.md) that gathers server setup information.
