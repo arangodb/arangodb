@@ -46,7 +46,7 @@ class LimitExecutorInfos : public ExecutorInfos {
  public:
   LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                      std::unordered_set<RegisterId> registersToClear,
-                     size_t offset, size_t limit, bool fullCount);
+                     size_t offset, size_t limit, bool fullCount, size_t queryDepth);
 
   LimitExecutorInfos() = delete;
   LimitExecutorInfos(LimitExecutorInfos&&) = default;
@@ -56,6 +56,7 @@ class LimitExecutorInfos : public ExecutorInfos {
   RegisterId getInputRegister() const noexcept { return _inputRegister; };
   size_t getLimit() { return _limit; };
   size_t getOffset() { return _offset; };
+  size_t getQueryDepth() { return _queryDepth; };
   bool isFullCountEnabled() { return _fullCount; };
 
  private:
@@ -68,6 +69,9 @@ class LimitExecutorInfos : public ExecutorInfos {
 
   /// @brief the limit
   size_t _limit;
+
+  /// @brief the depth of the query (e.g. subquery)
+  size_t _queryDepth;
 
   /// @brief whether or not the node should fully count what it limits
   bool _fullCount;

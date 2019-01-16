@@ -59,7 +59,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][COPYPASTEPANZER]") {
   // 6th fullCount
 
   GIVEN("there are no rows upstream") {
-    LimitExecutorInfos infos(0, 1, {}, 0, 0, true);
+    LimitExecutorInfos infos(0, 1, {}, 0, 0, true, 0);
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
@@ -99,7 +99,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][COPYPASTEPANZER]") {
   }
 
   GIVEN("there are rows in the upstream, no filter or offset defined") {
-    LimitExecutorInfos infos(0, 1, {}, 0, 0, true);
+    LimitExecutorInfos infos(0, 1, {}, 0, 0, true, 0);
     auto input = VPackParser::fromJson(
         "[ [true], [false], [true], [false], [false], [true] ]");
 

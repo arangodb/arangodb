@@ -1398,12 +1398,17 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-
   LOG_DEVEL << std::boolalpha << "limit in subquery: " << isInSubQuery(this);
+
+  size_t queryDepth = 0;
+  if (isInSubQuery(this)) {
+    queryDepth = 1;
+  }
+  LOG_DEVEL << " query depth is : " << queryDepth;
 
   LimitExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
                            getRegisterPlan()->nrRegs[getDepth()],
-                           getRegsToClear(), _offset, _limit, _fullCount);
+                           getRegsToClear(), _offset, _limit, _fullCount, queryDepth);
 
   return std::make_unique<ExecutionBlockImpl<LimitExecutor>>(&engine, this,
                                                              std::move(infos));

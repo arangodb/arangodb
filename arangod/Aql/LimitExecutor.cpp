@@ -72,7 +72,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
     if (_offsetCounter > 0) {
       _offsetCounter--;
 
-      if (_infos.isFullCountEnabled()) {
+      if (_infos.isFullCountEnabled() && _infos.getQueryDepth() == 0) {
         stats.incrFullCount();
       }
       continue;
@@ -80,7 +80,9 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
 
     if (_counter < _infos.getLimit()) {
       output.copyRow(input);
-      stats.incrFullCount();
+      if (_infos.getQueryDepth() == 0) {
+        stats.incrFullCount();
+      }
 
       _counter++;
 
@@ -90,7 +92,9 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
       return {state, stats};
     }
 
-    stats.incrFullCount();
+    if (_infos.getQueryDepth() == 0) {
+      stats.incrFullCount();
+    }
 
     if (state == ExecutionState::DONE) {
       return {state, stats};
@@ -101,7 +105,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
 
 LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                                        std::unordered_set<RegisterId> registersToClear,
-                                       size_t offset, size_t limit, bool fullCount)
+                                       size_t offset, size_t limit, bool fullCount, size_t queryDepth)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
                     std::make_shared<std::unordered_set<RegisterId>>(), nrInputRegisters,
                     nrOutputRegisters, std::move(registersToClear)),
