@@ -742,7 +742,9 @@ class LimitNode : public ExecutionNode {
 
  public:
   LimitNode(ExecutionPlan* plan, size_t id, size_t offset, size_t limit)
-      : ExecutionNode(plan, id), _offset(offset), _limit(limit), _fullCount(false) {}
+      : ExecutionNode(plan, id), _offset(offset), _limit(limit), _fullCount(false) {
+    TRI_ASSERT(_inVariable != nullptr);
+  }
 
   LimitNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -790,6 +792,9 @@ class LimitNode : public ExecutionNode {
 
   /// @brief whether or not the node should fully count what it limits
   bool _fullCount;
+
+  /// @brief input variable to read from
+  Variable const* _inVariable;
 };
 
 /// @brief class CalculationNode

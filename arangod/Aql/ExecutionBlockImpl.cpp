@@ -36,6 +36,7 @@
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/SortExecutor.h"
+#include "Aql/LimitExecutor.h"
 
 #include "Aql/SortRegister.h"
 
@@ -212,3 +213,4 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems,
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
