@@ -111,4 +111,5 @@ LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId n
                     nrOutputRegisters, std::move(registersToClear)),
       _offset(offset),
       _limit(limit),
+      _queryDepth(queryDepth),
       _fullCount(fullCount) {}
