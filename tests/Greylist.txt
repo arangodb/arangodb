@@ -19,3 +19,20 @@ Mount: /foxx-crud-test
     at Object.exports.checkRequestResult (js/client/modules/@arangodb/arangosh.js:97:21)
     at Object.install (js/client/modules/@arangodb/foxx/manager.js:282:12)
     at Context.it (tests/js/client/shell/shell-foxx-api-spec.js:1001:17)
+
+ - `./tests/js/client/resilience/foxxmaster.js` sometimes fails with
+
+    [FAILED]  tests/js/client/resilience/foxxmaster.js
+
+      "testQueueFailoverDuringJob" failed: Error: Supervision should have moved the Foxx queues and Foxx queues should have been started to run on a new coordinator - Error: Supervision should have moved the Foxx queues and Foxx queues should have been started to run on a new coordinator
+    at Object.testQueueFailoverDuringJob (/work/ArangoDB/tests/js/client/resilience/foxxmaster.js:252:15)
+    at Object.run (/work/ArangoDB/js/common/modules/jsunity/jsunity.js:515:23)
+    at Object.Run [as run] (/work/ArangoDB/js/common/modules/jsunity.js:171:24)
+    at /work/ArangoDB/tests/js/client/resilience/foxxmaster.js:263:9
+    at /work/ArangoDB/tests/js/client/resilience/foxxmaster.js:266:3
+    at RunTest (/work/ArangoDB/js/common/modules/jsunity.js:248:12)
+    at /work/ArangoDB/js/common/modules/@arangodb/testrunner.js:47:13
+    at arrayEach (/work/ArangoDB/js/node/node_modules/lodash/lodash.js:537:11)
+    at Function.forEach (/work/ArangoDB/js/node/node_modules/lodash/lodash.js:9359:14)
+    at runJSUnityTests (/work/ArangoDB/js/common/modules/@arangodb/testrunner.js:38:5)
+
