@@ -75,6 +75,7 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
   // NOTE The name may be modified if a numeric collection ID is given instead
   // of a collection Name. Afterwards it will contain the name.
   auto const dataSource = resolver.getDataSource(name);
+
   if (dataSource == nullptr) {
     // datasource not found...
     if (failIfDoesNotExist) {
@@ -90,6 +91,7 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
 
     return LogicalCollection::category();
   }
+
   // query actual name from datasource... this may be different to the
   // name passed into this function, because the user may have accessed
   // the collection by its numeric id
@@ -114,7 +116,7 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
     }
   } else if (dataSource->category() == LogicalView::category()) {
     // it's a view!
-    query.addView(dataSourceName);
+    query.addDataSource(dataSource);
 
     // Make sure to add all collections now:
     resolver.visitCollections(
@@ -127,6 +129,7 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "unexpected datasource type");
   }
+
   return dataSource->category();
 }
 

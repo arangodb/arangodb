@@ -816,7 +816,8 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
 #if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(_vocbase);
 #endif
-  arangodb::aql::QueryCache::instance()->invalidate(&vocbase(), name());
+
+  arangodb::aql::QueryCache::instance()->invalidate(&vocbase(), guid());
 
   bool result = _physical->dropIndex(iid);
 
@@ -826,6 +827,7 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
       DatabaseFeature::DATABASE->versionTracker()->track("drop index");
     }
   }
+
   return result;
 }
 
@@ -884,7 +886,7 @@ Result LogicalCollection::truncate(transaction::Methods& trx, OperationOptions& 
 Result LogicalCollection::insert(transaction::Methods* trx, VPackSlice const slice,
                                  ManagedDocumentResult& result, OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                 TRI_voc_tick_t& revisionId, KeyLockInfo* keyLockInfo,
+                                 TRI_voc_rid_t& revisionId, KeyLockInfo* keyLockInfo,
                                  std::function<Result(void)> callbackDuringLock) {
   TRI_IF_FAILURE("LogicalCollection::insert") {
     return Result(TRI_ERROR_DEBUG);
