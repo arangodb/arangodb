@@ -23,11 +23,11 @@
 
 #include "TraversalBlock.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/BaseExpressionContext.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Functions.h"
+#include "Aql/InAndOutRowExpressionContext.h"
 #include "Aql/Query.h"
 #include "Basics/StringRef.h"
 #include "Cluster/ClusterComm.h"
@@ -126,15 +126,14 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
 
   auto varInfo = getPlanNode()->getRegisterPlan()->varInfo;
 
-  // Copy _inRegs/Vars to _pruneRegs/Vars
+  // Create List for _pruneVars
   
-  _pruneVars.reserve(_inVars.size());
-  _pruneRegs.reserve(_inRegs.size());
-  for (auto const v : _inVars) {
-    _pruneVars.emplace_back(v);
-  }
-  for (auto const r : _inRegs) {
-    _pruneRegs.emplace_back(r);
+  ep->getPruneVariables(_pruneVars);
+  _pruneRegs.reserve(_pruneVars.size());
+  for (auto const v : _pruneVars) {
+    auto it = registerPlan.find(v->id);
+    TRI_ASSERT(it != registerPlan.end());
+    _pruneRegs.emplace_back(it->second.registerId);
   }
 
   if (usesVertexOutput()) {
@@ -346,8 +345,8 @@ std::pair<bool, bool> TraversalBlock::writePath(size_t sourceRowId, AqlItemBlock
 
   if (_pruneExpression) {
     bool mustDestroy = false;
-    // TODO inject variables maybe _inVars or _inRegs need modification
-    BaseExpressionContext ctx(_engine->getQuery(), resultRowId, &result, _pruneVars, _pruneRegs);
+    InAndOutRowExpressionContext ctx(_engine->getQuery(), sourceRowId, &source,
+                                     resultRowId, &result, _pruneVars, _pruneRegs);
     aql::AqlValue res = _pruneExpression->execute(_trx, &ctx, mustDestroy);
     arangodb::aql::AqlValueGuard guard(res, mustDestroy);
     TRI_ASSERT(res.isBoolean());

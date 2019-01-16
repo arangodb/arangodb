@@ -138,6 +138,10 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocb
                                      "_id string or an object with _id.");
   }
 
+  if (_pruneExpression) {
+    _pruneExpression->variables(_pruneVariables);
+  }
+
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   checkConditionsDefined();
 #endif
@@ -609,6 +613,14 @@ void TraversalNode::registerGlobalCondition(bool isConditionOnEdge, AstNode cons
 void TraversalNode::getConditionVariables(std::vector<Variable const*>& res) const {
   for (auto const& it : _conditionVariables) {
     if (it != _tmpObjVariable) {
+      res.emplace_back(it);
+    }
+  }
+}
+
+void TraversalNode::getPruneVariables(std::vector<Variable const*>& res) const {
+  if (_pruneExpression) {
+    for (auto const& it : _pruneVariables) {
       res.emplace_back(it);
     }
   }

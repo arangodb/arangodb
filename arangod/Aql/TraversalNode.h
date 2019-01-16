@@ -120,6 +120,9 @@ class TraversalNode : public GraphNode {
         result.emplace(condVar);
       }
     }
+    for (auto const& pruneVar : _pruneVariables) {
+      result.emplace(pruneVar);
+    }
     if (usesInVariable()) {
       result.emplace(_inVariable);
     }
@@ -180,6 +183,8 @@ class TraversalNode : public GraphNode {
 
   void getConditionVariables(std::vector<Variable const*>&) const override;
 
+  void getPruneVariables(std::vector<Variable const*>&) const;
+
   /// @brief Compute the traversal options containing the expressions
   ///        MUST! be called after optimization and before creation
   ///        of blocks.
@@ -233,6 +238,8 @@ class TraversalNode : public GraphNode {
 
   /// @brief List of all depth specific conditions for vertices
   std::unordered_map<uint64_t, AstNode*> _vertexConditions;
+
+  arangodb::HashSet<Variable const*> _pruneVariables;
 };
 
 }  // namespace aql

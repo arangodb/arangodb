@@ -215,6 +215,7 @@ SET(ARANGOD_SOURCES
   Aql/grammar.cpp
   Aql/GraphNode.cpp
   Aql/Graphs.cpp
+  Aql/InAndOutRowExpressionContext.cpp
   Aql/IndexBlock.cpp
   Aql/IndexNode.cpp
   Aql/ModificationBlocks.cpp

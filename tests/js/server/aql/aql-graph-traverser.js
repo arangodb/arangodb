@@ -3936,6 +3936,7 @@ function exampleGraphsSuite () {
 }
 
 function pruneTraversalSuite() {
+  const optRules = {optimizer: { rules: ["-optimize-traversals", "-remove-filter-covered-by-traversal", "-remove-redundant-path-var"]}};
   return {
     setUpAll: () => {
       cleanup();
@@ -3952,10 +3953,57 @@ function pruneTraversalSuite() {
           PRUNE v._key == "C"
           RETURN v._key
       `;
-      const res = db._query(q);
+      const res = db._query(q, {}, optRules);
       assertEqual(res.count(), 5);
       assertEqual(res.toArray().sort(), ['A', 'C', 'C', 'E', 'F'].sort());
-    }
+    },
+
+    testAllowPruningOnE: () => {
+      const q = `
+        FOR v, e IN 1..3 ANY "${vertex.B}" ${en}
+          PRUNE e._to == "${vertex.C}"
+          RETURN v._key
+      `;
+      const res = db._query(q, {}, optRules);
+      assertEqual(res.count(), 5);
+      assertEqual(res.toArray().sort(), ['A', 'C', 'C', 'E', 'F'].sort());
+    },
+
+    testAllowPruningOnP: () => {
+      const q = `
+        FOR v, e, p IN 1..3 ANY "${vertex.B}" ${en}
+          PRUNE p.vertices[1]._key == "C"
+          RETURN v._key
+      `;
+      const res = db._query(q, {}, optRules);
+      assertEqual(res.count(), 5);
+      assertEqual(res.toArray().sort(), ['A', 'C', 'C', 'E', 'F'].sort());
+    },
+
+    testAllowPruningOnPReturnE: () => {
+      const q = `
+        FOR v, e, p IN 1..3 ANY "${vertex.B}" ${en}
+          PRUNE p.vertices[1]._key == "C"
+          RETURN e._id
+      `;
+      const res = db._query(q, {}, optRules);
+      assertEqual(res.count(), 5);
+      assertEqual(res.toArray().sort(), [edge.AB, edge.BC, edge.EB, edge.FE, edge.CF].sort());
+    },
+
+    testAllowPruningOnOuterVar: () => {
+      const q = `
+        FOR key IN ["C", "F"]
+        FOR v IN 1..3 ANY "${vertex.B}" ${en}
+          PRUNE v._key == key
+          RETURN v._key
+      `;
+      const resKeyC = ['A', 'C', 'C', 'E', 'F'];
+      const resKeyF = ['A', 'C', 'D', 'F', 'E', 'F'];
+      const res = db._query(q, {}, optRules);
+      assertEqual(res.count(), resKeyC.length + resKeyF.length);
+      assertEqual(res.toArray().sort(), resKeyC.concat(resKeyF).sort());
+    },
 
   };
 }
