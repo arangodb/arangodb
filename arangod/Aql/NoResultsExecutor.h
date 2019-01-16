@@ -29,8 +29,6 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/SingleRowFetcher.h"
 
-#include "Aql/Variable.h" //invar
-
 #include <memory>
 
 namespace arangodb {
@@ -47,9 +45,6 @@ class NoStats;
 class OutputAqlItemRow;
 struct SortRegister;
 
-/**
- * @brief Implementation of Return Node
- */
 class NoResultsExecutor {
  public:
   using Fetcher = SingleRowFetcher;

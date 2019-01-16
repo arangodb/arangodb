@@ -85,10 +85,10 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
       NoStats stats{};
 
       THEN("the executor should first return WAIT with nullptr") {
-        //OutputAqlItemRow result(std::move(outputBlockShell));
-        //std::tie(state, stats) = testee.produceRow(result);
-        //REQUIRE(state == ExecutionState::WAITING);
-        //REQUIRE(!result.produced());
+        OutputAqlItemRow result(std::move(outputBlockShell));
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::DONE);
+        REQUIRE(!result.produced());
 
         AND_THEN("the executor should return DONE with nullptr") {
           std::tie(state, stats) = testee.produceRow(result);
@@ -127,10 +127,6 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
       NoStats stats{};
 
       THEN("the executor should return the rows") {
-        //std::tie(state, stats) = testee.produceRow(result);
-        //REQUIRE(state == ExecutionState::WAITING);
-        //REQUIRE(!result.produced());
-
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());

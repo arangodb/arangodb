@@ -17,7 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "NoResultsExecutor.h"
@@ -41,31 +41,5 @@ NoResultsExecutor::NoResultsExecutor(Fetcher& fetcher, ExecutorInfos& infos)
 NoResultsExecutor::~NoResultsExecutor() = default;
 
 std::pair<ExecutionState, NoStats> NoResultsExecutor::produceRow(OutputAqlItemRow& output) {
-  // ExecutionState state;
-  // InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  // std::tie(state, inputRow) = _fetcher.fetchRow();
-
-  // if (state == ExecutionState::WAITING) {
-  //   TRI_ASSERT(!inputRow);
-  //   return {state, NoStats{}};
-  // }
-
-  // if (!inputRow) {
-  //   TRI_ASSERT(state == ExecutionState::DONE);
-  //   return {state, NoStats{}};
-  // }
-
-  // if (_infos._returnInheritedResults) {
-  //   output.copyRow(inputRow);
-  // } else {
-  //   AqlValue val;
-  //   val = inputRow.getValue(_infos._inputRegisterId);
-  //   AqlValueGuard guard(val, true);
-  //   //LOG_DEVEL << "writing to ouputReg: " << _infos._outputRegisterId;
-  //   output.setValue(_infos._outputRegisterId, inputRow, val);
-  //   guard.steal();
-  // }
-  // return {state, NoStats{}};
-
   return {ExecutionState::DONE, NoStats{}};
 }
