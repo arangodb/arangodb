@@ -790,9 +790,6 @@ class LimitNode : public ExecutionNode {
 
   /// @brief whether or not the node should fully count what it limits
   bool _fullCount;
-
-  /// @brief input variable to read from
-  Variable const* _inVariable;
 };
 
 /// @brief class CalculationNode
