@@ -26,6 +26,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
+#include "Basics/HashSet.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
@@ -50,6 +51,11 @@
 using namespace arangodb;
 
 namespace {
+
+/// @brief the _key attribute, which, when used in an index, will implictly make it unique
+/// (note that we must not refer to StaticStrings::KeyString here to avoid an init-order-fiasco
+std::vector<arangodb::basics::AttributeName> const KeyAttribute{
+    arangodb::basics::AttributeName("_key", false)};
 
 bool hasExpansion(std::vector<std::vector<arangodb::basics::AttributeName>> const& fields) {
   for (auto const& it : fields) {
@@ -521,11 +527,30 @@ double Index::selectivityEstimate(StringRef const&) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-/// @brief default implementation for implicitlyUnique
+/// @brief whether or not the index is implicitly unique
+/// this can be the case if the index is not declared as unique, but contains a
+/// unique attribute such as _key
 bool Index::implicitlyUnique() const {
-  // simply return whether the index actually is unique
-  // in this base class, we cannot do anything else
-  return _unique;
+  if (_unique) {
+    // a unique index is always unique
+    return true;
+  }
+  if (_useExpansion) {
+    // when an expansion such as a[*] is used, the index may not be unique, even
+    // if it contains attributes that are guaranteed to be unique
+    return false;
+  }
+
+  for (auto const& it : _fields) {
+    // if _key is contained in the index fields definition, then the index is
+    // implicitly unique
+    if (it == KeyAttribute) {
+      return true;
+    }
+  }
+
+  // _key not contained
+  return false;
 }
 
 void Index::batchInsert(transaction::Methods& trx,
@@ -703,7 +728,7 @@ bool Index::canUseConditionPart(arangodb::aql::AstNode const* access,
   }
 
   // test if the reference variable is contained on both sides of the expression
-  std::unordered_set<aql::Variable const*> variables;
+  arangodb::HashSet<aql::Variable const*> variables;
   if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
       (other->type == arangodb::aql::NODE_TYPE_EXPANSION ||
        other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {

@@ -35,11 +35,6 @@
 
 using namespace arangodb;
 
-/// @brief the _key attribute, which, when used in an index, will implictly make
-/// it unique
-static std::vector<arangodb::basics::AttributeName> const KeyAttribute{
-    arangodb::basics::AttributeName("_key", false)};
-
 /// @brief create the index
 MMFilesPathBasedIndex::MMFilesPathBasedIndex(TRI_idx_iid_t iid,
                                              arangodb::LogicalCollection& collection,
@@ -79,32 +74,6 @@ void MMFilesPathBasedIndex::toVelocyPack(VPackBuilder& builder,
   builder.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(_sparse));
   builder.add("deduplicate", VPackValue(_deduplicate));
   builder.close();
-}
-
-/// @brief whether or not the index is implicitly unique
-/// this can be the case if the index is not declared as unique, but contains a
-/// unique attribute such as _key
-bool MMFilesPathBasedIndex::implicitlyUnique() const {
-  if (_unique) {
-    // a unique index is always unique
-    return true;
-  }
-  if (_useExpansion) {
-    // when an expansion such as a[*] is used, the index may not be unique, even
-    // if it contains attributes that are guaranteed to be unique
-    return false;
-  }
-
-  for (auto const& it : _fields) {
-    // if _key is contained in the index fields definition, then the index is
-    // implicitly unique
-    if (it == KeyAttribute) {
-      return true;
-    }
-  }
-
-  // _key not contained
-  return false;
 }
 
 /// @brief helper function to insert a document into any index type

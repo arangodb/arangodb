@@ -25,31 +25,24 @@
 #define ARANGOD_SCHEDULER_SCHEDULER_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-
-#include "Scheduler/Socket.h"
+#include "GeneralServer/Socket.h"  // This is required for asio_ns::signal_set
+#include "Scheduler/Scheduler.h"
 
 namespace arangodb {
 
-namespace rest {
-
-class Scheduler;
-}
-
 class SchedulerFeature final : public application_features::ApplicationFeature {
  public:
-  static rest::Scheduler* SCHEDULER;
+  static Scheduler* SCHEDULER;
 
   explicit SchedulerFeature(application_features::ApplicationServer& server);
   ~SchedulerFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
   void start() override final;
-  void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
-
-  uint64_t queueSize() const { return _queueSize; }
 
  private:
   uint64_t _nrMinimalThreads = 2;
@@ -58,17 +51,22 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   uint64_t _fifo1Size = 1024 * 1024;
   uint64_t _fifo2Size = 4096;
 
+  std::unique_ptr<Scheduler> _scheduler;
+
+  // -------------------------------------------------------------------------
+  // UNRELATED SECTION STARS HERE: Singals and other things creeped into Sched
+  // -------------------------------------------------------------------------
+
  public:
-  size_t concurrency() const { return static_cast<size_t>(_nrMaximalThreads); }
+  /*size_t concurrency() const { return static_cast<size_t>(_nrMaximalThreads); }*/
   void buildControlCHandler();
   void buildHangupHandler();
 
  private:
-  /// @brief return the default number of threads to use (upper bound)
-  size_t defaultNumberOfThreads() const;
-  void buildScheduler();
-
-  std::shared_ptr<rest::Scheduler> _scheduler;
+  void initV8Stuff();
+  void deinitV8Stuff();
+  void signalStuffInit();
+  void signalStuffDeinit();
 
   std::function<void(const asio_ns::error_code&, int)> _signalHandler;
   std::function<void(const asio_ns::error_code&, int)> _exitHandler;

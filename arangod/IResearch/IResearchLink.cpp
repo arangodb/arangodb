@@ -42,7 +42,7 @@
 
 #include "IResearchLink.h"
 
-NS_LOCAL
+namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the storage format used with IResearch writers
@@ -158,18 +158,24 @@ irs::utf8_path getPersistedPath(arangodb::DatabasePathFeature const& dbPathFeatu
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts ArangoDB document into an IResearch data store
 ////////////////////////////////////////////////////////////////////////////////
-inline void insertDocument(irs::segment_writer::document& doc,
-                           arangodb::iresearch::FieldIterator& body, TRI_voc_cid_t cid,
-                           arangodb::LocalDocumentId const& docPk) {
-  using namespace arangodb::iresearch;
+inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx,
+                                       arangodb::iresearch::FieldIterator& body,
+                                       arangodb::velocypack::Slice const& document,
+                                       arangodb::LocalDocumentId const& documentId,
+                                       arangodb::iresearch::IResearchLinkMeta const& meta,
+                                       TRI_idx_iid_t id) {
+  body.reset(document, meta);  // reset reusable container to doc
 
-  // reuse the 'Field' instance stored
-  // inside the 'FieldIterator' after
-  auto& field = const_cast<Field&>(*body);
+  if (!body.valid()) {
+    return arangodb::Result();  // no fields to index
+  }
+
+  auto doc = ctx.insert();
+  auto& field = *body;
 
   // User fields
   while (body.valid()) {
-    if (ValueStorage::NONE == field._storeValues) {
+    if (arangodb::iresearch::ValueStorage::NONE == field._storeValues) {
       doc.insert(irs::action::index, field);
     } else {
       doc.insert(irs::action::index_store, field);
@@ -181,15 +187,27 @@ inline void insertDocument(irs::segment_writer::document& doc,
   // System fields
 
   // Indexed and Stored: LocalDocumentId
-  auto const primaryKey = DocumentPrimaryKey::encode(docPk);
-  Field::setPkValue(field, primaryKey);
+  auto docPk = arangodb::iresearch::DocumentPrimaryKey::encode(documentId);
+
+  // reuse the 'Field' instance stored inside the 'FieldIterator'
+  arangodb::iresearch::Field::setPkValue(const_cast<arangodb::iresearch::Field&>(field), docPk);
   doc.insert(irs::action::index_store, field);
+
+  if (!doc) {
+    return arangodb::Result(
+        TRI_ERROR_INTERNAL,
+        std::string("failed to insert document into arangosearch link '") +
+            std::to_string(id) + "', revision '" +
+            std::to_string(documentId.id()) + "'");
+  }
+
+  return arangodb::Result();
 }
 
-NS_END
+}  // namespace
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 IResearchLink::IResearchLink(TRI_idx_iid_t iid,
                              arangodb::LogicalCollection& collection)
@@ -357,20 +375,12 @@ void IResearchLink::batchInsert(
 
   try {
     for (FieldIterator body(trx); begin != end; ++begin) {
-      body.reset(begin->second, _meta);
+      auto res =
+          insertDocument(ctx->_ctx, body, begin->second, begin->first, _meta, id());
 
-      if (!body.valid()) {
-        continue;  // find first valid document
-      }
-
-      auto doc = ctx->_ctx.insert();
-
-      insertDocument(doc, body, _collection.id(), begin->first);
-
-      if (!doc) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-            << "failed inserting batch into arangosearch link '" << id() << "'";
-        queue->setStatus(TRI_ERROR_INTERNAL);
+      if (!res.ok()) {
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC) << res.errorMessage();
+        queue->setStatus(res.errorNumber());
 
         return;
       }
@@ -439,15 +449,10 @@ arangodb::Result IResearchLink::commit() {
       return arangodb::Result();  // reader not modified
     }
 
-    _dataStore._reader = reader;  // update reader
-
-    auto viewImpl = view();
-
-    // invalidate query cache if there were some data changes
-    if (viewImpl) {
-      arangodb::aql::QueryCache::instance()->invalidate(&(_collection.vocbase()),
-                                                        viewImpl->name());
-    }
+    _dataStore._reader = reader; // update reader
+    arangodb::aql::QueryCache::instance()->invalidate(
+      &(_collection.vocbase()), _viewGuid
+    );
   } catch (arangodb::basics::Exception const& e) {
     return arangodb::Result(
         e.code(),
@@ -972,6 +977,33 @@ arangodb::Result IResearchLink::insert(arangodb::transaction::Methods& trx,
             std::to_string(id()) + "'");
   }
 
+  auto insertImpl = [this, &trx, &doc, &documentId](
+                        irs::index_writer::documents_context& ctx) -> arangodb::Result {
+    try {
+      FieldIterator body(trx);
+
+      return insertDocument(ctx, body, doc, documentId, _meta, id());
+    } catch (arangodb::basics::Exception const& e) {
+      return arangodb::Result(e.code(),
+                              std::string("caught exception while inserting "
+                                          "document into arangosearch link '") +
+                                  std::to_string(id()) + "', revision '" +
+                                  std::to_string(documentId.id()) + "': " + e.what());
+    } catch (std::exception const& e) {
+      return arangodb::Result(TRI_ERROR_INTERNAL,
+                              std::string("caught exception while inserting "
+                                          "document into arangosearch link '") +
+                                  std::to_string(id()) + "', revision '" +
+                                  std::to_string(documentId.id()) + "': " + e.what());
+    } catch (...) {
+      return arangodb::Result(TRI_ERROR_INTERNAL,
+                              std::string("caught exception while inserting "
+                                          "document into arangosearch link '") +
+                                  std::to_string(id()) + "', revision '" +
+                                  std::to_string(documentId.id()) + "'");
+    }
+  };
+
   auto& state = *(trx.state());
   auto* key = this;
 
@@ -998,6 +1030,13 @@ arangodb::Result IResearchLink::insert(arangodb::transaction::Methods& trx,
 
     TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
+    // optimization for single-document insert-only transactions
+    if (trx.isSingleOperationTransaction() && !_inRecovery) {
+      auto ctx = _dataStore._writer->documents();
+
+      return insertImpl(ctx);
+    }
+
     auto ptr = irs::memory::make_unique<LinkTrxState>(std::move(lock),
                                                       *(_dataStore._writer));
 
@@ -1018,45 +1057,7 @@ arangodb::Result IResearchLink::insert(arangodb::transaction::Methods& trx,
     ctx->remove(documentId);
   }
 
-  try {
-    FieldIterator body(trx, doc, _meta);
-
-    if (!body.valid()) {
-      return arangodb::Result();  // nothing to index
-    }
-
-    auto doc = ctx->_ctx.insert();
-
-    insertDocument(doc, body, _collection.id(), documentId);
-
-    if (!doc) {
-      return arangodb::Result(
-          TRI_ERROR_INTERNAL,
-          std::string("failed to insert document into arangosearch link '") +
-              std::to_string(id()) + "', revision '" +
-              std::to_string(documentId.id()) + "'");
-    }
-  } catch (arangodb::basics::Exception const& e) {
-    return arangodb::Result(
-        e.code(), std::string("caught exception while inserting document into "
-                              "arangosearch link '") +
-                      std::to_string(id()) + "', revision '" +
-                      std::to_string(documentId.id()) + "': " + e.what());
-  } catch (std::exception const& e) {
-    return arangodb::Result(TRI_ERROR_INTERNAL,
-                            std::string("caught exception while inserting "
-                                        "document into arangosearch link '") +
-                                std::to_string(id()) + "', revision '" +
-                                std::to_string(documentId.id()) + "': " + e.what());
-  } catch (...) {
-    return arangodb::Result(TRI_ERROR_INTERNAL,
-                            std::string("caught exception while inserting "
-                                        "document into arangosearch link '") +
-                                std::to_string(id()) + "', revision '" +
-                                std::to_string(documentId.id()) + "'");
-  }
-
-  return arangodb::Result();
+  return insertImpl(ctx->_ctx);
 }
 
 bool IResearchLink::isSorted() const {
@@ -1125,9 +1126,36 @@ size_t IResearchLink::memory() const {
   return size;
 }
 
-bool IResearchLink::properties(irs::index_writer::segment_options const& properties) {
-  // FIXME TODO update the data-store options
-  return true;
+arangodb::Result IResearchLink::properties(irs::index_writer::segment_options const& properties) {
+  SCOPED_LOCK(_asyncSelf->mutex());  // '_dataStore' can be asynchronously modified
+
+  if (!*_asyncSelf) {
+    return arangodb::Result(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,  // the current link is no longer valid (checked after ReadLock aquisition)
+                            std::string(
+                                "failed to lock arangosearch link while "
+                                "modifying properties of arangosearch link '") +
+                                std::to_string(id()) + "'");
+  }
+
+  TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
+
+  try {
+    _dataStore._writer->options(properties);
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+        << "caught exception while modifying properties of arangosearch link '"
+        << id() << "': " << e.what();
+    IR_LOG_EXCEPTION();
+    throw;
+  } catch (...) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "caught exception while modifying properties of arangosearch link '"
+        << id() << "'";
+    IR_LOG_EXCEPTION();
+    throw;
+  }
+
+  return arangodb::Result();
 }
 
 arangodb::Result IResearchLink::remove(arangodb::transaction::Methods& trx,
@@ -1294,9 +1322,9 @@ std::shared_ptr<IResearchView> IResearchLink::view() const {
           : _collection.vocbase().lookupView(_viewGuid));
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

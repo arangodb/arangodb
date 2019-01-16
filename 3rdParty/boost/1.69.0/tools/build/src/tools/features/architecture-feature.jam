@@ -1,0 +1,40 @@
+# Copyright 2017 Rene Rivera
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+# Type of CPU architecture to compile for.
+
+import feature ;
+
+feature.feature architecture
+    :
+        # x86 and x86-64
+        x86
+
+        # ia64
+        ia64
+
+        # Sparc
+        sparc
+
+        # RS/6000 & PowerPC
+        power
+
+        # MIPS/SGI
+        mips1 mips2 mips3 mips4 mips32 mips32r2 mips64
+
+        # HP/PA-RISC
+        parisc
+
+        # Advanced RISC Machines
+        arm
+
+        # Combined architectures for platforms/toolsets that support building for
+        # multiple architectures at once. "combined" would be the default multi-arch
+        # for the toolset.
+        combined
+        combined-x86-power
+    :
+        propagated optional
+    ;

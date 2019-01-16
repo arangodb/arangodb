@@ -49,9 +49,10 @@ option(SKIP_PACKAGING "" OFF)
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
 
-# use standalone boost asio
-add_definitions("-DARANGODB_STANDALONE_ASIO=1")
-add_definitions("-DFUERTE_STANDALONE_ASIO=1")
+# don't use standalone boost asio
+# use this when asio is included outside of Boost
+# add_definitions("-DARANGODB_STANDALONE_ASIO=0")
+# add_definitions("-DFUERTE_STANDALONE_ASIO=0")
 
 # ------------------------------------------------------------------------------
 # VERSION information
@@ -601,7 +602,8 @@ if (MSVC)
   # http://lists.boost.org/boost-users/2016/04/85968.php
   add_definitions("-D_ENABLE_ATOMIC_ALIGNMENT_FIX")
 
-  set(MSVC_LIBS Shlwapi.lib;crypt32.lib;WINMM.LIB;Ws2_32.lib;Psapi.lib)
+  # bcrypt is needed for SSL
+  set(MSVC_LIBS Shlwapi.lib;crypt32.lib;bcrypt.lib;WINMM.LIB;Ws2_32.lib;Psapi.lib)
 
   set(CMAKE_EXE_LINKER_FLAGS
     "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /SAFESEH:NO /MACHINE:x64 /ignore:4099 ${BASE_LD_FLAGS}"
@@ -1062,8 +1064,6 @@ add_dependencies(rocksdb ${SNAPPY_LIB})
 if (USE_JEMALLOC)
   add_dependencies(rocksdb jemalloc)
 endif ()
-
-include_directories(SYSTEM ${ASIO_INCLUDES})
 
 ################################################################################
 ## VELOCYPACK

@@ -41,8 +41,6 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -849,7 +847,6 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
 
 void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice const& lower,
                                       rocksdb::Slice const& upper) {
-  auto scheduler = SchedulerFeature::SCHEDULER;
   auto rocksColl = toRocksDBCollection(_collection);
   bool needsInsert = false;
   std::string previous = "";
@@ -870,7 +867,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
   size_t n = 0;
   cache::Cache* cc = _cache.get();
   for (it->Seek(lower); it->Valid(); it->Next()) {
-    if (scheduler->isStopping()) {
+    if (application_features::ApplicationServer::isStopping()) {
       return;
     }
     n++;

@@ -816,7 +816,8 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
 #if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(_vocbase);
 #endif
-  arangodb::aql::QueryCache::instance()->invalidate(&vocbase(), name());
+
+  arangodb::aql::QueryCache::instance()->invalidate(&vocbase(), guid());
 
   bool result = _physical->dropIndex(iid);
 
@@ -826,6 +827,7 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
       DatabaseFeature::DATABASE->versionTracker()->track("drop index");
     }
   }
+
   return result;
 }
 

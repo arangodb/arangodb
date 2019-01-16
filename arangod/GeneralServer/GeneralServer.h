@@ -126,10 +126,7 @@ class GeneralServer {
 
     void start();
     void stop();
-
     bool runningInThisThread() const { return _thread.runningInThisThread(); }
-
-   private:
   };
 
   GeneralServer::IoContext& selectIoContext();

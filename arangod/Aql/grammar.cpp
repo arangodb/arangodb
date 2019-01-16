@@ -273,12 +273,12 @@ void Aqlerror(YYLTYPE* locp,
 /// introduced by the COLLECT itself, in which case it would fail
 static void CheckIntoVariables(Parser* parser, AstNode const* expression,
                                int line, int column,
-                               std::unordered_set<Variable const*> const& variablesIntroduced) {
+                               arangodb::HashSet<Variable const*> const& variablesIntroduced) {
   if (expression == nullptr) {
     return;
   }
   
-  std::unordered_set<Variable const*> varsInAssignment;
+  arangodb::HashSet<Variable const*> varsInAssignment;
   Ast::getReferencedVariables(expression, varsInAssignment);
 
   for (auto const& it : varsInAssignment) {
@@ -293,9 +293,9 @@ static void CheckIntoVariables(Parser* parser, AstNode const* expression,
 /// @brief register variables in the scope
 static void RegisterAssignVariables(Parser* parser, arangodb::aql::Scopes* scopes, 
                                     int line, int column,
-                                    std::unordered_set<Variable const*>& variablesIntroduced, 
+                                    arangodb::HashSet<Variable const*>& variablesIntroduced, 
                                     AstNode const* vars) {
-  std::unordered_set<Variable const*> varsInAssignment;
+  arangodb::HashSet<Variable const*> varsInAssignment;
    
   size_t const n = vars->numMembers();
 
@@ -2726,7 +2726,7 @@ yyreduce:
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
-        std::unordered_set<Variable const*> variables;
+        arangodb::HashSet<Variable const*> variables;
         RegisterAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variables, (yyvsp[-2].node));
       }
 
@@ -2740,7 +2740,7 @@ yyreduce:
 #line 786 "Aql/grammar.y" /* yacc.c:1646  */
     {
       /* AGGREGATE var = expr OPTIONS ... */
-      std::unordered_set<Variable const*> variablesIntroduced;
+      arangodb::HashSet<Variable const*> variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
@@ -2769,7 +2769,7 @@ yyreduce:
 #line 810 "Aql/grammar.y" /* yacc.c:1646  */
     {
       /* COLLECT var = expr AGGREGATE var = expr OPTIONS ... */
-      std::unordered_set<Variable const*> variablesIntroduced;
+      arangodb::HashSet<Variable const*> variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
@@ -2786,7 +2786,7 @@ yyreduce:
       }
 
       // note all group variables
-      std::unordered_set<Variable const*> groupVars;
+      arangodb::HashSet<Variable const*> groupVars;
       size_t n = (yyvsp[-3].node)->numMembers();
       for (size_t i = 0; i < n; ++i) {
         auto member = (yyvsp[-3].node)->getMember(i);
@@ -2804,7 +2804,7 @@ yyreduce:
 
         if (member != nullptr) {
           TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
-          std::unordered_set<Variable const*> variablesUsed;
+          arangodb::HashSet<Variable const*> variablesUsed;
           Ast::getReferencedVariables(member->getMember(1), variablesUsed);
 
           for (auto& it : groupVars) {
@@ -2830,7 +2830,7 @@ yyreduce:
 #line 866 "Aql/grammar.y" /* yacc.c:1646  */
     {
       /* COLLECT var = expr INTO var OPTIONS ... */
-      std::unordered_set<Variable const*> variablesIntroduced;
+      arangodb::HashSet<Variable const*> variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
@@ -2854,7 +2854,7 @@ yyreduce:
 #line 885 "Aql/grammar.y" /* yacc.c:1646  */
     {
       /* COLLECT var = expr INTO var KEEP ... OPTIONS ... */
-      std::unordered_set<Variable const*> variablesIntroduced;
+      arangodb::HashSet<Variable const*> variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {

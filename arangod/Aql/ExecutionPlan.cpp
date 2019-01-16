@@ -1998,8 +1998,8 @@ void ExecutionPlan::findEndNodes(SmallVector<ExecutionNode*>& result,
 
 /// @brief helper struct for findVarUsage
 struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
-  std::unordered_set<Variable const*> _usedLater;
-  std::unordered_set<Variable const*> _valid;
+  arangodb::HashSet<Variable const*> _usedLater;
+  arangodb::HashSet<Variable const*> _valid;
   std::unordered_map<VariableId, ExecutionNode*>* _varSetBy;
   bool const _ownsVarSetBy;
 

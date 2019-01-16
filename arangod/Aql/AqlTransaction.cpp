@@ -86,7 +86,7 @@ Result AqlTransaction::processCollection(aql::Collection* collection) {
 LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
   TransactionCollection* trxColl = this->trxCollection(cid);
   TRI_ASSERT(trxColl != nullptr);
-  return trxColl->collection();
+  return trxColl->collection().get();
 }
 
 /// @brief lockCollections, this is needed in a corner case in AQL: we need

@@ -117,11 +117,6 @@ class ProgramOptions {
   // set context for error reporting
   void setContext(std::string const& value) { _context = value; }
 
-  // sets the old options map
-  void setOldOptions(std::unordered_map<std::string, std::string> const& old) {
-    _oldOptions = old;
-  }
-
   // sets a single old option and its replacement name
   void addOldOption(std::string const& old, std::string const& replacement) {
     _oldOptions[Option::stripPrefix(old)] = replacement;
@@ -156,16 +151,19 @@ class ProgramOptions {
   }
 
   // adds an option to the program options
-  void addOption(std::string const& name, std::string const& description, Parameter* parameter,
-                 std::underlying_type<Flags>::type flags = makeFlags(Flags::Normal)) {
+  Option& addOption(std::string const& name, std::string const& description,
+                    Parameter* parameter,
+                    std::underlying_type<Flags>::type flags = makeFlags(Flags::Normal)) {
     addOption(Option(name, description, parameter, flags));
+    return getOption(name);
   }
 
   // adds an obsolete and hidden option to the program options
-  void addObsoleteOption(std::string const& name,
-                         std::string const& description, bool requiresValue) {
+  Option& addObsoleteOption(std::string const& name,
+                            std::string const& description, bool requiresValue) {
     addOption(Option(name, description, new ObsoleteParameter(requiresValue),
                      makeFlags(Flags::Hidden, Flags::Obsolete)));
+    return getOption(name);
   }
 
   // prints usage information
@@ -202,6 +200,9 @@ class ProgramOptions {
 
   // check whether or not an option requires a value
   bool requiresValue(std::string const& name) const;
+
+  // returns the option by name. will throw if the option cannot be found
+  Option& getOption(std::string const& name);
 
   // returns a pointer to an option value, specified by option name
   // returns a nullptr if the option is unknown

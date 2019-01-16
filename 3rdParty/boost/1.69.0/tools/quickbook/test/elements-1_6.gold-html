@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      1.6 Elements
+    </h3>
+    <ol>
+      <li>
+        <div>
+          item1
+        </div>
+      </li>
+      <li>
+        <div>
+          item2
+        </div>
+      </li>
+    </ol>
+    <ul>
+      <li>
+        <div>
+          item1
+        </div>
+      </li>
+      <li>
+        <div>
+          item2
+        </div>
+      </li>
+    </ul>
+    <ol>
+      <li>
+        <div>
+          Check that <span class="bold"><strong>bold text</strong></span> isn't confused
+          with a list.
+        </div>
+      </li>
+    </ol>
+    <h3>
+      A <span class="bold"><strong>simplesect</strong></span>!
+    </h3>
+  </body>
+</html>

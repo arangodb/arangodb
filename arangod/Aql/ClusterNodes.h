@@ -230,11 +230,8 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
     return cloneHelper(std::move(c), withDependencies, withProperties);
   }
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final;
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
@@ -321,19 +318,8 @@ class GatherNode final : public ExecutionNode {
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final {
-    std::vector<Variable const*> v;
-    v.reserve(_elements.size());
-
-    for (auto const& p : _elements) {
-      v.emplace_back(p.var);
-    }
-    return v;
-  }
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final {
     for (auto const& p : _elements) {
       vars.emplace(p.var);
     }
@@ -400,17 +386,8 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
                        withDependencies, withProperties);
   }
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final {
-    std::vector<Variable const*> vec;
-    if (_inVariable) {
-      vec.push_back(_inVariable);
-    }
-    return vec;
-  }
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final {
     if (_inVariable) {
       vars.emplace(_inVariable);
     }

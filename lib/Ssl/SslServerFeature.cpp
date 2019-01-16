@@ -41,7 +41,7 @@ SslServerFeature::SslServerFeature(application_features::ApplicationServer& serv
       _sessionCache(false),
       _cipherList("HIGH:!EXPORT:!aNULL@STRENGTH"),
       _sslProtocol(TLS_V12),
-      _sslOptions(asio::ssl::context::default_workarounds | asio::ssl::context::single_dh_use),
+      _sslOptions(asio_ns::ssl::context::default_workarounds | asio_ns::ssl::context::single_dh_use),
       _ecdhCurve("prime256v1") {
   setOptional(true);
   startsAfter("AQLPhase");
@@ -164,13 +164,13 @@ class BIOGuard {
 };
 }  // namespace
 
-asio::ssl::context SslServerFeature::createSslContext() const {
+asio_ns::ssl::context SslServerFeature::createSslContext() const {
   try {
     // create context
-    asio::ssl::context sslContext = ::sslContext(SslProtocol(_sslProtocol), _keyfile);
+    asio_ns::ssl::context sslContext = ::sslContext(SslProtocol(_sslProtocol), _keyfile);
 
     // and use this native handle
-    asio::ssl::context::native_handle_type nativeContext = sslContext.native_handle();
+    asio_ns::ssl::context::native_handle_type nativeContext = sslContext.native_handle();
 
     // set cache mode
     SSL_CTX_set_session_cache_mode(nativeContext, _sessionCache ? SSL_SESS_CACHE_SERVER

@@ -1,0 +1,82 @@
+# Copyright 2017 Rene Rivera
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+# TODO: Documentation.
+
+import feature ;
+import errors ;
+import property ;
+
+feature.feature variant
+    :
+    : implicit composite propagated symmetric ;
+
+# Declares a new variant.
+#
+# First determines explicit properties for this variant, by refining parents'
+# explicit properties with the passed explicit properties. The result is
+# remembered and will be used if this variant is used as parent.
+#
+# Second, determines the full property set for this variant by adding to the
+# explicit properties default values for all missing non-symmetric properties.
+#
+# Lastly, makes appropriate value of 'variant' property expand to the full
+# property set.
+#
+rule variant ( name            # Name of the variant
+    : parents-or-properties *  # Specifies parent variants, if
+                               # 'explicit-properties' are given, and
+                               # explicit-properties or parents otherwise.
+    : explicit-properties *    # Explicit properties.
+    )
+{
+    local parents ;
+    if ! $(explicit-properties)
+    {
+        if $(parents-or-properties[1]:G)
+        {
+            explicit-properties = $(parents-or-properties) ;
+        }
+        else
+        {
+            parents = $(parents-or-properties) ;
+        }
+    }
+    else
+    {
+        parents = $(parents-or-properties) ;
+    }
+
+    # The problem is that we have to check for conflicts between base variants.
+    if $(parents[2])
+    {
+        errors.error "multiple base variants are not yet supported" ;
+    }
+
+    local inherited ;
+    # Add explicitly specified properties for parents.
+    for local p in $(parents)
+    {
+        # TODO: This check may be made stricter.
+        if ! [ feature.is-implicit-value $(p) ]
+        {
+            errors.error "Invalid base variant" $(p)  ;
+        }
+
+        inherited += $(.explicit-properties.$(p)) ;
+    }
+    property.validate $(explicit-properties) ;
+    explicit-properties = [ property.refine $(inherited)
+        : $(explicit-properties) ] ;
+
+    # Record explicitly specified properties for this variant. We do this after
+    # inheriting parents' properties so they affect other variants derived from
+    # this one.
+    .explicit-properties.$(name) = $(explicit-properties) ;
+
+    feature.extend variant : $(name) ;
+    feature.compose <variant>$(name) : $(explicit-properties) ;
+}
+IMPORT $(__name__) : variant : : variant ;
