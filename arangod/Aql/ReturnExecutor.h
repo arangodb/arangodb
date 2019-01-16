@@ -48,7 +48,7 @@ class ReturnExecutorInfos : public ExecutorInfos {
   ReturnExecutorInfos(RegisterId inputRegister,
                 RegisterId outputRegisters,
                 RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                std::unordered_set<RegisterId> registersToClear, bool returnInheritedResults);
+                std::unordered_set<RegisterId> registersToClear, bool doCount, bool returnInheritedResults);
 
   ReturnExecutorInfos() = delete;
   ReturnExecutorInfos(ReturnExecutorInfos &&) = default;
@@ -60,6 +60,7 @@ class ReturnExecutorInfos : public ExecutorInfos {
   bool _count;
   RegisterId _inputRegisterId;
   RegisterId _outputRegisterId;
+  bool _doCount;
   bool _returnInheritedResults;
 };
 
