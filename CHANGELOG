@@ -1,3 +1,15 @@
+v3.4.3 (XXXX-XX-XX)
+-------------------
+
+* fixed an issue with AQL query IN index lookup conditions being converted into
+  empty arrays when they were shared between multiple nodes of a lookup condition
+  that used an IN array lookup in an OR that was multiplied due to DNF transformations
+  
+  This issue affected queries such as the following
+
+      FILTER (... && ...) || doc.indexAttribute IN non-empty-array
+
+
 v3.4.2 (2019-01-15)
 -------------------
 
@@ -92,6 +104,7 @@ v3.4.2 (2019-01-15)
 * Improve single threaded performance by scheduler optimization.
 
 * Releveling logging in maintenance
+
 
 v3.4.1 (2018-12-19)
 -------------------
