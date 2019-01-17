@@ -221,8 +221,7 @@ bool parseOptions(aql::Query& query,
         }
 
         auto& resolver = query.resolver();
-        auto& sources = options.sources;
-//        arangodb::HashSet<TRI_voc_cid_t> sources;
+        arangodb::HashSet<TRI_voc_cid_t> sources;
 
         // get list of CIDs for restricted collections
         for (size_t i = 0, n = value.numMembers(); i < n; ++i) {
@@ -284,7 +283,7 @@ bool parseOptions(aql::Query& query,
         }
 
         // parsing is done
-//        options.sources = std::move(sources);
+        options.sources = std::move(sources);
         options.restrictSources = true;
 
         return true;
@@ -336,7 +335,23 @@ bool parseOptions(aql::Query& query,
 
     auto const* value = attribute->getMemberUnchecked(0);
 
-    if (!value || !value->isConstant() || !handler->second(query, view, *value, options, error)) {
+    if (!value) {
+      // can't handle attribute
+      return false;
+    }
+
+    if (!value->isConstant()) {
+      // 'Ast::injectBindParameters` doesn't handle
+      // constness of parent nodes correctly, re-evaluate flags
+      value->removeFlag(aql::DETERMINED_CONSTANT);
+
+      if (!value->isConstant()) {
+        // can't handle non-const values in options
+        return false;
+      }
+    }
+
+    if (!handler->second(query, view, *value, options, error)) {
       // can't handle attribute
       return false;
     }
