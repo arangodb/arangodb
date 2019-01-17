@@ -1,7 +1,11 @@
-v3.4.2 (XXXX-XX-XX)
+v3.4.3 (XXXX-XX-XX)
 -------------------
 
-* updated bundled curl library to version 7.63
+* updated bundled curl library to version 7.63.0
+
+
+v3.4.2 (2019-01-15)
+-------------------
 
 * fixed an issue where a crashed coordinator can lead to some Foxx queue jobs
   erroneously either left hanging or being restarted

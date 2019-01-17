@@ -49,11 +49,11 @@ struct ApplierThread : public Thread {
   }
 
   ~ApplierThread() {
+    shutdown();
     {
       MUTEX_LOCKER(locker, _syncerMutex);
       _syncer.reset();
-    }
-    shutdown();
+    }    
   }
 
   void run() override {
