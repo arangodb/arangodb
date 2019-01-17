@@ -94,14 +94,14 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
  protected:
   /// insert index elements into the specified write batch.
-  Result insertInternal(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& documentId,
-                        velocypack::Slice const& doc, Index::OperationMode mode) override;
+  Result insert(transaction::Methods& trx, RocksDBMethods* methods,
+                LocalDocumentId const& documentId,
+                velocypack::Slice const& doc, Index::OperationMode mode) override;
 
   /// remove index elements and put it in the specified write batch.
-  Result removeInternal(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& documentId,
-                        velocypack::Slice const& doc, Index::OperationMode mode) override;
+  Result remove(transaction::Methods& trx, RocksDBMethods* methods,
+                LocalDocumentId const& documentId,
+                velocypack::Slice const& doc, Index::OperationMode mode) override;
 
  private:
   std::set<std::string> wordlist(arangodb::velocypack::Slice const&);

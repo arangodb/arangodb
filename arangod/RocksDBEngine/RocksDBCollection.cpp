@@ -1240,18 +1240,10 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
-    auto tmpres = rIdx->insertInternal(*trx, mthds, documentId, doc, options.indexOperationMode);
+    res = rIdx->insert(*trx, mthds, documentId, doc, options.indexOperationMode);
 
-    if (tmpres.fail()) {
-      if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
-        // in case of OOM return immediately
-        return tmpres;
-      }
-
-      if (tmpres.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) || res.ok()) {
-        // "prefer" unique constraint violated over other errors
-        res.reset(tmpres);
-      }
+    if (res.fail()) {
+      break;
     }
   }
 
@@ -1291,16 +1283,11 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   Result resInner;
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
-    auto tmpres = idx->remove(*trx, documentId, doc, options.indexOperationMode);
+    RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
+    res = ridx->remove(*trx, mthd, documentId, doc, options.indexOperationMode);
 
-    if (tmpres.fail()) {
-      if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
-        // in case of OOM return immediately
-        return tmpres;
-      }
-
-      // for other errors, set result
-      res.reset(tmpres);
+    if (res.fail()) {
+      break;
     }
   }
 
@@ -1349,16 +1336,11 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
-    auto tmpres = rIdx->updateInternal(*trx, mthd, oldDocumentId, oldDoc, newDocumentId,
-                                       newDoc, options.indexOperationMode);
+    res = rIdx->update(*trx, mthd, oldDocumentId, oldDoc, newDocumentId,
+                       newDoc, options.indexOperationMode);
 
-    if (tmpres.fail()) {
-      if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
-        // in case of OOM return immediately
-        return tmpres;
-      }
-
-      res.reset(tmpres);
+    if (res.fail()) {
+      break;
     }
   }
 

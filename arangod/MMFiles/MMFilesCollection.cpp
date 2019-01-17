@@ -117,7 +117,7 @@ namespace {
 class MMFilesIndexFillerTask : public basics::LocalTask {
  public:
   MMFilesIndexFillerTask(std::shared_ptr<basics::LocalTaskQueue> const& queue,
-                         transaction::Methods& trx, Index* idx,
+                         transaction::Methods& trx, MMFilesIndex* idx,
                          std::shared_ptr<std::vector<std::pair<LocalDocumentId, VPackSlice>>> const& documents)
       : LocalTask(queue), _trx(trx), _idx(idx), _documents(documents) {}
 
@@ -135,7 +135,7 @@ class MMFilesIndexFillerTask : public basics::LocalTask {
 
  private:
   transaction::Methods& _trx;
-  Index* _idx;
+  MMFilesIndex* _idx;
   std::shared_ptr<std::vector<std::pair<LocalDocumentId, VPackSlice>>> _documents;
 };
 
@@ -1621,7 +1621,7 @@ void MMFilesCollection::fillIndex(
   try {
     // move task into thread pool
     std::shared_ptr<::MMFilesIndexFillerTask> worker;
-    worker.reset(new ::MMFilesIndexFillerTask(queue, trx, idx, documents));
+    worker.reset(new ::MMFilesIndexFillerTask(queue, trx, midx, documents));
     queue->enqueue(worker);
   } catch (...) {
     // set error code
@@ -3185,7 +3185,7 @@ Result MMFilesCollection::insertSecondaryIndexes(arangodb::transaction::Methods&
       continue;
     }
 
-    Result res = idx->insert(trx, documentId, doc, mode);
+    Result res = midx->insert(trx, documentId, doc, mode);
 
     // in case of no-memory, return immediately
     if (res.errorNumber() == TRI_ERROR_OUT_OF_MEMORY) {
@@ -3233,7 +3233,7 @@ Result MMFilesCollection::deleteSecondaryIndexes(transaction::Methods& trx,
       continue;
     }
 
-    Result res = idx->remove(trx, documentId, doc, mode);
+    Result res = midx->remove(trx, documentId, doc, mode);
 
     if (res.fail()) {
       // an error occurred

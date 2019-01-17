@@ -27,7 +27,6 @@
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HashSet.h"
-#include "Basics/LocalTaskQueue.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
@@ -556,18 +555,6 @@ bool Index::implicitlyUnique() const {
 
   // _key not contained
   return false;
-}
-
-void Index::batchInsert(transaction::Methods& trx,
-                        std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
-                        std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
-  for (auto const& it : documents) {
-    Result status = insert(trx, it.first, it.second, OperationMode::normal);
-    if (status.errorNumber() != TRI_ERROR_NO_ERROR) {
-      queue->setStatus(status.errorNumber());
-      break;
-    }
-  }
 }
 
 /// @brief default implementation for drop

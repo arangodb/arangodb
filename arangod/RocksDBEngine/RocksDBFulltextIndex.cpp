@@ -172,10 +172,10 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-Result RocksDBFulltextIndex::insertInternal(transaction::Methods& trx, RocksDBMethods* mthd,
-                                            LocalDocumentId const& documentId,
-                                            velocypack::Slice const& doc,
-                                            Index::OperationMode mode) {
+Result RocksDBFulltextIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
+                                    LocalDocumentId const& documentId,
+                                    velocypack::Slice const& doc,
+                                    Index::OperationMode mode) {
   Result res;
   std::set<std::string> words = wordlist(doc);
 
@@ -205,10 +205,10 @@ Result RocksDBFulltextIndex::insertInternal(transaction::Methods& trx, RocksDBMe
   return res;
 }
 
-Result RocksDBFulltextIndex::removeInternal(transaction::Methods& trx, RocksDBMethods* mthd,
-                                            LocalDocumentId const& documentId,
-                                            velocypack::Slice const& doc,
-                                            Index::OperationMode mode) {
+Result RocksDBFulltextIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
+                                    LocalDocumentId const& documentId,
+                                    velocypack::Slice const& doc,
+                                    Index::OperationMode mode) {
   Result res;
   std::set<std::string> words = wordlist(doc);
 
