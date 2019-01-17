@@ -166,6 +166,15 @@ inline typename std::enable_if<std::is_unsigned<T>::value, T>::type toNumber(std
       value = value.substr(0, n - 1);
     }
   }
+  char const* p = value.data();
+  char const* e = p + value.size();
+  // skip whitespace
+  while (p < e && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) {
+    ++p;
+  }
+  if (p < e && *p == '-') {
+    throw std::out_of_range(value);
+  }
   auto v = static_cast<uint64_t>(std::stoull(value));
   if (v < static_cast<uint64_t>((std::numeric_limits<T>::min)()) ||
       v > static_cast<uint64_t>((std::numeric_limits<T>::max)())) {
