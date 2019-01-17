@@ -78,6 +78,18 @@ class FilterStats {
   std::size_t _filtered;
 };
 
+class EnumerateCollectionStats {
+ public:
+  EnumerateCollectionStats() noexcept : _filtered(0) {}
+
+  void incrFiltered() noexcept { _filtered++; }
+
+  std::size_t getFiltered() const noexcept { return _filtered; }
+
+ private:
+  std::size_t _filtered;
+};
+
 inline ExecutionStats& operator+=(ExecutionStats& executionStats,
                            FilterStats const& filterStats) noexcept {
   executionStats.filtered += filterStats.getFiltered();

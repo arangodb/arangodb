@@ -33,7 +33,7 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
 #include "Aql/Collection.h"
-#include "Aql/EnumerateCollectionBlock.h"
+#include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
@@ -1228,7 +1228,14 @@ void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& builder, unsigned
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<EnumerateCollectionBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  EnumerateCollectionExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                                         getRegisterPlan()->nrRegs[getDepth()],
+                                         getRegsToClear(), &collection, &engine);
+  return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(&engine, this,
+                                                                           std::move(infos));
 }
 
 /// @brief clone ExecutionNode recursively

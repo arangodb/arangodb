@@ -34,6 +34,7 @@
 #include "Aql/InputAqlItemRow.h"
 
 #include "Aql/CalculationExecutor.h"
+#include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/SortExecutor.h"
@@ -204,6 +205,7 @@ std::unique_ptr<OutputAqlItemBlockShell> ExecutionBlockImpl<Executor>::requestWr
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor>;
