@@ -20,8 +20,6 @@ from the recipes below.
 
 - [Compile on Windows](Windows.md)
 
-- [OpenSSL](OpenSSL.md)
-
 - [Running Custom Build](RunningCustomBuild.md)
 
   - [Recompiling jemalloc](jemalloc.md)
