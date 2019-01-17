@@ -1004,14 +1004,14 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
     // drop an existing collection if it exists
     if (dropExisting) {
-      std::string errorMsg;
-      int res = ci->dropCollectionCoordinator(dbName, std::to_string(col->id()),
-                                              errorMsg, 0.0);
+      auto result =
+        ci->dropCollectionCoordinator(dbName, std::to_string(col->id()), 0.0);
 
-      if (res == TRI_ERROR_FORBIDDEN ||
-          res == TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE) {
+      if (TRI_ERROR_FORBIDDEN == result.errorNumber() // forbidden
+          || TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE == result.errorNumber()) {
         // some collections must not be dropped
-        res = truncateCollectionOnCoordinator(dbName, name);
+        auto res = truncateCollectionOnCoordinator(dbName, name);
+
         if (res != TRI_ERROR_NO_ERROR) {
           return Result(
               res,
@@ -1019,12 +1019,15 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
                   "unable to truncate collection (dropping is forbidden): '") +
                   name + "'");
         }
+
         return Result(res);
       }
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        return Result(res, std::string("unable to drop collection '") + name +
-                               "': " + TRI_errno_string(res));
+      if (!result.ok()) {
+        return Result( // result
+          result.errorNumber(), // code
+          std::string("unable to drop collection '") + name + "': " + result.errorMessage()
+        );
       }
     } else {
       return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
@@ -1718,19 +1721,20 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
       "Cluster");
 
   Result res;
+
   for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
     VPackSlice type = idxDef.get(StaticStrings::IndexType);
+
     if (type.isString() && (type.copyString() == "primary" || type.copyString() == "edge")) {
       // must ignore these types of indexes during restore
       continue;
     }
 
     VPackBuilder tmp;
-    std::string errorMsg;
-    res = ci->ensureIndexCoordinator(  // returns int that gets converted to
-                                       // result
-        dbName, std::to_string(col->id()), idxDef, true, tmp, errorMsg,
-        cluster->indexCreationTimeout());
+
+    res = ci->ensureIndexCoordinator( // result
+      dbName, std::to_string(col->id()), idxDef, true, tmp, cluster->indexCreationTimeout()
+    );
 
     if (res.fail()) {
       return res.reset(res.errorNumber(), "could not create index: " + res.errorMessage());
