@@ -598,9 +598,19 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::v
   auto res = trx.begin();
   TRI_ASSERT(res.ok());
 
-  auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
-  TRI_ASSERT(l != nullptr);;
-  l->batchInsert(trx, docs, taskQueuePtr);
+  if (index->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+    auto* l = dynamic_cast<EdgeIndexMock*>(index.get());
+    TRI_ASSERT(l != nullptr);
+    for (auto const& pair : docs) {
+      l->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+    }
+  } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
+    TRI_ASSERT(l != nullptr);;
+    l->batchInsert(trx, docs, taskQueuePtr);
+  } else {
+    TRI_ASSERT(false);
+  }
 
   if (TRI_ERROR_NO_ERROR != taskQueue.status()) {
     return nullptr;
