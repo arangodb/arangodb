@@ -8,6 +8,7 @@
 #define ARANGODB_HASH_SET_H 1
 
 #include <iterator>
+#include <type_traits>
 #include <utility>
 
 namespace emilib {
@@ -31,6 +32,8 @@ class HashSet {
   using value_type      = KeyT;
   using reference       = KeyT&;
   using const_reference = const KeyT&;
+
+  static_assert(std::is_pod<value_type>::value, "value_type must be a POD type");
 
   class iterator {
    public:
@@ -146,37 +149,7 @@ class HashSet {
   }
 
   HashSet(HashSet&& other) noexcept {
-    if (other._buffer == nullptr) {
-      _buffer = nullptr;
-      _states = nullptr;
-      _keys = nullptr;
-    } else if (other._buffer != &other._local_buffer[0]) {
-      // we can just steal the other's buffer
-      _buffer = other._buffer;
-      _states = other._states;
-      _keys = other._keys;
-    } else {
-      // we can copy the other's local buffer
-      // TODO: make this work with non-POD types
-      memcpy(&_local_buffer[0], &other._local_buffer[0], sizeof(_local_buffer));
-      _buffer = &_local_buffer[0];
-      _states = (State*)_buffer;
-      size_t states_size = ((other._num_buckets * sizeof(State) + 8 - 1) / 8) * 8;
-      _keys  = (KeyT*)(_buffer + states_size);
-    }
-
-    _num_buckets = other._num_buckets;
-    _num_filled = other._num_filled;
-    _max_probe_length = other._max_probe_length;
-    _mask = other._mask;
-    
-    other._buffer = nullptr;
-    other._states = nullptr;
-    other._keys = nullptr;
-    other._num_buckets = 0;
-    other._num_filled = 0;
-    other._max_probe_length = -1;
-    other._mask = 0;
+    doMove(std::move(other));
   }
 
   HashSet& operator=(const HashSet& other) {
@@ -193,37 +166,7 @@ class HashSet {
       if (_buffer != &_local_buffer[0]) {
         delete[] _buffer;
       }
-      if (other._buffer == nullptr) {
-        _buffer = nullptr;
-        _states = nullptr;
-        _keys = nullptr;
-      } else if (other._buffer != &other._local_buffer[0]) {
-        // we can just steal the other's buffer
-        _buffer = other._buffer;
-        _states = other._states;
-        _keys = other._keys;
-      } else {
-        // we can copy the other's local buffer
-        // TODO: make this work with non-POD types
-        memcpy(&_local_buffer[0], &other._local_buffer[0], sizeof(_local_buffer));
-        _buffer = &_local_buffer[0];
-        _states = (State*)_buffer;
-        size_t states_size = ((other._num_buckets * sizeof(State) + 8 - 1) / 8) * 8;
-        _keys  = (KeyT*)(_buffer + states_size);
-      }
-
-      _num_buckets = other._num_buckets;
-      _num_filled = other._num_filled;
-      _max_probe_length = other._max_probe_length;
-      _mask = other._mask;
-      
-      other._buffer = nullptr;
-      other._states = nullptr;
-      other._keys = nullptr;
-      other._num_buckets = 0;
-      other._num_filled = 0;
-      other._max_probe_length = -1;
-      other._mask = 0;
+      doMove(std::move(other));
     }
     return *this;
   }
@@ -475,6 +418,40 @@ class HashSet {
   }
 
  private:
+  void doMove(HashSet&& other) noexcept {
+    if (other._buffer == nullptr) {
+      _buffer = nullptr;
+      _states = nullptr;
+      _keys = nullptr;
+    } else if (other._buffer != &other._local_buffer[0]) {
+      // we can just steal the other's buffer
+      _buffer = other._buffer;
+      _states = other._states;
+      _keys = other._keys;
+    } else {
+      // we can copy the other's local buffer
+      // TODO: make this work with non-POD types
+      memcpy(&_local_buffer[0], &other._local_buffer[0], sizeof(_local_buffer));
+      _buffer = &_local_buffer[0];
+      _states = (State*)_buffer;
+      size_t states_size = ((other._num_buckets * sizeof(State) + 8 - 1) / 8) * 8;
+      _keys  = (KeyT*)(_buffer + states_size);
+    }
+
+    _num_buckets = other._num_buckets;
+    _num_filled = other._num_filled;
+    _max_probe_length = other._max_probe_length;
+    _mask = other._mask;
+
+    other._buffer = nullptr;
+    other._states = nullptr;
+    other._keys = nullptr;
+    other._num_buckets = 0;
+    other._num_filled = 0;
+    other._max_probe_length = -1;
+    other._mask = 0;
+  }
+
   // Can we fit another element?
   void check_expand_need() {
     reserve(_num_filled + 1);
