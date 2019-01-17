@@ -193,19 +193,19 @@ bool fromVelocyPack(velocypack::Slice optionsSlice,
 }
 
 bool parseOptions(aql::Query& query,
-                  arangodb::iresearch::IResearchView const& view,
+                  arangodb::LogicalView const& view,
                   aql::AstNode const* optionsNode,
                   arangodb::iresearch::IResearchViewNode::Options& options,
                   std::string& error) {
   typedef bool (*OptionHandler)(aql::Query&,
-                                arangodb::iresearch::IResearchView const&,
+                                arangodb::LogicalView const& view,
                                 aql::AstNode const&,
                                 arangodb::iresearch::IResearchViewNode::Options&,
                                 std::string&);
 
   static std::map<irs::string_ref, OptionHandler> const Handlers{
       {"collections", [](aql::Query& query,
-                         arangodb::iresearch::IResearchView const& view,
+                         arangodb::LogicalView const& view,
                          aql::AstNode const& value,
                          arangodb::iresearch::IResearchViewNode::Options& options,
                          std::string& error) {
@@ -288,8 +288,8 @@ bool parseOptions(aql::Query& query,
 
         return true;
       }},
-      {"waitForSync", [](aql::Query& /*resolver*/,
-                         arangodb::iresearch::IResearchView const& /*view*/,
+      {"waitForSync", [](aql::Query& /*query*/,
+                         arangodb::LogicalView const& /*view*/,
                          aql::AstNode const& value,
                          arangodb::iresearch::IResearchViewNode::Options& options,
                          std::string& error) {
@@ -528,9 +528,8 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, size_t id,
   TRI_ASSERT(ast && ast->query());
 
   // FIXME any other way to validate options before object creation???
-  auto& viewImpl = LogicalView::cast<IResearchView>(*_view);
   std::string error;
-  if (!parseOptions(*ast->query(), viewImpl, options, _options, error)) {
+  if (!parseOptions(*ast->query(), *_view, options, _options, error)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "invalid ArangoSearch options provided: " + error);
   }
