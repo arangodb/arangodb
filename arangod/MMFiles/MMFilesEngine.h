@@ -56,6 +56,12 @@ struct Options;
 
 }  // namespace transaction
 
+class MMFilesRecoveryHelper {
+ public:
+  virtual ~MMFilesRecoveryHelper() = default;
+  virtual Result replayMarker(MMFilesMarker const& marker) const = 0;
+};
+
 /// @brief collection file structure
 struct MMFilesEngineCollectionFiles {
   std::vector<std::string> journals;
@@ -198,6 +204,17 @@ class MMFilesEngine final : public StorageEngine {
   void recoveryDone(TRI_vocbase_t& vocbase) override;
 
   Result persistLocalDocumentIds(TRI_vocbase_t& vocbase);
+
+  /// @brief regiter a recovery helper
+  static arangodb::Result registerRecoveryHelper(
+    MMFilesRecoveryHelper const& helper
+  );
+
+  /// @brief invoke visitor with each registered recovery helper
+  /// @return all recovery registered helpers invoked and returned success
+  static bool visitRecoveryHelpers(
+    std::function<bool(MMFilesRecoveryHelper const&)> const& visitor
+  );
 
  private:
   int dropDatabaseMMFiles(TRI_vocbase_t* vocbase);
