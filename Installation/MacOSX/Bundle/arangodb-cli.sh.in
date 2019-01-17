@@ -19,6 +19,11 @@ SCRIPTS=$( cd "${ROOTDIR}@CMAKE_INSTALL_PREFIX@" && ls -1 {"@CMAKE_INSTALL_BINDI
 
 for script in $SCRIPTS; do
   base=$(basename "$script")
+  conf=$base
+
+  if test $conf == "arangoimp"; then
+    conf=arangoimport
+  fi
 
   if test $base == "arangodb"; then
   cat > "${ROOTDIR}/$base.$$" <<-'EOF'
@@ -52,7 +57,7 @@ EOF
       echo "export ROOTDIR=\"${ROOTDIR}@CMAKE_INSTALL_PREFIX@\""
       echo
 
-      echo "exec \"\${ROOTDIR}/$script\" -c \"${ARANGOD_CONF_DIR}/${base}.conf\" \$*"
+      echo "exec \"\${ROOTDIR}/$script\" -c \"${ARANGOD_CONF_DIR}${conf}.conf\" \$*"
     ) > "${ROOTDIR}/$base.$$"
   fi
 
