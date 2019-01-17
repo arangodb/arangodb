@@ -38,7 +38,7 @@ widely used in relational databases but lacking in many NoSQL products. However,
 there is no need to forgo them in ArangoDB. You decide how and when to use joins
 and strong consistency guarantees, without sacrificing performance and scalability. 
 
-Furthermore, ArangoDB offers a JavaScript framework called [Foxx](https://www.arangodb.com/foxx)
+Furthermore, ArangoDB offers a JavaScript framework called [Foxx](https://www.arangodb.com/why-arangodb/foxx/)
 that is executed in the database server with direct access to the data. Build your
 own data-centric microservices with a few lines of code:
 
