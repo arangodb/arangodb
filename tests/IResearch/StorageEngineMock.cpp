@@ -598,7 +598,8 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::v
   auto res = trx.begin();
   TRI_ASSERT(res.ok());
 
-  auto* l = reinterpret_cast<arangodb::iresearch::IResearchLink*>(index.get());
+  auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
+  TRI_ASSERT(l != nullptr);;
   l->batchInsert(trx, docs, taskQueuePtr);
 
   if (TRI_ERROR_NO_ERROR != taskQueue.status()) {
@@ -696,6 +697,7 @@ arangodb::Result PhysicalCollectionMock::insert(
                      arangodb::Index::OperationMode::normal).ok()) {
         return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
       }
+      continue;
     } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
       
       if (arangodb::ServerState::instance()->isCoordinator()) {
@@ -711,10 +713,9 @@ arangodb::Result PhysicalCollectionMock::insert(
           return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
         }
       }
-      
-    } else { // unsupported
-      TRI_ASSERT(false);
+      continue;
     }
+    TRI_ASSERT(false);
   }
 
   return arangodb::Result();
