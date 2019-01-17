@@ -1,4 +1,4 @@
-v3.3.22 (XXXX-XX-XX)
+v3.3.22 (2019-01-17)
 --------------------
 
 * fixed an issue where a crashed coordinator can lead to some Foxx queue jobs
@@ -84,6 +84,7 @@ v3.3.22 (XXXX-XX-XX)
   in incoming HTTP requests
 
 * fixed issue #7834: AQL Query crashes instance
+
 
 v3.3.21 (2018-12-13)
 --------------------
