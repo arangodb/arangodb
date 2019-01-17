@@ -446,7 +446,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
   MMFilesWalRecoverState* state = reinterpret_cast<MMFilesWalRecoverState*>(data);
   auto visitHelpers = std::shared_ptr<MMFilesWalRecoverState>(
     state,
-    [marker](MMFilesWalRecoverState* state)->void {
+    [marker](MMFilesWalRecoverState* state) noexcept ->void {
       if (!state || !state->canContinue() || !marker) {
         return; // ignore invalid state or unset marker
       }
@@ -464,7 +464,11 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         return true;
       };
 
-      if (!MMFilesEngine::visitRecoveryHelpers(visitor)) {
+      try {
+        if (!MMFilesEngine::visitRecoveryHelpers(visitor)) {
+          ++state->errorCount;
+        }
+      } catch(...) {
         ++state->errorCount;
       }
     }
