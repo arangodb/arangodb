@@ -28,39 +28,124 @@
 #include "VocBase/vocbase.h"
 
 namespace {
-/// @brief OurLessThan
-class OurLessThan {
- public:
-  OurLessThan(arangodb::transaction::Methods* trx,
-              std::deque<arangodb::aql::AqlItemBlock*>& buffer,
-              std::vector<arangodb::aql::SortRegister>& sortRegisters) noexcept
-      : _trx(trx), _buffer(buffer), _sortRegisters(sortRegisters) {}
+void copyRow(std::unordered_map<arangodb::aql::AqlValue, arangodb::aql::AqlValue>& cache,
+             arangodb::aql::RegisterId const nrRegs, arangodb::aql::AqlItemBlock* src,
+             size_t sRow, arangodb::aql::AqlItemBlock* dst, size_t dRow) {
+  for (arangodb::aql::RegisterId reg = 0; reg < nrRegs; reg++) {
+    auto const& original = src->getValueReference(sRow, reg);
+    // If we have already dealt with this value for the next
+    // block, then we just put the same value again:
+    if (!original.isEmpty()) {
+      if (original.requiresDestruction()) {
+        // complex value, with ownership transfer
+        auto it = cache.find(original);
 
-  bool operator()(std::pair<uint32_t, uint32_t> const& a,
-                  std::pair<uint32_t, uint32_t> const& b) const {
-    for (auto const& reg : _sortRegisters) {
-      auto const& lhs = _buffer[a.first]->getValueReference(a.second, reg.reg);
-      auto const& rhs = _buffer[b.first]->getValueReference(b.second, reg.reg);
+        if (it != cache.end()) {
+          // If one of the following throws, all is well, because
+          // the new block already has either a copy or stolen
+          // the AqlValue:
+          src->eraseValue(sRow, reg);
+          dst->setValue(dRow, reg, (*it).second);
+        } else {
+          // We need to copy original, if it has already been stolen from
+          // its source buffer, which we know by looking at the
+          // valueCount there.
+          auto vCount = src->valueCount(original);
 
-      int const cmp = arangodb::aql::AqlValue::Compare(_trx, lhs, rhs, true);
+          if (vCount == 0) {
+            // Was already stolen for another block
+            arangodb::aql::AqlValue copy = original.clone();
+            try {
+              TRI_IF_FAILURE("SortBlock::doSortingCache") {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+              }
+              cache.emplace(original, copy);
+            } catch (...) {
+              copy.destroy();
+              throw;
+            }
 
-      if (cmp < 0) {
-        return reg.asc;
-      } else if (cmp > 0) {
-        return !reg.asc;
+            try {
+              TRI_IF_FAILURE("SortBlock::doSortingNext1") {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+              }
+              dst->setValue(dRow, reg, copy);
+            } catch (...) {
+              cache.erase(copy);
+              copy.destroy();
+              throw;
+            }
+            // It does not matter whether the following works or not,
+            // since the source block keeps its responsibility
+            // for original:
+            src->eraseValue(sRow, reg);
+          } else {
+            TRI_IF_FAILURE("SortBlock::doSortingNext2") {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+            }
+            // Here we are the first to want to inherit original, so we
+            // steal it:
+            dst->setValue(dRow, reg, original);
+            src->steal(original);
+            src->eraseValue(sRow, reg);
+            // If this has worked, responsibility is now with the
+            // new block or requestBlockindeed with us!
+            // If the following does not work, we will create a
+            // few unnecessary copies, but this does not matter:
+            cache.emplace(original, original);
+          }
+        }
+      } else {
+        // simple value, which does not need ownership transfer
+        TRI_IF_FAILURE("SortBlock::doSortingCache") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        TRI_IF_FAILURE("SortBlock::doSortingNext1") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        TRI_IF_FAILURE("SortBlock::doSortingNext2") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        dst->setValue(dRow, reg, original);
+        src->eraseValue(sRow, reg);
       }
     }
-
-    return false;
   }
-
- private:
-  arangodb::transaction::Methods* _trx;
-  std::deque<arangodb::aql::AqlItemBlock*>& _buffer;
-  std::vector<arangodb::aql::SortRegister>& _sortRegisters;
-};  // OurLessThan
+}
 
 class StandardSorter : public arangodb::aql::SortBlock::Sorter {
+ private:
+  class OurLessThan {
+   public:
+    OurLessThan(arangodb::transaction::Methods* trx,
+                std::deque<arangodb::aql::AqlItemBlock*>& buffer,
+                std::vector<arangodb::aql::SortRegister>& sortRegisters) noexcept
+        : _trx(trx), _buffer(buffer), _sortRegisters(sortRegisters) {}
+
+    bool operator()(std::pair<uint32_t, uint32_t> const& a,
+                    std::pair<uint32_t, uint32_t> const& b) const {
+      for (auto const& reg : _sortRegisters) {
+        auto const& lhs = _buffer[a.first]->getValueReference(a.second, reg.reg);
+        auto const& rhs = _buffer[b.first]->getValueReference(b.second, reg.reg);
+
+        int const cmp = arangodb::aql::AqlValue::Compare(_trx, lhs, rhs, true);
+
+        if (cmp < 0) {
+          return reg.asc;
+        } else if (cmp > 0) {
+          return !reg.asc;
+        }
+      }
+
+      return false;
+    }
+
+   private:
+    arangodb::transaction::Methods* _trx;
+    std::deque<arangodb::aql::AqlItemBlock*>& _buffer;
+    std::vector<arangodb::aql::SortRegister>& _sortRegisters;
+  };  // OurLessThan
+
  public:
   StandardSorter(arangodb::aql::SortBlock& block, arangodb::transaction::Methods* trx,
                  std::deque<arangodb::aql::AqlItemBlock*>& buffer,
@@ -89,14 +174,15 @@ class StandardSorter : public arangodb::aql::SortBlock::Sorter {
     using arangodb::aql::AqlValue;
     using arangodb::aql::ExecutionBlock;
     using arangodb::aql::RegisterId;
+    using arangodb::basics::catchVoidToResult;
+
+    TRI_IF_FAILURE("SortBlock::doSorting") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
 
     size_t sum = 0;
     for (auto const& block : _buffer) {
       sum += block->size();
-    }
-
-    TRI_IF_FAILURE("SortBlock::doSorting") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
     // coords[i][j] is the <j>th row of the <i>th block
@@ -130,7 +216,8 @@ class StandardSorter : public arangodb::aql::SortBlock::Sorter {
     // here we collect the new blocks (later swapped into _buffer):
     std::deque<AqlItemBlock*> newbuffer;
 
-    try {  // If we throw from here, the catch will delete the new
+    arangodb::Result result = catchVoidToResult([&]() -> void {
+      // If we throw from here, the cleanup will delete the new
       // blocks in newbuffer
 
       count = 0;
@@ -156,97 +243,20 @@ class StandardSorter : public arangodb::aql::SortBlock::Sorter {
 
         // only copy as much as needed!
         for (size_t i = 0; i < sizeNext; i++) {
-          for (RegisterId j = 0; j < nrRegs; j++) {
-            auto const& a =
-                _buffer[coords[count].first]->getValueReference(coords[count].second, j);
-            // If we have already dealt with this value for the next
-            // block, then we just put the same value again:
-            if (!a.isEmpty()) {
-              if (a.requiresDestruction()) {
-                // complex value, with ownership transfer
-                auto it = cache.find(a);
-
-                if (it != cache.end()) {
-                  // If one of the following throws, all is well, because
-                  // the new block already has either a copy or stolen
-                  // the AqlValue:
-                  _buffer[coords[count].first]->eraseValue(coords[count].second, j);
-                  next->setValue(i, j, (*it).second);
-                } else {
-                  // We need to copy a, if it has already been stolen from
-                  // its original buffer, which we know by looking at the
-                  // valueCount there.
-                  auto vCount = _buffer[coords[count].first]->valueCount(a);
-
-                  if (vCount == 0) {
-                    // Was already stolen for another block
-                    AqlValue b = a.clone();
-                    try {
-                      TRI_IF_FAILURE("SortBlock::doSortingCache") {
-                        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-                      }
-                      cache.emplace(a, b);
-                    } catch (...) {
-                      b.destroy();
-                      throw;
-                    }
-
-                    try {
-                      TRI_IF_FAILURE("SortBlock::doSortingNext1") {
-                        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-                      }
-                      next->setValue(i, j, b);
-                    } catch (...) {
-                      cache.erase(b);
-                      b.destroy();
-                      throw;
-                    }
-                    // It does not matter whether the following works or not,
-                    // since the original block keeps its responsibility
-                    // for a:
-                    _buffer[coords[count].first]->eraseValue(coords[count].second, j);
-                  } else {
-                    TRI_IF_FAILURE("SortBlock::doSortingNext2") {
-                      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-                    }
-                    // Here we are the first to want to inherit a, so we
-                    // steal it:
-                    next->setValue(i, j, a);
-                    _buffer[coords[count].first]->steal(a);
-                    _buffer[coords[count].first]->eraseValue(coords[count].second, j);
-                    // If this has worked, responsibility is now with the
-                    // new block or requestBlockindeed with us!
-                    // If the following does not work, we will create a
-                    // few unnecessary copies, but this does not matter:
-                    cache.emplace(a, a);
-                  }
-                }
-              } else {
-                // simple value, which does not need ownership transfer
-                TRI_IF_FAILURE("SortBlock::doSortingCache") {
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-                }
-                TRI_IF_FAILURE("SortBlock::doSortingNext1") {
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-                }
-                TRI_IF_FAILURE("SortBlock::doSortingNext2") {
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-                }
-                next->setValue(i, j, a);
-                _buffer[coords[count].first]->eraseValue(coords[count].second, j);
-              }
-            }
-          }
+          ::copyRow(cache, nrRegs, _buffer[coords[count].first],
+                    coords[count].second, next, i);
           count++;
         }
         cache.clear();
       }
-    } catch (...) {
+    });
+    if (result.fail()) {
       for (auto& x : newbuffer) {
         delete x;
       }
-      throw;  // TODO properly rethrow
+      THROW_ARANGO_EXCEPTION(result);
     }
+
     _buffer.swap(newbuffer);  // does not throw since allocators
     // are the same
     for (auto& x : newbuffer) {
@@ -260,6 +270,34 @@ class StandardSorter : public arangodb::aql::SortBlock::Sorter {
 };
 
 class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
+ private:
+  bool rowLessThan(std::pair<arangodb::aql::AqlItemBlock*, uint32_t> const& a,
+                   std::pair<arangodb::aql::AqlItemBlock*, uint32_t> const& b) {
+    for (auto const& reg : _sortRegisters) {
+      auto const& lhs = a.first->getValueReference(a.second, reg.reg);
+      auto const& rhs = b.first->getValueReference(b.second, reg.reg);
+
+      int const cmp = arangodb::aql::AqlValue::Compare(_trx, lhs, rhs, true);
+
+      if (cmp < 0) {
+        return reg.asc;
+      } else if (cmp > 0) {
+        return !reg.asc;
+      }
+    }
+
+    return false;
+  }
+
+  std::function<bool(std::unique_ptr<arangodb::aql::AqlItemBlock> const& a,
+                     std::unique_ptr<arangodb::aql::AqlItemBlock> const& b)>
+  blockLessThan() {
+    return [this](std::unique_ptr<arangodb::aql::AqlItemBlock> const& a,
+                  std::unique_ptr<arangodb::aql::AqlItemBlock> const& b) -> bool {
+      return rowLessThan({a.get(), 0}, {b.get(), 0});
+    };
+  }
+
  public:
   ConstrainedHeapSorter(arangodb::aql::SortBlock& block, arangodb::transaction::Methods* trx,
                         std::deque<arangodb::aql::AqlItemBlock*>& buffer,
@@ -267,20 +305,109 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
                         Fetcher&& fetch, Allocator&& allocate, size_t limit)
       : arangodb::aql::SortBlock::Sorter(block, trx, buffer, sortRegisters,
                                          std::move(fetch), std::move(allocate)),
-        _limit{limit} {}
+        _limit{limit},
+        _rows{limit} {}
 
   virtual std::pair<arangodb::aql::ExecutionState, arangodb::Result> fetch() {
+    using arangodb::aql::AqlItemBlock;
+    using arangodb::aql::ExecutionBlock;
     using arangodb::aql::ExecutionState;
+
+    ExecutionState res = ExecutionState::HASMORE;
+    // suck all blocks into _buffer
+    while (res != ExecutionState::DONE) {
+      res = _fetch(ExecutionBlock::DefaultBatchSize()).first;
+      if (res == ExecutionState::WAITING) {
+        return {res, TRI_ERROR_NO_ERROR};
+      }
+
+      // handle batch
+      while (!_buffer.empty()) {
+        AqlItemBlock* block = _buffer.front();
+        _buffer.pop_front();
+        for (size_t row = 0; row < block->size(); row++) {
+          pushRow(block, row);
+        }
+        delete block;
+      }
+    }
 
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
-  virtual arangodb::Result sort() { return TRI_ERROR_NO_ERROR; }
+  virtual arangodb::Result sort() {
+    using arangodb::aql::AqlItemBlock;
+    using arangodb::basics::catchVoidToResult;
 
-  virtual bool empty() const { return false; }
+    TRI_IF_FAILURE("SortBlock::doSorting") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    // sort heap in-place
+    std::sort(_rows.begin(), _rows.end(), blockLessThan());
+
+    // here we collect the new blocks, to later swap into _buffer
+    std::deque<AqlItemBlock*> newBuffer;
+    arangodb::Result result = catchVoidToResult([this, &newBuffer]() -> void {
+      for (auto& row : _rows) {
+        newBuffer.emplace_back(row.release());
+      }
+    });
+    if (result.fail()) {
+      // have to actually clean up the blocks that have been moved to the
+      // buffer since they aren't managed pointers anymore
+      for (auto& block : newBuffer) {
+        delete block;
+      }
+      THROW_ARANGO_EXCEPTION(result);
+    }
+
+    // everything is sorted and in the right form now, just swap
+    _buffer.swap(newBuffer);
+
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  virtual bool empty() const { return _buffer.empty() && _rows.empty(); }
+
+ private:
+  arangodb::Result pushRow(arangodb::aql::AqlItemBlock* block, size_t row) {
+    using arangodb::aql::AqlItemBlock;
+    using arangodb::aql::AqlValue;
+    using arangodb::aql::RegisterId;
+
+    if (_rows.size() >= _limit && rowLessThan({_rows[0].get(), 0}, {block, row})) {
+      // skip row, already too low in sort order to make it past limit
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    if (_rows.size() >= _limit) {
+      // pop an entry first
+      std::pop_heap(_rows.begin(), _rows.end(), blockLessThan());
+      _rows.pop_back();
+    }
+
+    // now copy the row
+    RegisterId const nrRegs = block->getNrRegs();
+    std::unordered_map<AqlValue, AqlValue> cache;
+    std::unique_ptr<AqlItemBlock> copy{_allocate(1, nrRegs)};
+
+    TRI_IF_FAILURE("SortBlock::doSortingInner") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    ::copyRow(cache, nrRegs, block, row, copy.get(), 0);
+
+    // now insert copy into heap
+    _rows.push_back(std::move(copy));
+    std::push_heap(_rows.begin(), _rows.end(), blockLessThan());
+
+    return TRI_ERROR_NO_ERROR;
+  }
 
  private:
   size_t _limit;
+  std::vector<std::unique_ptr<arangodb::aql::AqlItemBlock>> _rows;
 };
 }  // namespace
 
