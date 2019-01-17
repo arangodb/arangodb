@@ -169,6 +169,22 @@ function IResearchAqlTestSuite(args) {
         assertTrue(res._id.startsWith('UnitTestsCollection/'));
       });
 
+      result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ @collectionName ] } RETURN doc", { collectionName : 'UnitTestsCollection' }).toArray();
+
+      assertEqual(result.length, 10);
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        assertTrue(res._id.startsWith('UnitTestsCollection/'));
+      });
+
+      result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : @collections } RETURN doc", { collections : [ 'UnitTestsCollection' ] }).toArray();
+
+      assertEqual(result.length, 10);
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        assertTrue(res._id.startsWith('UnitTestsCollection/'));
+      });
+
       result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ " + c2._id + " ] } RETURN doc").toArray();
 
       assertEqual(result.length, 5);
@@ -209,8 +225,36 @@ function IResearchAqlTestSuite(args) {
       assertEqual(CountC1, 10);
       assertEqual(CountC2, 5);
 
+      result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : @collections } RETURN doc", { collections: null }).toArray();
+
+      assertEqual(result.length, 15);
+      CountC1 = 0;
+      CountC2 = 0;
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        if (res._id.startsWith('UnitTestsCollection2/')) {
+          ++CountC2;
+        } else if (res._id.startsWith('UnitTestsCollection/')) {
+          ++CountC1;
+        }
+      });
+      assertEqual(CountC1, 10);
+      assertEqual(CountC2, 5);
+
       result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [] } RETURN doc").toArray();
       assertEqual(result.length, 0);
+
+      result = db._query(
+        "FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } FOR doc2 IN CompoundView SEARCH doc2.a == 'foo' OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection2' ] } RETURN { doc, doc2 }"
+      ).toArray();
+
+      assertEqual(result.length, 50);
+      result.forEach(function(res) {
+        assertEqual(res.doc.a, "foo");
+        assertEqual(res.doc2.a, "foo");
+        assertTrue(res.doc._id.startsWith('UnitTestsCollection/'));
+        assertTrue(res.doc2._id.startsWith('UnitTestsCollection2/'));
+      });
     },
 
     testAttributeEqualityFilter : function () {
