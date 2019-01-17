@@ -80,13 +80,6 @@ InputAqlItemRow AqlItemMatrix::getRow(size_t index) const {
     TRI_ASSERT(mostLikelyIndex <= maxIndex);
     TRI_ASSERT(mostLikelyIndex >= minIndex);
     auto& candidate = _blocks[mostLikelyIndex];
-    LOG_DEVEL << "--------------------------------------------";
-    LOG_DEVEL << "looking for:     " << index;
-    LOG_DEVEL << "mostLikelyIndex: " << mostLikelyIndex;
-    LOG_DEVEL << "minIndex:        " << minIndex;
-    LOG_DEVEL << "maxIndex:        " << maxIndex;
-    LOG_DEVEL << "candidate.fist:  " << candidate.first;
-    LOG_DEVEL << "candidate block size: " << candidate.second->block().size();
     TRI_ASSERT(candidate.second != nullptr);
     if (index < candidate.first) {
       // This block starts after the requested index, go left.
