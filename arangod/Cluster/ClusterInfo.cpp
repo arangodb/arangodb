@@ -1909,10 +1909,7 @@ Result ClusterInfo::dropCollectionCoordinator( // drop collection
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
-
   auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
-  auto errMsg = std::make_shared<std::string>();
-
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& result) {
     if (result.isNone() || result.isEmptyObject()) {
       dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
@@ -2002,7 +1999,7 @@ Result ClusterInfo::dropCollectionCoordinator( // drop collection
         loadCurrent();
         events::DropCollection(collectionID, *dbServerResult);
 
-        return Result(*dbServerResult, *errMsg);
+        return Result(*dbServerResult);
       }
 
       if (TRI_microtime() > endTime) {
@@ -2511,7 +2508,10 @@ Result ClusterInfo::ensureIndexCoordinatorInner( // create index
     auto type = slice.get(arangodb::StaticStrings::IndexType);
 
     if (!type.isString()) {
-      return Result(TRI_ERROR_INTERNAL);
+      return Result( // result
+        TRI_ERROR_INTERNAL, // code
+        "expecting string value for \"type\" attribute" // message
+      );
     }
 
     for (auto const& other : VPackArrayIterator(indexes)) {
