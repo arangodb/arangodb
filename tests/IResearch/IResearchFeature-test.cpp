@@ -426,19 +426,13 @@ SECTION("test_upgrade0_1") {
     auto* ci = arangodb::ClusterInfo::instance();
     REQUIRE((nullptr != ci));
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
-    std::string error;
 
     REQUIRE((TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase)));
-    REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.0)));
-    CHECK((std::string("no error") == error));
-    error.clear();
-    REQUIRE((TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0)));
-    CHECK((error.empty()));
+    REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).ok()));
+    REQUIRE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), 0.0).ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     REQUIRE((false == !logicalCollection));
-    error.clear();
-    CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), viewId, viewJson->slice(), error)));
-    CHECK((error.empty()));
+    CHECK((ci->createViewCoordinator(vocbase->name(), viewId, viewJson->slice()).ok()));
     auto logicalView0 = ci->getView(vocbase->name(), viewId);
     REQUIRE((false == !logicalView0));
 

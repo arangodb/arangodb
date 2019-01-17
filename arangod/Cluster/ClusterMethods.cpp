@@ -2596,21 +2596,21 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   std::unordered_set<std::string> const ignoreKeys{
       "allowUserKeys", "cid",     "globallyUniqueId", "count",
       "planId",        "version", "objectId"};
-  col->setStatus(TRI_VOC_COL_STATUS_LOADED);
-  VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false, false);
 
+  col->setStatus(TRI_VOC_COL_STATUS_LOADED);
+
+  VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false, false);
   auto& dbName = col->vocbase().name();
-  std::string errorMsg;
-  int myerrno = ci->createCollectionCoordinator(dbName, std::to_string(col->id()),
+  auto res = ci->createCollectionCoordinator( // create collection
+    dbName, std::to_string(col->id()),
                                                 col->numberOfShards(),
                                                 col->replicationFactor(), waitForSyncReplication,
-                                                velocy.slice(), errorMsg, 240.0);
+    velocy.slice(), // collection definition
+    240.0 // request timeout
+  );
 
-  if (myerrno != TRI_ERROR_NO_ERROR) {
-    if (errorMsg.empty()) {
-      errorMsg = TRI_errno_string(myerrno);
-    }
-    THROW_ARANGO_EXCEPTION_MESSAGE(myerrno, errorMsg);
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   ci->loadPlan();

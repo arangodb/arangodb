@@ -20,10 +20,10 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
 #include "ReturnExecutor.h"
 #include "Aql/AqlValue.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Basics/Common.h"
 
 #include <algorithm>
 
@@ -45,7 +45,7 @@ using namespace arangodb::aql;
 ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId outputRegister,
                                          RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                                          std::unordered_set<RegisterId> registersToClear,
-                                         bool returnInheritedResults)
+                                         bool doCount, bool returnInheritedResults)
     : ExecutorInfos(make_shared_unordered_set({inputRegister}),
                     make_shared_unordered_set({outputRegister}), nrInputRegisters,
                     nrOutputRegisters, std::unordered_set<RegisterId>{} /*to clear*/,  // std::move(registersToClear) // use this once register planning is fixed
@@ -53,6 +53,7 @@ ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId ou
                     ),
       _inputRegisterId(inputRegister),
       _outputRegisterId(outputRegister),
+      _doCount(doCount),
       _returnInheritedResults(returnInheritedResults) {}
 
 ReturnExecutor::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
@@ -78,13 +79,15 @@ std::pair<ExecutionState, ReturnExecutor::Stats> ReturnExecutor::produceRow(Outp
   if (_infos._returnInheritedResults) {
     output.copyRow(inputRow);
   } else {
-    AqlValue val;
-    val = inputRow.getValue(_infos._inputRegisterId);
-    AqlValueGuard guard(val, true);
+    AqlValue const& val = inputRow.getValue(_infos._inputRegisterId);
+    TRI_IF_FAILURE("ReturnBlock::getSome") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
     output.setValue(_infos._outputRegisterId, inputRow, val);
-    guard.steal();
   }
 
-  stats.incrCounted();
+  if (_infos._doCount) {
+    stats.incrCounted();
+  }
   return {state, std::move(stats)};
 }
