@@ -134,9 +134,6 @@ void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
     }
 
   } else if (!_jwtSecretProgramOption.empty()) {
-    LOG_TOPIC(WARN, arangodb::Logger::STARTUP)
-        << "--server.jwt-secret is insecure. Use --server.jwt-secret-keyfile "
-           "instead.";
     if (_jwtSecretProgramOption.length() > _maxSecretLength) {
       LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
           << "Given JWT secret too long. Max length is " << _maxSecretLength;
@@ -185,6 +182,13 @@ void AuthenticationFeature::prepare() {
 
 void AuthenticationFeature::start() {
   TRI_ASSERT(isEnabled());
+
+  // If this is empty here, --server.jwt-secret was used
+  if (_jwtSecretKeyfileProgramOption.empty()) {
+    LOG_TOPIC(WARN, arangodb::Logger::AUTHENTICATION)
+        << "--server.jwt-secret is insecure. Use --server.jwt-secret-keyfile "
+           "instead.";
+  }
 
   std::ostringstream out;
 
