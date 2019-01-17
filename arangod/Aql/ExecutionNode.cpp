@@ -1399,13 +1399,13 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  LOG_DEVEL << std::boolalpha << "limit in subquery: " << isInSubQuery(this);
 
+  // this is currently required to check weather we're in a subquery
+  // or not. We do not count fullCounts inside a subquery.
   size_t queryDepth = 0;
   if (isInSubQuery(this)) {
     queryDepth = 1;
   }
-  LOG_DEVEL << " query depth is : " << queryDepth;
 
   LimitExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
                            getRegisterPlan()->nrRegs[getDepth()],

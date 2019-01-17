@@ -55,7 +55,8 @@ class LimitExecutorInfos : public ExecutorInfos {
 
   RegisterId getInputRegister() const noexcept { return _inputRegister; };
   size_t getLimit() { return _limit; };
-  size_t getOffset() { return _offset; };
+  size_t getRemainingOffset() { return _remainingOffset; };
+  void decrRemainingOffset() { _remainingOffset--; };
   size_t getQueryDepth() { return _queryDepth; };
   bool isFullCountEnabled() { return _fullCount; };
 
@@ -64,8 +65,8 @@ class LimitExecutorInfos : public ExecutorInfos {
   // respectively getInputRegisters().
   RegisterId _inputRegister;
 
-  /// @brief the offset
-  size_t _offset;
+  /// @brief the remaining offset
+  size_t _remainingOffset;
 
   /// @brief the limit
   size_t _limit;
@@ -104,7 +105,6 @@ class LimitExecutor {
   Infos& _infos;
   Fetcher& _fetcher;
   u_int64_t _counter = 0;
-  u_int64_t _offsetCounter = 0;
 };
 
 }  // namespace aql

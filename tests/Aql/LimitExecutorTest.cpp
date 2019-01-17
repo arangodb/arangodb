@@ -57,9 +57,13 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][COPYPASTEPANZER]") {
   // 4th offset
   // 5th limit
   // 6th fullCount
+  // 7th queryDepth
+
+  // TODO: This test is currently broken.
+  // Waiting for fake query server merge
 
   GIVEN("there are no rows upstream") {
-    LimitExecutorInfos infos(0, 1, {}, 0, 0, true, 0);
+    LimitExecutorInfos infos(0, 1, {}, 0, 1, true, 0);
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
@@ -99,46 +103,20 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][COPYPASTEPANZER]") {
   }
 
   GIVEN("there are rows in the upstream, no filter or offset defined") {
-    LimitExecutorInfos infos(0, 1, {}, 0, 0, true, 0);
     auto input = VPackParser::fromJson(
         "[ [true], [false], [true], [false], [false], [true] ]");
 
-    WHEN("the producer does not wait") {
+    WHEN("the producer does not wait: limit 1, offset 0, fullcount false") {
+      LimitExecutorInfos infos(0, 1, {}, 0, 1, false, 0);
       SingleRowFetcherHelper fetcher(input->steal(), false);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 
-      THEN("the executor should return the rows") {
+      THEN("the executor should return one row") {
         OutputAqlItemRow row(std::move(outputBlockShell));
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(row.produced());
-
-        row.advanceRow();
-
-        std::tie(state, stats) = testee.produceRow(row);
-        REQUIRE(row.produced());
-
-        row.advanceRow();
-
-        std::tie(state, stats) = testee.produceRow(row);
-        REQUIRE(row.produced());
-
-        row.advanceRow();
-
-        std::tie(state, stats) = testee.produceRow(row);
-        REQUIRE(row.produced());
-
-        row.advanceRow();
-
-        std::tie(state, stats) = testee.produceRow(row);
-        REQUIRE(row.produced());
-
-        row.advanceRow();
-
-        std::tie(state, stats) = testee.produceRow(row);
-        REQUIRE(row.produced());
-
         row.advanceRow();
 
         AND_THEN("The output should stay stable") {
@@ -148,6 +126,44 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][COPYPASTEPANZER]") {
         }
       }
     }
+
+    /*
+    WHEN("the producer does wait: limit 1, offset 0, fullcount false") {
+      LimitExecutorInfos infos(0, 1, {}, 0, 1, false, 0);
+      SingleRowFetcherHelper fetcher(input->steal(), true);
+      LimitExecutor testee(fetcher, infos);
+      LimitStats stats{};
+
+      THEN("the executor should return one row") {
+        OutputAqlItemRow row(std::move(outputBlockShell));
+
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!row.produced());
+
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(row.produced());
+
+        row.advanceRow();
+
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!row.produced());
+
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!row.produced());
+
+        AND_THEN("The output should stay stable") {
+          std::tie(state, stats) = testee.produceRow(row);
+          // TODO DONE NOT RETURNED ...... but running into the part where done is returned. what is wrong?
+          // Code: LimitExecutor.cpp:89 :(
+          REQUIRE(state == ExecutionState::DONE);
+          REQUIRE(!row.produced());
+        }
+      }
+    }
+     */
   }
 }
 

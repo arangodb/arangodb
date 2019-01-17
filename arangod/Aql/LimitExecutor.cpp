@@ -55,7 +55,6 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
     return {ExecutionState::DONE, stats};
   }
 
-  _offsetCounter = _infos.getOffset();
   while (true) {
     std::tie(state, input) = _fetcher.fetchRow();
 
@@ -69,8 +68,8 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
     }
     TRI_ASSERT(input.isInitialized());
 
-    if (_offsetCounter > 0) {
-      _offsetCounter--;
+    if (_infos.getRemainingOffset() > 0) {
+      _infos.decrRemainingOffset();
 
       if (_infos.isFullCountEnabled() && _infos.getQueryDepth() == 0) {
         stats.incrFullCount();
@@ -109,7 +108,7 @@ LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId n
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
                     std::make_shared<std::unordered_set<RegisterId>>(), nrInputRegisters,
                     nrOutputRegisters, std::move(registersToClear)),
-      _offset(offset),
+      _remainingOffset(offset),
       _limit(limit),
       _queryDepth(queryDepth),
       _fullCount(fullCount) {}
