@@ -35,31 +35,29 @@ SingletonExecutor::SingletonExecutor(Fetcher& fetcher, ExecutorInfos& infos)
 SingletonExecutor::~SingletonExecutor() = default;
 
 std::pair<ExecutionState, SingletonExecutor::Stats> SingletonExecutor::produceRow(OutputAqlItemRow& output) {
-  return {ExecutionState::DONE, Stats{}};
+  ExecutionState state;
+  SingletonExecutor::Stats stats;
 
-  // ExecutionState state;
-  // SingletonExecutor::Stats stats;
+  if(_done){
+    return {ExecutionState::DONE, std::move(stats)};
+  }
 
-  // if(_done){
-  //   return {ExecutionState::DONE, std::move(stats)};
-  // }
+  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  std::tie(state, inputRow) = _fetcher.fetchRow();
 
-  // InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  // std::tie(state, inputRow) = _fetcher.fetchRow();
+  if (state == ExecutionState::WAITING) {
+    TRI_ASSERT(!inputRow);
+    return {state, std::move(stats)};
+  }
 
-  // if (state == ExecutionState::WAITING) {
-  //   TRI_ASSERT(!inputRow);
-  //   return {state, std::move(stats)};
-  // }
+  if (!inputRow) {
+    TRI_ASSERT(state == ExecutionState::DONE);
+    return {state, std::move(stats)};
+  }
 
-  // if (!inputRow) {
-  //   TRI_ASSERT(state == ExecutionState::DONE);
-  //   return {state, std::move(stats)};
-  // }
+  TRI_ASSERT(state == ExecutionState::HASMORE || state == ExecutionState::DONE);
+  output.copyRow(inputRow);
+  _done = true;
 
-  // TRI_ASSERT(state == ExecutionState::HASMORE || state == ExecutionState::DONE);
-  // output.copyRow(inputRow);
-  // _done = true;
-
-  // return {ExecutionState::DONE, std::move(stats)};
+  return {ExecutionState::DONE, std::move(stats)};
 }

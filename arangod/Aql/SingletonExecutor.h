@@ -25,7 +25,7 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/SingleRowFetcher.h"
+#include "Aql/ConstFetcher.h"
 #include "Aql/Stats.h"
 #include "Aql/Variable.h"
 
@@ -50,7 +50,7 @@ class SingletonExecutor {
   friend class ExecutionBlockImpl;
 
  public:
-  using Fetcher = SingleRowFetcher;
+  using Fetcher = ConstFetcher;
   using Infos = ExecutorInfos;
   using Stats = NoStats;
 
