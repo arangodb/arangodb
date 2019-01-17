@@ -205,7 +205,6 @@ SECTION("test_drop") {
   REQUIRE(nullptr != database);
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE(nullptr != ci);
-  std::string error;
   TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
 
   // create database
@@ -218,10 +217,7 @@ SECTION("test_drop") {
     CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL == vocbase->type());
     CHECK(1 == vocbase->id());
 
-    CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
-      vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
-    ));
-    CHECK("no error" == error);
+    CHECK((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0).ok()));
   }
 
   // drop empty
@@ -305,7 +301,6 @@ SECTION("test_drop_cid") {
   REQUIRE((nullptr != database));
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE((nullptr != ci));
-  std::string error;
   TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
 
   // create database
@@ -318,10 +313,7 @@ SECTION("test_drop_cid") {
     CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL == vocbase->type());
     CHECK(1 == vocbase->id());
 
-    CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
-      vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
-    ));
-    CHECK("no error" == error);
+    CHECK((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0).ok()));
   }
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
@@ -356,7 +348,6 @@ SECTION("test_drop_database") {
   REQUIRE((nullptr != ci));
   auto* databaseFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabaseFeature>("Database");
   REQUIRE((nullptr != databaseFeature));
-  std::string error;
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
   auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\" }");
@@ -370,10 +361,10 @@ SECTION("test_drop_database") {
   TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
   REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
   REQUIRE((nullptr != vocbase));
-  REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
+  REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.).ok()));
   auto logicalCollection = vocbase->createCollection(collectionJson->slice());
   REQUIRE((false == !logicalCollection));
-  CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), "42", viewCreateJson->slice(), error)));
+  CHECK((ci->createViewCoordinator(vocbase->name(), "42", viewCreateJson->slice()).ok()));
   auto logicalWiew = ci->getView(vocbase->name(), "42"); // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
   REQUIRE((false == !logicalWiew));
   auto* wiewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalWiew.get());
@@ -394,7 +385,6 @@ SECTION("test_ensure") {
   REQUIRE((nullptr != database));
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE((nullptr != ci));
-  std::string error;
   TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
 
   // create database
@@ -407,10 +397,7 @@ SECTION("test_ensure") {
     CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL == vocbase->type());
     CHECK(1 == vocbase->id());
 
-    CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
-      vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
-    ));
-    CHECK("no error" == error);
+    CHECK((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0).ok()));
   }
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
@@ -463,7 +450,6 @@ SECTION("test_make") {
 SECTION("test_open") {
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE(nullptr != ci);
-  std::string error;
 
   // open empty
   {
@@ -516,7 +502,6 @@ SECTION("test_query") {
   REQUIRE((nullptr != ci));
   auto* databaseFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabaseFeature>("Database");
   REQUIRE((nullptr != databaseFeature));
-  std::string error;
 
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"id\": \"42\", \
@@ -535,8 +520,7 @@ SECTION("test_query") {
     auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"view\": \"testView\", \"type\": \"arangosearch\", \"includeAllFields\": true }");
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase0", vocbase)));
-    CHECK((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0)));
-    CHECK("no error" == error);
+    CHECK((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0).ok()));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     REQUIRE(nullptr != logicalCollection);
     arangodb::LogicalView::ptr logicalWiew;
@@ -571,7 +555,7 @@ SECTION("test_query") {
     auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"view\": \"testView\", \"type\": \"arangosearch\", \"includeAllFields\": true }");
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase1", vocbase)));
-    CHECK((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0)));
+    CHECK((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0).ok()));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     REQUIRE(nullptr != logicalCollection);
     arangodb::LogicalView::ptr logicalWiew;
@@ -632,10 +616,10 @@ SECTION("test_query") {
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
-    REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
+    REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.).ok()));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     std::vector<std::string> collections{ logicalCollection->name() };
-    CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), "42", createJson->slice(), error)));
+    CHECK((ci->createViewCoordinator(vocbase->name(), "42", createJson->slice()).ok()));
     auto logicalWiew = ci->getView(vocbase->name(), "42"); // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
     CHECK((false == !logicalWiew));
     auto* wiewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalWiew.get());
@@ -734,9 +718,9 @@ SECTION("test_query") {
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
-    REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
+    REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.).ok()));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
-    CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), "42", createJson->slice(), error)));
+    CHECK((ci->createViewCoordinator(vocbase->name(), "42", createJson->slice()).ok()));
     auto logicalWiew = ci->getView(vocbase->name(), "42"); // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
     REQUIRE((false == !logicalWiew));
     auto* wiewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalWiew.get());
@@ -972,7 +956,6 @@ SECTION("test_transaction_snapshot") {
   REQUIRE((nullptr != database));
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE((nullptr != ci));
-  std::string error;
   TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
 
   // create database
@@ -985,10 +968,7 @@ SECTION("test_transaction_snapshot") {
     CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL == vocbase->type());
     CHECK(1 == vocbase->id());
 
-    CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
-      vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
-    ));
-    CHECK("no error" == error);
+    CHECK((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0).ok()));
   }
 
   static std::vector<std::string> const EMPTY;
@@ -1105,7 +1085,6 @@ SECTION("test_updateProperties") {
   REQUIRE((nullptr != ci));
   auto* databaseFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabaseFeature>("Database");
   REQUIRE((nullptr != databaseFeature));
-  std::string error;
 
   // update empty (partial)
   {
@@ -1114,10 +1093,10 @@ SECTION("test_updateProperties") {
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
-    REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
+    REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.).ok()));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     CHECK((nullptr != logicalCollection));
-    CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), "42", viewJson->slice(), error)));
+    CHECK((ci->createViewCoordinator(vocbase->name(), "42", viewJson->slice()).ok()));
     auto wiew = ci->getView(vocbase->name(), "42"); // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
@@ -1204,10 +1183,10 @@ SECTION("test_updateProperties") {
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
-    REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
+    REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.).ok()));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     CHECK((nullptr != logicalCollection));
-    CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), "42", viewJson->slice(), error)));
+    CHECK((ci->createViewCoordinator(vocbase->name(), "42", viewJson->slice()).ok()));
     auto wiew = ci->getView(vocbase->name(), "42"); // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
@@ -1294,10 +1273,10 @@ SECTION("test_updateProperties") {
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
-    REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
+    REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.).ok()));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     CHECK((nullptr != logicalCollection));
-    CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), "42", viewJson->slice(), error)));
+    CHECK((ci->createViewCoordinator(vocbase->name(), "42", viewJson->slice()).ok()));
     auto wiew = ci->getView(vocbase->name(), "42"); // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
@@ -1389,12 +1368,12 @@ SECTION("test_updateProperties") {
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
-    REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
+    REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.).ok()));
     auto logicalCollection0 = vocbase->createCollection(collection0Json->slice());
     CHECK((nullptr != logicalCollection0));
     auto logicalCollection1 = vocbase->createCollection(collection1Json->slice());
     CHECK((nullptr != logicalCollection1));
-    CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), "42", viewJson->slice(), error)));
+    CHECK((ci->createViewCoordinator(vocbase->name(), "42", viewJson->slice()).ok()));
     auto wiew = ci->getView(vocbase->name(), "42"); // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(wiew.get());
