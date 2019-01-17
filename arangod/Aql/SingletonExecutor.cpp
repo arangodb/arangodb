@@ -30,61 +30,36 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-// Missing functionality
-//
-// RegisterId ReturnBlock::returnInheritedResults() {
-//   _returnInheritedResults = true;
-//
-//   auto ep = ExecutionNode::castTo<ReturnNode const*>(getPlanNode());
-//   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
-//   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
-//
-//   return it->second.registerId;
-// }
-
-SingletonExecutorInfos::SingletonExecutorInfos(RegisterId inputRegister, RegisterId outputRegister,
-                                         RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                                         std::unordered_set<RegisterId> registersToClear,
-                                         bool returnInheritedResults)
-    : ExecutorInfos(make_shared_unordered_set({inputRegister}),
-                    make_shared_unordered_set({outputRegister}), nrInputRegisters,
-                    nrOutputRegisters, std::unordered_set<RegisterId>{} /*to clear*/
-                    ),
-      _inputRegisterId(inputRegister),
-      _outputRegisterId(outputRegister),
-      _returnInheritedResults(returnInheritedResults) {}
-
-SingletonExecutor::SingletonExecutor(Fetcher& fetcher, SingletonExecutorInfos& infos)
-    : _infos(infos), _fetcher(fetcher){};
+SingletonExecutor::SingletonExecutor(Fetcher& fetcher, ExecutorInfos& infos)
+    : _infos(infos), _fetcher(fetcher), _done(false) {};
 SingletonExecutor::~SingletonExecutor() = default;
 
 std::pair<ExecutionState, SingletonExecutor::Stats> SingletonExecutor::produceRow(OutputAqlItemRow& output) {
-  ExecutionState state;
-  SingletonExecutor::Stats stats;
-  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  std::tie(state, inputRow) = _fetcher.fetchRow();
+  return {ExecutionState::DONE, Stats{}};
 
-  if (state == ExecutionState::WAITING) {
-    TRI_ASSERT(!inputRow);
-    return {state, std::move(stats)};
-  }
+  // ExecutionState state;
+  // SingletonExecutor::Stats stats;
 
-  if (!inputRow) {
-    TRI_ASSERT(state == ExecutionState::DONE);
-    return {state, std::move(stats)};
-  }
+  // if(_done){
+  //   return {ExecutionState::DONE, std::move(stats)};
+  // }
 
-  if (_infos._returnInheritedResults) {
-    output.copyRow(inputRow);
-  } else {
-    AqlValue val;
-    val = inputRow.getValue(_infos._inputRegisterId);
-    AqlValueGuard guard(val, true);
-    // LOG_DEVEL << "writing to ouputReg: " << _infos._outputRegisterId;
-    output.setValue(_infos._outputRegisterId, inputRow, val);
-    guard.steal();
-  }
+  // InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  // std::tie(state, inputRow) = _fetcher.fetchRow();
 
-  //stats.incrCounted();
-  return {state, std::move(stats)};
+  // if (state == ExecutionState::WAITING) {
+  //   TRI_ASSERT(!inputRow);
+  //   return {state, std::move(stats)};
+  // }
+
+  // if (!inputRow) {
+  //   TRI_ASSERT(state == ExecutionState::DONE);
+  //   return {state, std::move(stats)};
+  // }
+
+  // TRI_ASSERT(state == ExecutionState::HASMORE || state == ExecutionState::DONE);
+  // output.copyRow(inputRow);
+  // _done = true;
+
+  // return {ExecutionState::DONE, std::move(stats)};
 }

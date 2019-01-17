@@ -44,6 +44,7 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/Query.h"
+#include "Aql/SingletonExecutor.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
@@ -1182,7 +1183,13 @@ void ExecutionNode::removeDependencies() {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<SingletonBlock>(&engine, this);
+
+  ExecutorInfos infos(make_shared_unordered_set(), make_shared_unordered_set(),
+                            getRegisterPlan()->nrRegs[getDepth()],
+                            getRegisterPlan()->nrRegs[getDepth()],
+                            getRegsToClear());
+  return std::make_unique<ExecutionBlockImpl<SingletonExecutor>>(&engine, this,
+                                                              std::move(infos));
 }
 
 /// @brief toVelocyPack, for SingletonNode

@@ -20,16 +20,16 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #ifndef ARANGOD_AQL_SINGLETON_EXECUTOR_H
 #define ARANGOD_AQL_SINGLETON_EXECUTOR_H
-
-#include "Aql/ExecutionBlockImpl.h"
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Aql/Stats.h"
 #include "Aql/Variable.h"
+
+#include "Aql/ExecutionBlockImpl.h"
 
 namespace arangodb {
 namespace transaction {
@@ -45,36 +45,16 @@ class NoStats;
 class OutputAqlItemRow;
 struct SortRegister;
 
-class SingletonExecutorInfos : public ExecutorInfos {
- public:
-  SingletonExecutorInfos(RegisterId inputRegister,
-                RegisterId outputRegisters,
-                RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                std::unordered_set<RegisterId> registersToClear, bool returnInheritedResults);
-
-  SingletonExecutorInfos() = delete;
-  SingletonExecutorInfos(SingletonExecutorInfos &&) = default;
-  SingletonExecutorInfos(SingletonExecutorInfos const&) = delete;
-  ~SingletonExecutorInfos() = default;
-
-  /// @brief the variable produced by Return
-  Variable const* _inVariable;
-  bool _count;
-  RegisterId _inputRegisterId;
-  RegisterId _outputRegisterId;
-  bool _returnInheritedResults;
-};
-
-/**
- * @brief Implementation of Return Node
- */
 class SingletonExecutor {
+  template <typename T>
+  friend class ExecutionBlockImpl;
+
  public:
   using Fetcher = SingleRowFetcher;
-  using Infos = SingletonExecutorInfos;
+  using Infos = ExecutorInfos;
   using Stats = NoStats;
 
-  SingletonExecutor(Fetcher& fetcher, SingletonExecutorInfos&);
+  SingletonExecutor(Fetcher& fetcher, ExecutorInfos&);
   ~SingletonExecutor();
 
   /**
@@ -86,9 +66,10 @@ class SingletonExecutor {
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
  private:
-  SingletonExecutorInfos& _infos;
+  Infos& _infos;
   Fetcher& _fetcher;
-
+  bool _done;
+  std::unique_ptr<AqlItemBlock> _inputRegisterValues;
 };
 }  // namespace aql
 }  // namespace arangodb
