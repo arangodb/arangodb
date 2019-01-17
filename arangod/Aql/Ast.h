@@ -416,6 +416,7 @@ class Ast {
   void validateAndOptimize();
 
   /// @brief determines the variables referenced in an expression
+  static void getReferencedVariables(AstNode const*, std::unordered_set<Variable const*>&);
   static void getReferencedVariables(AstNode const*, arangodb::HashSet<Variable const*>&);
 
   /// @brief count how many times a variable is referenced in an expression

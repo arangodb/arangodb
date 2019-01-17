@@ -2074,6 +2074,38 @@ void Ast::validateAndOptimize() {
 }
 
 /// @brief determines the variables referenced in an expression
+void Ast::getReferencedVariables(
+    AstNode const* node,
+    arangodb::HashSet<Variable const*>& result
+) {
+  auto preVisitor = [](AstNode const* node) -> bool {
+    return !node->isConstant();
+  };
+
+  auto visitor = [&result](AstNode const* node) {
+    if (node == nullptr) {
+      return;
+    }
+
+    // reference to a variable
+    if (node->type == NODE_TYPE_REFERENCE) {
+      auto variable = static_cast<Variable const*>(node->getData());
+
+      if (variable == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "invalid reference in AST");
+      }
+
+      if (variable->needsRegister()) {
+        result.emplace(variable);
+      }
+    }
+  };
+
+  traverseReadOnly(node, preVisitor, visitor);
+}
+
+/// @brief determines the variables referenced in an expression
 void Ast::getReferencedVariables(AstNode const* node,
                                  arangodb::HashSet<Variable const*>& result) {
   auto preVisitor = [](AstNode const* node) -> bool {
