@@ -33,8 +33,6 @@ class HashSet {
   using reference       = KeyT&;
   using const_reference = const KeyT&;
 
-  static_assert(std::is_pod<value_type>::value, "value_type must be a POD type");
-
   class iterator {
    public:
     using iterator_category = std::forward_iterator_tag;
@@ -163,6 +161,11 @@ class HashSet {
 
   HashSet& operator=(HashSet&& other) noexcept {
     if (this != &other) {
+      for (size_t bucket=0; bucket<_num_buckets; ++bucket) {
+        if (_states[bucket] == State::FILLED) {
+          _keys[bucket].~KeyT();
+        }
+      }
       if (_buffer != &_local_buffer[0]) {
         delete[] _buffer;
       }
@@ -430,12 +433,18 @@ class HashSet {
       _keys = other._keys;
     } else {
       // we can copy the other's local buffer
-      // TODO: make this work with non-POD types
-      memcpy(&_local_buffer[0], &other._local_buffer[0], sizeof(_local_buffer));
       _buffer = &_local_buffer[0];
       _states = (State*)_buffer;
       size_t states_size = ((other._num_buckets * sizeof(State) + 8 - 1) / 8) * 8;
+      memcpy(&_local_buffer[0], &other._local_buffer[0], states_size);
       _keys  = (KeyT*)(_buffer + states_size);
+    
+      for (size_t src_bucket=0; src_bucket<other._num_buckets; src_bucket++) {
+        if (other._states[src_bucket] == State::FILLED) {
+          auto& src = other._keys[src_bucket];
+          new(_keys + src_bucket) KeyT(std::move(src));
+        }
+      }
     }
 
     _num_buckets = other._num_buckets;
