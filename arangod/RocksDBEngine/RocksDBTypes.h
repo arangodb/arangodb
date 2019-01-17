@@ -84,7 +84,8 @@ enum class RocksDBLogType : char {
   CommitTransaction = 'D',
   DocumentRemoveV2 = 'E',
   SingleRemoveV2 = 'F',
-  CollectionTruncate = 'G'
+  CollectionTruncate = 'G',
+  FlushSync = 'H', // @see FlushFeature
 };
 
 /// @brief settings keys
