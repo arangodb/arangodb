@@ -171,11 +171,8 @@ bool fromVelocyPack(velocypack::Slice optionsSlice,
       return false;
     }
 
-    auto* collections = query.collections();
-    TRI_ASSERT(collections);
-
     for (auto idSlice : VPackArrayIterator(optionSlice)) {
-      if (idSlice.isNumber()) {
+      if (!idSlice.isNumber()) {
         return false;
       }
 
@@ -606,9 +603,13 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
 
   // options
   TRI_ASSERT(plan.getAst() && plan.getAst()->query());
-  if (!::fromVelocyPack(base.get("options"), _options, *plan.getAst()->query())) {
+
+  auto const options = base.get("options");
+
+  if (!::fromVelocyPack(options, _options, *plan.getAst()->query())) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "failed to parse 'IResearchViewNode' options";
+        << "failed to parse 'IResearchViewNode' options: "
+        << options.toString();
   }
 
   // volatility mask
