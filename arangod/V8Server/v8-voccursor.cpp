@@ -228,7 +228,7 @@ struct V8Cursor final {
       bool busy;
       Cursor* cc = cursors->find(_cursorId, Cursor::CURSOR_VPACK, busy);
       if (busy || cc == nullptr) {
-        TRI_V8_SET_ERROR("cursor is busy");
+        TRI_V8_SET_ERROR(TRI_errno_string(TRI_ERROR_CURSOR_BUSY));
         return false;  // someone else is using it
       }
       TRI_DEFER(cc->release());
@@ -573,8 +573,7 @@ void TRI_InitV8cursor(v8::Handle<v8::Context> context, TRI_v8_global_t* v8g) {
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(1);
 
-  ft->PrototypeTemplate()->Set(TRI_V8_ASCII_STRING(isolate,
-                                                   "isArangoResultSet"),
+  ft->PrototypeTemplate()->Set(TRI_V8_ASCII_STRING(isolate, "isArangoResultSet"),
                                v8::True(isolate));
   TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "toArray"),
                         V8Cursor::toArray);

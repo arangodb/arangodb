@@ -306,15 +306,11 @@ Result Indexes::ensureIndexCoordinator(arangodb::LogicalCollection const* collec
   TRI_ASSERT(collection != nullptr);
   auto& dbName = collection->vocbase().name();
   auto cid = std::to_string(collection->id());
-  std::string errorMsg;
+  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
 
-  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>(
-      "Cluster");
-  int res =
-      ClusterInfo::instance()->ensureIndexCoordinator(dbName, cid, indexDef, create,
-                                                      resultBuilder, errorMsg,
-                                                      cluster->indexCreationTimeout());
-  return Result(res, errorMsg);
+  return ClusterInfo::instance()->ensureIndexCoordinator( // create index
+    dbName, cid, indexDef, create, resultBuilder, cluster->indexCreationTimeout() // args
+  );
 }
 
 Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& input,
@@ -558,11 +554,10 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
 #else
     TRI_ASSERT(collection);
     auto& databaseName = collection->vocbase().name();
-    auto cid = std::to_string(collection->id());
-    std::string errorMsg;
-    int r = ClusterInfo::instance()->dropIndexCoordinator(databaseName, cid,
-                                                          iid, errorMsg, 0.0);
-    return Result(r, errorMsg);
+
+    return ClusterInfo::instance()->dropIndexCoordinator( // drop index
+      databaseName, std::to_string(collection->id()), iid, 0.0 // args
+    );
 #endif
   } else {
     READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
