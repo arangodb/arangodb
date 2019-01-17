@@ -123,7 +123,7 @@ class Expression {
   }
 
   /// @brief return all variables used in the expression
-  void variables(std::unordered_set<Variable const*>&) const;
+  void variables(arangodb::HashSet<Variable const*>&) const;
 
   /// @brief return a VelocyPack representation of the expression
   void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const {

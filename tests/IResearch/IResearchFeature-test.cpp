@@ -239,7 +239,7 @@ SECTION("test_upgrade0_1") {
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // register iresearch view type
     feature.start(); // register upgrade tasks
-    server.lookupFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade(); // skip IResearchView validation
+    server.getFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade(); // skip IResearchView validation
 
     arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
     auto versionFilename = StorageEngineMock::versionFilenameResult;
@@ -318,7 +318,7 @@ SECTION("test_upgrade0_1") {
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // register iresearch view type
     feature.start(); // register upgrade tasks
-    server.lookupFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade(); // skip IResearchView validation
+    server.getFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade(); // skip IResearchView validation
 
     arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
     auto versionFilename = StorageEngineMock::versionFilenameResult;
@@ -413,10 +413,10 @@ SECTION("test_upgrade0_1") {
 
     feature.prepare(); // register iresearch view type
     feature.start(); // register upgrade tasks
-    server.lookupFeature<arangodb::AuthenticationFeature>("Authentication")->prepare(); // create AuthenticationFeature::INSTANCE
-    server.lookupFeature<arangodb::ClusterFeature>("Cluster")->prepare(); // create ClusterInfo instance
-    server.lookupFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade(); // skip IResearchView validation
-    server.lookupFeature<arangodb::ShardingFeature>("Sharding")->prepare(); // register sharding types
+    server.getFeature<arangodb::AuthenticationFeature>("Authentication")->prepare(); // create AuthenticationFeature::INSTANCE
+    server.getFeature<arangodb::ClusterFeature>("Cluster")->prepare(); // create ClusterInfo instance
+    server.getFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade(); // skip IResearchView validation
+    server.getFeature<arangodb::ShardingFeature>("Sharding")->prepare(); // register sharding types
     arangodb::AgencyCommManager::MANAGER->start(); // initialize agency
     arangodb::DatabaseFeature::DATABASE = database; // required for ClusterInfo::createCollectionCoordinator(...)
     const_cast<arangodb::IndexFactory&>(s.engine.indexFactory()).emplace( // required for Indexes::ensureIndex(...)
@@ -426,19 +426,13 @@ SECTION("test_upgrade0_1") {
     auto* ci = arangodb::ClusterInfo::instance();
     REQUIRE((nullptr != ci));
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
-    std::string error;
 
     REQUIRE((TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase)));
-    REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.0)));
-    CHECK((std::string("no error") == error));
-    error.clear();
-    REQUIRE((TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0)));
-    CHECK((error.empty()));
+    REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).ok()));
+    REQUIRE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), 0.0).ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     REQUIRE((false == !logicalCollection));
-    error.clear();
-    CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), viewId, viewJson->slice(), error)));
-    CHECK((error.empty()));
+    CHECK((ci->createViewCoordinator(vocbase->name(), viewId, viewJson->slice()).ok()));
     auto logicalView0 = ci->getView(vocbase->name(), viewId);
     REQUIRE((false == !logicalView0));
 
@@ -517,9 +511,9 @@ SECTION("test_upgrade0_1") {
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // register iresearch view type
     feature.start(); // register upgrade tasks
-    server.lookupFeature<arangodb::AuthenticationFeature>("Authentication")->prepare(); // create AuthenticationFeature::INSTANCE
-    server.lookupFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade(); // skip IResearchView validation
-    server.lookupFeature<arangodb::ShardingFeature>("Sharding")->prepare(); // register sharding types
+    server.getFeature<arangodb::AuthenticationFeature>("Authentication")->prepare(); // create AuthenticationFeature::INSTANCE
+    server.getFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade(); // skip IResearchView validation
+    server.getFeature<arangodb::ShardingFeature>("Sharding")->prepare(); // register sharding types
 
     arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
     auto versionFilename = StorageEngineMock::versionFilenameResult;
@@ -595,9 +589,9 @@ SECTION("test_upgrade0_1") {
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // register iresearch view type
     feature.start(); // register upgrade tasks
-    server.lookupFeature<arangodb::AuthenticationFeature>("Authentication")->prepare(); // create AuthenticationFeature::INSTANCE
-    server.lookupFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade(); // skip IResearchView validation
-    server.lookupFeature<arangodb::ShardingFeature>("Sharding")->prepare(); // register sharding types
+    server.getFeature<arangodb::AuthenticationFeature>("Authentication")->prepare(); // create AuthenticationFeature::INSTANCE
+    server.getFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade(); // skip IResearchView validation
+    server.getFeature<arangodb::ShardingFeature>("Sharding")->prepare(); // register sharding types
 
     arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
     auto versionFilename = StorageEngineMock::versionFilenameResult;

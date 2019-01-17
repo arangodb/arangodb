@@ -38,7 +38,7 @@ std::regex const iso8601Regex(
     // Time is optional
     "(\\ |T)"                     // T or blank separates date and time
     "\\d\\d\\:\\d\\d"             // time: hh:mm
-    "(\\:\\d\\d(\\.\\d{1,3})?)?"  // Optional: :ss.mmms
+    "(\\:\\d\\d(\\.\\d{1,})?)?"   // Optional: :ss.mmms
     "("
     "z|Z|"  // trailing Z or start of timezone
     "(\\+|\\-)"
@@ -64,7 +64,7 @@ submatch 10: '34'
 */
 
 std::regex const timeRegex(
-    "(\\d\\d)\\:(\\d\\d)(\\:(\\d\\d)(\\.(\\d{1,3}))?)?((\\+|\\-)(\\d\\d)\\:"
+    "(\\d\\d)\\:(\\d\\d)(\\:(\\d\\d)(\\.(\\d{1,}))?)?((\\+|\\-)(\\d\\d)\\:"
     "(\\d\\d))?");
 
 /* REGEX GROUPS
@@ -102,7 +102,7 @@ bool arangodb::basics::parse_dateTime(std::string const& dateTimeIn, tp_sys_cloc
   std::string strDate, strTime;
 
   boost::algorithm::trim(dateTime);
-
+  
   if (!std::regex_match(dateTime, ::iso8601Regex)) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
         << "regex failed for datetime '" << dateTime << "'";

@@ -839,7 +839,7 @@ void transaction::Methods::pinData(TRI_voc_cid_t cid) {
   }
 
   TRI_ASSERT(trxColl->collection() != nullptr);
-  _transactionContextPtr->pinData(trxColl->collection());
+  _transactionContextPtr->pinData(trxColl->collection().get());
 }
 
 /// @brief whether or not a ditch has been created for the collection
@@ -2979,7 +2979,7 @@ arangodb::LogicalCollection* transaction::Methods::documentCollection(
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
   TRI_ASSERT(trxCollection->collection() != nullptr);
 
-  return trxCollection->collection();
+  return trxCollection->collection().get();
 }
 
 /// @brief return the collection
@@ -2995,7 +2995,7 @@ arangodb::LogicalCollection* transaction::Methods::documentCollection(TRI_voc_ci
 
   TRI_ASSERT(trxColl != nullptr);
   TRI_ASSERT(trxColl->collection() != nullptr);
-  return trxColl->collection();
+  return trxColl->collection().get();
 }
 
 /// @brief add a collection by id, with the name supplied

@@ -42,7 +42,7 @@
 
 #include "IResearchLink.h"
 
-NS_LOCAL
+namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the storage format used with IResearch writers
@@ -204,10 +204,10 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
   return arangodb::Result();
 }
 
-NS_END
+}  // namespace
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 IResearchLink::IResearchLink(TRI_idx_iid_t iid,
                              arangodb::LogicalCollection& collection)
@@ -449,15 +449,10 @@ arangodb::Result IResearchLink::commit() {
       return arangodb::Result();  // reader not modified
     }
 
-    _dataStore._reader = reader;  // update reader
-
-    auto viewImpl = view();
-
-    // invalidate query cache if there were some data changes
-    if (viewImpl) {
-      arangodb::aql::QueryCache::instance()->invalidate(&(_collection.vocbase()),
-                                                        viewImpl->name());
-    }
+    _dataStore._reader = reader; // update reader
+    arangodb::aql::QueryCache::instance()->invalidate(
+      &(_collection.vocbase()), _viewGuid
+    );
   } catch (arangodb::basics::Exception const& e) {
     return arangodb::Result(
         e.code(),
@@ -1327,9 +1322,9 @@ std::shared_ptr<IResearchView> IResearchLink::view() const {
           : _collection.vocbase().lookupView(_viewGuid));
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

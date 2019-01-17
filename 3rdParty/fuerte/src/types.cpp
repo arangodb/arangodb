@@ -205,7 +205,6 @@ ErrorCondition intToError(Error integral) {
       1102,  // VstReadError
       1103,  // VstWriteError
       1104,  // CancelledDuringReset
-      1105,  // MalformedURL
       3000,  // CurlError
   };
   auto pos = std::find(valid.begin(), valid.end(), integral);
@@ -242,8 +241,6 @@ std::string to_string(ErrorCondition error) {
       return "Error while writing ";
     case ErrorCondition::Canceled:
       return "Connection was locally canceled";
-    case ErrorCondition::MalformedURL:
-      return "Error malformed URL";
 
     case ErrorCondition::ProtocolError:
       return "Error: invalid server response";

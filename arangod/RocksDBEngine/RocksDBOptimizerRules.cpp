@@ -34,6 +34,7 @@
 #include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/SortNode.h"
+#include "Basics/HashSet.h"
 #include "Basics/StaticStrings.h"
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
@@ -73,7 +74,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
   plan->findNodesOfType(nodes, ::reduceExtractionToProjectionTypes, true);
 
   bool modified = false;
-  std::unordered_set<Variable const*> vars;
+  arangodb::HashSet<Variable const*> vars;
   std::unordered_set<std::string> attributes;
 
   for (auto& n : nodes) {

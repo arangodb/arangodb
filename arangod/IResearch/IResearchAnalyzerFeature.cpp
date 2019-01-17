@@ -54,7 +54,7 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
-NS_LOCAL
+namespace {
 
 static std::string const ANALYZER_COLLECTION_NAME("_iresearch_analyzers");
 static size_t const DEFAULT_POOL_SIZE = 8;  // arbitrary value
@@ -277,10 +277,10 @@ arangodb::SystemDatabaseFeature::ptr getSystemDatabase() {
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
-NS_END
+}  // namespace
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 /*static*/ IResearchAnalyzerFeature::AnalyzerPool::Builder::ptr
 IResearchAnalyzerFeature::AnalyzerPool::Builder::make(irs::string_ref const& type,
@@ -1347,9 +1347,9 @@ bool IResearchAnalyzerFeature::visit(
   return true;
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION-- END-OF-FILE
+// -----------------------------------------------------------------------------
