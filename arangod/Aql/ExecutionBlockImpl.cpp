@@ -218,9 +218,19 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SingletonExecutor>::initial
   // destroy and re-create the Executor
   _executor.~SingletonExecutor();
   new (&_executor) SingletonExecutor(_rowFetcher, _infos);
+
+  std::unique_ptr<AqlItemBlock> block;
   if (items != nullptr) {
-    _executor._inputRegisterValues.reset(items->slice(pos, *(_executor._infos.registersToKeep())));
+    block = std::unique_ptr<AqlItemBlock>(
+        items->slice(pos, *(_executor._infos.registersToKeep())));
+  } else {
+    block = std::unique_ptr<AqlItemBlock>(
+        _engine->itemBlockManager().requestBlock(1, _infos.numberOfInputRegisters()));
   }
+  InputAqlItemBlockShell shell(_engine->itemBlockManager(), std::move(block),
+                               _executor._infos.getInputRegisters());
+  _rowFetcher.injectBlock(std::make_shared<InputAqlItemBlockShell>(std::move(shell)));
+
   return ExecutionBlock::initializeCursor(items, pos);
 }
 

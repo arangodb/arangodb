@@ -31,18 +31,17 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+void ConstFetcher::injectBlock(std::shared_ptr<InputAqlItemBlockShell> block){
+    _currentBlock = std::move(block);
+    _rowIndex = 0;
+    // get number input regs
+}
+
 std::pair<ExecutionState, InputAqlItemRow> ConstFetcher::fetchRow() {
   // Fetch a new block iff necessary
   if (_currentBlock == nullptr || !indexIsValid()) {
-    ExecutionState state;
-    std::shared_ptr<InputAqlItemBlockShell> newBlock;
-    std::tie(state, newBlock) = fetchBlock();
-    if (state == ExecutionState::WAITING) {
-      return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
-    }
-
-    _currentBlock = std::move(newBlock);
-    _rowIndex = 0;
+    return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
+    std::terminate(); // this can not happen
   }
 
   ExecutionState rowState;
@@ -69,20 +68,20 @@ std::pair<ExecutionState, InputAqlItemRow> ConstFetcher::fetchRow() {
 }
 
 ConstFetcher::ConstFetcher(BlockFetcher& executionBlock)
-    : _blockFetcher(&executionBlock),
-      _currentRow{CreateInvalidInputRowHint{}} {}
+    : _currentRow{CreateInvalidInputRowHint{}} {}
 
-std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
-ConstFetcher::fetchBlock() {
-  auto res = _blockFetcher->fetchBlock();
-
-  _upstreamState = res.first;
-
-  return res;
-}
+//std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
+//ConstFetcher::fetchBlock() {
+//  auto res = _blockFetcher->fetchBlock();
+//
+//  _upstreamState = res.first;
+//
+//  return res;
+//}
 
 RegisterId ConstFetcher::getNrInputRegisters() const {
-  return _blockFetcher->getNrInputRegisters();
+  std::terminate();
+  //return _blockFetcher->getNrInputRegisters();
 }
 
 bool ConstFetcher::indexIsValid() {
@@ -101,4 +100,4 @@ size_t ConstFetcher::getRowIndex() {
 
 
 ConstFetcher::ConstFetcher()
-    : _blockFetcher(nullptr), _currentRow{CreateInvalidInputRowHint{}} {}
+    :  _currentRow{CreateInvalidInputRowHint{}} {}

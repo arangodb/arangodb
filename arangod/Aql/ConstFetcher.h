@@ -72,8 +72,9 @@ class ConstFetcher {
    */
   TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow();
 
+  void injectBlock(std::shared_ptr<InputAqlItemBlockShell> block);
+
  private:
-  BlockFetcher* _blockFetcher;
 
   /**
    * @brief Holds state returned by the last fetchBlock() call.
@@ -106,11 +107,11 @@ class ConstFetcher {
   InputAqlItemRow _currentRow;
 
  private:
-  /**
-   * @brief Delegates to ExecutionBlock::fetchBlock()
-   */
-  std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
-  fetchBlock();
+  // /**
+  //  * @brief Delegates to ExecutionBlock::fetchBlock()
+  //  */
+  // std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
+  // fetchBlock();
 
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
