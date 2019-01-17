@@ -52,7 +52,7 @@ function optimizerQueryStatsTestSuite () {
       assertEqual(0, stats.scannedFull);
       assertEqual(0, stats.scannedIndex);
     },
-    
+
     testFullScanNonEmpty : function () {
       for (let i = 0; i < 1000; ++i) {
         c.insert({ value: i });
@@ -63,7 +63,7 @@ function optimizerQueryStatsTestSuite () {
       assertEqual(1000, stats.scannedFull);
       assertEqual(0, stats.scannedIndex);
     },
-    
+
     testFullScanSkipped : function () {
       for (let i = 0; i < 1000; ++i) {
         c.insert({ value: i });
@@ -74,7 +74,7 @@ function optimizerQueryStatsTestSuite () {
       assertEqual(1000, stats.scannedFull);
       assertEqual(0, stats.scannedIndex);
     },
-    
+
     testFullScanLimited : function () {
       for (let i = 0; i < 1000; ++i) {
         c.insert({ value: i });
@@ -96,7 +96,7 @@ function optimizerQueryStatsTestSuite () {
       assertEqual(1000, stats.scannedFull);
       assertEqual(0, stats.scannedIndex);
     },
-    
+
     testFullScanFilteredSkipped : function () {
       for (let i = 0; i < 1000; ++i) {
         c.insert({ value: i % 10 });
@@ -107,15 +107,15 @@ function optimizerQueryStatsTestSuite () {
       assertEqual(1000, stats.scannedFull);
       assertEqual(0, stats.scannedIndex);
     },
-    
+
     testFullScanFilteredLimited : function () {
       for (let i = 0; i < 1000; ++i) {
         c.insert({ value: i % 10 });
       }
       let stats = db._query("FOR doc IN " + c.name() + " FILTER doc.value == 3 LIMIT 0, 10 RETURN doc").getExtra().stats;
 
-      assertEqual(900, stats.filtered);
-      assertEqual(1000, stats.scannedFull);
+      assertEqual(1000, stats.scannedFull); // scan as there was no limit
+      assertEqual(84, stats.filtered);      // 84 taken + 10 picked = 94 inspected to find 10 documents, then stop because of limit
       assertEqual(0, stats.scannedIndex);
     },
 
@@ -130,7 +130,7 @@ function optimizerQueryStatsTestSuite () {
       assertEqual(0, stats.scannedFull);
       assertEqual(100, stats.scannedIndex);
     },
-    
+
     testIndexScanFiltered : function () {
       for (let i = 0; i < 1000; ++i) {
         c.insert({ value: i % 10 });
