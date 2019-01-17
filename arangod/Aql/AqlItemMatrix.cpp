@@ -112,7 +112,7 @@ InputAqlItemRow AqlItemMatrix::getRow(size_t index) const {
       // Please do not bother to shorten the following expression, the
       // compilers are perfectly capable of doing that, and here the correctness
       // is easier to see.
-      size_t const numBlocksRightFromHere = maxIndex < mostLikelyIndex;
+      size_t const numBlocksRightFromHere = maxIndex - mostLikelyIndex;
       mostLikelyIndex += 1 + numBlocksRightFromHere / 2;
     } else {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
