@@ -1,4 +1,4 @@
-# -*- mode: CMAKE; -*-
+#- * - mode : CMAKE; - * -
 
 include_directories(.)
 
@@ -8,8 +8,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 ## BISON/FLEX
 ################################################################################
 
-# note that we check-in the generated FLEX/BISON files, therefore they are
-# generate inside the source tree
+#note that we check - in the generated FLEX / BISON files, therefore they are
+#generate inside the source tree
 
 if (USE_MAINTAINER_MODE AND NOT MSVC)
   add_custom_command(
@@ -190,7 +190,7 @@ SET(ARANGOD_SOURCES
   Aql/BindParameters.cpp
   Aql/BlockCollector.cpp
   Aql/BlockFetcher.cpp
-  Aql/CalculationBlock.cpp
+  Aql/CalculationExecutor.cpp
   Aql/ClusterBlocks.cpp
   Aql/ClusterNodes.cpp
   Aql/CollectBlock.cpp
@@ -213,6 +213,7 @@ SET(ARANGOD_SOURCES
   Aql/ExecutionNode.cpp
   Aql/ExecutionPlan.cpp
   Aql/ExecutionStats.cpp
+  Aql/ExecutorExpressionContext.cpp
   Aql/ExecutorInfos.cpp
   Aql/Expression.cpp
   Aql/FilterExecutor.cpp
@@ -252,6 +253,7 @@ SET(ARANGOD_SOURCES
   Aql/Range.cpp
   Aql/RegexCache.cpp
   Aql/RestAqlHandler.cpp
+  Aql/ReturnExecutor.cpp
   Aql/Scopes.cpp
   Aql/SharedQueryState.cpp
   Aql/ShortStringStorage.cpp

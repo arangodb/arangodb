@@ -29,7 +29,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
 #include "Aql/BasicBlocks.h"
-#include "Aql/CalculationBlock.h"
+#include "Aql/CalculationExecutor.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
 #include "Aql/Collection.h"
@@ -45,6 +45,7 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/Query.h"
+#include "Aql/ReturnExecutor.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
@@ -1511,7 +1512,45 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<CalculationBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
+  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+  RegisterId outputRegister = it->second.registerId;
+
+  arangodb::HashSet<Variable const*> inVars;
+  _expression->variables(inVars);
+
+  std::vector<Variable const*> expInVars;
+  expInVars.reserve(inVars.size());
+  std::vector<RegisterId> expInRegs;
+  expInRegs.reserve(inVars.size());
+
+  auto& varInfo = getRegisterPlan()->varInfo;
+  for (auto& var : inVars) {
+    TRI_ASSERT(var != nullptr);
+    auto infoIter = varInfo.find(var->id);
+    TRI_ASSERT(infoIter != varInfo.end());
+    TRI_ASSERT(infoIter->second.registerId < ExecutionNode::MaxRegisterId);
+
+    expInVars.emplace_back(var);
+    expInRegs.emplace_back(infoIter->second.registerId);
+  }
+
+  CalculationExecutorInfos infos(
+      outputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
+      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear()
+
+                                                 ,
+      engine.getQuery()  // used for v8 contexts and in expression
+      ,
+      this->expression(), std::move(expInVars)  // required by expression.execute
+      ,
+      std::move(expInRegs)  // required by expression.execute
+  );
+
+  return std::make_unique<ExecutionBlockImpl<CalculationExecutor>>(&engine, this,
+                                                                   std::move(infos));
 }
 
 ExecutionNode* CalculationNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -1861,7 +1900,33 @@ void ReturnNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<ReturnBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  auto it = getRegisterPlan()->varInfo.find(_inVariable->id);
+  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+  RegisterId inputRegister = it->second.registerId;
+
+  // TODO - remove LOGGING once register planning changes have been made and the ReturnExecutor is final
+  // LOG_DEVEL << "-------------------------------";
+  // LOG_DEVEL << "inputRegister:     " << inputRegister;
+  // LOG_DEVEL << "input block width: " << getRegisterPlan()->nrRegs[previousNode->getDepth()];
+  // LOG_DEVEL << "ouput block width: " << getRegisterPlan()->nrRegs[getDepth()];
+
+  // std::stringstream ss;
+  // for(auto const& a : getRegsToClear()){
+  //  ss << a << " ";
+  //}
+  // LOG_DEVEL << "registersToClear:  " << ss.rdbuf();
+
+  ReturnExecutorInfos infos(inputRegister, 0,
+                            getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                            getRegisterPlan()->nrRegs[getDepth()],  // if that is set to 1 - infos will complain that there are less output than input registers
+                            getRegsToClear(),
+                            _count,
+                            false /*return inherited was set on return block*/);
+  return std::make_unique<ExecutionBlockImpl<ReturnExecutor>>(&engine, this,
+                                                              std::move(infos));
 }
 
 /// @brief clone ExecutionNode recursively
