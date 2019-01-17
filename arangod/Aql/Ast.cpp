@@ -2076,7 +2076,7 @@ void Ast::validateAndOptimize() {
 /// @brief determines the variables referenced in an expression
 void Ast::getReferencedVariables(
     AstNode const* node,
-    arangodb::HashSet<Variable const*>& result
+    std::unordered_set<Variable const*>& result
 ) {
   auto preVisitor = [](AstNode const* node) -> bool {
     return !node->isConstant();
