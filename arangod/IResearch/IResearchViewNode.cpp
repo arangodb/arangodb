@@ -794,12 +794,11 @@ bool IResearchViewNode::filterConditionIsEmpty() const noexcept {
 std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     aql::ExecutionEngine& engine,
     std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&) const {
-  if (ServerState::instance()->isCoordinator()
-      || (_options.restrictSources && _options.sources.empty())) {
+  if (ServerState::instance()->isCoordinator()) {
     // coordinator in a cluster: empty view case
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(!ServerState::instance()->isCoordinator() || this->empty());
+    TRI_ASSERT(ServerState::instance()->isCoordinator());
 #endif
 
     return std::make_unique<aql::NoResultsBlock>(&engine, this);

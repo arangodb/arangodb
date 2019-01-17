@@ -38,12 +38,17 @@ var ERRORS = require("@arangodb").errors;
 
 function iResearchAqlTestSuite () {
   var c;
+  var c2;
   var v;
+  var v2;
 
   return {
     setUp : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
+
+      db._drop("UnitTestsCollection2");
+      c2 = db._create("UnitTestsCollection2");
 
       db._drop("AnotherUnitTestsCollection");
       var ac = db._create("AnotherUnitTestsCollection");
@@ -63,6 +68,14 @@ function iResearchAqlTestSuite () {
       };
       v.properties(meta);
 
+      db._drop("CompoundView");
+      v2 = db._createView("CompoundView", "arangosearch",
+        { links : {
+          UnitTestsCollection: { includeAllFields: true },
+          UnitTestsCollection2 : { includeAllFields: true }
+        }}
+      );
+
       ac.save({ a: "foo", id : 0 });
       ac.save({ a: "ba", id : 1 });
 
@@ -71,6 +84,10 @@ function iResearchAqlTestSuite () {
         c.save({ a: "foo", b: "baz", c: i });
         c.save({ a: "bar", b: "foo", c: i });
         c.save({ a: "baz", b: "foo", c: i });
+
+        c2.save({ a: "foo", b: "bar", c: i });
+        c2.save({ a: "bar", b: "foo", c: i });
+        c2.save({ a: "baz", b: "foo", c: i });
       }
 
       c.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
@@ -88,7 +105,9 @@ function iResearchAqlTestSuite () {
       var meta = { links : { "UnitTestsCollection": null } };
       v.properties(meta);
       v.drop();
+      v2.drop();
       db._drop("UnitTestsCollection");
+      db._drop("UnitTestsCollection2");
       db._drop("AnotherUnitTestsCollection");
     },
 
@@ -98,6 +117,59 @@ function iResearchAqlTestSuite () {
       } catch (e) {
         assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, e.errorNum);
       }
+    },
+
+    testViewCollectionOptions : function() {
+      var result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } RETURN doc").toArray();
+
+      assertEqual(result.length, 10);
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        assertTrue(res._id.startsWith('UnitTestsCollection/'));
+      });
+
+      result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ " + c2._id + " ] } RETURN doc").toArray();
+
+      assertEqual(result.length, 5);
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        assertTrue(res._id.startsWith('UnitTestsCollection2/'));
+      });
+
+      result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ '" + c2._id + "', 'UnitTestsCollection' ] } RETURN doc").toArray();
+
+      assertEqual(result.length, 15);
+      var CountC1 = 0;
+      var CountC2 = 0;
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        if (res._id.startsWith('UnitTestsCollection2/')) {
+          ++CountC2;
+        } else if (res._id.startsWith('UnitTestsCollection/')) {
+          ++CountC1;
+        }
+      });
+      assertEqual(CountC1, 10);
+      assertEqual(CountC2, 5);
+
+      result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : null } RETURN doc").toArray();
+
+      assertEqual(result.length, 15);
+      CountC1 = 0;
+      CountC2 = 0;
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        if (res._id.startsWith('UnitTestsCollection2/')) {
+          ++CountC2;
+        } else if (res._id.startsWith('UnitTestsCollection/')) {
+          ++CountC1;
+        }
+      });
+      assertEqual(CountC1, 10);
+      assertEqual(CountC2, 5);
+
+      result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [] } RETURN doc").toArray();
+      assertEqual(result.length, 0);
     },
 
     testTransactionRegistration : function () {
