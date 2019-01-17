@@ -102,12 +102,16 @@ void V8ClientConnection::createConnection() {
       std::shared_ptr<VPackBuilder> parsedBody;
       VPackSlice body;
       if (res->contentType() == fuerte::ContentType::VPack) {
-        body = res->slices()[0];
+        body = res->slice();
       } else {
         parsedBody =
             VPackParser::fromJson(reinterpret_cast<char const*>(res->payload().data()),
                                   res->payload().size());
         body = parsedBody->slice();
+      }
+      if (!body.isObject()) {
+        _lastErrorMessage = "invalid response";
+        _lastHttpReturnCode = 503;
       }
 
       std::string const server =
