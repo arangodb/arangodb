@@ -206,6 +206,7 @@ class MMFilesEngine final : public StorageEngine {
   Result persistLocalDocumentIds(TRI_vocbase_t& vocbase);
 
   /// @brief regiter a recovery helper
+  /// @note not thread-safe on the assumption of static helper registration
   static arangodb::Result registerRecoveryHelper(
     MMFilesRecoveryHelper const& helper
   );
