@@ -79,8 +79,7 @@ std::pair<ExecutionState, ReturnExecutor::Stats> ReturnExecutor::produceRow(Outp
   if (_infos._returnInheritedResults) {
     output.copyRow(inputRow);
   } else {
-    AqlValue val;
-    val = inputRow.getValue(_infos._inputRegisterId);
+    AqlValue const& val = inputRow.getValue(_infos._inputRegisterId);
     TRI_IF_FAILURE("ReturnBlock::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }

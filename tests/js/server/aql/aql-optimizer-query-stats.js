@@ -112,10 +112,10 @@ function optimizerQueryStatsTestSuite () {
       for (let i = 0; i < 1000; ++i) {
         c.insert({ value: i % 10 });
       }
-      let stats = db._query("FOR doc IN " + c.name() + " FILTER doc.value == 3 LIMIT 0, 10 RETURN doc").getExtra().stats;
+      let stats = db._query("FOR doc IN " + c.name() + " FILTER doc.value == 3 LIMIT 0, 10 RETURN doc",{},{fullCount: true}).getExtra().stats;
 
-      assertEqual(1000, stats.scannedFull); // scan as there was no limit
-      assertEqual(84, stats.filtered);      // 84 taken + 10 picked = 94 inspected to find 10 documents, then stop because of limit
+      assertEqual(900, stats.filtered);
+      assertEqual(1000, stats.scannedFull);
       assertEqual(0, stats.scannedIndex);
     },
 

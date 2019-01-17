@@ -80,6 +80,13 @@ InputAqlItemRow AqlItemMatrix::getRow(size_t index) const {
     TRI_ASSERT(mostLikelyIndex <= maxIndex);
     TRI_ASSERT(mostLikelyIndex >= minIndex);
     auto& candidate = _blocks[mostLikelyIndex];
+    LOG_DEVEL << "--------------------------------------------";
+    LOG_DEVEL << "looking for:     " << index;
+    LOG_DEVEL << "mostLikelyIndex: " << mostLikelyIndex;
+    LOG_DEVEL << "minIndex:        " << minIndex;
+    LOG_DEVEL << "maxIndex:        " << maxIndex;
+    LOG_DEVEL << "candidate.fist:  " << candidate.first;
+    LOG_DEVEL << "candidate block size: " << candidate.second->block().size();
     TRI_ASSERT(candidate.second != nullptr);
     if (index < candidate.first) {
       // This block starts after the requested index, go left.
@@ -112,7 +119,7 @@ InputAqlItemRow AqlItemMatrix::getRow(size_t index) const {
       // Please do not bother to shorten the following expression, the
       // compilers are perfectly capable of doing that, and here the correctness
       // is easier to see.
-      size_t const numBlocksRightFromHere = maxIndex < mostLikelyIndex;
+      size_t const numBlocksRightFromHere = maxIndex - mostLikelyIndex;
       mostLikelyIndex += 1 + numBlocksRightFromHere / 2;
     } else {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
