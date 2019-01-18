@@ -583,10 +583,10 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
   builder.close();
 }
 
-Result RocksDBEdgeIndex::insertInternal(transaction::Methods& trx, RocksDBMethods* mthd,
-                                        LocalDocumentId const& documentId,
-                                        velocypack::Slice const& doc,
-                                        Index::OperationMode mode) {
+Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
+                                LocalDocumentId const& documentId,
+                                velocypack::Slice const& doc,
+                                Index::OperationMode mode) {
   Result res;
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
@@ -619,10 +619,10 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods& trx, RocksDBMethod
   return res;
 }
 
-Result RocksDBEdgeIndex::removeInternal(transaction::Methods& trx, RocksDBMethods* mthd,
-                                        LocalDocumentId const& documentId,
-                                        velocypack::Slice const& doc,
-                                        Index::OperationMode mode) {
+Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
+                                LocalDocumentId const& documentId,
+                                velocypack::Slice const& doc,
+                                Index::OperationMode mode) {
   Result res;
 
   // VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
@@ -651,27 +651,6 @@ Result RocksDBEdgeIndex::removeInternal(transaction::Methods& trx, RocksDBMethod
   }
 
   return res;
-}
-
-void RocksDBEdgeIndex::batchInsert(transaction::Methods& trx,
-                                   std::vector<std::pair<LocalDocumentId, VPackSlice>> const& documents,
-                                   std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
-  auto* mthds = RocksDBTransactionState::toMethods(&trx);
-
-  for (auto const& doc : documents) {
-    VPackSlice fromTo = doc.second.get(_directionAttr);
-    TRI_ASSERT(fromTo.isString());
-    auto fromToRef = StringRef(fromTo);
-    RocksDBKeyLeaser key(&trx);
-    key->constructEdgeIndexValue(_objectId, fromToRef, doc.first);
-
-    blackListKey(fromToRef);
-    rocksdb::Status s = mthds->Put(_cf, key.ref(), rocksdb::Slice());
-    if (!s.ok()) {
-      queue->setStatus(rocksutils::convertStatus(s).errorNumber());
-      break;
-    }
-  }
 }
 
 /// @brief checks whether the index supports the condition
