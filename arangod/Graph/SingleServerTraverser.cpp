@@ -34,10 +34,8 @@ using namespace arangodb;
 using namespace arangodb::traverser;
 using namespace arangodb::graph;
 
-SingleServerTraverser::SingleServerTraverser(TraverserOptions* opts,
-                                             transaction::Methods* trx,
-                                             ManagedDocumentResult* mmdr)
-    : Traverser(opts, trx, mmdr) {}
+SingleServerTraverser::SingleServerTraverser(TraverserOptions* opts, transaction::Methods* trx)
+    : Traverser(opts, trx) {}
 
 SingleServerTraverser::~SingleServerTraverser() {}
 

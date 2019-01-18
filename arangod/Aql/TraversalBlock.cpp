@@ -35,6 +35,7 @@
 #include "Enterprise/Cluster/SmartGraphTraverser.h"
 #endif
 #include "Graph/SingleServerTraverser.h"
+#include "Graph/Traverser.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
@@ -80,19 +81,19 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
   if (arangodb::ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
     if (ep->isSmart()) {
-      _traverser.reset(new arangodb::traverser::SmartGraphTraverser(
-          _opts, _mmdr.get(), ep->engines(), _trx->vocbase().name(), _trx));
+      _traverser.reset(
+          new arangodb::traverser::SmartGraphTraverser(_opts, ep->engines(),
+                                                       _trx->vocbase().name(), _trx));
     } else {
 #endif
       _traverser.reset(
-          new arangodb::traverser::ClusterTraverser(_opts, _mmdr.get(), ep->engines(),
+          new arangodb::traverser::ClusterTraverser(_opts, ep->engines(),
                                                     _trx->vocbase().name(), _trx));
 #ifdef USE_ENTERPRISE
     }
 #endif
   } else {
-    _traverser.reset(
-        new arangodb::traverser::SingleServerTraverser(_opts, _trx, _mmdr.get()));
+    _traverser.reset(new arangodb::traverser::SingleServerTraverser(_opts, _trx));
   }
   if (!ep->usesEdgeOutVariable() && !ep->usesPathOutVariable() && _opts->useBreadthFirst &&
       _opts->uniqueVertices == traverser::TraverserOptions::UniquenessLevel::GLOBAL) {

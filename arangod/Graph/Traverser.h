@@ -170,13 +170,13 @@ class Traverser {
   /// @brief Constructor. This is an abstract only class.
   //////////////////////////////////////////////////////////////////////////////
 
-  Traverser(TraverserOptions* opts, transaction::Methods* trx, ManagedDocumentResult*);
+  Traverser(TraverserOptions* opts, transaction::Methods* trx);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Destructor
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual ~Traverser() {}
+  virtual ~Traverser();
 
   void done() { _done = true; }
 
@@ -265,7 +265,7 @@ class Traverser {
 
   TraverserOptions* options() { return _opts; }
 
-  ManagedDocumentResult* mmdr() const { return _mmdr; }
+  ManagedDocumentResult* mmdr() const { return _mmdr.get(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Simple check if there are potentially more paths.
@@ -282,13 +282,13 @@ class Traverser {
 
   void allowOptimizedNeighbors();
 
-  transaction::Methods* trx() const {return _trx;}
+  transaction::Methods* trx() const { return _trx; }
 
  protected:
   /// @brief Outer top level transaction
   transaction::Methods* _trx;
 
-  ManagedDocumentResult* _mmdr;
+  std::unique_ptr<ManagedDocumentResult> _mmdr;
 
   /// @brief internal cursor to enumerate the paths of a graph
   std::unique_ptr<traverser::PathEnumerator> _enumerator;

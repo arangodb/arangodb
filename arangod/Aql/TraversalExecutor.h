@@ -36,6 +36,7 @@ class Traverser;
 
 namespace aql {
 
+class Query;
 class InputAqlItemRow;
 class OutputAqlItemRow;
 class ExecutorInfos;
@@ -51,13 +52,14 @@ class TraversalExecutorInfos : public ExecutorInfos {
                          std::unordered_set<RegisterId> registersToClear,
                          std::unique_ptr<traverser::Traverser>&& traverser,
                          std::unordered_map<OutputName, RegisterId> registerMapping,
-                         std::string const& fixedSource);
+                         std::string const& fixedSource, RegisterId inputRegister,
+                         std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables);
 
   TraversalExecutorInfos() = delete;
 
-  TraversalExecutorInfos(TraversalExecutorInfos&&) = default;
+  TraversalExecutorInfos(TraversalExecutorInfos&&);
   TraversalExecutorInfos(TraversalExecutorInfos const&) = delete;
-  ~TraversalExecutorInfos() = default;
+  ~TraversalExecutorInfos();
 
   traverser::Traverser& traverser();
 
@@ -73,12 +75,20 @@ class TraversalExecutorInfos : public ExecutorInfos {
 
   RegisterId pathRegister() const;
 
+  bool usesFixedSource() const;
+
   std::string const& getFixedSource() const;
+
+  RegisterId getInputRegister() const;
+
+  std::vector<std::pair<Variable const*, RegisterId>> const& filterConditionVariables() const;
 
  private:
   std::unique_ptr<traverser::Traverser> _traverser;
   std::unordered_map<OutputName, RegisterId> _registerMapping;
   std::string const _fixedSource;
+  RegisterId _inputRegister;
+  std::vector<std::pair<Variable const*, RegisterId>> _filterConditionVariables;
 };
 
 /**
@@ -109,6 +119,8 @@ class TraversalExecutor {
    * @return DONE if traverser and remote are both done, HASMORE otherwise
    */
   ExecutionState computeState() const;
+
+  void resetTraverser();
 
  private:
   Infos& _infos;

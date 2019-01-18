@@ -29,6 +29,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -136,10 +137,9 @@ void Traverser::UniqueVertexGetter::reset(arangodb::StringRef const& startVertex
   _returnedVertices.emplace(startVertex);
 }
 
-Traverser::Traverser(arangodb::traverser::TraverserOptions* opts,
-                     transaction::Methods* trx, arangodb::ManagedDocumentResult* mmdr)
+Traverser::Traverser(arangodb::traverser::TraverserOptions* opts, transaction::Methods* trx)
     : _trx(trx),
-      _mmdr(mmdr),
+      _mmdr(new arangodb::ManagedDocumentResult()),
       _startIdBuilder(),
       _pruneNext(false),
       _done(true),
@@ -151,6 +151,8 @@ Traverser::Traverser(arangodb::traverser::TraverserOptions* opts,
     _vertexGetter = std::make_unique<VertexGetter>(this);
   }
 }
+
+Traverser::~Traverser() {}
 
 bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e, StringRef vid,
                                                            uint64_t depth, size_t cursorId) {

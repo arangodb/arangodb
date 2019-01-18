@@ -36,18 +36,25 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear, std::unique_ptr<Traverser>&& traverser,
-    std::unordered_map<OutputName, RegisterId> registerMapping, std::string const& fixedSource)
+    std::unordered_map<OutputName, RegisterId> registerMapping,
+    std::string const& fixedSource, RegisterId inputRegister,
+    std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables)
     : ExecutorInfos(inputRegisters, outputRegisters, nrInputRegisters,
                     nrOutputRegisters, registersToClear),
       _traverser(std::move(traverser)),
       _registerMapping(registerMapping),
-      _fixedSource(fixedSource) {
+      _fixedSource(fixedSource),
+      _inputRegister(inputRegister),
+      _filterConditionVariables(std::move(filterConditionVariables)) {
   TRI_ASSERT(_traverser != nullptr);
   TRI_ASSERT(!_registerMapping.empty());
-  // _fixedSource XOR _inputRegisters
-  TRI_ASSERT((_fixedSource.empty() && !getInputRegisters()->empty()) ||
-             (!_fixedSource.empty() && getInputRegisters()->empty()));
+  // _fixedSource XOR _inputRegister
+  TRI_ASSERT((_fixedSource.empty() && _inputRegister != ExecutionNode::MaxRegisterId) ||
+             (!_fixedSource.empty() && _inputRegister == ExecutionNode::MaxRegisterId));
 }
+
+TraversalExecutorInfos::TraversalExecutorInfos(TraversalExecutorInfos&&) = default;
+TraversalExecutorInfos::~TraversalExecutorInfos() = default;
 
 Traverser& TraversalExecutorInfos::traverser() {
   TRI_ASSERT(_traverser != nullptr);
@@ -81,9 +88,23 @@ RegisterId TraversalExecutorInfos::pathRegister() const {
   return _registerMapping.find(OutputName::PATH)->second;
 }
 
+bool TraversalExecutorInfos::usesFixedSource() const {
+  return !_fixedSource.empty();
+}
+
 std::string const& TraversalExecutorInfos::getFixedSource() const {
-  TRI_ASSERT(!_fixedSource.empty());
+  TRI_ASSERT(usesFixedSource());
   return _fixedSource;
+}
+
+RegisterId TraversalExecutorInfos::getInputRegister() const {
+  TRI_ASSERT(!usesFixedSource());
+  TRI_ASSERT(_inputRegister != ExecutionNode::MaxRegisterId);
+  return _inputRegister;
+}
+
+std::vector<std::pair<Variable const*, RegisterId>> const& TraversalExecutorInfos::filterConditionVariables() const {
+  return _filterConditionVariables;
 }
 
 TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
@@ -101,46 +122,27 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
     if (!_input.isInitialized()) {
       if (_rowState == ExecutionState::DONE) {
         // we are done
+        s.addFiltered(_traverser.getAndResetFilteredPaths());
+        s.addScannedIndex(_traverser.getAndResetReadDocuments());
         return {_rowState, s};
       }
       std::tie(_rowState, _input) = _fetcher.fetchRow();
       if (_rowState == ExecutionState::WAITING) {
         TRI_ASSERT(!_input.isInitialized());
+        s.addFiltered(_traverser.getAndResetFilteredPaths());
+        s.addScannedIndex(_traverser.getAndResetReadDocuments());
         return {_rowState, s};
       }
 
       if (!_input.isInitialized()) {
         // We tried to fetch, but no upstream
         TRI_ASSERT(_rowState == ExecutionState::DONE);
+        s.addFiltered(_traverser.getAndResetFilteredPaths());
+        s.addScannedIndex(_traverser.getAndResetReadDocuments());
         return {_rowState, s};
       }
 
-      // Now reset the traverser
-      auto inReg = _infos.getInputRegisters();
-      if (inReg->empty()) {
-        // Use constant value
-        _traverser.setStartVertex(_infos.getFixedSource());
-      } else {
-        // Only one input possible
-        TRI_ASSERT(inReg->size() == 1);
-        AqlValue const& in = _input.getValue(*(inReg->begin()));
-        if (in.isObject()) {
-          try {
-            _traverser.setStartVertex(
-                _traverser.options()->trx()->extractIdString(in.slice()));
-          } catch (...) {
-            // _id or _key not present... ignore this error and fall through
-          }
-        } else if (in.isString()) {
-          _traverser.setStartVertex(in.slice().copyString());
-        } else {
-          _traverser.options()->query()->registerWarning(
-              TRI_ERROR_BAD_PARAMETER,
-              "Invalid input for traversal: Only "
-              "id strings or objects with _id are "
-              "allowed");
-        }
-      }
+      resetTraverser();
     }
     if (!_traverser.hasMore() || !_traverser.next()) {
       // Nothing more to read, reset input to refetch
@@ -160,11 +162,13 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
                         _traverser.pathToAqlValue(*tmp.builder()));
       }
       s.addFiltered(_traverser.getAndResetFilteredPaths());
-      s.addScannedIndex(_traverser.getAndResetFilteredPaths());
+      s.addScannedIndex(_traverser.getAndResetReadDocuments());
       return {computeState(), s};
     }
   }
 
+  s.addFiltered(_traverser.getAndResetFilteredPaths());
+  s.addScannedIndex(_traverser.getAndResetReadDocuments());
   return {ExecutionState::DONE, s};
 }
 
@@ -173,4 +177,47 @@ ExecutionState TraversalExecutor::computeState() const {
     return ExecutionState::DONE;
   }
   return ExecutionState::HASMORE;
+}
+
+void TraversalExecutor::resetTraverser() {
+  // Initialize the Expressions within the options.
+  // We need to find the variable and read its value here. Everything is
+  // computed right now.
+  auto opts = _traverser.options();
+  opts->clearVariableValues();
+  for (auto const& pair : _infos.filterConditionVariables()) {
+    opts->setVariableValue(pair.first, _input.getValue(pair.second));
+  }
+
+  // Now reset the traverser
+  if (_infos.usesFixedSource()) {
+    auto pos = _infos.getFixedSource().find('/');
+    if (pos == std::string::npos) {
+      _traverser.options()->query()->registerWarning(
+          TRI_ERROR_BAD_PARAMETER,
+          "Invalid input for traversal: "
+          "Only id strings or objects with "
+          "_id are allowed");
+    } else {
+      // Use constant value
+      _traverser.setStartVertex(_infos.getFixedSource());
+    }
+  } else {
+    AqlValue const& in = _input.getValue(_infos.getInputRegister());
+    if (in.isObject()) {
+      try {
+        _traverser.setStartVertex(_traverser.options()->trx()->extractIdString(in.slice()));
+      } catch (...) {
+        // _id or _key not present... ignore this error and fall through
+      }
+    } else if (in.isString()) {
+      _traverser.setStartVertex(in.slice().copyString());
+    } else {
+      _traverser.options()->query()->registerWarning(
+          TRI_ERROR_BAD_PARAMETER,
+          "Invalid input for traversal: Only "
+          "id strings or objects with _id are "
+          "allowed");
+    }
+  }
 }

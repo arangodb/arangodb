@@ -43,7 +43,7 @@ class PathEnumerator;
 
 class SingleServerTraverser final : public Traverser {
  public:
-  SingleServerTraverser(TraverserOptions*, transaction::Methods*, ManagedDocumentResult*);
+  SingleServerTraverser(TraverserOptions*, transaction::Methods*);
 
   ~SingleServerTraverser();
 

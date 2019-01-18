@@ -35,7 +35,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Traverser.h"
 #include "Graph/TraverserOptions.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "tests/Mocks/Servers.h"
 
 #include <velocypack/Buffer.h>
@@ -177,13 +176,12 @@ class GraphEnumerator : public PathEnumerator {
 
 class TraverserHelper : public Traverser {
  public:
-  TraverserHelper(TraverserOptions* opts, transaction::Methods* trx,
-                  ManagedDocumentResult* mdr, TestGraph const& g)
-      : Traverser(opts, trx, mdr), _graph(g) {}
+  TraverserHelper(TraverserOptions* opts, transaction::Methods* trx, TestGraph const& g)
+      : Traverser(opts, trx), _graph(g) {}
 
   void setStartVertex(std::string const& value) override {
     _usedVertexAt.push_back(value);
-    _enumerator.reset(new GraphEnumerator(this, value, _opts, _graph));
+    _enumerator.reset(new GraphEnumerator(this, _usedVertexAt.back(), _opts, _graph));
     _done = false;
   }
 
@@ -240,23 +238,24 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
   traversalOptions.minDepth = 0;
   traversalOptions.maxDepth = 1;
   arangodb::transaction::Methods* trx = fakedQuery->trx();
-  arangodb::ManagedDocumentResult mdr;
+  std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables{};
 
   TestGraph myGraph("v", "e");
-  auto traverserPtr =
-      std::make_unique<TraverserHelper>(&traversalOptions, trx, &mdr, myGraph);
+  auto traverserPtr = std::make_unique<TraverserHelper>(&traversalOptions, trx, myGraph);
   GIVEN("using input as start vertex") {
+    RegisterId inReg = 0;
     RegisterId outReg = 1;
     auto traverser = traverserPtr.get();
     auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{0});
+        std::initializer_list<RegisterId>{inReg});
     auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{1});
+        std::initializer_list<RegisterId>{outReg});
     std::unordered_map<OutputName, RegisterId> registerMapping{{OutputName::VERTEX, outReg}};
 
     std::string const noFixed = "";
     TraversalExecutorInfos infos(inputRegisters, outputRegisters, 1, 2, {},
-                                 std::move(traverserPtr), registerMapping, noFixed);
+                                 std::move(traverserPtr), registerMapping,
+                                 noFixed, inReg, filterConditionVariables);
     auto outputBlockShell =
         std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),
                                                   infos.getOutputRegisters(),
@@ -437,7 +436,8 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
 
     std::string const fixed = "v/1";
     TraversalExecutorInfos infos(inputRegisters, outputRegisters, 1, 2, {},
-                                 std::move(traverserPtr), registerMapping, fixed);
+                                 std::move(traverserPtr), registerMapping, fixed,
+                                 ExecutionNode::MaxRegisterId, filterConditionVariables);
     auto outputBlockShell =
         std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),
                                                   infos.getOutputRegisters(),

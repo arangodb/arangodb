@@ -45,7 +45,7 @@ class ClusterTraverser final : public Traverser {
   friend class ClusterEdgeCursor;
 
  public:
-  ClusterTraverser(TraverserOptions* opts, ManagedDocumentResult* mmdr,
+  ClusterTraverser(TraverserOptions* opts,
                    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
                    std::string const& dbname, transaction::Methods* trx);
 
