@@ -26,8 +26,11 @@
 #include "EnumerateCollectionExecutor.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/Collection.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
 
@@ -51,13 +54,13 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
   EnumerateCollectionStats stats{};
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
-  /*
-  if (!waitForSatellites()) {
+  if (!waitForSatellites(_infos.getEngine(), _infos.getCollection())) {
+    double maxWait = _infos.getEngine()->getQuery()->queryOptions().satelliteSyncWait;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-                                   "collection " + _collection->name() +
+                                   "collection " + _infos.getCollection()->name() +
                                        " did not come into sync in time (" +
                                        std::to_string(maxWait) + ")");
-  }*/
+  }
 
   while (true) {
     std::tie(state, input) = _fetcher.fetchRow();
@@ -88,14 +91,16 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
 
 EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    aql::Collection& collection, ExecutionEngine& engine)
+    std::unordered_set<RegisterId> registersToClear, ExecutionEngine* engine, Collection const* collection)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
                     std::make_shared<std::unordered_set<RegisterId>>(), nrInputRegisters,
                     nrOutputRegisters, std::move(registersToClear)),
-      _collection(collection),
-      _engine(engine) {}
+      _engine(engine),
+      _collection(collection) {}
 
 #ifndef USE_ENTERPRISE
-bool EnumerateCollectionExecutor::waitForSatellites() const { return true; }
+bool EnumerateCollectionExecutor::waitForSatellites(ExecutionEngine* engine,
+                                                    Collection const* collection) const {
+  return true;
+}
 #endif

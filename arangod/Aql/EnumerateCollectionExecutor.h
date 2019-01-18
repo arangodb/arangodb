@@ -45,17 +45,19 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
  public:
   EnumerateCollectionExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                                    std::unordered_set<RegisterId> registersToClear,
-                                   aql::Collection& collection,
-                                   ExecutionEngine& engine);
+                                   ExecutionEngine* engine, Collection const* collection);
 
   EnumerateCollectionExecutorInfos() = delete;
   EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos&&) = default;
   EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos const&) = delete;
   ~EnumerateCollectionExecutorInfos() = default;
 
+  ExecutionEngine* getEngine() { return _engine; };
+  Collection const* getCollection() { return _collection; };
+
  private:
-  aql::Collection& _collection;
-  ExecutionEngine& _engine;
+  ExecutionEngine* _engine;
+  Collection const* _collection;
 };
 
 /**
@@ -81,7 +83,7 @@ class EnumerateCollectionExecutor {
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
  private:
-  bool waitForSatellites() const;
+  bool waitForSatellites(ExecutionEngine* engine, Collection const* collection) const;
   Infos& _infos;
   Fetcher& _fetcher;
 };

@@ -1233,7 +1233,7 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
 
   EnumerateCollectionExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                          getRegisterPlan()->nrRegs[getDepth()],
-                                         getRegsToClear(), &collection, &engine);
+                                         getRegsToClear(), &engine, this->_collection);
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(&engine, this,
                                                                            std::move(infos));
 }
@@ -1902,8 +1902,7 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
   ReturnExecutorInfos infos(inputRegister, 0,
                             getRegisterPlan()->nrRegs[previousNode->getDepth()],
                             getRegisterPlan()->nrRegs[getDepth()],  // if that is set to 1 - infos will complain that there are less output than input registers
-                            getRegsToClear(),
-                            _count,
+                            getRegsToClear(), _count,
                             false /*return inherited was set on return block*/);
   return std::make_unique<ExecutionBlockImpl<ReturnExecutor>>(&engine, this,
                                                               std::move(infos));
