@@ -44,7 +44,6 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-
 SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
   ExecutionState state;
 
@@ -52,15 +51,14 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
   AqlItemBlockManager itemBlockManager(&monitor);
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
   auto outputRegisters = make_shared_unordered_set();
-  auto registersToKeep = make_shared_unordered_set({0});
+  auto registersToKeep = make_shared_unordered_set({0});  // this must be set correctly
   auto outputBlockShell =
       std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),
                                                 outputRegisters, registersToKeep);
 
-  IdExecutorInfos infos(1 /*nrRegs*/, {0} /*toKeep*/, {} /*toClear*/);
+  IdExecutorInfos infos(1 /*nrRegs*/, *registersToKeep /*toKeep*/, {} /*toClear*/);
 
   GIVEN("there are no rows upstream") {
-
     WHEN("the producer does not wait") {
       ConstFetcherHelper fetcher(nullptr);
       IdExecutor testee(fetcher, infos);
@@ -73,7 +71,6 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
         REQUIRE(!result.produced());
       }
     }
-
   }
 
   GIVEN("there are rows in the upstream") {
