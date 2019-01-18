@@ -36,8 +36,8 @@
 #include "Aql/CalculationExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/FilterExecutor.h"
-#include "Aql/ReturnExecutor.h"
 #include "Aql/IdExecutor.h"
+#include "Aql/ReturnExecutor.h"
 #include "Aql/SortExecutor.h"
 
 #include "Aql/SortRegister.h"
@@ -100,7 +100,6 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
   // won't help much because it's unclear whether the value will be correct.
   ExecutionState state = ExecutionState::HASMORE;
   ExecutorStats executorStats{};
-  std::unique_ptr<OutputAqlItemRow> row;  // holds temporary rows
 
   TRI_ASSERT(atMost > 0);
 
@@ -215,10 +214,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor>::initializeCurs
   _rowFetcher.~Fetcher();
   new (&_rowFetcher) Fetcher(_blockFetcher);
 
-  // destroy and re-create the Executor
-  _executor.~IdExecutor();
-  new (&_executor) IdExecutor(_rowFetcher, _infos);
-
   std::unique_ptr<AqlItemBlock> block;
   if (items != nullptr) {
     block = std::unique_ptr<AqlItemBlock>(
@@ -230,6 +225,10 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor>::initializeCurs
   InputAqlItemBlockShell shell(_engine->itemBlockManager(), std::move(block),
                                _executor._infos.getInputRegisters());
   _rowFetcher.injectBlock(std::make_shared<InputAqlItemBlockShell>(std::move(shell)));
+
+  // destroy and re-create the Executor
+  _executor.~IdExecutor();
+  new (&_executor) IdExecutor(_rowFetcher, _infos);
 
   return ExecutionBlock::initializeCursor(items, pos);
 }

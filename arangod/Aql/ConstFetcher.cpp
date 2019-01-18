@@ -31,6 +31,9 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+ConstFetcher::ConstFetcher()
+    :  _currentRow{CreateInvalidInputRowHint{}} {}
+
 void ConstFetcher::injectBlock(std::shared_ptr<InputAqlItemBlockShell> block){
     _currentBlock = std::move(block);
     _rowIndex = 0;
@@ -38,51 +41,28 @@ void ConstFetcher::injectBlock(std::shared_ptr<InputAqlItemBlockShell> block){
 }
 
 std::pair<ExecutionState, InputAqlItemRow> ConstFetcher::fetchRow() {
-  // Fetch a new block iff necessary
   if (_currentBlock == nullptr || !indexIsValid()) {
     return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
-    std::terminate(); // this can not happen
   }
 
   ExecutionState rowState;
 
-  if (_currentBlock == nullptr) {
-    TRI_ASSERT(_upstreamState == ExecutionState::DONE);
-    _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  TRI_ASSERT(_currentBlock);
+  _currentRow = InputAqlItemRow{_currentBlock, _rowIndex};
+
+  if (isLastRowInBlock() ) {
     rowState = ExecutionState::DONE;
   } else {
-    TRI_ASSERT(_currentBlock);
-    _currentRow = InputAqlItemRow{_currentBlock, _rowIndex};
-
-    TRI_ASSERT(_upstreamState != ExecutionState::WAITING);
-    if (isLastRowInBlock() && _upstreamState == ExecutionState::DONE) {
-      rowState = ExecutionState::DONE;
-    } else {
-      rowState = ExecutionState::HASMORE;
-    }
-
-    _rowIndex++;
+    rowState = ExecutionState::HASMORE;
   }
+
+  _rowIndex++;
 
   return {rowState, _currentRow};
 }
 
 ConstFetcher::ConstFetcher(BlockFetcher& executionBlock)
     : _currentRow{CreateInvalidInputRowHint{}} {}
-
-//std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
-//ConstFetcher::fetchBlock() {
-//  auto res = _blockFetcher->fetchBlock();
-//
-//  _upstreamState = res.first;
-//
-//  return res;
-//}
-
-RegisterId ConstFetcher::getNrInputRegisters() const {
-  std::terminate();
-  //return _blockFetcher->getNrInputRegisters();
-}
 
 bool ConstFetcher::indexIsValid() {
   return _currentBlock != nullptr && _rowIndex + 1 <= _currentBlock->block().size();
@@ -98,6 +78,8 @@ size_t ConstFetcher::getRowIndex() {
   return _rowIndex;
 }
 
+//RegisterId ConstFetcher::getNrInputRegisters() const {
+//  std::terminate();
+//  //return _blockFetcher->getNrInputRegisters();
+//}
 
-ConstFetcher::ConstFetcher()
-    :  _currentRow{CreateInvalidInputRowHint{}} {}

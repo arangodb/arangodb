@@ -77,15 +77,6 @@ class ConstFetcher {
  private:
 
   /**
-   * @brief Holds state returned by the last fetchBlock() call.
-   *        This is similar to ExecutionBlock::_upstreamState, but can also be
-   *        WAITING.
-   *        Part of the Fetcher, and may be moved if the Fetcher implementations
-   *        are moved into separate classes.
-   */
-  ExecutionState _upstreamState;
-
-  /**
    * @brief Input block currently in use. Used for memory management by the
    *        ConstFetcher. May be moved if the Fetcher implementations
    *        are moved into separate classes.
@@ -107,23 +98,9 @@ class ConstFetcher {
   InputAqlItemRow _currentRow;
 
  private:
-  // /**
-  //  * @brief Delegates to ExecutionBlock::fetchBlock()
-  //  */
-  // std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
-  // fetchBlock();
-
-  /**
-   * @brief Delegates to ExecutionBlock::getNrInputRegisters()
-   */
-  RegisterId getNrInputRegisters() const;
-
   bool indexIsValid();
-
   bool isLastRowInBlock();
-
   size_t getRowIndex();
-
 };
 
 }  // namespace aql

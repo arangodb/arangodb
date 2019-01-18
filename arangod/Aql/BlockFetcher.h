@@ -91,7 +91,6 @@ class BlockFetcher {
   }
 
   ExecutionBlock& upstreamBlock() {
-    LOG_DEVEL << "deps " << _dependencies.size();
     TRI_ASSERT(_dependencies.size() == 1);
     return *_dependencies[0];
   }
