@@ -32,6 +32,7 @@
 #include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/TraversalExecutor.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Graph/Traverser.h"
 #include "Graph/TraverserOptions.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -125,10 +126,10 @@ class GraphEnumerator : public PathEnumerator {
                   TraverserOptions* opts, TestGraph const& g)
       : PathEnumerator(traverser, startVertex, opts),
         _graph(g),
-        _currentDepth{},
-        _nextDepth{StringRef(startVertex)},
         _idx(0),
-        _depth(0) {}
+        _depth(0),
+        _currentDepth{},
+        _nextDepth{StringRef(startVertex)} {}
 
   ~GraphEnumerator() {}
 
@@ -245,12 +246,13 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
   auto traverserPtr =
       std::make_unique<TraverserHelper>(&traversalOptions, trx, &mdr, myGraph);
 
+  RegisterId outReg = 1;
   auto traverser = traverserPtr.get();
   auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
       std::initializer_list<RegisterId>{0});
   auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
       std::initializer_list<RegisterId>{1});
-  std::unordered_map<OutputName, RegisterId> registerMapping{{OutputName::VERTEX, 1}};
+  std::unordered_map<OutputName, RegisterId> registerMapping{{OutputName::VERTEX, outReg}};
 
   TraversalExecutorInfos infos(inputRegisters, outputRegisters, 1, 2, {},
                                std::move(traverserPtr), registerMapping);
@@ -407,7 +409,16 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
           REQUIRE(traverser->startVertexUsedAt(1) == "v/2");
           REQUIRE(traverser->startVertexUsedAt(2) == "v/3");
 
-          // TODO validate result v/2, v/3, v/1
+          std::vector<std::string> expectedResult{"v/2", "v/3", "v/1"};
+          auto block = row.stealBlock();
+          for (std::size_t index = 0; index < 3; index++) {
+            AqlValue value = block->getValue(index, outReg);
+            REQUIRE(value.isObject());
+            REQUIRE(arangodb::basics::VelocyPackHelper::compare(
+                        value.slice(),
+                        myGraph.getVertexData(StringRef(expectedResult.at(index))),
+                        false) == 0);
+          }
         }
       }
     }
