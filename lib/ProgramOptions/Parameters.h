@@ -25,6 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/fpconv.h"
 
 #include <velocypack/Builder.h>
@@ -38,10 +39,9 @@
 namespace arangodb {
 namespace options {
 
-// convert a string into a number, base version for signed integer types
+// convert a string into a number, base version for signed or unsigned integer types
 template <typename T>
-inline typename std::enable_if<std::is_signed<T>::value, T>::type toNumber(std::string value,
-                                                                           T base) {
+inline T toNumber(std::string value, T base) {
   auto n = value.size();
   int64_t m = 1;
   int64_t d = 1;
@@ -93,91 +93,22 @@ inline typename std::enable_if<std::is_signed<T>::value, T>::type toNumber(std::
       m = 1000 * 1000 * 1000;
       value = value.substr(0, n - 1);
     } else if (suffix == "%") {
-      m = static_cast<int64_t>(base);
+      m = static_cast<T>(base);
       d = 100;
       value = value.substr(0, n - 1);
     }
   }
-  auto v = static_cast<int64_t>(std::stoll(value));
-  if (v < static_cast<int64_t>((std::numeric_limits<T>::min)()) ||
-      v > static_cast<int64_t>((std::numeric_limits<T>::max)())) {
-    throw std::out_of_range(value);
-  }
-  return static_cast<T>(v * m / d);
-}
-
-// convert a string into a number, base version for unsigned integer types
-template <typename T>
-inline typename std::enable_if<std::is_unsigned<T>::value, T>::type toNumber(std::string value,
-                                                                             T base) {
-  auto n = value.size();
-  uint64_t m = 1;
-  uint64_t d = 1;
-  bool seen = false;
-  if (n > 3) {
-    std::string suffix = value.substr(n - 3);
-
-    if (suffix == "kib" || suffix == "KiB") {
-      m = 1024;
-      value = value.substr(0, n - 2);
-      seen = true;
-    } else if (suffix == "mib" || suffix == "MiB") {
-      m = 1024 * 1024;
-      value = value.substr(0, n - 2);
-      seen = true;
-    } else if (suffix == "gib" || suffix == "GiB") {
-      m = 1024 * 1024 * 1024;
-      value = value.substr(0, n - 2);
-      seen = true;
-    }
-  }
-  if (!seen && n > 2) {
-    std::string suffix = value.substr(n - 2);
-
-    if (suffix == "kb" || suffix == "KB") {
-      m = 1000;
-      value = value.substr(0, n - 2);
-      seen = true;
-    } else if (suffix == "mb" || suffix == "MB") {
-      m = 1000 * 1000;
-      value = value.substr(0, n - 2);
-      seen = true;
-    } else if (suffix == "gb" || suffix == "GB") {
-      m = 1000 * 1000 * 1000;
-      value = value.substr(0, n - 2);
-      seen = true;
-    }
-  }
-  if (!seen && n > 1) {
-    std::string suffix = value.substr(n - 1);
-
-    if (suffix == "k" || suffix == "K") {
-      m = 1000;
-      value = value.substr(0, n - 1);
-    } else if (suffix == "m" || suffix == "M") {
-      m = 1000 * 1000;
-      value = value.substr(0, n - 1);
-    } else if (suffix == "g" || suffix == "G") {
-      m = 1000 * 1000 * 1000;
-      value = value.substr(0, n - 1);
-    } else if (suffix == "%") {
-      m = static_cast<uint64_t>(base);
-      d = 100;
-      value = value.substr(0, n - 1);
-    }
-  }
+  
   char const* p = value.data();
   char const* e = p + value.size();
-  // skip whitespace
+  // skip leading whitespace
   while (p < e && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) {
     ++p;
   }
-  if (p < e && *p == '-') {
-    throw std::out_of_range(value);
-  }
-  auto v = static_cast<uint64_t>(std::stoull(value));
-  if (v < static_cast<uint64_t>((std::numeric_limits<T>::min)()) ||
-      v > static_cast<uint64_t>((std::numeric_limits<T>::max)())) {
+
+  bool valid = true;
+  auto v = arangodb::NumberUtils::atoi<T>(p, e, valid);
+  if (!valid) {
     throw std::out_of_range(value);
   }
   return static_cast<T>(v * m / d);
@@ -269,7 +200,7 @@ struct BooleanParameter : public Parameter {
           (value == "true" || value == "on" || value == "1" || value == "yes");
       return "";
     }
-    return "invalid value. expecting 'true' or 'false'";
+    return "invalid value for type " + this->name() + ". expecting 'true' or 'false'";
   }
 
   std::string typeDescription() const override {
@@ -309,7 +240,7 @@ struct AtomicBooleanParameter : public Parameter {
       ptr->store(value == "true" || value == "on" || value == "1");
       return "";
     }
-    return "invalid value. expecting 'true' or 'false'";
+    return "invalid value for type " + this->name() + ". expecting 'true' or 'false'";
   }
 
   std::string typeDescription() const override {
@@ -341,7 +272,7 @@ struct NumericParameter : public Parameter {
       *ptr = v;
       return "";
     } catch (...) {
-      return "invalid numeric value '" + value + "'";
+      return "invalid numeric value '" + value + "' for type " + this->name();
     }
   }
 
@@ -434,7 +365,7 @@ struct BoundedParameter : public T {
         return "";
       }
     } catch (...) {
-      return "invalid numeric value '" + value + "'";
+      return "invalid numeric value '" + value + "' for type " + this->name();
     }
     return "number '" + value + "' out of allowed range (" +
            std::to_string(minValue) + " - " + std::to_string(maxValue) + ")";
