@@ -37,7 +37,7 @@
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/ReturnExecutor.h"
-#include "Aql/SingletonExecutor.h"
+#include "Aql/IdExecutor.h"
 #include "Aql/SortExecutor.h"
 
 #include "Aql/SortRegister.h"
@@ -191,7 +191,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   _executor.~Executor();
   new (&_executor) Executor(_rowFetcher, _infos);
   // // use this with c++17 instead of specialisation below
-  // if constexpr (std::is_same_v<Executor, SingletonExecutor>) {
+  // if constexpr (std::is_same_v<Executor, IdExecutor>) {
   //   if (items != nullptr) {
   //     _executor._inputRegisterValues.reset(
   //         items->slice(pos, *(_executor._infos.registersToKeep())));
@@ -203,7 +203,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
 
 // TODO -- remove this when cpp 17 becomes available
 template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<SingletonExecutor>::initializeCursor(
+std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor>::initializeCursor(
     AqlItemBlock* items, size_t pos) {
   // destroy and re-create the BlockFetcher
   _blockFetcher.~BlockFetcher();
@@ -216,8 +216,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SingletonExecutor>::initial
   new (&_rowFetcher) Fetcher(_blockFetcher);
 
   // destroy and re-create the Executor
-  _executor.~SingletonExecutor();
-  new (&_executor) SingletonExecutor(_rowFetcher, _infos);
+  _executor.~IdExecutor();
+  new (&_executor) IdExecutor(_rowFetcher, _infos);
 
   std::unique_ptr<AqlItemBlock> block;
   if (items != nullptr) {
@@ -250,5 +250,5 @@ template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<SingletonExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;

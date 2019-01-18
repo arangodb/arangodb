@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-#include "SingletonExecutor.h"
+#include "IdExecutor.h"
 #include "Aql/AqlValue.h"
 #include "Aql/OutputAqlItemRow.h"
 
@@ -30,13 +30,13 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SingletonExecutor::SingletonExecutor(Fetcher& fetcher, ExecutorInfos& infos)
+IdExecutor::IdExecutor(Fetcher& fetcher, ExecutorInfos& infos)
     : _infos(infos), _fetcher(fetcher), _done(false) {};
-SingletonExecutor::~SingletonExecutor() = default;
+IdExecutor::~IdExecutor() = default;
 
-std::pair<ExecutionState, SingletonExecutor::Stats> SingletonExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, IdExecutor::Stats> IdExecutor::produceRow(OutputAqlItemRow& output) {
   ExecutionState state;
-  SingletonExecutor::Stats stats;
+  IdExecutor::Stats stats;
 
   if(_done){
     return {ExecutionState::DONE, std::move(stats)};

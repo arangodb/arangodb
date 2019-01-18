@@ -223,6 +223,7 @@ SET(ARANGOD_SOURCES
   Aql/Functions.cpp
   Aql/GraphNode.cpp
   Aql/Graphs.cpp
+  Aql/IdExecutor.cpp
   Aql/IndexBlock.cpp
   Aql/IndexNode.cpp
   Aql/InputAqlItemRow.cpp
@@ -260,7 +261,6 @@ SET(ARANGOD_SOURCES
   Aql/ShortestPathBlock.cpp
   Aql/ShortestPathNode.cpp
   Aql/SingleRowFetcher.cpp
-  Aql/SingletonExecutor.cpp
   Aql/SortCondition.cpp
   Aql/SortExecutor.cpp
   Aql/SortNode.cpp

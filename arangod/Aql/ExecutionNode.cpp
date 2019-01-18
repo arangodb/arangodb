@@ -44,7 +44,7 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/Query.h"
-#include "Aql/SingletonExecutor.h"
+#include "Aql/IdExecutor.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
@@ -1188,7 +1188,7 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
                             getRegisterPlan()->nrRegs[getDepth()],
                             getRegisterPlan()->nrRegs[getDepth()],
                             getRegsToClear());
-  return std::make_unique<ExecutionBlockImpl<SingletonExecutor>>(&engine, this,
+  return std::make_unique<ExecutionBlockImpl<IdExecutor>>(&engine, this,
                                                               std::move(infos));
 }
 

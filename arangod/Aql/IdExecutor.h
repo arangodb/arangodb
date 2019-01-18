@@ -20,8 +20,8 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SINGLETON_EXECUTOR_H
-#define ARANGOD_AQL_SINGLETON_EXECUTOR_H
+#ifndef ARANGOD_AQL_ID_EXECUTOR_H
+#define ARANGOD_AQL_ID_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
@@ -45,7 +45,7 @@ class NoStats;
 class OutputAqlItemRow;
 struct SortRegister;
 
-class SingletonExecutor {
+class IdExecutor {
   template <typename T>
   friend class ExecutionBlockImpl;
 
@@ -54,8 +54,8 @@ class SingletonExecutor {
   using Infos = ExecutorInfos;
   using Stats = NoStats;
 
-  SingletonExecutor(Fetcher& fetcher, ExecutorInfos&);
-  ~SingletonExecutor();
+  IdExecutor(Fetcher& fetcher, ExecutorInfos&);
+  ~IdExecutor();
 
   /**
    * @brief produce the next Row of Aql Values.
