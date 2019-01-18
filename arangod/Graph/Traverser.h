@@ -282,6 +282,8 @@ class Traverser {
 
   void allowOptimizedNeighbors();
 
+  transaction::Methods* trx() const {return _trx;}
+
  protected:
   /// @brief Outer top level transaction
   transaction::Methods* _trx;

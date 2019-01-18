@@ -41,13 +41,20 @@ class OutputAqlItemRow;
 class ExecutorInfos;
 class SingleRowFetcher;
 
+enum OutputName {
+  VERTEX,
+  EDGE,
+  PATH
+};
+
 class TraversalExecutorInfos : public ExecutorInfos {
   public:
   TraversalExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
                          std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
                          RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                          std::unordered_set<RegisterId> registersToClear,
-                         std::unique_ptr<traverser::Traverser>&& traverser);
+                         std::unique_ptr<traverser::Traverser>&& traverser,
+                         std::unordered_map<OutputName, RegisterId> registerMapping);
  
   TraversalExecutorInfos() = delete;
 
@@ -57,8 +64,21 @@ class TraversalExecutorInfos : public ExecutorInfos {
 
   traverser::Traverser& traverser();
 
+  bool useVertexOutput() const;
+
+  RegisterId vertexRegister() const;
+
+  bool useEdgeOutput() const;
+
+  RegisterId edgeRegister() const;
+
+  bool usePathOutput() const;
+
+  RegisterId pathRegister() const;
+
   private:
     std::unique_ptr<traverser::Traverser> _traverser;
+    std::unordered_map<OutputName, RegisterId> _registerMapping;
 };
 
 /**
@@ -82,6 +102,13 @@ class TraversalExecutor {
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+
+ private:
+  /**
+   * @brief compute the return state
+   * @return DONE if traverser and remote are both done, HASMORE otherwise
+   */
+  ExecutionState computeState() const;
 
  private:
   Infos& _infos;
