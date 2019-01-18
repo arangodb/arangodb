@@ -64,12 +64,14 @@ and restarted as needed.
 ### DBServers
 
 DBservers are the ones where the data is actually hosted. They
-host shards of data and using synchronous replication a DBServer may
-either be leader or follower for a shard.
+host shards of data and using synchronous replication a _DBServer_ may
+either be _leader_ or _follower_ for a shard.
 
 They should not be accessed from the outside but indirectly through the
 _Coordinators_. They may also execute queries in part or as a whole when
 asked by a _Coordinator_.
+
+See [below](#sharding) for more information on sharding.
 
 Many sensible configurations
 ----------------------------
@@ -97,6 +99,17 @@ which are suitable for different usage scenarios:
 
 As you acn see, the _Coordinator_ layer can be scaled and deployed independently
 from the _DBServer_ layer.
+
+{% hint 'warning' %}
+It is a best practice and a reccomended approach to not run _Agent_ instances
+on the same machines where _DBServer_ instances are running.
+
+When deploying using the tool [_Starter_](../../../Deployment/ArangoDBStarter/README.md)
+this can be achived by using the options `--cluster.start-dbserver=false` and
+`--cluster.start-coordinator=false` on the first three machines where the _Starter_
+is started, if the desidered _Agency_ _size_ is 3, or on the first 5 machines
+if the desidered _Agency_ _size_ is 5.
+{% endhint %}
 
 Cluster ID
 ----------
