@@ -51,7 +51,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   // quick exit for limit == 0
-  if (_infos.getLimit() == 0 && !_infos.isFullCountEnabled()) {
+  if (_counter == _infos.getLimit() && !_infos.isFullCountEnabled()) {
     return {ExecutionState::DONE, stats};
   }
 
@@ -79,11 +79,10 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
 
     if (_counter < _infos.getLimit()) {
       output.copyRow(input);
+      _counter++;
       if (_infos.getQueryDepth() == 0) {
         stats.incrFullCount();
       }
-
-      _counter++;
 
       if (_counter == _infos.getLimit() && !_infos.isFullCountEnabled()) {
         return {ExecutionState::DONE, stats};
