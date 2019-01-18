@@ -203,14 +203,10 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     // build simple chain
     // Singleton <- MockBlock
     MockNode<arangodb::aql::SingletonNode> rootNode;
-    // ExecutorInfos infos(make_shared_unordered_set(), make_shared_unordered_set(),
-    //                          getRegisterPlan()->nrRegs[getDepth()],
-    //                          getRegisterPlan()->nrRegs[getDepth()],
-    //                          getRegsToClear());
 
-    arangodb::aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
-                                       arangodb::aql::make_shared_unordered_set(),
-                                       rootNode.getDepth(), rootNode.getDepth(), {});
+
+
+    arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/, rootNode.getRegsToClear() /*toClear*/);
     arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
         query.engine(), &rootNode, std::move(infos));
 
@@ -259,10 +255,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     // build simple chain
     // Singleton <- MockBlock
     MockNode<arangodb::aql::SingletonNode> rootNode;
-
-    arangodb::aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
-                                       arangodb::aql::make_shared_unordered_set(),
-                                       rootNode.getDepth(), rootNode.getDepth(), {});
+    arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/, rootNode.getRegsToClear() /*toClear*/);
     arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
         query.engine(), &rootNode, std::move(infos));
 
@@ -308,10 +301,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     // build simple chain
     // Singleton <- MockBlock
     MockNode<arangodb::aql::SingletonNode> rootNode;
-
-    arangodb::aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
-                                       arangodb::aql::make_shared_unordered_set(),
-                                       rootNode.getDepth(), rootNode.getDepth(), {});
+    arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/, rootNode.getRegsToClear() /*toClear*/);
     arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
         query.engine(), &rootNode, std::move(infos));
 
@@ -365,9 +355,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     // build chain:
     // Singleton <- MockBlock0 <- MockBlock1
     MockNode<arangodb::aql::SingletonNode> rootNode;
-    arangodb::aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
-                                       arangodb::aql::make_shared_unordered_set(),
-                                       rootNode.getDepth(), rootNode.getDepth(), {});
+    arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/, rootNode.getRegsToClear() /*toClear*/);
     arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
         query.engine(), &rootNode, std::move(infos));
 
@@ -429,9 +417,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     // build chain:
     // Singleton <- MockBlock0 <- MockBlock1
     MockNode<arangodb::aql::SingletonNode> rootNode;
-    arangodb::aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
-                                       arangodb::aql::make_shared_unordered_set(),
-                                       rootNode.getDepth(), rootNode.getDepth(), {});
+    arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/, rootNode.getRegsToClear() /*toClear*/);
     arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
         query.engine(), &rootNode, std::move(infos));
 
@@ -491,9 +477,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     // build chain:
     // Singleton <- MockBlock0 <- MockBlock1
     MockNode<arangodb::aql::SingletonNode> rootNode;
-    arangodb::aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
-                                       arangodb::aql::make_shared_unordered_set(),
-                                       rootNode.getDepth(), rootNode.getDepth(), {});
+    arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/, rootNode.getRegsToClear() /*toClear*/);
     arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
         query.engine(), &rootNode, std::move(infos));
 
