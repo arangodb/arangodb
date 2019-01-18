@@ -444,9 +444,7 @@ bool MMFilesWalRecoverState::InitialScanMarker(MMFilesMarker const* marker, void
 bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
                                           void* data, MMFilesDatafile* datafile) {
   MMFilesWalRecoverState* state = reinterpret_cast<MMFilesWalRecoverState*>(data);
-  auto visitHelpers = std::shared_ptr<MMFilesWalRecoverState>(
-    state,
-    [marker](MMFilesWalRecoverState* state) noexcept ->void {
+  auto visitRecoveryHelpers = [marker, state]()->void { // ensure recovery helpers are called
       if (!state || !state->canContinue() || !marker) {
         return; // ignore invalid state or unset marker
       }
@@ -471,8 +469,8 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
       } catch(...) {
         ++state->errorCount;
       }
-    }
-  );
+  };
+  TRI_DEFER(visitRecoveryHelpers);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
