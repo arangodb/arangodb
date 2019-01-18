@@ -35,7 +35,7 @@ IdExecutorInfos::IdExecutorInfos(RegisterId nrInOutRegisters,
                                  std::unordered_set<RegisterId> registersToClear)
     : ExecutorInfos(make_shared_unordered_set(), make_shared_unordered_set(),
                     nrInOutRegisters, nrInOutRegisters,
-                    std::move(registersToClear),std::move(toKeep)) {}
+                    std::move(registersToClear), std::move(toKeep)) {}
 
 IdExecutor::IdExecutor(Fetcher& fetcher, IdExecutorInfos& infos)
     : _infos(infos), _fetcher(fetcher){};
@@ -50,21 +50,25 @@ std::pair<ExecutionState, IdExecutor::Stats> IdExecutor::produceRow(OutputAqlIte
 
   if (state == ExecutionState::WAITING) {
     TRI_ASSERT(!inputRow);
-    //LOG_DEVEL << this << " WAITING " << bla;
     return {state, std::move(stats)};
   }
 
   if (!inputRow) {
     TRI_ASSERT(state == ExecutionState::DONE);
-    //LOG_DEVEL << this << " DONE " << bla;
     return {state, std::move(stats)};
   }
 
-  TRI_ASSERT(state == ExecutionState::HASMORE || state == ExecutionState::DONE);
-  output.copyRow(inputRow, /*ignore registers that should be kept but are missing in the input row*/ true);
+  TRI_IF_FAILURE("SingletonBlock::getOrSkipSome") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
-  //LOG_DEVEL_IF(state == ExecutionState::DONE) << this << " DONE " << bla;
-  //LOG_DEVEL_IF(state == ExecutionState::HASMORE) << this << " HASMORE " << bla;
+  TRI_ASSERT(state == ExecutionState::HASMORE || state == ExecutionState::DONE);
+  output.copyRow(inputRow,
+                 /*ignore registers that should be kept but are missing in the input row*/ true);
+
+  TRI_IF_FAILURE("SingletonBlock::getOrSkipSomeSet") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
   return {state, std::move(stats)};
 }
