@@ -245,179 +245,362 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
   TestGraph myGraph("v", "e");
   auto traverserPtr =
       std::make_unique<TraverserHelper>(&traversalOptions, trx, &mdr, myGraph);
+  GIVEN("using input as start vertex") {
+    RegisterId outReg = 1;
+    auto traverser = traverserPtr.get();
+    auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{0});
+    auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{1});
+    std::unordered_map<OutputName, RegisterId> registerMapping{{OutputName::VERTEX, outReg}};
 
-  RegisterId outReg = 1;
-  auto traverser = traverserPtr.get();
-  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
-      std::initializer_list<RegisterId>{0});
-  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
-      std::initializer_list<RegisterId>{1});
-  std::unordered_map<OutputName, RegisterId> registerMapping{{OutputName::VERTEX, outReg}};
+    std::string const noFixed = "";
+    TraversalExecutorInfos infos(inputRegisters, outputRegisters, 1, 2, {},
+                                 std::move(traverserPtr), registerMapping, noFixed);
+    auto outputBlockShell =
+        std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),
+                                                  infos.getOutputRegisters(),
+                                                  infos.registersToKeep());
 
-  TraversalExecutorInfos infos(inputRegisters, outputRegisters, 1, 2, {},
-                               std::move(traverserPtr), registerMapping);
-  auto outputBlockShell =
-      std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),
-                                                infos.getOutputRegisters(),
-                                                infos.registersToKeep());
+    GIVEN("there are no rows upstream") {
+      VPackBuilder input;
 
-  GIVEN("there are no rows upstream") {
-    VPackBuilder input;
+      WHEN("the producer does not wait") {
+        SingleRowFetcherHelper fetcher(input.steal(), false);
+        TraversalExecutor testee(fetcher, infos);
+        TraversalStats stats{};
 
-    WHEN("the producer does not wait") {
-      SingleRowFetcherHelper fetcher(input.steal(), false);
-      TraversalExecutor testee(fetcher, infos);
-      TraversalStats stats{};
-
-      THEN("the executor should return DONE and no result") {
-        OutputAqlItemRow result(std::move(outputBlockShell));
-        std::tie(state, stats) = testee.produceRow(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!result.produced());
-      }
-    }
-
-    WHEN("the producer waits") {
-      SingleRowFetcherHelper fetcher(input.steal(), true);
-      TraversalExecutor testee(fetcher, infos);
-      TraversalStats stats{};
-
-      THEN("the executor should first return WAIT and no result") {
-        OutputAqlItemRow result(std::move(outputBlockShell));
-        std::tie(state, stats) = testee.produceRow(result);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result.produced());
-        REQUIRE(stats.getFiltered() == 0);
-
-        AND_THEN("the executor should return DONE and no result") {
+        THEN("the executor should return DONE and no result") {
+          OutputAqlItemRow result(std::move(outputBlockShell));
           std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!result.produced());
+        }
+      }
+
+      WHEN("the producer waits") {
+        SingleRowFetcherHelper fetcher(input.steal(), true);
+        TraversalExecutor testee(fetcher, infos);
+        TraversalStats stats{};
+
+        THEN("the executor should first return WAIT and no result") {
+          OutputAqlItemRow result(std::move(outputBlockShell));
+          std::tie(state, stats) = testee.produceRow(result);
+          REQUIRE(state == ExecutionState::WAITING);
+          REQUIRE(!result.produced());
           REQUIRE(stats.getFiltered() == 0);
+
+          AND_THEN("the executor should return DONE and no result") {
+            std::tie(state, stats) = testee.produceRow(result);
+            REQUIRE(state == ExecutionState::DONE);
+            REQUIRE(!result.produced());
+            REQUIRE(stats.getFiltered() == 0);
+          }
+        }
+      }
+    }
+
+    GIVEN("there are rows in the upstream") {
+      myGraph.addVertex("1");
+      myGraph.addVertex("2");
+      myGraph.addVertex("3");
+      auto input = VPackParser::fromJson("[ [\"v/1\"], [\"v/2\"], [\"v/3\"] ]");
+
+      WHEN("the producer does not wait") {
+        SingleRowFetcherHelper fetcher(input->steal(), false);
+        TraversalExecutor testee(fetcher, infos);
+        TraversalStats stats{};
+
+        WHEN("no edges are connected to vertices") {
+          THEN("the executor should fetch all rows, but not return") {
+            OutputAqlItemRow row(std::move(outputBlockShell));
+
+            std::tie(state, stats) = testee.produceRow(row);
+            REQUIRE(state == ExecutionState::DONE);
+            REQUIRE(stats.getFiltered() == 0);
+            REQUIRE(!row.produced());
+            REQUIRE(fetcher.isDone());
+            REQUIRE(fetcher.nrCalled() == 3);
+
+            REQUIRE(traverser->startVertexUsedAt(0) == "v/1");
+            REQUIRE(traverser->startVertexUsedAt(1) == "v/2");
+            REQUIRE(traverser->startVertexUsedAt(2) == "v/3");
+
+            AND_THEN("The output should stay stable") {
+              std::tie(state, stats) = testee.produceRow(row);
+              REQUIRE(state == ExecutionState::DONE);
+              REQUIRE(stats.getFiltered() == 0);
+              REQUIRE(!row.produced());
+              REQUIRE(fetcher.isDone());
+              REQUIRE(fetcher.nrCalled() == 3);
+            }
+          }
+        }
+      }
+
+      WHEN("the producer waits") {
+        SingleRowFetcherHelper fetcher(input->steal(), true);
+        TraversalExecutor testee(fetcher, infos);
+        TraversalStats stats{};
+
+        WHEN("no edges are connected to vertices") {
+          THEN("the executor should fetch all rows, but not return") {
+            OutputAqlItemRow row(std::move(outputBlockShell));
+
+            for (size_t i = 0; i < 3; ++i) {
+              // We expect to wait 3 times
+              std::tie(state, stats) = testee.produceRow(row);
+              REQUIRE(state == ExecutionState::WAITING);
+            }
+            std::tie(state, stats) = testee.produceRow(row);
+            REQUIRE(state == ExecutionState::DONE);
+            REQUIRE(stats.getFiltered() == 0);
+            REQUIRE(!row.produced());
+            REQUIRE(fetcher.isDone());
+            REQUIRE(fetcher.nrCalled() == 3);
+
+            REQUIRE(traverser->startVertexUsedAt(0) == "v/1");
+            REQUIRE(traverser->startVertexUsedAt(1) == "v/2");
+            REQUIRE(traverser->startVertexUsedAt(2) == "v/3");
+
+            AND_THEN("The output should stay stable") {
+              std::tie(state, stats) = testee.produceRow(row);
+              REQUIRE(state == ExecutionState::DONE);
+              REQUIRE(stats.getFiltered() == 0);
+              REQUIRE(!row.produced());
+              REQUIRE(fetcher.isDone());
+              // WAITING is not part of called counts
+              REQUIRE(fetcher.nrCalled() == 3);
+            }
+          }
+        }
+
+        WHEN("edges are connected to vertices") {
+          myGraph.addEdge("1", "2", "1->2");
+          myGraph.addEdge("2", "3", "2->3");
+          myGraph.addEdge("3", "1", "3->1");
+          ExecutionStats total;
+          THEN("the executor should fetch all rows, but not return") {
+            OutputAqlItemRow row(std::move(outputBlockShell));
+
+            for (int64_t i = 0; i < 3; ++i) {
+              // We expect to wait 3 times
+              std::tie(state, stats) = testee.produceRow(row);
+              total += stats;
+              REQUIRE(state == ExecutionState::WAITING);
+              REQUIRE(!row.produced());
+              std::tie(state, stats) = testee.produceRow(row);
+              REQUIRE(row.produced());
+              REQUIRE(state == ExecutionState::HASMORE);
+              row.advanceRow();
+              total += stats;
+              REQUIRE(total.filtered == 0);
+              /* We cannot ASSERT this because of internally to complex
+              mechanism */
+              // REQUIRE(total.scannedIndex == i + 1);
+              REQUIRE(fetcher.nrCalled() == (uint64_t)(i + 1));
+            }
+            REQUIRE(fetcher.isDone());
+            // The traverser will lie
+            std::tie(state, stats) = testee.produceRow(row);
+            REQUIRE(state == ExecutionState::DONE);
+            REQUIRE(!row.produced());
+
+            REQUIRE(traverser->startVertexUsedAt(0) == "v/1");
+            REQUIRE(traverser->startVertexUsedAt(1) == "v/2");
+            REQUIRE(traverser->startVertexUsedAt(2) == "v/3");
+
+            std::vector<std::string> expectedResult{"v/2", "v/3", "v/1"};
+            auto block = row.stealBlock();
+            for (std::size_t index = 0; index < 3; index++) {
+              AqlValue value = block->getValue(index, outReg);
+              REQUIRE(value.isObject());
+              REQUIRE(arangodb::basics::VelocyPackHelper::compare(
+                          value.slice(),
+                          myGraph.getVertexData(StringRef(expectedResult.at(index))),
+                          false) == 0);
+            }
+          }
         }
       }
     }
   }
 
-  GIVEN("there are rows in the upstream") {
-    myGraph.addVertex("1");
-    myGraph.addVertex("2");
-    myGraph.addVertex("3");
-    auto input = VPackParser::fromJson("[ [\"v/1\"], [\"v/2\"], [\"v/3\"] ]");
+  GIVEN("using constant as start vertex") {
+    RegisterId outReg = 1;
+    auto traverser = traverserPtr.get();
+    auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{});
+    auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{1});
+    std::unordered_map<OutputName, RegisterId> registerMapping{{OutputName::VERTEX, outReg}};
 
-    WHEN("the producer does not wait") {
-      SingleRowFetcherHelper fetcher(input->steal(), false);
-      TraversalExecutor testee(fetcher, infos);
-      TraversalStats stats{};
+    std::string const fixed = "v/1";
+    TraversalExecutorInfos infos(inputRegisters, outputRegisters, 1, 2, {},
+                                 std::move(traverserPtr), registerMapping, fixed);
+    auto outputBlockShell =
+        std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),
+                                                  infos.getOutputRegisters(),
+                                                  infos.registersToKeep());
 
-      WHEN("no edges are connected to vertices") {
-        THEN("the executor should fetch all rows, but not return") {
-          OutputAqlItemRow row(std::move(outputBlockShell));
+    GIVEN("there are no rows upstream") {
+      VPackBuilder input;
 
-          std::tie(state, stats) = testee.produceRow(row);
+      WHEN("the producer does not wait") {
+        SingleRowFetcherHelper fetcher(input.steal(), false);
+        TraversalExecutor testee(fetcher, infos);
+        TraversalStats stats{};
+
+        THEN("the executor should return DONE and no result") {
+          OutputAqlItemRow result(std::move(outputBlockShell));
+          std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::DONE);
+          REQUIRE(!result.produced());
+        }
+      }
+
+      WHEN("the producer waits") {
+        SingleRowFetcherHelper fetcher(input.steal(), true);
+        TraversalExecutor testee(fetcher, infos);
+        TraversalStats stats{};
+
+        THEN("the executor should first return WAIT and no result") {
+          OutputAqlItemRow result(std::move(outputBlockShell));
+          std::tie(state, stats) = testee.produceRow(result);
+          REQUIRE(state == ExecutionState::WAITING);
+          REQUIRE(!result.produced());
           REQUIRE(stats.getFiltered() == 0);
-          REQUIRE(!row.produced());
-          REQUIRE(fetcher.isDone());
-          REQUIRE(fetcher.nrCalled() == 3);
 
-          REQUIRE(traverser->startVertexUsedAt(0) == "v/1");
-          REQUIRE(traverser->startVertexUsedAt(1) == "v/2");
-          REQUIRE(traverser->startVertexUsedAt(2) == "v/3");
-
-          AND_THEN("The output should stay stable") {
-            std::tie(state, stats) = testee.produceRow(row);
+          AND_THEN("the executor should return DONE and no result") {
+            std::tie(state, stats) = testee.produceRow(result);
             REQUIRE(state == ExecutionState::DONE);
+            REQUIRE(!result.produced());
             REQUIRE(stats.getFiltered() == 0);
-            REQUIRE(!row.produced());
-            REQUIRE(fetcher.isDone());
-            REQUIRE(fetcher.nrCalled() == 3);
           }
         }
       }
     }
 
-    WHEN("the producer waits") {
-      SingleRowFetcherHelper fetcher(input->steal(), true);
-      TraversalExecutor testee(fetcher, infos);
-      TraversalStats stats{};
+    GIVEN("there are rows in the upstream") {
+      myGraph.addVertex("1");
+      myGraph.addVertex("2");
+      myGraph.addVertex("3");
+      auto input = VPackParser::fromJson("[ [\"v/1\"], [\"v/2\"], [\"v/3\"] ]");
 
-      WHEN("no edges are connected to vertices") {
-        THEN("the executor should fetch all rows, but not return") {
-          OutputAqlItemRow row(std::move(outputBlockShell));
+      WHEN("the producer does not wait") {
+        SingleRowFetcherHelper fetcher(input->steal(), false);
+        TraversalExecutor testee(fetcher, infos);
+        TraversalStats stats{};
 
-          for (size_t i = 0; i < 3; ++i) {
-            // We expect to wait 3 times
-            std::tie(state, stats) = testee.produceRow(row);
-            REQUIRE(state == ExecutionState::WAITING);
-          }
-          std::tie(state, stats) = testee.produceRow(row);
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(stats.getFiltered() == 0);
-          REQUIRE(!row.produced());
-          REQUIRE(fetcher.isDone());
-          REQUIRE(fetcher.nrCalled() == 3);
+        WHEN("no edges are connected to vertices") {
+          THEN("the executor should fetch all rows, but not return") {
+            OutputAqlItemRow row(std::move(outputBlockShell));
 
-          REQUIRE(traverser->startVertexUsedAt(0) == "v/1");
-          REQUIRE(traverser->startVertexUsedAt(1) == "v/2");
-          REQUIRE(traverser->startVertexUsedAt(2) == "v/3");
-
-          AND_THEN("The output should stay stable") {
             std::tie(state, stats) = testee.produceRow(row);
             REQUIRE(state == ExecutionState::DONE);
             REQUIRE(stats.getFiltered() == 0);
             REQUIRE(!row.produced());
             REQUIRE(fetcher.isDone());
-            // WAITING is not part of called counts
             REQUIRE(fetcher.nrCalled() == 3);
+
+            REQUIRE(traverser->startVertexUsedAt(0) == "v/1");
+            REQUIRE(traverser->startVertexUsedAt(1) == "v/1");
+            REQUIRE(traverser->startVertexUsedAt(2) == "v/1");
+
+            AND_THEN("The output should stay stable") {
+              std::tie(state, stats) = testee.produceRow(row);
+              REQUIRE(state == ExecutionState::DONE);
+              REQUIRE(stats.getFiltered() == 0);
+              REQUIRE(!row.produced());
+              REQUIRE(fetcher.isDone());
+              REQUIRE(fetcher.nrCalled() == 3);
+            }
           }
         }
       }
 
-      WHEN("edges are connected to vertices") {
-        myGraph.addEdge("1", "2", "1->2");
-        myGraph.addEdge("2", "3", "2->3");
-        myGraph.addEdge("3", "1", "3->1");
-        ExecutionStats total;
-        THEN("the executor should fetch all rows, but not return") {
-          OutputAqlItemRow row(std::move(outputBlockShell));
+      WHEN("the producer waits") {
+        SingleRowFetcherHelper fetcher(input->steal(), true);
+        TraversalExecutor testee(fetcher, infos);
+        TraversalStats stats{};
 
-          for (int64_t i = 0; i < 3; ++i) {
-            // We expect to wait 3 times
+        WHEN("no edges are connected to vertices") {
+          THEN("the executor should fetch all rows, but not return") {
+            OutputAqlItemRow row(std::move(outputBlockShell));
+
+            for (size_t i = 0; i < 3; ++i) {
+              // We expect to wait 3 times
+              std::tie(state, stats) = testee.produceRow(row);
+              REQUIRE(state == ExecutionState::WAITING);
+            }
             std::tie(state, stats) = testee.produceRow(row);
-            total += stats;
-            REQUIRE(state == ExecutionState::WAITING);
+            REQUIRE(state == ExecutionState::DONE);
+            REQUIRE(stats.getFiltered() == 0);
             REQUIRE(!row.produced());
-            std::tie(state, stats) = testee.produceRow(row);
-            REQUIRE(row.produced());
-            REQUIRE(state == ExecutionState::HASMORE);
-            row.advanceRow();
-            total += stats;
-            REQUIRE(total.filtered == 0);
-            /* We cannot ASSERT this because of internally to complex
-            mechanism */
-            // REQUIRE(total.scannedIndex == i + 1);
-            REQUIRE(fetcher.nrCalled() == (uint64_t)(i + 1));
+            REQUIRE(fetcher.isDone());
+            REQUIRE(fetcher.nrCalled() == 3);
+
+            REQUIRE(traverser->startVertexUsedAt(0) == "v/1");
+            REQUIRE(traverser->startVertexUsedAt(1) == "v/1");
+            REQUIRE(traverser->startVertexUsedAt(2) == "v/1");
+
+            AND_THEN("The output should stay stable") {
+              std::tie(state, stats) = testee.produceRow(row);
+              REQUIRE(state == ExecutionState::DONE);
+              REQUIRE(stats.getFiltered() == 0);
+              REQUIRE(!row.produced());
+              REQUIRE(fetcher.isDone());
+              // WAITING is not part of called counts
+              REQUIRE(fetcher.nrCalled() == 3);
+            }
           }
-          REQUIRE(fetcher.isDone());
-          // The traverser will lie
-          std::tie(state, stats) = testee.produceRow(row);
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(!row.produced());
+        }
 
-          REQUIRE(traverser->startVertexUsedAt(0) == "v/1");
-          REQUIRE(traverser->startVertexUsedAt(1) == "v/2");
-          REQUIRE(traverser->startVertexUsedAt(2) == "v/3");
+        WHEN("edges are connected to vertices") {
+          myGraph.addEdge("1", "2", "1->2");
+          myGraph.addEdge("2", "3", "2->3");
+          myGraph.addEdge("3", "1", "3->1");
+          ExecutionStats total;
+          THEN("the executor should fetch all rows, but not return") {
+            OutputAqlItemRow row(std::move(outputBlockShell));
 
-          std::vector<std::string> expectedResult{"v/2", "v/3", "v/1"};
-          auto block = row.stealBlock();
-          for (std::size_t index = 0; index < 3; index++) {
-            AqlValue value = block->getValue(index, outReg);
-            REQUIRE(value.isObject());
-            REQUIRE(arangodb::basics::VelocyPackHelper::compare(
-                        value.slice(),
-                        myGraph.getVertexData(StringRef(expectedResult.at(index))),
-                        false) == 0);
+            for (int64_t i = 0; i < 3; ++i) {
+              // We expect to wait 3 times
+              std::tie(state, stats) = testee.produceRow(row);
+              total += stats;
+              REQUIRE(state == ExecutionState::WAITING);
+              REQUIRE(!row.produced());
+              std::tie(state, stats) = testee.produceRow(row);
+              REQUIRE(row.produced());
+              REQUIRE(state == ExecutionState::HASMORE);
+              row.advanceRow();
+              total += stats;
+              REQUIRE(total.filtered == 0);
+              /* We cannot ASSERT this because of internally to complex
+              mechanism */
+              // REQUIRE(total.scannedIndex == i + 1);
+              REQUIRE(fetcher.nrCalled() == (uint64_t)(i + 1));
+            }
+            REQUIRE(fetcher.isDone());
+            // The traverser will lie
+            std::tie(state, stats) = testee.produceRow(row);
+            REQUIRE(state == ExecutionState::DONE);
+            REQUIRE(!row.produced());
+
+            REQUIRE(traverser->startVertexUsedAt(0) == "v/1");
+            REQUIRE(traverser->startVertexUsedAt(1) == "v/1");
+            REQUIRE(traverser->startVertexUsedAt(2) == "v/1");
+
+            std::vector<std::string> expectedResult{"v/2", "v/2", "v/2"};
+            auto block = row.stealBlock();
+            for (std::size_t index = 0; index < 3; index++) {
+              AqlValue value = block->getValue(index, outReg);
+              REQUIRE(value.isObject());
+              REQUIRE(arangodb::basics::VelocyPackHelper::compare(
+                          value.slice(),
+                          myGraph.getVertexData(StringRef(expectedResult.at(index))),
+                          false) == 0);
+            }
           }
         }
       }

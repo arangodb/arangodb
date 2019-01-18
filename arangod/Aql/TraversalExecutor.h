@@ -23,8 +23,8 @@
 #ifndef ARANGOD_AQL_TRAVERSAL_EXECUTOR_H
 #define ARANGOD_AQL_TRAVERSAL_EXECUTOR_H
 
-#include "Aql/ExecutorInfos.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/TraversalStats.h"
 
@@ -41,24 +41,21 @@ class OutputAqlItemRow;
 class ExecutorInfos;
 class SingleRowFetcher;
 
-enum OutputName {
-  VERTEX,
-  EDGE,
-  PATH
-};
+enum OutputName { VERTEX, EDGE, PATH };
 
 class TraversalExecutorInfos : public ExecutorInfos {
-  public:
+ public:
   TraversalExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
                          std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
                          RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                          std::unordered_set<RegisterId> registersToClear,
                          std::unique_ptr<traverser::Traverser>&& traverser,
-                         std::unordered_map<OutputName, RegisterId> registerMapping);
- 
+                         std::unordered_map<OutputName, RegisterId> registerMapping,
+                         std::string const& fixedSource);
+
   TraversalExecutorInfos() = delete;
 
-  TraversalExecutorInfos(TraversalExecutorInfos &&) = default;
+  TraversalExecutorInfos(TraversalExecutorInfos&&) = default;
   TraversalExecutorInfos(TraversalExecutorInfos const&) = delete;
   ~TraversalExecutorInfos() = default;
 
@@ -76,25 +73,28 @@ class TraversalExecutorInfos : public ExecutorInfos {
 
   RegisterId pathRegister() const;
 
-  private:
-    std::unique_ptr<traverser::Traverser> _traverser;
-    std::unordered_map<OutputName, RegisterId> _registerMapping;
+  std::string const& getFixedSource() const;
+
+ private:
+  std::unique_ptr<traverser::Traverser> _traverser;
+  std::unordered_map<OutputName, RegisterId> _registerMapping;
+  std::string const _fixedSource;
 };
 
 /**
  * @brief Implementation of Traversal Node
  */
 class TraversalExecutor {
-  public:
-    using Fetcher = SingleRowFetcher;
-    using Infos = TraversalExecutorInfos;
-    using Stats = TraversalStats;
+ public:
+  using Fetcher = SingleRowFetcher;
+  using Infos = TraversalExecutorInfos;
+  using Stats = TraversalStats;
 
-    TraversalExecutor() = delete;
-    TraversalExecutor(TraversalExecutor&&) = default;
-    TraversalExecutor(TraversalExecutor const&) = default;
-    TraversalExecutor(Fetcher& fetcher, Infos&);
-    ~TraversalExecutor();
+  TraversalExecutor() = delete;
+  TraversalExecutor(TraversalExecutor&&) = default;
+  TraversalExecutor(TraversalExecutor const&) = default;
+  TraversalExecutor(Fetcher& fetcher, Infos&);
+  ~TraversalExecutor();
 
   /**
    * @brief produce the next Row of Aql Values.
@@ -116,11 +116,9 @@ class TraversalExecutor {
   InputAqlItemRow _input;
   ExecutionState _rowState;
   traverser::Traverser& _traverser;
-
 };
 
 }  // namespace aql
 }  // namespace arangodb
-
 
 #endif

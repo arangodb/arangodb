@@ -36,13 +36,17 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear, std::unique_ptr<Traverser>&& traverser,
-    std::unordered_map<OutputName, RegisterId> registerMapping)
+    std::unordered_map<OutputName, RegisterId> registerMapping, std::string const& fixedSource)
     : ExecutorInfos(inputRegisters, outputRegisters, nrInputRegisters,
                     nrOutputRegisters, registersToClear),
       _traverser(std::move(traverser)),
-      _registerMapping(registerMapping) {
+      _registerMapping(registerMapping),
+      _fixedSource(fixedSource) {
   TRI_ASSERT(_traverser != nullptr);
   TRI_ASSERT(!_registerMapping.empty());
+  // _fixedSource XOR _inputRegisters
+  TRI_ASSERT((_fixedSource.empty() && !getInputRegisters()->empty()) ||
+             (!_fixedSource.empty() && getInputRegisters()->empty()));
 }
 
 Traverser& TraversalExecutorInfos::traverser() {
@@ -77,6 +81,11 @@ RegisterId TraversalExecutorInfos::pathRegister() const {
   return _registerMapping.find(OutputName::PATH)->second;
 }
 
+std::string const& TraversalExecutorInfos::getFixedSource() const {
+  TRI_ASSERT(!_fixedSource.empty());
+  return _fixedSource;
+}
+
 TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
@@ -109,8 +118,8 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
       // Now reset the traverser
       auto inReg = _infos.getInputRegisters();
       if (inReg->empty()) {
-        // TODO Implement me!!
-        TRI_ASSERT(false);
+        // Use constant value
+        _traverser.setStartVertex(_infos.getFixedSource());
       } else {
         // Only one input possible
         TRI_ASSERT(inReg->size() == 1);
