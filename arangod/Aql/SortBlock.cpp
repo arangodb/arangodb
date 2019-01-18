@@ -325,12 +325,11 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
 
       // handle batch
       while (!_buffer.empty()) {
-        AqlItemBlock* block = _buffer.front();
+        std::unique_ptr<AqlItemBlock> block{_buffer.front()};
         _buffer.pop_front();
         for (size_t row = 0; row < block->size(); row++) {
-          pushRow(block, row);
+          pushRow(block.get(), row);
         }
-        delete block;
       }
     }
 
