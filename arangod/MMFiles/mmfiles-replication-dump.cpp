@@ -458,6 +458,9 @@ int MMFilesDumpCollectionReplication(MMFilesReplicationDumpContext* dump,
   if (b == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+  
+  // always execute this
+  TRI_DEFER(mmfiles->ditches()->freeDitch(b));
 
   // block compaction
   int res;
@@ -472,9 +475,6 @@ int MMFilesDumpCollectionReplication(MMFilesReplicationDumpContext* dump,
       res = TRI_ERROR_INTERNAL;
     }
   }
-
-  // always execute this
-  mmfiles->ditches()->freeDitch(b);
 
   return res;
 }
