@@ -44,7 +44,6 @@ InputAqlItemRow::InputAqlItemRow(
 }
 
 const AqlValue& InputAqlItemRow::getValue(RegisterId registerId) const {
-  LOG_DEVEL "getValue registerId " << registerId << "nrRegs" << getNrRegisters();
   TRI_ASSERT(isInitialized());
   TRI_ASSERT(registerId < getNrRegisters());
   return block().getValueReference(_baseIndex, registerId);

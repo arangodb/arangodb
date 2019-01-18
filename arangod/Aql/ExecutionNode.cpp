@@ -1194,27 +1194,20 @@ void ExecutionNode::removeDependencies() {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  auto nrInputOutputRegs = getRegisterPlan()->nrRegs[getDepth()];
 
-  std::unordered_set<RegisterId> whiteList;
-  std::unordered_set<RegisterId> whiteListClean;
-
+  std::unordered_set<RegisterId> toKeep;
   if (isInSubQuery(this)) {
     auto const& varinfo = this->getRegisterPlan()->varInfo;
     for (auto const& var : this->getVarsUsedLater()) {
       auto it2 = varinfo.find(var->id);
       if (it2 != varinfo.end()) {
         auto val = (*it2).second.registerId;
-        whiteList.insert((*it2).second.registerId);
-        if (val < nrInputOutputRegs) {
-          whiteListClean.insert((*it2).second.registerId);
-        }
+        toKeep.insert(val);
       }
     }
   }
 
-  IdExecutorInfos infos(nrInputOutputRegs, std::move(whiteList),
-                        std::move(whiteListClean), getRegsToClear());
+  IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()], std::move(toKeep), getRegsToClear());
 
   return std::make_unique<ExecutionBlockImpl<IdExecutor>>(&engine, this, std::move(infos));
 }

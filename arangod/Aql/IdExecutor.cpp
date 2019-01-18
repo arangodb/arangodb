@@ -31,13 +31,11 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 IdExecutorInfos::IdExecutorInfos(RegisterId nrInOutRegisters,
-                                 std::unordered_set<RegisterId> whiteList,
-                                 std::unordered_set<RegisterId> whiteListClean,
+                                 std::unordered_set<RegisterId> toKeep,
                                  std::unordered_set<RegisterId> registersToClear)
     : ExecutorInfos(make_shared_unordered_set(), make_shared_unordered_set(),
                     nrInOutRegisters, nrInOutRegisters,
-                    std::move(registersToClear), std::move(whiteListClean)),
-      _whiteList(std::move(whiteList)) {}
+                    std::move(registersToClear),std::move(toKeep)) {}
 
 IdExecutor::IdExecutor(Fetcher& fetcher, IdExecutorInfos& infos)
     : _infos(infos), _fetcher(fetcher){};
@@ -46,28 +44,27 @@ IdExecutor::~IdExecutor() = default;
 std::pair<ExecutionState, IdExecutor::Stats> IdExecutor::produceRow(OutputAqlItemRow& output) {
   ExecutionState state;
   IdExecutor::Stats stats;
-  bla++;
 
   InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
   std::tie(state, inputRow) = _fetcher.fetchRow();
 
   if (state == ExecutionState::WAITING) {
     TRI_ASSERT(!inputRow);
-    LOG_DEVEL << this << " WAITING " << bla;
+    //LOG_DEVEL << this << " WAITING " << bla;
     return {state, std::move(stats)};
   }
 
   if (!inputRow) {
     TRI_ASSERT(state == ExecutionState::DONE);
-    LOG_DEVEL << this << " DONE " << bla;
+    //LOG_DEVEL << this << " DONE " << bla;
     return {state, std::move(stats)};
   }
 
   TRI_ASSERT(state == ExecutionState::HASMORE || state == ExecutionState::DONE);
-  output.copyRow(inputRow);
+  output.copyRow(inputRow, /*ignore registers that should be kept but are missing in the input row*/ true);
 
-  LOG_DEVEL_IF(state == ExecutionState::DONE) << this << " DONE " << bla;
-  LOG_DEVEL_IF(state == ExecutionState::HASMORE) << this << " HASMORE " << bla;
+  //LOG_DEVEL_IF(state == ExecutionState::DONE) << this << " DONE " << bla;
+  //LOG_DEVEL_IF(state == ExecutionState::HASMORE) << this << " HASMORE " << bla;
 
   return {state, std::move(stats)};
 }
