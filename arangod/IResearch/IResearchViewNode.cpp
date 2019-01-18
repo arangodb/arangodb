@@ -44,11 +44,12 @@
 namespace {
 
 using namespace arangodb;
+using namespace arangodb::iresearch;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief surrogate root for all queries without a filter
 ////////////////////////////////////////////////////////////////////////////////
-aql::AstNode const ALL(arangodb::aql::AstNodeValue(true));
+aql::AstNode const ALL(aql::AstNodeValue(true));
 
 inline bool filterConditionIsEmpty(aql::AstNode const* filterCondition) {
   return filterCondition == &ALL;
@@ -59,7 +60,7 @@ inline bool filterConditionIsEmpty(aql::AstNode const* filterCondition) {
 // -----------------------------------------------------------------------------
 
 void toVelocyPack(velocypack::Builder& builder,
-                  std::vector<arangodb::iresearch::Scorer> const& scorers, bool verbose) {
+                  std::vector<Scorer> const& scorers, bool verbose) {
   VPackArrayBuilder arrayScope(&builder);
   for (auto const& scorer : scorers) {
     VPackObjectBuilder objectScope(&builder);
@@ -70,8 +71,8 @@ void toVelocyPack(velocypack::Builder& builder,
   }
 }
 
-std::vector<arangodb::iresearch::Scorer> fromVelocyPack(
-    arangodb::aql::ExecutionPlan& plan, arangodb::velocypack::Slice const& slice) {
+std::vector<Scorer> fromVelocyPack(
+    aql::ExecutionPlan& plan, velocypack::Slice const& slice) {
   if (!slice.isArray()) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "invalid json format detected while building IResearchViewNode "
@@ -84,7 +85,7 @@ std::vector<arangodb::iresearch::Scorer> fromVelocyPack(
   auto const* vars = plan.getAst()->variables();
   TRI_ASSERT(vars);
 
-  std::vector<arangodb::iresearch::Scorer> scorers;
+  std::vector<Scorer> scorers;
 
   size_t i = 0;
   for (auto const sortSlice : velocypack::ArrayIterator(slice)) {
@@ -121,7 +122,7 @@ std::vector<arangodb::iresearch::Scorer> fromVelocyPack(
 // -----------------------------------------------------------------------------
 
 void toVelocyPack(velocypack::Builder& builder,
-                  arangodb::iresearch::IResearchViewNode::Options const& options) {
+                  IResearchViewNode::Options const& options) {
   VPackObjectBuilder objectScope(&builder);
   builder.add("waitForSync", VPackValue(options.forceSync));
   builder.add("restrictSources", VPackValue(options.restrictSources));
@@ -135,8 +136,8 @@ void toVelocyPack(velocypack::Builder& builder,
 }
 
 bool fromVelocyPack(velocypack::Slice optionsSlice,
-                    arangodb::iresearch::IResearchViewNode::Options& options,
-                    aql::Query& query) {
+                    IResearchViewNode::Options& options,
+                    aql::Query& /*query*/) {
   if (!optionsSlice.isObject()) {
     return false;
   }
@@ -190,21 +191,21 @@ bool fromVelocyPack(velocypack::Slice optionsSlice,
 }
 
 bool parseOptions(aql::Query& query,
-                  arangodb::LogicalView const& view,
+                  LogicalView const& view,
                   aql::AstNode const* optionsNode,
-                  arangodb::iresearch::IResearchViewNode::Options& options,
+                  IResearchViewNode::Options& options,
                   std::string& error) {
   typedef bool (*OptionHandler)(aql::Query&,
-                                arangodb::LogicalView const& view,
+                                LogicalView const& view,
                                 aql::AstNode const&,
-                                arangodb::iresearch::IResearchViewNode::Options&,
+                                IResearchViewNode::Options&,
                                 std::string&);
 
   static std::map<irs::string_ref, OptionHandler> const Handlers{
       {"collections", [](aql::Query& query,
-                         arangodb::LogicalView const& view,
+                         LogicalView const& view,
                          aql::AstNode const& value,
-                         arangodb::iresearch::IResearchViewNode::Options& options,
+                         IResearchViewNode::Options& options,
                          std::string& error) {
         if (value.isNullValue()) {
           // have nothing to restrict
@@ -238,7 +239,7 @@ bool parseOptions(aql::Query& query,
 
               if (!collection) {
                 // check if TRI_voc_cid_t is passed as string
-                auto const cid = arangodb::NumberUtils::atoi_zero<TRI_voc_cid_t>(
+                auto const cid = NumberUtils::atoi_zero<TRI_voc_cid_t>(
                   name.data(), name.data() + name.size()
                 );
 
@@ -286,9 +287,9 @@ bool parseOptions(aql::Query& query,
         return true;
       }},
       {"waitForSync", [](aql::Query& /*query*/,
-                         arangodb::LogicalView const& /*view*/,
+                         LogicalView const& /*view*/,
                          aql::AstNode const& value,
-                         arangodb::iresearch::IResearchViewNode::Options& options,
+                         IResearchViewNode::Options& options,
                          std::string& error) {
          if (!value.isValueType(aql::VALUE_TYPE_BOOL)) {
            error = "boolean value expected for option 'waitForSync'";
@@ -408,12 +409,12 @@ bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
 /// negative value - value is dirty
 /// _volatilityMask & 1 == volatile filter
 /// _volatilityMask & 2 == volatile sort
-int evaluateVolatility(arangodb::iresearch::IResearchViewNode const& node) {
+int evaluateVolatility(IResearchViewNode const& node) {
   auto const inInnerLoop = node.isInInnerLoop();
   auto const& plan = *node.plan();
   auto const& outVariable = node.outVariable();
 
-  arangodb::HashSet<arangodb::aql::Variable const*> vars;
+  arangodb::HashSet<aql::Variable const*> vars;
   int mask = 0;
 
   // evaluate filter condition volatility
@@ -448,7 +449,8 @@ std::function<bool(TRI_voc_cid_t)> const viewIsEmpty = [](TRI_voc_cid_t) {
 ///       TransactionState as the IResearchView ViewState, therefore a separate
 ///       lock is not required to be held
 ////////////////////////////////////////////////////////////////////////////////
-class Snapshot : public arangodb::iresearch::IResearchView::Snapshot {
+class Snapshot : public IResearchView::Snapshot,
+                 private irs::util::noncopyable {
  public:
   typedef std::vector<std::pair<TRI_voc_cid_t, irs::sub_reader const*>> readers_t;
 
@@ -457,42 +459,178 @@ class Snapshot : public arangodb::iresearch::IResearchView::Snapshot {
       uint64_t docs_count,
       uint64_t live_docs_count
   ) NOEXCEPT
-    : readers_(std::move(readers)),
-      docs_count_(docs_count),
-      live_docs_count_(live_docs_count) {
+    : _readers(std::move(readers)),
+      _docs_count(docs_count),
+      _live_docs_count(live_docs_count) {
   }
 
-  // returns corresponding sub-reader
+  /// @brief constructs snapshot from a given snapshot
+  ///        according to specified set of collections
+  Snapshot(
+    const IResearchView::Snapshot& rhs,
+    arangodb::HashSet<TRI_voc_cid_t> const& collections);
+
+  /// @returns corresponding sub-reader
   virtual const irs::sub_reader& operator[](size_t i) const NOEXCEPT override {
     assert(i < readers_.size());
-    return *(readers_[i].second);
+    return *(_readers[i].second);
   }
 
   virtual TRI_voc_cid_t cid(size_t i) const NOEXCEPT override {
     assert(i < readers_.size());
-    return readers_[i].first;
+    return _readers[i].first;
   }
 
-  // maximum number of documents
+  /// @returns number of documents
   virtual uint64_t docs_count() const NOEXCEPT override {
-    return docs_count_;
+    return _docs_count;
   }
 
-  // number of live documents
+  /// @returns number of live documents
   virtual uint64_t live_docs_count() const NOEXCEPT override {
-    return live_docs_count_;
+    return _live_docs_count;
   }
 
-  // returns total number of opened writers
+  /// @returns total number of opened writers
   virtual size_t size() const NOEXCEPT override {
-    return readers_.size();
+    return _readers.size();
   }
 
  private:
-  readers_t readers_;
-  uint64_t docs_count_;
-  uint64_t live_docs_count_;
+  readers_t _readers;
+  uint64_t _docs_count;
+  uint64_t _live_docs_count;
 }; // Snapshot
+
+Snapshot::Snapshot(
+    const IResearchView::Snapshot& rhs,
+    arangodb::HashSet<TRI_voc_cid_t> const& collections)
+  : _docs_count(0),
+    _live_docs_count(0) {
+  for (size_t i = 0, size = rhs.size(); i < size; ++i) {
+    auto const cid = rhs.cid(i);
+
+    if (!collections.contains(cid)) {
+      continue;
+    }
+
+    auto& segment = rhs[i];
+
+    _docs_count += segment.docs_count();
+    _live_docs_count += segment.live_docs_count();
+    _readers.emplace_back(cid, &segment);
+  }
+}
+
+typedef std::shared_ptr<IResearchView::Snapshot const> SnapshotPtr;
+
+/// @brief Since cluster is not transactional and each distributed
+///        part of a query starts it's own trasaction associated
+///        with global query identifier, there is no single place
+///        to store a snapshot and we do the following:
+///
+///   1. Each query part on DB server gets the list of shards
+///      to be included into a query and starts its own transaction
+///
+///   2. Given the list of shards we take view snapshot according
+///      to the list of restricted data sources specified in options
+///      of corresponding IResearchViewNode
+///
+///   3. If waitForSync is specified, we refresh snapshot
+///      of each shard we need and finally put it to transaction
+///      associated to a part of the distributed query. We use
+///      default snapshot key if there are no restricted sources
+///      specified in options or IResearchViewNode address otherwise
+///
+///      Custom key is needed for the following query
+///      (assume 'view' is lined with 'c1' and 'c2' in the example below):
+/// 		FOR d IN view OPTIONS { collections : [ 'c1' ] }
+/// 		FOR x IN view OPTIONS { collections : [ 'c2' ] }
+/// 		RETURN {d, x}
+///
+SnapshotPtr snapshotDBServer(
+    IResearchViewNode const& node,
+    transaction::Methods& trx) {
+  TRI_ASSERT(ServerState::instance()->isDBServer());
+
+  static IResearchView::SnapshotMode const SNAPSHOT[]{
+    IResearchView::SnapshotMode::FindOrCreate,
+    IResearchView::SnapshotMode::SyncAndReplace};
+
+  auto& view = LogicalView::cast<IResearchView>(*node.view());
+  auto& options = node.options();
+  auto* resolver = trx.resolver();
+  TRI_ASSERT(resolver);
+
+  arangodb::HashSet<TRI_voc_cid_t> collections;
+  for (auto& shard : node.shards()) {
+    auto collection = resolver->getCollection(shard);
+
+    if (!collection) {
+      THROW_ARANGO_EXCEPTION(
+          arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                           std::string("failed to find shard by id '") + shard + "'"));
+    }
+
+    if (options.restrictSources && !options.sources.contains(collection->planId())) {
+      // skip restricted collections if any
+      continue;
+    }
+
+    collections.emplace(collection->id());
+  }
+
+  void const* snapshotKey = nullptr;
+
+  if (options.restrictSources) {
+    // use node address as the snapshot identifier
+    snapshotKey = &node;
+  }
+
+  // use aliasing ctor
+  return {
+    SnapshotPtr(),
+    view.snapshot(trx, SNAPSHOT[size_t(options.forceSync)], &collections, snapshotKey)
+  };
+}
+
+/// @brief Since single-server is transactional we do the following:
+///
+///   1. When transaction starts we put index snapshot into it
+///
+///   2. If waitForSync is specified, we refresh snapshot
+///      taken in (1), object itself remains valid
+///
+///   3. If there are no restricted sources in a query, we reuse
+///      snapshot taken in (1),
+///      otherwise we reassemble restricted snapshot based on the
+///      original one taken in (1) and return it
+///
+SnapshotPtr snapshotSingleServer(
+    IResearchViewNode const& node,
+    transaction::Methods& trx) {
+  TRI_ASSERT(ServerState::instance()->isSingleServer());
+
+  static IResearchView::SnapshotMode const SNAPSHOT[]{
+    IResearchView::SnapshotMode::Find,
+    IResearchView::SnapshotMode::SyncAndReplace};
+
+  auto& view = LogicalView::cast<IResearchView>(*node.view());
+  auto& options = node.options();
+
+  // use aliasing ctor
+  auto reader = SnapshotPtr(
+    SnapshotPtr(),
+    view.snapshot(trx, SNAPSHOT[size_t(options.forceSync)])
+  );
+
+  if (options.restrictSources && reader) {
+    // reassemble reader
+    reader = std::make_shared<Snapshot>(*reader, options.sources);
+  }
+
+  return reader;
+}
 
 }  // namespace
 
@@ -508,7 +646,8 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, size_t id,
                                      std::shared_ptr<const LogicalView> const& view,
                                      aql::Variable const& outVariable,
                                      aql::AstNode* filterCondition,
-                                     aql::AstNode* options, std::vector<Scorer>&& scorers)
+                                     aql::AstNode* options,
+                                     std::vector<Scorer>&& scorers)
     : aql::ExecutionNode(&plan, id),
       _vocbase(vocbase),
       _view(view),
@@ -818,45 +957,17 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   auto& view = LogicalView::cast<IResearchView>(*this->view());
 
-  typedef std::shared_ptr<IResearchView::Snapshot const> SnapshotPtr;
   std::shared_ptr<IResearchView::Snapshot const> reader;
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "Start getting snapshot for view '" << view.name() << "'";
 
+  // we manage snapshot differently in signle-server/db server,
+  // see description of functions below to learn how
   if (ServerState::instance()->isDBServer()) {
-    // there are no cluster-wide transactions,
-    // no place to store snapshot
-    static IResearchView::SnapshotMode const SNAPSHOT[]{
-      IResearchView::SnapshotMode::FindOrCreate,
-      IResearchView::SnapshotMode::SyncAndReplace};
-
-    std::unordered_set<TRI_voc_cid_t> collections;
-    auto& resolver = engine.getQuery()->resolver();
-
-    for (auto& shard : _shards) {
-      auto collection = resolver.getCollection(shard);
-
-      if (!collection) {
-        THROW_ARANGO_EXCEPTION(
-            arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                             std::string("failed to find shard by id '") + shard + "'"));
-      }
-
-      collections.emplace(collection->id());
-    }
-
-    // use aliasing ctor
-    reader = SnapshotPtr(SnapshotPtr(),
-                         view.snapshot(*trx, SNAPSHOT[size_t(_options.forceSync)], &collections));
+    reader = snapshotDBServer(*this, *trx);
   } else {
-    static IResearchView::SnapshotMode const SNAPSHOT[]{
-      IResearchView::SnapshotMode::Find,
-      IResearchView::SnapshotMode::SyncAndReplace};
-
-    // use aliasing ctor
-    reader = SnapshotPtr(SnapshotPtr(),
-                         view.snapshot(*trx, SNAPSHOT[size_t(_options.forceSync)]));
+    reader = snapshotSingleServer(*this, *trx);
   }
 
   if (!reader) {
@@ -870,31 +981,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                    "arangosearch view ExecutionBlock");
   }
 
-  if (_options.restrictSources && !ServerState::instance()->isDBServer()) {
-    // reassemble reader
-    Snapshot::readers_t readers;
-    size_t docs_count = 0;
-    size_t live_docs_count = 0;
-
-    for (size_t i = 0, size = reader->size(); i < size; ++i) {
-      auto const cid = reader->cid(i);
-
-      if (!_options.sources.contains(cid)) {
-        continue;
-      }
-
-      auto& segment = (*reader)[i];
-      docs_count += segment.docs_count();
-      live_docs_count += segment.live_docs_count();
-
-      readers.emplace_back(cid, &segment);
-    }
-
-    if (readers.empty()) {
-      return std::make_unique<aql::NoResultsBlock>(&engine, this);
-    }
-
-    reader = std::make_shared<Snapshot>(std::move(readers), docs_count, live_docs_count);
+  if (0 == reader->size()) {
+    // nothing to query
+    return std::make_unique<aql::NoResultsBlock>(&engine, this);
   }
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)

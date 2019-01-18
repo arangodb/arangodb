@@ -543,7 +543,8 @@ SECTION("test_query") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    std::unordered_set<TRI_voc_cid_t> collections = { logicalCollection->id() };
+    arangodb::HashSet<TRI_voc_cid_t> collections;
+    collections.insert(logicalCollection->id());
     auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate, &collections);
     CHECK(0 == snapshot->docs_count());
     CHECK((trx.commit().ok()));
@@ -600,7 +601,8 @@ SECTION("test_query") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    std::unordered_set<TRI_voc_cid_t> collections = { logicalCollection->id() };
+    arangodb::HashSet<TRI_voc_cid_t> collections;
+    collections.insert(logicalCollection->id());
     auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate, &collections);
     CHECK(12 == snapshot->docs_count());
     CHECK((trx.commit().ok()));
@@ -660,7 +662,8 @@ SECTION("test_query") {
       trxOptions
     );
     CHECK((trx0.begin().ok()));
-    std::unordered_set<TRI_voc_cid_t> collectionIds = { logicalCollection->id() };
+    arangodb::HashSet<TRI_voc_cid_t> collectionIds;
+    collectionIds.insert(logicalCollection->id());
     CHECK((nullptr == wiewImpl->snapshot(trx0, arangodb::iresearch::IResearchView::SnapshotMode::Find, &collectionIds)));
     auto* snapshot0 = wiewImpl->snapshot(trx0, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace, &collectionIds);
     CHECK((snapshot0 == wiewImpl->snapshot(trx0, arangodb::iresearch::IResearchView::SnapshotMode::Find, &collectionIds)));
@@ -773,7 +776,8 @@ SECTION("test_query") {
           arangodb::transaction::Options{}
         );
         CHECK((trx.begin().ok()));
-        std::unordered_set<TRI_voc_cid_t> collections = { logicalCollection->id() };
+        arangodb::HashSet<TRI_voc_cid_t> collections;
+        collections.insert(logicalCollection->id());
         auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace, &collections);
         CHECK(i == snapshot->docs_count());
         CHECK((trx.commit().ok()));
@@ -1016,7 +1020,8 @@ SECTION("test_transaction_snapshot") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    std::unordered_set<TRI_voc_cid_t> collections = { logicalCollection->id() };
+    arangodb::HashSet<TRI_voc_cid_t> collections;
+    collections.insert(logicalCollection->id());
     auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find, &collections);
     CHECK((nullptr == snapshot));
     CHECK((trx.commit().ok()));
@@ -1032,7 +1037,8 @@ SECTION("test_transaction_snapshot") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    std::unordered_set<TRI_voc_cid_t> collections = { logicalCollection->id() };
+    arangodb::HashSet<TRI_voc_cid_t> collections;
+    collections.insert(logicalCollection->id());
     CHECK((nullptr == wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find, &collections)));
     auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate, &collections);
     CHECK((snapshot == wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate, &collections)));
@@ -1052,7 +1058,8 @@ SECTION("test_transaction_snapshot") {
       opts
     );
     CHECK((trx.begin().ok()));
-    std::unordered_set<TRI_voc_cid_t> collections = { logicalCollection->id() };
+    arangodb::HashSet<TRI_voc_cid_t> collections;
+    collections.insert(logicalCollection->id());
     auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find, &collections);
     CHECK((nullptr == snapshot));
     CHECK((trx.commit().ok()));
@@ -1069,7 +1076,8 @@ SECTION("test_transaction_snapshot") {
       opts
     );
     CHECK((trx.begin().ok()));
-    std::unordered_set<TRI_voc_cid_t> collections = { logicalCollection->id() };
+    arangodb::HashSet<TRI_voc_cid_t> collections;
+    collections.insert(logicalCollection->id());
     CHECK((nullptr == wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find, &collections)));
     auto* snapshot = wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace, &collections);
     CHECK((snapshot == wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find, &collections)));

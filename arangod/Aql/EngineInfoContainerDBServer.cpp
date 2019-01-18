@@ -163,6 +163,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
       // can't do it on DB servers since only parts of the plan will be sent
       viewNode.volatility(true);
 
+      _scatter = findFirstScatter(*node);
       _type = ExecutionNode::ENUMERATE_IRESEARCH_VIEW;
       _view = viewNode.view().get();
       break;
@@ -199,6 +200,11 @@ Collection const* EngineInfoContainerDBServer::EngineInfo::collection() const no
 LogicalView const* EngineInfoContainerDBServer::EngineInfo::view() const noexcept {
   TRI_ASSERT(ExecutionNode::ENUMERATE_IRESEARCH_VIEW == _type);
   return _view;
+}
+
+ScatterNode* EngineInfoContainerDBServer::EngineInfo::scatter() const noexcept {
+  TRI_ASSERT(ExecutionNode::ENUMERATE_IRESEARCH_VIEW == _type);
+  return _scatter;
 }
 #endif
 
@@ -383,13 +389,6 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
       for (aql::Collection const& col : viewNode.collections()) {
         auto& info = handleCollection(&col, AccessMode::Type::READ);
         info.views.push_back(view);
-      }
-
-      // find and register corresponding view scatter, if present
-      auto* scatter = findFirstScatter(*node);
-
-      if (scatter) {
-        _viewInfos[view].scatters.push_back(scatter);
       }
 
       break;
@@ -580,14 +579,11 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
     if (engine.type() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
       engine.serializeSnippet(serverId, query, shards, infoBuilder);
 
-      // register current DBServer for each scatter associated with the view
-      auto const viewInfo = context._viewInfos.find(engine.view());
-
-      if (viewInfo != context._viewInfos.end()) {
-        for (auto* scatter : viewInfo->second.scatters) {
-          scatter->clients().emplace_back(serverId);
-        }
+      if (engine.scatter()) {
+        // register current DBServer for scatter associated with the view, if any
+        engine.scatter()->clients().emplace_back(serverId);
       }
+
       continue;
     }
 #endif

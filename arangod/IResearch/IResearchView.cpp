@@ -926,7 +926,8 @@ arangodb::Result IResearchView::renameImpl(std::string const& oldName) {
 IResearchView::Snapshot const* IResearchView::snapshot(
     transaction::Methods& trx,
     IResearchView::SnapshotMode mode /*= IResearchView::SnapshotMode::Find*/,
-    std::unordered_set<TRI_voc_cid_t> const* shards /*= nullptr*/) const {
+    arangodb::HashSet<TRI_voc_cid_t> const* shards /*= nullptr*/,
+    void const* key /*= nullptr*/) const {
   if (!trx.state()) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "failed to get transaction state while creating arangosearch view "
@@ -935,17 +936,21 @@ IResearchView::Snapshot const* IResearchView::snapshot(
     return nullptr;
   }
 
-  std::unordered_set<TRI_voc_cid_t> collections;  // use set to avoid duplicate iteration of same link
+  arangodb::HashSet<TRI_voc_cid_t> restrictedCollections;  // use set to avoid duplicate iteration of same link
+  auto const* collections = &restrictedCollections;
 
-  if (shards) {  // add requested shards
-    collections = *shards;
+  if (shards) {  // set requested shards
+    collections = shards;
   } else {  // add all known shards
     for (auto& entry : _links) {
-      collections.emplace(entry.first);
+      restrictedCollections.emplace(entry.first);
     }
   }
 
-  void const* key = this;
+  if (!key) {
+    key = this;
+  }
+
   auto& state = *(trx.state());
 
 // TODO FIXME find a better way to look up a ViewState
@@ -957,13 +962,13 @@ IResearchView::Snapshot const* IResearchView::snapshot(
 
   switch (mode) {
     case SnapshotMode::Find:
-      return ctx && ctx->equalCollections(collections.begin(),
-                                          collections.end())
+      return ctx && ctx->equalCollections(collections->begin(),
+                                          collections->end())
                  ? ctx
                  : nullptr;  // ensure same collections
     case SnapshotMode::FindOrCreate:
       if (ctx) {
-        if (ctx->equalCollections(collections.begin(), collections.end())) {
+        if (ctx->equalCollections(collections->begin(), collections->end())) {
           return ctx;  // ensure same collections
         }
 
@@ -1011,7 +1016,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
 
   try {
     // collect snapshots from all requested links
-    for (auto& cid : collections) {
+    for (auto const cid : *collections) {
       auto itr = _links.find(cid);
       auto* link = itr != _links.end() && itr->second
                        ? itr->second->get()

@@ -103,6 +103,7 @@ class EngineInfoContainerDBServer {
 
 #ifdef USE_IRESEARCH
     LogicalView const* view() const noexcept;
+    ScatterNode* scatter() const noexcept;
 #endif
 
    private:
@@ -117,6 +118,7 @@ class EngineInfoContainerDBServer {
       LogicalView const* _view;  // The view used to connect to this engine
     };
     ShardID _restrictedShard;  // The shard this snippet is restricted to
+    ScatterNode* _scatter{}; // The scatter associated with the engine
     ExecutionNode::NodeType _type{ExecutionNode::MAX_NODE_TYPE_VALUE};  // type of the "main node"
   };
 
@@ -152,9 +154,8 @@ class EngineInfoContainerDBServer {
 
     AccessMode::Type lockType{AccessMode::Type::NONE};
     std::vector<std::shared_ptr<EngineInfo>> engines;
-    std::vector<LogicalView const*> views;
+    std::vector<LogicalView const*> views; // linked views
     std::unordered_set<ShardID> usedShards;
-    std::vector<ExecutionNode*> scatters;  // corresponding scatters
   };
 
  public:
@@ -247,7 +248,6 @@ class EngineInfoContainerDBServer {
  private:
   struct ViewInfo {
     std::vector<std::shared_ptr<EngineInfo>> engines;  // list of the engines associated with a view
-    std::vector<ScatterNode*> scatters;  // list of the scatters associated with a view
   };
 
   // @brief The query that is executed. We are not responsible for it
