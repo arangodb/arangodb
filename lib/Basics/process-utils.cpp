@@ -1417,11 +1417,11 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool i
         return status;
       }
       std::this_thread::sleep_for(std::chrono::seconds(1));
-      if (count >= 8) {
+      if (count >= 13) {
         TRI_ASSERT(external != nullptr);
         killProcess(external, SIGKILL);
       }
-      if (count > 20) {
+      if (count > 25) {
         return status;
       }
       count++;
@@ -1429,7 +1429,6 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool i
   }
   return TRI_CheckExternalProcess(pid, false);
 }
-
 
 #ifdef _WIN32
 typedef LONG (NTAPI *NtSuspendProcess)(IN HANDLE ProcessHandle);
