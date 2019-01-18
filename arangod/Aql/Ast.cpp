@@ -1051,16 +1051,24 @@ AstNode* Ast::createNodeArray(size_t size) {
 }
 
 /// @brief create an AST unique array node, AND-merged from two other arrays
+/// the resulting array has no particular order
 AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs) {
   TRI_ASSERT(lhs->isArray() && lhs->isConstant());
   TRI_ASSERT(rhs->isArray() && rhs->isConstant());
 
-  size_t const nl = lhs->numMembers();
-  size_t const nr = rhs->numMembers();
+  size_t nl = lhs->numMembers();
+  size_t nr = rhs->numMembers();
+
+  if (nl > nr) {
+    // we want lhs to be the shorter of the two arrays, so we use less
+    // memory for the lookup cache
+    std::swap(lhs, rhs);
+    std::swap(nl, nr);
+  }
 
   std::unordered_map<VPackSlice, AstNode const*, arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
-      cache(nl + nr, arangodb::basics::VelocyPackHelper::VPackHash(),
+      cache(nl, arangodb::basics::VelocyPackHelper::VPackHash(),
             arangodb::basics::VelocyPackHelper::VPackEqual());
 
   for (size_t i = 0; i < nl; ++i) {
@@ -1070,7 +1078,7 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs)
     cache.emplace(slice, member);
   }
 
-  auto node = createNodeArray(nr / 2);
+  auto node = createNodeArray(cache.size() + nr);
 
   for (size_t i = 0; i < nr; ++i) {
     auto member = rhs->getMemberUnchecked(i);
@@ -1087,12 +1095,15 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs)
 }
 
 /// @brief create an AST unique array node, OR-merged from two other arrays
+/// the resulting array will be sorted by value
 AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
   TRI_ASSERT(lhs->isArray() && lhs->isConstant());
   TRI_ASSERT(rhs->isArray() && rhs->isConstant());
 
   size_t const nl = lhs->numMembers();
   size_t const nr = rhs->numMembers();
+
+  auto node = createNodeArray(nl + nr);
 
   std::unordered_map<VPackSlice, AstNode const*, arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
@@ -1108,14 +1119,12 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
     }
     VPackSlice slice = member->computeValue();
 
-    cache.emplace(slice, member);
+    if (cache.emplace(slice, member).second) {
+      // only insert unique values
+      node->addMember(member);
+    }
   }
 
-  auto node = createNodeArray(cache.size());
-
-  for (auto& it : cache) {
-    node->addMember(it.second);
-  }
   node->sort();
 
   return node;
