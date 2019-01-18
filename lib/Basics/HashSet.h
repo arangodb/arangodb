@@ -8,6 +8,7 @@
 #define ARANGODB_HASH_SET_H 1
 
 #include <iterator>
+#include <type_traits>
 #include <utility>
 
 namespace emilib {
@@ -145,19 +146,32 @@ class HashSet {
     insert(other.cbegin(), other.cend());
   }
 
-  HashSet(HashSet&& other) {
-    *this = std::move(other);
+  HashSet(HashSet&& other) noexcept {
+    doMove(std::move(other));
   }
 
   HashSet& operator=(const HashSet& other) {
-    clear();
-    reserve(other.size());
-    insert(other.cbegin(), other.cend());
+    if (this != &other) {
+      clear();
+      reserve(other.size());
+      insert(other.cbegin(), other.cend());
+    }
     return *this;
   }
 
-  void operator=(HashSet&& other) {
-    this->swap(other);
+  HashSet& operator=(HashSet&& other) noexcept {
+    if (this != &other) {
+      for (size_t bucket=0; bucket<_num_buckets; ++bucket) {
+        if (_states[bucket] == State::FILLED) {
+          _keys[bucket].~KeyT();
+        }
+      }
+      if (_buffer != &_local_buffer[0]) {
+        delete[] _buffer;
+      }
+      doMove(std::move(other));
+    }
+    return *this;
   }
 
   ~HashSet() {
@@ -407,6 +421,46 @@ class HashSet {
   }
 
  private:
+  void doMove(HashSet&& other) noexcept {
+    if (other._buffer == nullptr) {
+      _buffer = nullptr;
+      _states = nullptr;
+      _keys = nullptr;
+    } else if (other._buffer != &other._local_buffer[0]) {
+      // we can just steal the other's buffer
+      _buffer = other._buffer;
+      _states = other._states;
+      _keys = other._keys;
+    } else {
+      // we can copy the other's local buffer
+      _buffer = &_local_buffer[0];
+      _states = (State*)_buffer;
+      size_t states_size = ((other._num_buckets * sizeof(State) + 8 - 1) / 8) * 8;
+      memcpy(&_local_buffer[0], &other._local_buffer[0], states_size);
+      _keys  = (KeyT*)(_buffer + states_size);
+    
+      for (size_t src_bucket=0; src_bucket<other._num_buckets; src_bucket++) {
+        if (other._states[src_bucket] == State::FILLED) {
+          auto& src = other._keys[src_bucket];
+          new(_keys + src_bucket) KeyT(std::move(src));
+        }
+      }
+    }
+
+    _num_buckets = other._num_buckets;
+    _num_filled = other._num_filled;
+    _max_probe_length = other._max_probe_length;
+    _mask = other._mask;
+
+    other._buffer = nullptr;
+    other._states = nullptr;
+    other._keys = nullptr;
+    other._num_buckets = 0;
+    other._num_filled = 0;
+    other._max_probe_length = -1;
+    other._mask = 0;
+  }
+
   // Can we fit another element?
   void check_expand_need() {
     reserve(_num_filled + 1);

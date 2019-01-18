@@ -171,7 +171,7 @@ void SchedulerFeature::start() {
   }
 
   TRI_ASSERT(2 <= _nrMinimalThreads);
-  TRI_ASSERT(_nrMinimalThreads < _nrMaximalThreads);
+  TRI_ASSERT(_nrMinimalThreads <= _nrMaximalThreads);
 
   signalStuffInit();
 

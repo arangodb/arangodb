@@ -44,6 +44,7 @@
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -53,6 +54,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
@@ -215,6 +217,12 @@ Query::~Query() {
   AqlFeature::unlease();
 }
 
+void Query::addDataSource( // track DataSource
+    std::shared_ptr<arangodb::LogicalDataSource> const& ds // DataSource to track
+) {
+  _queryDataSources.emplace(ds);
+}
+
 /// @brief clone a query
 /// note: as a side-effect, this will also create and start a transaction for
 /// the query
@@ -271,6 +279,7 @@ void Query::kill() { _killed = true; }
 
 void Query::setExecutionTime() {
   if (_engine != nullptr) {
+    _engine->_stats.setPeakMemoryUsage(_resourceMonitor.currentResources.peakMemoryUsage);
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
   }
 }
@@ -564,11 +573,17 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
 
           if (cacheEntry != nullptr) {
             bool hasPermissions = true;
-
             ExecContext const* exe = ExecContext::CURRENT;
+
             // got a result from the query cache
             if (exe != nullptr) {
-              for (std::string const& dataSourceName : cacheEntry->_dataSources) {
+              for (auto& dataSource: cacheEntry->_dataSources) {
+                if (!dataSource) {
+                  continue;
+                }
+
+                auto& dataSourceName = dataSource->name();
+
                 if (!exe->canUseCollection(dataSourceName, auth::Level::RO)) {
                   // cannot use query cache result because of permissions
                   hasPermissions = false;
@@ -670,16 +685,27 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
         _resultBuilder->close();
 
         if (useQueryCache && _warnings.empty()) {
+          auto dataSources = _queryDataSources;
+
+          _trx->state()->allCollections( // collect transaction DataSources
+            [&dataSources](TransactionCollection& trxCollection)->bool {
+              dataSources.emplace(trxCollection.collection()); // add collection from transaction
+              return true; // continue traversal
+            }
+          );
+
           // create a query cache entry for later storage
           _cacheEntry = std::make_unique<QueryCacheResultEntry>(
               hash(), _queryString, _resultBuilder, bindParameters(),
-              _trx->state()->collectionNames(_views));
+            std::move(dataSources) // query DataSources
+          );
         }
 
         queryResult.result = std::move(_resultBuilder);
         queryResult.context = _trx->transactionContext();
         _executionPhase = ExecutionPhase::FINALIZE;
       }
+
       // intentionally falls through
       case ExecutionPhase::FINALIZE: {
         // will set warnings, stats, profile and cleanup plan and engine
@@ -768,7 +794,13 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
 
         // got a result from the query cache
         if (exe != nullptr) {
-          for (std::string const& dataSourceName : cacheEntry->_dataSources) {
+          for (auto& dataSource: cacheEntry->_dataSources) {
+            if (!dataSource) {
+              continue;
+            }
+
+            auto& dataSourceName = dataSource->name();
+
             if (!exe->canUseCollection(dataSourceName, auth::Level::RO)) {
               // cannot use query cache result because of permissions
               hasPermissions = false;
@@ -879,12 +911,23 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
     queryResult.context = _trx->transactionContext();
 
     if (useQueryCache && _warnings.empty()) {
+      auto dataSources = _queryDataSources;
+
+      _trx->state()->allCollections( // collect transaction DataSources
+        [&dataSources](TransactionCollection& trxCollection)->bool {
+          dataSources.emplace(trxCollection.collection()); // add collection from transaction
+          return true; // continue traversal
+        }
+      );
+
       // create a cache entry for later usage
       _cacheEntry =
           std::make_unique<QueryCacheResultEntry>(hash(), _queryString, builder,
                                                   bindParameters(),
-                                                  _trx->state()->collectionNames(_views));
+        std::move(dataSources) // query DataSources
+      );
     }
+
     // will set warnings, stats, profile and cleanup plan and engine
     ExecutionState state = finalize(queryResult);
     while (state == ExecutionState::WAITING) {
@@ -934,7 +977,7 @@ ExecutionState Query::finalize(QueryResult& result) {
         << "Query::finalize: before cleanupPlanAndEngine"
         << " this: " << (uintptr_t)this;
 
-    _engine->_stats.setExecutionTime(runTime());
+    setExecutionTime();
     enterState(QueryExecutionState::ValueType::FINALIZATION);
 
     result.extra = std::make_shared<VPackBuilder>();
@@ -967,7 +1010,7 @@ ExecutionState Query::finalize(QueryResult& result) {
   // patch executionTime stats value in place
   // we do this because "executionTime" should include the whole span of the
   // execution and we have to set it at the very end
-  double const rt = runTime(now);
+  double const rt = now - _startTime;
   basics::VelocyPackHelper::patchDouble(result.extra->slice().get("stats").get("executionTime"),
                                         rt);
 
@@ -1202,7 +1245,7 @@ void Query::exitContext() {
 /// @brief returns statistics for current query.
 void Query::getStats(VPackBuilder& builder) {
   if (_engine != nullptr) {
-    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
+    setExecutionTime();
     _engine->_stats.toVelocyPack(builder, _queryOptions.fullCount);
   } else {
     ExecutionStats::toVelocyPackStatic(builder);

@@ -54,14 +54,15 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
       std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),
                                                 outputRegisters, registersToKeep);
 
-  REQUIRE(outputRegisters->size()  == 1);
-  REQUIRE(( *(outputRegisters->begin())  == 0 ));
+  REQUIRE(outputRegisters->size() == 1);
+  REQUIRE((*(outputRegisters->begin()) == 0));
 
   RegisterId inputRegister(0);
   RegisterId outputRegister(*(outputRegisters->begin()));
 
-  ReturnExecutorInfos infos(inputRegister, outputRegister, 1 /*nr in*/ , 1 /*nr out*/,
-                            std::unordered_set<RegisterId>{} /*to clear*/, false /*return inherit*/);
+  ReturnExecutorInfos infos(inputRegister, outputRegister, 1 /*nr in*/, 1 /*nr out*/,
+                            std::unordered_set<RegisterId>{} /*to clear*/,
+                            true /*do count*/, false /*return inherit*/);
 
   GIVEN("there are no rows upstream") {
     VPackBuilder input;
@@ -100,8 +101,7 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
   }
 
   GIVEN("there are rows in the upstream") {
-    auto input = VPackParser::fromJson(
-        "[ [true], [false], [true] ]");
+    auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
 
     WHEN("the producer does not wait") {
       SingleRowFetcherHelper fetcher(input->buffer(), false);
@@ -126,7 +126,6 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
         REQUIRE(row.produced());
         row.advanceRow();
 
-
         AND_THEN("The output should stay stable") {
           std::tie(state, stats) = testee.produceRow(row);
           REQUIRE(state == ExecutionState::DONE);
@@ -136,14 +135,14 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
         // verify result
         AqlValue value;
         auto block = row.stealBlock();
-        for(std::size_t index = 0; index < 3; index++){
+        for (std::size_t index = 0; index < 3; index++) {
           value = block->getValue(index, 0);
           REQUIRE(value.isBoolean());
           REQUIRE(value.toBoolean() == input->slice().at(index).at(0).getBool());
         }
 
-      } //WHEN
-    } //GIVEN
+      }  // WHEN
+    }    // GIVEN
 
     WHEN("the producer waits") {
       SingleRowFetcherHelper fetcher(input->steal(), true);
@@ -185,8 +184,8 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
         REQUIRE(!row.produced());
       }
     }
-  } // GIVERN
-} // SCENARIO
+  }  // GIVERN
+}  // SCENARIO
 
 }  // namespace aql
 }  // namespace tests

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,31 +20,20 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cstdint>
-#include "Basics/Result.h"
-#include "Utils/OperationResult.h"
+#include "MMFilesIndex.h"
 
-#include "Futures/Future.h"
+#include "Basics/LocalTaskQueue.h"
 
-namespace arangodb {
-namespace futures {
-// Instantiate the most common Future types to save compile time
-template class Future<Unit>;
-template class Future<bool>;
-template class Future<int32_t>;
-template class Future<uint32_t>;
-template class Future<int64_t>;
-template class Future<uint64_t>;
-template class Future<std::string>;
-template class Future<double>;
+using namespace arangodb;
 
-// arangodb types
-template class Future<arangodb::Result>;
-template class Future<arangodb::OperationResult>;
-  
-/// Make a complete void future
-Future<Unit> makeFuture() {
-  return Future<Unit>(unit);
+void MMFilesIndex::batchInsert(transaction::Methods& trx,
+                        std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
+                        std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
+  for (auto const& it : documents) {
+    Result status = insert(trx, it.first, it.second, OperationMode::normal);
+    if (status.errorNumber() != TRI_ERROR_NO_ERROR) {
+      queue->setStatus(status.errorNumber());
+      break;
+    }
+  }
 }
-}  // namespace futures
-}  // namespace arangodb

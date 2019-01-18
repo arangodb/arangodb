@@ -151,12 +151,6 @@ void handleViewsRule(arangodb::aql::Optimizer* opt,
   auto addPlan = irs::make_finally([opt, &plan, rule, &modified]() {
     opt->addPlan(std::move(plan), rule, modified);
   });
-
-  if (query.views().empty()) {
-    // nothing to do in absence of views
-    return;
-  }
-
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
 

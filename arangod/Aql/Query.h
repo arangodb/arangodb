@@ -49,6 +49,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 class CollectionNameResolver;
+class LogicalDataSource; // forward declaration
 
 namespace transaction {
 class Context;
@@ -82,7 +83,6 @@ class Query {
  private:
   enum ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
 
- private:
   Query(Query const&) = delete;
   Query& operator=(Query const&) = delete;
 
@@ -99,12 +99,14 @@ class Query {
 
   virtual ~Query();
 
+  /// @brief note that the query uses the DataSource
+  void addDataSource(std::shared_ptr<arangodb::LogicalDataSource> const& ds);
+
   /// @brief clone a query
   /// note: as a side-effect, this will also create and start a transaction for
   /// the query
   TEST_VIRTUAL Query* clone(QueryPart, bool);
 
- public:
   constexpr static uint64_t DontCache = 0;
 
   /// @brief whether or not the query is killed
@@ -147,12 +149,6 @@ class Query {
 
   /// @brief return the start timestamp of the query
   double startTime() const { return _startTime; }
-
-  /// @brief return the current runtime of the query
-  double runTime(double now) const { return now - _startTime; }
-
-  /// @brief return the current runtime of the query
-  double runTime() const { return runTime(TRI_microtime()); }
 
   /// @brief the part of the query
   inline QueryPart part() const { return _part; }
@@ -290,16 +286,6 @@ class Query {
   /// @brief get a description of the query's current state
   std::string getStateString() const;
 
-  /// @brief note that the query uses the view
-  void addView(std::string const& name) {
-    // Either collection or view
-    _views.emplace(name);
-  }
-
-  std::unordered_set<std::string> const& views() const noexcept {
-    return _views;
-  }
-
   /// @brief look up a graph in the _graphs collection
   graph::Graph const* lookupGraphByName(std::string const& name);
 
@@ -378,6 +364,10 @@ class Query {
 
   /// @brief graphs used in query, identified by name
   std::unordered_map<std::string, std::unique_ptr<graph::Graph>> _graphs;
+
+  /// @brief set of DataSources used in the query
+  ///        needed for the query cache, value LogicalDataSource::system()
+  std::unordered_set<std::shared_ptr<arangodb::LogicalDataSource>> _queryDataSources;
 
   /// @brief the actual query string
   QueryString _queryString;
@@ -459,9 +449,6 @@ class Query {
 
   /// @brief shared state
   std::shared_ptr<SharedQueryState> _sharedState;
-
-  /// @brief names of views used by the query. needed for the query cache
-  std::unordered_set<std::string> _views;
 
   /// @brief query cache entry built by the query
   /// only populated when the query has generated its result(s) and before

@@ -252,7 +252,6 @@ SECTION("test_create_drop") {
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE(nullptr != ci);
 
-  std::string error;
   TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
 
   // create database
@@ -265,10 +264,7 @@ SECTION("test_create_drop") {
     CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     CHECK(1 == vocbase->id());
 
-    CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
-      vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
-    ));
-    CHECK("no error" == error);
+    CHECK((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0).ok()));
   }
 
   // create collection
@@ -280,9 +276,7 @@ SECTION("test_create_drop") {
       "{ \"name\": \"testCollection\", \"replicationFactor\":1, \"shards\":{} }"
     );
 
-    CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
-      vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
-    ));
+    CHECK((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), 0.0).ok()));
 
     logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     REQUIRE((nullptr != logicalCollection));
@@ -358,7 +352,7 @@ SECTION("test_create_drop") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
-    error.clear();
+    std::string error;
     CHECK(actualMeta.init(builder->slice(), error));
     CHECK(error.empty());
     CHECK(expectedMeta == actualMeta);
