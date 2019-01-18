@@ -217,10 +217,25 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor>::initializeCurs
   std::unique_ptr<AqlItemBlock> block;
   if (items != nullptr) {
     block = std::unique_ptr<AqlItemBlock>(
-        items->slice(pos, *(_executor._infos.registersToKeep())));
+        items->slice(pos, _executor._infos.getRegistersForSlice()));
+    LOG_DEVEL << "sub items size" << items->getNrRegs();
+    LOG_DEVEL << "sub nr out" << _executor._infos.numberOfOutputRegisters();
+    LOG_DEVEL << "sub nr in " << _executor._infos.numberOfInputRegisters();
+    std::stringstream ss;
+    for(auto const& r : *_executor._infos.registersToKeep()){
+      ss << r << " ";
+    }
+    LOG_DEVEL << "sub to keep " << ss.rdbuf();
   } else {
     block = std::unique_ptr<AqlItemBlock>(
-        _engine->itemBlockManager().requestBlock(1, _infos.numberOfInputRegisters()));
+        _engine->itemBlockManager().requestBlock(1, _executor._infos.numberOfOutputRegisters()));
+    LOG_DEVEL << "empty nr out" << _executor._infos.numberOfOutputRegisters();
+    LOG_DEVEL << "empty nr in " << _executor._infos.numberOfInputRegisters();
+    std::stringstream ss;
+    for(auto const& r : *_executor._infos.registersToKeep()){
+      ss << r << " ";
+    }
+    LOG_DEVEL << "empty to keep " << ss.rdbuf();
   }
   InputAqlItemBlockShell shell(_engine->itemBlockManager(), std::move(block),
                                _executor._infos.getInputRegisters());

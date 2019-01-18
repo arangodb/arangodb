@@ -40,11 +40,11 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/Function.h"
+#include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/Query.h"
-#include "Aql/IdExecutor.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
@@ -100,6 +100,17 @@ std::unordered_map<int, std::string const> const typeNames{
      "EnumerateViewNode"},
 #endif
 };
+
+// FIXME -- this temporary function should be
+// replaced by a ExecutionNode member variable
+// that shows the subquery depth and if filled
+// during register planning
+bool isInSubQuery(ExecutionNode const* node) {
+  while (node->hasParent()) {
+    node = node->getFirstParent();
+  }
+  return node->plan()->root() != node;
+}
 
 }  // namespace
 
@@ -1183,13 +1194,29 @@ void ExecutionNode::removeDependencies() {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+  auto nrInputOutputRegs = getRegisterPlan()->nrRegs[getDepth()];
 
-  ExecutorInfos infos(make_shared_unordered_set(), make_shared_unordered_set(),
-                            getRegisterPlan()->nrRegs[getDepth()],
-                            getRegisterPlan()->nrRegs[getDepth()],
-                            getRegsToClear());
-  return std::make_unique<ExecutionBlockImpl<IdExecutor>>(&engine, this,
-                                                              std::move(infos));
+  std::unordered_set<RegisterId> whiteList;
+  std::unordered_set<RegisterId> whiteListClean;
+
+  if (isInSubQuery(this)) {
+    auto const& varinfo = this->getRegisterPlan()->varInfo;
+    for (auto const& var : this->getVarsUsedLater()) {
+      auto it2 = varinfo.find(var->id);
+      if (it2 != varinfo.end()) {
+        auto val = (*it2).second.registerId;
+        whiteList.insert((*it2).second.registerId);
+        if (val < nrInputOutputRegs) {
+          whiteListClean.insert((*it2).second.registerId);
+        }
+      }
+    }
+  }
+
+  IdExecutorInfos infos(nrInputOutputRegs, std::move(whiteList),
+                        std::move(whiteListClean), getRegsToClear());
+
+  return std::make_unique<ExecutionBlockImpl<IdExecutor>>(&engine, this, std::move(infos));
 }
 
 /// @brief toVelocyPack, for SingletonNode

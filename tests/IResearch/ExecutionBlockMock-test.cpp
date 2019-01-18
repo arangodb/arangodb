@@ -28,31 +28,33 @@
 #include "StorageEngineMock.h"
 
 #if USE_ENTERPRISE
-  #include "Enterprise/Ldap/LdapFeature.h"
+#include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
 #include "Aql/BasicBlocks.h"
-#include "Aql/Query.h"
+#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/IdExecutor.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
-#include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
-#include "RestServer/DatabasePathFeature.h"
-#include "RestServer/ViewTypesFeature.h"
+#include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "V8/v8-globals.h"
@@ -69,7 +71,7 @@
 
 #include <velocypack/Iterator.h>
 
-extern const char* ARGV0; // defined in main.cpp
+extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
 
@@ -79,39 +81,46 @@ struct IResearchBlockMockSetup {
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchBlockMockSetup(): engine(server), server(nullptr, nullptr) {
+  IResearchBlockMockSetup() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init(true);
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+                                    arangodb::LogLevel::WARN);
 
     // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress WARNING DefaultCustomTypeHandler called
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
+                                    arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
     features.emplace_back(new arangodb::ViewTypesFeature(server), true);
-    features.emplace_back(new arangodb::AuthenticationFeature(server), true); // required for FeatureCacheFeature
+    features.emplace_back(new arangodb::AuthenticationFeature(server), true);  // required for FeatureCacheFeature
     features.emplace_back(new arangodb::DatabasePathFeature(server), false);
-    features.emplace_back(new arangodb::DatabaseFeature(server), false); // required for FeatureCacheFeature
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
-    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
+    features.emplace_back(new arangodb::DatabaseFeature(server),
+                          false);  // required for FeatureCacheFeature
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // must be first
+    arangodb::application_features::ApplicationServer::server->addFeature(
+        features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
+    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                                                     0, TRI_VOC_SYSTEM_DATABASE);
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()),
+                          false);  // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
     features.emplace_back(new arangodb::AqlFeature(server), true);
     features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true);  // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::ShardingFeature(server), true);
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
     features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
 
-    #if USE_ENTERPRISE
-      features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
-    #endif
+#if USE_ENTERPRISE
+    features.emplace_back(new arangodb::LdapFeature(server),
+                          false);  // required for AuthenticationFeature with USE_ENTERPRISE
+#endif
 
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
@@ -127,22 +136,25 @@ struct IResearchBlockMockSetup {
       }
     }
 
-    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
-      arangodb::iresearch::IResearchAnalyzerFeature
-    >();
+    auto* analyzers =
+        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
-    analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
-    analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
+    analyzers->emplace("test_analyzer", "TestAnalyzer", "abc");  // cache analyzer
+    analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ",");  // cache analyzer
 
-    auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
-    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
+    auto* dbPathFeature =
+        arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
+            "DatabasePath");
+    arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
   }
 
   ~IResearchBlockMockSetup() {
-    system.reset(); // destroy before reseting the 'ENGINE'
-    arangodb::AqlFeature(server).stop(); // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
+    system.reset();  // destroy before reseting the 'ENGINE'
+    arangodb::AqlFeature(server).stop();  // unset singleton instance
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
+                                    arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(),
+                                    arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
@@ -157,11 +169,12 @@ struct IResearchBlockMockSetup {
       f.first->unprepare();
     }
 
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+                                    arangodb::LogLevel::DEFAULT);
   }
-}; // IResearchQuerySetup
+};  // IResearchQuerySetup
 
-}
+}  // namespace
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -171,20 +184,17 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
   IResearchBlockMockSetup s;
   UNUSED(s);
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                        "testVocbase");
   arangodb::aql::ResourceMonitor resMon;
 
   // getSome
   {
     std::string const queryString = "RETURN 1";
-    arangodb::aql::Query query(
-      false,
-      vocbase,
-      arangodb::aql::QueryString(queryString),
-      nullptr,
-      std::make_shared<arangodb::velocypack::Builder>(),
-      arangodb::aql::PART_MAIN
-    );
+    arangodb::aql::Query query(false, vocbase,
+                               arangodb::aql::QueryString(queryString), nullptr,
+                               std::make_shared<arangodb::velocypack::Builder>(),
+                               arangodb::aql::PART_MAIN);
 
     query.prepare(arangodb::QueryRegistryFeature::registry());
 
@@ -193,7 +203,16 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     // build simple chain
     // Singleton <- MockBlock
     MockNode<arangodb::aql::SingletonNode> rootNode;
-    arangodb::aql::SingletonBlock rootBlock(query.engine(), &rootNode);
+    // ExecutorInfos infos(make_shared_unordered_set(), make_shared_unordered_set(),
+    //                          getRegisterPlan()->nrRegs[getDepth()],
+    //                          getRegisterPlan()->nrRegs[getDepth()],
+    //                          getRegsToClear());
+
+    arangodb::aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
+                                       arangodb::aql::make_shared_unordered_set(),
+                                       rootNode.getDepth(), rootNode.getDepth(), {});
+    arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
+        query.engine(), &rootNode, std::move(infos));
 
     ExecutionNodeMock node;
     ExecutionBlockMock block(data, *query.engine(), node);
@@ -228,14 +247,10 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
   // getSome + skipSome
   {
     std::string const queryString = "RETURN 1";
-    arangodb::aql::Query query(
-      false,
-      vocbase,
-      arangodb::aql::QueryString(queryString),
-      nullptr,
-      std::make_shared<arangodb::velocypack::Builder>(),
-      arangodb::aql::PART_MAIN
-    );
+    arangodb::aql::Query query(false, vocbase,
+                               arangodb::aql::QueryString(queryString), nullptr,
+                               std::make_shared<arangodb::velocypack::Builder>(),
+                               arangodb::aql::PART_MAIN);
 
     query.prepare(arangodb::QueryRegistryFeature::registry());
 
@@ -244,7 +259,12 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     // build simple chain
     // Singleton <- MockBlock
     MockNode<arangodb::aql::SingletonNode> rootNode;
-    arangodb::aql::SingletonBlock rootBlock(query.engine(), &rootNode);
+
+    arangodb::aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
+                                       arangodb::aql::make_shared_unordered_set(),
+                                       rootNode.getDepth(), rootNode.getDepth(), {});
+    arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
+        query.engine(), &rootNode, std::move(infos));
 
     ExecutionNodeMock node;
     ExecutionBlockMock block(data, *query.engine(), node);
@@ -276,14 +296,10 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
   // skipSome + getSome
   {
     std::string const queryString = "RETURN 1";
-    arangodb::aql::Query query(
-      false,
-      vocbase,
-      arangodb::aql::QueryString(queryString),
-      nullptr,
-      std::make_shared<arangodb::velocypack::Builder>(),
-      arangodb::aql::PART_MAIN
-    );
+    arangodb::aql::Query query(false, vocbase,
+                               arangodb::aql::QueryString(queryString), nullptr,
+                               std::make_shared<arangodb::velocypack::Builder>(),
+                               arangodb::aql::PART_MAIN);
 
     query.prepare(arangodb::QueryRegistryFeature::registry());
 
@@ -292,7 +308,12 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     // build simple chain
     // Singleton <- MockBlock
     MockNode<arangodb::aql::SingletonNode> rootNode;
-    arangodb::aql::SingletonBlock rootBlock(query.engine(), &rootNode);
+
+    arangodb::aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
+                                       arangodb::aql::make_shared_unordered_set(),
+                                       rootNode.getDepth(), rootNode.getDepth(), {});
+    arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
+        query.engine(), &rootNode, std::move(infos));
 
     ExecutionNodeMock node;
     ExecutionBlockMock block(data, *query.engine(), node);
@@ -327,27 +348,28 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
   IResearchBlockMockSetup s;
   UNUSED(s);
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                        "testVocbase");
   arangodb::aql::ResourceMonitor resMon;
 
   // getSome
   {
     std::string const queryString = "RETURN 1";
-    arangodb::aql::Query query(
-      false,
-      vocbase,
-      arangodb::aql::QueryString(queryString),
-      nullptr,
-      std::make_shared<arangodb::velocypack::Builder>(),
-      arangodb::aql::PART_MAIN
-    );
+    arangodb::aql::Query query(false, vocbase,
+                               arangodb::aql::QueryString(queryString), nullptr,
+                               std::make_shared<arangodb::velocypack::Builder>(),
+                               arangodb::aql::PART_MAIN);
 
     query.prepare(arangodb::QueryRegistryFeature::registry());
 
     // build chain:
     // Singleton <- MockBlock0 <- MockBlock1
     MockNode<arangodb::aql::SingletonNode> rootNode;
-    arangodb::aql::SingletonBlock rootBlock(query.engine(), &rootNode);
+    arangodb::aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
+                                       arangodb::aql::make_shared_unordered_set(),
+                                       rootNode.getDepth(), rootNode.getDepth(), {});
+    arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
+        query.engine(), &rootNode, std::move(infos));
 
     arangodb::aql::AqlItemBlock data0(&resMon, 2, 2);
     ExecutionNodeMock node0;
@@ -397,21 +419,21 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
   // getSome + skip
   {
     std::string const queryString = "RETURN 1";
-    arangodb::aql::Query query(
-      false,
-      vocbase,
-      arangodb::aql::QueryString(queryString),
-      nullptr,
-      std::make_shared<arangodb::velocypack::Builder>(),
-      arangodb::aql::PART_MAIN
-    );
+    arangodb::aql::Query query(false, vocbase,
+                               arangodb::aql::QueryString(queryString), nullptr,
+                               std::make_shared<arangodb::velocypack::Builder>(),
+                               arangodb::aql::PART_MAIN);
 
     query.prepare(arangodb::QueryRegistryFeature::registry());
 
     // build chain:
     // Singleton <- MockBlock0 <- MockBlock1
     MockNode<arangodb::aql::SingletonNode> rootNode;
-    arangodb::aql::SingletonBlock rootBlock(query.engine(), &rootNode);
+    arangodb::aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
+                                       arangodb::aql::make_shared_unordered_set(),
+                                       rootNode.getDepth(), rootNode.getDepth(), {});
+    arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
+        query.engine(), &rootNode, std::move(infos));
 
     arangodb::aql::AqlItemBlock data0(&resMon, 2, 2);
     ExecutionNodeMock node0;
@@ -459,21 +481,21 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
   // skip + getSome
   {
     std::string const queryString = "RETURN 1";
-    arangodb::aql::Query query(
-      false,
-      vocbase,
-      arangodb::aql::QueryString(queryString),
-      nullptr,
-      std::make_shared<arangodb::velocypack::Builder>(),
-      arangodb::aql::PART_MAIN
-    );
+    arangodb::aql::Query query(false, vocbase,
+                               arangodb::aql::QueryString(queryString), nullptr,
+                               std::make_shared<arangodb::velocypack::Builder>(),
+                               arangodb::aql::PART_MAIN);
 
     query.prepare(arangodb::QueryRegistryFeature::registry());
 
     // build chain:
     // Singleton <- MockBlock0 <- MockBlock1
     MockNode<arangodb::aql::SingletonNode> rootNode;
-    arangodb::aql::SingletonBlock rootBlock(query.engine(), &rootNode);
+    arangodb::aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
+                                       arangodb::aql::make_shared_unordered_set(),
+                                       rootNode.getDepth(), rootNode.getDepth(), {});
+    arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
+        query.engine(), &rootNode, std::move(infos));
 
     arangodb::aql::AqlItemBlock data0(&resMon, 2, 2);
     ExecutionNodeMock node0;

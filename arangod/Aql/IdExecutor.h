@@ -45,16 +45,39 @@ class NoStats;
 class OutputAqlItemRow;
 struct SortRegister;
 
+class IdExecutorInfos : public ExecutorInfos {
+ public:
+  // whiteList will be used for slicing in the ExecutionBlockImpl
+  // whiteListClean is the same as our registersToKeep
+  IdExecutorInfos(RegisterId nrInOutRegisters, std::unordered_set<RegisterId> whiteList,
+                  std::unordered_set<RegisterId> whiteListClean,
+                  std::unordered_set<RegisterId> registersToClear);
+
+  IdExecutorInfos() = delete;
+  IdExecutorInfos(IdExecutorInfos&&) = default;
+  IdExecutorInfos(IdExecutorInfos const&) = delete;
+  ~IdExecutorInfos() = default;
+
+  RegisterId getInputRegister() const noexcept { return _inputRegister; };
+  std::unordered_set<RegisterId> const& getRegistersForSlice() const noexcept { return _whiteList; };
+
+ private:
+  // This is exactly the value in the parent member ExecutorInfo::_inRegs,
+  // respectively getInputRegisters().
+  RegisterId _inputRegister;
+  std::unordered_set<RegisterId> _whiteList;
+};
+
 class IdExecutor {
   template <typename T>
   friend class ExecutionBlockImpl;
 
  public:
   using Fetcher = ConstFetcher;
-  using Infos = ExecutorInfos;
+  using Infos = IdExecutorInfos;
   using Stats = NoStats;
 
-  IdExecutor(Fetcher& fetcher, ExecutorInfos&);
+  IdExecutor(Fetcher& fetcher, IdExecutorInfos&);
   ~IdExecutor();
 
   /**
@@ -70,6 +93,7 @@ class IdExecutor {
   Fetcher& _fetcher;
   bool _done;
   std::unique_ptr<AqlItemBlock> _inputRegisterValues;
+  int bla = 0;
 };
 }  // namespace aql
 }  // namespace arangodb
