@@ -354,10 +354,6 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
                           LogicalCollection* collection, TRI_voc_tick_t databaseId,
                           TRI_voc_cid_t collectionId, TRI_voc_tick_t dataMin,
                           TRI_voc_tick_t dataMax, bool withTicks, bool useVst = false) {
-  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
-      << "dumping collection " << collection->id() << ", tick range " << dataMin
-      << " - " << dataMax;
-
   bool const isEdgeCollection = (collection->type() == TRI_COL_TYPE_EDGE);
 
   // setup some iteration state
@@ -415,8 +411,8 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
       dump->_bufferFull = false;
     }
 
-    LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
-        << "dumped collection " << collection->id() << ", tick range "
+    LOG_TOPIC(DEBUG, arangodb::Logger::REPLICATION)
+        << "dumped collection '" << collection->name() << "', tick range "
         << dataMin << " - " << dataMax << ", markers: " << numMarkers
         << ", last found tick: " << dump->_lastFoundTick
         << ", hasMore: " << dump->_hasMore << ", buffer full: " << dump->_bufferFull;
@@ -446,6 +442,9 @@ int MMFilesDumpCollectionReplication(MMFilesReplicationDumpContext* dump,
                                      TRI_voc_tick_t dataMin,
                                      TRI_voc_tick_t dataMax, bool withTicks) {
   TRI_ASSERT(collection != nullptr);
+  
+  LOG_TOPIC(DEBUG, arangodb::Logger::REPLICATION)
+      << "dumping collection '" << collection->name() << "', tick range " << dataMin << " - " << dataMax;
 
   // get a custom type handler
   auto customTypeHandler = dump->_transactionContext->orderCustomTypeHandler();
@@ -484,7 +483,7 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext* dump,
                               std::unordered_set<TRI_voc_tid_t> const& transactionIds,
                               TRI_voc_tick_t firstRegularTick, TRI_voc_tick_t tickMin,
                               TRI_voc_tick_t tickMax, bool outputAsArray) {
-  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+  LOG_TOPIC(DEBUG, arangodb::Logger::REPLICATION)
       << "dumping log, tick range " << tickMin << " - " << tickMax;
 
   // get a custom type handler
@@ -504,6 +503,7 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext* dump,
   TRI_voc_cid_t lastCollectionId = 0;
   bool hasMore = true;
   bool bufferFull = false;
+  size_t numMarkers = 0;
 
   try {
     if (outputAsArray) {
@@ -622,6 +622,8 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext* dump,
         if (res != TRI_ERROR_NO_ERROR) {
           THROW_ARANGO_EXCEPTION(res);
         }
+    
+        ++numMarkers;
 
         if (static_cast<uint64_t>(TRI_LengthStringBuffer(dump->_buffer)) >= dump->_chunkSize) {
           // abort the iteration
@@ -670,6 +672,12 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext* dump,
       dump->_hasMore = false;
       dump->_bufferFull = false;
     }
+    
+    LOG_TOPIC(DEBUG, arangodb::Logger::REPLICATION)
+        << "dumped log, tick range "
+        << tickMin << " - " << tickMax << ", markers: " << numMarkers
+        << ", last found tick: " << dump->_lastFoundTick
+        << ", hasMore: " << dump->_hasMore << ", buffer full: " << dump->_bufferFull;
   }
 
   return res;

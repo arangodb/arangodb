@@ -1231,8 +1231,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
     std::string const& masterColl = !masterUuid.empty() ? masterUuid : itoa(masterCid);
     auto res = incremental && getSize(*col) > 0
-                   ? fetchCollectionSync(col, masterColl, _config.master.lastUncommittedLogTick)
-                   : fetchCollectionDump(col, masterColl, _config.master.lastUncommittedLogTick);
+                   ? fetchCollectionSync(col, masterColl, _config.master.lastLogTick)
+                   : fetchCollectionDump(col, masterColl, _config.master.lastLogTick);
 
     if (!res.ok()) {
       return res;
