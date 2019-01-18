@@ -157,6 +157,30 @@ is synchronous.
 Synchronous replication works on a per-shard basis. Using the option _replicationFactor_,
 one configures for each _collection_ how many copies of each _shard_ are kept in the Cluster.
 
+{% hint 'danger' %}
+If a collection have a _replication factor_ equal to 1, its data is **not**
+replicated in other _DBServers_. This exposes you to a risk of data loss, if
+the machine where the _DBServer_ that is storing this collection permanently
+fails.
+{% endhint %}
+
+{% hint 'warning' %} 
+The _replication factor_ has to be set to a value equals or higher than 2
+to achive mimimal data redundancy via the synchronous replication.
+{% endhint %}
+
+{% hint 'warning' %}
+An equal-or-higher-than 2 _replication factor_ has to be set **explicitely**
+when the collection is created, or can be set later at run time if you forgot
+to set it at creation time.
+{% endhint %}
+
+{% hint 'tip' %}
+When using a Cluster, please make sure all the collections that are important
+(and should not be lost in any case) have a _replication factor_ equal or higher
+than 2.
+{% endhint %}
+
 At any given time, one of the copies is declared to be the _leader_ and
 all other replicas are _followers_. Write operations for this _shard_
 are always sent to the _DBServer_ which happens to hold the _leader_ copy,
