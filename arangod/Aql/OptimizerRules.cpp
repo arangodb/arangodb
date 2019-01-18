@@ -574,15 +574,20 @@ std::string getSingleShardId(arangodb::aql::ExecutionPlan const* plan,
 
   arangodb::aql::Variable const* inputVariable = nullptr;
   if (node->getType() == EN::INDEX) {
-    inputVariable = ExecutionNode::castTo<arangodb::aql::IndexNode const*>(node)->outVariable();
+    inputVariable =
+        ExecutionNode::castTo<arangodb::aql::IndexNode const*>(node)->outVariable();
   } else if (node->getType() == EN::FILTER) {
-    inputVariable = ExecutionNode::castTo<arangodb::aql::FilterNode const*>(node)->inVariable();
+    inputVariable =
+        ExecutionNode::castTo<arangodb::aql::FilterNode const*>(node)->inVariable();
   } else if (node->getType() == EN::INSERT) {
-    inputVariable = ExecutionNode::castTo<arangodb::aql::InsertNode const*>(node)->inVariable();
+    inputVariable =
+        ExecutionNode::castTo<arangodb::aql::InsertNode const*>(node)->inVariable();
   } else if (node->getType() == EN::REMOVE) {
-    inputVariable = ExecutionNode::castTo<arangodb::aql::RemoveNode const*>(node)->inVariable();
+    inputVariable =
+        ExecutionNode::castTo<arangodb::aql::RemoveNode const*>(node)->inVariable();
   } else if (node->getType() == EN::REPLACE || node->getType() == EN::UPDATE) {
-    auto updateReplaceNode = ExecutionNode::castTo<arangodb::aql::UpdateReplaceNode const*>(node);
+    auto updateReplaceNode =
+        ExecutionNode::castTo<arangodb::aql::UpdateReplaceNode const*>(node);
     if (updateReplaceNode->inKeyVariable() != nullptr) {
       inputVariable = updateReplaceNode->inKeyVariable();
     } else {
@@ -714,6 +719,31 @@ std::string getSingleShardId(arangodb::aql::ExecutionPlan const* plan,
 
   // we will only need a single shard!
   return shardId;
+}
+
+bool shouldApplyHeapOptimization(arangodb::aql::ExecutionNode* node,
+                                 arangodb::aql::LimitNode* limit) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(limit != nullptr);
+  size_t input = node->getCost().estimatedNrItems;
+  size_t output = limit->limit() + limit->offset();
+
+  // first check an easy case
+  if (input < 100) {  // TODO fine-tune this cut-off
+    // no reason to complicate things for such a small input
+    return false;
+  }
+
+  // now check something a little more sophisticated, comparing best estimate of
+  // cost of heap sort to cost of regular sort (ignoring some variables)
+  double N = static_cast<double>(input);
+  double M = static_cast<double>(output);
+  double lgN = std::log2(N);
+  double lgM = std::log2(M);
+
+  // the 0.25 here comes from some experiments, may need to be tweaked;
+  // should kick in if output is roughly at most 3/4 of input
+  return (0.25 * N * lgM + M * lgM) < (N * lgN);
 }
 
 }  // namespace
@@ -4036,13 +4066,15 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
           // was only UPDATE <doc> IN <collection>
           inputVariable = updateReplaceNode->inDocVariable();
         }
-        distNode = new DistributeNode(plan.get(), plan->nextId(), collection, inputVariable,
-                                      inputVariable, false, updateReplaceNode->inKeyVariable() != nullptr);
+        distNode = new DistributeNode(plan.get(), plan->nextId(), collection,
+                                      inputVariable, inputVariable, false,
+                                      updateReplaceNode->inKeyVariable() != nullptr);
       } else if (nodeType == ExecutionNode::UPSERT) {
         // an UPSERT node has two input variables!
         auto upsertNode = ExecutionNode::castTo<UpsertNode const*>(node);
         auto d = new DistributeNode(plan.get(), plan->nextId(), collection,
-                                    upsertNode->inDocVariable(), upsertNode->insertVariable(), true, true);
+                                    upsertNode->inDocVariable(),
+                                    upsertNode->insertVariable(), true, true);
         d->setAllowSpecifiedKeys(true);
         distNode = ExecutionNode::castTo<ExecutionNode*>(d);
       } else {
@@ -5081,7 +5113,8 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         arangodb::HashSet<Variable const*> varsUsedHere;
         cn->getVariablesUsedHere(varsUsedHere);
 
-        if (varsUsedHere.size() != 1 || varsUsedHere.find(_variable) == varsUsedHere.end()) {
+        if (varsUsedHere.size() != 1 ||
+            varsUsedHere.find(_variable) == varsUsedHere.end()) {
           break;  // abort . . .
         }
         _lastNode = en;
@@ -6931,21 +6964,23 @@ void arangodb::aql::sortLimitRule(Optimizer* opt, std::unique_ptr<ExecutionPlan>
       if (current->getType() == EN::LIMIT) {
         limit = ExecutionNode::castTo<LimitNode*>(current);
         break;  // stop parsing after first LIMIT
-      } else if (current->getType() == EN::RETURN || current->getType() == EN::INDEX ||
-                 current->getType() == EN::COLLECT) {
+      } else if (current->getType() == EN::FILTER || current->getType() == EN::RETURN ||
+                 current->getType() == EN::INDEX || current->getType() == EN::COLLECT) {
         // TODO check other end conditions
         break;  // stop parsing
       }
       current = current->getFirstParent();  // inspect next node
     }
 
-    // if info is valid we try to optimize ENUMERATE_COLLECTION
-    if (limit != nullptr /* TODO && shouldApplyHeapOptimization(node, limit) */) {
+    // if we found a limit and we meet the heuristic, make the sort node
+    // aware of the limit
+    if (limit != nullptr && shouldApplyHeapOptimization(node, limit)) {
       auto sn = static_cast<SortNode*>(node);
       auto newNode = new SortNode(plan.get(), plan->nextId(), sn->elements(),
                                   sn->isStable(), limit->limit() + limit->offset());
       plan->registerNode(newNode);
       plan->replaceNode(node, newNode);
+      mod = true;
     }
   }
 
