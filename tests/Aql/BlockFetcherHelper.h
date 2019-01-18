@@ -102,8 +102,7 @@ class AllRowsFetcherHelper : public ::arangodb::aql::AllRowsFetcher {
 
 class ConstFetcherHelper : public arangodb::aql::ConstFetcher {
  public:
-  ConstFetcherHelper(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer,
-                         bool returnsWaiting);
+  ConstFetcherHelper(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer);
   virtual ~ConstFetcherHelper();
 
   std::pair<::arangodb::aql::ExecutionState, ::arangodb::aql::InputAqlItemRow> fetchRow() override;
@@ -111,14 +110,9 @@ class ConstFetcherHelper : public arangodb::aql::ConstFetcher {
  private:
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _vPackBuffer;
   arangodb::velocypack::Slice _data;
-  bool _returnedDone = false;
-  bool _returnsWaiting;
-  uint64_t _nrItems;
-  uint64_t _nrCalled;
-  bool _didWait;
   arangodb::aql::ResourceMonitor _resourceMonitor;
   arangodb::aql::AqlItemBlockManager _itemBlockManager;
-  std::shared_ptr<arangodb::aql::InputAqlItemBlockShell> _itemBlock;
+  //std::shared_ptr<arangodb::aql::InputAqlItemBlockShell> _itemBlock;
   arangodb::aql::InputAqlItemRow _lastReturnedRow;
 };
 

@@ -45,27 +45,24 @@ namespace tests {
 namespace aql {
 
 
-SCENARIO("IdExecutor", "[AQL][EXECUTOR][RETURN]") {
+SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
   ExecutionState state;
 
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager(&monitor);
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
-  auto outputRegisters = make_shared_unordered_set({0});
-  auto registersToKeep = make_shared_unordered_set();
+  auto outputRegisters = make_shared_unordered_set();
+  auto registersToKeep = make_shared_unordered_set({0});
   auto outputBlockShell =
       std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),
                                                 outputRegisters, registersToKeep);
 
-  REQUIRE(outputRegisters->size() == 1);
-  REQUIRE((*(outputRegisters->begin()) == 0));
-
-  IdExecutorInfos infos(1 /*nrRegs*/, {1} /*toKeep*/, {} /*toClear*/);
+  IdExecutorInfos infos(1 /*nrRegs*/, {0} /*toKeep*/, {} /*toClear*/);
 
   GIVEN("there are no rows upstream") {
 
     WHEN("the producer does not wait") {
-      ConstFetcherHelper fetcher(nullptr, false);
+      ConstFetcherHelper fetcher(nullptr);
       IdExecutor testee(fetcher, infos);
       NoStats stats{};
 
@@ -77,31 +74,13 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][RETURN]") {
       }
     }
 
-    //WHEN("the producer waits") {
-    //  ConstFetcherHelper fetcher;
-    //  IdExecutor testee(fetcher, infos);
-    //  NoStats stats{};
-
-    //  THEN("the executor should first return WAIT with nullptr") {
-    //    OutputAqlItemRow result(std::move(outputBlockShell));
-    //    std::tie(state, stats) = testee.produceRow(result);
-    //    REQUIRE(state == ExecutionState::WAITING);
-    //    REQUIRE(!result.produced());
-
-    //    AND_THEN("the executor should return DONE with nullptr") {
-    //      std::tie(state, stats) = testee.produceRow(result);
-    //      REQUIRE(state == ExecutionState::DONE);
-    //      REQUIRE(!result.produced());
-    //    }
-    //  }
-    //}
   }
 
   GIVEN("there are rows in the upstream") {
     auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
 
     WHEN("the producer does not wait") {
-      ConstFetcherHelper fetcher(input->buffer(), false);
+      ConstFetcherHelper fetcher(input->buffer());
       IdExecutor testee(fetcher, infos);
       NoStats stats{};
 
@@ -141,46 +120,6 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][RETURN]") {
       }  // WHEN
     }    // GIVEN
 
-    // WHEN("the producer waits") {
-    //   ConstFetcherHelper fetcher;
-    //   IdExecutor testee(fetcher, infos);
-    //   NoStats stats{};
-
-    //   THEN("the executor should return the rows") {
-    //     OutputAqlItemRow row(std::move(outputBlockShell));
-
-    //     std::tie(state, stats) = testee.produceRow(row);
-    //     REQUIRE(state == ExecutionState::WAITING);
-    //     REQUIRE(!row.produced());
-
-    //     std::tie(state, stats) = testee.produceRow(row);
-    //     REQUIRE(state == ExecutionState::HASMORE);
-    //     REQUIRE(row.produced());
-    //     row.advanceRow();
-
-    //     std::tie(state, stats) = testee.produceRow(row);
-    //     REQUIRE(state == ExecutionState::WAITING);
-    //     REQUIRE(!row.produced());
-
-    //     std::tie(state, stats) = testee.produceRow(row);
-    //     REQUIRE(state == ExecutionState::HASMORE);
-    //     REQUIRE(row.produced());
-    //     row.advanceRow();
-
-    //     std::tie(state, stats) = testee.produceRow(row);
-    //     REQUIRE(state == ExecutionState::WAITING);
-    //     REQUIRE(!row.produced());
-
-    //     std::tie(state, stats) = testee.produceRow(row);
-    //     REQUIRE(state == ExecutionState::DONE);
-    //     REQUIRE(row.produced());
-    //     row.advanceRow();
-
-    //     std::tie(state, stats) = testee.produceRow(row);
-    //     REQUIRE(state == ExecutionState::DONE);
-    //     REQUIRE(!row.produced());
-    //   }
-    // }
   }  // GIVERN
 }  // SCENARIO
 

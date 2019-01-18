@@ -47,8 +47,7 @@ using namespace arangodb::tests::aql;
 using namespace arangodb::aql;
 
 namespace {
-static void VPackToAqlItemBlock(VPackSlice data, uint64_t nrRegs,
-                                AqlItemBlock& block) {
+static void VPackToAqlItemBlock(VPackSlice data, uint64_t nrRegs, AqlItemBlock& block) {
   // coordinates in the matrix rowNr, entryNr
   size_t rowIndex = 0;
   RegisterId entry = 0;
@@ -71,8 +70,8 @@ static void VPackToAqlItemBlock(VPackSlice data, uint64_t nrRegs,
 // - SECTION SINGLEROWFETCHER              -
 // -----------------------------------------
 
-SingleRowFetcherHelper::SingleRowFetcherHelper(
-    std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer, bool returnsWaiting)
+SingleRowFetcherHelper::SingleRowFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer,
+                                               bool returnsWaiting)
     : SingleRowFetcher(),
       _vPackBuffer(std::move(vPackBuffer)),
       _returnsWaiting(returnsWaiting),
@@ -119,11 +118,9 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper::fetchRow() {
       _didWait = true;
       // if once DONE is returned, always return DONE
       if (_returnedDone) {
-        return {ExecutionState::DONE,
-                InputAqlItemRow{CreateInvalidInputRowHint{}}};
+        return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
       }
-      return {ExecutionState::WAITING,
-              InputAqlItemRow{CreateInvalidInputRowHint{}}};
+      return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
     }
     _didWait = false;
   }
@@ -148,8 +145,8 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper::fetchRow() {
 // - SECTION ALLROWSFETCHER                -
 // -----------------------------------------
 
-AllRowsFetcherHelper::AllRowsFetcherHelper(
-    std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer, bool returnsWaiting)
+AllRowsFetcherHelper::AllRowsFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer,
+                                           bool returnsWaiting)
     : AllRowsFetcher(),
       _vPackBuffer(std::move(vPackBuffer)),
       _returnsWaiting(returnsWaiting),
@@ -171,16 +168,16 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(
     VPackSlice oneRow = _data.at(0);
     REQUIRE(oneRow.isArray());
     _nrRegs = oneRow.length();
-    auto itemBlock =
-        std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, _nrRegs);
+    auto itemBlock = std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, _nrRegs);
     VPackToAqlItemBlock(_data, _nrRegs, *itemBlock);
     // Add all registers as valid input registers:
     auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
     for (RegisterId i = 0; i < _nrRegs; i++) {
       inputRegisters->emplace(i);
     }
-    auto blockShell = std::make_shared<InputAqlItemBlockShell>(
-      _itemBlockManager, std::move(itemBlock), inputRegisters);
+    auto blockShell = std::make_shared<InputAqlItemBlockShell>(_itemBlockManager,
+                                                               std::move(itemBlock),
+                                                               inputRegisters);
     _matrix = std::make_unique<AqlItemMatrix>(_nrRegs);
     _matrix->addBlock(std::move(blockShell));
   }
@@ -191,8 +188,7 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(
 
 AllRowsFetcherHelper::~AllRowsFetcherHelper() = default;
 
-std::pair<ExecutionState, AqlItemMatrix const*>
-AllRowsFetcherHelper::fetchAllRows() {
+std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcherHelper::fetchAllRows() {
   // If this REQUIRE fails, a the Executor has fetched more rows after DONE.
   REQUIRE(_nrCalled <= _nrItems + 1);
   if (_returnsWaiting) {
@@ -212,22 +208,15 @@ AllRowsFetcherHelper::fetchAllRows() {
   return {ExecutionState::DONE, _matrix.get()};
 };
 
-
 // -----------------------------------------
 // - SECTION CONSTFETCHER              -
 // -----------------------------------------
 
-ConstFetcherHelper::ConstFetcherHelper(
-    std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer, bool returnsWaiting)
+ConstFetcherHelper::ConstFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer)
     : ConstFetcher(),
       _vPackBuffer(std::move(vPackBuffer)),
-      _returnsWaiting(returnsWaiting),
-      _nrItems(0),
-      _nrCalled(0),
-      _didWait(false),
       _resourceMonitor(),
       _itemBlockManager(&_resourceMonitor),
-      _itemBlock(nullptr),
       _lastReturnedRow{CreateInvalidInputRowHint{}} {
   if (_vPackBuffer != nullptr) {
     _data = VPackSlice(_vPackBuffer->data());
@@ -235,22 +224,20 @@ ConstFetcherHelper::ConstFetcherHelper(
     _data = VPackSlice::nullSlice();
   }
   if (_data.isArray()) {
-    _nrItems = _data.length();
-    if (_nrItems > 0) {
+    auto nrItems = _data.length();
+    if (nrItems > 0) {
       VPackSlice oneRow = _data.at(0);
       REQUIRE(oneRow.isArray());
       uint64_t nrRegs = oneRow.length();
-      // Add all registers as valid input registers:
       auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
       for (RegisterId i = 0; i < nrRegs; i++) {
         inputRegisters->emplace(i);
       }
-      _itemBlock = std::make_shared<InputAqlItemBlockShell>(
+      auto itemBlock = std::make_shared<InputAqlItemBlockShell>(
           _itemBlockManager,
-          std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs),
-          inputRegisters);
-      // std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs);
-      VPackToAqlItemBlock(_data, nrRegs, _itemBlock->block());
+          std::make_unique<AqlItemBlock>(&_resourceMonitor, nrItems, nrRegs), inputRegisters);
+      VPackToAqlItemBlock(_data, nrRegs, itemBlock->block());
+      this->injectBlock(itemBlock);
     }
   }
 };
@@ -258,35 +245,8 @@ ConstFetcherHelper::ConstFetcherHelper(
 ConstFetcherHelper::~ConstFetcherHelper() = default;
 
 std::pair<ExecutionState, InputAqlItemRow> ConstFetcherHelper::fetchRow() {
-  // If this REQUIRE fails, the Executor has fetched more rows after DONE.
-  REQUIRE(_nrCalled <= _nrItems);
-  if (_returnsWaiting) {
-    if (!_didWait) {
-      _didWait = true;
-      // if once DONE is returned, always return DONE
-      if (_returnedDone) {
-        return {ExecutionState::DONE,
-                InputAqlItemRow{CreateInvalidInputRowHint{}}};
-      }
-      return {ExecutionState::WAITING,
-              InputAqlItemRow{CreateInvalidInputRowHint{}}};
-    }
-    _didWait = false;
-  }
-  _nrCalled++;
-  if (_nrCalled > _nrItems) {
-    _returnedDone = true;
-    return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
-  }
-  TRI_ASSERT(_itemBlock != nullptr);
-  _lastReturnedRow = InputAqlItemRow{_itemBlock, _nrCalled - 1};
   ExecutionState state;
-  if (_nrCalled < _nrItems) {
-    state = ExecutionState::HASMORE;
-  } else {
-    _returnedDone = true;
-    state = ExecutionState::DONE;
-  }
-  return {state, _lastReturnedRow};
+  arangodb::aql::InputAqlItemRow row{CreateInvalidInputRowHint{}};
+  std::tie(state, row) = ConstFetcher::fetchRow();
+  return {state, std::move(row)};
 };
-
