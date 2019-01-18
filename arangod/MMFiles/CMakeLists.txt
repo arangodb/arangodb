@@ -21,6 +21,7 @@ set(MMFILES_SOURCES
   MMFiles/MMFilesEdgeIndex.cpp
   MMFiles/MMFilesEngine.cpp
   MMFiles/MMFilesExportCursor.cpp
+  MMFiles/MMFilesIndex.cpp
   MMFiles/MMFilesIndexElement.cpp
   MMFiles/MMFilesIndexFactory.cpp
   MMFiles/MMFilesIndexLookupContext.cpp

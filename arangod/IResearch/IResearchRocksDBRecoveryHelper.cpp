@@ -26,6 +26,7 @@
 #include "IResearchCommon.h"
 #include "IResearchLink.h"
 #include "IResearchLinkHelper.h"
+#include "IResearchRocksDBLink.h"
 #include "IResearchView.h"
 #include "Indexes/Index.h"
 #include "RestServer/DatabaseFeature.h"
@@ -223,7 +224,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
 
     trx.begin();
 
-    for (auto link : links) {
+    for (std::shared_ptr<arangodb::Index> const& link : links) {
       IndexId indexId(coll->vocbase().id(), coll->id(), link->id());
 
       // optimization: avoid insertion of recovered documents twice,
@@ -231,8 +232,9 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
       if (!link || _recoveredIndexes.find(indexId) != _recoveredIndexes.end()) {
         continue;  // index was already populated when it was created
       }
-
-      link->insert(trx, docId, doc, arangodb::Index::OperationMode::internal);
+      
+      IResearchLink* l = static_cast<IResearchRocksDBLink*>(link.get());
+      l->insert(trx, docId, doc, arangodb::Index::OperationMode::internal);
     }
 
     trx.commit();
@@ -265,9 +267,10 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(uint32_t column_family_id,
 
   trx.begin();
 
-  for (auto link : links) {
-    link->remove(trx, docId, arangodb::velocypack::Slice::emptyObjectSlice(),
-                 arangodb::Index::OperationMode::internal);
+  for (std::shared_ptr<arangodb::Index> const& link : links) {
+    IResearchLink* l = static_cast<IResearchRocksDBLink*>(link.get());
+    l->remove(trx, docId, arangodb::velocypack::Slice::emptyObjectSlice(),
+              arangodb::Index::OperationMode::internal);
   }
 
   trx.commit();
