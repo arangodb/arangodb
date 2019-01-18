@@ -22,7 +22,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRules.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
@@ -55,6 +54,7 @@
 #include "GeoIndex/Index.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
+#include "OptimizerRules.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
@@ -2154,7 +2154,7 @@ class arangodb::aql::RedundantCalculationsReplacer final
         break;
       }
 
-#if 0 
+#if 0
       // TODO: figure out if this does any harm
       case EN::REMOTESINGLE: {
         replaceInVariable<SingleRemoteOperationNode>(en);
@@ -2194,160 +2194,39 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
   auto visitor = [p, &modified](AstNode* node) {
     AstNode* original = node;
 
-    again:
-      if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        auto const* accessed = node->getMemberUnchecked(0);
+  again:
+    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      auto const* accessed = node->getMemberUnchecked(0);
 
-        if (accessed->type == NODE_TYPE_REFERENCE) {
-          Variable const* v = static_cast<Variable const*>(accessed->getData());
-          TRI_ASSERT(v != nullptr);
+      if (accessed->type == NODE_TYPE_REFERENCE) {
+        Variable const* v = static_cast<Variable const*>(accessed->getData());
+        TRI_ASSERT(v != nullptr);
 
-          auto setter = p->getVarSetBy(v->id);
+        auto setter = p->getVarSetBy(v->id);
 
-          if (setter == nullptr || setter->getType() != EN::CALCULATION) {
-            return node;
-          }
-
-          accessed =
-              ExecutionNode::castTo<CalculationNode*>(setter)->expression()->node();
-          if (accessed == nullptr) {
-            return node;
-          }
-        }
-
-        TRI_ASSERT(accessed != nullptr);
-
-        if (accessed->type == NODE_TYPE_OBJECT) {
-          StringRef const attributeName(node->getStringValue(), node->getStringLength());
-          bool isDynamic = false;
-          size_t const n = accessed->numMembers();
-          for (size_t i = 0; i < n; ++i) {
-            auto member = accessed->getMemberUnchecked(i);
-
-            if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-                StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
-              // found the attribute!
-              AstNode* next = member->getMember(0);
-              if (!next->isDeterministic()) {
-                // do not descend into non-deterministic nodes
-                return node;
-              }
-              // descend further
-              node = next;
-              // now try optimizing the simplified condition
-              // time for a goto...!
-              goto again;
-            } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-              // dynamic attribute name
-              isDynamic = true;
-            }
-          }
-
-          // attribute not found
-          if (!isDynamic) {
-            modified = true;
-            return Ast::createNodeValueNull();
-          }
-        }
-      } else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
-        auto const* accessed = node->getMember(0);
-
-        if (accessed->type == NODE_TYPE_REFERENCE) {
-          Variable const* v = static_cast<Variable const*>(accessed->getData());
-          TRI_ASSERT(v != nullptr);
-
-          auto setter = p->getVarSetBy(v->id);
-
-          if (setter == nullptr || setter->getType() != EN::CALCULATION) {
-            return node;
-          }
-
-          accessed =
-              ExecutionNode::castTo<CalculationNode*>(setter)->expression()->node();
-          if (accessed == nullptr) {
-            return node;
-          }
-        }
-
-        auto indexValue = node->getMember(1);
-
-        if (!indexValue->isConstant() ||
-            !(indexValue->isStringValue() || indexValue->isNumericValue())) {
-          // cant handle this type of index statically
+        if (setter == nullptr || setter->getType() != EN::CALCULATION) {
           return node;
         }
 
-        if (accessed->type == NODE_TYPE_OBJECT) {
-          StringRef attributeName;
-          std::string indexString;
+        accessed = ExecutionNode::castTo<CalculationNode*>(setter)->expression()->node();
+        if (accessed == nullptr) {
+          return node;
+        }
+      }
 
-          if (indexValue->isStringValue()) {
-            // string index, e.g. ['123']
-            attributeName = StringRef(indexValue->getStringValue(),
-                                      indexValue->getStringLength());
-          } else {
-            // numeric index, e.g. [123]
-            TRI_ASSERT(indexValue->isNumericValue());
-            // convert the numeric index into a string
-            indexString = std::to_string(indexValue->getIntValue());
-            attributeName = StringRef(indexString);
-          }
+      TRI_ASSERT(accessed != nullptr);
 
-          bool isDynamic = false;
-          size_t const n = accessed->numMembers();
-          for (size_t i = 0; i < n; ++i) {
-            auto member = accessed->getMemberUnchecked(i);
+      if (accessed->type == NODE_TYPE_OBJECT) {
+        StringRef const attributeName(node->getStringValue(), node->getStringLength());
+        bool isDynamic = false;
+        size_t const n = accessed->numMembers();
+        for (size_t i = 0; i < n; ++i) {
+          auto member = accessed->getMemberUnchecked(i);
 
-            if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-                StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
-              // found the attribute!
-              AstNode* next = member->getMember(0);
-              if (!next->isDeterministic()) {
-                // do not descend into non-deterministic nodes
-                return node;
-              }
-              // descend further
-              node = next;
-              // now try optimizing the simplified condition
-              // time for a goto...!
-              goto again;
-            } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-              // dynamic attribute name
-              isDynamic = true;
-            }
-          }
-
-          // attribute not found
-          if (!isDynamic) {
-            modified = true;
-            return Ast::createNodeValueNull();
-          }
-        } else if (accessed->type == NODE_TYPE_ARRAY) {
-          int64_t position;
-          if (indexValue->isStringValue()) {
-            // string index, e.g. ['123'] -> convert to a numeric index
-            bool valid;
-            position = NumberUtils::atoi<int64_t>(indexValue->getStringValue(),
-                                                  indexValue->getStringValue() +
-                                                      indexValue->getStringLength(),
-                                                  valid);
-            if (!valid) {
-              // invalid index
-              modified = true;
-              return Ast::createNodeValueNull();
-            }
-          } else {
-            // numeric index, e.g. [123]
-            TRI_ASSERT(indexValue->isNumericValue());
-            position = indexValue->getIntValue();
-          }
-          int64_t const n = accessed->numMembers();
-          if (position < 0) {
-            // a negative position is allowed
-            position = n + position;
-          }
-          if (position >= 0 && position < n) {
-            AstNode* next = accessed->getMember(static_cast<size_t>(position));
+          if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
+              StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
+            // found the attribute!
+            AstNode* next = member->getMember(0);
             if (!next->isDeterministic()) {
               // do not descend into non-deterministic nodes
               return node;
@@ -2357,19 +2236,138 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
             // now try optimizing the simplified condition
             // time for a goto...!
             goto again;
+          } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+            // dynamic attribute name
+            isDynamic = true;
           }
+        }
 
-          // index out of bounds
+        // attribute not found
+        if (!isDynamic) {
           modified = true;
           return Ast::createNodeValueNull();
         }
       }
+    } else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
+      auto const* accessed = node->getMember(0);
 
-      if (node != original) {
-        // we come out with a different, so we changed something...
-        modified = true;
+      if (accessed->type == NODE_TYPE_REFERENCE) {
+        Variable const* v = static_cast<Variable const*>(accessed->getData());
+        TRI_ASSERT(v != nullptr);
+
+        auto setter = p->getVarSetBy(v->id);
+
+        if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+          return node;
+        }
+
+        accessed = ExecutionNode::castTo<CalculationNode*>(setter)->expression()->node();
+        if (accessed == nullptr) {
+          return node;
+        }
       }
-      return node;
+
+      auto indexValue = node->getMember(1);
+
+      if (!indexValue->isConstant() ||
+          !(indexValue->isStringValue() || indexValue->isNumericValue())) {
+        // cant handle this type of index statically
+        return node;
+      }
+
+      if (accessed->type == NODE_TYPE_OBJECT) {
+        StringRef attributeName;
+        std::string indexString;
+
+        if (indexValue->isStringValue()) {
+          // string index, e.g. ['123']
+          attributeName =
+              StringRef(indexValue->getStringValue(), indexValue->getStringLength());
+        } else {
+          // numeric index, e.g. [123]
+          TRI_ASSERT(indexValue->isNumericValue());
+          // convert the numeric index into a string
+          indexString = std::to_string(indexValue->getIntValue());
+          attributeName = StringRef(indexString);
+        }
+
+        bool isDynamic = false;
+        size_t const n = accessed->numMembers();
+        for (size_t i = 0; i < n; ++i) {
+          auto member = accessed->getMemberUnchecked(i);
+
+          if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
+              StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
+            // found the attribute!
+            AstNode* next = member->getMember(0);
+            if (!next->isDeterministic()) {
+              // do not descend into non-deterministic nodes
+              return node;
+            }
+            // descend further
+            node = next;
+            // now try optimizing the simplified condition
+            // time for a goto...!
+            goto again;
+          } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+            // dynamic attribute name
+            isDynamic = true;
+          }
+        }
+
+        // attribute not found
+        if (!isDynamic) {
+          modified = true;
+          return Ast::createNodeValueNull();
+        }
+      } else if (accessed->type == NODE_TYPE_ARRAY) {
+        int64_t position;
+        if (indexValue->isStringValue()) {
+          // string index, e.g. ['123'] -> convert to a numeric index
+          bool valid;
+          position = NumberUtils::atoi<int64_t>(indexValue->getStringValue(),
+                                                indexValue->getStringValue() +
+                                                    indexValue->getStringLength(),
+                                                valid);
+          if (!valid) {
+            // invalid index
+            modified = true;
+            return Ast::createNodeValueNull();
+          }
+        } else {
+          // numeric index, e.g. [123]
+          TRI_ASSERT(indexValue->isNumericValue());
+          position = indexValue->getIntValue();
+        }
+        int64_t const n = accessed->numMembers();
+        if (position < 0) {
+          // a negative position is allowed
+          position = n + position;
+        }
+        if (position >= 0 && position < n) {
+          AstNode* next = accessed->getMember(static_cast<size_t>(position));
+          if (!next->isDeterministic()) {
+            // do not descend into non-deterministic nodes
+            return node;
+          }
+          // descend further
+          node = next;
+          // now try optimizing the simplified condition
+          // time for a goto...!
+          goto again;
+        }
+
+        // index out of bounds
+        modified = true;
+        return Ast::createNodeValueNull();
+      }
+    }
+
+    if (node != original) {
+      // we come out with a different, so we changed something...
+      modified = true;
+    }
+    return node;
   };
 
   for (auto const& n : nodes) {
@@ -6953,6 +6951,42 @@ void arangodb::aql::geoIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> 
     // if info is valid we try to optimize ENUMERATE_COLLECTION
     if (info && info.collectionNodeToReplace == node) {
       mod = mod || applyGeoOptimization(plan.get(), limit, info);
+    }
+  }
+
+  opt->addPlan(std::move(plan), rule, mod);
+}
+
+void arangodb::aql::sortLimitRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                                  OptimizerRule const* rule) {
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+  bool mod = false;
+
+  plan->findNodesOfType(nodes, EN::SORT, true);
+  for (ExecutionNode* node : nodes) {
+    ExecutionNode* current = node->getFirstParent();
+    LimitNode* limit = nullptr;
+
+    while (current) {
+      if (current->getType() == EN::LIMIT) {
+        limit = ExecutionNode::castTo<LimitNode*>(current);
+        break;  // stop parsing after first LIMIT
+      } else if (current->getType() == EN::RETURN || current->getType() == EN::INDEX ||
+                 current->getType() == EN::COLLECT) {
+        // TODO check other end conditions
+        break;  // stop parsing
+      }
+      current = current->getFirstParent();  // inspect next node
+    }
+
+    // if info is valid we try to optimize ENUMERATE_COLLECTION
+    if (limit != nullptr /* TODO && shouldApplyHeapOptimization(node, limit) */) {
+      auto sn = static_cast<SortNode*>(node);
+      auto newNode = new SortNode(plan.get(), plan->nextId(), sn->elements(),
+                                  sn->isStable(), limit->limit() + limit->offset());
+      plan->registerNode(newNode);
+      plan->replaceNode(node, newNode);
     }
   }
 

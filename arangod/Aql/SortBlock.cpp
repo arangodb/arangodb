@@ -305,8 +305,10 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
                         Fetcher&& fetch, Allocator&& allocate, size_t limit)
       : arangodb::aql::SortBlock::Sorter(block, trx, buffer, sortRegisters,
                                          std::move(fetch), std::move(allocate)),
-        _limit{limit},
-        _rows{limit} {}
+        _limit{limit} {
+    TRI_ASSERT(_limit > 0);
+    _rows.reserve(_limit);
+  }
 
   virtual std::pair<arangodb::aql::ExecutionState, arangodb::Result> fetch() {
     using arangodb::aql::AqlItemBlock;
@@ -361,6 +363,7 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
       }
       THROW_ARANGO_EXCEPTION(result);
     }
+    _rows.clear();
 
     // everything is sorted and in the right form now, just swap
     _buffer.swap(newBuffer);
@@ -391,6 +394,9 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
     RegisterId const nrRegs = block->getNrRegs();
     std::unordered_map<AqlValue, AqlValue> cache;
     std::unique_ptr<AqlItemBlock> copy{_allocate(1, nrRegs)};
+    if (copy == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
 
     TRI_IF_FAILURE("SortBlock::doSortingInner") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -399,7 +405,7 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
     ::copyRow(cache, nrRegs, block, row, copy.get(), 0);
 
     // now insert copy into heap
-    _rows.push_back(std::move(copy));
+    _rows.emplace_back(std::move(copy));
     std::push_heap(_rows.begin(), _rows.end(), blockLessThan());
 
     return TRI_ERROR_NO_ERROR;

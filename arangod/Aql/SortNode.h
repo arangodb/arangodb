@@ -51,14 +51,16 @@ class SortNode : public ExecutionNode {
   friend class RedundantCalculationsReplacer;
 
  public:
-  SortNode(ExecutionPlan* plan, size_t id, SortElementVector const& elements, bool stable)
+  SortNode(ExecutionPlan* plan, size_t id, SortElementVector const& elements,
+           bool stable, size_t limit = 0)
       : ExecutionNode(plan, id),
         _reinsertInCluster(true),
         _elements(elements),
-        _stable(stable) {}
+        _stable(stable),
+        _limit(limit) {}
 
   SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
-           SortElementVector const& elements, bool stable);
+           SortElementVector const& elements, bool stable, size_t limit = 0);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return SORT; }
@@ -132,6 +134,9 @@ class SortNode : public ExecutionNode {
 
   /// whether or not the sort is stable
   bool _stable;
+
+  /// the maximum number of items to return if non-zero; if zero, unlimited
+  size_t _limit;
 };
 
 }  // namespace aql

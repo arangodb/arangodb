@@ -36,7 +36,7 @@ NS_BEGIN(aql)
 class Ast;
 struct AstNode;
 class CalculationNode;
-struct Expression;
+class Expression;
 struct Variable;
 
 NS_END  // aql

@@ -183,6 +183,9 @@ struct OptimizerRule {
     // handling.
     substituteSingleDocumentOperations,
 
+    // make sort node aware of subsequent limit statements for internal optimizations
+    applySortLimitRule,
+
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule,
 

@@ -58,11 +58,11 @@ class SortBlock final : public ExecutionBlock {
     Fetcher _fetch;
     Allocator _allocate;
   };
+
   enum SorterType { Standard, ConstrainedHeap };
 
  public:
-  SortBlock(ExecutionEngine*, SortNode const*,
-            SorterType type = SorterType::Standard, size_t limit = 0);
+  SortBlock(ExecutionEngine*, SortNode const*, SorterType type, size_t limit);
 
   ~SortBlock();
 

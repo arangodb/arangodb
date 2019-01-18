@@ -32,11 +32,12 @@ using namespace arangodb::basics;
 using namespace arangodb::aql;
 
 SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
-                   SortElementVector const& elements, bool stable)
+                   SortElementVector const& elements, bool stable, size_t limit)
     : ExecutionNode(plan, base),
       _reinsertInCluster(true),
       _elements(elements),
-      _stable(stable) {}
+      _stable(stable),
+      _limit(limit) {}
 
 /// @brief toVelocyPack, for SortNode
 void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
@@ -195,7 +196,9 @@ SortInformation SortNode::getSortInformation(ExecutionPlan* plan,
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<SortBlock>(&engine, this);
+  auto type = (!isStable() && _limit > 0) ? SortBlock::SorterType::ConstrainedHeap
+                                          : SortBlock::SorterType::Standard;
+  return std::make_unique<SortBlock>(&engine, this, type, _limit);
 }
 
 /// @brief estimateCost
