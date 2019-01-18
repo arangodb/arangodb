@@ -279,6 +279,7 @@ void Query::kill() { _killed = true; }
 
 void Query::setExecutionTime() {
   if (_engine != nullptr) {
+    _engine->_stats.setPeakMemoryUsage(_resourceMonitor.currentResources.peakMemoryUsage);
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
   }
 }
@@ -976,7 +977,7 @@ ExecutionState Query::finalize(QueryResult& result) {
         << "Query::finalize: before cleanupPlanAndEngine"
         << " this: " << (uintptr_t)this;
 
-    _engine->_stats.setExecutionTime(runTime());
+    setExecutionTime();
     enterState(QueryExecutionState::ValueType::FINALIZATION);
 
     result.extra = std::make_shared<VPackBuilder>();
@@ -1009,7 +1010,7 @@ ExecutionState Query::finalize(QueryResult& result) {
   // patch executionTime stats value in place
   // we do this because "executionTime" should include the whole span of the
   // execution and we have to set it at the very end
-  double const rt = runTime(now);
+  double const rt = now - _startTime;
   basics::VelocyPackHelper::patchDouble(result.extra->slice().get("stats").get("executionTime"),
                                         rt);
 
@@ -1244,7 +1245,7 @@ void Query::exitContext() {
 /// @brief returns statistics for current query.
 void Query::getStats(VPackBuilder& builder) {
   if (_engine != nullptr) {
-    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
+    setExecutionTime();
     _engine->_stats.toVelocyPack(builder, _queryOptions.fullCount);
   } else {
     ExecutionStats::toVelocyPackStatic(builder);
