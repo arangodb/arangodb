@@ -40,6 +40,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/IResearchView.h"
 #include "Logger/Logger.h"
@@ -656,7 +657,9 @@ SECTION("test_write") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    CHECK((link->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).ok()));
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    REQUIRE(l != nullptr);
+    CHECK((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
   }
 
@@ -673,7 +676,9 @@ SECTION("test_write") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    CHECK((link->insert(trx, arangodb::LocalDocumentId(2), doc1->slice(), arangodb::Index::OperationMode::normal).ok()));
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    REQUIRE(l != nullptr);
+    CHECK((l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
   }
 
@@ -690,7 +695,9 @@ SECTION("test_write") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    CHECK((link->remove(trx, arangodb::LocalDocumentId(2), doc1->slice(), arangodb::Index::OperationMode::normal).ok()));
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    REQUIRE(l != nullptr);
+    CHECK((l->remove(trx, arangodb::LocalDocumentId(2), doc1->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
   }
 

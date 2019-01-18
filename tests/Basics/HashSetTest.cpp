@@ -132,6 +132,34 @@ SECTION("test_string") {
 }
 
 /// @brief test with std::string
+SECTION("test_long_string") {
+  arangodb::HashSet<std::string> values;
+  
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  
+  for (size_t i = 0; i < 100; ++i) {
+    CHECK(values.size() == i); 
+    values.insert(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
+    CHECK(values.size() == i + 1); 
+    CHECK(!values.empty());
+  }
+
+  CHECK(values.size() == 100); 
+  CHECK(!values.empty());
+  
+  for (size_t i = 0; i < 100; ++i) {
+    std::string value = std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i);
+    CHECK(values.find(value) != values.end());
+  }
+    
+  CHECK(values.find(std::string("test")) == values.end());
+  CHECK(values.find(std::string("foo")) == values.end());
+  CHECK(values.find(std::string("test100")) == values.end());
+  CHECK(values.find(std::string("")) == values.end());
+}
+
+/// @brief test with std::string
 SECTION("test_string_duplicates") {
   arangodb::HashSet<std::string> values;
   
@@ -282,7 +310,45 @@ SECTION("test_many") {
 }
 
 /// @brief test copying
-SECTION("test_copy_construct") {
+SECTION("test_copy_construct_local") {
+  arangodb::HashSet<int> values;
+  
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  
+  for (int i = 0; i < 2; ++i) {
+    values.insert(i);
+  }
+
+  // copy 
+  arangodb::HashSet<int> copy(values);
+
+  CHECK(values.size() == 2); 
+  CHECK(!values.empty());
+  
+  CHECK(copy.size() == 2); 
+  CHECK(!copy.empty());
+
+  for (int i = 0; i < 2; ++i) {
+    CHECK(values.find(i) != values.end());
+    CHECK(copy.find(i) != copy.end());
+  }
+
+  values.clear();
+  
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  CHECK(copy.size() == 2); 
+  CHECK(!copy.empty());
+  
+  for (int i = 0; i < 2; ++i) {
+    CHECK(values.find(i) == values.end());
+    CHECK(copy.find(i) != copy.end());
+  }
+}
+
+/// @brief test copying
+SECTION("test_copy_construct_heap") {
   arangodb::HashSet<int> values;
   
   CHECK(values.size() == 0); 
@@ -320,7 +386,83 @@ SECTION("test_copy_construct") {
 }
 
 /// @brief test copying
-SECTION("test_copy_assign") {
+SECTION("test_copy_construct_heap_huge") {
+  arangodb::HashSet<std::string> values;
+  
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  
+  for (int i = 0; i < 100; ++i) {
+    values.insert(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
+  }
+
+  // copy 
+  arangodb::HashSet<std::string> copy(values);
+
+  CHECK(values.size() == 100); 
+  CHECK(!values.empty());
+  
+  CHECK(copy.size() == 100); 
+  CHECK(!copy.empty());
+
+  for (int i = 0; i < 100; ++i) {
+    CHECK(values.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) != values.end());
+    CHECK(copy.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) != copy.end());
+  }
+
+  values.clear();
+  
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  CHECK(copy.size() == 100); 
+  CHECK(!copy.empty());
+  
+  for (int i = 0; i < 100; ++i) {
+    CHECK(values.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) == values.end());
+    CHECK(copy.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) != copy.end());
+  }
+}
+
+/// @brief test copying
+SECTION("test_copy_assign_local") {
+  arangodb::HashSet<int> values;
+  
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  
+  for (int i = 0; i < 2; ++i) {
+    values.insert(i);
+  }
+
+  // copy 
+  arangodb::HashSet<int> copy = values;
+
+  CHECK(values.size() == 2); 
+  CHECK(!values.empty());
+  
+  CHECK(copy.size() == 2); 
+  CHECK(!copy.empty());
+
+  for (int i = 0; i < 2; ++i) {
+    CHECK(values.find(i) != values.end());
+    CHECK(copy.find(i) != copy.end());
+  }
+
+  values.clear();
+  
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  CHECK(copy.size() == 2); 
+  CHECK(!copy.empty());
+  
+  for (int i = 0; i < 2; ++i) {
+    CHECK(values.find(i) == values.end());
+    CHECK(copy.find(i) != copy.end());
+  }
+}
+
+/// @brief test copying
+SECTION("test_copy_assign_heap") {
   arangodb::HashSet<int> values;
   
   CHECK(values.size() == 0); 
@@ -357,8 +499,72 @@ SECTION("test_copy_assign") {
   }
 }
 
+/// @brief test copying
+SECTION("test_copy_assign_heap_huge") {
+  arangodb::HashSet<std::string> values;
+  
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  
+  for (int i = 0; i < 100; ++i) {
+    values.insert(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
+  }
+
+  // copy 
+  arangodb::HashSet<std::string> copy = values;
+
+  CHECK(values.size() == 100); 
+  CHECK(!values.empty());
+  
+  CHECK(copy.size() == 100); 
+  CHECK(!copy.empty());
+
+  for (int i = 0; i < 100; ++i) {
+    CHECK(values.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) != values.end());
+    CHECK(copy.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) != copy.end());
+  }
+
+  values.clear();
+  
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  CHECK(copy.size() == 100); 
+  CHECK(!copy.empty());
+  
+  for (int i = 0; i < 100; ++i) {
+    CHECK(values.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) == values.end());
+    CHECK(copy.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) != copy.end());
+  }
+}
+
 /// @brief test moving
-SECTION("test_move_construct") {
+SECTION("test_move_construct_local") {
+  arangodb::HashSet<int> values;
+  
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  
+  for (int i = 0; i < 2; ++i) {
+    values.insert(i);
+  }
+
+  // move
+  arangodb::HashSet<int> copy(std::move(values));
+
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  
+  CHECK(copy.size() == 2); 
+  CHECK(!copy.empty());
+
+  for (int i = 0; i < 2; ++i) {
+    CHECK(values.find(i) == values.end());
+    CHECK(copy.find(i) != copy.end());
+  }
+}
+
+/// @brief test moving
+SECTION("test_move_construct_heap") {
   arangodb::HashSet<int> values;
   
   CHECK(values.size() == 0); 
@@ -384,7 +590,59 @@ SECTION("test_move_construct") {
 }
 
 /// @brief test moving
-SECTION("test_move_assign") {
+SECTION("test_move_construct_heap_huge") {
+  arangodb::HashSet<std::string> values;
+  
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  
+  for (int i = 0; i < 100; ++i) {
+    values.insert(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
+  }
+
+  // move
+  arangodb::HashSet<std::string> copy(std::move(values));
+
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  
+  CHECK(copy.size() == 100); 
+  CHECK(!copy.empty());
+
+  for (int i = 0; i < 100; ++i) {
+    CHECK(values.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) == values.end());
+    CHECK(copy.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) != copy.end());
+  }
+}
+
+/// @brief test moving
+SECTION("test_move_assign_local") {
+  arangodb::HashSet<int> values;
+  
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  
+  for (int i = 0; i < 2; ++i) {
+    values.insert(i);
+  }
+
+  // move
+  arangodb::HashSet<int> copy = std::move(values);
+
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  
+  CHECK(copy.size() == 2); 
+  CHECK(!copy.empty());
+
+  for (int i = 0; i < 2; ++i) {
+    CHECK(values.find(i) == values.end());
+    CHECK(copy.find(i) != copy.end());
+  }
+}
+
+/// @brief test moving
+SECTION("test_move_assign_heap") {
   arangodb::HashSet<int> values;
   
   CHECK(values.size() == 0); 
@@ -406,6 +664,32 @@ SECTION("test_move_assign") {
   for (int i = 0; i < 100; ++i) {
     CHECK(values.find(i) == values.end());
     CHECK(copy.find(i) != copy.end());
+  }
+}
+
+/// @brief test moving
+SECTION("test_move_assign_heap_huge") {
+  arangodb::HashSet<std::string> values;
+  
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  
+  for (int i = 0; i < 100; ++i) {
+    values.insert(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i));
+  }
+
+  // move
+  arangodb::HashSet<std::string> copy = std::move(values);
+
+  CHECK(values.size() == 0); 
+  CHECK(values.empty());
+  
+  CHECK(copy.size() == 100); 
+  CHECK(!copy.empty());
+
+  for (int i = 0; i < 100; ++i) {
+    CHECK(values.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) == values.end());
+    CHECK(copy.find(std::string("test-this-will-hopefully-disable-sso-everywhere") + std::to_string(i)) != copy.end());
   }
 }
 
