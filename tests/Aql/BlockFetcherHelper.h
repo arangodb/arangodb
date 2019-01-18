@@ -28,12 +28,14 @@
 
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
 
 #include <Basics/Common.h>
 #include <velocypack/Buffer.h>
+#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 // TODO rename this file to RowFetcherHelper!
@@ -44,14 +46,14 @@ namespace aql {
 class AqlItemBlock;
 class InputAqlItemRow;
 class AqlItemMatrix;
-}
+}  // namespace aql
 
 namespace tests {
 namespace aql {
 
 /**
-* @brief Mock for SingleRowFetcher
-*/
+ * @brief Mock for SingleRowFetcher
+ */
 class SingleRowFetcherHelper : public ::arangodb::aql::SingleRowFetcher {
  public:
   SingleRowFetcherHelper(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer,
@@ -75,18 +77,15 @@ class SingleRowFetcherHelper : public ::arangodb::aql::SingleRowFetcher {
 };
 
 /**
-* @brief Mock for AllRowsFetcher
-*/
+ * @brief Mock for AllRowsFetcher
+ */
 class AllRowsFetcherHelper : public ::arangodb::aql::AllRowsFetcher {
  public:
-  AllRowsFetcherHelper(
-      std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer,
-      bool returnsWaiting);
+  AllRowsFetcherHelper(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer,
+                       bool returnsWaiting);
   ~AllRowsFetcherHelper();
 
-  std::pair<::arangodb::aql::ExecutionState,
-            ::arangodb::aql::AqlItemMatrix const*>
-  fetchAllRows() override;
+  std::pair<::arangodb::aql::ExecutionState, ::arangodb::aql::AqlItemMatrix const*> fetchAllRows() override;
 
  private:
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _vPackBuffer;
@@ -101,9 +100,30 @@ class AllRowsFetcherHelper : public ::arangodb::aql::AllRowsFetcher {
   std::unique_ptr<arangodb::aql::AqlItemMatrix> _matrix;
 };
 
+class ConstFetcherHelper : public arangodb::aql::ConstFetcher {
+ public:
+  ConstFetcherHelper(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer,
+                         bool returnsWaiting);
+  virtual ~ConstFetcherHelper();
 
-} // aql
-} // tests
-} // arangodb
+  std::pair<::arangodb::aql::ExecutionState, ::arangodb::aql::InputAqlItemRow> fetchRow() override;
+
+ private:
+  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _vPackBuffer;
+  arangodb::velocypack::Slice _data;
+  bool _returnedDone = false;
+  bool _returnsWaiting;
+  uint64_t _nrItems;
+  uint64_t _nrCalled;
+  bool _didWait;
+  arangodb::aql::ResourceMonitor _resourceMonitor;
+  arangodb::aql::AqlItemBlockManager _itemBlockManager;
+  std::shared_ptr<arangodb::aql::InputAqlItemBlockShell> _itemBlock;
+  arangodb::aql::InputAqlItemRow _lastReturnedRow;
+};
+
+}  // namespace aql
+}  // namespace tests
+}  // namespace arangodb
 
 #endif

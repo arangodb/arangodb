@@ -211,3 +211,82 @@ AllRowsFetcherHelper::fetchAllRows() {
   _nrCalled++;
   return {ExecutionState::DONE, _matrix.get()};
 };
+
+
+// -----------------------------------------
+// - SECTION CONSTFETCHER              -
+// -----------------------------------------
+
+ConstFetcherHelper::ConstFetcherHelper(
+    std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer, bool returnsWaiting)
+    : ConstFetcher(),
+      _vPackBuffer(std::move(vPackBuffer)),
+      _returnsWaiting(returnsWaiting),
+      _nrItems(0),
+      _nrCalled(0),
+      _didWait(false),
+      _resourceMonitor(),
+      _itemBlockManager(&_resourceMonitor),
+      _itemBlock(nullptr),
+      _lastReturnedRow{CreateInvalidInputRowHint{}} {
+  if (_vPackBuffer != nullptr) {
+    _data = VPackSlice(_vPackBuffer->data());
+  } else {
+    _data = VPackSlice::nullSlice();
+  }
+  if (_data.isArray()) {
+    _nrItems = _data.length();
+    if (_nrItems > 0) {
+      VPackSlice oneRow = _data.at(0);
+      REQUIRE(oneRow.isArray());
+      uint64_t nrRegs = oneRow.length();
+      // Add all registers as valid input registers:
+      auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+      for (RegisterId i = 0; i < nrRegs; i++) {
+        inputRegisters->emplace(i);
+      }
+      _itemBlock = std::make_shared<InputAqlItemBlockShell>(
+          _itemBlockManager,
+          std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs),
+          inputRegisters);
+      // std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs);
+      VPackToAqlItemBlock(_data, nrRegs, _itemBlock->block());
+    }
+  }
+};
+
+ConstFetcherHelper::~ConstFetcherHelper() = default;
+
+std::pair<ExecutionState, InputAqlItemRow> ConstFetcherHelper::fetchRow() {
+  // If this REQUIRE fails, the Executor has fetched more rows after DONE.
+  REQUIRE(_nrCalled <= _nrItems);
+  if (_returnsWaiting) {
+    if (!_didWait) {
+      _didWait = true;
+      // if once DONE is returned, always return DONE
+      if (_returnedDone) {
+        return {ExecutionState::DONE,
+                InputAqlItemRow{CreateInvalidInputRowHint{}}};
+      }
+      return {ExecutionState::WAITING,
+              InputAqlItemRow{CreateInvalidInputRowHint{}}};
+    }
+    _didWait = false;
+  }
+  _nrCalled++;
+  if (_nrCalled > _nrItems) {
+    _returnedDone = true;
+    return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
+  }
+  TRI_ASSERT(_itemBlock != nullptr);
+  _lastReturnedRow = InputAqlItemRow{_itemBlock, _nrCalled - 1};
+  ExecutionState state;
+  if (_nrCalled < _nrItems) {
+    state = ExecutionState::HASMORE;
+  } else {
+    _returnedDone = true;
+    state = ExecutionState::DONE;
+  }
+  return {state, _lastReturnedRow};
+};
+
