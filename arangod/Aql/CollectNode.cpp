@@ -225,20 +225,8 @@ struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
   }
 };
 
-/// @brief getVariablesUsedHere, returning a vector
-std::vector<Variable const*> CollectNode::getVariablesUsedHere() const {
-  std::unordered_set<Variable const*> v;
-  // actual work is done by that method
-  getVariablesUsedHere(v);
-
-  // copy result into vector
-  std::vector<Variable const*> vv;
-  vv.insert(vv.begin(), v.begin(), v.end());
-  return vv;
-}
-
 /// @brief getVariablesUsedHere, modifying the set in-place
-void CollectNode::getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const {
+void CollectNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
   for (auto const& p : _groupVariables) {
     vars.emplace(p.second);
   }

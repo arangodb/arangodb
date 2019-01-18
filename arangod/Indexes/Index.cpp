@@ -26,7 +26,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
-#include "Basics/LocalTaskQueue.h"
+#include "Basics/HashSet.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
@@ -552,18 +552,6 @@ bool Index::implicitlyUnique() const {
   return false;
 }
 
-void Index::batchInsert(transaction::Methods& trx,
-                        std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
-                        std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
-  for (auto const& it : documents) {
-    Result status = insert(trx, it.first, it.second, OperationMode::normal);
-    if (status.errorNumber() != TRI_ERROR_NO_ERROR) {
-      queue->setStatus(status.errorNumber());
-      break;
-    }
-  }
-}
-
 /// @brief default implementation for drop
 Result Index::drop() {
   return Result();  // do nothing
@@ -727,7 +715,7 @@ bool Index::canUseConditionPart(arangodb::aql::AstNode const* access,
   }
 
   // test if the reference variable is contained on both sides of the expression
-  std::unordered_set<aql::Variable const*> variables;
+  arangodb::HashSet<aql::Variable const*> variables;
   if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
       (other->type == arangodb::aql::NODE_TYPE_EXPANSION ||
        other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {

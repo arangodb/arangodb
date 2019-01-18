@@ -44,6 +44,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Thread.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/files.h"
 #include "Basics/process-utils.h"
@@ -2464,6 +2465,19 @@ static void JS_ProcessStatistics(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
+static void JS_GetPid(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  // check arguments
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getPid()");
+  }
+  TRI_pid_t pid = Thread::currentProcessId();
+  TRI_V8_RETURN_INTEGER(pid);
+
+  TRI_V8_TRY_CATCH_END
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a random number using OpenSSL
@@ -4816,6 +4830,8 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_PROCESS_STATISTICS"),
                                JS_ProcessStatistics);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_GET_PID"), JS_GetPid);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_RAND"), JS_Rand);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_READ"), JS_Read);
   TRI_AddGlobalFunctionVocbase(isolate,

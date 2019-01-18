@@ -53,8 +53,8 @@ class TransactionCollection {
 
   inline TRI_voc_cid_t id() const { return _cid; }
 
-  LogicalCollection* collection() const {
-    return _collection.get();  // vocbase collection pointer
+  std::shared_ptr<LogicalCollection> const& collection() const {
+    return _collection; // vocbase collection pointer
   }
 
   std::string collectionName() const;

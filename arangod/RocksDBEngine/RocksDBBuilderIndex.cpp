@@ -68,12 +68,12 @@ void RocksDBBuilderIndex::toVelocyPack(VPackBuilder& builder,
 }
 
 /// insert index elements into the specified write batch.
-Result RocksDBBuilderIndex::insertInternal(transaction::Methods& trx, RocksDBMethods* mthd,
-                                           LocalDocumentId const& documentId,
-                                           arangodb::velocypack::Slice const& slice,
-                                           OperationMode mode) {
+Result RocksDBBuilderIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
+                                   LocalDocumentId const& documentId,
+                                   arangodb::velocypack::Slice const& slice,
+                                   OperationMode mode) {
   TRI_ASSERT(false);  // not enabled
-  Result r = _wrapped->insertInternal(trx, mthd, documentId, slice, mode);
+  Result r = _wrapped->insert(trx, mthd, documentId, slice, mode);
   if (r.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
     // these are expected errors; store in builder and suppress
     bool expected = false;
@@ -87,10 +87,10 @@ Result RocksDBBuilderIndex::insertInternal(transaction::Methods& trx, RocksDBMet
 }
 
 /// remove index elements and put it in the specified write batch.
-Result RocksDBBuilderIndex::removeInternal(transaction::Methods& trx, RocksDBMethods* mthd,
-                                           LocalDocumentId const& documentId,
-                                           arangodb::velocypack::Slice const& slice,
-                                           OperationMode mode) {
+Result RocksDBBuilderIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
+                                   LocalDocumentId const& documentId,
+                                   arangodb::velocypack::Slice const& slice,
+                                   OperationMode mode) {
   TRI_ASSERT(false);  // not enabled
   {
     std::lock_guard<std::mutex> guard(_removedDocsMutex);
@@ -103,7 +103,7 @@ Result RocksDBBuilderIndex::removeInternal(transaction::Methods& trx, RocksDBMet
     }
   }
 
-  Result r = _wrapped->removeInternal(trx, mthd, documentId, slice, mode);
+  Result r = _wrapped->remove(trx, mthd, documentId, slice, mode);
   if (r.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
     // these are expected errors; store in builder and suppress
     bool expected = false;
@@ -134,6 +134,11 @@ struct BuilderTrx : public arangodb::transaction::Methods {
  private:
   TRI_voc_cid_t _cid;
 };
+
+//struct BuilderCookie {
+//  VPackBuffer<uint8_t>
+//  VPackBuilder _removals;
+//};
 }  // namespace
 
 // Background index filler task
@@ -232,8 +237,8 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(std::function<void()> 
       _lockedDocs.insert(docId.id());
     }
 
-    res = internal->insertInternal(trx, &batched, docId, VPackSlice(it->value().data()),
-                                   Index::OperationMode::normal);
+    res = internal->insert(trx, &batched, docId, VPackSlice(it->value().data()),
+                           Index::OperationMode::normal);
     if (res.fail()) {
       break;
     }
@@ -343,8 +348,8 @@ static arangodb::Result fillIndexFast(RocksDBIndex& ridx, LogicalCollection& col
   while (it->Valid()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
 
-    res = ridx.insertInternal(trx, &batched, RocksDBKey::documentId(it->key()),
-                              VPackSlice(it->value().data()), Index::OperationMode::normal);
+    res = ridx.insert(trx, &batched, RocksDBKey::documentId(it->key()),
+                      VPackSlice(it->value().data()), Index::OperationMode::normal);
     if (res.fail()) {
       break;
     }

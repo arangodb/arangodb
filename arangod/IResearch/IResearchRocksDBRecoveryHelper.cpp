@@ -26,6 +26,7 @@
 #include "IResearchCommon.h"
 #include "IResearchLink.h"
 #include "IResearchLinkHelper.h"
+#include "IResearchRocksDBLink.h"
 #include "IResearchView.h"
 #include "Indexes/Index.h"
 #include "RestServer/DatabaseFeature.h"
@@ -189,51 +190,6 @@ void dropCollectionFromAllViews(arangodb::DatabaseFeature& db,
   //      or the IResearchView will validate and remove any stale links on start
 }
 
-void dropCollectionFromView(arangodb::DatabaseFeature& db, TRI_voc_tick_t dbId,
-                            TRI_voc_cid_t collectionId, TRI_idx_iid_t indexId,
-                            TRI_voc_cid_t viewId) {
-  auto* vocbase = db.useDatabase(dbId);
-
-  if (!vocbase) {
-    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "failed to drop arangosearch link '" << indexId
-        << "' from collection '" << collectionId << "', vocbase not found";
-
-    return;
-  }
-
-  TRI_DEFER(vocbase->release());
-
-  auto collection = vocbase->lookupCollection(collectionId);
-
-  if (!collection) {
-    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "failed to drop arangosearch link '" << indexId
-        << "' from collection '" << collectionId << "', collection not found";
-
-    return;
-  }
-
-  auto link = arangodb::iresearch::IResearchLinkHelper::find(*collection, indexId);
-
-  if (!link) {
-    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "failed to drop arangosearch link '" << indexId
-        << "' from collection '" << collectionId << "', link not found";
-
-    return;
-  }
-
-  auto res = link->drop();
-
-  if (!res.ok()) {
-    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "failed to drop arangosearch link '" << link->id()
-        << "' from collection '" << collection->name()
-        << "': " << res.errorNumber() << " " << res.errorMessage();
-  }
-}
-
 }  // namespace
 
 namespace arangodb {
@@ -268,7 +224,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
 
     trx.begin();
 
-    for (auto link : links) {
+    for (std::shared_ptr<arangodb::Index> const& link : links) {
       IndexId indexId(coll->vocbase().id(), coll->id(), link->id());
 
       // optimization: avoid insertion of recovered documents twice,
@@ -276,8 +232,9 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
       if (!link || _recoveredIndexes.find(indexId) != _recoveredIndexes.end()) {
         continue;  // index was already populated when it was created
       }
-
-      link->insert(trx, docId, doc, arangodb::Index::OperationMode::internal);
+      
+      IResearchLink* l = static_cast<IResearchRocksDBLink*>(link.get());
+      l->insert(trx, docId, doc, arangodb::Index::OperationMode::internal);
     }
 
     trx.commit();
@@ -310,9 +267,10 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(uint32_t column_family_id,
 
   trx.begin();
 
-  for (auto link : links) {
-    link->remove(trx, docId, arangodb::velocypack::Slice::emptyObjectSlice(),
-                 arangodb::Index::OperationMode::internal);
+  for (std::shared_ptr<arangodb::Index> const& link : links) {
+    IResearchLink* l = static_cast<IResearchRocksDBLink*>(link.get());
+    l->remove(trx, docId, arangodb::velocypack::Slice::emptyObjectSlice(),
+              arangodb::Index::OperationMode::internal);
   }
 
   trx.commit();
@@ -341,14 +299,6 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
       TRI_voc_cid_t const collectionId = RocksDBLogValue::collectionId(blob);
       auto const indexSlice = RocksDBLogValue::indexSlice(blob);
       ensureLink(*_dbFeature, _recoveredIndexes, dbId, collectionId, indexSlice);
-    } break;
-    case RocksDBLogType::IResearchLinkDrop: {
-      // check if view still exists, if not ignore
-      TRI_voc_tick_t const dbId = RocksDBLogValue::databaseId(blob);
-      TRI_voc_cid_t const collectionId = RocksDBLogValue::collectionId(blob);
-      TRI_voc_cid_t const viewId = RocksDBLogValue::viewId(blob);
-      TRI_idx_iid_t const indexId = RocksDBLogValue::indexId(blob);
-      dropCollectionFromView(*_dbFeature, dbId, collectionId, indexId, viewId);
     } break;
     case RocksDBLogType::CollectionTruncate: {
       uint64_t objectId = RocksDBLogValue::objectId(blob);

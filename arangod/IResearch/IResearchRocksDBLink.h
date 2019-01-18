@@ -33,27 +33,20 @@ namespace arangodb {
 struct IndexTypeFactory;  // forward declaration
 }
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResearchLink {
  public:
   virtual void afterTruncate(TRI_voc_tick_t /*tick*/) override {
     IResearchLink::afterTruncate();
-  };
-
-  virtual void batchInsert(
-      transaction::Methods& trx,
-      std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
-      std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override {
-    IResearchLink::batchInsert(trx, documents, queue);
   }
 
   virtual bool canBeDropped() const override {
     return IResearchLink::canBeDropped();
   }
 
-  virtual Result drop() override;
+  virtual arangodb::Result drop() override { return IResearchLink::drop(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of index
@@ -68,11 +61,11 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
     return IResearchLink::hasSelectivityEstimate();
   }
 
-  virtual arangodb::Result insertInternal(arangodb::transaction::Methods& trx,
-                                          arangodb::RocksDBMethods* methods,
-                                          arangodb::LocalDocumentId const& documentId,
-                                          arangodb::velocypack::Slice const& doc,
-                                          arangodb::Index::OperationMode mode) override {
+  virtual arangodb::Result insert(arangodb::transaction::Methods& trx,
+                                  arangodb::RocksDBMethods* methods,
+                                  arangodb::LocalDocumentId const& documentId,
+                                  arangodb::velocypack::Slice const& doc,
+                                  arangodb::Index::OperationMode mode) override {
     return IResearchLink::insert(trx, documentId, doc, mode);
   }
 
@@ -96,11 +89,11 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
 
   virtual size_t memory() const override { return IResearchLink::memory(); }
 
-  virtual arangodb::Result removeInternal(arangodb::transaction::Methods& trx,
-                                          arangodb::RocksDBMethods*,
-                                          arangodb::LocalDocumentId const& documentId,
-                                          arangodb::velocypack::Slice const& doc,
-                                          arangodb::Index::OperationMode mode) override {
+  virtual arangodb::Result remove(arangodb::transaction::Methods& trx,
+                                  arangodb::RocksDBMethods*,
+                                  arangodb::LocalDocumentId const& documentId,
+                                  arangodb::velocypack::Slice const& doc,
+                                  arangodb::Index::OperationMode mode) override {
     return IResearchLink::remove(trx, documentId, doc, mode);
   }
 
@@ -132,7 +125,7 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
   IResearchRocksDBLink(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection);
 };
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif

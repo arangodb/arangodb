@@ -155,9 +155,7 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
       return lhs->value.value._int == rhs->value.value._int;
     }
 
-    default: {
-      return false;
-    }
+    default: { return false; }
   }
 }
 
@@ -169,11 +167,7 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
   // hash node type
   auto const& typeString = node->getTypeString();
 
-  hash = fasthash64(
-    static_cast<const void*>(typeString.c_str()),
-    typeString.size(),
-    hash
-  );
+  hash = fasthash64(static_cast<const void*>(typeString.c_str()), typeString.size(), hash);
 
   // hash node members
   for (size_t i = 0, n = node->numMembers(); i < n; ++i) {
@@ -302,9 +296,8 @@ irs::string_ref getFuncName(aql::AstNode const& node) {
   return fname;
 }
 
-void visitReferencedVariables(
-    aql::AstNode const& root,
-    std::function<void(aql::Variable const&)> const& visitor) {
+void visitReferencedVariables(aql::AstNode const& root,
+                              std::function<void(aql::Variable const&)> const& visitor) {
   auto preVisitor = [](aql::AstNode const* node) -> bool {
     return !node->isConstant();
   };

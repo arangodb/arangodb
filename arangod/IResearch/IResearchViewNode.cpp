@@ -213,8 +213,8 @@ bool parseOptions(aql::AstNode const* optionsNode,
 
 // in loop or non-deterministic
 bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
-                    aql::Variable const& ref,
-                    std::unordered_set<aql::Variable const*>& vars) {
+                     aql::Variable const& ref,
+                     arangodb::HashSet<aql::Variable const*>& vars) {
   if (!node.isDeterministic()) {
     return false;
   }
@@ -263,7 +263,7 @@ int evaluateVolatility(arangodb::iresearch::IResearchViewNode const& node) {
   auto const& plan = *node.plan();
   auto const& outVariable = node.outVariable();
 
-  std::unordered_set<arangodb::aql::Variable const*> vars;
+  arangodb::HashSet<arangodb::aql::Variable const*> vars;
   int mask = 0;
 
   // evaluate filter condition volatility
@@ -555,14 +555,8 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
   return estimate;
 }
 
-std::vector<aql::Variable const*> IResearchViewNode::getVariablesUsedHere() const {
-  std::unordered_set<aql::Variable const*> vars;
-  getVariablesUsedHere(vars);
-  return {vars.begin(), vars.end()};
-}
-
 /// @brief getVariablesUsedHere, modifying the set in-place
-void IResearchViewNode::getVariablesUsedHere(std::unordered_set<aql::Variable const*>& vars) const {
+void IResearchViewNode::getVariablesUsedHere(arangodb::HashSet<aql::Variable const*>& vars) const {
   if (!::filterConditionIsEmpty(_filterCondition)) {
     aql::Ast::getReferencedVariables(_filterCondition, vars);
   }

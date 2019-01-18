@@ -30,8 +30,8 @@
 
 #include "search/sort.hpp"
 
-NS_BEGIN(arangodb)
-NS_BEGIN(aql)
+namespace arangodb {
+namespace aql {
 
 class Ast;
 struct AstNode;
@@ -39,26 +39,26 @@ class CalculationNode;
 class Expression;
 struct Variable;
 
-NS_END  // aql
+}  // namespace aql
 
-    NS_BEGIN(iresearch)
+namespace iresearch {
 
-        struct QueryContext;
+struct QueryContext;
 
-NS_END  // iresearch
+}  // namespace iresearch
 
-    NS_BEGIN(transaction)
+namespace transaction {
 
-        class Methods;  // forward declaration
+class Methods;  // forward declaration
 
-NS_END  // transaction
+}  // namespace transaction
 
-NS_BEGIN(iresearch)
+namespace iresearch {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @struct OrderFactory
-    ////////////////////////////////////////////////////////////////////////////////
-    struct OrderFactory {
+////////////////////////////////////////////////////////////////////////////////
+/// @struct OrderFactory
+////////////////////////////////////////////////////////////////////////////////
+struct OrderFactory {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief determine if the 'node' can be converted into an iresearch scorer
   ///        if 'scorer' != nullptr then also append build iresearch scorer there
@@ -160,7 +160,7 @@ class ScorerReplacer {
   DedupScorers _dedup;
 };  // ScorerReplacer
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif  // ARANGOD_IRESEARCH__IRESEARCH_ORDER_FACTORY_H

@@ -81,7 +81,7 @@ Expression::Expression(ExecutionPlan* plan, Ast* ast, arangodb::velocypack::Slic
 Expression::~Expression() { freeInternals(); }
 
 /// @brief return all variables used in the expression
-void Expression::variables(std::unordered_set<Variable const*>& result) const {
+void Expression::variables(arangodb::HashSet<Variable const*>& result) const {
   Ast::getReferencedVariables(_node, result);
 }
 

@@ -86,19 +86,8 @@ class SortNode : public ExecutionNode {
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final {
-    std::vector<Variable const*> v;
-    v.reserve(_elements.size());
-
-    for (auto& p : _elements) {
-      v.emplace_back(p.var);
-    }
-    return v;
-  }
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final {
     for (auto& p : _elements) {
       vars.emplace(p.var);
     }

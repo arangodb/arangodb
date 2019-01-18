@@ -36,6 +36,7 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -247,21 +248,21 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
             "Database");
     std::string error;
-    bool inUpgrade = databaseFeature ? databaseFeature->upgrade() : false;  // check if DB is currently being upgraded (skip validation checks)
+    bool inUpgrade = databaseFeature ? databaseFeature->upgrade() : false; // check if DB is currently being upgraded (skip validation checks)
     IResearchViewMeta meta;
     IResearchViewMetaState metaState;
 
-    if (!meta.init(definition, error) || (meta._version == 0 && !inUpgrade)  // version 0 must be upgraded to split data-store on a per-link basis
-        || meta._version > LATEST_VERSION ||
-        (ServerState::instance()->isSingleServer()  // init metaState for SingleServer
-         && !metaState.init(definition, error))) {
-      return arangodb::Result(TRI_ERROR_BAD_PARAMETER, error.empty() ? (std::string("failed to initialize arangosearch View from definition: ") +
-                                                                        definition
-                                                                            .toString())
-                                                                     : (std::string("failed to initialize arangosearch View from definition, error in attribute '") +
-                                                                        error + "': " +
-                                                                        definition
-                                                                            .toString()));
+    if (!meta.init(definition, error) // parse definition
+        || (meta._version == 0 && !inUpgrade) // version 0 must be upgraded to split data-store on a per-link basis
+        || meta._version > LATEST_VERSION // ensure version is valid
+        || (ServerState::instance()->isSingleServer() // init metaState for SingleServer
+            && !metaState.init(definition, error))) {
+      return arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        error.empty()
+        ? (std::string("failed to initialize arangosearch View from definition: ") + definition.toString())
+        : (std::string("failed to initialize arangosearch View from definition, error in attribute '") + error + "': " + definition.toString())
+      );
     }
 
     auto impl = std::shared_ptr<IResearchView>(
@@ -526,77 +527,77 @@ arangodb::Result IResearchView::appendVelocyPackImpl(arangodb::velocypack::Build
     auto res = trx.begin();
 
     if (!res.ok()) {
-      return res;  // nothing more to output
+      return res; // nothing more to output
     }
 
     auto* state = trx.state();
 
     if (!state) {
       return arangodb::Result(
-          TRI_ERROR_INTERNAL,
-          std::string("failed to get transaction state while generating json "
-                      "for arangosearch view '") +
-              name() + "'");
+        TRI_ERROR_INTERNAL,
+        std::string("failed to get transaction state while generating json for arangosearch view '") + name() + "'"
+      );
     }
 
-    arangodb::velocypack::ObjectBuilder linksBuilderWrapper(&linksBuilder);
+    auto visitor = [this, &linksBuilder, &res]( // visit collections
+      arangodb::TransactionCollection& trxCollection // transaction collection
+    )->bool {
+      auto collection = trxCollection.collection();
 
-    for (auto& collectionName : state->collectionNames()) {
-      for (auto& index : trx.indexesForCollection(collectionName, /*withHidden*/ true)) {
-        if (index && arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
-                         index->type()) {
-          // TODO FIXME find a better way to retrieve an IResearch Link
-          // cannot use static_cast/reinterpret_cast since Index is not related
-          // to IResearchLink
-          auto* ptr = dynamic_cast<IResearchLink*>(index.get());
-
-          if (!ptr || *ptr != *this) {
-            continue;  // the index is not a link for the current view
-          }
-
-          arangodb::velocypack::Builder linkBuilder;
-
-          linkBuilder.openObject();
-
-          if (!ptr->json(linkBuilder)) {
-            LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-                << "failed to generate json for arangosearch link '" << ptr->id()
-                << "' while generating json for arangosearch view '" << id() << "'";
-            continue;  // skip invalid link definitions
-          }
-
-          linkBuilder.close();
-
-          // need to mask out some fields
-          static const std::function<bool(irs::string_ref const& key)> acceptor =
-              [](irs::string_ref const& key) -> bool {
-            return key != arangodb::StaticStrings::IndexId &&
-                   key != arangodb::StaticStrings::IndexType &&
-                   key != StaticStrings::ViewIdField;  // ignored fields
-          };
-
-          arangodb::velocypack::Builder sanitizedBuilder;
-
-          sanitizedBuilder.openObject();
-
-          if (!mergeSliceSkipKeys(sanitizedBuilder, linkBuilder.slice(), acceptor)) {
-            Result result(
-                TRI_ERROR_INTERNAL,
-                std::string("failed to generate externally visible link ")
-                    .append("definition while emplacing link definition into ")
-                    .append("arangosearch view '")
-                    .append(name())
-                    .append("'"));
-
-            LOG_TOPIC(WARN, iresearch::TOPIC) << result.errorMessage();
-
-            return result;
-          }
-
-          sanitizedBuilder.close();
-          linksBuilderWrapper->add(collectionName, sanitizedBuilder.slice());
-        }
+      if (!collection) {
+        return true; // skip missing collections
       }
+
+      auto link = IResearchLinkHelper::find(*collection, *this);
+
+      if (!link) {
+        return true; // no links for the current view
+      }
+
+      arangodb::velocypack::Builder linkBuilder;
+
+      linkBuilder.openObject();
+
+      if (!link->json(linkBuilder)) {
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "failed to generate json for arangosearch link '" << link->id() << "' while generating json for arangosearch view '" << name() << "'";
+
+        return true; // skip invalid link definitions
+      }
+
+      linkBuilder.close();
+
+      static const auto acceptor = [](irs::string_ref const& key)->bool {
+        return key != arangodb::StaticStrings::IndexId
+            && key != arangodb::StaticStrings::IndexType
+            && key != StaticStrings::ViewIdField; // ignored fields
+      };
+
+      linksBuilder.add(
+        collection->name(),
+        arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
+      );
+
+      if (!mergeSliceSkipKeys(linksBuilder, linkBuilder.slice(), acceptor)) {
+        res = arangodb::Result(
+          TRI_ERROR_INTERNAL,
+          std::string("failed to generate arangosearch link '") + std::to_string(link->id()) + "' definition while generating json for arangosearch view '" + name() + "'"
+        );
+
+        return false; // terminate generation
+      }
+
+      linksBuilder.close();
+
+      return true; // done with this collection
+    };
+
+    linksBuilder.openObject();
+      state->allCollections(visitor);
+    linksBuilder.close();
+
+    if (!res.ok()) {
+      return res;
     }
 
     trx.commit();

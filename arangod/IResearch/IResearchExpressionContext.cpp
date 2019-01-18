@@ -23,8 +23,8 @@
 
 #include "IResearch/IResearchExpressionContext.h"
 #include "Aql/AqlItemBlock.h"
-#include "IResearch/IResearchViewNode.h"
 #include "Basics/StaticStrings.h"
+#include "IResearch/IResearchViewNode.h"
 
 namespace arangodb {
 namespace iresearch {
@@ -81,10 +81,9 @@ AqlValue ViewExpressionContext::getVariableValue(Variable const* var, bool doCop
   auto const& varInfo = it->second;
 
   if (varInfo.depth > decltype(varInfo.depth)(_node->getDepth())) {
-    THROW_ARANGO_EXCEPTION_FORMAT(
-        TRI_ERROR_BAD_PARAMETER,
-        "Variable '%s' is used before being assigned",
-        var->name.c_str());
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
+                                  "Variable '%s' is used before being assigned",
+                                  var->name.c_str());
   }
 
   auto& value = _data->getValueReference(_pos, varInfo.registerId);
