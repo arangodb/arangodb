@@ -1,3 +1,11 @@
+v3.4.3 (XXXX-XX-XX)
+-------------------
+
+* added "peakMemoryUsage" in query results figures, showing the peak memory
+  usage of the executed query. In a cluster, the value contains the peak memory 
+  usage across all shards, but it is not summed up across shards.
+
+
 v3.4.2 (2019-01-15)
 -------------------
 
@@ -92,6 +100,7 @@ v3.4.2 (2019-01-15)
 * Improve single threaded performance by scheduler optimization.
 
 * Releveling logging in maintenance
+
 
 v3.4.1 (2018-12-19)
 -------------------
