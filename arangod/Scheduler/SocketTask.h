@@ -34,6 +34,8 @@
 #include "Scheduler/Socket.h"
 #include "Statistics/RequestStatistics.h"
 
+#include <list>
+
 namespace arangodb {
 class ConnectionStatistics;
 
