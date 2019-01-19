@@ -72,7 +72,7 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
       NoResultsExecutor testee(fetcher, infos);
       NoStats stats{};
 
-      THEN("the executor should return DONE with nullptr") {
+      THEN("the executor should return DONE and produce nothing") {
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -84,13 +84,13 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
       NoResultsExecutor testee(fetcher, infos);
       NoStats stats{};
 
-      THEN("the executor should first return WAIT with nullptr") {
+      THEN("the executor should return WAIT and produce nothing") {
         OutputAqlItemRow result(std::move(outputBlockShell));
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
 
-        AND_THEN("the executor should return DONE with nullptr") {
+        AND_THEN("The output should stay stable") {
           std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!result.produced());
@@ -107,8 +107,7 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
       NoResultsExecutor testee(fetcher, infos);
       NoStats stats{};
 
-      THEN("the executor should return the rows") {
-
+      THEN("the executor should return DONE and produce nothing") {
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -126,14 +125,16 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
       NoResultsExecutor testee(fetcher, infos);
       NoStats stats{};
 
-      THEN("the executor should return the rows") {
+      AND_THEN("the executor should return DONE and produce nothing") {
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
 
-        std::tie(state, stats) = testee.produceRow(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!result.produced());
+        AND_THEN("The output should stay stable") {
+          std::tie(state, stats) = testee.produceRow(result);
+          REQUIRE(state == ExecutionState::DONE);
+          REQUIRE(!result.produced());
+        }
       }
     }
   }  // GIVERN
