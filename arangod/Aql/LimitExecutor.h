@@ -102,9 +102,13 @@ class LimitExecutor {
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
  private:
+  ExecutionState handleSingleRow(OutputAqlItemRow& output, Stats& stats, bool skipOffset);
+
   Infos& _infos;
   Fetcher& _fetcher;
   u_int64_t _counter = 0;
+  bool _done;
+  bool _doFullCount;
 };
 
 }  // namespace aql

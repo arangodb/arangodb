@@ -39,71 +39,93 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _fetcher(fetcher){};
+    : _infos(infos),
+      _fetcher(fetcher),
+      _counter(0),
+      _done(false),
+      _doFullCount(_infos.isFullCountEnabled() && _infos.getQueryDepth() == 0){};
 LimitExecutor::~LimitExecutor() = default;
 
+ExecutionState LimitExecutor::handleSingleRow(OutputAqlItemRow& output,
+                                              LimitStats& stats, bool skipOffset) {
+
+  ExecutionState state;
+  InputAqlItemRow input{CreateInvalidInputRowHint{}};
+  std::tie(state, input) = _fetcher.fetchRow();
+
+  if (state == ExecutionState::DONE) {
+    _done = true;
+    if (!input.isInitialized()) {
+      //no input given nothing to do!
+      return state;
+    }
+  }
+
+  if (state == ExecutionState::WAITING) {
+    TRI_ASSERT(!input);
+    return state;
+  }
+
+  TRI_ASSERT(input.isInitialized());
+  TRI_ASSERT(state == ExecutionState::HASMORE || state == ExecutionState::DONE);
+
+  if (_doFullCount) {
+    stats.incrFullCount();
+  }
+
+  if (skipOffset) {
+    _infos.decrRemainingOffset();
+  } else {
+    // produce until we hit the limit
+    if (_counter < _infos.getLimit()) {
+      output.copyRow(input);
+      ++_counter;
+    }
+
+    // if limit is hit and we do not full count then make sure the
+    // executor will return immediatly on next call;
+    if (_counter == _infos.getLimit() && !_doFullCount) {
+      _done = true;
+      return ExecutionState::DONE;
+    }
+  }
+
+  return state;
+}
+
 std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("LimitExecutor::produceRow") {
+  TRI_IF_FAILURE("LimitExecutor::skipOffsetRow") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+  TRI_ASSERT(!output.produced());
   ExecutionState state;
   LimitStats stats{};
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
-  // quick exit for limit == 0
-  if (_counter == _infos.getLimit() && !_infos.isFullCountEnabled()) {
+  if (_done) {
     return {ExecutionState::DONE, stats};
   }
 
-  while (true) {
-    std::tie(state, input) = _fetcher.fetchRow();
-
-    if (state == ExecutionState::WAITING) {
+  // skip offset
+  while (_infos.getRemainingOffset() > 0) {
+    state = handleSingleRow(output, stats, /*skipOffset*/ true);
+    if (_done || state == ExecutionState::WAITING) {
       return {state, stats};
     }
-
-    if (!input) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return {state, stats};
-    }
-    TRI_ASSERT(input.isInitialized());
-
-    if (_infos.getRemainingOffset() > 0) {
-      _infos.decrRemainingOffset();
-
-      if (_infos.isFullCountEnabled() && _infos.getQueryDepth() == 0) {
-        stats.incrFullCount();
-      }
-      continue;
-    }
-
-    if (_counter < _infos.getLimit()) {
-      output.copyRow(input);
-      _counter++;
-      if (_infos.getQueryDepth() == 0) {
-        stats.incrFullCount();
-      }
-
-      if (_counter == _infos.getLimit() && !_infos.isFullCountEnabled()) {
-        return {ExecutionState::DONE, stats};
-      }
-      return {state, stats};
-    }
-
-    if (_infos.getQueryDepth() == 0) {
-      stats.incrFullCount();
-    }
-
-    if (state == ExecutionState::DONE) {
-      return {state, stats};
-    }
-    TRI_ASSERT(state == ExecutionState::HASMORE);
   }
+
+  // procuce and count remaining - break loop if DONE or WAITING or
+  // whenever output has been produced
+  do {
+    state = handleSingleRow(output, stats, /*skipOffset*/ false);
+  } while (!(_done || state == ExecutionState::WAITING || output.produced()));
+
+  return {state, stats};
 }
 
 LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                                        std::unordered_set<RegisterId> registersToClear,
-                                       size_t offset, size_t limit, bool fullCount, size_t queryDepth)
+                                       size_t offset, size_t limit,
+                                       bool fullCount, size_t queryDepth)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
                     std::make_shared<std::unordered_set<RegisterId>>(), nrInputRegisters,
                     nrOutputRegisters, std::move(registersToClear)),

@@ -195,6 +195,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR]") {
         REQUIRE(!row.produced());
 
         std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::DONE);
         REQUIRE(row.produced());
 
         row.advanceRow();
