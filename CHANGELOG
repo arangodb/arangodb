@@ -3,10 +3,18 @@ v3.4.3 (XXXX-XX-XX)
 
 * updated bundled curl library to version 7.63.0
 
+* fixed an issue with AQL query IN index lookup conditions being converted into
+  empty arrays when they were shared between multiple nodes of a lookup condition
+  that used an IN array lookup in an OR that was multiplied due to DNF transformations
+  
+  This issue affected queries such as the following
+
+      FILTER (... && ...) || doc.indexAttribute IN non-empty-array
+
 * added "peakMemoryUsage" in query results figures, showing the peak memory
   usage of the executed query. In a cluster, the value contains the peak memory 
   usage across all shards, but it is not summed up across shards.
-
+  
 
 v3.4.2 (2019-01-15)
 -------------------
