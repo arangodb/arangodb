@@ -1197,6 +1197,9 @@ static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
 #ifndef _WIN32
 static bool killProcess(ExternalProcess* pid, int signal) {
   TRI_ASSERT(pid != nullptr);
+  if (signal == SIGKILL) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "sending SIGKILL signal to process: " << pid->_pid;
+  }
   if (kill(pid->_pid, signal) == 0) {
     return true;
   }
@@ -1419,6 +1422,7 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool i
       std::this_thread::sleep_for(std::chrono::seconds(1));
       if (count >= 13) {
         TRI_ASSERT(external != nullptr);
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "about to send SIGKILL signal to process: " << external->_pid << ", status: " << (int) status._status;
         killProcess(external, SIGKILL);
       }
       if (count > 25) {
