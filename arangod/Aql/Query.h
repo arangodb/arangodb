@@ -150,12 +150,6 @@ class Query {
   /// @brief return the start timestamp of the query
   double startTime() const { return _startTime; }
 
-  /// @brief return the current runtime of the query
-  double runTime(double now) const { return now - _startTime; }
-
-  /// @brief return the current runtime of the query
-  double runTime() const { return runTime(TRI_microtime()); }
-
   /// @brief the part of the query
   inline QueryPart part() const { return _part; }
 

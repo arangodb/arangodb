@@ -26,6 +26,7 @@
 #include "Aql/Parser.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
+#include "Aql/types.h"
 #include "Basics/tri-strings.h"
 #include "Transaction/Context.h"
 #include "VocBase/AccessMode.h"
@@ -66,12 +67,12 @@ void Aqlerror(YYLTYPE* locp,
 /// introduced by the COLLECT itself, in which case it would fail
 static void CheckIntoVariables(Parser* parser, AstNode const* expression,
                                int line, int column,
-                               std::unordered_set<Variable const*> const& variablesIntroduced) {
+                               arangodb::HashSet<Variable const*> const& variablesIntroduced) {
   if (expression == nullptr) {
     return;
   }
   
-  std::unordered_set<Variable const*> varsInAssignment;
+  arangodb::HashSet<Variable const*> varsInAssignment;
   Ast::getReferencedVariables(expression, varsInAssignment);
 
   for (auto const& it : varsInAssignment) {
@@ -86,9 +87,9 @@ static void CheckIntoVariables(Parser* parser, AstNode const* expression,
 /// @brief register variables in the scope
 static void RegisterAssignVariables(Parser* parser, arangodb::aql::Scopes* scopes, 
                                     int line, int column,
-                                    std::unordered_set<Variable const*>& variablesIntroduced, 
+                                    arangodb::HashSet<Variable const*>& variablesIntroduced, 
                                     AstNode const* vars) {
-  std::unordered_set<Variable const*> varsInAssignment;
+  arangodb::HashSet<Variable const*> varsInAssignment;
    
   size_t const n = vars->numMembers();
 
@@ -636,7 +637,7 @@ collect_statement:
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
-        std::unordered_set<Variable const*> variables;
+        arangodb::HashSet<Variable const*> variables;
         RegisterAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variables, $1);
       }
 
@@ -645,7 +646,7 @@ collect_statement:
     }
   | T_COLLECT aggregate collect_optional_into options {
       /* AGGREGATE var = expr OPTIONS ... */
-      std::unordered_set<Variable const*> variablesIntroduced;
+      arangodb::HashSet<Variable const*> variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
@@ -669,7 +670,7 @@ collect_statement:
     }
   | collect_variable_list aggregate collect_optional_into options {
       /* COLLECT var = expr AGGREGATE var = expr OPTIONS ... */
-      std::unordered_set<Variable const*> variablesIntroduced;
+      arangodb::HashSet<Variable const*> variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
@@ -686,7 +687,7 @@ collect_statement:
       }
 
       // note all group variables
-      std::unordered_set<Variable const*> groupVars;
+      arangodb::HashSet<Variable const*> groupVars;
       size_t n = $1->numMembers();
       for (size_t i = 0; i < n; ++i) {
         auto member = $1->getMember(i);
@@ -704,7 +705,7 @@ collect_statement:
 
         if (member != nullptr) {
           TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
-          std::unordered_set<Variable const*> variablesUsed;
+          arangodb::HashSet<Variable const*> variablesUsed;
           Ast::getReferencedVariables(member->getMember(1), variablesUsed);
 
           for (auto& it : groupVars) {
@@ -725,7 +726,7 @@ collect_statement:
     }
   | collect_variable_list collect_optional_into options {
       /* COLLECT var = expr INTO var OPTIONS ... */
-      std::unordered_set<Variable const*> variablesIntroduced;
+      arangodb::HashSet<Variable const*> variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
@@ -744,7 +745,7 @@ collect_statement:
     }
   | collect_variable_list collect_optional_into keep options {
       /* COLLECT var = expr INTO var KEEP ... OPTIONS ... */
-      std::unordered_set<Variable const*> variablesIntroduced;
+      arangodb::HashSet<Variable const*> variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
