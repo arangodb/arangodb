@@ -76,6 +76,7 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
+        REQUIRE(fetcher.nrCalled() == 0);
       }
     }
 
@@ -85,15 +86,16 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
       NoStats stats{};
 
       THEN("the executor should return WAIT and produce nothing") {
-        OutputAqlItemRow result(std::move(outputBlockShell));
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
+        REQUIRE(fetcher.nrCalled() == 0);
 
         AND_THEN("The output should stay stable") {
           std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!result.produced());
+          REQUIRE(fetcher.nrCalled() == 0);
         }
       }
     }
@@ -111,11 +113,13 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
+        REQUIRE(fetcher.nrCalled() == 0);
 
         AND_THEN("The output should stay stable") {
           std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!result.produced());
+          REQUIRE(fetcher.nrCalled() == 0);
         }
       }
     }
@@ -129,11 +133,13 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
+        REQUIRE(fetcher.nrCalled() == 0);
 
         AND_THEN("The output should stay stable") {
           std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!result.produced());
+          REQUIRE(fetcher.nrCalled() == 0);
         }
       }
     }
