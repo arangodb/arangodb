@@ -85,7 +85,7 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
       NoResultsExecutor testee(fetcher, infos);
       NoStats stats{};
 
-      THEN("the executor should return WAIT and produce nothing") {
+      THEN("the executor should return DONE and produce nothing") {
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
