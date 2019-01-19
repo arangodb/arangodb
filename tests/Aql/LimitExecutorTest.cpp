@@ -141,14 +141,18 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR]") {
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(row.produced());
-
         row.advanceRow();
+
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::DONE);
+        REQUIRE(stats.getFullCount() == 3);
+        REQUIRE(!row.produced());
 
         AND_THEN("The output should stay stable") {
           std::tie(state, stats) = testee.produceRow(row);
           REQUIRE(!row.produced());
           REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(stats.getFullCount() == 3);
+          REQUIRE(stats.getFullCount() == 0);
         }
       }
     }
@@ -166,14 +170,14 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR]") {
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(stats.getFullCount() == 2);
         REQUIRE(row.produced());
-
         row.advanceRow();
 
         AND_THEN("The output should stay stable") {
           std::tie(state, stats) = testee.produceRow(row);
-          REQUIRE(!row.produced());
           REQUIRE(state == ExecutionState::DONE);
+          REQUIRE(!row.produced());
           REQUIRE(stats.getFullCount() == 2);
         }
       }
@@ -197,7 +201,6 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR]") {
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(row.produced());
-
         row.advanceRow();
 
         AND_THEN("The output should stay stable") {
@@ -221,26 +224,34 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR]") {
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(stats.getFullCount() == 0);
         REQUIRE(!row.produced());
 
+        // limit hit
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(stats.getFullCount() == 1);
         REQUIRE(row.produced());
-
         row.advanceRow();
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(stats.getFullCount() == 0);
         REQUIRE(!row.produced());
 
+        // receive doc and wait
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(stats.getFullCount() == 1);
         REQUIRE(!row.produced());
 
+        // receive doc and wait
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(stats.getFullCount() == 1);
         REQUIRE(!row.produced());
 
+        // receive doc and done
         AND_THEN("The output should stay stable") {
           std::tie(state, stats) = testee.produceRow(row);
           REQUIRE(state == ExecutionState::DONE);

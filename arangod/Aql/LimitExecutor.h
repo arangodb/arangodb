@@ -106,7 +106,7 @@ class LimitExecutor {
 
   Infos& _infos;
   Fetcher& _fetcher;
-  u_int64_t _counter = 0;
+  uint64_t _counter ;
   bool _done;
   bool _doFullCount;
 };
