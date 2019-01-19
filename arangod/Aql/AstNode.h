@@ -27,6 +27,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringRef.h"
 
 #include <velocypack/Slice.h>
 
@@ -249,6 +250,9 @@ struct AstNode {
 
   /// @brief return the string value of a node, as an std::string
   std::string getString() const;
+  
+  /// @brief return the string value of a node, as a StringRef
+  arangodb::StringRef getStringRef() const noexcept;
 
   /// @brief test if all members of a node are equality comparisons
   bool isOnlyEqualityMatch() const;
