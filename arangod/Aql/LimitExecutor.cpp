@@ -48,7 +48,6 @@ LimitExecutor::~LimitExecutor() = default;
 
 ExecutionState LimitExecutor::handleSingleRow(OutputAqlItemRow& output,
                                               LimitStats& stats, bool skipOffset) {
-
   ExecutionState state;
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
   std::tie(state, input) = _fetcher.fetchRow();
@@ -56,7 +55,7 @@ ExecutionState LimitExecutor::handleSingleRow(OutputAqlItemRow& output,
   if (state == ExecutionState::DONE) {
     _done = true;
     if (!input.isInitialized()) {
-      //no input given nothing to do!
+      // no input given nothing to do!
       return state;
     }
   }
@@ -97,6 +96,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
   TRI_IF_FAILURE("LimitExecutor::skipOffsetRow") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+
   TRI_ASSERT(!output.produced());
   ExecutionState state;
   LimitStats stats{};
