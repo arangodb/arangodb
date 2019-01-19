@@ -1657,6 +1657,12 @@ bool AstNode::isConstant() const {
     }
   }
 
+  if (type == NODE_TYPE_PARAMETER) {
+    // bind parameter values will always be constant values later on...
+    setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+    return true;
+  }
+
   setFlag(DETERMINED_CONSTANT);
   return false;
 }
