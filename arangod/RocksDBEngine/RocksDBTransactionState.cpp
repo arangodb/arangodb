@@ -538,8 +538,9 @@ Result RocksDBTransactionState::addOperation(TRI_voc_cid_t cid, TRI_voc_rid_t re
 
   // clear the query cache for this collection
   auto queryCache = arangodb::aql::QueryCache::instance();
-  if (queryCache->mayBeActive()) {
-    queryCache->invalidate(&_vocbase, tcoll->collectionName());
+
+  if (queryCache->mayBeActive() && tcoll->collection()) {
+    queryCache->invalidate(&_vocbase, tcoll->collection()->guid());
   }
 
   switch (operationType) {

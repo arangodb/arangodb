@@ -74,16 +74,6 @@ class ClusterIndex : public Index {
   void unload() override {}
   size_t memory() const override { return 0; }
 
-  Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
-                velocypack::Slice const& doc, Index::OperationMode mode) override {
-    return Result(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const& doc, Index::OperationMode mode) override {
-    return Result(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
   Result drop() override { return Result(TRI_ERROR_NOT_IMPLEMENTED); }
 
   bool hasCoveringIterator() const override;

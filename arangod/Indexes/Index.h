@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
@@ -148,11 +149,17 @@ class Index {
   }
 
   /// @brief whether or not any attribute is expanded
-  inline bool attributeMatches(std::vector<arangodb::basics::AttributeName> const& attribute) const {
+  inline bool attributeMatches(std::vector<arangodb::basics::AttributeName> const& attribute,
+                               bool isPrimary = false) const {
     for (auto const& it : _fields) {
       if (arangodb::basics::AttributeName::isIdentical(attribute, it, true)) {
         return true;
       }
+    }
+    if (isPrimary) {
+      static std::vector<arangodb::basics::AttributeName> const vec_id{
+          {StaticStrings::IdString, false}};
+      return arangodb::basics::AttributeName::isIdentical(attribute, vec_id, true);
     }
     return false;
   }
@@ -185,11 +192,6 @@ class Index {
   static IndexType type(char const* type, size_t len);
 
   static IndexType type(std::string const& type);
-
-  static bool isGeoIndex(IndexType type) {
-    return type == TRI_IDX_TYPE_GEO1_INDEX || type == TRI_IDX_TYPE_GEO2_INDEX ||
-           type == TRI_IDX_TYPE_GEO_INDEX;
-  }
 
   virtual char const* typeName() const = 0;
 
@@ -294,16 +296,6 @@ class Index {
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
 
-  virtual void batchInsert(transaction::Methods& trx,
-                           std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const& docs,
-                           std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);
-
-  virtual Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const& doc, OperationMode mode) = 0;
-
-  virtual Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const& doc, OperationMode mode) = 0;
-
   virtual void load() = 0;
   virtual void unload() = 0;
 
@@ -378,6 +370,9 @@ class Index {
 
   mutable bool _unique;
   mutable bool _sparse;
+
+  // use this with c++17  --  attributeMatches
+  // static inline std::vector<arangodb::basics::AttributeName> const vec_id {{ StaticStrings::IdString, false }};
 };
 }  // namespace arangodb
 

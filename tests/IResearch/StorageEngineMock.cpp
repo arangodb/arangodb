@@ -23,6 +23,7 @@
 
 #include "StorageEngineMock.h"
 
+#include "Basics/asio_ns.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -47,7 +48,7 @@
 #include "Transaction/Helpers.h"
 #include "Aql/AstNode.h"
 
-#include <asio/io_context.hpp>
+#include <boost/asio/io_context.hpp>
 
 namespace {
 
@@ -214,7 +215,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::LocalDocumentId const& documentId,
       arangodb::velocypack::Slice const& doc,
       OperationMode
-  ) override {
+  ) {
     if (!doc.isObject()) {
       return { TRI_ERROR_INTERNAL };
     }
@@ -242,7 +243,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::LocalDocumentId const&,
       arangodb::velocypack::Slice const& doc,
       OperationMode
-  ) override {
+  ) {
     if (!doc.isObject()) {
       return { TRI_ERROR_INTERNAL };
     }
@@ -581,7 +582,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::v
   }
 
 
-  asio::io_context ioContext;
+  asio_ns::io_context ioContext;
   auto poster = [&ioContext](std::function<void()> fn) -> void {
     ioContext.post(fn);
   };
@@ -597,7 +598,19 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::v
   auto res = trx.begin();
   TRI_ASSERT(res.ok());
 
-  index->batchInsert(trx, docs, taskQueuePtr);
+  if (index->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+    auto* l = dynamic_cast<EdgeIndexMock*>(index.get());
+    TRI_ASSERT(l != nullptr);
+    for (auto const& pair : docs) {
+      l->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+    }
+  } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
+    TRI_ASSERT(l != nullptr);;
+    l->batchInsert(trx, docs, taskQueuePtr);
+  } else {
+    TRI_ASSERT(false);
+  }
 
   if (TRI_ERROR_NO_ERROR != taskQueue.status()) {
     return nullptr;
@@ -688,9 +701,31 @@ arangodb::Result PhysicalCollectionMock::insert(
   result.setUnmanaged(documents.back().first.data(), docId);
 
   for (auto& index : _indexes) {
-    if (!index->insert(*trx, docId, arangodb::velocypack::Slice(result.vpack()), arangodb::Index::OperationMode::normal).ok()) {
-      return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+    if (index->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+      auto* l = static_cast<EdgeIndexMock*>(index.get());
+      if (!l->insert(*trx, docId, arangodb::velocypack::Slice(result.vpack()),
+                     arangodb::Index::OperationMode::normal).ok()) {
+        return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+      }
+      continue;
+    } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+      
+      if (arangodb::ServerState::instance()->isCoordinator()) {
+        auto* l = static_cast<arangodb::iresearch::IResearchLinkCoordinator*>(index.get());
+        if (!l->insert(*trx, docId, arangodb::velocypack::Slice(result.vpack()),
+                       arangodb::Index::OperationMode::normal).ok()) {
+          return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+        }
+      } else {
+        auto* l = static_cast<arangodb::iresearch::IResearchMMFilesLink*>(index.get());
+        if (!l->insert(*trx, docId, arangodb::velocypack::Slice(result.vpack()),
+                       arangodb::Index::OperationMode::normal).ok()) {
+          return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+        }
+      }
+      continue;
     }
+    TRI_ASSERT(false);
   }
 
   return arangodb::Result();
@@ -1003,6 +1038,7 @@ arangodb::Result PhysicalCollectionMock::updateProperties(arangodb::velocypack::
 
 std::function<void()> StorageEngineMock::before = []()->void {};
 bool StorageEngineMock::inRecoveryResult = false;
+/*static*/ std::string StorageEngineMock::versionFilenameResult;
 
 StorageEngineMock::StorageEngineMock(
     arangodb::application_features::ApplicationServer& server
@@ -1428,8 +1464,7 @@ void StorageEngineMock::unloadCollection(
 }
 
 std::string StorageEngineMock::versionFilename(TRI_voc_tick_t) const {
-  TRI_ASSERT(false);
-  return std::string();
+  return versionFilenameResult;
 }
 
 void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {

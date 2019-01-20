@@ -71,14 +71,14 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   bool hasSelectivityEstimate() const override { return false; }
 
   /// insert index elements into the specified write batch.
-  Result insertInternal(transaction::Methods& trx, RocksDBMethods*,
-                        LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&, OperationMode mode) override;
+  Result insert(transaction::Methods& trx, RocksDBMethods*,
+                LocalDocumentId const& documentId,
+                arangodb::velocypack::Slice const&, OperationMode mode) override;
 
   /// remove index elements and put it in the specified write batch.
-  Result removeInternal(transaction::Methods& trx, RocksDBMethods*,
-                        LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&, OperationMode mode) override;
+  Result remove(transaction::Methods& trx, RocksDBMethods*,
+                LocalDocumentId const& documentId,
+                arangodb::velocypack::Slice const&, OperationMode mode) override;
 
   RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex> const&);
 

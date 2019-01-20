@@ -93,6 +93,7 @@ function activeFailover (options) {
   let testCases = tu.scanTestPaths(testPaths.active_failover);
   options.activefailover = true;
   options.singles = 4;
+  options.disableMonitor = true;
   return tu.performTests(options, testCases, 'client_resilience', tu.runInArangosh, {
     'server.authentication': 'true',
     'server.jwt-secret': 'haxxmann'

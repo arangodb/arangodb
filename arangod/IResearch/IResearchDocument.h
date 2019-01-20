@@ -33,37 +33,40 @@
 #include "search/filter.hpp"
 #include "store/data_output.hpp"
 
-NS_BEGIN(iresearch)
+namespace iresearch {
 
 class boolean_filter;  // forward declaration
 struct data_output;    // forward declaration
 class token_stream;    // forward declaration
 
-NS_END  // iresearch
+}  // namespace iresearch
 
-    NS_BEGIN(arangodb) NS_BEGIN(aql)
+namespace arangodb {
+namespace aql {
 
-        struct AstNode;  // forward declaration
-class SortCondition;     // forward declaration
+struct AstNode;       // forward declaration
+class SortCondition;  // forward declaration
 
-NS_END      // aql
-    NS_END  // arangodb
+}  // namespace aql
+}  // namespace arangodb
 
-        NS_BEGIN(arangodb) NS_BEGIN(transaction)
+namespace arangodb {
+namespace transaction {
 
-            class Methods;  // forward declaration
+class Methods;  // forward declaration
 
-NS_END      // transaction
-    NS_END  // arangodb
+}  // namespace transaction
+}  // namespace arangodb
 
-        NS_BEGIN(arangodb) NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief the delimiter used to separate jSON nesting levels when
-    /// generating
-    ///        flat iResearch field names
-    ////////////////////////////////////////////////////////////////////////////////
-    constexpr char const NESTING_LEVEL_DELIMITER = '.';
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the delimiter used to separate jSON nesting levels when
+/// generating
+///        flat iResearch field names
+////////////////////////////////////////////////////////////////////////////////
+constexpr char const NESTING_LEVEL_DELIMITER = '.';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the prefix used to denote start of jSON list offset when generating
@@ -123,9 +126,6 @@ struct Field {
 class FieldIterator : public std::iterator<std::forward_iterator_tag, Field const> {
  public:
   explicit FieldIterator(arangodb::transaction::Methods& trx);
-
-  FieldIterator(arangodb::transaction::Methods& trx,
-                arangodb::velocypack::Slice const& doc, IResearchLinkMeta const& linkMeta);
 
   Field const& operator*() const noexcept { return _value; }
 
@@ -238,7 +238,7 @@ struct DocumentPrimaryKey {
   DocumentPrimaryKey() = delete;
 };  // DocumentPrimaryKey
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif

@@ -33,25 +33,25 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-NS_BEGIN(arangodb)
-NS_BEGIN(transaction)
+namespace arangodb {
+namespace transaction {
 
 class Methods;  // forward declaration
 
-NS_END      // transaction
-    NS_END  // arangodb
+}  // namespace transaction
+}  // namespace arangodb
 
-    NS_BEGIN(arangodb) NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief a cache of IResearch analyzer instances
-    ///        and a provider of AQL TOKENS(<data>, <analyzer>) function
-    ///        NOTE: deallocation of an IResearchAnalyzerFeature instance
-    ///              invalidates all AnalyzerPool instances previously provided
-    ///              by the deallocated feature instance
-    ////////////////////////////////////////////////////////////////////////////////
-    class IResearchAnalyzerFeature final
-    : public arangodb::application_features::ApplicationFeature {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a cache of IResearch analyzer instances
+///        and a provider of AQL TOKENS(<data>, <analyzer>) function
+///        NOTE: deallocation of an IResearchAnalyzerFeature instance
+///              invalidates all AnalyzerPool instances previously provided
+///              by the deallocated feature instance
+////////////////////////////////////////////////////////////////////////////////
+class IResearchAnalyzerFeature final : public arangodb::application_features::ApplicationFeature {
  public:
   // thread-safe analyzer pool
   class AnalyzerPool : private irs::util::noncopyable {
@@ -127,7 +127,7 @@ NS_END      // transaction
   bool storeConfiguration(AnalyzerPool& pool);
 };
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif

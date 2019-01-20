@@ -55,7 +55,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
-NS_LOCAL
+namespace {
 
 struct TestAttributeX: public irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();
@@ -210,7 +210,7 @@ struct IResearchIndexSetup {
   }
 };
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite

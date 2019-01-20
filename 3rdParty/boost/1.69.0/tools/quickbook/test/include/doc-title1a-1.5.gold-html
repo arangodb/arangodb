@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Doc Title 1a
+    </h3>
+    <h2 id="doc-title.a1">
+      a1
+    </h2>
+    <h2 id="doc_title_1a.inc1">
+      inc1
+    </h2>
+    <h2 id="doc-title.a2">
+      a2
+    </h2>
+    <h2 id="doc_title_1_inc2.inc2">
+      inc2
+    </h2>
+    <h2 id="doc-title.a3">
+      a3
+    </h2>
+    <h2 id="doc_title_1_inc2.inc3">
+      inc3
+    </h2>
+    <h2 id="doc-title.a4">
+      a4
+    </h2>
+  </body>
+</html>

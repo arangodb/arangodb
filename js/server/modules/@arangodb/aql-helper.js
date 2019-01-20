@@ -430,6 +430,7 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
     delete results[i].stats.filtered;
     delete results[i].stats.executionTime;
     delete results[i].stats.httpRequests;
+    delete results[i].stats.peakMemoryUsage;
     delete results[i].stats.fullCount;
 
     if (debug) {

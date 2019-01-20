@@ -108,20 +108,8 @@ class ShortestPathNode : public GraphNode {
     return vars;
   }
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override {
-    std::vector<Variable const*> vars;
-    if (_inStartVariable != nullptr) {
-      vars.emplace_back(_inStartVariable);
-    }
-    if (_inTargetVariable != nullptr) {
-      vars.emplace_back(_inTargetVariable);
-    }
-    return vars;
-  }
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override {
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override {
     if (_inStartVariable != nullptr) {
       vars.emplace(_inStartVariable);
     }

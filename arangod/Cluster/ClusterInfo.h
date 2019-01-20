@@ -364,32 +364,39 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create database in coordinator
   //////////////////////////////////////////////////////////////////////////////
-
-  int createDatabaseCoordinator(std::string const&, arangodb::velocypack::Slice const&,
-                                std::string&, double);
+  Result createDatabaseCoordinator( // create database
+    std::string const& name, // database name
+    velocypack::Slice const& slice, // database definition
+    double timeout // request timeout
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop database in coordinator
   //////////////////////////////////////////////////////////////////////////////
-
-  int dropDatabaseCoordinator(std::string const& name, std::string& errorMsg, double timeout);
+  Result dropDatabaseCoordinator( // drop database
+    std::string const& name, // database name
+    double timeout // request timeout
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
-
-  int createCollectionCoordinator(std::string const& databaseName,
+  Result createCollectionCoordinator( // create collection
+    std::string const& databaseName, // database name
                                   std::string const& collectionID, uint64_t numberOfShards,
                                   uint64_t replicationFactor, bool waitForReplication,
                                   arangodb::velocypack::Slice const& json,
-                                  std::string& errorMsg, double timeout);
+    double timeout // request timeout
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
-
-  int dropCollectionCoordinator(std::string const& databaseName, std::string const& collectionID,
-                                std::string& errorMsg, double timeout);
+  Result dropCollectionCoordinator( // drop collection
+    std::string const& databaseName, // database name
+    std::string const& collectionID, // collection identifier
+    double timeout // request timeout
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set collection properties in coordinator
@@ -410,16 +417,19 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create view in coordinator
   //////////////////////////////////////////////////////////////////////////////
-
-  int createViewCoordinator(std::string const& databaseName, std::string const& viewID,
-                            arangodb::velocypack::Slice json, std::string& errorMsg);
+  Result createViewCoordinator( // create view
+    std::string const& databaseName, // database name
+    std::string const& viewID, // view identifier
+    velocypack::Slice json // view definition
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop view in coordinator
   //////////////////////////////////////////////////////////////////////////////
-
-  int dropViewCoordinator(std::string const& databaseName,
-                          std::string const& viewID, std::string& errorMsg);
+  Result dropViewCoordinator( // drop view
+    std::string const& databaseName, // database name
+    std::string const& viewID // view identifier
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set view properties in coordinator
@@ -431,18 +441,23 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
-
-  int ensureIndexCoordinator(std::string const& databaseName, std::string const& collectionID,
+  Result ensureIndexCoordinator( // create index
+    std::string const& databaseName, // database name
+    std::string const& collectionID, // collection identifier
                              arangodb::velocypack::Slice const& slice, bool create,
                              arangodb::velocypack::Builder& resultBuilder,
-                             std::string& errorMsg, double timeout);
+    double timeout // request timeout
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
-
-  int dropIndexCoordinator(std::string const& databaseName, std::string const& collectionID,
-                           TRI_idx_iid_t iid, std::string& errorMsg, double timeout);
+  Result dropIndexCoordinator( // drop index
+    std::string const& databaseName, // database name
+    std::string const& collectionID, // collection identifier
+    TRI_idx_iid_t iid, // index identifier
+    double timeout // request timeout
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about servers from the agency
@@ -629,12 +644,13 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
-
-  int ensureIndexCoordinatorInner(std::string const& databaseName,
+  Result ensureIndexCoordinatorInner( // create index
+    std::string const& databaseName, // database name
                                   std::string const& collectionID, std::string const& idSlice,
                                   arangodb::velocypack::Slice const& slice, bool create,
                                   arangodb::velocypack::Builder& resultBuilder,
-                                  std::string& errorMsg, double timeout);
+    double timeout // request timeout
+);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief object for agency communication

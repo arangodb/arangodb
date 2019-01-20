@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+Copyright (C) 2008-2018 Lorenzo Caminiti
+Distributed under the Boost Software License, Version 1.0 (see accompanying
+file LICENSE_1_0.txt or a copy at http://www.boost.org/LICENSE_1_0.txt).
+See: http://www.boost.org/doc/libs/release/libs/contract/doc/html/index.html
+-->
+
+<!--
+PLEASE VALIDATE THE XML BEFORE COMMITTING YOUR CHANGES!
+
+For example, cut-n-paste <library> tag below into main file
+"boost/status/explicit-failures-markup.xml" and validate as indicated in that
+main file.
+-->
+
+<explicit-failures-markup>
+    <!-- contract -->
+    <library name="contract">
+        <mark-unusable>
+            <toolset name="gcc-6"/>
+            <note author="Lorenzo Caminiti">
+                Tests fail to link on this compiler because of a bug in its STL
+                implementation (undefined references to `operator delete`, see
+                https://tracker.crystax.net/issues/1403).
+            </note>
+        </mark-unusable>
+        <mark-unusable>
+            <toolset name="gcc-3.4c+"/>
+            <toolset name="gcc-4.1c+"/>
+            <toolset name="gcc-4.2c+"/>
+            <note author="Lorenzo Caminiti">
+                Even tests that do not use C++11 lambda functions fail on this
+                compiler because it incorrectly attempts an extra copy when
+                objects are constructed using `boost::check c = ...`.
+                This is fixed in MinGW GCC 4.3.
+            </note>
+        </mark-unusable>
+        <mark-unusable>
+            <toolset name="msvc-7.1"/>
+            <note author="Lorenzo Caminiti">
+                Even tests that do not use C++11 lambda functions fail on this
+                compiler because of a number of issues (Boost.Exception is not
+                supported on this compiler but it is used by this library
+                implementation, some aspects of `friend` and `volatile` are not
+                properly implemented on this compiler, etc.).
+                These specific issues are fixed in MSVC 9.0 (but only MSVC 11.0
+                has adequate lambda function support that makes this library
+                actually usable).
+            </note>
+        </mark-unusable>
+        <mark-expected-failures>
+            <test name="disable-audit"/>
+            <toolset name="gcc-4.9"/>
+            <toolset name="gcc-5"/>
+            <toolset name="clang-linux-3.6"/>
+            <toolset name="clang-linux-3.7"/>
+            <toolset name="clang-linux-3.8"/>
+            <note author="Lorenzo Caminiti">
+                This test fails on this compiler because of a bug with
+                exceptions (see http://grokbase.com/t/gg/android-ndk/1656csqqtp/assertion-ttypeencoding-dw-eh-pe-absptr-unexpected-ttypeencoding-failed).
+            </note>
+        </mark-expected-failures>
+        <mark-expected-failures>
+            <test name="invariant-ifdef"/>
+            <test name="specify-nothing"/>
+            <toolset name="clang-linux-3.6"/>
+            <toolset name="clang-linux-3.7"/>
+            <toolset name="clang-linux-3.8"/>
+            <note author="Lorenzo Caminiti">
+                This test fails on this compiler because of a bug in its STL
+                implementation (undefined references to
+                `std::ios_base::failure::failure`).
+            </note>
+        </mark-expected-failures>
+        <mark-expected-failures>
+            <test name="destructor-throwing_old"/>
+            <test name="destructor-throwing_post"/>
+            <test name="public_function-decl_pre_all"/>
+            <test name="public_function-decl_pre_ends"/>
+            <test name="public_function-smoke"/>
+            <test name="public_function-throwing_post"/>
+            <test name="public_function-virtual"/>
+            <test name="public_function-virtual_branch"/>
+            <toolset name="clang-linux-4.0~gnu++11"/>
+            <toolset name="clang-linux-4.0~gnu++14"/>
+            <toolset name="clang-linux-4.0~gnu++1z"/>
+            <note author="Lorenzo Caminiti">
+                This test fails because of a libcxxrt bug on Clang for FreeBSD
+                which causes `std::uncaught_exception` to not work properly on
+                re-throws (see https://github.com/pathscale/libcxxrt/issues/49).
+            </note>
+        </mark-expected-failures>
+        <mark-expected-failures>
+            <test name="specify-auto_error"/>
+            <test name="specify-auto_pre_error"/>
+            <test name="specify-auto_pre_old_error"/>
+            <test name="specify-auto_pre_old_post_error"/>
+            <test name="specify-auto_pre_old_post_except_error"/>
+            <toolset name="intel-linux-linux"/>
+            <toolset name="clang-darwin*"/>
+            <toolset name="clang-darwin*"/>
+            <toolset name="clang-darwin*"/>
+            <toolset name="*1z*"/>
+            <note author="Lorenzo Caminiti">
+                This test fails because C++17 guarantees no copies on function
+                returns by value (so this library can only give run-time errors,
+                and not compile-time errors, if auto declarations are misused
+                instead of using the `boost::contract::check` type explicitly on
+                C++17 compilers).
+            </note>
+        </mark-expected-failures>
+        <mark-expected-failures>
+            <test name="public_function-max_args"/>
+            <test name="public_function-max_args0"/>
+            <test name="public_function-max_args0_no_tva"/>
+            <test name="public_function-max_args1"/>
+            <test name="public_function-max_args1_no_tva"/>
+            <test name="public_function-max_args2"/>
+            <test name="public_function-max_args2_no_tva"/>
+            <test name="public_function-max_args_no_tva"/>
+            <toolset name="gcc-6.1c+"/>
+            <note author="Lorenzo Caminiti">
+                It is not clear why this test fails but when trying to install
+                MinGW GCC 6.1 using `mingw-get` it says that such a compiler
+                version does not exist (so this issue could not be investigated
+                any further).
+                This is fixed in MinGW GCC 6.2.
+            </note>
+        </mark-expected-failures>
+        <mark-expected-failures>
+            <test name="old-if_copyable"/>
+            <test name="old-if_copyable_macro"/>
+            <toolset name="gcc-4.7.2"/>
+            <toolset name="gcc-4.7~c++11"/>
+            <toolset name="qcc-4.7.3_arm"/>
+            <toolset name="qcc-4.7.3_x86"/>
+            <toolset name="gcc-4.6c+"/>
+            <toolset name="gcc-4.7c+"/>
+            <toolset name="msvc-10.0"/>
+            <toolset name="msvc-11.0"/>
+            <note author="Lorenzo Caminiti">
+                This test fails because this complier does not properly
+                implement SFINAE giving incorrect errors on substitution
+                failures for private members.
+                This seems to be fixed in GCC 4.8 and MSVC 12.0.
+            </note>
+        </mark-expected-failures>
+        <mark-expected-failures>
+            <test name="public_function-protected_error"/>
+            <toolset name="clang-linux-3.0~c++11"/>
+            <toolset name="clang-linux-3.0~gnu11"/>
+            <toolset name="clang-linux-3.0~c++11~O2"/>
+            <toolset name="clang-linux-3.0~c++11~warn"/>
+            <toolset name="gcc-4.6c+"/>
+            <note author="Lorenzo Caminiti">
+                This test fails because SFINAE on this complier seems to not
+                fail as it should when a derived class tries to call a
+                protected member function on a base class object via a function
+                pointer instead of via inheritance.
+                This seems to be fixed in Clang 3.1, and to be specific to
+                version 4.6 of GCC.
+            </note>
+        </mark-expected-failures>
+        <mark-expected-failures>
+            <test name="public_function-virtual_access_multi"/>
+            <toolset name="gcc-4.7.2"/>
+            <toolset name="gcc-4.7~c++11"/>
+            <toolset name="qcc-4.7.3_arm"/>
+            <toolset name="qcc-4.7.3_x86"/>
+            <toolset name="gcc-4.6c+"/>
+            <toolset name="gcc-4.7c+"/>
+            <note author="Lorenzo Caminiti">
+                This test fails because this compiler seems to incorrectly check
+                access level of members in base classes in a context when only
+                derived class members are used.
+                This seems to be fixed in GCC 4.8 (possibly related to
+                https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57973).
+            </note>
+        </mark-expected-failures>
+        <mark-expected-failures>
+            <test name="disable-no_post_except_lib"/>
+            <toolset name="gcc-8.0.0"/>
+            <note author="Lorenzo Caminiti">
+                GCC 8 has not been released yet so this test might be failing
+                because of some work-in-progress aspect of the compiler.
+                This test did not fail on GCC 7.
+            </note>
+        </mark-expected-failures>
+        <mark-expected-failures>
+            <test name="constructor-throwing_body"/>
+            <test name="destructor-decl_entry_inv_all"/>
+            <test name="destructor-decl_entry_inv_ends"/>
+            <test name="destructor-decl_entry_static_inv_all"/>
+            <test name="destructor-decl_entry_static_inv_ends"/>
+            <test name="destructor-decl_entry_static_inv_mid"/>
+            <test name="destructor-decl_exit_static_inv_all"/>
+            <test name="destructor-decl_exit_static_inv_ends"/>
+            <test name="destructor-decl_exit_static_inv_mid"/>
+            <test name="destructor-throwing_body"/>
+            <test name="destructor-throwing_old"/>
+            <test name="destructor-throwing_post"/>
+            <test name="function-ifdef_macro"/>
+            <test name="function-throwing_body"/>
+            <test name="public_function-static_throwing_body"/>
+            <test name="public_function-throwing_body"/>
+            <test name="public_function-throwing_body_virtual"/>
+            <test name="public_function-throwing_body_virtual_branch"/>
+            <toolset name="qcc-4.7.3_arm"/>
+            <toolset name="qcc-4.7.3_x86"/>
+            <note author="Lorenzo Caminiti">
+                This test fails because `std::unchaught_exception` seems to
+                always return zero on this compiler (even if the authors could
+                not find a direct reference to this possible compiler issue
+                online).
+            </note>
+        </mark-expected-failures>
+        <mark-expected-failures>
+            <test name="call_if-no_equal_call_if"/>
+            <toolset name="msvc-10.0"/>
+            <note author="Lorenzo Caminiti">
+                This test fails because MSVC 10.0 is not able to properly deduce
+                a template specialization.
+                This is fixed in MSVC 11.0.
+            </note>
+        </mark-expected-failures>
+        <mark-expected-failures>
+            <test name="constructor-ifdef_macro"/>
+            <test name="constructor-smoke"/>
+            <toolset name="msvc-10.0"/>
+            <note author="Lorenzo Caminiti">
+                This test fails because of a MSVC 10.0 bug with lambdas within
+                template class initialization list.
+                This can be worked around using a functor bind instead of a
+                lambda, but it is fixed in MSVC 11.0.
+            </note>
+        </mark-expected-failures>
+        <mark-expected-failures>
+            <test name="destructor-smoke"/>
+            <toolset name="msvc-10.0"/>
+            <note author="Lorenzo Caminiti">
+                This test fails because of a MSVC 10.0 bug for which lambdas
+                cannot access typedefs declared within classes.
+                This can be worked around declaring typedefs outside of
+                classes, but it is fixed in MSVC 11.0.
+            </note>
+        </mark-expected-failures>
+        <mark-expected-failures>
+            <test name="disable-no_post_except_lib"/>
+            <test name="disable-no_post_except_unit"/>
+            <test name="disable-nothing_for_pre_prog"/>
+            <test name="disable-other_assertions_lib"/>
+            <test name="disable-other_assertions_prog"/>
+            <test name="disable-other_assertions_unit"/>
+            <toolset name="msvc-10.0"/>
+            <note author="Lorenzo Caminiti">
+                This test fails because of an internal MSVC 10.0 compiler bug.
+                This is fixed in MSVC 11.0.
+            </note>
+        </mark-expected-failures>
+        <mark-expected-failures>
+            <test name="invariant-ifdef"/>
+            <test name="invariant-ifdef_macro"/>
+            <test name="invariant-volatile_error"/>
+            <toolset name="msvc-8.0"/>
+            <note author="Lorenzo Caminiti">
+                This test fails because this complier seems to dispatch calls
+                incorrectly when both `const` and `const volatile` overloads
+                are present (even if the authors could not find a direct
+                reference to this possible compiler issue online).
+                This is fixed in MSVC 9.0 (but only MSVC 11.0 has adequate
+                lambda function support).
+            </note>
+        </mark-expected-failures>
+    </library>
+</explicit-failures-markup>
+

@@ -41,7 +41,7 @@
 
 #include "utils/log.hpp"
 
-NS_LOCAL
+namespace {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                           Primary key endianness
@@ -281,10 +281,10 @@ inline Filter getFilter(VPackSlice value,
   return valueAcceptors[4 * value.isArray() + 2 * meta._trackListPositions + meta._includeAllFields];
 }
 
-NS_END
+}  // namespace
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                             Field implementation
@@ -333,12 +333,6 @@ FieldIterator::FieldIterator(arangodb::transaction::Methods& trx)
     : _nameBuffer(BufferPool.emplace().release()),  // FIXME don't use shared_ptr
       _trx(&trx) {
   // initialize iterator's value
-}
-
-FieldIterator::FieldIterator(arangodb::transaction::Methods& trx,
-                             VPackSlice const& doc, IResearchLinkMeta const& linkMeta)
-    : FieldIterator(trx) {
-  reset(doc, linkMeta);
 }
 
 std::string& FieldIterator::valueBuffer() {
@@ -643,9 +637,9 @@ void FieldIterator::next() {
   return true;
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION-- END-OF-FILE
+// -----------------------------------------------------------------------------

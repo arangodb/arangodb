@@ -68,7 +68,7 @@ TransactionCollection* SingleCollectionTransaction::resolveTrxCollection() {
     _trxCollection = _state->collection(_cid, _accessType);
 
     if (_trxCollection != nullptr) {
-      _documentCollection = _trxCollection->collection();
+      _documentCollection = _trxCollection->collection().get();
     }
   }
 

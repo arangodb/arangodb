@@ -71,7 +71,7 @@ namespace {
 
 bool accessesCollectionVariable(arangodb::aql::ExecutionPlan const* plan,
                                 arangodb::aql::CalculationNode const* node,
-                                std::unordered_set<arangodb::aql::Variable const*>& vars) {
+                                arangodb::HashSet<arangodb::aql::Variable const*>& vars) {
   using EN = arangodb::aql::ExecutionNode;
 
   vars.clear();
@@ -164,7 +164,7 @@ class CollectionVariableTracker final
   using DependencyPair =
       std::pair<arangodb::aql::Variable const*, arangodb::aql::Collection const*>;
   using DependencySet = std::unordered_set<DependencyPair, ::PairHash>;
-  using VariableSet = std::unordered_set<arangodb::aql::Variable const*>;
+  using VariableSet = arangodb::HashSet<arangodb::aql::Variable const*>;
   bool _stop;
   std::unordered_map<arangodb::aql::Variable const*, DependencySet> _dependencies;
   std::unordered_map<arangodb::aql::Collection const*, VariableSet> _collectionVariables;
@@ -175,7 +175,8 @@ class CollectionVariableTracker final
                      arangodb::aql::Variable const* outVariable) {
     auto node = arangodb::aql::ExecutionNode::castTo<NodeType const*>(en);
     try {
-      auto inputVariables = node->getVariablesUsedHere();
+      arangodb::HashSet<arangodb::aql::Variable const*> inputVariables;
+      node->getVariablesUsedHere(inputVariables);
       for (auto var : inputVariables) {
         for (auto dep : _dependencies[var]) {
           _dependencies[outVariable].emplace(dep);
@@ -354,9 +355,7 @@ class RestrictToSingleShardChecker final
 
       case EN::FILTER: {
         auto node = ExecutionNode::castTo<arangodb::aql::FilterNode const*>(en);
-        auto v = node->getVariablesUsedHere();
-        TRI_ASSERT(v.size() == 1);
-        arangodb::aql::Variable const* inputVariable = v[0];
+        arangodb::aql::Variable const* inputVariable = node->inVariable();
         handleInputVariable(en, inputVariable);
         break;
       }
@@ -575,16 +574,25 @@ std::string getSingleShardId(arangodb::aql::ExecutionPlan const* plan,
 
   arangodb::aql::Variable const* inputVariable = nullptr;
   if (node->getType() == EN::INDEX) {
-    inputVariable = node->getVariablesSetHere()[0];
-  } else {
-    std::vector<arangodb::aql::Variable const*> v = node->getVariablesUsedHere();
-    if (v.size() > 1) {
-      // If there is a key variable:
-      inputVariable = v[1];
+    inputVariable = ExecutionNode::castTo<arangodb::aql::IndexNode const*>(node)->outVariable();
+  } else if (node->getType() == EN::FILTER) {
+    inputVariable = ExecutionNode::castTo<arangodb::aql::FilterNode const*>(node)->inVariable();
+  } else if (node->getType() == EN::INSERT) {
+    inputVariable = ExecutionNode::castTo<arangodb::aql::InsertNode const*>(node)->inVariable();
+  } else if (node->getType() == EN::REMOVE) {
+    inputVariable = ExecutionNode::castTo<arangodb::aql::RemoveNode const*>(node)->inVariable();
+  } else if (node->getType() == EN::REPLACE || node->getType() == EN::UPDATE) {
+    auto updateReplaceNode = ExecutionNode::castTo<arangodb::aql::UpdateReplaceNode const*>(node);
+    if (updateReplaceNode->inKeyVariable() != nullptr) {
+      inputVariable = updateReplaceNode->inKeyVariable();
     } else {
-      inputVariable = v[0];
+      inputVariable = updateReplaceNode->inDocVariable();
     }
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
   }
+
+  TRI_ASSERT(inputVariable != nullptr);
 
   // check if we can easily find out the setter of the input variable
   // (and if we can find it, check if the data is constant so we can look
@@ -753,12 +761,8 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
   bool modified = false;
 
   for (auto const& n : nodes) {
-    // filter nodes always have one input variable
-    auto varsUsedHere = n->getVariablesUsedHere();
-    TRI_ASSERT(varsUsedHere.size() == 1);
-
     // now check who introduced our variable
-    auto variable = varsUsedHere[0];
+    auto variable = ExecutionNode::castTo<FilterNode const*>(n)->inVariable();
     auto setter = plan->getVarSetBy(variable->id);
 
     if (setter == nullptr || setter->getType() != EN::CALCULATION) {
@@ -838,9 +842,8 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
       AstNode const* testNode = originalNode;
 
       if (originalNode->type == NODE_TYPE_FCALL &&
-          static_cast<Function const*>(originalNode->getData())->name ==
-              "NOOPT") {
-        // bypass NOOPT(...)
+          static_cast<Function const*>(originalNode->getData())->hasFlag(Function::Flags::NoEval)) {
+        // bypass NOOPT(...) for testing
         TRI_ASSERT(originalNode->numMembers() == 1);
         auto args = originalNode->getMember(0);
 
@@ -1086,12 +1089,8 @@ void arangodb::aql::removeUnnecessaryFiltersRule(Optimizer* opt,
   std::unordered_set<ExecutionNode*> toUnlink;
 
   for (auto const& n : nodes) {
-    // filter nodes always have one input variable
-    auto varsUsedHere = n->getVariablesUsedHere();
-    TRI_ASSERT(varsUsedHere.size() == 1);
-
     // now check who introduced our variable
-    auto variable = varsUsedHere[0];
+    auto variable = ExecutionNode::castTo<FilterNode const*>(n)->inVariable();
     auto setter = plan->getVarSetBy(variable->id);
 
     if (setter == nullptr || setter->getType() != EN::CALCULATION) {
@@ -1252,12 +1251,8 @@ class PropagateConstantAttributesHelper {
     plan->findNodesOfType(nodes, EN::FILTER, true);
 
     for (auto const& node : nodes) {
-      auto fn = ExecutionNode::castTo<FilterNode*>(node);
-
-      auto inVar = fn->getVariablesUsedHere();
-      TRI_ASSERT(inVar.size() == 1);
-
-      auto setter = plan->getVarSetBy(inVar[0]->id);
+      auto fn = ExecutionNode::castTo<FilterNode const*>(node);
+      auto setter = plan->getVarSetBy(fn->inVariable()->id);
       if (setter != nullptr && setter->getType() == EN::CALCULATION) {
         auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
         auto expression = cn->expression();
@@ -1270,12 +1265,8 @@ class PropagateConstantAttributesHelper {
 
     if (!_constants.empty()) {
       for (auto const& node : nodes) {
-        auto fn = ExecutionNode::castTo<FilterNode*>(node);
-
-        auto inVar = fn->getVariablesUsedHere();
-        TRI_ASSERT(inVar.size() == 1);
-
-        auto setter = plan->getVarSetBy(inVar[0]->id);
+        auto fn = ExecutionNode::castTo<FilterNode const*>(node);
+        auto setter = plan->getVarSetBy(fn->inVariable()->id);
         if (setter != nullptr && setter->getType() == EN::CALCULATION) {
           auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
           auto expression = cn->expression();
@@ -1462,8 +1453,8 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
   plan->findNodesOfType(nodes, EN::CALCULATION, true);
 
   bool modified = false;
-  std::unordered_set<Variable const*> neededVars;
-  std::unordered_set<Variable const*> vars;
+  arangodb::HashSet<Variable const*> neededVars;
+  arangodb::HashSet<Variable const*> vars;
 
   for (auto const& n : nodes) {
     auto nn = ExecutionNode::castTo<CalculationNode*>(n);
@@ -1550,8 +1541,8 @@ void arangodb::aql::moveCalculationsDownRule(Optimizer* opt,
   plan->findNodesOfType(nodes, EN::CALCULATION, true);
 
   std::vector<ExecutionNode*> stack;
-  std::unordered_set<Variable const*> vars;
-  std::unordered_set<Variable const*> usedHere;
+  arangodb::HashSet<Variable const*> vars;
+  arangodb::HashSet<Variable const*> usedHere;
   bool modified = false;
 
   for (auto const& n : nodes) {
@@ -1799,9 +1790,8 @@ void arangodb::aql::splitFiltersRule(Optimizer* opt, std::unique_ptr<ExecutionPl
   bool modified = false;
 
   for (auto const& n : nodes) {
-    auto inVars(n->getVariablesUsedHere());
-    TRI_ASSERT(inVars.size() == 1);
-    auto setter = plan->getVarSetBy(inVars[0]->id);
+    auto fn = ExecutionNode::castTo<FilterNode const*>(n);
+    auto setter = plan->getVarSetBy(fn->inVariable()->id);
 
     if (setter == nullptr || setter->getType() != EN::CALCULATION) {
       continue;
@@ -1867,13 +1857,14 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt, std::unique_ptr<ExecutionP
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::FILTER, true);
 
+  std::vector<ExecutionNode*> stack;
   bool modified = false;
 
   for (auto const& n : nodes) {
-    auto neededVars = n->getVariablesUsedHere();
-    TRI_ASSERT(neededVars.size() == 1);
+    auto fn = ExecutionNode::castTo<FilterNode const*>(n);
+    auto inVar = fn->inVariable();
 
-    std::vector<ExecutionNode*> stack;
+    stack.clear();
     n->dependencies(stack);
 
     while (!stack.empty()) {
@@ -1907,12 +1898,10 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt, std::unique_ptr<ExecutionP
       bool found = false;
 
       for (auto const& v : current->getVariablesSetHere()) {
-        for (auto it = neededVars.begin(); it != neededVars.end(); ++it) {
-          if ((*it)->id == v->id) {
-            // shared variable, cannot move up any more
-            found = true;
-            break;
-          }
+        if (inVar == v) {
+          // shared variable, cannot move up any more
+          found = true;
+          break;
         }
       }
 
@@ -1967,7 +1956,7 @@ class arangodb::aql::RedundantCalculationsReplacer final
 
   void replaceInCalculation(ExecutionNode* en) {
     auto node = ExecutionNode::castTo<CalculationNode*>(en);
-    std::unordered_set<Variable const*> variables;
+    arangodb::HashSet<Variable const*> variables;
     node->expression()->variables(variables);
 
     // check if the calculation uses any of the variables that we want to
@@ -1989,7 +1978,7 @@ class arangodb::aql::RedundantCalculationsReplacer final
       return;
     }
     AstNode const& search = view->filterCondition();
-    std::unordered_set<Variable const*> variables;
+    arangodb::HashSet<Variable const*> variables;
     Ast::getReferencedVariables(&search, variables);
 
     // check if the search condition uses any of the variables that we want to
@@ -2189,9 +2178,12 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
     return;
   }
 
+  bool modified = false;
   auto p = plan.get();
 
-  auto visitor = [p](AstNode* node) {
+  auto visitor = [p, &modified](AstNode* node) {
+    AstNode* original = node;
+
     again:
       if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
         auto const* accessed = node->getMemberUnchecked(0);
@@ -2225,7 +2217,13 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
             if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
                 StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
               // found the attribute!
-              node = member->getMember(0);
+              AstNode* next = member->getMember(0);
+              if (!next->isDeterministic()) {
+                // do not descend into non-deterministic nodes
+                return node;
+              }
+              // descend further
+              node = next;
               // now try optimizing the simplified condition
               // time for a goto...!
               goto again;
@@ -2237,6 +2235,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
 
           // attribute not found
           if (!isDynamic) {
+            modified = true;
             return Ast::createNodeValueNull();
           }
         }
@@ -2292,7 +2291,13 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
             if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
                 StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
               // found the attribute!
-              node = member->getMember(0);
+              AstNode* next = member->getMember(0);
+              if (!next->isDeterministic()) {
+                // do not descend into non-deterministic nodes
+                return node;
+              }
+              // descend further
+              node = next;
               // now try optimizing the simplified condition
               // time for a goto...!
               goto again;
@@ -2304,6 +2309,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
 
           // attribute not found
           if (!isDynamic) {
+            modified = true;
             return Ast::createNodeValueNull();
           }
         } else if (accessed->type == NODE_TYPE_ARRAY) {
@@ -2317,6 +2323,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
                                                   valid);
             if (!valid) {
               // invalid index
+              modified = true;
               return Ast::createNodeValueNull();
             }
           } else {
@@ -2330,21 +2337,31 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
             position = n + position;
           }
           if (position >= 0 && position < n) {
-            node = accessed->getMember(static_cast<size_t>(position));
+            AstNode* next = accessed->getMember(static_cast<size_t>(position));
+            if (!next->isDeterministic()) {
+              // do not descend into non-deterministic nodes
+              return node;
+            }
+            // descend further
+            node = next;
             // now try optimizing the simplified condition
             // time for a goto...!
             goto again;
           }
 
           // index out of bounds
+          modified = true;
           return Ast::createNodeValueNull();
         }
       }
 
+      if (node != original) {
+        // we come out with a different, so we changed something...
+        modified = true;
+      }
       return node;
   };
 
-  bool modified = false;
   for (auto const& n : nodes) {
     auto nn = ExecutionNode::castTo<CalculationNode*>(n);
 
@@ -2672,7 +2689,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
         }
       }
 
-      std::unordered_set<Variable const*> vars;
+      arangodb::HashSet<Variable const*> vars;
 
       size_t usageCount = 0;
       CalculationNode* other = nullptr;
@@ -3151,10 +3168,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(Optimizer* opt,
   for (auto const& node : nodes) {
     auto fn = ExecutionNode::castTo<FilterNode const*>(node);
     // find the node with the filter expression
-    auto inVar = fn->getVariablesUsedHere();
-    TRI_ASSERT(inVar.size() == 1);
-
-    auto setter = plan->getVarSetBy(inVar[0]->id);
+    auto setter = plan->getVarSetBy(fn->inVariable()->id);
 
     if (setter == nullptr || setter->getType() != EN::CALCULATION) {
       continue;
@@ -4002,45 +4016,35 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       ExecutionNode* distNode = nullptr;
       Variable const* inputVariable;
       if (nodeType == ExecutionNode::INSERT || nodeType == ExecutionNode::REMOVE) {
-        TRI_ASSERT(node->getVariablesUsedHere().size() == 1);
-
         // in case of an INSERT, the DistributeNode is responsible for
         // generating keys if none present
         bool const createKeys = (nodeType == ExecutionNode::INSERT);
-        inputVariable = node->getVariablesUsedHere()[0];
+        if (nodeType == ExecutionNode::INSERT) {
+          inputVariable = ExecutionNode::castTo<InsertNode const*>(node)->inVariable();
+        } else {
+          inputVariable = ExecutionNode::castTo<RemoveNode const*>(node)->inVariable();
+        }
         distNode = new DistributeNode(plan.get(), plan->nextId(), collection,
                                       inputVariable, inputVariable, createKeys, true);
-      } else if (nodeType == ExecutionNode::REPLACE) {
-        std::vector<Variable const*> v = node->getVariablesUsedHere();
-        if (defaultSharding && v.size() > 1) {
+      } else if (nodeType == ExecutionNode::REPLACE || nodeType == ExecutionNode::UPDATE) {
+        auto updateReplaceNode = ExecutionNode::castTo<UpdateReplaceNode const*>(node);
+        if (defaultSharding && updateReplaceNode->inKeyVariable() != nullptr) {
           // We only look into _inKeyVariable
-          inputVariable = v[1];
-        } else {
-          // We only look into _inDocVariable
-          inputVariable = v[0];
-        }
-        distNode = new DistributeNode(plan.get(), plan->nextId(), collection, inputVariable,
-                                      inputVariable, false, v.size() > 1);
-      } else if (nodeType == ExecutionNode::UPDATE) {
-        std::vector<Variable const*> v = node->getVariablesUsedHere();
-        if (v.size() > 1) {
-          // If there is a key variable:
-          inputVariable = v[1];
           // This is the _inKeyVariable! This works, since we use a ScatterNode
           // for non-default-sharding attributes.
+          inputVariable = updateReplaceNode->inKeyVariable();
         } else {
+          // We only look into _inDocVariable
           // was only UPDATE <doc> IN <collection>
-          inputVariable = v[0];
+          inputVariable = updateReplaceNode->inDocVariable();
         }
         distNode = new DistributeNode(plan.get(), plan->nextId(), collection, inputVariable,
-                                      inputVariable, false, v.size() > 1);
+                                      inputVariable, false, updateReplaceNode->inKeyVariable() != nullptr);
       } else if (nodeType == ExecutionNode::UPSERT) {
         // an UPSERT node has two input variables!
-        std::vector<Variable const*> v(node->getVariablesUsedHere());
-        TRI_ASSERT(v.size() >= 2);
-
+        auto upsertNode = ExecutionNode::castTo<UpsertNode const*>(node);
         auto d = new DistributeNode(plan.get(), plan->nextId(), collection,
-                                    v[0], v[1], true, true);
+                                    upsertNode->inDocVariable(), upsertNode->insertVariable(), true, true);
         d->setAllowSpecifiedKeys(true);
         distNode = ExecutionNode::castTo<ExecutionNode*>(d);
       } else {
@@ -4104,11 +4108,13 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::COLLECT, true);
 
-  std::unordered_set<Variable const*> allUsed;
+  arangodb::HashSet<Variable const*> allUsed;
+  arangodb::HashSet<Variable const*> used;
 
   for (auto& node : nodes) {
     allUsed.clear();
-    auto used = node->getVariablesUsedHere();
+    used.clear();
+    node->getVariablesUsedHere(used);
 
     // found a node we need to replace in the plan
     TRI_ASSERT(node->getDependencies().size() == 1);
@@ -4124,21 +4130,9 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
       // check if any of the nodes we pass use a variable that will not be
       // available after we insert a new COLLECT on top of it (note: COLLECT
       // will eliminate all variables from the scope but its own)
-      for (auto const& it : current->getVariablesUsedHere()) {
-        if (current->getType() != EN::GATHER) {
-          // Gather nodes are taken care of separately below
-          allUsed.emplace(it);
-        }
-      }
-
-      // check if any of the nodes we pass use a variable that will not be
-      // available after we insert a new COLLECT on top of it (note: COLLECT
-      // will eliminate all variables from the scope but its own)
-      for (auto const& it : current->getVariablesUsedHere()) {
-        if (current->getType() != EN::GATHER) {
-          // Gather nodes are taken care of separately below
-          allUsed.emplace(it);
-        }
+      if (current->getType() != EN::GATHER) {
+        // Gather nodes are taken care of separately below
+        current->getVariablesUsedHere(allUsed);
       }
 
       for (auto const& it : current->getVariablesSetHere()) {
@@ -4430,7 +4424,7 @@ void arangodb::aql::distributeFilternCalcToClusterRule(Optimizer* opt,
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::GATHER, true);
 
-  std::unordered_set<Variable const*> varsSetHere;
+  arangodb::HashSet<Variable const*> varsSetHere;
 
   for (auto& n : nodes) {
     auto const& remoteNodeList = n->getDependencies();
@@ -4499,7 +4493,7 @@ void arangodb::aql::distributeFilternCalcToClusterRule(Optimizer* opt,
           break;
 
         case EN::CALCULATION:
-        case EN::FILTER:
+        case EN::FILTER: {
           if (inspectNode->getType() == EN::CALCULATION) {
             // check if the expression can be executed on a DB server safely
             if (!ExecutionNode::castTo<CalculationNode const*>(inspectNode)
@@ -4530,7 +4524,9 @@ void arangodb::aql::distributeFilternCalcToClusterRule(Optimizer* opt,
                      inspectNode->getType() == EN::CALCULATION ||
                      inspectNode->getType() == EN::FILTER);
 
-          for (auto& v : inspectNode->getVariablesUsedHere()) {
+          arangodb::HashSet<Variable const*> used;
+          inspectNode->getVariablesUsedHere(used);
+          for (auto& v : used) {
             if (varsSetHere.find(v) != varsSetHere.end()) {
               // do not move over the definition of variables that we need
               stopSearching = true;
@@ -4550,6 +4546,7 @@ void arangodb::aql::distributeFilternCalcToClusterRule(Optimizer* opt,
             // ready to rumble!
           }
           break;
+        }
 
         default: {
           // should not reach this point
@@ -4912,12 +4909,9 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
 
         // find the variable we are removing . . .
         auto rn = ExecutionNode::castTo<RemoveNode*>(en);
-        auto varsToRemove = rn->getVariablesUsedHere();
+        Variable const* toRemove = rn->inVariable();
 
-        // remove nodes always have one input variable
-        TRI_ASSERT(varsToRemove.size() == 1);
-
-        _setter = _plan->getVarSetBy(varsToRemove[0]->id);
+        _setter = _plan->getVarSetBy(rn->inVariable()->id);
         TRI_ASSERT(_setter != nullptr);
         auto enumColl = _setter;
 
@@ -4929,7 +4923,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
           if (expr->isAttributeAccess()) {
             // check the variable is the same as the remove variable
             auto vars = cn->getVariablesSetHere();
-            if (vars.size() != 1 || vars[0]->id != varsToRemove[0]->id) {
+            if (vars.size() != 1 || vars[0] != rn->inVariable()) {
               break;  // abort . . .
             }
             // check the remove node's collection is sharded over _key
@@ -4940,9 +4934,11 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
 
             // set the varsToRemove to the variable in the expression of this
             // node and also define enumColl
-            varsToRemove = cn->getVariablesUsedHere();
+            arangodb::HashSet<Variable const*> varsToRemove;
+            cn->getVariablesUsedHere(varsToRemove);
             TRI_ASSERT(varsToRemove.size() == 1);
-            enumColl = _plan->getVarSetBy(varsToRemove[0]->id);
+            toRemove = *(varsToRemove.begin());
+            enumColl = _plan->getVarSetBy(toRemove->id);
             TRI_ASSERT(_setter != nullptr);
           } else if (expr->node() && expr->node()->isObject()) {
             auto n = expr->node();
@@ -5031,7 +5027,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
           break;  // abort . . .
         }
 
-        _variable = varsToRemove[0];  // the variable we'll remove
+        _variable = toRemove;  // the variable we'll remove
         _remove = true;
         _lastNode = en;
         return false;  // continue . . .
@@ -5074,23 +5070,21 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
           // doesn't match the last filter node
           break;  // abort . . .
         }
-        auto cn = ExecutionNode::castTo<CalculationNode*>(en);
-        auto fn = ExecutionNode::castTo<FilterNode*>(_lastNode);
+        auto cn = ExecutionNode::castTo<CalculationNode const*>(en);
+        auto fn = ExecutionNode::castTo<FilterNode const*>(_lastNode);
 
         // check these are a Calc-Filter pair
-        if (cn->getVariablesSetHere()[0]->id != fn->getVariablesUsedHere()[0]->id) {
+        if (cn->getVariablesSetHere()[0] != fn->inVariable()) {
           break;  // abort . . .
         }
 
         // check that we are filtering/calculating something with the variable
         // we are to remove
-        auto varsUsedHere = cn->getVariablesUsedHere();
+        arangodb::HashSet<Variable const*> varsUsedHere;
+        cn->getVariablesUsedHere(varsUsedHere);
 
-        if (varsUsedHere.size() != 1) {
+        if (varsUsedHere.size() != 1 || varsUsedHere.find(_variable) == varsUsedHere.end()) {
           break;  // abort . . .
-        }
-        if (varsUsedHere[0]->id != _variable->id) {
-          break;
         }
         _lastNode = en;
         return false;  // continue . . .
@@ -5456,13 +5450,11 @@ void arangodb::aql::replaceOrWithInRule(Optimizer* opt, std::unique_ptr<Executio
       continue;
     }
 
-    auto fn = ExecutionNode::castTo<FilterNode*>(n);
-    auto inVar = fn->getVariablesUsedHere();
-
+    auto fn = ExecutionNode::castTo<FilterNode const*>(n);
     auto cn = ExecutionNode::castTo<CalculationNode*>(dep);
     auto outVar = cn->getVariablesSetHere();
 
-    if (outVar.size() != 1 || outVar[0]->id != inVar[0]->id) {
+    if (outVar.size() != 1 || outVar[0] != fn->inVariable()) {
       continue;
     }
 
@@ -5632,13 +5624,11 @@ void arangodb::aql::removeRedundantOrRule(Optimizer* opt,
       continue;
     }
 
-    auto fn = ExecutionNode::castTo<FilterNode*>(n);
-    auto inVar = fn->getVariablesUsedHere();
-
+    auto fn = ExecutionNode::castTo<FilterNode const*>(n);
     auto cn = ExecutionNode::castTo<CalculationNode*>(dep);
     auto outVar = cn->getVariablesSetHere();
 
-    if (outVar.size() != 1 || outVar[0]->id != inVar[0]->id) {
+    if (outVar.size() != 1 || outVar[0] != fn->inVariable()) {
       continue;
     }
     if (cn->expression()->node()->type != NODE_TYPE_OPERATOR_BINARY_OR) {
@@ -5904,10 +5894,7 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt,
   for (auto const& node : fNodes) {
     auto fn = ExecutionNode::castTo<FilterNode const*>(node);
     // find the node with the filter expression
-    auto inVar = fn->getVariablesUsedHere();
-    TRI_ASSERT(inVar.size() == 1);
-
-    auto setter = plan->getVarSetBy(inVar[0]->id);
+    auto setter = plan->getVarSetBy(fn->inVariable()->id);
     if (setter == nullptr || setter->getType() != EN::CALCULATION) {
       continue;
     }
@@ -5948,7 +5935,7 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt,
           if (indexesUsed.size() == 1) {*/
           // single index. this is something that we can handle
           Variable const* outVariable = traversalNode->pathOutVariable();
-          std::unordered_set<Variable const*> varsUsedByCondition;
+          arangodb::HashSet<Variable const*> varsUsedByCondition;
           Ast::getReferencedVariables(condition.root(), varsUsedByCondition);
           if (outVariable != nullptr &&
               varsUsedByCondition.find(outVariable) != varsUsedByCondition.end()) {
@@ -6121,13 +6108,13 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
     Variable const* out = subqueryNode->outVariable();
     TRI_ASSERT(out != nullptr);
     // the subquery outvariable and all its aliases
-    std::unordered_set<Variable const*> subqueryVars;
+    arangodb::HashSet<Variable const*> subqueryVars;
     subqueryVars.emplace(out);
 
     // the potential calculation nodes that produce the aliases
     std::vector<ExecutionNode*> aliasNodesToRemoveLater;
 
-    std::unordered_set<Variable const*> varsUsed;
+    arangodb::HashSet<Variable const*> varsUsed;
 
     current = n->getFirstParent();
     // now check where the subquery is used
@@ -6667,10 +6654,9 @@ static void optimizeFilterNode(ExecutionPlan* plan, FilterNode* fn, GeoIndexInfo
   TRI_ASSERT(fn->getType() == EN::FILTER);
 
   // filter nodes always have one input variable
-  auto varsUsedHere = fn->getVariablesUsedHere();
-  TRI_ASSERT(varsUsedHere.size() == 1);  // does the optimizer do this?
+  auto variable = ExecutionNode::castTo<FilterNode const*>(fn)->inVariable();
   // now check who introduced our variable
-  ExecutionNode* setter = plan->getVarSetBy(varsUsedHere[0]->id);
+  ExecutionNode* setter = plan->getVarSetBy(variable->id);
   if (setter == nullptr || setter->getType() != EN::CALCULATION) {
     return;  // setter could be enumerate list node e.g.
   }
@@ -6805,7 +6791,7 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
   auto const& valid = info.collectionNodeToReplace->getVarsValid();
   auto checkVars = [&valid](AstNode const* expr) {
     if (expr != nullptr) {
-      std::unordered_set<Variable const*> varsUsed;
+      arangodb::HashSet<Variable const*> varsUsed;
       Ast::getReferencedVariables(expr, varsUsed);
       for (Variable const* v : varsUsed) {
         if (valid.find(v) == valid.end()) {
@@ -7066,7 +7052,7 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
     // scan from the subquery node to the bottom of the ExecutionPlan to check
     // if any of the following nodes also use the subquery result
     auto out = sn->outVariable();
-    std::unordered_set<Variable const*> used;
+    arangodb::HashSet<Variable const*> used;
     bool invalid = false;
 
     auto current = node->getFirstParent();

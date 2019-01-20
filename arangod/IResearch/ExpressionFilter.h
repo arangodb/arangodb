@@ -29,20 +29,20 @@
 
 #include "search/filter.hpp"
 
-NS_BEGIN(arangodb)
+namespace arangodb {
 
-NS_BEGIN(aql)
+namespace aql {
 struct AstNode;
 class Ast;
 class ExecutionPlan;
-NS_END  // aql
+}  // namespace aql
 
-NS_BEGIN(iresearch)
+namespace iresearch {
 
-    ///////////////////////////////////////////////////////////////////////////////
-    /// @struct ExpressionCompilationContext
-    ///////////////////////////////////////////////////////////////////////////////
-    struct ExpressionCompilationContext {
+///////////////////////////////////////////////////////////////////////////////
+/// @struct ExpressionCompilationContext
+///////////////////////////////////////////////////////////////////////////////
+struct ExpressionCompilationContext {
   bool operator==(ExpressionCompilationContext const& rhs) const noexcept {
     return plan == rhs.plan && ast == rhs.ast && node == rhs.node;
   }
@@ -128,7 +128,7 @@ class ByExpression final : public irs::filter {
   ExpressionCompilationContext _ctx;
 };  // ByExpression
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif  // ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_FILTER

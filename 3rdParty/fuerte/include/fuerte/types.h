@@ -43,12 +43,17 @@ StatusCode constexpr StatusUndefined = 0;
 StatusCode constexpr StatusOK = 200;
 StatusCode constexpr StatusCreated = 201;
 StatusCode constexpr StatusAccepted = 202;
+StatusCode constexpr StatusPartial = 203;
+StatusCode constexpr StatusNoContent = 204;
 StatusCode constexpr StatusBadRequest = 400;
 StatusCode constexpr StatusUnauthorized = 401;
 StatusCode constexpr StatusForbidden = 403;
 StatusCode constexpr StatusNotFound = 404;
 StatusCode constexpr StatusMethodNotAllowed = 405;
 StatusCode constexpr StatusConflict = 409;
+StatusCode constexpr StatusPreconditionFailed = 412;
+StatusCode constexpr StatusInternalError = 500;
+StatusCode constexpr StatusUnavailable = 505;
 
 // RequestCallback is called for finished connection requests.
 // If the given Error is zero, the request succeeded, otherwise an error
@@ -84,7 +89,6 @@ enum class ErrorCondition : Error {
   WriteError = 1103,
   
   Canceled = 1104,
-  MalformedURL = 1105,
 
   ProtocolError = 3000,
 };

@@ -36,6 +36,8 @@
 
 #include "GeneralServer/IoTask.h"
 
+#include <list>
+
 namespace arangodb {
 class ConnectionStatistics;
 
