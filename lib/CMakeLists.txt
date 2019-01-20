@@ -237,6 +237,7 @@ add_library(${LIB_ARANGO} STATIC
   Maskings/Collection.cpp
   Maskings/Maskings.cpp
   Maskings/Path.cpp
+  Maskings/RandomStringMask.cpp
   ProgramOptions/Option.cpp
   ProgramOptions/ProgramOptions.cpp
   ProgramOptions/Section.cpp
