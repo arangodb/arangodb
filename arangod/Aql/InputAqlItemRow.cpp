@@ -37,8 +37,7 @@ using namespace arangodb::aql;
 InputAqlItemRow::InputAqlItemRow(CreateInvalidInputRowHint)
     : _blockShell(nullptr), _baseIndex(0) {}
 
-InputAqlItemRow::InputAqlItemRow(
-    std::shared_ptr<InputAqlItemBlockShell> blockShell, size_t baseIndex)
+InputAqlItemRow::InputAqlItemRow(std::shared_ptr<InputAqlItemBlockShell> blockShell, size_t baseIndex)
     : _blockShell(std::move(blockShell)), _baseIndex(baseIndex) {
   TRI_ASSERT(_blockShell != nullptr);
 }
@@ -51,8 +50,7 @@ const AqlValue& InputAqlItemRow::getValue(RegisterId registerId) const {
 
 bool InputAqlItemRow::operator==(InputAqlItemRow const& other) const noexcept {
   TRI_ASSERT(isInitialized());
-  return this->_blockShell == other._blockShell &&
-         this->_baseIndex == other._baseIndex;
+  return this->_blockShell == other._blockShell && this->_baseIndex == other._baseIndex;
 }
 
 bool InputAqlItemRow::operator!=(InputAqlItemRow const& other) const noexcept {
@@ -69,3 +67,14 @@ AqlItemBlock const& InputAqlItemRow::block() const {
 std::size_t InputAqlItemRow::getNrRegisters() const {
   return block().getNrRegs();
 }
+
+namespace arangodb {
+std::ostream& operator<<(std::ostream& stream, aql::InputAqlItemRow const& row) {
+  std::size_t regs = row.getNrRegisters();
+  stream << "|";
+  for (RegisterId i = 0; i < regs; ++i) {
+    stream << " " << row.getValue(i) << " |";
+  }
+  return stream;
+}
+}  // namespace arangodb

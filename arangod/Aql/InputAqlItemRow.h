@@ -56,8 +56,7 @@ class InputAqlItemRow {
   // The default constructor contains an invalid item row
   explicit InputAqlItemRow(CreateInvalidInputRowHint);
 
-  InputAqlItemRow(std::shared_ptr<InputAqlItemBlockShell> blockShell,
-                  size_t baseIndex);
+  InputAqlItemRow(std::shared_ptr<InputAqlItemBlockShell> blockShell, size_t baseIndex);
 
   /**
    * @brief Get a reference to the value of the given Variable Nr
@@ -94,5 +93,8 @@ class InputAqlItemRow {
 };
 
 }  // namespace aql
+
+std::ostream& operator<<(std::ostream&, aql::InputAqlItemRow const&);
+
 }  // namespace arangodb
 #endif

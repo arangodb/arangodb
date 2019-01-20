@@ -482,13 +482,13 @@ struct AqlValue final {
 
   /// @brief get the (array) length (note: this treats ranges as arrays, too!)
   size_t length() const;
-  
-  /// @brief get the (array) element at position 
+
+  /// @brief get the (array) element at position
   AqlValue at(int64_t position, bool& mustDestroy, bool copy) const;
 
-  /// @brief get the (array) element at position 
+  /// @brief get the (array) element at position
   AqlValue at(int64_t position, size_t n, bool& mustDestroy, bool copy) const;
-  
+
   /// @brief get the _key attribute from an object/document
   AqlValue getKeyAttribute(bool& mustDestroy, bool copy) const;
   /// @brief get the _id attribute from an object/document
@@ -498,20 +498,19 @@ struct AqlValue final {
   AqlValue getFromAttribute(bool& mustDestroy, bool copy) const;
   /// @brief get the _to attribute from an object/document
   AqlValue getToAttribute(bool& mustDestroy, bool copy) const;
-  
+
   /// @brief get the (object) element by name(s)
+  AqlValue get(CollectionNameResolver const& resolver, std::string const& name,
+               bool& mustDestroy, bool copy) const;
   AqlValue get(CollectionNameResolver const& resolver,
-               std::string const& name, bool& mustDestroy, bool copy) const;
-  AqlValue get(CollectionNameResolver const& resolver,
-               std::vector<std::string> const& names, bool& mustDestroy,
-               bool copy) const;
+               std::vector<std::string> const& names, bool& mustDestroy, bool copy) const;
   bool hasKey(std::string const& name) const;
 
   /// @brief get the numeric value of an AqlValue
   double toDouble() const;
   double toDouble(bool& failed) const;
   int64_t toInt64() const;
-  
+
   /// @brief whether or not an AqlValue evaluates to true/false
   bool toBoolean() const;
 
@@ -729,6 +728,9 @@ struct AqlValueMaterializer {
 static_assert(sizeof(AqlValue) == 16, "invalid AqlValue size");
 
 }  // namespace aql
+
+std::ostream& operator<<(std::ostream&, aql::AqlValue const&);
+
 }  // namespace arangodb
 
 /// @brief hash function for AqlValue objects
