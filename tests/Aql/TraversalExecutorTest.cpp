@@ -208,6 +208,8 @@ class TraverserHelper : public Traverser {
     return;
   }
 
+  void destroyEngines() override {}
+
   std::string const& startVertexUsedAt(uint64_t index) {
     REQUIRE(index < _usedVertexAt.size());
     return _usedVertexAt[index];

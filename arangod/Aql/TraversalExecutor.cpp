@@ -53,8 +53,18 @@ TraversalExecutorInfos::TraversalExecutorInfos(
              (!_fixedSource.empty() && _inputRegister == ExecutionNode::MaxRegisterId));
 }
 
-TraversalExecutorInfos::TraversalExecutorInfos(TraversalExecutorInfos&&) = default;
-TraversalExecutorInfos::~TraversalExecutorInfos() = default;
+// We need this Move constructor otherwise the traverser will not be moved properly
+TraversalExecutorInfos::TraversalExecutorInfos(TraversalExecutorInfos&& other)
+    : ExecutorInfos(std::move(other)),
+      _traverser(std::move(other._traverser)),
+      _registerMapping(std::move(other._registerMapping)),
+      _fixedSource(other._fixedSource),
+      _inputRegister(other._inputRegister),
+      _filterConditionVariables(std::move(other._filterConditionVariables)) {
+  TRI_ASSERT(_traverser != nullptr);
+};
+
+TraversalExecutorInfos::~TraversalExecutorInfos(){};
 
 Traverser& TraversalExecutorInfos::traverser() {
   TRI_ASSERT(_traverser != nullptr);
@@ -114,6 +124,12 @@ TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
       _rowState(ExecutionState::HASMORE),
       _traverser(infos.traverser()) {}
 TraversalExecutor::~TraversalExecutor() = default;
+
+// Shutdown query
+std::pair<ExecutionState, Result> TraversalExecutor::shutdown(int errorCode) {
+  _traverser.destroyEngines();
+  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+}
 
 std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAqlItemRow& output) {
   TraversalStats s;

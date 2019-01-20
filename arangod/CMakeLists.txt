@@ -209,6 +209,7 @@ SET(ARANGOD_SOURCES
   Aql/EnumerateListExecutor.cpp
   Aql/ExecutionBlock.cpp
   Aql/ExecutionBlockImpl.cpp
+  Aql/ExecutionBlockShutdownableImpl.cpp
   Aql/ExecutionEngine.cpp
   Aql/ExecutionNode.cpp
   Aql/ExecutionPlan.cpp
@@ -264,7 +265,6 @@ SET(ARANGOD_SOURCES
   Aql/SortNode.cpp
   Aql/SortRegister.cpp
   Aql/SubqueryBlock.cpp
-  Aql/TraversalBlock.cpp
   Aql/TraversalExecutor.cpp
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalNode.cpp

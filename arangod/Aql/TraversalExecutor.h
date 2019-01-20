@@ -107,6 +107,12 @@ class TraversalExecutor {
   ~TraversalExecutor();
 
   /**
+   * @brief Shutdown will be called once for every query
+   *
+   * @return ExecutionState and no error.
+   */
+  std::pair<ExecutionState, Result> shutdown(int errorCode);
+  /**
    * @brief produce the next Row of Aql Values.
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.

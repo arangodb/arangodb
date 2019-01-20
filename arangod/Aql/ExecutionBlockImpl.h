@@ -64,7 +64,6 @@ class ExecutionEngine;
  */
 template <class Executor>
 class ExecutionBlockImpl : public ExecutionBlock {
-
   using Fetcher = typename Executor::Fetcher;
   using ExecutorStats = typename Executor::Stats;
 
@@ -78,7 +77,9 @@ class ExecutionBlockImpl : public ExecutionBlock {
    *               required for the execution.
    * @param node The Node used to create this ExecutionBlock
    */
-  ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node, typename Executor::Infos&&);
+  ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node,
+                     typename Executor::Infos&&);
+
   ~ExecutionBlockImpl();
 
   /**
@@ -104,11 +105,10 @@ class ExecutionBlockImpl : public ExecutionBlock {
    *                      you need more input.
    *         AqlItemBlock:
    *           A matrix of result rows.
-   *           Guaranteed to be non nullptr in HASMORE cas, maybe a nullptr in DONE.
-   *           Is a nullptr in WAITING
+   *           Guaranteed to be non nullptr in HASMORE cas, maybe a nullptr in
+   * DONE. Is a nullptr in WAITING
    */
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
-      size_t atMost) override;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override;
 
   /**
    * @brief Like get some, but lines are skipped and not returned.
@@ -130,48 +130,46 @@ class ExecutionBlockImpl : public ExecutionBlock {
    */
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
 
-  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items,
-                                                     size_t pos) override;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
  private:
-
   /**
-  * @brief Wrapper for ExecutionBlock::traceGetSomeEnd() that returns its
-  *        arguments compatible to getSome's return type.
-  */
+   * @brief Wrapper for ExecutionBlock::traceGetSomeEnd() that returns its
+   *        arguments compatible to getSome's return type.
+   */
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> traceGetSomeEnd(
       ExecutionState state, std::unique_ptr<AqlItemBlock> result);
 
   /**
-  * @brief Wrapper for ExecutionBlock::traceGetSomeEnd() that returns its
-  *        arguments compatible to skipSome's return type.
-  */
-  std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state,
-                                                     size_t skipped);
+   * @brief Wrapper for ExecutionBlock::traceGetSomeEnd() that returns its
+   *        arguments compatible to skipSome's return type.
+   */
+  std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped);
 
   /**
-  * @brief Inner getSome() part, without the tracing calls. Needed for the
-  *        skipSome() stub that uses this.
-  */
+   * @brief Inner getSome() part, without the tracing calls. Needed for the
+   *        skipSome() stub that uses this.
+   */
 
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeWithoutTrace(
-    size_t atMost);
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeWithoutTrace(size_t atMost);
 
-  std::unique_ptr<OutputAqlItemBlockShell> requestWrappedBlock(
-      size_t nrItems, RegisterId nrRegs);
+  std::unique_ptr<OutputAqlItemBlockShell> requestWrappedBlock(size_t nrItems,
+                                                               RegisterId nrRegs);
+
+ protected:
+  Executor _executor;
 
  private:
-
   /**
-  * @brief Used to allow the row Fetcher to access selected methods of this
-  *        ExecutionBlock object.
-  */
+   * @brief Used to allow the row Fetcher to access selected methods of this
+   *        ExecutionBlock object.
+   */
   BlockFetcher _blockFetcher;
 
   /**
-  * @brief Fetcher used by the Executor. Calls this->fetchBlock() and handles
-  *        memory management of AqlItemBlocks as needed by Executor.
-  */
+   * @brief Fetcher used by the Executor. Calls this->fetchBlock() and handles
+   *        memory management of AqlItemBlocks as needed by Executor.
+   */
   Fetcher _rowFetcher;
 
   /**
@@ -180,10 +178,8 @@ class ExecutionBlockImpl : public ExecutionBlock {
    *        to produce a single row from the upstream information.
    */
   typename Executor::Infos _infos;
-  Executor _executor;
 
   std::unique_ptr<OutputAqlItemRow> _outputItemRow;
-
 };
 
 }  // namespace aql

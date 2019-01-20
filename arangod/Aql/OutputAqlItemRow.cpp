@@ -34,8 +34,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-OutputAqlItemRow::OutputAqlItemRow(
-    std::unique_ptr<OutputAqlItemBlockShell> blockShell)
+OutputAqlItemRow::OutputAqlItemRow(std::unique_ptr<OutputAqlItemBlockShell> blockShell)
     : _blockShell(std::move(blockShell)),
       _baseIndex(0),
       _inputRowCopied(false),
@@ -44,8 +43,7 @@ OutputAqlItemRow::OutputAqlItemRow(
   TRI_ASSERT(_blockShell != nullptr);
 }
 
-void OutputAqlItemRow::setValue(RegisterId registerId,
-                                InputAqlItemRow const& sourceRow,
+void OutputAqlItemRow::setValue(RegisterId registerId, InputAqlItemRow const& sourceRow,
                                 AqlValue const& value) {
   bool mustDestroy = true;
   AqlValue clonedValue = value.clone();
@@ -57,8 +55,7 @@ void OutputAqlItemRow::setValue(RegisterId registerId,
 }
 
 void OutputAqlItemRow::setValue(RegisterId registerId,
-                                InputAqlItemRow const& sourceRow,
-                                AqlValue&& value) {
+                                InputAqlItemRow const& sourceRow, AqlValue&& value) {
   if (!isOutputRegister(registerId)) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_IN_WRONG_REGISTER);
@@ -116,8 +113,7 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
     }
   } else {
     TRI_ASSERT(_baseIndex > 0);
-    block().copyValuesFromRow(_baseIndex, _blockShell->registersToKeep(),
-                              _baseIndex - 1);
+    block().copyValuesFromRow(_baseIndex, _blockShell->registersToKeep(), _baseIndex - 1);
   }
 
   _inputRowCopied = true;
@@ -168,4 +164,6 @@ AqlItemBlock& OutputAqlItemRow::block() { return _blockShell->block(); }
 
 bool OutputAqlItemRow::isFull() { return numRowsWritten() >= block().size(); }
 
-std::size_t OutputAqlItemRow::getNrRegisters() const { return block().getNrRegs(); }
+std::size_t OutputAqlItemRow::getNrRegisters() const {
+  return block().getNrRegs();
+}

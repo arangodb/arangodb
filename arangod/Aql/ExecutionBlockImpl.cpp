@@ -38,9 +38,8 @@
 #include "Aql/FilterExecutor.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/SortExecutor.h"
-#include "Aql/TraversalExecutor.h"
-
 #include "Aql/SortRegister.h"
+#include "Aql/TraversalExecutor.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -50,11 +49,11 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  ExecutionNode const* node,
                                                  typename Executor::Infos&& infos)
     : ExecutionBlock(engine, node),
+      _executor(_rowFetcher, _infos),
       _blockFetcher(_dependencies, _engine->itemBlockManager(),
                     infos.getInputRegisters(), infos.numberOfInputRegisters()),
       _rowFetcher(_blockFetcher),
-      _infos(std::move(infos)),
-      _executor(_rowFetcher, _infos) {}
+      _infos(std::move(infos)) {}
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {

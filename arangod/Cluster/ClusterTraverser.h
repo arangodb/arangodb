@@ -77,6 +77,12 @@ class ClusterTraverser final : public Traverser {
 
   void addVertexToVelocyPack(StringRef, arangodb::velocypack::Builder&) override;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Destroy DBServer Traverser Engines
+  //////////////////////////////////////////////////////////////////////////////
+
+  void destroyEngines() override;
+
  private:
   void fetchVertices();
 

@@ -284,6 +284,12 @@ class Traverser {
 
   transaction::Methods* trx() const { return _trx; }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Destroy DBServer Traverser Engines
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual void destroyEngines() = 0;
+
  protected:
   /// @brief Outer top level transaction
   transaction::Methods* _trx;
