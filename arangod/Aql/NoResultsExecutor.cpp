@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,31 +17,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Baesler
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_DATETIME_H
-#define ARANGODB_BASICS_DATETIME_H 1
+#include "NoResultsExecutor.h"
 
-#include <chrono>
-#include <regex>
+#include "Basics/Common.h"
 
-namespace arangodb {
+#include "Aql/AllRowsFetcher.h"
+#include "Aql/AqlItemMatrix.h"
+#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
+#include "Aql/SortRegister.h"
 
-using tp_sys_clock_ms =
-    std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds>;
+#include <algorithm>
 
-namespace basics {
-bool parseDateTime(std::string const& dateTime, 
-                   tp_sys_clock_ms& date_tp);
+using namespace arangodb;
+using namespace arangodb::aql;
 
-bool regexIsoDuration(std::string const& isoDuration, 
-                      std::smatch& durationParts);
+NoResultsExecutor::NoResultsExecutor(Fetcher& fetcher, ExecutorInfos& infos)
+    : _infos(infos), _fetcher(fetcher){};
+NoResultsExecutor::~NoResultsExecutor() = default;
 
-/// @brief formats a date(time) value according to formatString
-std::string formatDate(std::string const& formatString,
-                       tp_sys_clock_ms const& dateValue);
-}  // namespace basics
-}  // namespace arangodb
-
-#endif
+std::pair<ExecutionState, NoStats> NoResultsExecutor::produceRow(OutputAqlItemRow& output) {
+  return {ExecutionState::DONE, NoStats{}};
+}

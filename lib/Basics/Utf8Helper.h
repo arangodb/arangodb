@@ -164,6 +164,8 @@ class Utf8Helper {
 ////////////////////////////////////////////////////////////////////////////////
 
 UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, size_t* outLength);
+UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, UChar* buffer, size_t bufferSize,
+                       size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uchar (utf-16) to a utf-8 string

@@ -42,6 +42,7 @@
 #include "Aql/Function.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/NoResultsExecutor.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/Query.h"
 #include "Aql/ReturnExecutor.h"
@@ -1304,7 +1305,7 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
   EnumerateListExecutorInfos infos(inputRegister, outRegister,
                                    getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                    getRegisterPlan()->nrRegs[getDepth()],
-                                   getRegsToClear(), engine.getQuery()->trx());
+                                   getRegsToClear());
   return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(&engine, this,
                                                                      std::move(infos));
 }
@@ -1940,7 +1941,12 @@ void NoResultsNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) cons
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> NoResultsNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<NoResultsBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  ExecutorInfos infos(0, 0, getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
+  return std::make_unique<ExecutionBlockImpl<NoResultsExecutor>>(&engine, this,
+                                                                 std::move(infos));
 }
 
 /// @brief estimateCost, the cost of a NoResults is nearly 0

@@ -1097,7 +1097,6 @@ class ReturnNode : public ExecutionNode {
 /// @brief class NoResultsNode
 class NoResultsNode : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class NoResultsBlock;
 
   /// @brief constructor with an id
  public:

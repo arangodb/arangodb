@@ -52,22 +52,9 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
 
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager{&monitor};
-  // Mock of the Transaction
-  // Enough for this test, will only be passed through and accessed
-  // on documents alone.
-  fakeit::Mock<transaction::Methods> mockTrx;
-  transaction::Methods& trx = mockTrx.get();
-
-  fakeit::Mock<transaction::Context> mockContext;
-  transaction::Context& ctxt = mockContext.get();
-
-  fakeit::When(Method(mockTrx, transactionContextPtr)).AlwaysReturn(&ctxt);
-  fakeit::When(Method(mockContext, getVPackOptions))
-      .AlwaysReturn(&arangodb::velocypack::Options::Defaults);
-
 
   GIVEN("there are no rows upstream") {
-    EnumerateListExecutorInfos infos(0, 1, 1, 2, {}, &trx);
+    EnumerateListExecutorInfos infos(0, 1, 1, 2, {});
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
     auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
         itemBlockManager, std::move(block), infos.getOutputRegisters(),
@@ -114,7 +101,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
   }
 
   GIVEN("there is one row in the upstream") {
-    EnumerateListExecutorInfos infos(3, 4, 4, 5, {}, &trx);
+    EnumerateListExecutorInfos infos(3, 4, 4, 5, {});
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 5);
     auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
         itemBlockManager, std::move(block), infos.getOutputRegisters(),
@@ -205,8 +192,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
   }
 
   GIVEN("there is one empty array row in the upstream") {
-    // EnumerateListExecutorInfos infos(1, 1, 1, 2, {}, &trx);
-    EnumerateListExecutorInfos infos(3, 4, 4, 5, {}, &trx);
+    EnumerateListExecutorInfos infos(3, 4, 4, 5, {});
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 5);
     auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
         itemBlockManager, std::move(block), infos.getOutputRegisters(),
@@ -239,7 +225,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
   }
 
   GIVEN("there are rows in the upstream") {
-    EnumerateListExecutorInfos infos(3, 4, 4, 5, {}, &trx);
+    EnumerateListExecutorInfos infos(3, 4, 4, 5, {});
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 5);
     auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
       itemBlockManager, std::move(block), infos.getOutputRegisters(),
