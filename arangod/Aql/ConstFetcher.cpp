@@ -54,13 +54,11 @@ std::pair<ExecutionState, InputAqlItemRow> ConstFetcher::fetchRow() {
     rowState = ExecutionState::DONE;
   }
 
-  //return row
-  _rowIndex++;
-  return {rowState, InputAqlItemRow{_currentBlock, _rowIndex}};
+  return {rowState, InputAqlItemRow{_currentBlock, _rowIndex++}};
 }
 
 bool ConstFetcher::indexIsValid() {
-  return _currentBlock != nullptr && _rowIndex < _currentBlock->block().size();
+  return _currentBlock != nullptr && _rowIndex+1 <= _currentBlock->block().size();
 }
 
 bool ConstFetcher::isLastRowInBlock() {
