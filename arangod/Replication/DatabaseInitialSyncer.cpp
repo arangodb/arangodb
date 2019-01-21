@@ -144,6 +144,11 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
         << "client: getting master state to dump " << vocbase().name();
     Result r;
+    
+    r = sendFlush();
+    if (r.fail()) {
+      return r;
+    }
 
     if (!_config.isChild()) {
       r = _config.master.getState(_config.connection, _config.isChild());
@@ -168,10 +173,6 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
       }
     }
 
-    r = sendFlush();
-    if (r.fail()) {
-      return r;
-    }
 
     if (!_config.isChild()) {
       // create a WAL logfile barrier that prevents WAL logfile collection
