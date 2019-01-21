@@ -115,18 +115,3 @@ std::pair<ExecutionState, arangodb::Result> SingletonBlock::getOrSkipSome(
   TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
-
-/// @brief initializeCursor, only call base
-std::pair<ExecutionState, arangodb::Result> NoResultsBlock::initializeCursor(AqlItemBlock* items,
-                                                                             size_t pos) {
-  _done = true;
-  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-}
-
-std::pair<ExecutionState, arangodb::Result> NoResultsBlock::getOrSkipSome(size_t,  // atMost
-                                                                          bool,  // skipping
-                                                                          AqlItemBlock*& result,
-                                                                          size_t& skipped) {
-  TRI_ASSERT(result == nullptr && skipped == 0);
-  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-}

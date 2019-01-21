@@ -173,6 +173,12 @@ AstNode* createSubqueryWithLimit(ExecutionPlan* plan, ExecutionNode* node,
   // return reference to outVariable
   return ast->createNodeReference(subqueryOutVariable);
 }
+  
+bool isGeoIndex(arangodb::Index::IndexType type) {
+  return type == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
+         type == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX ||
+         type == arangodb::Index::TRI_IDX_TYPE_GEO_INDEX;
+}
 
 std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(Ast* ast, AstNode* docRef,
                                                           NearOrWithinParams& params) {
@@ -186,7 +192,7 @@ std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(Ast* ast, AstNode* doc
   std::vector<basics::AttributeName> field;
   auto indexes = trx->indexesForCollection(params.collection);
   for (auto& idx : indexes) {
-    if (Index::isGeoIndex(idx->type())) {
+    if (::isGeoIndex(idx->type())) {
       // we take the first index that is found
       bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX;
       bool isGeo2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX;
@@ -392,7 +398,7 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
   std::shared_ptr<arangodb::Index> index;
   // we should not access the LogicalCollection directly
   for (auto& idx : ast->query()->trx()->indexesForCollection(cname)) {
-    if (Index::isGeoIndex(idx->type())) {
+    if (::isGeoIndex(idx->type())) {
       index = idx;
       break;
     }

@@ -70,12 +70,6 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
     return IResearchLink::hasSelectivityEstimate();
   }
 
-  virtual arangodb::Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
-                                  VPackSlice const& doc, OperationMode mode) override {
-    TRI_ASSERT(false);  // should not be called
-    return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
   bool isHidden() const override {
     return true;  // always hide links
   }
@@ -98,12 +92,6 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
   }
 
   virtual size_t memory() const override { return IResearchLink::memory(); }
-
-  arangodb::Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
-                          VPackSlice const& doc, OperationMode mode) override {
-    TRI_ASSERT(false);  // should not be called
-    return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
-  }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLink object

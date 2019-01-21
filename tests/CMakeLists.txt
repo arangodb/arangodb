@@ -92,6 +92,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/ExecutionBlockImplTestInstances.cpp
   Aql/FilterExecutorTest.cpp
   Aql/LimitExecutorTest.cpp
+  Aql/NoResultsExecutorTest.cpp
   Aql/RestAqlHandlerTest.cpp
   Aql/ReturnExecutorTest.cpp
   Aql/SingleRowFetcherTest.cpp
@@ -101,8 +102,8 @@ set(ARANGODB_TESTS_SOURCES
   Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
   Auth/UserManagerTest.cpp
-  Basics/icu-helper.cpp
   Basics/ApplicationServerTest.cpp
+  Basics/icu-helper.cpp
   Basics/AttributeNameParserTest.cpp
   Basics/associative-multi-pointer-test.cpp
   Basics/associative-multi-pointer-nohashcache-test.cpp
