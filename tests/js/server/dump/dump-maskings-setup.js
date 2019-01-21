@@ -65,6 +65,21 @@
        email: [ "in this case as list", "with more than one entry" ]
     }
   });
+
+  db._create("maskings2");
+
+  db.maskings2.save({
+    _key: "2",
+
+    random: "a",
+    zip: "12345",
+    date: "2018-01-01",
+    integer: 100,
+    decimal: 100.12,
+    ccard: "1234 1234 1234 1234",
+    phone: "abcd 1234",
+    email: "me@you.here"
+  });
 })();
 
 return {
