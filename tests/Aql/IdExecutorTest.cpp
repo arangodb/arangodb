@@ -56,6 +56,7 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
       std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),
                                                 outputRegisters, registersToKeep);
 
+  OutputAqlItemRow row(std::move(outputBlockShell));
   IdExecutorInfos infos(1 /*nrRegs*/, *registersToKeep /*toKeep*/, {} /*toClear*/);
 
   GIVEN("there are no rows upstream") {
@@ -65,10 +66,9 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
       NoStats stats{};
 
       THEN("the executor should return DONE with no block produced") {
-        OutputAqlItemRow result(std::move(outputBlockShell));
-        std::tie(state, stats) = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!result.produced());
+        REQUIRE(!row.produced());
       }
     }
   }
@@ -82,7 +82,6 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
       NoStats stats{};
 
       THEN("the executor should return the rows") {
-        OutputAqlItemRow row(std::move(outputBlockShell));
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
