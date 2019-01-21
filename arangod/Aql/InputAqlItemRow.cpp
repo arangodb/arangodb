@@ -67,14 +67,3 @@ AqlItemBlock const& InputAqlItemRow::block() const {
 std::size_t InputAqlItemRow::getNrRegisters() const {
   return block().getNrRegs();
 }
-
-namespace arangodb {
-std::ostream& operator<<(std::ostream& stream, aql::InputAqlItemRow const& row) {
-  std::size_t regs = row.getNrRegisters();
-  stream << "|";
-  for (RegisterId i = 0; i < regs; ++i) {
-    stream << " " << row.getValue(i) << " |";
-  }
-  return stream;
-}
-}  // namespace arangodb

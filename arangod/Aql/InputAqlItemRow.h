@@ -94,7 +94,5 @@ class InputAqlItemRow {
 
 }  // namespace aql
 
-std::ostream& operator<<(std::ostream&, aql::InputAqlItemRow const&);
-
 }  // namespace arangodb
 #endif

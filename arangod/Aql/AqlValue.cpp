@@ -1190,16 +1190,3 @@ int AqlValue::Compare(transaction::Methods* trx, AqlValue const& left,
 
   return 0;
 }
-
-namespace arangodb {
-std::ostream& operator<<(std::ostream& stream, aql::AqlValue const& val) {
-  if (val.isRange()) {
-    stream << val.range()->_low << ".." << val.range()->_high;
-  } else if (val.isDocvec()) {
-    stream << "<DOCVEC>";
-  } else {
-    stream << val.slice().toJson();
-  }
-  return stream;
-}
-}  // namespace arangodb

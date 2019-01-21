@@ -729,8 +729,6 @@ static_assert(sizeof(AqlValue) == 16, "invalid AqlValue size");
 
 }  // namespace aql
 
-std::ostream& operator<<(std::ostream&, aql::AqlValue const&);
-
 }  // namespace arangodb
 
 /// @brief hash function for AqlValue objects
