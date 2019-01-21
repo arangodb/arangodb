@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2016-2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -65,6 +65,7 @@
 #include "RestHandler/RestExplainHandler.h"
 #include "RestHandler/RestGraphHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
+#include "RestHandler/RestHotBackupHandler.h"
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
 #include "RestHandler/RestJobHandler.h"
@@ -490,6 +491,9 @@ void GeneralServerFeature::defineHandlers() {
     _handlerFactory->addPrefixHandler("/_admin/repair",
                                       RestHandlerCreator<arangodb::RestRepairHandler>::createNoData);
   }
+
+  _handlerFactory->addPrefixHandler("/_admin/hotbackup",
+                                    RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
 
   // ...........................................................................
   // test handler
