@@ -1920,6 +1920,27 @@ void Ast::validateAndOptimize() {
       }
     } else if (node->type == NODE_TYPE_AGGREGATIONS) {
       --ctx->stopOptimizationRequests;
+    } else if (node->type == NODE_TYPE_ARRAY && 
+               node->hasFlag(DETERMINED_CONSTANT) && 
+               !node->hasFlag(VALUE_CONSTANT) && 
+               node->numMembers() < 10) {
+      // optimization attempt: we are speculating that this array contains function
+      // call parameters, which may have been optimized somehow.
+      // if the array is marked as non-const, we remove this non-const marker so its
+      // constness will be checked upon next attempt again
+      // this allows optimizing cases such as FUNC1(FUNC2(...)):
+      // in this case, due to the depth-first traversal we will first optimize FUNC2(...)
+      // and replace it with a constant value. This will turn the Ast into FUNC1(const),
+      // which may be optimized further if FUNC1 is deterministic.
+      // However, function parameters are stored in ARRAY Ast nodes, which do not have
+      // a back pointer to the actual function, so all we can do here is guess and
+      // speculate that the array contained actual function call parameters
+      // note: the max array length of 10 is chosen arbitrarily based on the assumption
+      // that function calls normally have few parameters only, and it puts a cap
+      // on the additional costs of having to re-calculate the const-determination flags
+      // for all array members later on
+      node->removeFlag(DETERMINED_CONSTANT);
+      node->removeFlag(VALUE_CONSTANT);
     }
   };
 
@@ -3547,6 +3568,7 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
 AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
+  AstNode const* original = node;
 
   SmallVector<arangodb::StringRef>::allocator_type::arena_type a;
   SmallVector<arangodb::StringRef> attributeNames{a};
@@ -3560,6 +3582,10 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
   TRI_ASSERT(which > 0);
 
   while (which > 0) {
+    if (node->type == NODE_TYPE_PARAMETER) {
+      return original;
+    }
+
     TRI_ASSERT(node->type == NODE_TYPE_VALUE || node->type == NODE_TYPE_ARRAY ||
                node->type == NODE_TYPE_OBJECT);
 
@@ -3621,7 +3647,7 @@ AstNode* Ast::traverseAndModify(AstNode* node,
       AstNode* result = traverseAndModify(member, preVisitor, visitor, postVisitor);
 
       if (result != member) {
-        TEMPORARILY_UNLOCK_NODE(node);  // TODO change so we can replace instead
+        TEMPORARILY_UNLOCK_NODE(node);
         TRI_ASSERT(node != nullptr);
         node->changeMember(i, result);
       }

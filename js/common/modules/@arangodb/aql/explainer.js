@@ -1539,7 +1539,9 @@ function processQuery (query, explain, planIndex) {
     postHandle(node);
   };
 
-  printQuery(query);
+  if (planIndex === undefined) {
+    printQuery(query);
+  }
 
   stringBuilder.appendLine(section('Execution plan:'));
 
@@ -1615,11 +1617,12 @@ function explain(data, options, shouldPrint) {
   let result = stmt.explain(options); 
   if (options.allPlans) {
     // multiple plans
+    printQuery(data.query);
     for (let i = 0; i < result.plans.length; ++i) {
       if (i > 0) {
         stringBuilder.appendLine();
       }
-      stringBuilder.appendLine(section("Plan #" + (i + 1) + " (estimated cost: " + result.plans[i].estimatedCost + ")"));
+      stringBuilder.appendLine(section("Plan #" + (i + 1) + " of " + result.plans.length + " (estimated cost: " + result.plans[i].estimatedCost.toFixed(2) + ")"));
       stringBuilder.prefix = ' ';
       stringBuilder.appendLine();
       processQuery(data.query, result, i);
