@@ -209,6 +209,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/, rootNode.getRegsToClear() /*toClear*/);
     arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
         query.engine(), &rootNode, std::move(infos));
+    rootBlock.initializeCursor(nullptr,0);
 
     ExecutionNodeMock node;
     ExecutionBlockMock block(data, *query.engine(), node);
@@ -218,7 +219,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     {
       auto pair = block.getSome(10);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      CHECK(nullptr != pair.second);
+      REQUIRE(nullptr != pair.second);
       CHECK(10 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -227,7 +228,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     {
       auto pair = block.getSome(100);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      CHECK(nullptr != pair.second);
+      REQUIRE(nullptr != pair.second);
       CHECK(90 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -258,6 +259,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/, rootNode.getRegsToClear() /*toClear*/);
     arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
         query.engine(), &rootNode, std::move(infos));
+    rootBlock.initializeCursor(nullptr,0);
 
     ExecutionNodeMock node;
     ExecutionBlockMock block(data, *query.engine(), node);
@@ -267,7 +269,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     {
       auto pair = block.getSome(10);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      CHECK(nullptr != pair.second);
+      REQUIRE(nullptr != pair.second);
       CHECK(10 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -308,6 +310,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     ExecutionNodeMock node;
     ExecutionBlockMock block(data, *query.engine(), node);
     block.addDependency(&rootBlock);
+    rootBlock.initializeCursor(nullptr,0);
 
     {
       // skip last 90 items
@@ -320,7 +323,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     {
       auto pair = block.getSome(10);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      CHECK(nullptr != pair.second);
+      REQUIRE(nullptr != pair.second);
       CHECK(10 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -363,6 +366,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     ExecutionNodeMock node0;
     ExecutionBlockMock block0(data0, *query.engine(), node0);
     block0.addDependency(&rootBlock);
+    rootBlock.initializeCursor(nullptr,0);
 
     arangodb::aql::AqlItemBlock data1(&resMon, 100, 4);
     ExecutionNodeMock node1;
@@ -373,7 +377,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     {
       auto pair = block1.getSome(10);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      CHECK(nullptr != pair.second);
+      REQUIRE(nullptr != pair.second);
       CHECK(10 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -382,7 +386,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     {
       auto pair = block1.getSome(100);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      CHECK(nullptr != pair.second);
+      REQUIRE(nullptr != pair.second);
       CHECK(90 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -391,7 +395,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     {
       auto pair = block1.getSome(100);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      CHECK(nullptr != pair.second);
+      REQUIRE(nullptr != pair.second);
       CHECK(100 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -420,6 +424,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/, rootNode.getRegsToClear() /*toClear*/);
     arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
         query.engine(), &rootNode, std::move(infos));
+    rootBlock.initializeCursor(nullptr,0);
 
     arangodb::aql::AqlItemBlock data0(&resMon, 2, 2);
     ExecutionNodeMock node0;
@@ -435,7 +440,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     {
       auto pair = block1.getSome(10);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      CHECK(nullptr != pair.second);
+      REQUIRE(nullptr != pair.second);
       CHECK(10 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -451,7 +456,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     {
       auto pair = block1.getSome(100);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      CHECK(nullptr != pair.second);
+      REQUIRE(nullptr != pair.second);
       CHECK(100 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -480,6 +485,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     arangodb::aql::IdExecutorInfos infos(rootNode.getDepth() /*nrRegs*/, {} /*toKeep*/, rootNode.getRegsToClear() /*toClear*/);
     arangodb::aql::ExecutionBlockImpl<arangodb::aql::IdExecutor> rootBlock(
         query.engine(), &rootNode, std::move(infos));
+    rootBlock.initializeCursor(nullptr,0);
 
     arangodb::aql::AqlItemBlock data0(&resMon, 2, 2);
     ExecutionNodeMock node0;
@@ -502,7 +508,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     {
       auto pair = block1.getSome(10);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      CHECK(nullptr != pair.second);
+      REQUIRE(nullptr != pair.second);
       CHECK(10 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
@@ -511,7 +517,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     {
       auto pair = block1.getSome(100);
       CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
-      CHECK(nullptr != pair.second);
+      REQUIRE(nullptr != pair.second);
       CHECK(100 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
     }
