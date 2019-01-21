@@ -41,6 +41,8 @@ namespace asio_ns = asio;
 
 #else
 
+#define ASIO_HAS_MOVE 1
+
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 #include <boost/asio/steady_timer.hpp>
@@ -50,8 +52,8 @@ namespace asio {
 using error_code = boost::system::error_code;
 using io_context = boost::asio::io_service;
 using system_error = boost::system::system_error;
-}
-}
+}  // namespace asio
+}  // namespace boost
 
 namespace asio_ns = boost::asio;
 

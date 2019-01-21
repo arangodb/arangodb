@@ -40,7 +40,7 @@ class Context;
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 typedef TRI_voc_tick_t CursorId;
 
@@ -77,7 +77,7 @@ class Cursor {
 
   inline bool isDeleted() const { return _isDeleted; }
 
-  void deleted() { _isDeleted = true; }
+  void setDeleted() { _isDeleted = true; }
 
   void use() {
     TRI_ASSERT(!_isDeleted);
@@ -93,7 +93,7 @@ class Cursor {
   }
 
   virtual CursorType type() const = 0;
-  
+
   virtual void kill() {}
 
   virtual size_t count() const = 0;
@@ -101,19 +101,23 @@ class Cursor {
   virtual std::shared_ptr<transaction::Context> context() const = 0;
 
   /**
-   * @brief Dump the cursor result, async version. The caller needs to be contiueable
+   * @brief Dump the cursor result, async version. The caller needs to be
+   * contiueable
    *
    * @param result The Builder to write the result to
-   * @param continueHandler The function that is posted on scheduler to contiue this execution.
+   * @param continueHandler The function that is posted on scheduler to contiue
+   * this execution.
    *
-   * @return First: ExecutionState either DONE or WAITING. On Waiting we need to free this thread on DONE we have a result.
-   *         Second: Result If State==DONE this contains Error information or NO_ERROR. On NO_ERROR result is filled.
+   * @return First: ExecutionState either DONE or WAITING. On Waiting we need to
+   * free this thread on DONE we have a result. Second: Result If State==DONE
+   * this contains Error information or NO_ERROR. On NO_ERROR result is filled.
    */
-  virtual std::pair<aql::ExecutionState, Result> dump(
-      velocypack::Builder& result, std::function<void()> const&) = 0;
+  virtual std::pair<aql::ExecutionState, Result> dump(velocypack::Builder& result,
+                                                      std::function<void()> const&) = 0;
 
   /**
-   * @brief Dump the cursor result. This is guaranteed to return the result in this thread.
+   * @brief Dump the cursor result. This is guaranteed to return the result in
+   * this thread.
    *
    * @param result the Builder to write the result to
    *
@@ -130,6 +134,6 @@ class Cursor {
   bool _isDeleted;
   bool _isUsed;
 };
-}
+}  // namespace arangodb
 
 #endif

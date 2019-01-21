@@ -38,8 +38,9 @@ irs::sort::ptr make_from_bool(
 ) {
   assert(json.IsBool());
 
-  PTR_NAMED(irs::tfidf_sort, ptr, json.GetBool());
-  return ptr;
+  return irs::memory::make_shared<irs::tfidf_sort>(
+    json.GetBool()
+  );
 }
 
 irs::sort::ptr make_from_object(
@@ -47,7 +48,7 @@ irs::sort::ptr make_from_object(
     const irs::string_ref& args) {
   assert(json.IsObject());
 
-  PTR_NAMED(irs::tfidf_sort, ptr);
+  auto ptr = irs::memory::make_shared<irs::tfidf_sort>();
 
   #ifdef IRESEARCH_DEBUG
     auto& scorer = dynamic_cast<irs::tfidf_sort&>(*ptr);
@@ -107,14 +108,12 @@ irs::sort::ptr make_from_array(
     norms = arg.GetBool();
   }
 
-  PTR_NAMED(irs::tfidf_sort, ptr, norms);
-  return ptr;
+  return irs::memory::make_shared<irs::tfidf_sort>(norms);
 }
 
 irs::sort::ptr make_json(const irs::string_ref& args) {
   if (args.null()) {
-    PTR_NAMED(irs::tfidf_sort, ptr);
-    return ptr;
+    return irs::memory::make_shared<irs::tfidf_sort>();
   }
 
   rapidjson::Document json;
@@ -158,20 +157,20 @@ const frequency EMPTY_FREQ;
 
 struct idf final : basic_stored_attribute<float_t> {
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
-  idf() : basic_stored_attribute(1.f) { }
+  DECLARE_FACTORY();
+  idf() : basic_stored_attribute(0.f) { }
 
-  void clear() { value = 1.f; }
+  void clear() { value = 0.f; }
 };
 
-DEFINE_ATTRIBUTE_TYPE(iresearch::tfidf::idf);
+DEFINE_ATTRIBUTE_TYPE(irs::tfidf::idf);
 DEFINE_FACTORY_DEFAULT(idf);
 
 typedef tfidf_sort::score_t score_t;
 
-class collector final : public iresearch::sort::collector {
+class collector final : public irs::sort::collector {
  public:
-  collector(bool normalize)
+  explicit collector(bool normalize) NOEXCEPT
     : normalize_(normalize) {
   }
 
@@ -180,7 +179,7 @@ class collector final : public iresearch::sort::collector {
       const term_reader& field,
       const attribute_view& term_attrs
   ) override {
-    auto& meta = term_attrs.get<iresearch::term_meta>();
+    auto& meta = term_attrs.get<irs::term_meta>();
 
     docs_with_field += field.docs_count();
 
@@ -191,10 +190,11 @@ class collector final : public iresearch::sort::collector {
 
   virtual void finish(
       attribute_store& filter_attrs,
-      const iresearch::index_reader& /*index*/
+      const irs::index_reader& /*index*/
   ) override {
-    filter_attrs.emplace<tfidf::idf>()->value =
-      float_t(std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0);
+    auto& idf = filter_attrs.emplace<tfidf::idf>();
+    idf->value += float_t(std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0);
+    assert(idf->value >= 0);
 
     // add norm attribute if requested
     if (normalize_) {
@@ -208,25 +208,25 @@ class collector final : public iresearch::sort::collector {
   bool normalize_;
 }; // collector
 
-class scorer : public iresearch::sort::scorer_base<tfidf::score_t> {
+class scorer : public irs::sort::scorer_base<tfidf::score_t> {
  public:
-  DECLARE_FACTORY(scorer);
+  DEFINE_FACTORY_INLINE(scorer);
 
   scorer(
-      iresearch::boost::boost_t boost,
+      irs::boost::boost_t boost,
       const tfidf::idf* idf,
-      const frequency* freq)
+      const frequency* freq) NOEXCEPT
     : idf_(boost * (idf ? idf->value : 1.f)), 
       freq_(freq ? freq : &EMPTY_FREQ) {
     assert(freq_);
   }
 
-  virtual void score(byte_type* score_buf) override {
+  virtual void score(byte_type* score_buf) NOEXCEPT override {
     score_cast(score_buf) = tfidf();
   }
 
  protected:
-  FORCE_INLINE float_t tfidf() const {
+  FORCE_INLINE float_t tfidf() const NOEXCEPT {
    return idf_ * float_t(std::sqrt(freq_->value));
   }
 
@@ -237,29 +237,29 @@ class scorer : public iresearch::sort::scorer_base<tfidf::score_t> {
 
 class norm_scorer final : public scorer {
  public:
-  DECLARE_FACTORY(norm_scorer);
+  DEFINE_FACTORY_INLINE(norm_scorer);
 
   norm_scorer(
-      const iresearch::norm* norm,
-      iresearch::boost::boost_t boost,
+      const irs::norm* norm,
+      irs::boost::boost_t boost,
       const tfidf::idf* idf,
-      const frequency* freq)
+      const frequency* freq) NOEXCEPT
     : scorer(boost, idf, freq),
       norm_(norm) {
     assert(norm_);
   }
 
-  virtual void score(byte_type* score_buf) override {
+  virtual void score(byte_type* score_buf) NOEXCEPT override {
     score_cast(score_buf) = tfidf() * norm_->read();
   }
 
  private:
-  const iresearch::norm* norm_;
+  const irs::norm* norm_;
 }; // norm_scorer
 
-class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
+class sort final: irs::sort::prepared_basic<tfidf::score_t> {
  public:
-  DECLARE_FACTORY(prepared);
+  DEFINE_FACTORY_INLINE(prepared);
 
   sort(bool normalize) NOEXCEPT
     : normalize_(normalize) {
@@ -275,7 +275,7 @@ class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
   }
 
   virtual collector::ptr prepare_collector() const override {
-    return iresearch::sort::collector::make<tfidf::collector>(normalize_);
+    return irs::sort::collector::make<tfidf::collector>(normalize_);
   }
 
   virtual scorer::ptr prepare_scorer(
@@ -306,14 +306,6 @@ class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
     );
   }
 
-  virtual void add(score_t& dst, const score_t& src) const override {
-    dst += src;
-  }
-
-  virtual bool less(const score_t& lhs, const score_t& rhs) const override {
-    return lhs < rhs;
-  }
-
  private:
   const std::function<bool(score_t, score_t)>* less_;
   bool normalize_;
@@ -321,10 +313,10 @@ class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
 
 NS_END // tfidf 
 
-DEFINE_SORT_TYPE_NAMED(iresearch::tfidf_sort, "tfidf");
+DEFINE_SORT_TYPE_NAMED(irs::tfidf_sort, "tfidf");
 DEFINE_FACTORY_DEFAULT(irs::tfidf_sort);
 
-tfidf_sort::tfidf_sort(bool normalize) 
+tfidf_sort::tfidf_sort(bool normalize) NOEXCEPT
   : sort(tfidf_sort::type()),
     normalize_(normalize) {
 }

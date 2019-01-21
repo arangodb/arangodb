@@ -36,11 +36,11 @@ class RestEngineHandler : public arangodb::RestBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
 
-protected:
+ protected:
   void handleGet();
   void getCapabilities();
   void getStats();
 };
-}
+}  // namespace arangodb
 
 #endif

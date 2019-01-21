@@ -113,7 +113,9 @@ class Collection {
     ObjectIterator it(slice);
 
     while (it.valid()) {
-      result.emplace(it.key(true).copyString());
+      ValueLength l;
+      char const* p = it.key(true).getString(l);
+      result.emplace(p, l);
       it.next();
     }
   }
@@ -125,12 +127,13 @@ class Collection {
   
   static void keys(Slice const& slice, std::vector<std::string>& result) {
     // pre-allocate result vector
-    result.reserve(checkOverflow(slice.length()));
-
     ObjectIterator it(slice);
+    result.reserve(checkOverflow(it.size()));
 
     while (it.valid()) {
-      result.emplace_back(it.key(true).copyString());
+      ValueLength l;
+      char const* p = it.key(true).getString(l);
+      result.emplace_back(p, l);
       it.next();
     }
   }
@@ -140,7 +143,9 @@ class Collection {
     ObjectIterator it(slice, true);
 
     while (it.valid()) {
-      result.emplace(it.key(true).copyString());
+      ValueLength l;
+      char const* p = it.key(true).getString(l);
+      result.emplace(p, l);
       it.next();
     }
   }

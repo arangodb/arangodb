@@ -45,9 +45,10 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount) c
     // fullCount is optional
     builder.add("fullCount", VPackValue(fullCount > count ? fullCount : count));
   }
-  //builder.add("count", VPackValue(count));
   builder.add("executionTime", VPackValue(executionTime));
   
+  builder.add("peakMemoryUsage", VPackValue(peakMemoryUsage));
+
   if (!nodes.empty()) {
     builder.add("nodes", VPackValue(VPackValueType::Array));
     for (std::pair<size_t const, ExecutionStats::Node> const& pair : nodes) {
@@ -80,14 +81,13 @@ void ExecutionStats::add(ExecutionStats const& summand) {
     fullCount += summand.fullCount;
   }
   count += summand.count;
+  peakMemoryUsage = std::max(summand.peakMemoryUsage, peakMemoryUsage);
   // intentionally no modification of executionTime
-  
-  for(auto const& pair : summand.nodes) {
-    auto it = nodes.find(pair.first);
-    if (it != nodes.end()) {
-      it->second += pair.second;
-    } else {
-      nodes.emplace(pair);
+
+  for (auto const& pair : summand.nodes) {
+    auto result = nodes.insert(pair);
+    if (!result.second) {
+      result.first->second += pair.second;
     }
   }
 }
@@ -101,10 +101,10 @@ ExecutionStats::ExecutionStats()
       requests(0),
       fullCount(0),
       count(0),
-      executionTime(0.0) {}
+      executionTime(0.0),
+      peakMemoryUsage(0) {}
 
-ExecutionStats::ExecutionStats(VPackSlice const& slice) 
-    : ExecutionStats() {
+ExecutionStats::ExecutionStats(VPackSlice const& slice) : ExecutionStats() {
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "stats is not an object");
@@ -115,17 +115,17 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice)
   scannedFull = slice.get("scannedFull").getNumber<int64_t>();
   scannedIndex = slice.get("scannedIndex").getNumber<int64_t>();
   filtered = slice.get("filtered").getNumber<int64_t>();
-  
+
   if (slice.hasKey("httpRequests")) {
     requests = slice.get("httpRequests").getNumber<int64_t>();
   }
-  
+
   // note: fullCount is an optional attribute!
   if (slice.hasKey("fullCount")) {
     fullCount = slice.get("fullCount").getNumber<int64_t>();
   } else {
     fullCount = count;
-  } 
+  }
 
   // note: node stats are optional
   if (slice.hasKey("nodes")) {

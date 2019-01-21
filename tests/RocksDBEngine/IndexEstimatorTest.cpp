@@ -30,6 +30,9 @@
 #include "catch.hpp"
 
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
+#include "RocksDBEngine/RocksDBCollectionMeta.h"
+#include "RocksDBEngine/RocksDBFormat.h"
+#include "RocksDBEngine/RocksDBTypes.h"
 
 using namespace arangodb;
 
@@ -41,6 +44,7 @@ using namespace arangodb;
 
 TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
   // @brief Test insert unique correctness
+  rocksutils::setRocksDBKeyFormatEndianess(RocksDBEndianness::Little);
 
   SECTION("test_unique_values") {
     std::vector<uint64_t> toInsert(100);
@@ -89,9 +93,10 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
     for (auto it : toInsert) {
       est.insert(it);
     }
-    uint64_t seq = 42;
 
-    est.serialize(serialization, seq);
+    uint64_t seq = 42;
+    uint64_t applied = est.serialize(serialization, 1);
+    CHECK(applied == 0);
 
     // Test that the serialization first reports the correct length
     uint64_t length = serialization.size() - 8;  // don't count the seq
@@ -113,7 +118,7 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
     CHECK(est.nrUsed() == copy.nrUsed());
     CHECK(est.nrCuckood() == copy.nrCuckood());
     CHECK(est.computeEstimate() == copy.computeEstimate());
-    CHECK(seq == copy.commitSeq());
+    CHECK(seq == copy.committedSeq());
 
     // Now let us remove the same elements in both
     bool coin = false;
@@ -138,6 +143,7 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
     rocksdb::SequenceNumber expected = currentSeq;
     std::string serialization;
     RocksDBCuckooIndexEstimator<uint64_t> est(2048);
+    RocksDBCollectionMeta meta;
 
     // test basic insertion buffering
     for (size_t iteration = 0; iteration < 10; iteration++) {
@@ -146,27 +152,28 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
       std::vector<uint64_t> toRemove(0);
       std::generate(toInsert.begin(), toInsert.end(),
                     [&index] { return ++index; });
-      auto res = est.placeBlocker(iteration, ++currentSeq);
-      expected = currentSeq;
+      expected = currentSeq; // only commit up to blocker
+      auto res = meta.placeBlocker(iteration, ++currentSeq);
       REQUIRE(res.ok());
       est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
 
       // make sure we don't apply yet
-      auto actual = est.serialize(serialization, ++currentSeq);
+      auto actual = est.serialize(serialization, meta.committableSeq());
       serialization.clear();
       REQUIRE(actual == expected);
       REQUIRE((1.0 / std::max(1.0, static_cast<double>(iteration))) ==
               est.computeEstimate());
 
-      est.removeBlocker(iteration);
+      meta.removeBlocker(iteration);
 
       // now make sure we apply it
-      actual = est.serialize(serialization, ++currentSeq);
+      actual = est.serialize(serialization, meta.committableSeq());
       expected = currentSeq;
       serialization.clear();
       REQUIRE(actual == expected);
       REQUIRE((1.0 / std::max(1.0, static_cast<double>(iteration + 1))) ==
               est.computeEstimate());
+      REQUIRE(est.committedSeq() == expected);
     }
 
     // test basic removal buffering
@@ -176,28 +183,29 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
       std::vector<uint64_t> toRemove(10);
       std::generate(toRemove.begin(), toRemove.end(),
                     [&index] { return ++index; });
-      auto res = est.placeBlocker(iteration, ++currentSeq);
-      expected = currentSeq;
+      expected = currentSeq; // only commit up to blocker
+      auto res = meta.placeBlocker(iteration, ++currentSeq);
       REQUIRE(res.ok());
       est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
 
       // make sure we don't apply yet
-      auto actual = est.serialize(serialization, ++currentSeq);
+      auto actual = est.serialize(serialization, meta.committableSeq());
       serialization.clear();
       REQUIRE(actual == expected);
       REQUIRE((1.0 / std::max(1.0, static_cast<double>(10 - iteration))) ==
               est.computeEstimate());
 
-      est.removeBlocker(iteration);
+      meta.removeBlocker(iteration);
 
       // now make sure we apply it
-      actual = est.serialize(serialization, ++currentSeq);
+      actual = est.serialize(serialization, meta.committableSeq());
       serialization.clear();
       expected = currentSeq;
       REQUIRE(actual == expected);
       REQUIRE(
           (1.0 / std::max(1.0, static_cast<double>(10 - (iteration + 1)))) ==
           est.computeEstimate());
+      REQUIRE(est.committedSeq() == expected);
     }
   }
 
@@ -205,6 +213,7 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
     rocksdb::SequenceNumber currentSeq(0);
     std::string serialization;
     RocksDBCuckooIndexEstimator<uint64_t> est(2048);
+    RocksDBCollectionMeta meta;
 
     // test buffering with multiple blockers, but remove blockers in order
     for (size_t iteration = 0; iteration < 10; iteration++) {
@@ -213,16 +222,17 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
       std::vector<uint64_t> toRemove(0);
       std::generate(toInsert.begin(), toInsert.end(),
                     [&index] { return ++index; });
-      auto res = est.placeBlocker(iteration, ++currentSeq);
+
+      auto expected = currentSeq; // only commit up to blocker
+      auto res = meta.placeBlocker(iteration, ++currentSeq);
       REQUIRE(res.ok());
-      auto expected = currentSeq;
       est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
 
       // remove previous blocker
-      est.removeBlocker(iteration - 1);
+      meta.removeBlocker(iteration - 1);
 
       // now make sure we applied last batch, but not this one
-      auto actual = est.serialize(serialization, ++currentSeq);
+      auto actual = est.serialize(serialization, meta.committableSeq());
       serialization.clear();
       REQUIRE(actual == expected);
       REQUIRE((1.0 / std::max(1.0, static_cast<double>(iteration))) ==
@@ -235,7 +245,8 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
     rocksdb::SequenceNumber expected;
     std::string serialization;
     RocksDBCuckooIndexEstimator<uint64_t> est(2048);
-
+    RocksDBCollectionMeta meta;
+    
     // test buffering where we keep around one old blocker
     for (size_t iteration = 0; iteration < 10; iteration++) {
       uint64_t index = 0;
@@ -243,25 +254,25 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
       std::vector<uint64_t> toRemove(0);
       std::generate(toInsert.begin(), toInsert.end(),
                     [&index] { return ++index; });
-      auto res = est.placeBlocker(iteration, ++currentSeq);
-      REQUIRE(res.ok());
       if (0 == iteration) {
-        expected = currentSeq;
+        expected = currentSeq; // only commit up to blocker
       }
+      auto res = meta.placeBlocker(iteration, ++currentSeq);
+      REQUIRE(res.ok());
       est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
       // remove only if not first blocker
-      est.removeBlocker(std::max(static_cast<size_t>(1), iteration));
+      meta.removeBlocker(std::max(static_cast<size_t>(1), iteration));
 
       // now make sure we haven't applied anything
-      auto actual = est.serialize(serialization, ++currentSeq);
+      auto actual = est.serialize(serialization, meta.committableSeq());
       serialization.clear();
       REQUIRE(actual == expected);
       REQUIRE(1.0 == est.computeEstimate());
     }
 
     // now remove first blocker and make sure we apply everything
-    est.removeBlocker(0);
-    auto actual = est.serialize(serialization, ++currentSeq);
+    meta.removeBlocker(0);
+    auto actual = est.serialize(serialization, meta.committableSeq());
     expected = currentSeq;
     serialization.clear();
     REQUIRE(actual == expected);

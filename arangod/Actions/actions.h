@@ -32,12 +32,9 @@ struct TRI_vocbase_t;
 namespace arangodb {
 class GeneralRequest;
 class GeneralResponse;
-}
+}  // namespace arangodb
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief action result
-////////////////////////////////////////////////////////////////////////////////
-
 class TRI_action_result_t {
  public:
   TRI_action_result_t() : isValid(false), canceled(false) {}
@@ -46,26 +43,18 @@ class TRI_action_result_t {
   bool canceled;
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief action descriptor
-////////////////////////////////////////////////////////////////////////////////
-
 class TRI_action_t {
  public:
-  TRI_action_t()
-      : _urlParts(0),
-        _isPrefix(false),
-        _allowUseDatabase(false) {}
+  TRI_action_t() : _urlParts(0), _isPrefix(false), _allowUseDatabase(false) {}
 
   virtual ~TRI_action_t() {}
 
   virtual void visit(void*) = 0;
 
-  virtual TRI_action_result_t execute(TRI_vocbase_t*,
-                                      arangodb::GeneralRequest*,
+  virtual TRI_action_result_t execute(TRI_vocbase_t*, arangodb::GeneralRequest*,
                                       arangodb::GeneralResponse*,
-                                      arangodb::Mutex* dataLock,
-                                      void** data) = 0;
+                                      arangodb::Mutex* dataLock, void** data) = 0;
 
   virtual bool cancel(arangodb::Mutex* dataLock, void** data) = 0;
 
@@ -77,29 +66,17 @@ class TRI_action_t {
   bool _allowUseDatabase;
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief defines an action
-////////////////////////////////////////////////////////////////////////////////
+std::shared_ptr<TRI_action_t> TRI_DefineActionVocBase(std::string const& name,
+                                                      std::shared_ptr<TRI_action_t> action);
 
-TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
-                                      TRI_action_t* action);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an action
-////////////////////////////////////////////////////////////////////////////////
+std::shared_ptr<TRI_action_t> TRI_LookupActionVocBase(arangodb::GeneralRequest* request);
 
-TRI_action_t* TRI_LookupActionVocBase(arangodb::GeneralRequest* request);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes all defined actions
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_CleanupActions();
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief visit all actions
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_VisitActions(std::function<void(TRI_action_t*)> const& visitor);
 
 #endif

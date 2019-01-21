@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/kube-arangodb.git / docs/Manual/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/kube-arangodb.git / docs/Manual/ -->
 # Secure connections (TLS)
 
 The ArangoDB Kubernetes Operator will by default create ArangoDB deployments
@@ -27,15 +27,15 @@ kubectl get secret <deploy-name>-ca --template='{{index .data "ca.crt"}}' | base
 To install a CA certificate in Windows, follow the
 [procedure described here](http://wiki.cacert.org/HowTo/InstallCAcertRoots).
 
-### MacOS
+### macOS
 
-To install a CA certificate in MacOS, run:
+To install a CA certificate in macOS, run:
 
 ```bash
 sudo /usr/bin/security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ca.crt
 ```
 
-To uninstall a CA certificate in MacOS, run:
+To uninstall a CA certificate in macOS, run:
 
 ```bash
 sudo /usr/bin/security remove-trusted-cert -d ca.crt

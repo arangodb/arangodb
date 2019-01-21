@@ -24,7 +24,6 @@
 #include "ManagedDirectory.h"
 
 #include "Basics/FileUtils.h"
-#include "Basics/OpenFilesTracker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
@@ -68,33 +67,29 @@ inline std::string filePath(arangodb::ManagedDirectory const& directory,
 }
 
 /// @brief Assembles the file path from the directory path and filename
-inline std::string filePath(std::string const& directory,
-                            std::string const& filename) {
+inline std::string filePath(std::string const& directory, std::string const& filename) {
   using arangodb::basics::FileUtils::buildFilename;
   return buildFilename(directory, filename);
 }
 
 /// @brief Opens a file given a path and flags
 inline int openFile(std::string const& path, int flags) {
-  return (::flagIsSet(flags, O_CREAT)
-              ? TRI_TRACKED_CREATE_FILE(path.c_str(), flags, S_IRUSR | S_IWUSR)
-              : TRI_TRACKED_OPEN_FILE(path.c_str(), flags));
+  return (::flagIsSet(flags, O_CREAT) ? TRI_CREATE(path.c_str(), flags, S_IRUSR | S_IWUSR)
+                                      : TRI_OPEN(path.c_str(), flags));
 }
 
 /// @brief Closes an open file and sets the status
 inline void closeFile(int& fd, arangodb::Result& status) {
   TRI_ASSERT(fd >= 0);
-  status = arangodb::Result{TRI_TRACKED_CLOSE_FILE(fd)};
+  status = arangodb::Result{TRI_CLOSE(fd)};
   fd = -1;
 }
 
 /// @brief determines if a file is writable
-bool isWritable(int fd, int flags, std::string const& path,
-                arangodb::Result& status) {
+bool isWritable(int fd, int flags, std::string const& path, arangodb::Result& status) {
   if (::flagNotSet(flags, O_WRONLY)) {
-    status = {
-        TRI_ERROR_CANNOT_WRITE_FILE,
-        "attempted to write to file " + path + " opened in read-only mode!"};
+    status = {TRI_ERROR_CANNOT_WRITE_FILE, "attempted to write to file " + path +
+                                               " opened in read-only mode!"};
     return false;
   }
   if (fd < 0) {
@@ -106,12 +101,10 @@ bool isWritable(int fd, int flags, std::string const& path,
 }
 
 /// @brief determines if a file is readable
-bool isReadable(int fd, int flags, std::string const& path,
-                arangodb::Result& status) {
+bool isReadable(int fd, int flags, std::string const& path, arangodb::Result& status) {
   if (::flagIsSet(flags, O_WRONLY)) {
-    status = {
-        TRI_ERROR_CANNOT_READ_FILE,
-        "attempted to read from file " + path + " opened in write-only mode!"};
+    status = {TRI_ERROR_CANNOT_READ_FILE, "attempted to read from file " + path +
+                                              " opened in write-only mode!"};
     return false;
   }
   if (fd < 0) {
@@ -157,8 +150,7 @@ arangodb::Result initialStatus(int fd, std::string const& path, int flags)
 
 /// @brief Performs a raw (non-encrypted) write
 inline void rawWrite(int fd, char const* data, size_t length,
-                     arangodb::Result& status, std::string const& path,
-                     int flags) {
+                     arangodb::Result& status, std::string const& path, int flags) {
   while (length > 0) {
     ssize_t written = TRI_WRITE(fd, data, static_cast<TRI_write_t>(length));
     if (written < 0) {
@@ -171,9 +163,8 @@ inline void rawWrite(int fd, char const* data, size_t length,
 }
 
 /// @brief Performs a raw (non-decrypted) read
-inline ssize_t rawRead(int fd, char* buffer, size_t length,
-                       arangodb::Result& status, std::string const& path,
-                       int flags) {
+inline ssize_t rawRead(int fd, char* buffer, size_t length, arangodb::Result& status,
+                       std::string const& path, int flags) {
   ssize_t bytesRead = TRI_READ(fd, buffer, static_cast<TRI_read_t>(length));
   if (bytesRead < 0) {
     status = ::genericError(path, flags);
@@ -212,12 +203,11 @@ void writeEncryptionFile(std::string const& directory, std::string& type) {
 
 namespace arangodb {
 
-ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty,
-                                   bool create)
+ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty, bool create)
     :
 #ifdef USE_ENTERPRISE
-      _encryptionFeature{application_features::ApplicationServer::getFeature<
-          EncryptionFeature>("Encryption")},
+      _encryptionFeature{
+          application_features::ApplicationServer::getFeature<EncryptionFeature>("Encryption")},
 #endif
       _path{path},
       _encryptionType{::EncryptionTypeNone},
@@ -307,8 +297,8 @@ EncryptionFeature const* ManagedDirectory::encryptionFeature() const {
 }
 #endif
 
-std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(
-    std::string const& filename, int flags) {
+std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(std::string const& filename,
+                                                                       int flags) {
   std::unique_ptr<File> file{nullptr};
 
   if (_status.fail()) {  // directory is in a bad state
@@ -319,9 +309,9 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(
     file = std::make_unique<File>(*this, filename,
                                   (ManagedDirectory::DefaultReadFlags ^ flags));
   } catch (...) {
-    _status.reset(
-        TRI_ERROR_CANNOT_READ_FILE,
-        "error opening file " + ::filePath(*this, filename) + " for reading");
+    _status.reset(TRI_ERROR_CANNOT_READ_FILE, "error opening file " +
+                                                  ::filePath(*this, filename) +
+                                                  " for reading");
     return {nullptr};
   }
 
@@ -350,8 +340,8 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
       }
     }
 
-    file = std::make_unique<File>(
-        *this, filename, (ManagedDirectory::DefaultWriteFlags ^ flags));
+    file = std::make_unique<File>(*this, filename,
+                                  (ManagedDirectory::DefaultWriteFlags ^ flags));
   } catch (...) {
     return {nullptr};
   }
@@ -359,8 +349,7 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
   return file;
 }
 
-void ManagedDirectory::spitFile(std::string const& filename,
-                                std::string const& content) {
+void ManagedDirectory::spitFile(std::string const& filename, std::string const& content) {
   auto file = writableFile(filename, true);
   if (!file) {
     _status = ::genericError(filename, O_WRONLY);
@@ -387,8 +376,7 @@ VPackBuilder ManagedDirectory::vpackFromJsonFile(std::string const& filename) {
     // The Parser might throw;
     try {
       VPackParser parser(builder);
-      parser.parse(reinterpret_cast<uint8_t const*>(content.data()),
-                   content.size());
+      parser.parse(reinterpret_cast<uint8_t const*>(content.data()), content.size());
     } catch (...) {
       throw;  // TODO determine what to actually do here?
     }
@@ -436,8 +424,7 @@ void ManagedDirectory::File::write(char const* data, size_t length) {
 
 #ifdef USE_ENTERPRISE
   if (_context && _directory.isEncrypted()) {
-    bool written =
-        _directory.encryptionFeature()->writeData(*_context, data, length);
+    bool written = _directory.encryptionFeature()->writeData(*_context, data, length);
     if (!written) {
       _status = _context->status();
     }
@@ -457,8 +444,7 @@ ssize_t ManagedDirectory::File::read(char* buffer, size_t length) {
 
 #ifdef USE_ENTERPRISE
   if (_context && _directory.isEncrypted()) {
-    bytesRead =
-        _directory.encryptionFeature()->readData(*_context, buffer, length);
+    bytesRead = _directory.encryptionFeature()->readData(*_context, buffer, length);
     if (bytesRead < 0) {
       _status = _context->status();
     }

@@ -49,7 +49,7 @@ class same_position_filter_test_case : public filter_test_case_base {
       });
       add_segment(gen);
       gen.reset();
-      add_segment(gen, irs::OPEN_MODE::OM_APPEND);
+      add_segment(gen, irs::OM_APPEND);
     }
 
     // read segment
@@ -445,7 +445,7 @@ TEST(by_same_position_test, boost) {
     {
       irs::by_same_position q;
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
 
@@ -454,7 +454,7 @@ TEST(by_same_position_test, boost) {
       irs::by_same_position q;
       q.push_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
 
@@ -464,7 +464,7 @@ TEST(by_same_position_test, boost) {
       q.push_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
       q.push_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
   }
@@ -478,7 +478,7 @@ TEST(by_same_position_test, boost) {
       irs::by_same_position q;
       q.boost(boost);
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
 
@@ -488,7 +488,7 @@ TEST(by_same_position_test, boost) {
       q.push_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
       q.boost(boost);
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(boost, irs::boost::extract(prepared->attributes()));
     }
 
@@ -499,7 +499,7 @@ TEST(by_same_position_test, boost) {
       q.push_back("field", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
       q.boost(boost);
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(boost, irs::boost::extract(prepared->attributes()));
     }
   }
@@ -569,8 +569,7 @@ protected:
   }
 
   virtual irs::format::ptr get_codec() override {
-    static irs::version10::format FORMAT;
-    return irs::format::ptr(&FORMAT, [](irs::format*)->void{});
+    return irs::formats::get("1_0");
   }
 };
 
@@ -590,8 +589,7 @@ protected:
   }
 
   virtual irs::format::ptr get_codec() override {
-    static irs::version10::format FORMAT;
-    return irs::format::ptr(&FORMAT, [](irs::format*)->void{});
+    return irs::formats::get("1_0");
   }
 };
 

@@ -39,6 +39,7 @@ const assert = jsunity.jsUnity.assertions;
 
 const colName = 'UnitTestProfilerCol';
 const edgeColName = 'UnitTestProfilerEdgeCol';
+const viewName = 'UnitTestProfilerView';
 
 const defaultBatchSize = 1000;
 
@@ -249,6 +250,7 @@ function assertIsProfileStatsObject (stats, {level}) {
     'scannedIndex',
     'filtered',
     'httpRequests',
+    'peakMemoryUsage',
     'executionTime',
   ];
 
@@ -265,6 +267,7 @@ function assertIsProfileStatsObject (stats, {level}) {
   expect(stats.scannedIndex).to.be.a('number');
   expect(stats.filtered).to.be.a('number');
   expect(stats.httpRequests).to.be.a('number');
+  expect(stats.peakMemoryUsage).to.be.a('number');
   expect(stats.executionTime).to.be.a('number');
 }
 
@@ -518,7 +521,7 @@ function runDefaultChecks (
     const actual = getCompactStatsNodes(profile);
 
     assertNodesItemsAndCalls(expected, actual,
-      {query, rows, batches, expected, actual});
+     {query, rows, batches, expected, actual});
   }
 }
 
@@ -558,6 +561,7 @@ function createBinaryTree (vertexCol, edgeCol, numVertices) {
 }
 
 exports.colName = colName;
+exports.viewName = viewName;
 exports.edgeColName = edgeColName;
 exports.defaultBatchSize = defaultBatchSize;
 exports.defaultTestRowCounts = defaultTestRowCounts;

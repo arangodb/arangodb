@@ -367,7 +367,7 @@ var jsUnity = exports.jsUnity = (function () {
       jsUnity.tap.write("# " + suiteName);
       jsUnity.tap.write("1.." + total);
 
-      jsUnity.log.info("Running "
+      jsUnity.log.info(Date() + " Running "
                        + (suiteName || "unnamed test suite"));
       jsUnity.log.info(plural(total, "test") + " found");
     },

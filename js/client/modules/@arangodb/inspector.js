@@ -340,7 +340,7 @@ function range(start, end) {
 
 function loadAgency(conn, seen) {
 
-  var agencyDump = conn.POST_RAW("/_api/agency/read", '[["/"]]');
+  var agencyDump = conn.POST("/_api/agency/read", [["/"]]);
   seen[conn.getEndpoint()] = true;
 
   if (agencyDump.code === 404) {
@@ -349,7 +349,7 @@ function loadAgency(conn, seen) {
   }
 
   if (agencyDump.code === 307) {
-    var red = conn.POST_RAW("/_api/agency/read", '[["/"]]');
+    var red = conn.POST("/_api/agency/read", [["/"]]);
 
     if (red.code === 307) {
       INFO("got redirect to " + red.headers.location);

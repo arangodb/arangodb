@@ -50,7 +50,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
-NS_LOCAL
+namespace {
 
 struct TestAttribute: public irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();
@@ -172,7 +172,7 @@ struct StorageEngineWrapper {
   StorageEngineMock& operator*() { return instance; }
 };
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -547,6 +547,7 @@ SECTION("test_text_features") {
 }
 
 SECTION("test_persistence") {
+  static std::vector<std::string> const EMPTY;
   auto* database = arangodb::application_features::ApplicationServer::lookupFeature<
     arangodb::SystemDatabaseFeature
   >();
@@ -701,7 +702,14 @@ SECTION("test_persistence") {
       arangodb::OperationOptions options;
       arangodb::ManagedDocumentResult result;
       auto collection = vocbase->lookupCollection("_iresearch_analyzers");
-      collection->truncate(nullptr, options);
+      arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(*vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        arangodb::transaction::Options()
+      );
+      CHECK((collection->truncate(trx, options).ok()));
     }
 
     {

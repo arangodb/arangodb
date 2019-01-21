@@ -68,6 +68,7 @@
   * [Server Role](Cluster/ServerRole.md)
   * [Cluster Statistics](Cluster/Statistics.md)
   * [Cluster Health](Cluster/Health.md)
+  * [Cluster Maintenance](Cluster/Maintenance.md)
   * [Agency](Agency/README.md)
 * [Miscellaneous functions](MiscellaneousFunctions/README.md)
 * [Repair Jobs](Repairs/README.md)

@@ -28,8 +28,8 @@
 #include "Basics/Exceptions.h"
 #include "Zip/zip.h"
 
-#include <sstream>
 #include <iosfwd>
+#include <sstream>
 
 /// @brief string buffer with formatting routines
 struct TRI_string_buffer_t {
@@ -48,13 +48,13 @@ TRI_string_buffer_t* TRI_CreateSizedStringBuffer(size_t);
 /// @brief initializes the string buffer
 ///
 /// @warning You must call initialize before using the string buffer.
-void TRI_InitStringBuffer(TRI_string_buffer_t*, 
-                          bool initializeMemory = true);
+void TRI_InitStringBuffer(TRI_string_buffer_t*, bool initializeMemory = true);
 
 /// @brief initializes the string buffer with a specific size
 ///
 /// @warning You must call initialize before using the string buffer.
-void TRI_InitSizedStringBuffer(TRI_string_buffer_t*, size_t const, bool initializeMemory = true);
+void TRI_InitSizedStringBuffer(TRI_string_buffer_t*, size_t const,
+                               bool initializeMemory = true);
 
 /// @brief frees the string buffer
 ///
@@ -125,8 +125,7 @@ int TRI_AppendCharStringBuffer(TRI_string_buffer_t* self, char chr);
 int TRI_AppendStringStringBuffer(TRI_string_buffer_t* self, char const* str);
 
 /// @brief appends characters
-int TRI_AppendString2StringBuffer(TRI_string_buffer_t* self, char const* str,
-                                  size_t len);
+int TRI_AppendString2StringBuffer(TRI_string_buffer_t* self, char const* str, size_t len);
 
 /// @brief appends characters but does not check buffer bounds
 static inline void TRI_AppendCharUnsafeStringBuffer(TRI_string_buffer_t* self, char chr) {
@@ -136,7 +135,8 @@ static inline void TRI_AppendCharUnsafeStringBuffer(TRI_string_buffer_t* self, c
   *self->_current++ = chr;
 }
 
-static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self, char const* str) {
+static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self,
+                                                      char const* str) {
   size_t len = strlen(str);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(self->_len - static_cast<size_t>(self->_current - self->_buffer) >= len);
@@ -145,8 +145,8 @@ static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self,
   self->_current += len;
 }
 
-static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self, char const* str,
-                                                      size_t len) {
+static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self,
+                                                      char const* str, size_t len) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(self->_len - static_cast<size_t>(self->_current - self->_buffer) >= len);
 #endif
@@ -154,7 +154,8 @@ static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self,
   self->_current += len;
 }
 
-static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self, std::string const& str) {
+static inline void TRI_AppendStringUnsafeStringBuffer(TRI_string_buffer_t* self,
+                                                      std::string const& str) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(self->_len - static_cast<size_t>(self->_current - self->_buffer) >= str.size());
 #endif
@@ -241,11 +242,18 @@ namespace basics {
 
 /// @brief string buffer with formatting routines
 class StringBuffer {
-  StringBuffer() = delete;
   StringBuffer(StringBuffer const&) = delete;
   StringBuffer& operator=(StringBuffer const&) = delete;
 
  public:
+  /// @brief creates an uninitialized string buffer
+  StringBuffer() {
+    _buffer._buffer = nullptr;
+    _buffer._current = nullptr;
+    _buffer._len = 0;
+    _buffer._initializeMemory = false;
+  }
+
   /// @brief initializes the string buffer
   explicit StringBuffer(bool initializeMemory) {
     TRI_InitStringBuffer(&_buffer, initializeMemory);
@@ -258,7 +266,7 @@ class StringBuffer {
   /// @brief initializes the string buffer
   explicit StringBuffer(size_t initialSize, bool initializeMemory = true) {
     TRI_InitSizedStringBuffer(&_buffer, initialSize, initializeMemory);
-    
+
     if (_buffer._buffer == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
@@ -283,8 +291,7 @@ class StringBuffer {
   }
 
   /// @brief uncompress the buffer into stringstream out, using zlib-inflate
-  int inflate(std::stringstream& out, size_t bufferSize = 16384,
-              size_t skip = 0) {
+  int inflate(std::stringstream& out, size_t bufferSize = 16384, size_t skip = 0) {
     z_stream strm;
 
     strm.zalloc = Z_NULL;
@@ -299,14 +306,6 @@ class StringBuffer {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    char* buffer = new char[bufferSize];
-
-    if (buffer == nullptr) {
-      (void)inflateEnd(&strm);
-
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
     size_t len = this->length();
 
     if (len < skip) {
@@ -318,6 +317,10 @@ class StringBuffer {
     strm.avail_in = (int)len;
     strm.next_in = ((unsigned char*)this->c_str()) + skip;
 
+    auto guard = scopeGuard([&strm] { (void)inflateEnd(&strm); });
+
+    auto buffer = std::make_unique<char[]>(bufferSize);
+
     do {
       if (strm.avail_in == 0) {
         break;
@@ -325,7 +328,7 @@ class StringBuffer {
 
       do {
         strm.avail_out = (uInt)bufferSize;
-        strm.next_out = (unsigned char*)buffer;
+        strm.next_out = (unsigned char*)buffer.get();
 
         res = ::inflate(&strm, Z_NO_FLUSH);
         TRI_ASSERT(res != Z_STREAM_ERROR);
@@ -334,19 +337,13 @@ class StringBuffer {
           case Z_NEED_DICT:
           case Z_DATA_ERROR:
           case Z_MEM_ERROR: {
-            (void)inflateEnd(&strm);
-            delete[] buffer;
-
             return TRI_ERROR_INTERNAL;
           }
         }
 
-        out.write(buffer, bufferSize - strm.avail_out);
+        out.write(buffer.get(), bufferSize - strm.avail_out);
       } while (strm.avail_out == 0);
     } while (res != Z_STREAM_END);
-
-    (void)inflateEnd(&strm);
-    delete[] buffer;
 
     if (res != Z_STREAM_END) {
       return TRI_ERROR_NO_ERROR;
@@ -394,16 +391,12 @@ class StringBuffer {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    char* buffer = new char[bufferSize];
-
-    if (buffer == nullptr) {
-      (void)inflateEnd(&strm);
-
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
     strm.avail_in = (int)len;
     strm.next_in = start;
+
+    auto guard = scopeGuard([&strm] { (void)inflateEnd(&strm); });
+
+    auto buffer = std::make_unique<char[]>(bufferSize);
 
     do {
       if (strm.avail_in == 0) {
@@ -412,7 +405,7 @@ class StringBuffer {
 
       do {
         strm.avail_out = (uInt)bufferSize;
-        strm.next_out = (unsigned char*)buffer;
+        strm.next_out = (unsigned char*)buffer.get();
 
         res = ::inflate(&strm, Z_NO_FLUSH);
         TRI_ASSERT(res != Z_STREAM_ERROR);
@@ -421,19 +414,13 @@ class StringBuffer {
           case Z_NEED_DICT:
           case Z_DATA_ERROR:
           case Z_MEM_ERROR: {
-            (void)inflateEnd(&strm);
-            delete[] buffer;
-
             return TRI_ERROR_INTERNAL;
           }
         }
 
-        out.appendText(buffer, bufferSize - strm.avail_out);
+        out.appendText(buffer.get(), bufferSize - strm.avail_out);
       } while (strm.avail_out == 0);
     } while (res != Z_STREAM_END);
-
-    (void)inflateEnd(&strm);
-    delete[] buffer;
 
     if (res != Z_STREAM_END) {
       return TRI_ERROR_NO_ERROR;
@@ -450,7 +437,7 @@ class StringBuffer {
     TRI_SwapStringBuffer(&_buffer, &other->_buffer);
     return *this;
   }
-  
+
   char const* data() const { return TRI_BeginStringBuffer(&_buffer); }
 
   /// @brief returns pointer to the character buffer
@@ -471,7 +458,7 @@ class StringBuffer {
   /// @brief returns length of the character buffer
   size_t length() const { return TRI_LengthStringBuffer(&_buffer); }
   size_t size() const { return TRI_LengthStringBuffer(&_buffer); }
-  
+
   /// @brief returns capacity of the character buffer
   size_t capacity() const { return TRI_CapacityStringBuffer(&_buffer); }
 
@@ -545,7 +532,7 @@ class StringBuffer {
   }
 
   /// @brief make sure the buffer is null-terminated
-  void ensureNullTerminated () {
+  void ensureNullTerminated() {
     TRI_AppendCharStringBuffer(&_buffer, '\0');
     --_buffer._current;
   }
@@ -555,11 +542,11 @@ class StringBuffer {
     TRI_AppendCharStringBuffer(&_buffer, chr);
     return *this;
   }
-  
+
   void appendCharUnsafe(char chr) {
     TRI_AppendCharUnsafeStringBuffer(&_buffer, chr);
   }
-  
+
   /// @brief appends as json-encoded
   StringBuffer& appendJsonEncoded(char const* str, size_t length) {
     TRI_AppendJsonEncodedStringStringBuffer(&_buffer, str, length, true);
@@ -571,7 +558,7 @@ class StringBuffer {
     TRI_AppendString2StringBuffer(&_buffer, str, len);
     return *this;
   }
-  
+
   void appendTextUnsafe(char const* str, size_t len) {
     TRI_AppendStringUnsafeStringBuffer(&_buffer, str, len);
   }
@@ -587,7 +574,7 @@ class StringBuffer {
     TRI_AppendString2StringBuffer(&_buffer, str.c_str(), str.length());
     return *this;
   }
-  
+
   void appendTextUnsafe(std::string const& str) {
     TRI_AppendStringUnsafeStringBuffer(&_buffer, str.c_str(), str.length());
   }
@@ -767,8 +754,8 @@ class StringBuffer {
   /// @brief underlying C string buffer
   TRI_string_buffer_t _buffer;
 };
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 std::ostream& operator<<(std::ostream&, arangodb::basics::StringBuffer const&);
 

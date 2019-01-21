@@ -38,11 +38,9 @@
 using namespace arangodb;
 using namespace arangodb::traverser;
 
-TraverserEngineRegistry::EngineInfo::EngineInfo(
-    TRI_vocbase_t& vocbase,
-    std::shared_ptr<transaction::Context> const& ctx,
-    arangodb::velocypack::Slice info,
-    bool needToLock)
+TraverserEngineRegistry::EngineInfo::EngineInfo(TRI_vocbase_t& vocbase,
+                                                std::shared_ptr<transaction::Context> const& ctx,
+                                                arangodb::velocypack::Slice info, bool needToLock)
     : _isInUse(false),
       _toBeDeleted(false),
       _engine(BaseEngine::BuildEngine(vocbase, ctx, info, needToLock)),
@@ -60,12 +58,9 @@ TraverserEngineRegistry::~TraverserEngineRegistry() {
 
 /// @brief Create a new Engine and return it's id
 TraverserEngineID TraverserEngineRegistry::createNew(
-    TRI_vocbase_t& vocbase,
-    std::shared_ptr<transaction::Context> const& ctx,
-    arangodb::velocypack::Slice engineInfo,
-    double ttl, /*= 600.0*/
-    bool needToLock
-) {
+    TRI_vocbase_t& vocbase, std::shared_ptr<transaction::Context> const& ctx,
+    arangodb::velocypack::Slice engineInfo, double ttl, /*= 600.0*/
+    bool needToLock) {
   TraverserEngineID id = TRI_NewTickServer();
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Register TraverserEngine with id " << id;
   TRI_ASSERT(id != 0);
@@ -93,7 +88,8 @@ BaseEngine* TraverserEngineRegistry::get(TraverserEngineID id) {
       WRITE_LOCKER(writeLocker, _lock);
       auto e = _engines.find(id);
       if (e == _engines.end()) {
-        LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "TraverserEngine with id " << id << " not found";
+        LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
+            << "TraverserEngine with id " << id << " not found";
         // Nothing to hand out
         // TODO: Should we throw an error instead?
         return nullptr;
@@ -101,7 +97,8 @@ BaseEngine* TraverserEngineRegistry::get(TraverserEngineID id) {
       if (!e->second->_isInUse) {
         // We capture the engine
         e->second->_isInUse = true;
-        LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "TraverserEngine with id " << id << " is now in use";
+        LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
+            << "TraverserEngine with id " << id << " is now in use";
         return e->second->_engine.get();
       }
       // Free write lock
@@ -117,7 +114,8 @@ BaseEngine* TraverserEngineRegistry::get(TraverserEngineID id) {
 
 /// @brief Returns the engine to the registry. Someone else can now use it.
 void TraverserEngineRegistry::returnEngine(TraverserEngineID id, double ttl) {
-  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Returning TraverserEngine with id " << id;
+  LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
+      << "Returning TraverserEngine with id " << id;
   WRITE_LOCKER(writeLocker, _lock);
   auto e = _engines.find(id);
   if (e == _engines.end()) {
@@ -131,14 +129,16 @@ void TraverserEngineRegistry::returnEngine(TraverserEngineID id, double ttl) {
       auto engine = e->second;
       _engines.erase(e);
       delete engine;
-      LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "TraverserEngine with id " << id << " is now deleted";
+      LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
+          << "TraverserEngine with id " << id << " is now deleted";
     } else {
       if (ttl >= 0.0) {
         e->second->_timeToLive = ttl;
       }
       e->second->_expires = TRI_microtime() + e->second->_timeToLive;
 
-      LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "TraverserEngine with id " << id << " is now free";
+      LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
+          << "TraverserEngine with id " << id << " is now free";
     }
     // Lockgard send signal auf conditionvar
     CONDITION_LOCKER(condLocker, _cv);
@@ -148,8 +148,8 @@ void TraverserEngineRegistry::returnEngine(TraverserEngineID id, double ttl) {
 
 /// @brief Destroy the engine with the given id, worker function
 void TraverserEngineRegistry::destroy(TraverserEngineID id, bool doLock) {
-
-  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Destroying TraverserEngine with id " << id;
+  LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
+      << "Destroying TraverserEngine with id " << id;
   EngineInfo* engine = nullptr;
 
   {
@@ -162,7 +162,8 @@ void TraverserEngineRegistry::destroy(TraverserEngineID id, bool doLock) {
     // TODO what about shard locking?
     // TODO what about multiple dbs?
     if (e->second->_isInUse) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "TraverserEngine with id " << id << " still in use, sending kill";
+      LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
+          << "TraverserEngine with id " << id << " still in use, sending kill";
       // Someone is still working with this engine. Mark it as to be deleted
       e->second->_toBeDeleted = true;
       return;
@@ -171,7 +172,8 @@ void TraverserEngineRegistry::destroy(TraverserEngineID id, bool doLock) {
     engine = e->second;
     _engines.erase(id);
   }
-  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "TraverserEngine with id " << id << " is now destroyed";
+  LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
+      << "TraverserEngine with id " << id << " is now destroyed";
 
   delete engine;
 }
@@ -195,7 +197,8 @@ void TraverserEngineRegistry::expireEngines() {
 
   for (auto& p : toDelete) {
     try {  // just in case
-      LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Destroy TraverserEngine with id " << p << " because of timeout";
+      LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
+          << "Destroy TraverserEngine with id " << p << " because of timeout";
       destroy(p, true);
     } catch (...) {
     }
@@ -218,7 +221,8 @@ void TraverserEngineRegistry::destroyAll() {
     }
   }
   for (auto& i : engines) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Destroy TraverserEngine with id " << i << " due to shutdown";
+    LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
+        << "Destroy TraverserEngine with id " << i << " due to shutdown";
     destroy(i, true);
   }
 }

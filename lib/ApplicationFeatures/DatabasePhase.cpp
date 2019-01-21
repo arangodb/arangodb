@@ -57,5 +57,5 @@ DatabaseFeaturePhase::DatabaseFeaturePhase(ApplicationServer& server)
   startsAfter("ViewTypes");
 }
 
-} // application_features
-} // arangodb
+}  // namespace application_features
+}  // namespace arangodb

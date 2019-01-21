@@ -108,17 +108,24 @@ add_subdirectory(s2geometry)
 set(ARANGO_S2GEOMETRY_VERSION "${ARANGO_S2GEOMETRY_VERSION}" PARENT_SCOPE)
 
 ################################################################################
+## BOOST
+################################################################################
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/boost)
+set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
+
+################################################################################
 ## IResearch
 ################################################################################
 
 if (USE_IRESEARCH)
   add_library(boost-static IMPORTED STATIC)
   set_target_properties(boost-static PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/boost/1.62.0"
+    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}"
     IMPORTED_LOCATION "boost_locale;boost_system;boost_thread"
   )
 
-  set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/1.62.0") # explicitly set since suppressing Boost search
+  set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}") # explicitly set since suppressing Boost search
 
   # IResearch on MacOS requires a complete build of ICU for encoding conversion
   if(APPLE)
@@ -126,6 +133,9 @@ if (USE_IRESEARCH)
     set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/v5.7.492.77/third_party/icu")
   elseif(MSVC)
     add_library(icu-shared STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch shared dependencies
+    add_library(icudata-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
+    add_library(icui18n-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
+    add_library(icuuc-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
     add_library(icu-static STATIC IMPORTED GLOBAL)
     set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
     set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/build/Debug/lib/icui18n.lib")
@@ -139,16 +149,13 @@ if (USE_IRESEARCH)
     set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
   else()
     add_library(icu-shared STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch shared dependencies
+    add_library(icudata-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
+    add_library(icui18n-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
+    add_library(icuuc-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
     add_library(icu-static STATIC IMPORTED GLOBAL)
     set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
-    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_DEBUG "${ICU_LIBRARY_DIR}/libicui18n.a")
-    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELEASE "${ICU_LIBRARY_DIR}/libicui18n.a")
-    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELWITHDEBINFO "${ICU_LIBRARY_DIR}/libicui18n.a")
-    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_MINSIZEREL "${ICU_LIBRARY_DIR}/libicui18n.a")
-    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_DEBUG "${ICU_LIBRARY_DIR}/libicuuc.a")
-    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELEASE "${ICU_LIBRARY_DIR}/libicuuc.a")
-    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELWITHDEBINFO "${ICU_LIBRARY_DIR}/libicuuc.a")
-    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_MINSIZEREL "${ICU_LIBRARY_DIR}/libicuuc.a")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION "${ICU_LIBRARY_DIR}/libicui18n.a")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES "${ICU_LIBRARY_DIR}/libicuuc.a")
     set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
   endif()
 
@@ -164,12 +171,8 @@ if (USE_IRESEARCH)
   set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
   set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
   set(UNWIND_ROOT "invalid")
+  set(BFD_ROOT "invalid")
 
-  if(MSVC)
-    set(USE_IQL OFF CACHE BOOL "Use IQL" FORCE) # skip IQL on MSVC until IResearch upstream is updated
-  endif()
-
-  set(IRESEARCH_EXCLUDE_STATIC_THIRD_PARTY_LIBS TRUE) # disable linking in of 3rd party libraries automatically
   find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
 
   set(CMAKE_MACOSX_RPATH ON) # suppress cmake warning (use same value as cmake default)
@@ -179,23 +182,12 @@ if (USE_IRESEARCH)
     "${IRESEARCH_ROOT}/cmake" # to find iResearch dependencies
   )
 
-  # cmake will seemingly randomly delete files from ${IRESEARCH_BUILD_DIR} during configuration
-  # so must copy required files only after the cmake configuration phase is complete, not via file(COPY ...)
-  # this command must _always_ be executed because the subsequent cmake configuration runs will once again delete files
-  if(MSVC)
-    add_custom_command(OUTPUT "${IRESEARCH_BUILD_DIR}/copy_iresearch.build" # non-existent file
-      COMMAND ${CMAKE_COMMAND} -E copy_directory "${IRESEARCH_ROOT}.build/" "${IRESEARCH_BUILD_DIR}/"
-    )
-  else()
-    # 'cmake -E copy_directory' does not preserve timestamps, use 'cp' directly where avalable
-    add_custom_command(OUTPUT "${IRESEARCH_BUILD_DIR}/copy_iresearch.build" # non-existent file
-      COMMAND cp -rp "${IRESEARCH_ROOT}.build/*" "${IRESEARCH_BUILD_DIR}/" # MacOS requires '/*' suffix
-    )
-  endif()
-
-  add_custom_target("copy_iresearch.build" ALL
-    DEPENDS "${IRESEARCH_BUILD_DIR}/copy_iresearch.build"
-  )
+  # copy pre-built files over to the build directory
+  # this is required to avoid triggering file generation via bison and perl during the build procedure
+  file(GLOB_RECURSE IRESEARCH_PREBUILT RELATIVE "${IRESEARCH_ROOT}.build" FOLLOW_SYMLINKS "${IRESEARCH_ROOT}.build/*")
+  foreach(ELEMENT ${IRESEARCH_PREBUILT})
+    configure_file("${IRESEARCH_ROOT}.build/${ELEMENT}" "${IRESEARCH_BUILD_DIR}/${ELEMENT}" COPYONLY)
+  endforeach()
 
   add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}" EXCLUDE_FROM_ALL) # do not build unused targets
   set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH_ORIGINAL}) # restore CMAKE_MODULE_PATH
@@ -207,13 +199,6 @@ if (USE_IRESEARCH)
     # cmake does not build ICU without this (cmake does not inherit dependencies)
     add_dependencies(v8_build icu-build icudata-static icui18n-static icuuc-static)
   endif()
-
-  # ensure the 'copy_iresearch.build' target is executed before start of build of the 'iresearch' target
-  if(MSVC)
-    add_dependencies(iresearch-static-scrt "copy_iresearch.build") # use static + staticCRT to match ArangoDB
-  else()
-    add_dependencies(iresearch-static "copy_iresearch.build") # use static to match ArangoDB
-  endif()
 endif()
 
 
@@ -224,6 +209,7 @@ add_definitions(-DCURL_STATICLIB=1)
 
 set(ENABLE_MANUAL OFF CACHE type BOOL)
 set(BUILD_CURL_EXE OFF CACHE type BOOL)
+set(BUILD_SHARED_LIBS OFF CACHE type BOOL)
 set(BUILD_TESTING OFF CACHE type BOOL)
 set(CURL_STATICLIB ON CACHE type BOOL)
 set(HTTP_ONLY ON CACHE type BOOL)
@@ -231,7 +217,7 @@ set(CMAKE_USE_LIBSSH2 OFF CACHE type BOOL)
 set(CMAKE_USE_OPENSSL ON CACHE type BOOL)
 # mop: super important...if this is off curl will not handle request timeouts < 1000ms
 set(ENABLE_THREADED_RESOLVER ON CACHE type BOOL)
-set(CURL_VERSION "7.57.0")
+set(CURL_VERSION "7.63.0")
 set(CURL_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-${CURL_VERSION}")
 add_subdirectory(${CURL_SRC_DIR})
 
@@ -260,15 +246,8 @@ if (USE_JEMALLOC)
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
   include_directories(SYSTEM "${JEMALLOC_HOME}/include")
   link_directories("${JEMALLOC_HOME}/lib")
-  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB})
+  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB} PARENT_SCOPE)
 endif ()
-
-################################################################################
-## BOOST
-################################################################################
-
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/boost)
-set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 
 ################################################################################
 ## ROCKSDB
@@ -277,12 +256,6 @@ set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb)
 include_directories(${ROCKSDB_INCLUDE_DIR})
 set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
-
-################################################################################
-## ASIO
-################################################################################
-
-set(ASIO_INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}/asio/1.12/include" PARENT_SCOPE)
 
 ################################################################################
 ## LINK_DIRECTORIES

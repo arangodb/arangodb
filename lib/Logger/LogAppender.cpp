@@ -36,22 +36,20 @@ using namespace arangodb::basics;
 
 arangodb::Mutex LogAppender::_appendersLock;
 
-std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>
-    LogAppender::_topics2appenders;
+std::map<size_t, std::vector<std::shared_ptr<LogAppender>>> LogAppender::_topics2appenders;
 
-std::map<std::pair<std::string, std::string>, std::shared_ptr<LogAppender>>
-    LogAppender::_definition2appenders;
+std::map<std::pair<std::string, std::string>, std::shared_ptr<LogAppender>> LogAppender::_definition2appenders;
 
 std::vector<std::function<void(LogMessage*)>> LogAppender::_loggers;
 
 bool LogAppender::_allowStdLogging = true;
 
 void LogAppender::addLogger(std::function<void(LogMessage*)> func) {
+  MUTEX_LOCKER(guard, _appendersLock);  // to silence TSan
   _loggers.emplace_back(func);
 }
 
-void LogAppender::addAppender(std::string const& definition,
-                              std::string const& filter) {
+void LogAppender::addAppender(std::string const& definition, std::string const& filter) {
   MUTEX_LOCKER(guard, _appendersLock);
   std::pair<std::shared_ptr<LogAppender>, LogTopic*> appender(
       buildAppender(definition, filter));
@@ -62,7 +60,8 @@ void LogAppender::addAppender(std::string const& definition,
 
   LogTopic* topic = appender.second;
   size_t n = (topic == nullptr) ? LogTopic::MAX_LOG_TOPICS : topic->id();
-  if (std::find(_topics2appenders[n].begin(), _topics2appenders[n].end(), appender.first) == _topics2appenders[n].end()) {
+  if (std::find(_topics2appenders[n].begin(), _topics2appenders[n].end(),
+                appender.first) == _topics2appenders[n].end()) {
     _topics2appenders[n].emplace_back(appender.first);
   }
 }
@@ -73,7 +72,7 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
   std::string topicName;
   std::string output;
   std::string contentFilter;
- 
+
   if (v.size() == 1) {
     output = v[0];
     contentFilter = filter;
@@ -87,7 +86,8 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
       output = v[1];
     }
   } else {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "strange output definition '" << definition << "' ignored";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "strange output definition '" << definition << "' ignored";
     return {nullptr, nullptr};
   }
 
@@ -97,8 +97,8 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
     topic = LogTopic::lookup(topicName);
 
     if (topic == nullptr) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "strange topic '" << topicName
-               << "', ignoring whole defintion";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "strange topic '" << topicName << "', ignoring whole defintion";
       return {nullptr, nullptr};
     }
   }
@@ -123,8 +123,9 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
     auto s = StringUtils::split(output.substr(9), '/');
 
     if (s.size() < 1 || s.size() > 2) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown syslog definition '" << output << "', expecting "
-               << "'syslog://facility/identifier'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "unknown syslog definition '" << output << "', expecting "
+          << "'syslog://facility/identifier'";
       return {nullptr, nullptr};
     }
 
@@ -134,8 +135,7 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
       identifier = s[1];
     }
 
-    auto result =
-        std::make_shared<LogAppenderSyslog>(s[0], identifier, contentFilter);
+    auto result = std::make_shared<LogAppenderSyslog>(s[0], identifier, contentFilter);
     _definition2appenders[key] = result;
 
     return {result, topic};
@@ -153,7 +153,7 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
 
   // everything else must be file-/stream-based logging
   std::shared_ptr<LogAppenderStream> result;
-  
+
   if (output == "+") {
     result.reset(new LogAppenderStderr(contentFilter));
   } else if (output == "-") {
@@ -161,7 +161,8 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
   } else if (StringUtils::isPrefix(output, "file://")) {
     result.reset(new LogAppenderFile(output.substr(7), contentFilter));
   } else {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown output definition '" << output << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "unknown output definition '" << output << "'";
     return {nullptr, nullptr};
   }
 

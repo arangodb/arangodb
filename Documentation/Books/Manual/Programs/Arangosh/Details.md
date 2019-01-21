@@ -19,7 +19,7 @@ opening brace:
 To load your own JavaScript code into the current JavaScript interpreter context,
 use the load command:
 
-    require("internal").load("/tmp/test.js")     // <- Linux / MacOS
+    require("internal").load("/tmp/test.js")     // <- Linux / macOS
     require("internal").load("c:\\tmp\\test.js") // <- Windows
 
 Exiting arangosh can be done using the key combination ```<CTRL> + D``` or by

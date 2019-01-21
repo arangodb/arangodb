@@ -30,24 +30,26 @@
 using namespace arangodb;
 
 /// @brief create the logfile
-MMFilesWalLogfile::MMFilesWalLogfile(MMFilesWalLogfile::IdType id, MMFilesDatafile* df, StatusType status)
+MMFilesWalLogfile::MMFilesWalLogfile(MMFilesWalLogfile::IdType id,
+                                     MMFilesDatafile* df, StatusType status)
     : _id(id), _users(0), _df(df), _status(status), _collectQueueSize(0) {}
 
 /// @brief destroy the logfile
-MMFilesWalLogfile::~MMFilesWalLogfile() {
-  delete _df;
-}
+MMFilesWalLogfile::~MMFilesWalLogfile() { delete _df; }
 
 /// @brief create a new logfile
-MMFilesWalLogfile* MMFilesWalLogfile::createNew(std::string const& filename, MMFilesWalLogfile::IdType id,
-                            uint32_t size) {
-  std::unique_ptr<MMFilesDatafile> df(MMFilesDatafile::create(filename, id, static_cast<uint32_t>(size), false));
+MMFilesWalLogfile* MMFilesWalLogfile::createNew(std::string const& filename,
+                                                MMFilesWalLogfile::IdType id,
+                                                uint32_t size) {
+  std::unique_ptr<MMFilesDatafile> df(
+      MMFilesDatafile::create(filename, id, static_cast<uint32_t>(size), false));
 
   if (df == nullptr) {
     int res = TRI_errno();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to create logfile '" << filename << "': " << TRI_errno_string(res);
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "unable to create logfile '" << filename
+                                                << "': " << TRI_errno_string(res);
       return nullptr;
     }
   }
@@ -58,7 +60,8 @@ MMFilesWalLogfile* MMFilesWalLogfile::createNew(std::string const& filename, MMF
 }
 
 /// @brief open an existing logfile
-MMFilesWalLogfile* MMFilesWalLogfile::openExisting(std::string const& filename, MMFilesWalLogfile::IdType id,
+MMFilesWalLogfile* MMFilesWalLogfile::openExisting(std::string const& filename,
+                                                   MMFilesWalLogfile::IdType id,
                                                    bool wasCollected, bool ignoreErrors) {
   std::unique_ptr<MMFilesDatafile> df(MMFilesDatafile::open(filename, ignoreErrors, false));
 
@@ -66,10 +69,12 @@ MMFilesWalLogfile* MMFilesWalLogfile::openExisting(std::string const& filename, 
     int res = TRI_errno();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to open logfile '" << filename << "': " << TRI_errno_string(res);
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "unable to open logfile '" << filename
+                                                << "': " << TRI_errno_string(res);
     } else {
       // cannot figure out the type of error
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to open logfile '" << filename << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+          << "unable to open logfile '" << filename << "'";
     }
     return nullptr;
   }
@@ -94,4 +99,3 @@ MMFilesWalLogfile* MMFilesWalLogfile::openExisting(std::string const& filename, 
 char* MMFilesWalLogfile::reserve(size_t size) {
   return _df->advanceWritePosition(encoding::alignedSize<size_t>(size));
 }
-

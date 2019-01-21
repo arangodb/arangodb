@@ -25,6 +25,7 @@
 #include "Basics/directories.h"
 
 #include "ApplicationFeatures/BasicPhase.h"
+#include "ApplicationFeatures/CommunicationPhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/GreetingsPhase.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
@@ -49,12 +50,14 @@ int main(int argc, char* argv[]) {
     ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
     context.installHup();
 
-    std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
-        argv[0], "Usage: arangoexport [<options>]", "For more information use:", BIN_DIRECTORY));
+    std::shared_ptr<options::ProgramOptions> options(
+        new options::ProgramOptions(argv[0], "Usage: arangoexport [<options>]",
+                                    "For more information use:", BIN_DIRECTORY));
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret;
 
     server.addFeature(new application_features::BasicFeaturePhase(server, true));
+    server.addFeature(new application_features::CommunicationFeaturePhase(server));
     server.addFeature(new application_features::GreetingsFeaturePhase(server, true));
     server.addFeature(new ClientFeature(server, false));
     server.addFeature(new ConfigFeature(server, "arangoexport"));
@@ -74,15 +77,17 @@ int main(int argc, char* argv[]) {
         ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::STARTUP) << "arangoexport terminated because of an unhandled exception: "
-              << ex.what();
+      LOG_TOPIC(ERR, Logger::STARTUP)
+          << "arangoexport terminated because of an unhandled exception: "
+          << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
-      LOG_TOPIC(ERR, Logger::STARTUP) << "arangoexport terminated because of an unhandled exception of "
-                  "unknown type";
+      LOG_TOPIC(ERR, Logger::STARTUP)
+          << "arangoexport terminated because of an unhandled exception of "
+             "unknown type";
       ret = EXIT_FAILURE;
     }
 
     return context.exit(ret);
-    });
+  });
 }

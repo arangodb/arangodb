@@ -73,25 +73,38 @@ struct TestView: public arangodb::LogicalView {
   TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition, uint64_t planVersion)
     : arangodb::LogicalView(vocbase, definition, planVersion) {
   }
-  virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder, bool /*detailed*/, bool /*forPersistence*/) const override { 
+  virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder& builder, bool, bool) const override { 
     builder.add("properties", _properties.slice()); 
     return _appendVelocyPackResult; 
   }
-  virtual arangodb::Result drop() override { return arangodb::Result(); }
-  static std::shared_ptr<LogicalView> make(
-        TRI_vocbase_t& vocbase,
-        arangodb::velocypack::Slice const& definition,
-        bool isNew,
-        uint64_t planVersion,
-        arangodb::LogicalView::PreCommitCallback const& preCommit
-  ) {
-    auto view = std::make_shared<TestView>(vocbase, definition, planVersion);
-    return preCommit(view) ? view : nullptr;
-  }
+  virtual arangodb::Result dropImpl() override { return arangodb::LogicalViewHelperStorageEngine::drop(*this); }
   virtual void open() override {}
-  virtual arangodb::Result rename(std::string&& newName, bool doSync) override { name(std::move(newName)); return arangodb::Result(); }
-  virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& properties, bool partialUpdate, bool doSync) override { _properties = arangodb::velocypack::Builder(properties); return arangodb::Result(); }
+  virtual arangodb::Result renameImpl(std::string const& oldName) override { return arangodb::LogicalViewHelperStorageEngine::rename(*this, oldName); }
+  virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties, bool partialUpdate) override { _properties = arangodb::velocypack::Builder(properties); return arangodb::Result(); }
   virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
+};
+
+struct ViewFactory: public arangodb::ViewFactory {
+  virtual arangodb::Result create(
+      arangodb::LogicalView::ptr& view,
+      TRI_vocbase_t& vocbase,
+      arangodb::velocypack::Slice const& definition
+  ) const override {
+    view = vocbase.createView(definition);
+
+    return arangodb::Result();
+  }
+
+  virtual arangodb::Result instantiate(
+      arangodb::LogicalView::ptr& view,
+      TRI_vocbase_t& vocbase,
+      arangodb::velocypack::Slice const& definition,
+      uint64_t planVersion
+  ) const override {
+    view = std::make_shared<TestView>(vocbase, definition, planVersion);
+
+    return arangodb::Result();
+  }
 };
 
 }
@@ -104,6 +117,7 @@ struct V8ViewsSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  ViewFactory viewFactory;
 
   V8ViewsSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
@@ -142,7 +156,7 @@ struct V8ViewsSetup {
 
     viewTypesFeature->emplace(
       arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("testViewType")),
-      TestView::make
+      viewFactory
     );
   }
 
@@ -229,7 +243,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_createView)->CallAsFunction(context, fn_createView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_createView)->CallAsFunction(context, fn_createView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -248,7 +262,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_createView)->CallAsFunction(context, fn_createView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_createView)->CallAsFunction(context, fn_createView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -265,7 +279,7 @@ SECTION("test_auth") {
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      auto result = v8::Function::Cast(*fn_createView)->CallAsFunction(context, fn_createView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_createView)->CallAsFunction(context, fn_createView, static_cast<int>(args.size()), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsObject()));
       auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(result.ToLocalChecked()->ToObject(), WRP_VOCBASE_VIEW_TYPE);
@@ -328,7 +342,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_dropView)->CallAsFunction(context, fn_dropView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_dropView)->CallAsFunction(context, fn_dropView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -348,7 +362,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_dropView)->CallAsFunction(context, fn_dropView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_dropView)->CallAsFunction(context, fn_dropView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -367,7 +381,7 @@ SECTION("test_auth") {
       user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      auto result = v8::Function::Cast(*fn_dropView)->CallAsFunction(context, fn_dropView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_dropView)->CallAsFunction(context, fn_dropView, static_cast<int>(args.size()), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsUndefined()));
       CHECK((vocbase.views().empty()));
@@ -383,7 +397,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_dropView)->CallAsFunction(context, fn_dropView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_dropView)->CallAsFunction(context, fn_dropView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -402,7 +416,7 @@ SECTION("test_auth") {
       user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::RW);
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      auto result = v8::Function::Cast(*fn_dropView)->CallAsFunction(context, fn_dropView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_dropView)->CallAsFunction(context, fn_dropView, static_cast<int>(args.size()), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsUndefined()));
       CHECK((vocbase.views().empty()));
@@ -464,7 +478,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_drop)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_drop)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -484,7 +498,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_drop)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_drop)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -503,7 +517,7 @@ SECTION("test_auth") {
       user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      auto result = v8::Function::Cast(*fn_drop)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_drop)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsUndefined()));
       CHECK((vocbase.views().empty()));
@@ -519,7 +533,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_drop)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_drop)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -538,7 +552,7 @@ SECTION("test_auth") {
       user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::RW);
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      auto result = v8::Function::Cast(*fn_drop)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_drop)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsUndefined()));
       CHECK((vocbase.views().empty()));
@@ -601,7 +615,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_rename)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_rename)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -623,7 +637,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_rename)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_rename)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -649,7 +663,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_rename)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_rename)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -670,7 +684,7 @@ SECTION("test_auth") {
       user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      auto result = v8::Function::Cast(*fn_rename)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_rename)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsUndefined()));
       auto view = vocbase.lookupView("testView");
@@ -689,7 +703,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_rename)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_rename)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -710,7 +724,7 @@ SECTION("test_auth") {
       user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::RW);
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      auto result = v8::Function::Cast(*fn_rename)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_rename)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsUndefined()));
       auto view = vocbase.lookupView("testView");
@@ -779,7 +793,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -799,7 +813,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -823,7 +837,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -845,7 +859,7 @@ SECTION("test_auth") {
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
       arangodb::velocypack::Builder responce;
-      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsObject()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, result.ToLocalChecked(), false)));
@@ -870,7 +884,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -894,7 +908,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -916,7 +930,7 @@ SECTION("test_auth") {
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
       arangodb::velocypack::Builder responce;
-      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsObject()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, result.ToLocalChecked(), false)));
@@ -984,7 +998,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_view)->CallAsFunction(context, fn_view, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_view)->CallAsFunction(context, fn_view, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -1008,7 +1022,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_view)->CallAsFunction(context, fn_view, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_view)->CallAsFunction(context, fn_view, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -1027,7 +1041,7 @@ SECTION("test_auth") {
       user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      auto result = v8::Function::Cast(*fn_view)->CallAsFunction(context, fn_view, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_view)->CallAsFunction(context, fn_view, static_cast<int>(args.size()), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsObject()));
       auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(result.ToLocalChecked()->ToObject(), WRP_VOCBASE_VIEW_TYPE);
@@ -1048,7 +1062,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_view)->CallAsFunction(context, fn_view, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_view)->CallAsFunction(context, fn_view, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -1067,7 +1081,7 @@ SECTION("test_auth") {
       user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      auto result = v8::Function::Cast(*fn_view)->CallAsFunction(context, fn_view, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_view)->CallAsFunction(context, fn_view, static_cast<int>(args.size()), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsObject()));
       auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(result.ToLocalChecked()->ToObject(), WRP_VOCBASE_VIEW_TYPE);
@@ -1137,7 +1151,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -1161,7 +1175,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -1181,7 +1195,7 @@ SECTION("test_auth") {
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
       arangodb::velocypack::Builder responce;
-      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsObject()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, result.ToLocalChecked(), false)));
@@ -1202,7 +1216,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -1222,7 +1236,7 @@ SECTION("test_auth") {
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
       arangodb::velocypack::Builder responce;
-      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, static_cast<int>(args.size()), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsObject()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, result.ToLocalChecked(), false)));
@@ -1288,7 +1302,7 @@ SECTION("test_auth") {
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
-      auto result = v8::Function::Cast(*fn_views)->CallAsFunction(context, fn_views, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_views)->CallAsFunction(context, fn_views, static_cast<int>(args.size()), args.data());
       CHECK((result.IsEmpty()));
       CHECK((tryCatch.HasCaught()));
       CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -1313,7 +1327,7 @@ SECTION("test_auth") {
       testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_FORBIDDEN);
       auto resetAppendVelocyPackResult = std::shared_ptr<TestView>(testView, [](TestView* p)->void { p->_appendVelocyPackResult = arangodb::Result(); });
 
-      auto result = v8::Function::Cast(*fn_views)->CallAsFunction(context, fn_views, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_views)->CallAsFunction(context, fn_views, static_cast<int>(args.size()), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsArray()));
       auto* resultArray = v8::Array::Cast(*result.ToLocalChecked());
@@ -1335,7 +1349,7 @@ SECTION("test_auth") {
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
       vocbase.dropView(logicalView2->id(), true); // remove second view to make test result deterministic
-      auto result = v8::Function::Cast(*fn_views)->CallAsFunction(context, fn_views, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_views)->CallAsFunction(context, fn_views, static_cast<int>(args.size()), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsArray()));
       auto* resultArray = v8::Array::Cast(*result.ToLocalChecked());
@@ -1357,7 +1371,7 @@ SECTION("test_auth") {
       user.grantCollection(vocbase.name(), "testView2", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      auto result = v8::Function::Cast(*fn_views)->CallAsFunction(context, fn_views, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_views)->CallAsFunction(context, fn_views, static_cast<int>(args.size()), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsArray()));
       auto* resultArray = v8::Array::Cast(*result.ToLocalChecked());
@@ -1377,7 +1391,7 @@ SECTION("test_auth") {
       user.grantCollection(vocbase.name(), "testView2", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-      auto result = v8::Function::Cast(*fn_views)->CallAsFunction(context, fn_views, args.size(), args.data());
+      auto result = v8::Function::Cast(*fn_views)->CallAsFunction(context, fn_views, static_cast<int>(args.size()), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsArray()));
       auto* resultArray = v8::Array::Cast(*result.ToLocalChecked());

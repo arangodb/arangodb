@@ -83,8 +83,7 @@ class NearUtils {
 
  public:
   /// @brief Type of documents buffer
-  typedef std::priority_queue<Document, std::vector<Document>, CMP>
-      GeoDocumentsQueue;
+  typedef std::priority_queue<Document, std::vector<Document>, CMP> GeoDocumentsQueue;
 
   explicit NearUtils(geo::QueryParams&& params) noexcept;
   ~NearUtils();
@@ -101,11 +100,9 @@ class NearUtils {
 
   /// @brief all intervals are covered, no more buffered results
   bool isDone() const {
-    TRI_ASSERT(_innerAngle >= S1ChordAngle::Zero() &&
-               _innerAngle <= _outerAngle);
+    TRI_ASSERT(_innerAngle >= S1ChordAngle::Zero() && _innerAngle <= _outerAngle);
     TRI_ASSERT(_outerAngle <= _maxAngle &&
-               _maxAngle <=
-                   S1ChordAngle::Radians(geo::kMaxRadiansBetweenPoints));
+               _maxAngle <= S1ChordAngle::Radians(geo::kMaxRadiansBetweenPoints));
     return _buffer.empty() && _allIntervalsCovered;
   }
 
@@ -137,7 +134,7 @@ class NearUtils {
   /// @brief remove closest buffered result
   void popNearest() { _buffer.pop(); }
 
-  /// @brief reset query to inital state
+  /// @brief reset query to initial state
   void reset();
 
   /// aid density estimation by reporting a result close
@@ -154,6 +151,9 @@ class NearUtils {
 
   /// Call after scanning all intervals
   void didScanIntervals();
+
+  /// @brief Reference to parameters used
+  geo::QueryParams const& params() const { return _params; }
 
   size_t _found = 0;
   size_t _rejection = 0;

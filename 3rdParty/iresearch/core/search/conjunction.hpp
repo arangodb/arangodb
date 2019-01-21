@@ -35,11 +35,14 @@ NS_ROOT
 /// @class score_iterator_adapter
 /// @brief adapter to use doc_iterator with conjunction and disjunction
 ////////////////////////////////////////////////////////////////////////////////
-struct score_iterator_adapter : util::noncopyable {
+struct score_iterator_adapter {
   score_iterator_adapter(doc_iterator::ptr&& it) NOEXCEPT
     : it(std::move(it)) {
     score = &irs::score::extract(this->it->attributes());
   }
+
+  score_iterator_adapter(const score_iterator_adapter&) = default;
+  score_iterator_adapter& operator=(const score_iterator_adapter&) = default;
 
   score_iterator_adapter(score_iterator_adapter&& rhs) NOEXCEPT
     : it(std::move(rhs.it)), score(rhs.score) {
@@ -101,22 +104,35 @@ class conjunction : public doc_iterator_base {
     // estimate iterator (front's cost is already cached)
     estimate(cost::extract(front_->attributes(), cost::MAX));
 
-    // prepare score
-    prepare_score([this](byte_type* score) {
-      ord_->prepare_score(score);
-      for (auto& it : itrs_) {
-        const auto* it_score = it.score;
-        it_score->evaluate();
-        ord_->add(score, it_score->c_str());
+    // copy scores into separate container
+    // to avoid extra checks
+    scores_.reserve(itrs_.size());
+    for (auto& it : itrs_) {
+      const auto* score = it.score;
+      if (&irs::score::no_score() != score) {
+        scores_.push_back(score);
       }
-    });
+    }
+
+    if (scores_.empty()) {
+      prepare_score([](byte_type*) { /*NOOP*/});
+    } else {
+      // prepare score
+      prepare_score([this](byte_type* score) {
+        ord_->prepare_score(score);
+        for (auto* it_score : scores_) {
+          it_score->evaluate();
+          ord_->add(score, it_score->c_str());
+        }
+      });
+    }
   }
 
-  iterator begin() const { return itrs_.begin(); }
-  iterator end() const { return itrs_.end(); }
+  iterator begin() const NOEXCEPT { return itrs_.begin(); }
+  iterator end() const NOEXCEPT { return itrs_.end(); }
 
   // size of conjunction
-  size_t size() const { return itrs_.size(); }
+  size_t size() const NOEXCEPT { return itrs_.size(); }
 
   virtual doc_id_t value() const override {
     return front_->value();
@@ -169,6 +185,7 @@ class conjunction : public doc_iterator_base {
   }
 
   doc_iterators_t itrs_;
+  std::vector<const irs::score*> scores_; // valid sub-scores
   irs::doc_iterator* front_;
 }; // conjunction
 

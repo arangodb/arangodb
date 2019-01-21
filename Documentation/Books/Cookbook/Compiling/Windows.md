@@ -4,24 +4,26 @@ Compiling ArangoDB under Windows
 Problem
 -------
 
-I want to compile ArangoDB 3.0 and onwards under Windows.
+I want to compile ArangoDB 3.4 and onwards under Windows.
 
-**Note:** For this recipe you need at least ArangoDB 3.0;
-For ArangoDB version before 3.0 look at the [old Compiling ArangoDB under Windows](https://docs.arangodb.com/2.8/Cookbook/CompilingUnderWindows.html).
+**Note:** If you want to compile version 3.3 or earlier, then look at the
+[Compiling ArangoDB under Windows](https://docs.arangodb.com/3.3/Cookbook/Compiling/Windows.html)
+recipe in the 3.3 documentation.
 
 Solution
 --------
 
-With ArangoDB 3.0 a complete cmake environment was introduced. This also streamlines the dependencies on windows.
+With ArangoDB 3.0 a complete cmake environment was introduced. This also streamlines the dependencies on Windows.
 We suggest to use [chocolatey.org](https://chocolatey.org/) to install most of the dependencies. For sure
 most projects offer their own setup & install packages, chocolatey offers a simplified way to install them
-with less user interactions. You can even use chocolatey via the brand new
-[ansibles 2.0 winrm facility](http://docs.ansible.com/ansible/intro_windows.html)
-to do unattended installations of some software on windows - the cool thing linux guys always told you about.
+with less user interactions. You can even use chocolatey via
+[ansibles 2.7 winrm facility](https://docs.ansible.com/ansible/latest/user_guide/windows.html)
+to do unattended installations of some software on Windows.
 
 ### Ingredients
 
-First install the choco package manager by pasting this tiny cmdlet into a command window *(needs to be run with Administrator privileges; Right click start menu, **Command Prompt (Admin)**)*:
+First install the choco package manager by pasting this tiny cmdlet into a command window
+*(needs to be run with Administrator privileges; Right click start menu, **Command Prompt (Admin)**)*:
 
     @powershell -NoProfile -ExecutionPolicy Bypass -Command "iex ((new-object net.webclient).DownloadString('https://chocolatey.org/install.ps1'))" && SET PATH=%PATH%;%ALLUSERSPROFILE%\chocolatey\bin
 
@@ -30,24 +32,31 @@ First install the choco package manager by pasting this tiny cmdlet into a comma
 Since choco currently fails to alter the environment for
 [Microsoft Visual Studio](https://www.visualstudio.com/en-us/products/visual-studio-community-vs.aspx),
 we suggest to download and install Visual Studio by hand.
-Currently Visual Studio 2015 is the only supported option.
+Currently Visual Studio 2017 is the only supported option.
 
-**You need to make sure that it installs the option "Programming Languages / C++", else cmake will fail to dectect it later on.**
+{% hint 'warning' %}
+You need to make sure that it installs the **Desktop development with C++** preset,
+else cmake will fail to detect it later on. Furthermore, the **Windows 8.1 SDK and UCRT SDK**
+optional component is required to be selected during Visual Studio installation, else V8
+will fail to compile later on.
+{% endhint %}
 
 After it successfully installed, start it once, so it can finish its setup.
 
-#### More dependencies
-Now you can invoke the choco package manager for an unattended install of the dependencies *(needs to be run with Administrator privileges again)*:
+#### More Dependencies
 
-    choco install -y cmake.portable nsis python2 procdump windbg wget nuget.commandline
+Now you can invoke the choco package manager for an unattended install of the dependencies
+*(needs to be run with Administrator privileges again)*:
 
-Then we fetch the [OpenSSL](https://openssl.org) library via the nuget commandline client *(doesn't need Administrator privileges)*:
+    choco install -y cmake.portable nsis python2 procdump windbg wget 
 
-    nuget install openssl
+Then we need to install the [OpenSSL](https://openssl.org) library from its sources or using precompiled
+[Third Party OpenSSL Related Binary Distributions](https://wiki.openssl.org/index.php/Binaries).
 
-#### Optional
+#### Optional Dependencies
 
-If you intend to run the unit tests or compile from git, you also need *(needs to be run with Administrator privileges again)*:
+If you intend to run the unit tests or compile from git, you also need
+*(needs to be run with Administrator privileges again)*:
 
     choco install -y git winflexbison ruby
 
@@ -55,19 +64,21 @@ Close and reopen the Administrator command window in order to continue with the 
 
     choco install -y ruby2.devkit
 
-And manually install the requirements via the `Gemfile` fetched from the ArangoDB Git repository *(needs to be run with Administrator privileges)*:
+And manually install the requirements via the `Gemfile` fetched from the ArangoDB Git repository
+*(needs to be run with Administrator privileges)*:
 
-    wget https://raw.githubusercontent.com/arangodb/arangodb/devel/tests/HttpInterface/Gemfile
-    set PATH=%PATH%;C:\tools\DevKit2\bin;C:\tools\DevKit2\mingw\bin
+    wget https://raw.githubusercontent.com/arangodb/arangodb/devel/tests/rb/HttpInterface/Gemfile
+    setx PATH %PATH%;C:\tools\DevKit2\bin;C:\tools\DevKit2\mingw\bin
     gem install bundler
     bundler
 
 Note that the V8 build scripts and gyp aren't compatible with Python 3.x hence you need python2!
 
 ### Building ArangoDB
+
 Download and extract the release tarball from https://www.arangodb.com/download/
 
-Or clone the github repository, and checkout the branch or tag you need (devel, 3.0)
+Or clone the GitHub repository and checkout the branch or tag you need (e.g. `devel`)
 
     git clone https://github.com/arangodb/arangodb.git -b devel
     cd arangodb
@@ -76,11 +87,12 @@ Generate the Visual studio project files, and check back that cmake discovered a
 
     mkdir Build64
     cd Build64
-    cmake -G "Visual Studio 14 Win64" ..
+    cmake -G "Visual Studio 15 2017 Win64" ..
 
-Note that in some cases cmake struggles to find the proper python interpreter (i.e. the cygwin one won't work). You can force overrule it by appending:
+Note that in some cases cmake struggles to find the proper python interpreter
+(i.e. the cygwin one won't work). You can force overrule it by appending:
 
-    -DPYTHON_EXECUTABLE:FILEPATH=C:/tools/python2/python.exe
+    -DPYTHON_EXECUTABLE:FILEPATH=C:/Python27/python.exe
 
 You can now load these in the Visual Studio IDE or use cmake to start the build:
 
@@ -89,10 +101,11 @@ You can now load these in the Visual Studio IDE or use cmake to start the build:
 The binaries need the ICU datafile `icudt54l.dat`, which is automatically copied into the directory containing the
 executable.
 
-For development, unit tests and documentation: Cygwin (Optional)
-===============================================================
+### Unit tests (Optional)
 
-The documentation and unit tests still require a [cygwin](https://www.cygwin.com/) environment. Here are the hints how to get it properly installed:
+The unit tests require a [cygwin](https://www.cygwin.com/) environment.
+
+#### Cygwin Installation Hints
 
 You need at least `make` from cygwin. Cygwin also offers a `cmake`. Do **not** install the cygwin cmake.
 
@@ -115,8 +128,7 @@ Turning ACL off (noacl) for all mounts in cygwin fixes permissions troubles that
     C:/cygwin64      /          ntfs      override,binary,auto,noacl  0  0
     none             /cygdrive  cygdrive  binary,posix=0,user,noacl   0  0
 
-Enable native symlinks for Cygwin and git
------------------------------------------
+#### Enable native symlinks for Cygwin and git
 
 Cygwin will create proprietary files as placeholders by default instead of
 actually symlinking files. The placeholders later tell Cygwin where to resolve
@@ -141,12 +153,11 @@ And in Cygwin:
 
     ln -s source target
 
-Making the ICU database publically available
---------------------------------------------
+#### Making the ICU database publically available
 
 If you intend to use the machine for development purposes, it may be more practical to copy it to a common place:
 
-    cp 3rdParty/V8/V8-5.0.71.39/third_party/icu/source/data/in/icudtl.dat /cygdrive/c/Windows/icudt54l.dat
+    cd 3rdParty/V8/v*/third_party/icu/source/data/in && cp icudt*.dat /cygdrive/c/Windows/
 
 And configure your environment (yes this instruction remembers to the hitchhikers guide to the galaxy...) so that
 `ICU_DATA` points to `c:\\Windows`. You do that by opening the explorer,
@@ -156,50 +167,31 @@ And variable name: `ICU_DATA` to the value: `c:\\Windows`
 
 ![HowtoSetEnv](../assets/CompilingUnderWindows/SetEnvironmentVar.png)
 
-Running Unit tests (Optional)
----------------------------
+#### Running Unit tests
 
-You can then run the unit tests in the cygwin shell like that:
+You can then run the integration tests in the cygwin shell like that:
 
-    build64/bin/RelWithDebInfo/arangosh.exe \
+    Build64/bin/RelWithDebInfo/arangosh.exe \
     -c etc/relative/arangosh.conf \
     --log.level warning \
     --server.endpoint tcp://127.0.0.1:1024 \
     --javascript.execute UnitTests/unittest.js \
       -- \
       all \
-      --ruby c:/tools/ruby22/bin/ruby \
-      --rspec c:/tools/ruby22/bin/rspec \
+      --build Build64 \
       --buildType RelWithDebInfo \
       --skipNondeterministic true \
-      --skipTimeCritical true
+      --skipTimeCritical true \
       --skipBoost true \
       --skipGeo true
 
-Documentation (Optional)
-========================
-
-NodeJS *(needs to be run with Administrator privileges again)*:
-
-    choco install -y nodejs
-
-Gitbook:
-
-    npm install -g gitbook-cli
-
-Markdown-pp:
-
-    git clone https://github.com/triAGENS/markdown-pp.git
-    cd markdown-pp
-    python setup.py install
-
-Ditaa:
-
-    Download and install: http://ditaa.sourceforge.net/#download 
+Additional options `--ruby c:/tools/ruby25/bin/ruby` and `--rspec c:/tools/ruby25/bin/rspec`
+should be used only if Ruby is not in the *PATH*.
 
 **Authors**:
 [Frank Celler](https://github.com/fceller),
-[Wilfried Goesgens](https://github.com/dothebart) and
-[Simran Brucherseifer](https://github.com/Simran-B).
+[Wilfried Goesgens](https://github.com/dothebart),
+[Simran Brucherseifer](https://github.com/Simran-B) and
+[Vadim Kondratyev](https://github.com/KVS85).
 
 **Tags**: #windows

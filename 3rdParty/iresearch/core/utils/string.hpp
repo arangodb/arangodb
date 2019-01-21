@@ -129,17 +129,6 @@ NS_ROOT
 
 typedef std::basic_string<byte_type> bstring;
 
-template<typename T>
-inline std::basic_string<T>& oversize(
-  // 31 == 32 - 1: because std::basic_string reserves a \0 at the end
-  // 32 is the original default value used in bytes_builder
-  std::basic_string<T>& buf, size_t size = 31
-) {
-  buf.resize(size);
-  buf.resize(buf.capacity()); // use up the entire buffer
-  return buf;
-}
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class basic_string_ref
 //////////////////////////////////////////////////////////////////////////////
@@ -149,6 +138,9 @@ class basic_string_ref {
   typedef Traits traits_type;
   typedef Elem char_type;
 
+  // beware of performing comparison against NIL value,
+  // it may cause undefined behaviour in std::char_traits<Elem>
+  // (e.g. becuase of memcmp function)
   IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref NIL; // null string
   IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref EMPTY; // empty string
 
@@ -159,7 +151,7 @@ class basic_string_ref {
   // Constructs a string reference object from a ref and a size.
   basic_string_ref(const basic_string_ref& ref, size_t size) NOEXCEPT
     : data_(ref.data_), size_(size) {
-    assert(size <= ref.size_);
+    IRS_ASSERT(size <= ref.size_);
   }
 
   // Constructs a string reference object from a C string and a size.
@@ -181,9 +173,8 @@ class basic_string_ref {
     : data_(str.c_str()), size_(size) {
   }
 
-  const char_type& operator[](size_t i) const NOEXCEPT {
-    assert(i < size_);
-    return data_[i];
+  CONSTEXPR const char_type& operator[](size_t i) const NOEXCEPT {
+    return IRS_ASSERT(i < size_), data_[i];
   }
 
   // Returns the pointer to a C string.

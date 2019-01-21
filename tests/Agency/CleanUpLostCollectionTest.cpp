@@ -123,23 +123,9 @@ SECTION("clean up a lost collection when the leader is failed") {
     //        not empty: /arango/Current/Collections/database/collection/s99
     //        empty: /arango/Plan/Collections/database/collection/shards/s99
     //        old: /arango/Supervision/Health/leader/Status == "FAILED"
-    //  2. Transaction:
-    //    - Operation:
-    //        delete /arango/Current/Collections/database/collection/s16
-    //        push {
-    //            "creator": "supervision",
-    //            "jobId": "1",
-    //            "server": "s99",
-    //            "timeCreated": "2018-09-26T09:25:33Z",
-    //            "type": "cleanUpLostCollection"
-    //            }
-    //    - Preconditions:
-    //        not empty: /arango/Current/Collections/database/collection/s16
-    //        empty: /arango/Plan/Collections/database/collection/shards/s16
-    //        old: /arango/Supervision/Health/failed/Status == "FAILED"
 
     auto const& trxs = q->slice();
-    REQUIRE(trxs.length() == 2);
+    REQUIRE(trxs.length() == 1);
 
     auto const& trx1 = trxs[0];
     REQUIRE(trx1.length() == 2); // Operation and Precondition

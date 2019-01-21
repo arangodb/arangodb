@@ -35,5 +35,5 @@ FinalFeaturePhase::FinalFeaturePhase(ApplicationServer& server)
   startsAfter("Shutdown");
 }
 
-} // application_features
-} // arangodb
+}  // namespace application_features
+}  // namespace arangodb

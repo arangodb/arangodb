@@ -28,11 +28,11 @@
 #include "ApplicationFeatures/GreetingsPhase.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
-#include "RestServer/FileDescriptorsFeature.h"
-#include "Scheduler/SchedulerFeature.h"
-#include "Scheduler/Scheduler.h"
 
 #include "catch.hpp"
+
+#include <condition_variable>
+#include <mutex>
 
 using namespace arangodb::futures;
 
@@ -74,56 +74,6 @@ namespace {
   Future<int> onErrorHelperGeneric(const std::exception&) {
     return makeFuture(20);
   }
-  
-  /*struct SchedulerTestSetup {
-    arangodb::application_features::ApplicationServer server;
-    
-    SchedulerTestSetup() : server(nullptr, nullptr) {
-      using namespace arangodb::application_features;
-      std::vector<ApplicationFeature*> features;
-      
-      features.emplace_back(new GreetingsFeaturePhase(server, false));
-      features.emplace_back(new arangodb::FileDescriptorsFeature(server));
-      features.emplace_back(new arangodb::SchedulerFeature(server));
-      
-      for (auto& f : features) {
-        ApplicationServer::server->addFeature(f);
-      }
-      ApplicationServer::server->setupDependencies(false);
-      
-      ApplicationServer::setStateUnsafe(ServerState::IN_WAIT);
-      
-      auto orderedFeatures = server.getOrderedFeatures();
-      for (auto& f : orderedFeatures) {
-        f->prepare();
-      }
-      
-      for (auto& f : orderedFeatures) {
-        f->start();
-      }
-      
-    }
-    
-    ~SchedulerTestSetup() {
-      using namespace arangodb::application_features;
-      ApplicationServer::setStateUnsafe(ServerState::IN_STOP);
-      
-      auto orderedFeatures = server.getOrderedFeatures();
-      for (auto& f : orderedFeatures) {
-        f->beginShutdown();
-      }
-      for (auto& f : orderedFeatures) {
-        f->stop();
-      }
-      for (auto& f : orderedFeatures) {
-        f->unprepare();
-      }
-      
-      arangodb::application_features::ApplicationServer::server = nullptr;
-    }
-    
-    std::vector<std::unique_ptr<arangodb::application_features::ApplicationFeature*>> features;
-  };*/
 } // namespace
 
 
@@ -289,8 +239,8 @@ REQUIRE_THROWS(STMT); \
     DOIT(f.hasException());
     DOIT(f.get());
     //DOIT(std::move(f).then());
-    DOIT(std::move(f).thenValue([](int&&) -> void {}));
-    DOIT(std::move(f).thenValue([](auto&&) -> void {}));
+    DOIT(std::move(f).thenValue([](int&&) noexcept -> void {}));
+    DOIT(std::move(f).thenValue([](auto&&) noexcept -> void {}));
   
 #undef DOIT
 }
@@ -396,7 +346,7 @@ theFlag = false;       \
     {
       auto f = makeFuture()
       .thenValue([](Unit){ throw std::logic_error("abc"); })
-      .thenError<std::logic_error>([&](const std::logic_error& /* e */) { flag(); });
+      .thenError<std::logic_error>([&](const std::logic_error& /* e */) noexcept { flag(); });
       EXPECT_FLAG();
       REQUIRE_NOTHROW(f.get());
     }
@@ -405,7 +355,7 @@ theFlag = false;       \
     {
       auto f = makeFuture()
       .thenValue([](Unit){ throw eggs; })
-      .thenError<eggs_t>([&](auto const& /* e */) { flag(); });
+      .thenError<eggs_t>([&](auto const& /* e */) noexcept { flag(); });
       EXPECT_FLAG();
       REQUIRE_NOTHROW(f.get());
     }
@@ -426,7 +376,7 @@ theFlag = false;       \
     {
       auto f = makeFuture()
       .thenValue([](Unit){ throw eggs; })
-      .thenError<eggs_t>([&](eggs_t /* e */) {
+      .thenError<eggs_t>([&](eggs_t /* e */) noexcept {
         flag();
       });
       EXPECT_FLAG();
@@ -465,7 +415,7 @@ theFlag = false;       \
 //
     // Non-exceptions
     {
-      auto f = makeFuture().thenValue([](Unit){ throw - 1; }).thenError<int>([&](int /* e */) {
+      auto f = makeFuture().thenValue([](Unit){ throw - 1; }).thenError<int>([&](int /* e */) noexcept {
         flag();
       });
       EXPECT_FLAG();
@@ -485,7 +435,7 @@ theFlag = false;       \
     {
       auto f = makeFuture()
       .thenValue([](Unit){ throw eggs; })
-      .thenError<eggs_t&>([&](eggs_t& /* e */) mutable { flag(); });
+      .thenError<eggs_t&>([&](eggs_t& /* e */) mutable noexcept { flag(); });
       EXPECT_FLAG();
       REQUIRE_NOTHROW(f.get());
     }
@@ -525,7 +475,7 @@ theFlag = false;       \
 
     // No throw
     {
-      auto f = makeFuture().thenValue([](Unit) { return 42; }).thenError<eggs_t&>([&](eggs_t& /* e */) {
+      auto f = makeFuture().thenValue([](Unit) noexcept { return 42; }).thenError<eggs_t&>([&](eggs_t& /* e */) noexcept {
         flag();
         return -1;
       });
@@ -534,7 +484,7 @@ theFlag = false;       \
     }
 
     {
-      auto f = makeFuture().thenValue([](Unit){ return 42; }).thenError<eggs_t&>([&](eggs_t& /* e */) {
+      auto f = makeFuture().thenValue([](Unit) noexcept { return 42; }).thenError<eggs_t&>([&](eggs_t& /* e */) {
         flag();
         return makeFuture<int>(-1);
       });
@@ -546,7 +496,7 @@ theFlag = false;       \
     {
       auto f = makeFuture()
       .thenValue([](Unit) { throw eggs; })
-      .thenError<std::runtime_error&>([&](std::runtime_error& /* e */) { flag(); });
+      .thenError<std::runtime_error&>([&](std::runtime_error& /* e */) noexcept { flag(); });
       EXPECT_NO_FLAG();
       REQUIRE_THROWS_AS(f.get(), eggs_t);
     }
@@ -566,7 +516,7 @@ theFlag = false;       \
     {
       auto f = makeFuture()
       .thenValue([](Unit) -> int { throw eggs; })
-      .thenError<eggs_t&>([&](eggs_t& /* e */) { return 42; });
+      .thenError<eggs_t&>([&](eggs_t& /* e */) noexcept { return 42; });
       REQUIRE(42 == f.get());
     }
 
@@ -856,13 +806,13 @@ SECTION("makeFutureNoThrow") {
 
 SECTION("invokeCallbackReturningValueAsRvalue") {
   struct Foo {
-    int operator()(int x) & {
+    int operator()(int x) & noexcept {
       return x + 1;
     }
-    int operator()(int x) const& {
+    int operator()(int x) const& noexcept {
       return x + 2;
     }
-    int operator()(int x) && {
+    int operator()(int x) && noexcept {
       return x + 3;
     }
   };

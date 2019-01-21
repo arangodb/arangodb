@@ -26,7 +26,6 @@
 
 #include "shared.hpp"
 #include "std.hpp"
-#include <type_traits>
 
 NS_ROOT
 

@@ -31,6 +31,41 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
+namespace {
+void setCollator(std::string const& language, void* icuDataPtr) {
+  using arangodb::basics::Utf8Helper;
+  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(language, icuDataPtr)) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "error setting collator language to '" << language << "'";
+    FATAL_ERROR_EXIT();
+  }
+}
+
+void setLocale(Locale& locale) {
+  using arangodb::basics::Utf8Helper;
+  std::string languageName;
+
+  if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
+    languageName =
+        std::string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" +
+                    Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
+    locale = Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str(),
+                    Utf8Helper::DefaultUtf8Helper.getCollatorCountry().c_str()
+                    /*
+                       const   char * variant  = 0,
+                       const   char * keywordsAndValues = 0
+                    */
+    );
+  } else {
+    locale = Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str());
+    languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
+  }
+
+  LOG_TOPIC(DEBUG, arangodb::Logger::CONFIG)
+      << "using default language '" << languageName << "'";
+}
+}  // namespace
+
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
@@ -38,9 +73,7 @@ namespace arangodb {
 
 static LanguageFeature* Instance = nullptr;
 
-LanguageFeature::LanguageFeature(
-    application_features::ApplicationServer& server
-)
+LanguageFeature::LanguageFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Language"),
       _locale(),
       _binaryPath(server.getBinaryPath()),
@@ -56,22 +89,21 @@ LanguageFeature::~LanguageFeature() {
   }
 }
 
-LanguageFeature* LanguageFeature::instance() {
-  return Instance;
-}
+LanguageFeature* LanguageFeature::instance() { return Instance; }
 
-void LanguageFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  options->addHiddenOption("--default-language", "ISO-639 language code",
-                           new StringParameter(&_language));
+void LanguageFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
+  options->addOption("--default-language", "ISO-639 language code",
+                     new StringParameter(&_language),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
 void* LanguageFeature::prepareIcu(std::string const& binaryPath,
                                   std::string const& binaryExecutionPath,
-                                  std::string& path,
-                                  std::string const& binaryName) {
+                                  std::string& path, std::string const& binaryName) {
   std::string fn("icudtl.dat");
-  TRI_GETENV("ICU_DATA", path);
+  if (TRI_GETENV("ICU_DATA", path)) {
+    path = FileUtils::buildFilename(path, fn);
+  }
   if (path.empty() || !TRI_IsRegularFile(path.c_str())) {
     if (!path.empty()) {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)
@@ -99,8 +131,9 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
       std::string msg = std::string("cannot locate '") + path +
                         "'; please make sure it is available; "
                         "the variable ICU_DATA='";
-      if (getenv("ICU_DATA") != nullptr) {
-        msg += getenv("ICU_DATA");
+      std::string icupath;
+      if (TRI_GETENV("ICU_DATA", icupath)) {
+        msg += icupath;
       }
       msg += "' should point to the directory containing '" + fn + "'";
 
@@ -113,7 +146,7 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
 #ifndef _WIN32
       setenv("ICU_DATA", icu_path.c_str(), 1);
 #else
-      UnicodeString uicuEnv(icu_path.c_str(), (uint16_t) icu_path.length());
+      UnicodeString uicuEnv(icu_path.c_str(), (uint16_t)icu_path.length());
       SetEnvironmentVariableW(L"ICU_DATA", uicuEnv.getTerminatedBuffer());
 #endif
     }
@@ -122,9 +155,8 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
   void* icuDataPtr = TRI_SlurpFile(path.c_str(), nullptr);
 
   if (icuDataPtr == nullptr) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "failed to load '" << fn << "' at '" << path << "' - "
-        << TRI_last_error();
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "failed to load '" << fn << "' at '"
+                                              << path << "' - " << TRI_last_error();
     FATAL_ERROR_EXIT();
   }
   return icuDataPtr;
@@ -135,38 +167,30 @@ void LanguageFeature::prepare() {
   auto context = ArangoGlobalContext::CONTEXT;
   std::string binaryExecutionPath = context->getBinaryPath();
   std::string binaryName = context->binaryName();
-  _icuDataPtr = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p,
-                                            binaryName);
+  _icuDataPtr = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p, binaryName);
 
-  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_language,
-                                                         _icuDataPtr)) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "error initializing ICU with the contents of '" << p << "'";
-    FATAL_ERROR_EXIT();
-  }
+  ::setCollator(_language, _icuDataPtr);
 }
 
-void LanguageFeature::start() {
-  std::string languageName;
+void LanguageFeature::start() { ::setLocale(_locale); }
 
+std::string LanguageFeature::getCollatorLanguage() const {
+  using arangodb::basics::Utf8Helper;
+  std::string languageName;
   if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
     languageName =
         std::string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" +
                     Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
-    _locale = Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str(),
-                     Utf8Helper::DefaultUtf8Helper.getCollatorCountry().c_str()
-                     /* 
-                        const   char * variant  = 0,
-                        const   char * keywordsAndValues = 0
-                     */
-                     );
   } else {
-    _locale = Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str());
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
-
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
-      << "using default language '" << languageName << "'";
+  return languageName;
 }
 
-} // arangodb
+void LanguageFeature::resetDefaultLanguage(std::string const& language) {
+  _language = language;
+  ::setCollator(_language, _icuDataPtr);
+  ::setLocale(_locale);
+}
+
+}  // namespace arangodb

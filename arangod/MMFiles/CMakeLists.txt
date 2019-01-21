@@ -21,8 +21,10 @@ set(MMFILES_SOURCES
   MMFiles/MMFilesEdgeIndex.cpp
   MMFiles/MMFilesEngine.cpp
   MMFiles/MMFilesExportCursor.cpp
+  MMFiles/MMFilesIndex.cpp
   MMFiles/MMFilesIndexElement.cpp
   MMFiles/MMFilesIndexFactory.cpp
+  MMFiles/MMFilesIndexLookupContext.cpp
   MMFiles/MMFilesLogfileManager.cpp
   MMFiles/MMFilesFulltextIndex.cpp
   MMFiles/MMFilesGeoIndex.cpp
@@ -34,6 +36,7 @@ set(MMFILES_SOURCES
   MMFiles/MMFilesPersistentIndexKeyComparator.cpp
   MMFiles/MMFilesPrimaryIndex.cpp
   MMFiles/MMFilesRemoverThread.cpp
+  MMFiles/MMFilesRestCollectionHandler.cpp
   MMFiles/MMFilesRestExportHandler.cpp
   MMFiles/MMFilesRestHandlers.cpp
   MMFiles/MMFilesRestReplicationHandler.cpp

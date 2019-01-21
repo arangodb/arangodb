@@ -44,8 +44,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
 
-ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
-                                     ShortestPathNode const* ep)
+ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine, ShortestPathNode const* ep)
     : ExecutionBlock(engine, ep),
       _vertexVar(nullptr),
       _vertexReg(ExecutionNode::MaxRegisterId),
@@ -91,17 +90,15 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
   _path = std::make_unique<arangodb::graph::ShortestPathResult>();
 
   if (_opts->useWeight()) {
-    _finder.reset(
-        new arangodb::graph::AttributeWeightShortestPathFinder(_opts));
+    _finder.reset(new arangodb::graph::AttributeWeightShortestPathFinder(_opts));
   } else {
-    _finder.reset(
-        new arangodb::graph::ConstantWeightShortestPathFinder(_opts));
+    _finder.reset(new arangodb::graph::ConstantWeightShortestPathFinder(_opts));
   }
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
     _engines = ep->engines();
   }
-  
+
   auto varInfo = getPlanNode()->getRegisterPlan()->varInfo;
 
   if (usesVertexOutput()) {
@@ -123,9 +120,8 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
 std::pair<ExecutionState, arangodb::Result> ShortestPathBlock::initializeCursor(
     AqlItemBlock* items, size_t pos) {
   auto res = ExecutionBlock::initializeCursor(items, pos);
-  
-  if (res.first == ExecutionState::WAITING ||
-      !res.second.ok()) {
+
+  if (res.first == ExecutionState::WAITING || !res.second.ok()) {
     // If we need to wait or get an error we return as is.
     return res;
   }
@@ -153,21 +149,20 @@ std::pair<ExecutionState, Result> ShortestPathBlock::shutdown(int errorCode) {
     if (cc != nullptr) {
       // nullptr only happens on controlled server shutdown
       std::string const url(
-        "/_db/"
-        + arangodb::basics::StringUtils::urlEncode(_trx->vocbase().name())
-        + "/_internal/traverser/"
-      );
+          "/_db/" + arangodb::basics::StringUtils::urlEncode(_trx->vocbase().name()) +
+          "/_internal/traverser/");
 
       for (auto const& it : *_engines) {
         arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
         std::unordered_map<std::string, std::string> headers;
-        auto res = cc->syncRequest(
-            coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
-            url + arangodb::basics::StringUtils::itoa(it.second), "", headers,
-            30.0);
+        auto res = cc->syncRequest(coordTransactionID, "server:" + it.first,
+                                   RequestType::DELETE_REQ,
+                                   url + arangodb::basics::StringUtils::itoa(it.second),
+                                   "", headers, 30.0);
 
         if (res->status != CL_COMM_SENT) {
-          // Note If there was an error on server side we do not have CL_COMM_SENT
+          // Note If there was an error on server side we do not have
+          // CL_COMM_SENT
           std::string message("Could not destroy all traversal engines");
 
           if (!res->errorMessage.empty()) {
@@ -278,8 +273,7 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
   return hasPath;
 }
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-ShortestPathBlock::getSome(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ShortestPathBlock::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
   RegisterId const nrInRegs = getNrInputRegisters();
   RegisterId const nrOutRegs = getNrOutputRegisters();
@@ -339,12 +333,10 @@ ShortestPathBlock::getSome(size_t atMost) {
 
     for (size_t j = 0; j < toSend; j++) {
       if (usesVertexOutput()) {
-        res->setValue(j, _vertexReg,
-            _path->vertexToAqlValue(_opts->cache(), _posInPath));
+        res->setValue(j, _vertexReg, _path->vertexToAqlValue(_opts->cache(), _posInPath));
       }
       if (usesEdgeOutput()) {
-        res->setValue(j, _edgeReg,
-            _path->edgeToAqlValue(_opts->cache(), _posInPath));
+        res->setValue(j, _edgeReg, _path->edgeToAqlValue(_opts->cache(), _posInPath));
       }
       if (j > 0) {
         // re-use already copied aqlvalues

@@ -9,11 +9,6 @@ R"=(
               "servers": [
                 "leader"
               ]
-            },
-            "s16": {
-              "servers": [
-                "failed"
-              ]
             }
           },
           "other": {
@@ -40,9 +35,6 @@ R"=(
         "leader": {
           "Status": "FAILED"
         },
-        "failed": {
-          "Status": "FAILED"
-        },
         "otherleader": {
           "Status": "GOOD"
         }
@@ -57,9 +49,6 @@ R"=(
       "MapUniqueToShortID": {
         "leader": {
           "ShortName": "leader"
-        },
-        "failed": {
-          "ShortName": "failed"
         },
         "otherleader": {
           "ShortName": "otherleader"

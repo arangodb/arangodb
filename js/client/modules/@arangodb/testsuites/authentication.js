@@ -72,6 +72,8 @@ function authenticationClient (options) {
   print(CYAN + 'Client Authentication tests...' + RESET);
   let testCases = tu.scanTestPaths(testPaths.authentication);
 
+  testCases = tu.splitBuckets(options, testCases);
+
   return tu.performTests(options, testCases, 'authentication', tu.runInArangosh, {
     'server.authentication': 'true',
     'server.jwt-secret': 'haxxmann',
@@ -81,6 +83,9 @@ function authenticationClient (options) {
 
 function authenticationServer (options) {
   let testCases = tu.scanTestPaths(testPaths.authentication_server);
+
+  testCases = tu.splitBuckets(options, testCases);
+
   if ((testCases.length === 0) || (options.skipAuthentication === true)) {
     print('skipping Authentication tests!');
     return {

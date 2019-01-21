@@ -1,0 +1,23 @@
+
+# Copyright (C) 2008-2018 Lorenzo Caminiti
+# Distributed under the Boost Software License, Version 1.0 (see accompanying
+# file LICENSE_1_0.txt or a copy at http://www.boost.org/LICENSE_1_0.txt).
+# See: http://www.boost.org/doc/libs/release/libs/contract/doc/html/index.html
+
+project boost/contract
+    : source-location ../src
+    : requirements
+        <link>shared:<define>BOOST_CONTRACT_DYN_LINK
+        <link>static:<define>BOOST_CONTRACT_STATIC_LINK
+        <threading>single:<define>BOOST_CONTRACT_DISABLE_THREADS
+    : usage-requirements # Independent from requirements above (need to repeat).
+        <link>shared:<define>BOOST_CONTRACT_DYN_LINK
+        <link>static:<define>BOOST_CONTRACT_STATIC_LINK
+        <threading>single:<define>BOOST_CONTRACT_DISABLE_THREADS
+        <library>/boost//system # For this lib as header-only.
+;
+
+# If lib as header-only, none of following will be used.
+lib boost_contract : contract.cpp : <link>shared <library>/boost//system ;
+lib boost_contract : contract.cpp : <link>static <library>/boost//system ;
+

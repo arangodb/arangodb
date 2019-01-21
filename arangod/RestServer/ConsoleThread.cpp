@@ -45,8 +45,7 @@ using namespace arangodb::rest;
 V8LineEditor* ConsoleThread::serverConsole = nullptr;
 Mutex ConsoleThread::serverConsoleMutex;
 
-ConsoleThread::ConsoleThread(ApplicationServer* applicationServer,
-                             TRI_vocbase_t* vocbase)
+ConsoleThread::ConsoleThread(ApplicationServer* applicationServer, TRI_vocbase_t* vocbase)
     : Thread("Console"),
       _applicationServer(applicationServer),
       _context(nullptr),
@@ -150,7 +149,8 @@ start_color_print('arangodb', true);
     sigaddset(&set, SIGINT);
 
     if (pthread_sigmask(SIG_UNBLOCK, &set, nullptr) < 0) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to install signal handler";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "unable to install signal handler";
     }
 #endif
 
@@ -162,12 +162,11 @@ start_color_print('arangodb', true);
       MUTEX_LOCKER(mutexLocker, serverConsoleMutex);
       serverConsole = &console;
     }
-  
+
     bool lastEmpty = false;
 
     while (!isStopping() && !_userAborted.load()) {
-      if (nrCommands >= gcInterval ||
-          V8PlatformFeature::isOutOfMemory(isolate)) {
+      if (nrCommands >= gcInterval || V8PlatformFeature::isOutOfMemory(isolate)) {
         TRI_RunGarbageCollectionV8(isolate, 0.5);
         nrCommands = 0;
 
@@ -182,7 +181,7 @@ start_color_print('arangodb', true);
 
       {
         MUTEX_LOCKER(mutexLocker, serverConsoleMutex);
-        input = console.prompt("arangod> ", "arangod", eof);
+        input = console.prompt("arangod> ", "arangod>", eof);
       }
 
       if (eof == ShellBase::EOF_FORCE_ABORT || (eof == ShellBase::EOF_ABORT && lastEmpty)) {

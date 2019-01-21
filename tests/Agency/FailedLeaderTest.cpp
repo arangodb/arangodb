@@ -897,37 +897,23 @@ SECTION("when everything is finished there should be proper cleanup") {
   REQUIRE(builder);
   Node agency = createNodeFromBuilder(*builder);
 
-  size_t numWrites = 0;
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("Write: " << q->slice().toJson());
-    numWrites++;
 
-    if (numWrites == 1) {
-      REQUIRE(std::string(q->slice().typeName()) == "array" );
-      REQUIRE(std::string(q->slice()[0][0].typeName()) == "object");
-      REQUIRE(q->slice()[0][0].length() == 1);
+    REQUIRE(std::string(q->slice().typeName()) == "array" );
+    REQUIRE(q->slice().length() == 1);
+    REQUIRE(std::string(q->slice()[0].typeName()) == "array");
+    REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+    REQUIRE(std::string(q->slice()[0][0].typeName()) == "object");
 
-      auto writes = q->slice()[0][0];
-      REQUIRE(std::string(writes.get("/arango/Target/FailedServers/" + SHARD_LEADER).typeName()) == "object");
-      REQUIRE(writes.get("/arango/Target/FailedServers/" + SHARD_LEADER).get("op").copyString() == "erase");
-      REQUIRE(writes.get("/arango/Target/FailedServers/" + SHARD_LEADER).get("val").copyString() == SHARD);
-      return fakeWriteResult;
-    } else {
-      REQUIRE(std::string(q->slice().typeName()) == "array" );
-      REQUIRE(q->slice().length() == 1);
-      REQUIRE(std::string(q->slice()[0].typeName()) == "array");
-      REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
-      REQUIRE(std::string(q->slice()[0][0].typeName()) == "object");
-
-      auto writes = q->slice()[0][0];
-      REQUIRE(std::string(writes.get("/arango/Supervision/Shards/" + SHARD).typeName()) == "object");
-      REQUIRE(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() == "delete");
-      REQUIRE(std::string(writes.get("/arango/Target/Pending/1").get("op").typeName()) == "string");
-      CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
-      CHECK(std::string(writes.get("/arango/Target/Finished/1").typeName()) == "object");
-      return fakeWriteResult;
-    }
+    auto writes = q->slice()[0][0];
+    REQUIRE(std::string(writes.get("/arango/Supervision/Shards/" + SHARD).typeName()) == "object");
+    REQUIRE(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() == "delete");
+    REQUIRE(std::string(writes.get("/arango/Target/Pending/1").get("op").typeName()) == "string");
+    CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
+    CHECK(std::string(writes.get("/arango/Target/Finished/1").typeName()) == "object");
+    return fakeWriteResult;
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();

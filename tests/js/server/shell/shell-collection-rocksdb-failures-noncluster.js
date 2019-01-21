@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertEqual, assertTypeOf, assertNotEqual, fail, assertFalse */
+/*global assertEqual, assertTrue, assertNull, fail, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
@@ -150,9 +150,7 @@ function CollectionTruncateFailuresSuite() {
         assertEqual(e.errorNum, ERRORS.ERROR_DEBUG.code);
       }
 
-      // All docments should be removed through intermediate commits.
-      // We have two packs that fill up those commits.
-      // Now validate that we endup with an empty collection.
+      // all commits failed, no documents removed
       assertEqual(c.count(), 20000);
 
       // Test Primary
@@ -226,9 +224,7 @@ function CollectionTruncateFailuresSuite() {
         assertEqual(e.errorNum, ERRORS.ERROR_DEBUG.code);
       }
 
-      // All docments should be removed through intermediate commits.
-      // We have two packs that fill up those commits.
-      // Now validate that we endup with an empty collection.
+      // At 10k removals a intermediate commit happens, then a fail
       assertEqual(c.count(), 10000);
 
       // Test Primary
@@ -298,12 +294,102 @@ function CollectionTruncateFailuresSuite() {
   };
 }
 
+function IntermediateCommitFailureSuite() {
+  'use strict';
+  const cn = "UnitTestsIntermediate";
+  let c;
+  const cleanUp = () => {
+    internal.debugClearFailAt();
+    try {
+      db._drop(cn);
+    } catch(_) { }
+  };
+
+  const docs = [];
+  for (let i = 0; i < 10000; ++i) {
+    docs.push({value: i % 250, value2: i % 100});
+  }
+
+  return {
+
+    tearDown: cleanUp,
+
+    setUp: function () {
+      cleanUp();
+      c = db._create(cn);
+      c.insert(docs);
+    },
+
+    testFailOnRemoveAql: function () {
+      internal.debugSetFailAt("FailBeforeIntermediateCommit");
+      try {
+        db._query("FOR doc IN @@cn REMOVE doc IN @@cn", { "@cn" : cn }, { intermediateCommitCount: 10000 });
+        fail();
+      } catch (e) {
+        // Validate that we died with debug
+        assertEqual(e.errorNum, ERRORS.ERROR_DEBUG.code);
+      }
+
+      assertEqual(c.count(), 10000);
+      assertEqual(c.toArray().length, 10000);
+    },
+    
+    testFailOnUpdateAql: function () {
+      internal.debugSetFailAt("FailBeforeIntermediateCommit");
+      try {
+        db._query("FOR doc IN @@cn UPDATE doc WITH { aha: 1 } IN @@cn", { "@cn" : cn }, { intermediateCommitCount: 10000 });
+        fail();
+      } catch (e) {
+        // Validate that we died with debug
+        assertEqual(e.errorNum, ERRORS.ERROR_DEBUG.code);
+      }
+
+      assertEqual(c.count(), 10000);
+      assertEqual(c.toArray().length, 10000);
+ 
+      assertNull(c.firstExample({ aha: 1 }));
+    },
+    
+    testFailOnReplaceAql: function () {
+      internal.debugSetFailAt("FailBeforeIntermediateCommit");
+      try {
+        db._query("FOR doc IN @@cn REPLACE doc WITH { aha: 1 } IN @@cn", { "@cn" : cn }, { intermediateCommitCount: 10000 });
+        fail();
+      } catch (e) {
+        // Validate that we died with debug
+        assertEqual(e.errorNum, ERRORS.ERROR_DEBUG.code);
+      }
+
+      assertEqual(c.count(), 10000);
+      assertEqual(c.toArray().length, 10000);
+ 
+      assertNull(c.firstExample({ aha: 1 }));
+    },
+    
+    testFailOnInsertAql: function () {
+      internal.debugSetFailAt("FailBeforeIntermediateCommit");
+      try {
+        db._query("FOR i IN 1..10000 INSERT {} IN @@cn", { "@cn" : cn }, { intermediateCommitCount: 10000 });
+        fail();
+      } catch (e) {
+        // Validate that we died with debug
+        assertEqual(e.errorNum, ERRORS.ERROR_DEBUG.code);
+      }
+
+      assertEqual(c.count(), 10000);
+      assertEqual(c.toArray().length, 10000);
+    },
+
+  };
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
 if (internal.debugCanUseFailAt()) {
   jsunity.run(CollectionTruncateFailuresSuite);
+  jsunity.run(IntermediateCommitFailureSuite);
 }
 
 return jsunity.done();

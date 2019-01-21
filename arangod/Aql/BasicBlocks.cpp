@@ -33,7 +33,7 @@ SingletonBlock::SingletonBlock(ExecutionEngine* engine, SingletonNode const* ep)
     : ExecutionBlock(engine, ep) {
   auto en = ExecutionNode::castTo<SingletonNode const*>(getPlanNode());
   auto const& registerPlan = en->getRegisterPlan()->varInfo;
-  std::unordered_set<Variable const*> const& varsUsedLater = en->getVarsUsedLater();
+  arangodb::HashSet<Variable const*> const& varsUsedLater = en->getVarsUsedLater();
 
   for (auto const& it : varsUsedLater) {
     auto it2 = registerPlan.find(it->id);
@@ -43,11 +43,11 @@ SingletonBlock::SingletonBlock(ExecutionEngine* engine, SingletonNode const* ep)
     }
   }
 }
-  
+
 /// @brief initializeCursor, store a copy of the register values coming from
 /// above
-std::pair<ExecutionState, arangodb::Result> SingletonBlock::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, arangodb::Result> SingletonBlock::initializeCursor(AqlItemBlock* items,
+                                                                             size_t pos) {
   // Create a deep copy of the register values given to us:
   if (items != nullptr) {
     // build a whitelist with all the registers that we will copy from above
@@ -73,8 +73,7 @@ std::pair<ExecutionState, arangodb::Result> SingletonBlock::getOrSkipSome(
     try {
       if (_inputRegisterValues != nullptr) {
         skipped++;
-        for (RegisterId reg = 0; reg < _inputRegisterValues->getNrRegs();
-             ++reg) {
+        for (RegisterId reg = 0; reg < _inputRegisterValues->getNrRegs(); ++reg) {
           if (_whitelist.find(reg) == _whitelist.end()) {
             continue;
           }
@@ -118,11 +117,10 @@ std::pair<ExecutionState, arangodb::Result> SingletonBlock::getOrSkipSome(
 }
 
 FilterBlock::FilterBlock(ExecutionEngine* engine, FilterNode const* en)
-    : ExecutionBlock(engine, en), 
+    : ExecutionBlock(engine, en),
       _inReg(ExecutionNode::MaxRegisterId),
       _collector(&engine->_itemBlockManager),
       _inflight(0) {
-
   auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
   TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
   _inReg = it->second.registerId;
@@ -131,12 +129,12 @@ FilterBlock::FilterBlock(ExecutionEngine* engine, FilterNode const* en)
 
 FilterBlock::~FilterBlock() {}
 
-std::pair<ExecutionState, arangodb::Result> FilterBlock::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, arangodb::Result> FilterBlock::initializeCursor(AqlItemBlock* items,
+                                                                          size_t pos) {
   _inflight = 0;
   return ExecutionBlock::initializeCursor(items, pos);
 }
-  
+
 /// @brief internal function to actually decide if the document should be used
 bool FilterBlock::takeItem(AqlItemBlock* items, size_t index) const {
   return items->getValueReference(index, _inReg).toBoolean();
@@ -150,8 +148,7 @@ std::pair<ExecutionState, bool> FilterBlock::getBlock(size_t atMost) {
       return {_upstreamState, false};
     }
     auto res = ExecutionBlock::getBlock(atMost);
-    if (res.first == ExecutionState::WAITING ||
-        !res.second) {
+    if (res.first == ExecutionState::WAITING || !res.second) {
       return res;
     }
 
@@ -182,7 +179,7 @@ std::pair<ExecutionState, bool> FilterBlock::getBlock(size_t atMost) {
 
     _buffer.pop_front();  // Block was useless, just try again
     returnBlock(cur);     // free this block
-  
+
     throwIfKilled();  // check if we were aborted
   }
 
@@ -235,8 +232,7 @@ std::pair<ExecutionState, arangodb::Result> FilterBlock::getOrSkipSome(
       // The current block fits into our result, but it is already
       // half-eaten or needs to be copied anyway:
       if (!skipping) {
-        std::unique_ptr<AqlItemBlock> more(
-            cur->steal(_chosen, _pos, _chosen.size()));
+        std::unique_ptr<AqlItemBlock> more(cur->steal(_chosen, _pos, _chosen.size()));
 
         TRI_IF_FAILURE("FilterBlock::getOrSkipSome2") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -281,8 +277,8 @@ std::pair<ExecutionState, arangodb::Result> FilterBlock::getOrSkipSome(
   return {getHasMoreState(), TRI_ERROR_NO_ERROR};
 }
 
-std::pair<ExecutionState, arangodb::Result> LimitBlock::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, arangodb::Result> LimitBlock::initializeCursor(AqlItemBlock* items,
+                                                                         size_t pos) {
   _state = State::INITFULLCOUNT;
   _count = 0;
   _remainingOffset = _offset;
@@ -339,8 +335,7 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::getOrSkipSome(
         }
         AqlItemBlock* res = nullptr;
         TRI_ASSERT(_limitSkipped == 0);
-        auto state = ExecutionBlock::getOrSkipSome(atMost, skipping, res,
-          _limitSkipped);
+        auto state = ExecutionBlock::getOrSkipSome(atMost, skipping, res, _limitSkipped);
         TRI_ASSERT(_result == nullptr);
         _result.reset(res);
         if (state.first == ExecutionState::WAITING) {
@@ -379,8 +374,7 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::getOrSkipSome(
             // We're only counting here, so skip. Using the DefaultBatchSize
             // instead of atMost because we need to skip everything if we have
             // to calculate fullCount.
-            auto res = ExecutionBlock::getOrSkipSome(DefaultBatchSize(), true,
-                                                     ignore, skipped);
+            auto res = ExecutionBlock::getOrSkipSome(DefaultBatchSize(), true, ignore, skipped);
             TRI_ASSERT(ignore == nullptr);
 
             ExecutionState state = res.first;
@@ -415,10 +409,9 @@ ExecutionState LimitBlock::getHasMoreState() {
   return ExecutionState::HASMORE;
 }
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ReturnBlock::getSome(
-    size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ReturnBlock::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
-  
+
   auto ep = ExecutionNode::castTo<ReturnNode const*>(getPlanNode());
 
   auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atMost);
@@ -434,7 +427,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ReturnBlock::getSome(
 
   if (_returnInheritedResults) {
     if (ep->_count) {
-    _engine->_stats.count += static_cast<int64_t>(res.second->size());
+      _engine->_stats.count += static_cast<int64_t>(res.second->size());
     }
     traceGetSomeEnd(res.second.get(), res.first);
     return res;
@@ -474,7 +467,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ReturnBlock::getSome(
       }
     }
   }
-        
+
   if (ep->_count) {
     _engine->_stats.count += static_cast<int64_t>(n);
   }
@@ -497,16 +490,16 @@ RegisterId ReturnBlock::returnInheritedResults() {
 }
 
 /// @brief initializeCursor, only call base
-std::pair<ExecutionState, arangodb::Result> NoResultsBlock::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, arangodb::Result> NoResultsBlock::initializeCursor(AqlItemBlock* items,
+                                                                             size_t pos) {
   _done = true;
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::pair<ExecutionState, arangodb::Result> NoResultsBlock::getOrSkipSome(
-    size_t,  // atMost
-    bool,    // skipping
-    AqlItemBlock*& result, size_t& skipped) {
+std::pair<ExecutionState, arangodb::Result> NoResultsBlock::getOrSkipSome(size_t,  // atMost
+                                                                          bool,  // skipping
+                                                                          AqlItemBlock*& result,
+                                                                          size_t& skipped) {
   TRI_ASSERT(result == nullptr && skipped == 0);
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }

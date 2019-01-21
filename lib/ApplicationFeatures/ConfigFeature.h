@@ -29,11 +29,8 @@ namespace arangodb {
 
 class ConfigFeature final : public application_features::ApplicationFeature {
  public:
-  ConfigFeature(
-    application_features::ApplicationServer& server,
-    std::string const& progname,
-    std::string const& configFilename = ""
-  );
+  ConfigFeature(application_features::ApplicationServer& server, std::string const& progname,
+                std::string const& configFilename = "");
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void loadOptions(std::shared_ptr<options::ProgramOptions>,
@@ -45,12 +42,11 @@ class ConfigFeature final : public application_features::ApplicationFeature {
   bool _checkConfiguration;
 
   void loadConfigFile(std::shared_ptr<options::ProgramOptions>,
-                      std::string const& progname,
-                      char const* binaryPath);
+                      std::string const& progname, char const* binaryPath);
 
   std::string _progname;
 };
 
-}
+}  // namespace arangodb
 
 #endif

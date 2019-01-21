@@ -40,7 +40,7 @@ class IRESEARCH_API by_same_position : public filter {
   typedef terms_t::const_iterator const_iterator;
 
   DECLARE_FILTER_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   // returns set of features required for filter 
   static const flags& features();

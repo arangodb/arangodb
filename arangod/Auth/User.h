@@ -43,18 +43,18 @@ class User {
   friend class UserManager;
 
  public:
-  static User newUser(std::string const& user, std::string const& pass,
-                      auth::Source source);
+  static User newUser(std::string const& user, std::string const& pass, auth::Source source);
   static User fromDocument(velocypack::Slice const&);
 
  private:
-  static void fromDocumentDatabases(auth::User&,
-                                    velocypack::Slice const& databases,
+  static void fromDocumentDatabases(auth::User&, velocypack::Slice const& databases,
                                     velocypack::Slice const& user);
 
  public:
   std::string const& key() const { return _key; }
   TRI_voc_rid_t rev() const { return _rev; }
+  // updates the user's _loaded attribute
+  void touch();
 
   std::string const& username() const { return _username; }
   std::string const& passwordMethod() const { return _passwordMethod; }
@@ -80,19 +80,17 @@ class User {
   /// Grant collection rights, "*" is a valid parameter for dbname and
   /// collection.  The combination of "*"/"*" is automatically used for
   /// the root
-  void grantCollection(std::string const& dbname, std::string const& cname,
-                       auth::Level level);
+  void grantCollection(std::string const& dbname, std::string const& cname, auth::Level level);
 
   /// Removes the collection right, returns true if entry existed
-  bool removeCollection(std::string const& dbname,
-                        std::string const& collection);
+  bool removeCollection(std::string const& dbname, std::string const& collection);
 
   // Resolve the access level for this database.
   auth::Level configuredDBAuthLevel(std::string const& dbname) const;
   // Resolve rights for the specified collection.
   auth::Level configuredCollectionAuthLevel(std::string const& dbname,
                                             std::string const& cname) const;
-  
+
   // Resolve the access level for this database. Might fall back to
   // the special '*' entry if the specific database is not found
   auth::Level databaseAuthLevel(std::string const& dbname) const;
@@ -100,8 +98,7 @@ class User {
   // Resolve rights for the specified collection. Falls back to the
   // special '*' entry if either the database or collection is not
   // found.
-  auth::Level collectionAuthLevel(std::string const& dbname,
-                                  std::string const& cname) const;
+  auth::Level collectionAuthLevel(std::string const& dbname, std::string const& cname) const;
 
   /// Content of `userData` or `extra` fields
   velocypack::Slice userData() const { return _userData.slice(); }
@@ -117,12 +114,10 @@ class User {
 
   /// Time in seconds (since epoch) when user was loaded
   double loaded() const { return _loaded; }
-  
+
 #ifdef USE_ENTERPRISE
   std::set<std::string> const& roles() const { return _roles; }
-  void setRoles(std::set<std::string> const& roles) {
-    _roles = roles;
-  }
+  void setRoles(std::set<std::string> const& roles) { _roles = roles; }
 #endif
 
  private:
@@ -152,19 +147,19 @@ class User {
   std::string _passwordSalt;
   std::string _passwordHash;
   std::unordered_map<std::string, DBAuthContext> _dbAccess;
-  
+
   velocypack::Builder _userData;
   velocypack::Builder _configData;
 
   /// Time when user was loaded from DB / LDAP
   double _loaded;
-  
+
 #ifdef USE_ENTERPRISE
   /// @brief roles this user has
   std::set<std::string> _roles;
 #endif
 };
-}  // auth
-}  // arangodb
+}  // namespace auth
+}  // namespace arangodb
 
 #endif

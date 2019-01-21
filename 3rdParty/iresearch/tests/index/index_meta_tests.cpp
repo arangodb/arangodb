@@ -26,15 +26,16 @@
 #include "store/memory_directory.hpp"
 
 #include "index/index_meta.hpp"
+#include "utils/type_limits.hpp"
 
 #include <boost/algorithm/string/predicate.hpp>
 
 using namespace iresearch;
 
-namespace tests {
-namespace detail {
+NS_BEGIN(tests)
+NS_BEGIN(detail)
 
-void index_meta_read_write(iresearch::directory& dir, iresearch::format& codec) {
+void index_meta_read_write(iresearch::directory& dir, const iresearch::format& codec) {
   auto writer = codec.get_index_meta_writer();
 
   /* check that there are no files in
@@ -86,20 +87,21 @@ void index_meta_read_write(iresearch::directory& dir, iresearch::format& codec) 
   EXPECT_EQ(meta_orig.size(), meta_read.size());
 }
 
-} // detail
-} // tests
+NS_END // detail
+NS_END // tests
 
 TEST(index_meta_tests, memory_directory_read_write) {
-  iresearch::version10::format codec;
-  iresearch::memory_directory dir;
-  tests::detail::index_meta_read_write(dir, codec);
+  auto codec = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec);
+  irs::memory_directory dir;
+  tests::detail::index_meta_read_write(dir, *codec);
 }
 
 TEST(index_meta_tests, ctor) {
   iresearch::index_meta meta;
   EXPECT_EQ(0, meta.counter());
   EXPECT_EQ(0, meta.size());
-  EXPECT_EQ(type_limits<type_t::index_gen_t>::invalid(), meta.generation());
+  EXPECT_EQ(irs::type_limits<type_t::index_gen_t>::invalid(), meta.generation());
 }
 
 TEST(index_meta_tests, last_generation) {
@@ -132,16 +134,17 @@ TEST(index_meta_tests, last_generation) {
   }
   
   // populate directory
-  iresearch::memory_directory dir;
+  irs::memory_directory dir;
   for (auto& name : names) {
     auto out = dir.create(name);
     ASSERT_FALSE(!out);
   }
 
-  iresearch::version10::format codec;
+  auto codec = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec);
   std::string last_seg_file;
 
-  auto reader = codec.get_index_meta_reader();
+  auto reader = codec->get_index_meta_reader();
   const bool index_exists = reader->last_segments_file(dir, last_seg_file);
   const std::string expected_seg_file = "segments_" + std::to_string(max);
 

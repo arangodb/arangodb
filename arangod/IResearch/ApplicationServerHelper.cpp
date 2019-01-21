@@ -29,13 +29,11 @@
 namespace arangodb {
 namespace iresearch {
 
-bool addFunction(
-    arangodb::aql::AqlFunctionFeature& functions,
-    arangodb::aql::Function const& function
-) {
+bool addFunction(arangodb::aql::AqlFunctionFeature& functions,
+                 arangodb::aql::Function const& function) {
   // check that a function by the given name is not registred to avoid
   // triggering an assert inside AqlFunctionFeature::add(...)
-  if (getFunction(functions, function.name)) {
+  if (functions.exists(function.name)) {
     return false;
   }
 
@@ -44,24 +42,23 @@ bool addFunction(
   return true;
 }
 
-arangodb::aql::Function const* getFunction(
-    arangodb::aql::AqlFunctionFeature& functions,
-    std::string const& name
-) {
-  // if a function cannot be found then return nullptr instead of throwing exception
+arangodb::aql::Function const* getFunction(arangodb::aql::AqlFunctionFeature& functions,
+                                           std::string const& name) {
+  // if a function cannot be found then return nullptr instead of throwing
+  // exception
   try {
     return functions.byName(name);
   } catch (arangodb::basics::Exception& e) {
     if (TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN != e.code()) {
-      throw; // not a missing function exception
+      throw;  // not a missing function exception
     }
   }
 
   return nullptr;
 }
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

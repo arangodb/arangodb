@@ -54,10 +54,10 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Validator.h>
-#include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
 #include <array>
 #include <cstring>
@@ -96,29 +96,18 @@ namespace arangodb {
 
 DatabaseInitialSyncer::Configuration::Configuration(
     ReplicationApplierConfiguration const& a, replutils::BarrierInfo& bar,
-    replutils::BatchInfo& bat, replutils::Connection& c, bool f,
-    replutils::MasterInfo& m, replutils::ProgressInfo& p, SyncerState& s,
-    TRI_vocbase_t& v)
-    : applier{a},
-      barrier{bar},
-      batch{bat},
-      connection{c},
-      flushed{f},
-      master{m},
-      progress{p},
-      state{s},
-      vocbase{v} {}
+    replutils::BatchInfo& bat, replutils::Connection& c, bool f, replutils::MasterInfo& m,
+    replutils::ProgressInfo& p, SyncerState& s, TRI_vocbase_t& v)
+    : applier{a}, barrier{bar}, batch{bat}, connection{c}, flushed{f}, master{m}, progress{p}, state{s}, vocbase{v} {}
 
 bool DatabaseInitialSyncer::Configuration::isChild() const {
   return state.isChildSyncer;
 }
 
-DatabaseInitialSyncer::DatabaseInitialSyncer(
-    TRI_vocbase_t& vocbase,
-    ReplicationApplierConfiguration const& configuration)
-    : InitialSyncer(
-          configuration,
-          [this](std::string const& msg) -> void { setProgress(msg); }),
+DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
+                                             ReplicationApplierConfiguration const& configuration)
+    : InitialSyncer(configuration,
+                    [this](std::string const& msg) -> void { setProgress(msg); }),
       _config{_state.applier,    _state.barrier, _batch,
               _state.connection, false,          _state.master,
               _progress,         _state,         vocbase} {
@@ -132,8 +121,7 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(
 }
 
 /// @brief run method, performs a full synchronization
-Result DatabaseInitialSyncer::runWithInventory(bool incremental,
-                                               VPackSlice dbInventory) {
+Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbInventory) {
   if (!_config.connection.valid()) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }
@@ -172,8 +160,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: got master state";
     if (incremental) {
       if (_config.master.majorVersion == 1 ||
-          (_config.master.majorVersion == 2 &&
-           _config.master.minorVersion <= 6)) {
+          (_config.master.majorVersion == 2 && _config.master.minorVersion <= 6)) {
         LOG_TOPIC(WARN, Logger::REPLICATION) << "incremental replication is "
                                                 "not supported with a master < "
                                                 "ArangoDB 2.7";
@@ -188,24 +175,34 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
 
     if (!_config.isChild()) {
       // create a WAL logfile barrier that prevents WAL logfile collection
-      r = _config.barrier.create(_config.connection,
-                                 _config.master.lastLogTick);
+      r = _config.barrier.create(_config.connection, _config.master.lastLogTick);
       if (r.fail()) {
         return r;
       }
 
-      r = _config.batch.start(_config.connection, _config.progress);
+      // enable patching of collection count for ShardSynchronization Job
+      std::string patchCount = StaticStrings::Empty;
+      std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
+      if (incremental && engineName == "rocksdb" && _config.applier._skipCreateDrop &&
+          _config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Include &&
+          _config.applier._restrictCollections.size() == 1) {
+        patchCount = *_config.applier._restrictCollections.begin();
+      }
+
+      r = _config.batch.start(_config.connection, _config.progress, patchCount);
       if (r.fail()) {
         return r;
       }
+
+      startRecurringBatchExtension();
     }
 
     VPackSlice collections, views;
     if (dbInventory.isObject()) {
-      collections = dbInventory.get("collections"); // required
-      views = dbInventory.get("views"); // optional
+      collections = dbInventory.get("collections");  // required
+      views = dbInventory.get("views");              // optional
     }
-    VPackBuilder inventoryResponse; // hold response data
+    VPackBuilder inventoryResponse;  // hold response data
     if (!collections.isArray()) {
       // caller did not supply an inventory, we need to fetch it
       Result res = fetchInventory(inventoryResponse);
@@ -224,7 +221,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     // strip eventual objectIDs and then dump the collections
     auto pair = rocksutils::stripObjectIds(collections);
     r = handleCollectionsAndViews(pair.first, views, incremental);
-    
+
     // all done here, do not try to finish batch if master is unresponsive
     if (r.isNot(TRI_ERROR_REPLICATION_NO_RESPONSE) && !_config.isChild()) {
       _config.batch.finish(_config.connection, _config.progress);
@@ -237,8 +234,8 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
 
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
         << "initial synchronization with master took: "
-        << Logger::FIXED(TRI_microtime() - startTime, 6)
-        << " s. status: " << (r.errorMessage().empty() ? "all good" : r.errorMessage());
+        << Logger::FIXED(TRI_microtime() - startTime, 6) << " s. status: "
+        << (r.errorMessage().empty() ? "all good" : r.errorMessage());
 
     return r;
   } catch (arangodb::basics::Exception const& ex) {
@@ -259,8 +256,8 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
   }
 }
 
-/// @brief returns the inventory
-Result DatabaseInitialSyncer::inventory(VPackBuilder& builder) {
+/// @brief fetch the server's inventory, public method for TailingSyncer
+Result DatabaseInitialSyncer::getInventory(VPackBuilder& builder) {
   if (!_state.connection.valid()) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }
@@ -331,9 +328,11 @@ Result DatabaseInitialSyncer::sendFlush() {
   // send request
   _config.progress.set("sending WAL flush command to url " + url);
 
-  std::unique_ptr<httpclient::SimpleHttpResult> response(
-      _config.connection.client->retryRequest(rest::RequestType::PUT, url,
-                                              body.c_str(), body.size()));
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+    response.reset(client->retryRequest(rest::RequestType::PUT, url,
+                                        body.c_str(), body.size()));
+  });
 
   if (replutils::hasFailed(response.get())) {
     return replutils::buildHttpError(response.get(), url, _config.connection);
@@ -344,9 +343,9 @@ Result DatabaseInitialSyncer::sendFlush() {
 }
 
 /// @brief handle a single dump marker
-Result DatabaseInitialSyncer::parseCollectionDumpMarker(
-    transaction::Methods& trx, LogicalCollection* coll,
-    VPackSlice const& marker) {
+Result DatabaseInitialSyncer::parseCollectionDumpMarker(transaction::Methods& trx,
+                                                        LogicalCollection* coll,
+                                                        VPackSlice const& marker) {
   if (!marker.isObject()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -357,8 +356,7 @@ Result DatabaseInitialSyncer::parseCollectionDumpMarker(
   for (auto const& it : VPackObjectIterator(marker, true)) {
     if (it.key.isEqualString(kTypeString)) {
       if (it.value.isNumber()) {
-        type =
-            static_cast<TRI_replication_operation_e>(it.value.getNumber<int>());
+        type = static_cast<TRI_replication_operation_e>(it.value.getNumber<int>());
       }
     } else if (it.key.isEqualString(kDataString)) {
       if (it.value.isObject()) {
@@ -383,10 +381,10 @@ Result DatabaseInitialSyncer::parseCollectionDumpMarker(
 }
 
 /// @brief apply the data from a collection dump
-Result DatabaseInitialSyncer::parseCollectionDump(
-    transaction::Methods& trx, LogicalCollection* coll,
-    httpclient::SimpleHttpResult* response, uint64_t& markersProcessed) {
-
+Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
+                                                  LogicalCollection* coll,
+                                                  httpclient::SimpleHttpResult* response,
+                                                  uint64_t& markersProcessed) {
   basics::StringBuffer const& data = response->getBody();
   char const* p = data.begin();
   char const* end = p + data.length();
@@ -408,7 +406,9 @@ Result DatabaseInitialSyncer::parseCollectionDump(
         VPackSlice marker(p);
         Result r = parseCollectionDumpMarker(trx, coll, marker);
         if (r.fail()) {
-          r.reset(r.errorNumber(), std::string("received invalid dump data for collection '") + coll->name() + "'");
+          r.reset(r.errorNumber(),
+                  std::string("received invalid dump data for collection '") +
+                      coll->name() + "'");
           return r;
         }
         ++markersProcessed;
@@ -468,11 +468,8 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
                                            std::string const& baseUrl,
                                            arangodb::LogicalCollection* coll,
                                            std::string const& leaderColl,
-                                           InitialSyncerDumpStats& stats,
-                                           int batch,
-                                           TRI_voc_tick_t fromTick,
-                                           uint64_t chunkSize) {
-
+                                           InitialSyncerDumpStats& stats, int batch,
+                                           TRI_voc_tick_t fromTick, uint64_t chunkSize) {
   using ::arangodb::basics::StringUtils::itoa;
 
   if (isAborted()) {
@@ -486,8 +483,8 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
   // time for collections as there may be with MMFiles if the collection is
   // not yet in memory
   std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
-  bool const useAsync = (batch == 1 &&
-                         (engineName != "rocksdb" || _state.master.engine != engineName));
+  bool const useAsync =
+      (batch == 1 && (engineName != "rocksdb" || _state.master.engine != engineName));
 
   try {
     std::string const typeString = (coll->type() == TRI_COL_TYPE_EDGE ? "edge" : "document");
@@ -515,42 +512,44 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
     }
 
 #if VPACK_DUMP
-    int vv = _config.master.majorVersion * 1000000 +
-            _config.master.minorVersion * 1000;
+    int vv = _config.master.majorVersion * 1000000 + _config.master.minorVersion * 1000;
     if (vv >= 3003009) {
       headers[StaticStrings::Accept] = StaticStrings::MimeTypeVPack;
     }
 #endif
 
-    _config.progress.set(std::string("fetching master collection dump for collection '") +
-                         coll->name() + "', type: " + typeString + ", id: " +
-                         leaderColl + ", batch " + itoa(batch) + ", url: " + url);
+    _config.progress.set(
+        std::string("fetching master collection dump for collection '") +
+        coll->name() + "', type: " + typeString + ", id: " + leaderColl +
+        ", batch " + itoa(batch) + ", url: " + url);
 
     ++stats.numDumpRequests;
     double t = TRI_microtime();
 
     // send request
-    std::unique_ptr<httpclient::SimpleHttpResult> response(
-        _config.connection.client->retryRequest(rest::RequestType::GET, url,
-                                                nullptr, 0, headers));
+    std::unique_ptr<httpclient::SimpleHttpResult> response;
+    _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0, headers));
+    });
 
     if (replutils::hasFailed(response.get())) {
       stats.waitedForDump += TRI_microtime() - t;
-      sharedStatus->gotResponse(replutils::buildHttpError(response.get(), url, _config.connection));
+      sharedStatus->gotResponse(
+          replutils::buildHttpError(response.get(), url, _config.connection));
       return;
     }
 
     // use async mode for first batch
     if (useAsync) {
       bool found = false;
-      std::string jobId =
-          response->getHeaderField(StaticStrings::AsyncId, found);
+      std::string jobId = response->getHeaderField(StaticStrings::AsyncId, found);
 
       if (!found) {
-        sharedStatus->gotResponse(Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                                  std::string("got invalid response from master at ") +
-                                  _config.master.endpoint + url +
-                                  ": could not find 'X-Arango-Async' header"));
+        sharedStatus->gotResponse(
+            Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                   std::string("got invalid response from master at ") +
+                       _config.master.endpoint + url +
+                       ": could not find 'X-Arango-Async' header"));
         return;
       }
 
@@ -564,8 +563,9 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
         }
 
         std::string const jobUrl = "/_api/job/" + jobId;
-        response.reset(_config.connection.client->request(
-            rest::RequestType::PUT, jobUrl, nullptr, 0));
+        _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+          response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0));
+        });
 
         if (response != nullptr && response->isComplete()) {
           if (response->hasHeaderField("x-arango-async-id")) {
@@ -575,9 +575,10 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
 
           if (response->getHttpReturnCode() == 404) {
             // unknown job, we can abort
-            sharedStatus->gotResponse(Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                                      std::string("job not found on master at ") +
-                                      _config.master.endpoint));
+            sharedStatus->gotResponse(
+                Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
+                       std::string("job not found on master at ") +
+                           _config.master.endpoint));
             return;
           }
         }
@@ -586,9 +587,10 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
 
         if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >=
             _config.applier._initialSyncMaxWaitTime) {
-          sharedStatus->gotResponse(Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                                    std::string("timed out waiting for response from master at ") +
-                                    _config.master.endpoint));
+          sharedStatus->gotResponse(Result(
+              TRI_ERROR_REPLICATION_NO_RESPONSE,
+              std::string("timed out waiting for response from master at ") +
+                  _config.master.endpoint));
           return;
         }
 
@@ -607,7 +609,8 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
 
     if (replutils::hasFailed(response.get())) {
       // failure
-      sharedStatus->gotResponse(replutils::buildHttpError(response.get(), url, _config.connection));
+      sharedStatus->gotResponse(
+          replutils::buildHttpError(response.get(), url, _config.connection));
     } else {
       // success!
       sharedStatus->gotResponse(std::move(response));
@@ -620,9 +623,9 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
 }
 
 /// @brief incrementally fetch data from a collection
-Result DatabaseInitialSyncer::fetchCollectionDump(
-    arangodb::LogicalCollection* coll, std::string const& leaderColl,
-    TRI_voc_tick_t maxTick) {
+Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* coll,
+                                                  std::string const& leaderColl,
+                                                  TRI_voc_tick_t maxTick) {
   using ::arangodb::basics::StringUtils::boolean;
   using ::arangodb::basics::StringUtils::itoa;
   using ::arangodb::basics::StringUtils::uint64;
@@ -686,8 +689,8 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
     }
 
     bool found;
-    std::string header = dumpResponse->getHeaderField(
-        StaticStrings::ReplicationHeaderCheckMore, found);
+    std::string header =
+        dumpResponse->getHeaderField(StaticStrings::ReplicationHeaderCheckMore, found);
     if (!found) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     std::string("got invalid response from master at ") +
@@ -700,8 +703,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
     bool checkMore = boolean(header);
 
     if (checkMore) {
-      header = dumpResponse->getHeaderField(
-          StaticStrings::ReplicationHeaderLastIncluded, found);
+      header = dumpResponse->getHeaderField(StaticStrings::ReplicationHeaderLastIncluded, found);
       if (!found) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from master at ") +
@@ -732,18 +734,15 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
     if (checkMore && !isAborted()) {
       // already fetch next batch in the background, by posting the
       // request to the scheduler, which can run it asynchronously
-      sharedStatus->request(
-        [this, self, &stats, &baseUrl, sharedStatus, coll, leaderColl, batch, fromTick, chunkSize]() {
-          fetchDumpChunk(sharedStatus, baseUrl, coll, leaderColl, stats, batch + 1, fromTick, chunkSize);
-        }
-      );
+      sharedStatus->request([this, self, &stats, &baseUrl, sharedStatus, coll,
+                             leaderColl, batch, fromTick, chunkSize]() {
+        fetchDumpChunk(sharedStatus, baseUrl, coll, leaderColl, stats,
+                       batch + 1, fromTick, chunkSize);
+      });
     }
 
-    SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(vocbase()),
-      *coll,
-      AccessMode::Type::EXCLUSIVE
-    );
+    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase()),
+                                    *coll, AccessMode::Type::EXCLUSIVE);
 
     // to turn off waitForSync!
     trx.addHint(transaction::Hints::Hint::RECOVERY);
@@ -759,9 +758,8 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
     res = trx.begin();
 
     if (!res.ok()) {
-      return Result(
-          res.errorNumber(),
-          std::string("unable to start transaction: ") + res.errorMessage());
+      return Result(res.errorNumber(),
+                    std::string("unable to start transaction: ") + res.errorMessage());
     }
 
     trx.pinData(coll->id());  // will throw when it fails
@@ -778,12 +776,12 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
     double applyTime = TRI_microtime() - t;
     stats.waitedForApply += applyTime;
 
-    _config.progress.set(std::string("fetched master collection dump for collection '") +
-                         coll->name() + "', type: " + typeString + ", id: " +
-                         leaderColl + ", batch " + itoa(batch) +
-                         ", markers processed: " + itoa(markersProcessed) +
-                         ", bytes received: " + itoa(bytesReceived) +
-                         ", apply time: " + std::to_string(applyTime) + " s");
+    _config.progress.set(
+        std::string("fetched master collection dump for collection '") +
+        coll->name() + "', type: " + typeString + ", id: " + leaderColl +
+        ", batch " + itoa(batch) + ", markers processed: " + itoa(markersProcessed) +
+        ", bytes received: " + itoa(bytesReceived) +
+        ", apply time: " + std::to_string(applyTime) + " s");
 
     if (!res.ok()) {
       return res;
@@ -791,14 +789,15 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
 
     if (!checkMore || fromTick == 0) {
       // done
-      _config.progress.set(std::string("finished initial dump for collection '") + coll->name() +
-        "', type: " + typeString + ", id: " + leaderColl +
-        ", markers processed: " + itoa(markersProcessed) +
-        ", bytes received: " + itoa(bytesReceived) +
-        ", dump requests: " + std::to_string(stats.numDumpRequests) +
-        ", waited for dump: " + std::to_string(stats.waitedForDump) + " s" +
-        ", apply time: " + std::to_string(stats.waitedForApply) + " s" +
-        ", total time: " + std::to_string(TRI_microtime() - startTime) + " s");
+      _config.progress.set(
+          std::string("finished initial dump for collection '") + coll->name() +
+          "', type: " + typeString + ", id: " + leaderColl +
+          ", markers processed: " + itoa(markersProcessed) +
+          ", bytes received: " + itoa(bytesReceived) +
+          ", dump requests: " + std::to_string(stats.numDumpRequests) +
+          ", waited for dump: " + std::to_string(stats.waitedForDump) + " s" +
+          ", apply time: " + std::to_string(stats.waitedForApply) + " s" +
+          ", total time: " + std::to_string(TRI_microtime() - startTime) + " s");
       return Result();
     }
 
@@ -814,9 +813,9 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
 }
 
 /// @brief incrementally fetch data from a collection
-Result DatabaseInitialSyncer::fetchCollectionSync(
-    arangodb::LogicalCollection* coll, std::string const& leaderColl,
-    TRI_voc_tick_t maxTick) {
+Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* coll,
+                                                  std::string const& leaderColl,
+                                                  TRI_voc_tick_t maxTick) {
   using ::arangodb::basics::StringUtils::urlEncode;
 
   if (!_config.isChild()) {
@@ -830,8 +829,8 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
                     "&serverId=" + _state.localServerIdString +
                     "&batchId=" + std::to_string(_config.batch.id);
 
-  std::string msg = "fetching collection keys for collection '" + coll->name() +
-                    "' from " + url;
+  std::string msg =
+      "fetching collection keys for collection '" + coll->name() + "' from " + url;
   _config.progress.set(msg);
 
   // send an initial async request to collect the collection keys on the other
@@ -841,9 +840,11 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
   // so we're sending the x-arango-async header here
   auto headers = replutils::createHeaders();
   headers[StaticStrings::Async] = "store";
-  std::unique_ptr<httpclient::SimpleHttpResult> response(
-      _config.connection.client->retryRequest(rest::RequestType::POST, url,
-                                              nullptr, 0, headers));
+
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+    response.reset(client->retryRequest(rest::RequestType::POST, url, nullptr, 0, headers));
+  });
 
   if (replutils::hasFailed(response.get())) {
     return replutils::buildHttpError(response.get(), url, _config.connection);
@@ -868,8 +869,9 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
     }
 
     std::string const jobUrl = "/_api/job/" + jobId;
-    response.reset(_config.connection.client->request(rest::RequestType::PUT,
-                                                      jobUrl, nullptr, 0));
+    _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0));
+    });
 
     if (response != nullptr && response->isComplete()) {
       if (response->hasHeaderField("x-arango-async-id")) {
@@ -886,12 +888,11 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
 
     double waitTime = TRI_microtime() - startTime;
 
-    if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >=
-        _config.applier._initialSyncMaxWaitTime) {
-      return Result(
-          TRI_ERROR_REPLICATION_NO_RESPONSE,
-          std::string("timed out waiting for response from master at ") +
-              _config.master.endpoint);
+    if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >= _config.applier._initialSyncMaxWaitTime) {
+      return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
+                    std::string(
+                        "timed out waiting for response from master at ") +
+                        _config.master.endpoint);
     }
 
     if (isAborted()) {
@@ -919,8 +920,7 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
   if (!slice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from master at ") +
-                      _config.master.endpoint + url +
-                      ": response is no object");
+                      _config.master.endpoint + url + ": response is no object");
   }
 
   VPackSlice const keysId = slice.get("id");
@@ -940,9 +940,10 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
     _config.progress.set(msg);
 
     // now delete the keys we ordered
-    std::unique_ptr<httpclient::SimpleHttpResult> response(
-        _config.connection.client->retryRequest(rest::RequestType::DELETE_REQ,
-                                                url, nullptr, 0));
+    std::unique_ptr<httpclient::SimpleHttpResult> response;
+    _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(client->retryRequest(rest::RequestType::DELETE_REQ, url, nullptr, 0));
+    });
   };
 
   TRI_DEFER(shutdown());
@@ -958,21 +959,17 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
 
   if (count.getNumber<size_t>() <= 0) {
     // remote collection has no documents. now truncate our local collection
-    SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(vocbase()),
-      *coll,
-      AccessMode::Type::EXCLUSIVE
-    );
+    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase()),
+                                    *coll, AccessMode::Type::EXCLUSIVE);
     trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
     trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
     Result res = trx.begin();
 
     if (!res.ok()) {
       return Result(res.errorNumber(),
-                    std::string("unable to start transaction (") +
-                        std::string(__FILE__) + std::string(":") +
-                        std::to_string(__LINE__) + std::string("): ") +
-                        res.errorMessage());
+                    std::string("unable to start transaction (") + std::string(__FILE__) +
+                        std::string(":") + std::to_string(__LINE__) +
+                        std::string("): ") + res.errorMessage());
     }
 
     OperationOptions options;
@@ -985,8 +982,7 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
 
     if (opRes.fail()) {
       return Result(opRes.errorNumber(),
-                    std::string("unable to truncate collection '") +
-                        coll->name() +
+                    std::string("unable to truncate collection '") + coll->name() +
                         "': " + TRI_errno_string(opRes.errorNumber()));
     }
 
@@ -995,9 +991,7 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
 
   // now we can fetch the complete chunk information from the master
   try {
-    return EngineSelectorFeature::ENGINE->handleSyncKeys(
-      *this, *coll, keysId.copyString()
-    );
+    return EngineSelectorFeature::ENGINE->handleSyncKeys(*this, *coll, keysId.copyString());
   } catch (arangodb::basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -1013,21 +1007,14 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
 Result DatabaseInitialSyncer::changeCollection(arangodb::LogicalCollection* col,
                                                VPackSlice const& slice) {
   arangodb::CollectionGuard guard(&vocbase(), col->id());
-  bool doSync =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database")
-          ->forceSyncProperties();
 
-  return guard.collection()->updateProperties(slice, doSync);
+  return guard.collection()->properties(slice, false);  // always a full-update
 }
 
 /// @brief determine the number of documents in a collection
 int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection const& col) {
-  SingleCollectionTransaction trx(
-    transaction::StandaloneContext::Create(vocbase()),
-    col,
-    AccessMode::Type::READ
-  );
+  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase()),
+                                  col, AccessMode::Type::READ);
   Result res = trx.begin();
 
   if (res.fail()) {
@@ -1052,8 +1039,7 @@ int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection const& col) {
 /// @brief handle the information about a collection
 Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
                                                VPackSlice const& indexes,
-                                               bool incremental,
-                                               SyncPhase phase) {
+                                               bool incremental, SyncPhase phase) {
   using ::arangodb::basics::StringUtils::itoa;
 
   if (isAborted()) {
@@ -1072,16 +1058,16 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   std::string const masterName =
       basics::VelocyPackHelper::getStringValue(parameters, "name", "");
 
-  TRI_voc_cid_t const masterCid =
-      basics::VelocyPackHelper::extractIdValue(parameters);
+  TRI_voc_cid_t const masterCid = basics::VelocyPackHelper::extractIdValue(parameters);
 
   if (masterCid == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "collection id is missing in response");
   }
 
-  std::string const masterUuid = basics::VelocyPackHelper::getStringValue(
-      parameters, "globallyUniqueId", "");
+  std::string const masterUuid =
+      basics::VelocyPackHelper::getStringValue(parameters, "globallyUniqueId",
+                                               "");
 
   VPackSlice const type = parameters.get("type");
 
@@ -1090,8 +1076,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
                   "collection type is missing in response");
   }
 
-  std::string const typeString =
-      (type.getNumber<int>() == 3 ? "edge" : "document");
+  std::string const typeString = (type.getNumber<int>() == 3 ? "edge" : "document");
 
   std::string const collectionMsg = "collection '" + masterName + "', type " +
                                     typeString + ", id " + itoa(masterCid);
@@ -1115,15 +1100,13 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
       // not found...
       col = vocbase().lookupCollection(masterName).get();
 
-      if (col != nullptr &&
-          (col->name() != masterName ||
-           (!masterUuid.empty() && col->guid() != masterUuid))) {
+      if (col != nullptr && (col->name() != masterName ||
+                             (!masterUuid.empty() && col->guid() != masterUuid))) {
         // found another collection with the same name locally.
         // in this case we must drop it because we will run into duplicate
         // name conflicts otherwise
         try {
-          auto res =
-              vocbase().dropCollection(col->id(), true, -1.0).errorNumber();
+          auto res = vocbase().dropCollection(col->id(), true, -1.0).errorNumber();
 
           if (res == TRI_ERROR_NO_ERROR) {
             col = nullptr;
@@ -1150,11 +1133,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             // system collection
             _config.progress.set("truncating " + collectionMsg);
 
-            SingleCollectionTransaction trx(
-              transaction::StandaloneContext::Create(vocbase()),
-              *col,
-              AccessMode::Type::EXCLUSIVE
-            );
+            SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase()),
+                                            *col, AccessMode::Type::EXCLUSIVE);
             trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
             trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
             Result res = trx.begin();
@@ -1195,13 +1175,11 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             }
             _config.progress.set("dropping " + collectionMsg);
 
-            auto res =
-                vocbase().dropCollection(col->id(), true, -1.0).errorNumber();
+            auto res = vocbase().dropCollection(col->id(), true, -1.0).errorNumber();
 
             if (res != TRI_ERROR_NO_ERROR) {
-              return Result(res, std::string("unable to drop ") +
-                                     collectionMsg + ": " +
-                                     TRI_errno_string(res));
+              return Result(res, std::string("unable to drop ") + collectionMsg +
+                                     ": " + TRI_errno_string(res));
             }
           }
         }
@@ -1210,8 +1188,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
         TRI_ASSERT(incremental);
 
         // collection is already present
-        _config.progress.set("checking/changing parameters of " +
-                             collectionMsg);
+        _config.progress.set("checking/changing parameters of " + collectionMsg);
         return changeCollection(col, parameters);
       }
     }
@@ -1230,10 +1207,9 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     auto r = createCollection(vocbase(), parameters, &col);
 
     if (r.fail()) {
-      return Result(r.errorNumber(),
-                    std::string("unable to create ") + collectionMsg + ": " +
-                        TRI_errno_string(r.errorNumber()) +
-                        ". Collection info " + parameters.toJson());
+      return Result(r.errorNumber(), std::string("unable to create ") + collectionMsg +
+                                         ": " + TRI_errno_string(r.errorNumber()) +
+                                         ". Collection info " + parameters.toJson());
     }
 
     return r;
@@ -1250,21 +1226,18 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     if (col == nullptr) {
       return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                     std::string("cannot dump: ") + collectionMsg +
-                        " not found on slave. Collection info " +
-                        parameters.toJson());
+                        " not found on slave. Collection info " + parameters.toJson());
     }
 
-    std::string const& masterColl =
-        !masterUuid.empty() ? masterUuid : itoa(masterCid);
+    std::string const& masterColl = !masterUuid.empty() ? masterUuid : itoa(masterCid);
     auto res = incremental && getSize(*col) > 0
-             ? fetchCollectionSync(col, masterColl, _config.master.lastUncommittedLogTick)
-             : fetchCollectionDump(col, masterColl, _config.master.lastUncommittedLogTick)
-             ;
+                   ? fetchCollectionSync(col, masterColl, _config.master.lastUncommittedLogTick)
+                   : fetchCollectionDump(col, masterColl, _config.master.lastUncommittedLogTick);
 
     if (!res.ok()) {
       return res;
     } else if (isAborted()) {
-      return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
+      return res.reset(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
     if (masterName == TRI_COL_NAME_USERS) {
@@ -1287,61 +1260,34 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
         _config.barrier.extend(_config.connection);
       }
 
-      _config.progress.set("creating " + std::to_string(numIdx) + " index(es) for " +
-                           collectionMsg);
+      _config.progress.set("creating " + std::to_string(numIdx) +
+                           " index(es) for " + collectionMsg);
 
       try {
-        SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(vocbase()),
-          *col,
-          AccessMode::Type::EXCLUSIVE
-        );
-
-        res = trx.begin();
-
-        if (!res.ok()) {
-          return Result(res.errorNumber(),
-                        std::string("unable to start transaction: ") +
-                            res.errorMessage());
-        }
-
-        trx.pinData(col->id());  // will throw when it fails
-
-        LogicalCollection* document = trx.documentCollection();
-        TRI_ASSERT(document != nullptr);
-        auto physical = document->getPhysical();
+        auto physical = col->getPhysical();
         TRI_ASSERT(physical != nullptr);
 
         for (auto const& idxDef : VPackArrayIterator(indexes)) {
           std::shared_ptr<arangodb::Index> idx;
 
           if (idxDef.isObject()) {
-            VPackSlice const type = idxDef.get("type");
+            VPackSlice const type = idxDef.get(StaticStrings::IndexType);
             if (type.isString()) {
               _config.progress.set("creating index of type " +
                                    type.copyString() + " for " + collectionMsg);
             }
           }
 
-          res = physical->restoreIndex(&trx, idxDef, idx);
-
-          if (!res.ok()) {
-            res.reset(
-                res.errorNumber(),
-                std::string("could not create index: ") + res.errorMessage());
-            break;
-          }
-        }
-
-        if (res.ok()) {
-          res = trx.commit();
+          bool created = false;
+          idx = physical->createIndex(idxDef, /*restore*/ true, created);
+          TRI_ASSERT(idx != nullptr);
         }
       } catch (arangodb::basics::Exception const& ex) {
-        return Result(ex.code(), ex.what());
+        return res.reset(ex.code(), ex.what());
       } catch (std::exception const& ex) {
-        return Result(TRI_ERROR_INTERNAL, ex.what());
+        return res.reset(TRI_ERROR_INTERNAL, ex.what());
       } catch (...) {
-        return Result(TRI_ERROR_INTERNAL);
+        return res.reset(TRI_ERROR_INTERNAL);
       }
     }
 
@@ -1364,9 +1310,11 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
 
   // send request
   _config.progress.set("fetching master inventory from " + url);
-  std::unique_ptr<httpclient::SimpleHttpResult> response(
-      _config.connection.client->retryRequest(rest::RequestType::GET, url,
-                                              nullptr, 0));
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+    response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
+  });
+
   if (replutils::hasFailed(response.get())) {
     if (!_config.isChild()) {
       _config.batch.finish(_config.connection, _config.progress);
@@ -1379,9 +1327,8 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
   if (r.fail()) {
     return Result(
         r.errorNumber(),
-        std::string("got invalid response from master at ") +
-            _config.master.endpoint + url +
-            ": invalid response type for initial data. expecting array");
+        std::string("got invalid response from master at ") + _config.master.endpoint +
+            url + ": invalid response type for initial data. expecting array");
   }
 
   VPackSlice const slice = builder.slice();
@@ -1433,25 +1380,26 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
                     "collection name is missing in response");
     }
 
-    if (TRI_ExcludeCollectionReplication(masterName,
-                                         _config.applier._includeSystem)) {
+    if (TRI_ExcludeCollectionReplication(masterName, _config.applier._includeSystem)) {
       continue;
     }
 
-    if (basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
-                                                  false)) {
+    if (basics::VelocyPackHelper::getBooleanValue(parameters, "deleted", false)) {
       // we don't care about deleted collections
       continue;
     }
 
-    if (!_config.applier._restrictType.empty()) {
+    if (_config.applier._restrictType != ReplicationApplierConfiguration::RestrictType::None) {
       auto const it = _config.applier._restrictCollections.find(masterName);
       bool found = (it != _config.applier._restrictCollections.end());
 
-      if (_config.applier._restrictType == "include" && !found) {
+      if (_config.applier._restrictType == ReplicationApplierConfiguration::RestrictType::Include &&
+          !found) {
         // collection should not be included
         continue;
-      } else if (_config.applier._restrictType == "exclude" && found) {
+      } else if (_config.applier._restrictType ==
+                     ReplicationApplierConfiguration::RestrictType::Exclude &&
+                 found) {
         // collection should be excluded
         continue;
       }
@@ -1476,28 +1424,27 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
       return r;
     }
   }
-  
+
   // STEP 3: now that the collections exist create the views
   // this should be faster than re-indexing afterwards
   // ----------------------------------------------------------------------------------
-  
+
   if (!_config.applier._skipCreateDrop &&
-      _config.applier._restrictCollections.empty() &&
-      !viewSlices.isNone()) {
+      _config.applier._restrictCollections.empty() && viewSlices.isArray()) {
     // views are optional, and 3.3 and before will not send any view data
-    Result r = handleViewCreation(viewSlices); // no requests to master
+    Result r = handleViewCreation(viewSlices);  // no requests to master
     if (r.fail()) {
       LOG_TOPIC(ERR, Logger::REPLICATION)
-      << "Error during intial sync view creation: " << r.errorMessage();
+          << "Error during intial sync view creation: " << r.errorMessage();
       return r;
     }
   } else {
     _config.progress.set("view creation skipped because of configuration");
   }
-  
+
   // STEP 4: sync collection data from master and create initial indexes
   // ----------------------------------------------------------------------------------
-  
+
   // now load the data into the collections
   return iterateCollections(collections, incremental, PHASE_DUMP);
 }
@@ -1527,7 +1474,7 @@ Result DatabaseInitialSyncer::iterateCollections(
 
 /// @brief create non-existing views locally
 Result DatabaseInitialSyncer::handleViewCreation(VPackSlice const& views) {
-  for (VPackSlice slice  : VPackArrayIterator(views)) {
+  for (VPackSlice slice : VPackArrayIterator(views)) {
     Result res = createView(vocbase(), slice);
     if (res.fail()) {
       return res;

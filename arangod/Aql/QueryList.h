@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_QUERY_LIST_H
 #define ARANGOD_AQL_QUERY_LIST_H 1
 
-#include "Basics/Common.h"
 #include "Aql/QueryExecutionState.h"
+#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"
 
@@ -43,13 +43,10 @@ namespace aql {
 class Query;
 
 struct QueryEntryCopy {
-  QueryEntryCopy (TRI_voc_tick_t id,
-                  std::string&& queryString,
-                  std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
-                  double started,
-                  double runTime,
-                  QueryExecutionState::ValueType state,
-                  bool stream);
+  QueryEntryCopy(TRI_voc_tick_t id, std::string&& queryString,
+                 std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
+                 double started, double runTime,
+                 QueryExecutionState::ValueType state, bool stream);
 
   TRI_voc_tick_t const id;
   std::string const queryString;
@@ -72,37 +69,45 @@ class QueryList {
   /// @brief whether or not queries are tracked
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline bool enabled() const { return _enabled.load(std::memory_order_relaxed); }
+  inline bool enabled() const {
+    return _enabled.load(std::memory_order_relaxed);
+  }
 
   /// @brief toggle query tracking
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline void enabled(bool value) { _enabled.store(value, std::memory_order_relaxed); }
+  inline void enabled(bool value) { _enabled.store(value); }
 
   /// @brief whether or not slow queries are tracked
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline bool trackSlowQueries() const { return _trackSlowQueries.load(std::memory_order_relaxed); }
-  
+  inline bool trackSlowQueries() const {
+    return _trackSlowQueries.load(std::memory_order_relaxed);
+  }
+
   /// @brief toggle slow query tracking
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline void trackSlowQueries(bool value) { _trackSlowQueries.store(value, std::memory_order_relaxed); }
-  
-  /// @brief whether or not bind vars are tracked with queries 
+  inline void trackSlowQueries(bool value) { _trackSlowQueries.store(value); }
+
+  /// @brief whether or not bind vars are tracked with queries
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline bool trackBindVars() const { return _trackBindVars.load(std::memory_order_relaxed); }
+  inline bool trackBindVars() const {
+    return _trackBindVars.load(std::memory_order_relaxed);
+  }
 
   /// @brief toggle query bind vars tracking
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline void trackBindVars(bool value) { _trackBindVars.store(value, std::memory_order_relaxed); }
+  inline void trackBindVars(bool value) { _trackBindVars.store(value); }
 
   /// @brief threshold for slow queries (in seconds)
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline double slowQueryThreshold() const { return _slowQueryThreshold.load(std::memory_order_relaxed); }
+  inline double slowQueryThreshold() const {
+    return _slowQueryThreshold.load(std::memory_order_relaxed);
+  }
 
   /// @brief set the slow query threshold
   /// we're not using a lock here for performance reasons - thus concurrent
@@ -112,13 +117,33 @@ class QueryList {
       // sanity checks
       value = 0.0;
     }
-    _slowQueryThreshold.store(value, std::memory_order_relaxed);
+    _slowQueryThreshold.store(value);
+  }
+
+  /// @brief threshold for slow streaming queries (in seconds)
+  /// we're not using a lock here for performance reasons - thus concurrent
+  /// modifications of this variable are possible but are considered unharmful
+  inline double slowStreamingQueryThreshold() const {
+    return _slowStreamingQueryThreshold.load(std::memory_order_relaxed);
+  }
+
+  /// @brief set the slow streaming query threshold
+  /// we're not using a lock here for performance reasons - thus concurrent
+  /// modifications of this variable are possible but are considered unharmful
+  inline void slowStreamingQueryThreshold(double value) {
+    if (value < 0.0 || value == HUGE_VAL || value != value) {
+      // sanity checks
+      value = 0.0;
+    }
+    _slowStreamingQueryThreshold.store(value);
   }
 
   /// @brief return the max number of slow queries to keep
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline size_t maxSlowQueries() const { return _maxSlowQueries.load(std::memory_order_relaxed); }
+  inline size_t maxSlowQueries() const {
+    return _maxSlowQueries.load(std::memory_order_relaxed);
+  }
 
   /// @brief set the max number of slow queries to keep
   /// we're not using a lock here for performance reasons - thus concurrent
@@ -128,13 +153,15 @@ class QueryList {
       // sanity checks
       value = 16384;
     }
-    _maxSlowQueries.store(value, std::memory_order_relaxed);
+    _maxSlowQueries.store(value);
   }
 
   /// @brief return the max length of query strings that are stored / returned
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline size_t maxQueryStringLength() const { return _maxQueryStringLength.load(std::memory_order_relaxed); }
+  inline size_t maxQueryStringLength() const {
+    return _maxQueryStringLength.load(std::memory_order_relaxed);
+  }
 
   /// @brief set the max length of query strings that are stored / returned
   /// we're not using a lock here for performance reasons - thus concurrent
@@ -147,7 +174,7 @@ class QueryList {
       value = 8 * 1024 * 1024;
     }
 
-    _maxQueryStringLength.store(value, std::memory_order_relaxed);
+    _maxQueryStringLength.store(value);
   }
 
   /// @brief enter a query
@@ -158,7 +185,7 @@ class QueryList {
 
   /// @brief kills a query
   int kill(TRI_voc_tick_t);
-  
+
   /// @brief kills all currently running queries
   uint64_t killAll(bool silent);
 
@@ -198,12 +225,15 @@ class QueryList {
 
   /// @brief whether or not slow queries are tracked
   std::atomic<bool> _trackSlowQueries;
-  
-  /// @brief whether or not bind vars are also tracked with queries 
+
+  /// @brief whether or not bind vars are also tracked with queries
   std::atomic<bool> _trackBindVars;
 
   /// @brief threshold for slow queries (in seconds)
   std::atomic<double> _slowQueryThreshold;
+
+  /// @brief threshold for slow streaming queries (in seconds)
+  std::atomic<double> _slowStreamingQueryThreshold;
 
   /// @brief maximum number of slow queries to keep
   std::atomic<size_t> _maxSlowQueries;
@@ -211,7 +241,7 @@ class QueryList {
   /// @brief max length of query strings to return
   std::atomic<size_t> _maxQueryStringLength;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

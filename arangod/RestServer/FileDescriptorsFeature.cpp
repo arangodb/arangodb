@@ -23,7 +23,6 @@
 
 #include "FileDescriptorsFeature.h"
 
-#include "Basics/OpenFilesTracker.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -37,16 +36,13 @@ namespace arangodb {
 
 uint64_t const FileDescriptorsFeature::RECOMMENDED = 8192;
 
-FileDescriptorsFeature::FileDescriptorsFeature(
-    application_features::ApplicationServer& server
-)
+FileDescriptorsFeature::FileDescriptorsFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "FileDescriptors"), _descriptorsMinimum(0) {
   setOptional(false);
   startsAfter("GreetingsPhase");
 }
 
-void FileDescriptorsFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
+void FileDescriptorsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 #ifdef TRI_HAVE_GETRLIMIT
   options->addSection("server", "Server features");
 
@@ -95,11 +91,6 @@ void FileDescriptorsFeature::start() {
         << StringifyLimitValue(rlim.rlim_cur) << ", please raise to at least "
         << RECOMMENDED << " (e.g. ulimit -n " << RECOMMENDED << ")";
   }
-
-  if (rlim.rlim_cur >= 1024) {
-    // set file descriptor warning threshold value to 95% of max available descriptors
-    OpenFilesTracker::instance()->warnThreshold(uint64_t(rlim.rlim_cur * 0.95));
-  }
 #endif
 }
 
@@ -115,9 +106,8 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
   }
 
   LOG_TOPIC(DEBUG, arangodb::Logger::SYSCALL)
-      << "file-descriptors (nofiles) hard limit is "
-      << StringifyLimitValue(rlim.rlim_max) << ", soft limit is "
-      << StringifyLimitValue(rlim.rlim_cur);
+      << "file-descriptors (nofiles) hard limit is " << StringifyLimitValue(rlim.rlim_max)
+      << ", soft limit is " << StringifyLimitValue(rlim.rlim_cur);
 
   uint64_t recommended = RECOMMENDED;
   uint64_t minimum = _descriptorsMinimum;
@@ -176,4 +166,4 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
 #endif
 }
 
-} // arangodb
+}  // namespace arangodb

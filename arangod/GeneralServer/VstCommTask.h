@@ -38,28 +38,27 @@ namespace rest {
 
 class VstCommTask final : public GeneralCommTask {
  public:
-  VstCommTask(Scheduler*, GeneralServer*, std::unique_ptr<Socket> socket,
-              ConnectionInfo&&, double timeout, ProtocolVersion protocolVersion,
-              bool skipSocketInit = false);
+  VstCommTask(GeneralServer& server, GeneralServer::IoContext& context,
+              std::unique_ptr<Socket> socket, ConnectionInfo&&, double timeout,
+              ProtocolVersion protocolVersion, bool skipSocketInit = false);
 
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
   }
 
   // whether or not this task can mix sync and async I/O
-  bool canUseMixedIO() const override; 
-  
+  bool canUseMixedIO() const override;
+
  protected:
   // read data check if chunk and message are complete
   // if message is complete execute a request
   bool processRead(double startTime) override;
 
-  std::unique_ptr<GeneralResponse> createResponse(
-      rest::ResponseCode, uint64_t messageId) override final;
+  std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
+                                                  uint64_t messageId) override final;
 
   // @brief send simple response including response body
-  void addSimpleResponse(rest::ResponseCode, rest::ContentType,
-                         uint64_t messageId,
+  void addSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
                          velocypack::Buffer<uint8_t>&&) override;
 
   // convert from GeneralResponse to VstResponse ad dispatch request to class
@@ -97,9 +96,8 @@ class VstCommTask final : public GeneralCommTask {
         : _currentChunkLength(0),
           _readBufferOffset(0),
           _cleanupLength(_bufferLength - _chunkMaxBytes - 1) {}
-    uint32_t
-        _currentChunkLength;     // size of chunk processed or 0 when expecting
-                                 // new chunk
+    uint32_t _currentChunkLength;  // size of chunk processed or 0 when
+                                   // expecting new chunk
     size_t _readBufferOffset;    // data up to this position has been processed
     std::size_t _cleanupLength;  // length of data after that the read buffer
                                  // will be cleaned
@@ -138,7 +136,7 @@ class VstCommTask final : public GeneralCommTask {
   ProtocolVersion _protocolVersion;
   uint32_t _maxChunkSize;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

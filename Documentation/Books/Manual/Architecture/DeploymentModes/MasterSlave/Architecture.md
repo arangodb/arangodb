@@ -70,7 +70,6 @@ and maximum tick values per logfile:
 
     require("@arangodb/replication").logger.tickRanges();
 
-	
 ### Replication Applier
 
 **Purpose**

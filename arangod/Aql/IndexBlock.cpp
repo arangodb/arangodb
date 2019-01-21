@@ -48,20 +48,20 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
-  /// resolve constant attribute accesses
-  static void resolveFCallConstAttributes(AstNode *fcall) {
-    TRI_ASSERT(fcall->type == NODE_TYPE_FCALL);
-    TRI_ASSERT(fcall->numMembers() == 1);
-    AstNode* array = fcall->getMemberUnchecked(0);
-    for (size_t x = 0; x < array->numMembers(); x++) {
-      AstNode* child = array->getMemberUnchecked(x);
-      if (child->type == NODE_TYPE_ATTRIBUTE_ACCESS && child->isConstant()) {
-        child = const_cast<AstNode*>(Ast::resolveConstAttributeAccess(child));
-        array->changeMember(x, child);
-      }
+/// resolve constant attribute accesses
+static void resolveFCallConstAttributes(AstNode* fcall) {
+  TRI_ASSERT(fcall->type == NODE_TYPE_FCALL);
+  TRI_ASSERT(fcall->numMembers() == 1);
+  AstNode* array = fcall->getMemberUnchecked(0);
+  for (size_t x = 0; x < array->numMembers(); x++) {
+    AstNode* child = array->getMemberUnchecked(x);
+    if (child->type == NODE_TYPE_ATTRIBUTE_ACCESS && child->isConstant()) {
+      child = const_cast<AstNode*>(Ast::resolveConstAttributeAccess(child));
+      array->changeMember(x, child);
     }
   }
 }
+}  // namespace
 
 IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
     : ExecutionBlock(engine, en),
@@ -93,9 +93,9 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
         // geo index condition i.e. GEO_CONTAINS, GEO_INTERSECTS
         if (leaf->type == NODE_TYPE_FCALL) {
           ::resolveFCallConstAttributes(leaf);
-          continue; //
+          continue;  //
         } else if (leaf->numMembers() != 2) {
-          continue; // Otherwise we only support binary conditions
+          continue;  // Otherwise we only support binary conditions
         }
 
         TRI_ASSERT(leaf->numMembers() == 2);
@@ -145,8 +145,7 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
 IndexBlock::~IndexBlock() { cleanupNonConstExpressions(); }
 
 /// @brief adds a UNIQUE() to a dynamic IN condition
-arangodb::aql::AstNode* IndexBlock::makeUnique(
-    arangodb::aql::AstNode* node) const {
+arangodb::aql::AstNode* IndexBlock::makeUnique(arangodb::aql::AstNode* node) const {
   if (node->type != arangodb::aql::NODE_TYPE_ARRAY || node->numMembers() >= 2) {
     // an non-array or an array with more than 1 member
     auto en = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
@@ -156,13 +155,11 @@ arangodb::aql::AstNode* IndexBlock::makeUnique(
     auto trx = transaction();
     bool isSorted = false;
     bool isSparse = false;
-    auto unused =
-        trx->getIndexFeatures(_indexes[_currentIndex], isSorted, isSparse);
-    if (isSparse) {
+    auto unused = trx->getIndexFeatures(_indexes[_currentIndex], isSorted, isSparse);
+    if (isSparse || isSorted) {
       // the index is sorted. we need to use SORTED_UNIQUE to get the
       // result back in index order
-      return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"),
-                                         array);
+      return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), array);
     }
     // a regular UNIQUE will do
     return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("UNIQUE"), array);
@@ -182,11 +179,11 @@ void IndexBlock::executeExpressions() {
   AqlItemBlock* cur = _buffer.front();
   auto en = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
   auto ast = en->_plan->getAst();
-  AstNode const* oldCondition = _condition;
-  AstNode* newCondition = ast->shallowCopyForModify(oldCondition);
-  _condition = newCondition;
-  TRI_DEFER(FINALIZE_SUBTREE(newCondition));
-          
+  AstNode* condition = const_cast<AstNode*>(_condition);
+
+  // modify the existing node in place
+  TEMPORARILY_UNLOCK_NODE(condition);
+
   Query* query = _engine->getQuery();
 
   for (size_t posInExpressions = 0;
@@ -204,15 +201,18 @@ void IndexBlock::executeExpressions() {
     VPackSlice slice = materializer.slice(a, false);
     AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
 
-    AstNode* tmp = newCondition;
+    AstNode* tmp = condition;
     for (size_t x = 0; x < toReplace->indexPath.size(); x++) {
       size_t idx = toReplace->indexPath[x];
       AstNode* old = tmp->getMember(idx);
+      // modify the node in place
+      TEMPORARILY_UNLOCK_NODE(tmp);
       if (x + 1 < toReplace->indexPath.size()) {
-        AstNode* cpy = ast->shallowCopyForModify(old);
+        AstNode* cpy = old;
         tmp->changeMember(idx, cpy);
         tmp = cpy;
       } else {
+        // insert the actual expression value
         tmp->changeMember(idx, evaluatedNode);
       }
     }
@@ -223,9 +223,10 @@ void IndexBlock::initializeOnce() {
   auto en = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
   auto ast = en->_plan->getAst();
 
+  _trx->pinData(_collection->id());
+
   // instantiate expressions:
-  auto instantiateExpression = [&](AstNode* a,
-                                   std::vector<size_t>&& idxs) -> void {
+  auto instantiateExpression = [&](AstNode* a, std::vector<size_t>&& idxs) -> void {
     // all new AstNodes are registered with the Ast in the Query
     auto e = std::make_unique<Expression>(en->_plan, ast, a);
 
@@ -235,10 +236,11 @@ void IndexBlock::initializeOnce() {
 
     _hasV8Expression |= e->willUseV8();
 
-    std::unordered_set<Variable const*> inVars;
+    arangodb::HashSet<Variable const*> inVars;
     e->variables(inVars);
 
-    _nonConstExpressions.emplace_back(std::make_unique<NonConstExpression>(std::move(e), std::move(idxs)));
+    _nonConstExpressions.emplace_back(
+        std::make_unique<NonConstExpression>(std::move(e), std::move(idxs)));
 
     // Prepare _inVars and _inRegs:
     _inVars.emplace_back();
@@ -261,8 +263,7 @@ void IndexBlock::initializeOnce() {
   }
 
   auto outVariable = en->outVariable();
-  std::function<bool(AstNode const*)> hasOutVariableAccess =
-    [&](AstNode const* node) -> bool {
+  std::function<bool(AstNode const*)> hasOutVariableAccess = [&](AstNode const* node) -> bool {
     if (node->isAttributeAccessForVariable(outVariable, true)) {
       return true;
     }
@@ -275,10 +276,9 @@ void IndexBlock::initializeOnce() {
     return accessedInSubtree;
   };
 
-  auto instFCallArgExpressions = [&](AstNode* fcall,
-                                     std::vector<size_t>&& indexPath) {
+  auto instFCallArgExpressions = [&](AstNode* fcall, std::vector<size_t>&& indexPath) {
     TRI_ASSERT(1 == fcall->numMembers());
-    indexPath.emplace_back(0); // for the arguments array
+    indexPath.emplace_back(0);  // for the arguments array
     AstNode* array = fcall->getMemberUnchecked(0);
     for (size_t k = 0; k < array->numMembers(); k++) {
       AstNode* child = array->getMemberUnchecked(k);
@@ -438,9 +438,7 @@ bool IndexBlock::initIndexes() {
 }
 
 /// @brief create an OperationCursor object
-void IndexBlock::createCursor() {
-  _cursor = orderCursor(_currentIndex);
-}
+void IndexBlock::createCursor() { _cursor = orderCursor(_currentIndex); }
 
 /// @brief Forwards _iterator to the next available index
 void IndexBlock::startNextCursor() {
@@ -493,8 +491,7 @@ bool IndexBlock::skipIndex(size_t atMost) {
 }
 
 // this is called every time we need to fetch data from the indexes
-bool IndexBlock::readIndex(size_t atMost,
-                           IndexIterator::DocumentCallback const& callback) {
+bool IndexBlock::readIndex(size_t atMost, IndexIterator::DocumentCallback const& callback) {
   // this is called every time we want to read the index.
   // For the primary key index, this only reads the index once, and never
   // again (although there might be multiple calls to this function).
@@ -529,24 +526,27 @@ bool IndexBlock::readIndex(size_t atMost,
 
     bool res;
     if (!produceResult()) {
-      // optimization: iterate over index (e.g. for filtering), but do not fetch the
-      // actual documents
-      res = _cursor->next([&callback](LocalDocumentId const& id) {
-        callback(id, VPackSlice::nullSlice());
-      }, atMost - _returned);
+      // optimization: iterate over index (e.g. for filtering), but do not fetch
+      // the actual documents
+      res = _cursor->next(
+          [&callback](LocalDocumentId const& id) {
+            callback(id, VPackSlice::nullSlice());
+          },
+          atMost - _returned);
     } else {
       // check if the *current* cursor supports covering index queries or not
       // if we can optimize or not must be stored in our instance, so the
       // DocumentProducingBlock can access the flag
       _allowCoveringIndexOptimization = _cursor->hasCovering();
 
-      if (_allowCoveringIndexOptimization &&
-          !ExecutionNode::castTo<IndexNode const*>(_exeNode)->coveringIndexAttributePositions().empty()) {
+      if (_allowCoveringIndexOptimization && !ExecutionNode::castTo<IndexNode const*>(_exeNode)
+                                                  ->coveringIndexAttributePositions()
+                                                  .empty()) {
         // index covers all projections
         res = _cursor->nextCovering(callback, atMost - _returned);
       } else {
         // we need the documents later on. fetch entire documents
-       res = _cursor->nextDocument(callback, atMost - _returned);
+        res = _cursor->nextDocument(callback, atMost - _returned);
       }
     }
 
@@ -561,12 +561,10 @@ bool IndexBlock::readIndex(size_t atMost,
   return false;
 }
 
-std::pair<ExecutionState, Result> IndexBlock::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res.first == ExecutionState::WAITING ||
-      !res.second.ok()) {
+  if (res.first == ExecutionState::WAITING || !res.second.ok()) {
     // If we need to wait or get an error we return as is.
     return res;
   }
@@ -582,8 +580,7 @@ std::pair<ExecutionState, Result> IndexBlock::initializeCursor(
 }
 
 /// @brief getSome
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
-    size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
   if (_done) {
     TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
@@ -611,7 +608,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
       TRI_ASSERT(_resultInFlight != nullptr);
       if (!_isLastIndex) {
         // insert & check for duplicates in one go
-        if (!_alreadyReturned.emplace(token.id()).second) {
+        if (!_alreadyReturned.insert(token.id()).second) {
           // Document already in list. Skip this
           return;
         }
@@ -669,8 +666,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
         }
         ExecutionState state;
         bool blockAppended;
-        std::tie(state, blockAppended) =
-            ExecutionBlock::getBlock(DefaultBatchSize());
+        std::tie(state, blockAppended) = ExecutionBlock::getBlock(DefaultBatchSize());
         if (state == ExecutionState::WAITING) {
           TRI_ASSERT(!blockAppended);
           traceGetSomeEnd(_resultInFlight.get(), ExecutionState::WAITING);
@@ -813,9 +809,7 @@ std::pair<ExecutionState, size_t> IndexBlock::skipSome(size_t atMost) {
 }
 
 /// @brief frees the memory for all non-constant expressions
-void IndexBlock::cleanupNonConstExpressions() {
-  _nonConstExpressions.clear();
-}
+void IndexBlock::cleanupNonConstExpressions() { _nonConstExpressions.clear(); }
 
 /// @brief order a cursor for the index at the specified position
 arangodb::OperationCursor* IndexBlock::orderCursor(size_t currentIndex) {
@@ -835,9 +829,9 @@ arangodb::OperationCursor* IndexBlock::orderCursor(size_t currentIndex) {
 
     // yet no cursor for index, so create it
     IndexNode const* node = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
-    _cursors[currentIndex].reset(_trx->indexScanForCondition(
-        _indexes[currentIndex], conditionNode, node->outVariable(), _mmdr.get(),
-        node->_options));
+    _cursors[currentIndex].reset(
+        _trx->indexScanForCondition(_indexes[currentIndex], conditionNode,
+                                    node->outVariable(), _mmdr.get(), node->_options));
   } else {
     // cursor for index already exists, reset and reuse it
     _cursors[currentIndex]->reset();

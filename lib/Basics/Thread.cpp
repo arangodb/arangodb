@@ -32,11 +32,8 @@
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include <thread>
 #include <chrono>
+#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -72,13 +69,7 @@ void Thread::startThread(void* arg) {
 
   LOCAL_THREAD_NAME = ptr->name().c_str();
 
-  if (0 <= ptr->_affinity) {
-    TRI_SetProcessorAffinity(&ptr->_thread, ptr->_affinity);
-  }
-
-  auto guard = scopeGuard([&ptr]() {
-    ptr->cleanupMe();
-  });
+  auto guard = scopeGuard([&ptr]() { ptr->cleanupMe(); });
 
   try {
     ptr->runMe();
@@ -87,7 +78,7 @@ void Thread::startThread(void* arg) {
         << "caught exception in thread '" << ptr->_name << "': " << ex.what();
     ptr->crashNotification(ex);
     throw;
-  } 
+  }
 }
 
 /// @brief returns the process id
@@ -138,13 +129,12 @@ std::string Thread::stringify(ThreadState state) {
 /// @brief constructs a thread
 Thread::Thread(std::string const& name, bool deleteOnExit)
     : _deleteOnExit(deleteOnExit),
+      _threadStructInitialized(false),
       _name(name),
       _thread(),
       _threadNumber(0),
-      _threadId(),
       _finishedCondition(nullptr),
-      _state(ThreadState::CREATED),
-      _affinity(-1) {
+      _state(ThreadState::CREATED) {
   TRI_InitThread(&_thread);
 }
 
@@ -155,12 +145,14 @@ Thread::~Thread() {
       << "delete(" << _name << "), state: " << stringify(state);
 
   if (state == ThreadState::STOPPED) {
-    if (TRI_IsSelfThread(&_thread)) {
-      // we must ignore any errors here, but TRI_DetachThread will log them
-      TRI_DetachThread(&_thread);
-    } else {
-      // we must ignore any errors here, but TRI_JoinThread will log them
-      TRI_JoinThread(&_thread);
+    if (_threadStructInitialized) {
+      if (TRI_IsSelfThread(&_thread)) {
+        // we must ignore any errors here, but TRI_DetachThread will log them
+        TRI_DetachThread(&_thread);
+      } else {
+        // we must ignore any errors here, but TRI_JoinThread will log them
+        TRI_JoinThread(&_thread);
+      }
     }
 
     _state.store(ThreadState::DETACHED);
@@ -195,9 +187,8 @@ void Thread::beginShutdown() {
     _state.compare_exchange_strong(state, ThreadState::STOPPING);
   }
 
-  LOG_TOPIC(TRACE, Logger::THREADS)
-      << "beginShutdown(" << _name << ") reached state "
-      << stringify(_state.load());
+  LOG_TOPIC(TRACE, Logger::THREADS) << "beginShutdown(" << _name << ") reached state "
+                                    << stringify(_state.load());
 }
 
 /// @brief derived class MUST call from its destructor
@@ -219,9 +210,8 @@ void Thread::shutdown() {
 
     if (!isSilent() && _state.load() != ThreadState::STOPPING &&
         _state.load() != ThreadState::STOPPED) {
-      LOG_TOPIC(WARN, Logger::THREADS)
-          << "forcefully shutting down thread '" << _name << "' in state "
-          << stringify(_state.load());
+      LOG_TOPIC(WARN, Logger::THREADS) << "forcefully shutting down thread '" << _name
+                                       << "' in state " << stringify(_state.load());
     }
   }
 
@@ -254,8 +244,7 @@ bool Thread::isStopping() const {
 bool Thread::start(ConditionVariable* finishedCondition) {
   if (!isSystem() && !ApplicationServer::isPrepared()) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "trying to start a thread '" << _name
-        << "' before prepare has finished, current state: "
+        << "trying to start a thread '" << _name << "' before prepare has finished, current state: "
         << (ApplicationServer::server == nullptr
                 ? -1
                 : (int)ApplicationServer::server->state());
@@ -282,8 +271,10 @@ bool Thread::start(ConditionVariable* finishedCondition) {
     return false;
   }
 
-  bool ok =
-      TRI_StartThread(&_thread, &_threadId, _name.c_str(), &startThread, this);
+  TRI_ASSERT(!_threadStructInitialized);
+  memset(&_thread, 0, sizeof(thread_t));
+
+  bool ok = TRI_StartThread(&_thread, _name.c_str(), &startThread, this);
 
   if (!ok) {
     // could not start the thread
@@ -295,37 +286,9 @@ bool Thread::start(ConditionVariable* finishedCondition) {
     cleanupMe();
   }
 
+  _threadStructInitialized = true;
+
   return ok;
-}
-
-/// @brief sets the process affinity
-void Thread::setProcessorAffinity(size_t c) { _affinity = (int)c; }
-
-/// @brief sets status
-void Thread::addStatus(VPackBuilder* b) {
-  b->add("affinity", VPackValue(_affinity));
-
-  switch (_state.load()) {
-    case ThreadState::CREATED:
-      b->add("started", VPackValue("created"));
-      break;
-
-    case ThreadState::STARTED:
-      b->add("started", VPackValue("started"));
-      break;
-
-    case ThreadState::STOPPING:
-      b->add("started", VPackValue("stopping"));
-      break;
-
-    case ThreadState::STOPPED:
-      b->add("started", VPackValue("stopped"));
-      break;
-
-    case ThreadState::DETACHED:
-      b->add("started", VPackValue("detached"));
-      break;
-  }
 }
 
 void Thread::markAsStopped() {

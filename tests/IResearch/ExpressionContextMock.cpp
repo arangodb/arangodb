@@ -52,10 +52,10 @@ arangodb::aql::AqlValue ExpressionContextMock::getVariableValue(
   return it->second;
 }
   
-TRI_vocbase_t& ExpressionContextMock::vocbase() const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-arangodb::aql::Query* ExpressionContextMock::query() const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
+//TRI_vocbase_t& ExpressionContextMock::vocbase() const {
+//  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+//}
+//
+//arangodb::aql::Query* ExpressionContextMock::query() const {
+//  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+//}

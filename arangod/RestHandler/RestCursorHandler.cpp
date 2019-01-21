@@ -41,9 +41,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestCursorHandler::RestCursorHandler(
-    GeneralRequest* request, GeneralResponse* response,
-    arangodb::aql::QueryRegistry* queryRegistry)
+RestCursorHandler::RestCursorHandler(GeneralRequest* request, GeneralResponse* response,
+                                     arangodb::aql::QueryRegistry* queryRegistry)
     : RestVocbaseBaseHandler(request, response),
       _query(nullptr),
       _queryResult(),
@@ -72,21 +71,19 @@ RestStatus RestCursorHandler::execute() {
   } else if (type == rest::RequestType::DELETE_REQ) {
     return deleteQueryCursor();
   }
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
 RestStatus RestCursorHandler::continueExecute() {
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();
-  
-  if (_query != nullptr) { // non-stream query
-    if (type == rest::RequestType::POST ||
-        type == rest::RequestType::PUT) {
+
+  if (_query != nullptr) {  // non-stream query
+    if (type == rest::RequestType::POST || type == rest::RequestType::PUT) {
       return processQuery();
     }
-  } else if (_leasedCursor) { // stream cursor query
+  } else if (_leasedCursor) {  // stream cursor query
     Cursor* cs = _leasedCursor;
     _leasedCursor = nullptr;
     if (type == rest::RequestType::POST) {
@@ -153,21 +150,22 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   VPackSlice opts = _options->slice();
 
   bool stream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
-  size_t batchSize =
-      VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
+  size_t batchSize = VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
   double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl", 30);
   bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
 
   if (stream) {
     if (count) {
-      generateError(Result(TRI_ERROR_BAD_PARAMETER, "cannot use 'count' option for a streaming query"));
+      generateError(Result(TRI_ERROR_BAD_PARAMETER,
+                           "cannot use 'count' option for a streaming query"));
       return RestStatus::DONE;
     } else {
       CursorRepository* cursors = _vocbase.cursorRepository();
       TRI_ASSERT(cursors != nullptr);
-      Cursor* cursor = cursors->createQueryStream(
-          querySlice.copyString(), bindVarsBuilder, _options, batchSize, ttl);
-   
+      Cursor* cursor = cursors->createQueryStream(querySlice.copyString(), bindVarsBuilder,
+                                                  _options, batchSize, ttl,
+                                                  /*contextExt*/ false);
+
       return generateCursorResult(rest::ResponseCode::CREATED, cursor);
     }
   }
@@ -179,19 +177,12 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   TRI_ASSERT(l > 0);
 
   auto query = std::make_unique<aql::Query>(
-    false,
-    _vocbase,
-    arangodb::aql::QueryString(queryStr, static_cast<size_t>(l)),
-    bindVarsBuilder,
-    _options,
-    arangodb::aql::PART_MAIN
-  );
+      false, _vocbase, arangodb::aql::QueryString(queryStr, static_cast<size_t>(l)),
+      bindVarsBuilder, _options, arangodb::aql::PART_MAIN);
 
   std::shared_ptr<aql::SharedQueryState> ss = query->sharedState();
   auto self = shared_from_this();
-  ss->setContinueHandler([this, self, ss] {
-    continueHandlerExecution();
-  });
+  ss->setContinueHandler([this, self, ss] { continueHandlerExecution(); });
 
   registerQuery(std::move(query));
   return processQuery();
@@ -205,15 +196,15 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
 
 RestStatus RestCursorHandler::processQuery() {
   if (_query == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Illegal state in RestQueryHandler, query not found.");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "Illegal state in RestQueryHandler, query not found.");
   }
-  
+
   {
     // always clean up
-    auto guard = scopeGuard([this]() {
-      unregisterQuery();
-    });
-  
+    auto guard = scopeGuard([this]() { unregisterQuery(); });
+
     // continue handler is registered earlier
     auto state = _query->execute(_queryRegistry, _queryResult);
     if (state == aql::ExecutionState::WAITING) {
@@ -222,7 +213,7 @@ RestStatus RestCursorHandler::processQuery() {
     }
     TRI_ASSERT(state == aql::ExecutionState::DONE);
   }
-  
+
   // We cannot get into HASMORE here, or we would lose results.
   return handleQueryResult();
 }
@@ -246,8 +237,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
   TRI_ASSERT(_options != nullptr);
   VPackSlice opts = _options->slice();
 
-  size_t batchSize =
-      VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
+  size_t batchSize = VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
   double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl", 30);
   bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
 
@@ -301,8 +291,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
     } catch (...) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
-    generateResult(rest::ResponseCode::CREATED, std::move(buffer),
-                   _queryResult.context);
+    generateResult(rest::ResponseCode::CREATED, std::move(buffer), _queryResult.context);
     return RestStatus::DONE;
   } else {
     // result is bigger than batchSize, and a cursor will be created
@@ -310,8 +299,8 @@ RestStatus RestCursorHandler::handleQueryResult() {
     TRI_ASSERT(cursors != nullptr);
     TRI_ASSERT(_queryResult.result.get() != nullptr);
     // steal the query result, cursor will take over the ownership
-    Cursor* cursor = cursors->createFromQueryResult(std::move(_queryResult),
-                                                    batchSize, ttl, count);
+    Cursor* cursor =
+        cursors->createFromQueryResult(std::move(_queryResult), batchSize, ttl, count);
     return generateCursorResult(rest::ResponseCode::CREATED, cursor);
   }
 }
@@ -330,10 +319,8 @@ uint32_t RestCursorHandler::forwardingTarget() {
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
-  
-  return (sourceServer == ServerState::instance()->getShortId())
-      ? 0
-      : sourceServer;
+
+  return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -371,14 +358,15 @@ bool RestCursorHandler::cancelQuery() {
     _query->kill();
     _queryKilled = true;
     _hasStarted = true;
- 
-    // cursor is canceled. now remove the continue handler we may have registered in the query
+
+    // cursor is canceled. now remove the continue handler we may have
+    // registered in the query
     std::shared_ptr<aql::SharedQueryState> ss = _query->sharedState();
     ss->setContinueCallback();
-    
+
     return true;
-  } 
-  
+  }
+
   if (!_hasStarted) {
     _queryKilled = true;
     return true;
@@ -480,20 +468,19 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code,
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   builder.openObject();
-  
+
   aql::ExecutionState state;
   Result r;
   auto self = shared_from_this();
-  std::tie(state, r) = cursor->dump(builder, [this, self]() {
-    continueHandlerExecution();
-  });
+  std::tie(state, r) =
+      cursor->dump(builder, [this, self]() { continueHandlerExecution(); });
   if (state == aql::ExecutionState::WAITING) {
     builder.clear();
     _leasedCursor = cursor;
     guard.cancel();
     return RestStatus::WAITING;
   }
-  
+
   builder.add(StaticStrings::Error, VPackValue(false));
   builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
   builder.close();
@@ -559,15 +546,14 @@ RestStatus RestCursorHandler::modifyQueryCursor() {
   auto cursors = _vocbase.cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
-  auto cursorId = static_cast<arangodb::CursorId>(
-      arangodb::basics::StringUtils::uint64(id));
+  auto cursorId =
+      static_cast<arangodb::CursorId>(arangodb::basics::StringUtils::uint64(id));
   bool busy;
   Cursor* cursor = cursors->find(cursorId, Cursor::CURSOR_VPACK, busy);
 
   if (cursor == nullptr) {
     if (busy) {
-      generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_BUSY),
-                    TRI_ERROR_CURSOR_BUSY);
+      generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_BUSY), TRI_ERROR_CURSOR_BUSY);
     } else {
       generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
                     TRI_ERROR_CURSOR_NOT_FOUND);
@@ -575,7 +561,8 @@ RestStatus RestCursorHandler::modifyQueryCursor() {
     return RestStatus::DONE;
   }
 
-  return generateCursorResult(rest::ResponseCode::OK, cursor);;
+  return generateCursorResult(rest::ResponseCode::OK, cursor);
+  ;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -596,8 +583,8 @@ RestStatus RestCursorHandler::deleteQueryCursor() {
   auto cursors = _vocbase.cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
-  auto cursorId = static_cast<arangodb::CursorId>(
-      arangodb::basics::StringUtils::uint64(id));
+  auto cursorId =
+      static_cast<arangodb::CursorId>(arangodb::basics::StringUtils::uint64(id));
   bool found = cursors->remove(cursorId, Cursor::CURSOR_VPACK);
 
   if (!found) {

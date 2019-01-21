@@ -30,77 +30,68 @@ namespace arangodb {
 namespace cache {
 class Cache;
 class Finding;
-}
+}  // namespace cache
 
 namespace graph {
 
 class TraverserDocumentCache final : public TraverserCache {
+ public:
+  explicit TraverserDocumentCache(aql::Query* query);
 
-  public:
-   explicit TraverserDocumentCache(aql::Query* query);
+  ~TraverserDocumentCache();
 
-   ~TraverserDocumentCache();
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Inserts the real document stored within the token
+  ///        into the given builder.
+  ///        The document will be taken from the hash-cache.
+  ///        If it is not cached it will be looked up in the StorageEngine
+  //////////////////////////////////////////////////////////////////////////////
+  void insertEdgeIntoResult(EdgeDocumentToken const& etkn,
+                            arangodb::velocypack::Builder& builder) override;
 
+  /// Looks up the document and inserts it into the builder
+  void insertVertexIntoResult(StringRef idString, arangodb::velocypack::Builder& builder) override;
 
-   //////////////////////////////////////////////////////////////////////////////
-   /// @brief Inserts the real document stored within the token
-   ///        into the given builder.
-   ///        The document will be taken from the hash-cache.
-   ///        If it is not cached it will be looked up in the StorageEngine
-   //////////////////////////////////////////////////////////////////////////////
-   void insertEdgeIntoResult(EdgeDocumentToken const& etkn,
-                         arangodb::velocypack::Builder& builder) override;
-  
-   /// Looks up the document and inserts it into the builder
-   void insertVertexIntoResult(StringRef idString,
-                               arangodb::velocypack::Builder& builder) override;
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Return AQL value containing the result
+  ///        The document will be taken from the hash-cache.
+  ///        If it is not cached it will be looked up in the StorageEngine
+  //////////////////////////////////////////////////////////////////////////////
 
-   //////////////////////////////////////////////////////////////////////////////
-   /// @brief Return AQL value containing the result
-   ///        The document will be taken from the hash-cache.
-   ///        If it is not cached it will be looked up in the StorageEngine
-   //////////////////////////////////////////////////////////////////////////////
-  
-   aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const&) override;
-  
-   aql::AqlValue fetchVertexAqlResult(StringRef idString) override;
+  aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const&) override;
 
-   //////////////////////////////////////////////////////////////////////////////
-   /// @brief Insert value into store
-   //////////////////////////////////////////////////////////////////////////////
+  aql::AqlValue fetchVertexAqlResult(StringRef idString) override;
 
-   void insertDocument(StringRef idString,
-                       arangodb::velocypack::Slice const& document);
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Insert value into store
+  //////////////////////////////////////////////////////////////////////////////
 
-  protected:
+  void insertDocument(StringRef idString, arangodb::velocypack::Slice const& document);
 
-   //////////////////////////////////////////////////////////////////////////////
-   /// @brief Lookup a document by token in the cache.
-   ///        As long as finding is retained it is guaranteed that the result
-   ///        stays valid. Finding should not be retained very long, if it is
-   ///        needed for longer, copy the value.
-   //////////////////////////////////////////////////////////////////////////////
-   cache::Finding lookup(StringRef idString);
+ protected:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Lookup a document by token in the cache.
+  ///        As long as finding is retained it is guaranteed that the result
+  ///        stays valid. Finding should not be retained very long, if it is
+  ///        needed for longer, copy the value.
+  //////////////////////////////////////////////////////////////////////////////
+  cache::Finding lookup(StringRef idString);
 
-  protected:
+ protected:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief The hash-cache that saves documents found in the Database
+  //////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<arangodb::cache::Cache> _cache;
 
-   //////////////////////////////////////////////////////////////////////////////
-   /// @brief The hash-cache that saves documents found in the Database
-   //////////////////////////////////////////////////////////////////////////////
-   std::shared_ptr<arangodb::cache::Cache> _cache;
- 
-   //////////////////////////////////////////////////////////////////////////////
-   /// @brief Lookup a document from the database and insert it into the cache.
-   ///        The Slice returned here is only valid until the NEXT call of this
-   ///        function.
-   //////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Lookup a document from the database and insert it into the cache.
+  ///        The Slice returned here is only valid until the NEXT call of this
+  ///        function.
+  //////////////////////////////////////////////////////////////////////////////
 
-   arangodb::velocypack::Slice lookupAndCache(
-       StringRef idString);
-
-
+  arangodb::velocypack::Slice lookupAndCache(StringRef idString);
 };
-} // namespace traverser
-} // namespace arangodb
+}  // namespace graph
+}  // namespace arangodb
 
 #endif

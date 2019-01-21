@@ -61,9 +61,9 @@ struct config_t {
   std::string _startup;
   size_t _maxAppendSize;
 
-  mutable arangodb::basics::ReadWriteLock _lock; // guard member variables
+  mutable arangodb::basics::ReadWriteLock _lock;  // guard member variables
 
-public:
+ public:
   static std::string const idStr;
   static std::string const agencySizeStr;
   static std::string const poolSizeStr;
@@ -85,14 +85,15 @@ public:
   static std::string const versionStr;
   static std::string const startupStr;
 
+  using upsert_t = enum { UNCHANGED = 0, CHANGED, WRONG };
+
   /// @brief default ctor
   config_t();
 
   /// @brief ctor
   config_t(std::string const& rid, size_t as, size_t ps, double minp, double maxp,
-           std::string const& e, std::vector<std::string> const& g, bool s,
-           bool st, bool w, double f, uint64_t c, uint64_t k, double p, bool t,
-           size_t a);
+           std::string const& e, std::vector<std::string> const& g, bool s, bool st,
+           bool w, double f, uint64_t c, uint64_t k, double p, bool t, size_t a);
 
   /// @brief copy constructor
   config_t(config_t const&);
@@ -139,14 +140,13 @@ public:
    *                    id is member of this agency
    *                  - We match their pool to ours and allow only for an update
    *                    of it's own endpoint
-   * 
+   *
    * @param otherPool Other agent's pool
    * @param otherId   Other agent's id
    *
    * @return          Success
    */
-  bool upsertPool(
-    VPackSlice const& otherPool, std::string const& otherId);
+  upsert_t upsertPool(VPackSlice const& otherPool, std::string const& otherId);
 
   /// @brief active agency size
   void activate();
@@ -242,9 +242,8 @@ public:
 
   /// @brief Update configuration with an other
   void updateConfiguration(VPackSlice const& other);
-
 };
-}
-}
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

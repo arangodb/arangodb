@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodbjs.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangojs.git / docs/Drivers/ -->
 # Database API
 
 ## new Database
@@ -20,12 +20,27 @@ If _config_ is a string, it will be interpreted as _config.url_.
     Base URL of the ArangoDB server or list of server URLs.
 
     When working with a cluster or a single server with leader/follower failover,
-    [the method `db.acquireHostList`](DatabaseManipulation.md#databaseacquirehostlist)
+    [the method `db.acquireHostList`](#databaseacquirehostlist)
     can be used to automatically pick up additional coordinators/followers at
     any point.
 
-    **Note**: As of arangojs 6.0.0 it is no longer possible to pass
-    the username or password from the URL.
+    When running ArangoDB on a unix socket, e.g. `/tmp/arangodb.sock`, the
+    following URL formats are supported for unix sockets:
+
+    - `unix:///tmp/arangodb.sock` (no SSL)
+    - `http+unix:///tmp/arangodb.sock` (or `https+unix://` for SSL)
+    - `http://unix:/tmp/arangodb.sock` (or `https://unix:` for SSL)
+
+    Additionally `ssl` and `tls` are treated as synonymous with `https` and
+    `tcp` is treated as synonymous with `http`, so the following URLs are
+    considered identical:
+
+    - `tcp://localhost:8529` and `http://localhost:8529`
+    - `ssl://localhost:8529` and `https://localhost:8529`
+    - `tcp+unix:///tmp/arangodb.sock` and `http+unix:///tmp/arangodb.sock`
+    - `ssl+unix:///tmp/arangodb.sock` and `https+unix:///tmp/arangodb.sock`
+    - `tcp://unix:/tmp/arangodb.sock` and `http://unix:/tmp/arangodb.sock`
+    - `ssl://unix:/tmp/arangodb.sock` and `https://unix:/tmp/arangodb.sock`
 
     If you want to use ArangoDB with authentication, see
     _useBasicAuth_ or _useBearerAuth_ methods.
@@ -34,34 +49,45 @@ If _config_ is a string, it will be interpreted as _config.url_.
     your certificates to the _agentOptions_, e.g.:
 
     ```js
+    ...
     agentOptions: {
       ca: [
         fs.readFileSync(".ssl/sub.class1.server.ca.pem"),
         fs.readFileSync(".ssl/ca.pem")
-      ];
+      ]
+    }
+    ```
+
+    Although this is **strongly discouraged**, it's also possible to disable
+    HTTPS certificate validation entirely, but note this has
+    **extremely dangerous** security implications:
+
+    ```js
+    ...
+    agentOptions: {
+      rejectUnauthorized: false
     }
     ```
 
   - **isAbsolute**: `boolean` (Default: `false`)
 
     If this option is explicitly set to `true`, the _url_ will be treated as the
-    absolute database path. This is an escape hatch to allow using arangojs with
-    database APIs exposed with a reverse proxy and makes it impossible to switch
-    databases with _useDatabase_ or using _acquireHostList_.
+    absolute database path and arangojs will not append the database path to it.
+
+    **Note:** This makes it impossible to switch databases with _useDatabase_
+    or using _acquireHostList_. This is only intended to be used as an escape
+    hatch when working with standalone servers exposing a single database API
+    from behind a reverse proxy, which is not a recommended setup.
 
   - **arangoVersion**: `number` (Default: `30000`)
 
-    Value of the `x-arango-version` header. This should match the lowest
-    version of ArangoDB you expect to be using. The format is defined as
-    `XYYZZ` where `X` is the major version, `Y` is the two-digit minor version
-    and `Z` is the two-digit bugfix version.
+    Numeric representation of the ArangoDB version the driver should expect.
+    The format is defined as `XYYZZ` where `X` is the major version, `Y` is
+    the zero-filled two-digit minor version and `Z` is the zero-filled two-digit
+    bugfix version, e.g. `30102` for 3.1.2, `20811` for 2.8.11.
 
-    **Example**: `30102` corresponds to version 3.1.2 of ArangoDB.
-
-    **Note**: The driver will behave differently when using different major
-    versions of ArangoDB to compensate for API changes. Some functions are
-    not available on every major version of ArangoDB as indicated in their
-    descriptions below (e.g. _collection.first_, _collection.bulkUpdate_).
+    Depending on this value certain methods may become unavailable or change
+    their behavior to remain compatible with different versions of ArangoDB.
 
   - **headers**: `Object` (optional)
 
@@ -133,6 +159,135 @@ If _config_ is a string, it will be interpreted as _config.url_.
 
     **Note**: Requests bound to a specific server (e.g. fetching query results)
     will never be retried automatically and ignore this setting.
+
+## database.acquireHostList
+
+`async database.acquireHostList(): this`
+
+Updates the URL list by requesting a list of all coordinators in the cluster
+and adding any endpoints not initially specified in the _url_ configuration.
+
+For long-running processes communicating with an ArangoDB cluster it is
+recommended to run this method repeatedly (e.g. once per hour) to make sure
+new coordinators are picked up correctly and can be used for fail-over or
+load balancing.
+
+**Note**: This method can not be used when the arangojs instance was created
+with `isAbsolute: true`.
+
+## database.useDatabase
+
+`database.useDatabase(databaseName): this`
+
+Updates the _Database_ instance and its connection string to use the given
+_databaseName_, then returns itself.
+
+**Note**: This method can not be used when the arangojs instance was created
+with `isAbsolute: true`.
+
+**Arguments**
+
+- **databaseName**: `string`
+
+  The name of the database to use.
+
+**Examples**
+
+```js
+const db = new Database();
+db.useDatabase("test");
+// The database instance now uses the database "test".
+```
+
+## database.useBasicAuth
+
+`database.useBasicAuth([username, [password]]): this`
+
+Updates the _Database_ instance's `authorization` header to use Basic
+authentication with the given _username_ and _password_, then returns itself.
+
+**Arguments**
+
+- **username**: `string` (Default: `"root"`)
+
+  The username to authenticate with.
+
+- **password**: `string` (Default: `""`)
+
+  The password to authenticate with.
+
+**Examples**
+
+```js
+const db = new Database();
+db.useDatabase("test");
+db.useBasicAuth("admin", "hunter2");
+// The database instance now uses the database "test"
+// with the username "admin" and password "hunter2".
+```
+
+## database.useBearerAuth
+
+`database.useBearerAuth(token): this`
+
+Updates the _Database_ instance's `authorization` header to use Bearer
+authentication with the given authentication token, then returns itself.
+
+**Arguments**
+
+- **token**: `string`
+
+  The token to authenticate with.
+
+**Examples**
+
+```js
+const db = new Database();
+db.useBearerAuth("keyboardcat");
+// The database instance now uses Bearer authentication.
+```
+
+## database.login
+
+`async database.login([username, [password]]): string`
+
+Validates the given database credentials and exchanges them for an
+authentication token, then uses the authentication token for future
+requests and returns it.
+
+**Arguments**
+
+- **username**: `string` (Default: `"root"`)
+
+  The username to authenticate with.
+
+- **password**: `string` (Default: `""`)
+
+  The password to authenticate with.
+
+**Examples**
+
+```js
+const db = new Database();
+db.useDatabase("test");
+await db.login("admin", "hunter2");
+// The database instance now uses the database "test"
+// with an authentication token for the "admin" user.
+```
+
+## database.version
+
+`async database.version(): Object`
+
+Fetches the ArangoDB version information for the active database from the server.
+
+**Examples**
+
+```js
+const db = new Database();
+const version = await db.version();
+// the version object contains the ArangoDB version information.
+```
 
 ## database.close
 

@@ -1,5 +1,5 @@
-// the source code in this file is to the greatest extent an extraction of 
-// the FloatingPoint class from the GoogleTest testing framework. 
+// the source code in this file is to the greatest extent an extraction of
+// the FloatingPoint class from the GoogleTest testing framework.
 // The original code can be found at
 // https://code.google.com/p/googletest/source/browse/trunk/include/gtest/internal/gtest-internal.h
 
@@ -65,35 +65,35 @@ namespace {
 // arises.
 template <size_t size>
 class TypeWithSize {
-public:
-    // This prevents the user from using TypeWithSize<N> with incorrect
-    // values of N.
-    typedef void UInt;
+ public:
+  // This prevents the user from using TypeWithSize<N> with incorrect
+  // values of N.
+  typedef void UInt;
 };
 
 // The specialization for size 4.
 template <>
 class TypeWithSize<4> {
-public:
-    // unsigned int has size 4 in both gcc and MSVC.
-    //
-    // As base/basictypes.h doesn't compile on Windows, we cannot use
-    // uint32, uint64, and etc here.
-    typedef int Int;
-    typedef unsigned int UInt;
+ public:
+  // unsigned int has size 4 in both gcc and MSVC.
+  //
+  // As base/basictypes.h doesn't compile on Windows, we cannot use
+  // uint32, uint64, and etc here.
+  typedef int Int;
+  typedef unsigned int UInt;
 };
 
 // The specialization for size 8.
 template <>
 class TypeWithSize<8> {
-public:
+ public:
 #ifdef _WIN32
   typedef __int64 Int;
   typedef unsigned __int64 UInt;
 #else
-    typedef long long Int;  // NOLINT
-    typedef unsigned long long UInt;  // NOLINT
-#endif  
+  typedef long long Int;            // NOLINT
+  typedef unsigned long long UInt;  // NOLINT
+#endif
 };
 
 // This template class represents an IEEE floating-point number
@@ -127,162 +127,160 @@ public:
 //   RawType: the raw floating-point type (either float or double)
 template <typename RawType>
 class FloatingPoint {
-public:
-    // Defines the unsigned integer type that has the same size as the
-    // floating point number.
-    typedef typename TypeWithSize<sizeof(RawType)>::UInt Bits;
+ public:
+  // Defines the unsigned integer type that has the same size as the
+  // floating point number.
+  typedef typename TypeWithSize<sizeof(RawType)>::UInt Bits;
 
-    // Constants.
+  // Constants.
 
-    // # of bits in a number.
-    static const size_t kBitCount = 8*sizeof(RawType);
+  // # of bits in a number.
+  static const size_t kBitCount = 8 * sizeof(RawType);
 
-    // # of fraction bits in a number.
-    static const size_t kFractionBitCount =
-            std::numeric_limits<RawType>::digits - 1;
+  // # of fraction bits in a number.
+  static const size_t kFractionBitCount = std::numeric_limits<RawType>::digits - 1;
 
-    // # of exponent bits in a number.
-    static const size_t kExponentBitCount = kBitCount - 1 - kFractionBitCount;
+  // # of exponent bits in a number.
+  static const size_t kExponentBitCount = kBitCount - 1 - kFractionBitCount;
 
-    // The mask for the sign bit.
-    static const Bits kSignBitMask = static_cast<Bits>(1) << (kBitCount - 1);
+  // The mask for the sign bit.
+  static const Bits kSignBitMask = static_cast<Bits>(1) << (kBitCount - 1);
 
-    // The mask for the fraction bits.
-    static const Bits kFractionBitMask =
-            ~static_cast<Bits>(0) >> (kExponentBitCount + 1);
+  // The mask for the fraction bits.
+  static const Bits kFractionBitMask = ~static_cast<Bits>(0) >> (kExponentBitCount + 1);
 
-    // The mask for the exponent bits.
-    static const Bits kExponentBitMask = ~(kSignBitMask | kFractionBitMask);
+  // The mask for the exponent bits.
+  static const Bits kExponentBitMask = ~(kSignBitMask | kFractionBitMask);
 
-    // How many ULP's (Units in the Last Place) we want to tolerate when
-    // comparing two numbers.  The larger the value, the more error we
-    // allow.  A 0 value means that two numbers must be exactly the same
-    // to be considered equal.
-    //
-    // The maximum error of a single floating-point operation is 0.5
-    // units in the last place.  On Intel CPU's, all floating-point
-    // calculations are done with 80-bit precision, while double has 64
-    // bits.  Therefore, 4 should be enough for ordinary use.
-    //
-    // See the following article for more details on ULP:
-    // http://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
-    static const size_t kMaxUlps = 4;
+  // How many ULP's (Units in the Last Place) we want to tolerate when
+  // comparing two numbers.  The larger the value, the more error we
+  // allow.  A 0 value means that two numbers must be exactly the same
+  // to be considered equal.
+  //
+  // The maximum error of a single floating-point operation is 0.5
+  // units in the last place.  On Intel CPU's, all floating-point
+  // calculations are done with 80-bit precision, while double has 64
+  // bits.  Therefore, 4 should be enough for ordinary use.
+  //
+  // See the following article for more details on ULP:
+  // http://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
+  static const size_t kMaxUlps = 4;
 
-    // Constructs a FloatingPoint from a raw floating-point number.
-    //
-    // On an Intel CPU, passing a non-normalized NAN (Not a Number)
-    // around may change its bits, although the new value is guaranteed
-    // to be also a NAN.  Therefore, don't expect this constructor to
-    // preserve the bits in x when x is a NAN.
-    explicit FloatingPoint(const RawType& x) { u_.value_ = x; }
+  // Constructs a FloatingPoint from a raw floating-point number.
+  //
+  // On an Intel CPU, passing a non-normalized NAN (Not a Number)
+  // around may change its bits, although the new value is guaranteed
+  // to be also a NAN.  Therefore, don't expect this constructor to
+  // preserve the bits in x when x is a NAN.
+  explicit FloatingPoint(const RawType& x) { u_.value_ = x; }
 
-    // Static methods
+  // Static methods
 
-    // Reinterprets a bit pattern as a floating-point number.
-    //
-    // This function is needed to test the AlmostEquals() method.
-    static RawType ReinterpretBits(const Bits bits) {
-        FloatingPoint fp(0);
-        fp.u_.bits_ = bits;
-        return fp.u_.value_;
+  // Reinterprets a bit pattern as a floating-point number.
+  //
+  // This function is needed to test the AlmostEquals() method.
+  static RawType ReinterpretBits(const Bits bits) {
+    FloatingPoint fp(0);
+    fp.u_.bits_ = bits;
+    return fp.u_.value_;
+  }
+
+  // Returns the floating-point number that represent positive infinity.
+  static RawType Infinity() { return ReinterpretBits(kExponentBitMask); }
+
+  // Returns the maximum representable finite floating-point number.
+  static RawType Max();
+
+  // Non-static methods
+
+  // Returns the bits that represents this number.
+  const Bits& bits() const { return u_.bits_; }
+
+  // Returns the exponent bits of this number.
+  Bits exponent_bits() const { return kExponentBitMask & u_.bits_; }
+
+  // Returns the fraction bits of this number.
+  Bits fraction_bits() const { return kFractionBitMask & u_.bits_; }
+
+  // Returns the sign bit of this number.
+  Bits sign_bit() const { return kSignBitMask & u_.bits_; }
+
+  // Returns true iff this is NAN (not a number).
+  bool is_nan() const {
+    // It's a NAN if the exponent bits are all ones and the fraction
+    // bits are not entirely zeros.
+    return (exponent_bits() == kExponentBitMask) && (fraction_bits() != 0);
+  }
+
+  // Returns true iff this number is at most kMaxUlps ULP's away from
+  // rhs.  In particular, this function:
+  //
+  //   - returns false if either number is (or both are) NAN.
+  //   - treats really large numbers as almost equal to infinity.
+  //   - thinks +0.0 and -0.0 are 0 DLP's apart.
+  bool AlmostEquals(const FloatingPoint& rhs) const {
+    // The IEEE standard says that any comparison operation involving
+    // a NAN must return false.
+    if (is_nan() || rhs.is_nan()) return false;
+
+    return DistanceBetweenSignAndMagnitudeNumbers(u_.bits_, rhs.u_.bits_) <= kMaxUlps;
+  }
+
+ private:
+  // The data type used to store the actual floating-point number.
+  union FloatingPointUnion {
+    RawType value_;  // The raw floating-point number.
+    Bits bits_;      // The bits that represent the number.
+  };
+
+  // Converts an integer from the sign-and-magnitude representation to
+  // the biased representation.  More precisely, let N be 2 to the
+  // power of (kBitCount - 1), an integer x is represented by the
+  // unsigned number x + N.
+  //
+  // For instance,
+  //
+  //   -N + 1 (the most negative number representable using
+  //          sign-and-magnitude) is represented by 1;
+  //   0      is represented by N; and
+  //   N - 1  (the biggest number representable using
+  //          sign-and-magnitude) is represented by 2N - 1.
+  //
+  // Read http://en.wikipedia.org/wiki/Signed_number_representations
+  // for more details on signed number representations.
+  static Bits SignAndMagnitudeToBiased(const Bits& sam) {
+    if (kSignBitMask & sam) {
+      // sam represents a negative number.
+      return ~sam + 1;
+    } else {
+      // sam represents a positive number.
+      return kSignBitMask | sam;
     }
+  }
 
-    // Returns the floating-point number that represent positive infinity.
-    static RawType Infinity() {
-        return ReinterpretBits(kExponentBitMask);
-    }
+  // Given two numbers in the sign-and-magnitude representation,
+  // returns the distance between them as an unsigned number.
+  static Bits DistanceBetweenSignAndMagnitudeNumbers(const Bits& sam1, const Bits& sam2) {
+    const Bits biased1 = SignAndMagnitudeToBiased(sam1);
+    const Bits biased2 = SignAndMagnitudeToBiased(sam2);
+    return (biased1 >= biased2) ? (biased1 - biased2) : (biased2 - biased1);
+  }
 
-    // Returns the maximum representable finite floating-point number.
-    static RawType Max();
-
-    // Non-static methods
-
-    // Returns the bits that represents this number.
-    const Bits &bits() const { return u_.bits_; }
-
-    // Returns the exponent bits of this number.
-    Bits exponent_bits() const { return kExponentBitMask & u_.bits_; }
-
-    // Returns the fraction bits of this number.
-    Bits fraction_bits() const { return kFractionBitMask & u_.bits_; }
-
-    // Returns the sign bit of this number.
-    Bits sign_bit() const { return kSignBitMask & u_.bits_; }
-
-    // Returns true iff this is NAN (not a number).
-    bool is_nan() const {
-        // It's a NAN if the exponent bits are all ones and the fraction
-        // bits are not entirely zeros.
-        return (exponent_bits() == kExponentBitMask) && (fraction_bits() != 0);
-    }
-
-    // Returns true iff this number is at most kMaxUlps ULP's away from
-    // rhs.  In particular, this function:
-    //
-    //   - returns false if either number is (or both are) NAN.
-    //   - treats really large numbers as almost equal to infinity.
-    //   - thinks +0.0 and -0.0 are 0 DLP's apart.
-    bool AlmostEquals(const FloatingPoint& rhs) const {
-        // The IEEE standard says that any comparison operation involving
-        // a NAN must return false.
-        if (is_nan() || rhs.is_nan()) return false;
-
-        return DistanceBetweenSignAndMagnitudeNumbers(u_.bits_, rhs.u_.bits_)
-                <= kMaxUlps;
-    }
-
-private:
-    // The data type used to store the actual floating-point number.
-    union FloatingPointUnion {
-        RawType value_;  // The raw floating-point number.
-        Bits bits_;      // The bits that represent the number.
-    };
-
-    // Converts an integer from the sign-and-magnitude representation to
-    // the biased representation.  More precisely, let N be 2 to the
-    // power of (kBitCount - 1), an integer x is represented by the
-    // unsigned number x + N.
-    //
-    // For instance,
-    //
-    //   -N + 1 (the most negative number representable using
-    //          sign-and-magnitude) is represented by 1;
-    //   0      is represented by N; and
-    //   N - 1  (the biggest number representable using
-    //          sign-and-magnitude) is represented by 2N - 1.
-    //
-    // Read http://en.wikipedia.org/wiki/Signed_number_representations
-    // for more details on signed number representations.
-    static Bits SignAndMagnitudeToBiased(const Bits &sam) {
-        if (kSignBitMask & sam) {
-            // sam represents a negative number.
-            return ~sam + 1;
-        } else {
-            // sam represents a positive number.
-            return kSignBitMask | sam;
-        }
-    }
-
-    // Given two numbers in the sign-and-magnitude representation,
-    // returns the distance between them as an unsigned number.
-    static Bits DistanceBetweenSignAndMagnitudeNumbers(const Bits &sam1,
-            const Bits &sam2) {
-        const Bits biased1 = SignAndMagnitudeToBiased(sam1);
-        const Bits biased2 = SignAndMagnitudeToBiased(sam2);
-        return (biased1 >= biased2) ? (biased1 - biased2) : (biased2 - biased1);
-    }
-
-    FloatingPointUnion u_;
+  FloatingPointUnion u_;
 };
 
 // We cannot use std::numeric_limits<T>::max() as it clashes with the max()
 // macro defined by <windows.h>.
 template <>
-inline float FloatingPoint<float>::Max() { return FLT_MAX; }
-template <>
-inline double FloatingPoint<double>::Max() { return DBL_MAX; }
-
+inline float FloatingPoint<float>::Max() {
+  return FLT_MAX;
 }
+template <>
+inline double FloatingPoint<double>::Max() {
+  return DBL_MAX;
+}
+
+}  // namespace
 
 namespace arangodb {
 
@@ -290,6 +288,6 @@ static inline bool almostEquals(double f1, double f2) {
   return FloatingPoint<double>{f1}.AlmostEquals(FloatingPoint<double>{f2});
 }
 
-}
+}  // namespace arangodb
 
 #endif

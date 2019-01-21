@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_REGEX_CACHE_H
 #define ARANGOD_AQL_REGEX_CACHE_H 1
 
-#include "Basics/Common.h"
 #include "Aql/AqlValue.h"
+#include "Basics/Common.h"
 
 #include <unicode/regex.h>
 
@@ -44,13 +44,15 @@ class RegexCache {
 
   RegexCache() = default;
   ~RegexCache();
-  
+
   void clear() noexcept;
 
   icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive);
   icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length, bool caseInsensitive);
-  icu::RegexMatcher* buildSplitMatcher(AqlValue const& splitExpression, arangodb::transaction::Methods* trx, bool& isEmptyExpression);
-  
+  icu::RegexMatcher* buildSplitMatcher(AqlValue const& splitExpression,
+                                       arangodb::transaction::Methods* trx,
+                                       bool& isEmptyExpression);
+
   /// @brief inspect a LIKE pattern from a string, and remove all
   /// of its escape characters. will stop at the first wildcards found.
   /// returns a pair with the following meaning:
@@ -59,15 +61,19 @@ class RegexCache {
   ///   complete string
   /// - second: true if the found wildcard is the last byte in the pattern,
   ///   false otherwise. can only be true if first is also true
-  static std::pair<bool, bool> inspectLikePattern(std::string& out, char const* ptr, size_t length);
- 
- private: 
-  /// @brief get matcher from cache, or insert a new matcher for the specified pattern
-  icu::RegexMatcher* fromCache(std::string const& pattern, 
+  static std::pair<bool, bool> inspectLikePattern(std::string& out,
+                                                  char const* ptr, size_t length);
+
+ private:
+  /// @brief get matcher from cache, or insert a new matcher for the specified
+  /// pattern
+  icu::RegexMatcher* fromCache(std::string const& pattern,
                                std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>& cache);
 
-  static void buildRegexPattern(std::string& out, char const* ptr, size_t length, bool caseInsensitive);
-  static void buildLikePattern(std::string& out, char const* ptr, size_t length, bool caseInsensitive);
+  static void buildRegexPattern(std::string& out, char const* ptr,
+                                size_t length, bool caseInsensitive);
+  static void buildLikePattern(std::string& out, char const* ptr, size_t length,
+                               bool caseInsensitive);
 
  private:
   /// @brief cache for compiled regexes (REGEX function)
@@ -78,7 +84,7 @@ class RegexCache {
   std::string _temp;
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

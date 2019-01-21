@@ -1,0 +1,14 @@
+# Copyright 2017 Rene Rivera
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+# This feature is used to allow specific generators to run. For example, QT
+# tools can only be invoked when QT library is used. In that case, <allow>qt
+# will be in usage requirement of the library.
+
+import feature ;
+
+feature.feature allow
+    :
+    : free ;

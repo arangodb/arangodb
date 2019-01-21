@@ -38,32 +38,31 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
  public:
   char const* name() const override final { return "RestCollectionHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
-  RestStatus execute() override;
+  RestStatus execute() override final;
+
+ protected:
+  void collectionRepresentation(VPackBuilder& builder, std::string const& name,
+                                bool showProperties, bool showFigures,
+                                bool showCount, bool detailedCount);
+
+  void collectionRepresentation(arangodb::velocypack::Builder& builder,
+                                LogicalCollection& coll, bool showProperties,
+                                bool showFigures, bool showCount, bool detailedCount);
+
+  void collectionRepresentation(VPackBuilder& builder, methods::Collections::Context& ctxt,
+                                bool showProperties, bool showFigures,
+                                bool showCount, bool detailedCount);
+
+  virtual Result handleExtraCommandPut(LogicalCollection& coll, std::string const& command,
+                                       velocypack::Builder& builder) = 0;
 
  private:
   void handleCommandGet();
   void handleCommandPost();
   void handleCommandPut();
   void handleCommandDelete();
-  void collectionRepresentation(VPackBuilder& builder, std::string const& name,
-                                bool showProperties, bool showFigures,
-                                bool showCount, bool detailedCount);
-
-  void collectionRepresentation(
-    arangodb::velocypack::Builder& builder,
-    LogicalCollection& coll,
-    bool showProperties,
-    bool showFigures,
-    bool showCount,
-    bool detailedCount
-  );
-
-  void collectionRepresentation(VPackBuilder& builder,
-                                methods::Collections::Context& ctxt,
-                                bool showProperties, bool showFigures,
-                                bool showCount, bool detailedCount);
 };
 
-}
+}  // namespace arangodb
 
 #endif

@@ -134,7 +134,7 @@ class range_query : public filter::prepared {
  public:
   typedef states_cache<range_state> states_t;
 
-  DECLARE_SPTR(range_query);
+  DECLARE_SHARED_PTR(range_query);
 
   explicit range_query(states_t&& states);
 

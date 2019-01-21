@@ -35,7 +35,7 @@ NS_ROOT
 class IRESEARCH_API all: public filter {
  public:
   DECLARE_FILTER_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   all() NOEXCEPT;
 

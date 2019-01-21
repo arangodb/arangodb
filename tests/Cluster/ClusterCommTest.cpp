@@ -31,7 +31,7 @@
 
 #include "Basics/ConditionLocker.h"
 #include "Cluster/ClusterComm.h"
-#include "Scheduler/Scheduler.h"
+#include "Scheduler/SupervisedScheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/ticks.h"
 
@@ -79,7 +79,7 @@ public:
   } // signalResponse
 
   Scheduler * _oldSched;
-  Scheduler _testerSched;
+  SupervisedScheduler _testerSched;
 
 };// class ClusterCommTester
 

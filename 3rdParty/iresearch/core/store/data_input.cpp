@@ -58,7 +58,8 @@ std::streamsize input_buf::xsgetn(input_buf::char_type* c, std::streamsize size)
 #ifdef IRESEARCH_DEBUG
   const auto read = in_->read_bytes(reinterpret_cast<byte_type*>(c), size);
   assert(read == size_t(size));
-#else 
+  UNUSED(read);
+#else
   in_->read_bytes(reinterpret_cast<byte_type*>(c), size);
 #endif // IRESEARCH_DEBUG
   return size;

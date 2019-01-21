@@ -68,109 +68,13 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
-#include "search/scorers.hpp"
 #include "utils/utf8_path.hpp"
 
 #include <velocypack/Iterator.h>
 
 extern const char* ARGV0; // defined in main.cpp
 
-NS_LOCAL
-
-struct CustomScorer : public irs::sort {
-  struct Prepared: public irs::sort::prepared_base<float_t> {
-   public:
-    DECLARE_FACTORY(Prepared);
-
-    Prepared(float_t i)
-      : i(i) {
-    }
-
-    virtual void add(score_t& dst, const score_t& src) const override {
-      dst += src;
-    }
-
-    virtual irs::flags const& features() const override {
-      return irs::flags::empty_instance();
-    }
-
-    virtual bool less(const score_t& lhs, const score_t& rhs) const override {
-      return lhs < rhs;
-    }
-
-    virtual irs::sort::collector::ptr prepare_collector() const override {
-      return nullptr;
-    }
-
-    virtual void prepare_score(score_t& score) const override {
-      score = 0.f;
-    }
-
-    virtual irs::sort::scorer::ptr prepare_scorer(
-      irs::sub_reader const&,
-      irs::term_reader const&,
-      irs::attribute_store const&,
-      irs::attribute_view const&
-    ) const override {
-      struct Scorer : public irs::sort::scorer {
-        Scorer(float_t score): i(score) { }
-
-        virtual void score(irs::byte_type* score_buf) override {
-          *reinterpret_cast<score_t*>(score_buf) = i;
-        }
-
-        float_t i;
-      };
-
-      return irs::sort::scorer::make<Scorer>(i);
-    }
-
-    float_t i;
-  };
-
-  static ::iresearch::sort::type_id const& type() {
-    static ::iresearch::sort::type_id TYPE("customscorer");
-    return TYPE;
-  }
-
-  static irs::sort::ptr make(irs::string_ref const& args) {
-    if (args.null()) {
-      return std::make_shared<CustomScorer>(0.f);
-    }
-
-    // velocypack::Parser::fromJson(...) will throw exception on parse error
-    auto json = arangodb::velocypack::Parser::fromJson(args.c_str(), args.size());
-    auto slice = json ? json->slice() : arangodb::velocypack::Slice();
-
-    if (!slice.isArray()) {
-      return nullptr; // incorrect argument format
-    }
-
-    arangodb::velocypack::ArrayIterator itr(slice);
-
-    if (!itr.valid()) {
-      return nullptr;
-    }
-
-    auto const value = itr.value();
-
-    if (!value.isNumber()) {
-      return nullptr;
-    }
-
-    return std::make_shared<CustomScorer>(itr.value().getNumber<size_t>());
-  }
-
-  CustomScorer(size_t i) : irs::sort(CustomScorer::type()), i(i) {}
-
-  virtual irs::sort::prepared::ptr prepare() const override {
-    return irs::memory::make_unique<Prepared>(static_cast<float_t>(i));
-  }
-
-  size_t i;
-}; // CustomScorer
-
-REGISTER_SCORER_JSON(CustomScorer, CustomScorer::make);
+namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -304,7 +208,7 @@ struct IResearchQueryJoinSetup {
   }
 }; // IResearchQuerySetup
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -372,12 +276,12 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
       "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true }"
       "}}"
     );
-    CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((view->properties(updateJson->slice(), true).ok()));
 
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->toVelocyPack(builder, true, false);
+    view->properties(builder, true, false);
     builder.close();
 
     auto slice = builder.slice();
@@ -449,7 +353,7 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
     }
 
     CHECK((trx.commit().ok()));
-    view->sync();
+    CHECK(view->commit().ok());
   }
 
   // using search keyword for collection is prohibited
@@ -522,12 +426,12 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
       "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true }"
       "}}"
     );
-    CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((view->properties(updateJson->slice(), true).ok()));
 
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->toVelocyPack(builder, true, false);
+    view->properties(builder, true, false);
     builder.close();
 
     auto slice = builder.slice();
@@ -599,7 +503,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     }
 
     CHECK((trx.commit().ok()));
-    view->sync();
+    CHECK(view->commit().ok());
   }
 
   // deterministic filter condition in a loop
@@ -725,7 +629,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_INTERNAL == queryResult.code); // can't handle self-referenced variable now
+    REQUIRE(TRI_ERROR_NOT_IMPLEMENTED == queryResult.code); // can't handle self-referenced variable now
 
 //    auto result = queryResult.result->slice();
 //    CHECK(result.isArray());
@@ -1062,7 +966,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   //   SEARCH d.seq == x.seq
   // RETURN d;
   {
-    std::string const query = "FOR d IN testView FOR x IN collection_3 FILTER d.seq == x.seq RETURN d";
+    std::string const query = "FOR d IN testView FOR x IN collection_3 FILTER d.seq == x.seq SORT d.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -1143,7 +1047,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   //   SEARCH d.seq == x.seq
   // RETURN d;
   {
-    std::string const query = "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq RETURN d";
+    std::string const query = "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq SORT d.seq RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -1362,12 +1266,6 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // invalid reference in scorer
-  //
-  // FOR x IN 0..5
-  //   FOR d IN testView
-  //   SEARCH d.seq == x
-  //   SORT customscorer(x,x)
-  // RETURN d;
   {
     std::string const query = "FOR d IN testView FOR i IN 0..5 SORT tfidf(i) DESC RETURN d";
 
@@ -1376,7 +1274,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     ));
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NOT_IMPLEMENTED == queryResult.code);
+    REQUIRE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH == queryResult.code);
   }
 
   // FOR i IN 1..5
@@ -1424,6 +1322,85 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   // SORT customscorer(d, x.seq)
   {
     std::string const query = "FOR i IN 1..5 FOR x IN collection_1 FILTER x.seq == i FOR d IN testView SEARCH d.seq == x.seq AND d.name == x.name SORT customscorer(d, x.seq) DESC RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query,
+      {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+      }
+    ));
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  {
+    std::string const query = "LET attr = _NONDETERM_('seq') "
+                              "FOR i IN 1..5 "
+                              "  FOR x IN collection_1 FILTER x.seq == i "
+                              "    FOR d IN testView SEARCH d.seq == x.seq AND d.name == x.name "
+                              "      SORT customscorer(d, x[attr]) DESC "
+                              "RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query,
+      {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+      }
+    ));
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // FOR i IN 1..5
+  //  FOR x IN collection_0 SEARCH x.seq == i
+  //    FOR d IN  SEARCH d.seq == x.seq && d.name == x.name
+  // SORT customscorer(d, x.seq)
+  {
+    std::string const query = "FOR i IN 1..5 FOR x IN collection_1 FILTER x.seq == i FOR d IN testView SEARCH d.seq == x.seq AND d.name == x.name SORT customscorer(d, x['seq']) DESC RETURN d";
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
@@ -1538,8 +1515,42 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(expectedDoc == expectedDocs.end());
   }
 
-  // we don't support scorers as a part of any expression (in sort or filter)
-  //
+  // dedicated to https://github.com/arangodb/planning/issues/3065$
+  // Optimizer rule "inline sub-queries" which doesn't handle views correctly$
+  {
+    std::string const query = "LET fullAccounts = (FOR acc1 IN [1] RETURN { 'key': 'A' }) for a IN fullAccounts for d IN testView SEARCH d.name == a.key return d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+        arangodb::aql::OptimizerRule::inlineSubqueriesRule
+      }
+    ));
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocsView[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
   // FOR i IN 1..5
   //   FOR d IN testView SEARCH d.seq == i
   //     FOR x IN collection_1 FILTER x.seq == d.seq && x.seq == TFIDF(d)
@@ -1547,7 +1558,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     std::string const query =
       "FOR i IN 1..5 "
       "  FOR d IN testView SEARCH d.seq == i "
-      "    FOR x IN collection_1 FILTER x.seq == d.seq && x.seq == TFIDF(d)"
+      "    FOR x IN collection_1 FILTER x.seq == d.seq && x.seq == customscorer(d, i)"
       "RETURN x";
 
     CHECK(arangodb::tests::assertRules(
@@ -1556,21 +1567,37 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
       }
     ));
 
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+    };
+
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NOT_IMPLEMENTED == queryResult.code);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
   }
 
-  // we don't support scorers as a part of any expression (in sort or filter)
-  //
-  // FOR i IN 1..5
-  //   FOR d IN testView SEARCH d.seq == i
-  //     FOR x IN collection_1 FILTER x.seq == d.seq && x.seq == TFIDF(d)
   {
     std::string const query =
       "FOR i IN 1..5 "
       "  FOR d IN testView SEARCH d.seq == i "
       "    FOR x IN collection_1 FILTER x.seq == d.seq "
-      "SORT 1 + TFIDF(d)"
+      "SORT 1 + customscorer(d, i) DESC "
       "RETURN d";
 
     CHECK(arangodb::tests::assertRules(
@@ -1579,41 +1606,36 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
       }
     ));
 
-    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NOT_IMPLEMENTED == queryResult.code);
-  }
-
-  // we don't support scorers outside the view node
-  //
-  // FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT customscorer(c) DESC LIMIT 3 RETURN c)
-  //     FOR x IN collection_1 FILTER x.seq == d.seq
-  // SORT customscorer(d, x.seq)
-  {
-    std::string const query =
-     "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT customscorer(c) DESC LIMIT 3 RETURN c) "
-     "  FOR x IN collection_1 FILTER x.seq == d.seq "
-     "    SORT customscorer(d, x.seq) "
-     "RETURN x";
-
-    CHECK(arangodb::tests::assertRules(
-      vocbase, query, {
-        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
-      }
-    ));
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
+    };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NOT_IMPLEMENTED == queryResult.code);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
   }
 
-  // multiple sorts (not supported now)
-  // FOR i IN 1..5
-  //  FOR d IN  SEARCH d.seq == i SORT customscorer(d, i) ASC
-  //    FOR x IN collection_0 FILTER x.seq == d.seq && x.name == d.name
-  // SORT customscorer(d, i) DESC
+  // multiple sorts
   {
     std::string const query =
       "FOR i IN 1..5 "
-      "  FOR d IN testView SEARCH d.seq == i SORT tfidf(d, i) ASC "
+      "  FOR d IN testView SEARCH d.seq == i SORT tfidf(d, i > 0) ASC "
       "    FOR x IN collection_1 FILTER x.seq == d.seq && x.name == d.name "
       "SORT customscorer(d, i) DESC RETURN d";
 
@@ -1629,23 +1651,61 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NOT_IMPLEMENTED == queryResult.code);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
-//    auto result = queryResult.result->slice();
-//    CHECK(result.isArray());
-//
-//    arangodb::velocypack::ArrayIterator resultIt(result);
-//    REQUIRE(expectedDocs.size() == resultIt.size());
-//
-//    // Check documents
-//    auto expectedDoc = expectedDocs.begin();
-//    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
-//      auto const actualDoc = resultIt.value();
-//      auto const resolved = actualDoc.resolveExternals();
-//
-//      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
-//    }
-//    CHECK(expectedDoc == expectedDocs.end());
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // x.seq is used before being assigned
+  {
+    std::string const query =
+     "FOR d IN testView SEARCH d.name >= 'E' && d.seq < 10 "
+     "  SORT customscorer(d) DESC "
+     "  LIMIT 3 "
+     "  FOR x IN collection_1 FILTER x.seq == d.seq "
+     "    SORT customscorer(d, x.seq) "
+     "RETURN x";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+      }
+    ));
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code);
+  }
+
+  // x.seq is used before being assigned
+  {
+    std::string const query =
+     "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT customscorer(c) DESC LIMIT 3 RETURN c) "
+     "  FOR x IN collection_1 FILTER x.seq == d.seq "
+     "    SORT customscorer(d, x.seq) "
+     "RETURN x";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+      }
+    ));
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code);
   }
 }
 

@@ -95,6 +95,8 @@ std::string const StaticStrings::IndexId("id");
 std::string const StaticStrings::IndexSparse("sparse");
 std::string const StaticStrings::IndexType("type");
 std::string const StaticStrings::IndexUnique("unique");
+std::string const StaticStrings::IndexIsBuilding("isBuilding");
+std::string const StaticStrings::IndexInBackground("inBackground");
 
 // HTTP headers
 std::string const StaticStrings::Accept("accept");
@@ -145,8 +147,8 @@ std::string const StaticStrings::LeaderEndpoint("x-arango-endpoint");
 std::string const StaticStrings::Location("location");
 std::string const StaticStrings::NoSniff("nosniff");
 std::string const StaticStrings::Origin("origin");
-std::string const StaticStrings::PotentialDirtyRead("x-arango-potential-dirty-read");
-std::string const StaticStrings::Queue("x-arango-queue");
+std::string const StaticStrings::PotentialDirtyRead(
+    "x-arango-potential-dirty-read");
 std::string const StaticStrings::RequestForwardedTo(
     "x-arango-request-forwarded-to");
 std::string const StaticStrings::ResponseCode("x-arango-response-code");
@@ -155,6 +157,7 @@ std::string const StaticStrings::Unlimited = "unlimited";
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 std::string const StaticStrings::XArangoNoLock("x-arango-nolock");
+std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
 
 // mime types
 std::string const StaticStrings::MimeTypeJson(
@@ -164,9 +167,11 @@ std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 
 // collection attributes
+std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
+std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
 std::string const StaticStrings::ReplicationFactor("replicationFactor");
-std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
+std::string const StaticStrings::ShardKeys("shardKeys");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
@@ -187,6 +192,9 @@ std::string const StaticStrings::GraphDropCollections("dropCollections");
 std::string const StaticStrings::GraphDropCollection("dropCollection");
 std::string const StaticStrings::GraphCreateCollections("createCollections");
 std::string const StaticStrings::GraphCreateCollection("createCollection");
+
+// Replication
+std::string const StaticStrings::ReplicationSoftLockOnly("doSoftLockOnly");
 
 // misc strings
 std::string const StaticStrings::LastValue("lastValue");

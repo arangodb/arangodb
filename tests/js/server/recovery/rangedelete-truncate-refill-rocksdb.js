@@ -55,7 +55,7 @@ function runSetup () {
 
   // this should trigger the background sync thread at least once,
   // though this is not guaranteed under high load
-  c.recalculateCounts();
+  c.recalculateCount();
 
   internal.debugSegfault('crashing server');
 }
@@ -95,6 +95,6 @@ function main (argv) {
     return 0;
   } else {
     jsunity.run(recoverySuite);
-    return jsunity.done().status ? 0 : 1;
+    return jsunity.writeDone().status ? 0 : 1;
   }
 }
