@@ -261,7 +261,8 @@ int ModificationBlock::extractKeyAndRev(AqlValue const& value, std::string& key,
       key.assign(sub.slice().copyString());
 
       bool mustDestroyToo;
-      AqlValue subTwo = value.get(*resolver, StaticStrings::RevString, mustDestroyToo, false);
+      AqlValue subTwo =
+          value.get(*resolver, StaticStrings::RevString, mustDestroyToo, false);
       AqlValueGuard guard(subTwo, mustDestroyToo);
       if (subTwo.isString()) {
         rev.assign(subTwo.slice().copyString());

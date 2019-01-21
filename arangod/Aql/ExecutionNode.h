@@ -541,6 +541,8 @@ class ExecutionNode {
 
   std::unordered_set<RegisterId> calcRegsToKeep() const;
 
+  RegisterId variableToRegisterId(Variable const*) const;
+
  protected:
   /// @brief node id
   size_t _id;

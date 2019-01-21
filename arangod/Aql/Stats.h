@@ -100,6 +100,49 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
   return executionStats;
 }
 
+class ModificationStats {
+ public:
+  ModificationStats() noexcept
+      : _writesExecuted(0), _writesIgnored(0)
+  //, _readsExecuted(0), _readsIgnored(0)
+  {}
+
+  void setWritesExecuted(std::size_t writesExecuted) noexcept { _writesExecuted = writesExecuted; }
+  void addWritesExecuted(std::size_t writesExecuted) noexcept { _writesExecuted += writesExecuted; }
+  void incrWritesExecuted() noexcept { _writesExecuted++; }
+  std::size_t getWritesExecuted() const noexcept { return _writesExecuted; }
+
+  void setWritesIgnored(std::size_t writesIgnored) noexcept { _writesIgnored = writesIgnored; }
+  void addWritesIgnored(std::size_t writesIgnored) noexcept { _writesIgnored += writesIgnored; }
+  void incrWritesIgnored() noexcept { _writesIgnored++; }
+  std::size_t getWritesIgnored() const noexcept { return _writesIgnored; }
+
+  //void setReadsExecuted(std::size_t readsExecuted) noexcept { _readsExecuted = readsExecuted; }
+  //void addReadsExecuted(std::size_t readsExecuted) noexcept { _readsExecuted += readsExecuted; }
+  //void incrReadsExecuted() noexcept { _readsExecuted++; }
+  //std::size_t getReadsExecuted() const noexcept { return _readsExecuted; }
+
+  //void setReadsIgnored(std::size_t readsIgnored) noexcept { _readsIgnored = readsIgnored; }
+  //void addReadsIgnored(std::size_t readsIgnored) noexcept { _readsIgnored += readsIgnored; }
+  //void incrReadsIgnored() noexcept { _readsIgnored++; }
+  //std::size_t getReadsIgnored() const noexcept { return _readsIgnored; }
+
+ private:
+  std::size_t _writesExecuted;
+  std::size_t _writesIgnored;
+  //std::size_t _readsExecuted;
+  //std::size_t _readsIgnored;
+};
+
+inline ExecutionStats& operator+=(ExecutionStats& executionStats,
+                                  ModificationStats const& filterStats) noexcept {
+  executionStats.writesExecuted += filterStats.getWritesExecuted();
+  executionStats.writesIgnored += filterStats.getWritesIgnored();
+  //executionStats.readsExecuted += filterStats.getReadsExecuted();
+  //executionStats.readsIgnored += filterStats.getReadsIgnored();
+  return executionStats;
+}
+
 }  // namespace aql
 }  // namespace arangodb
 #endif

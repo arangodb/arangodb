@@ -36,6 +36,8 @@
 #include "Aql/CalculationExecutor.h"
 #include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/EnumerateCollectionExecutor.h"
+#include "Aql/ModificationExecutor.h"
+#include "Aql/ModificationExecutorTraits.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/IdExecutor.h"
@@ -366,17 +368,19 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;
-template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>;
+template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ConstrainedSortExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Insert>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Upsert>>;
 template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<true>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<true>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
