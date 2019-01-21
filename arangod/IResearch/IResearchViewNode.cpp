@@ -746,9 +746,9 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
   auto const options = base.get("options");
 
   if (!::fromVelocyPack(options, _options, *plan.getAst()->query())) {
-    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "failed to parse 'IResearchViewNode' options: "
-        << options.toString();
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "failed to parse 'IResearchViewNode' options: " + options.toString());
   }
 
   // volatility mask
@@ -962,7 +962,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "Start getting snapshot for view '" << view.name() << "'";
 
-  // we manage snapshot differently in signle-server/db server,
+  // we manage snapshot differently in single-server/db server,
   // see description of functions below to learn how
   if (ServerState::instance()->isDBServer()) {
     reader = snapshotDBServer(*this, *trx);
