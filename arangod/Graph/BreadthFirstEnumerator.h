@@ -174,6 +174,13 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
    * @return true if the edge is already in the path
    */
   bool pathContainsEdge(size_t index, graph::EdgeDocumentToken const& edge) const;
+
+  /**
+   * @brief Reset iterators to search within next depth
+   *        Also honors pruned paths
+   * @return true if we can continue searching. False if we are done
+   */
+  bool prepareSearchOnNextDepth();
 };
 }  // namespace graph
 }  // namespace arangodb

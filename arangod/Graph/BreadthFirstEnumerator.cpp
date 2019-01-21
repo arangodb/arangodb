@@ -92,22 +92,10 @@ bool BreadthFirstEnumerator::next() {
   while (true) {
     if (_toSearchPos >= _toSearch.size()) {
       // This depth is done. GoTo next
-      if (_nextDepth.empty()) {
+      if (!prepareSearchOnNextDepth()) {
         // That's it. we are done.
         return false;
       }
-      // Save copies:
-      // We clear current
-      // we swap current and next.
-      // So now current is filled
-      // and next is empty.
-      _toSearch.clear();
-      _toSearchPos = 0;
-      _toSearch.swap(_nextDepth);
-      _currentDepth++;
-      TRI_ASSERT(_toSearchPos < _toSearch.size());
-      TRI_ASSERT(_nextDepth.empty());
-      TRI_ASSERT(_currentDepth < _opts->maxDepth);
     }
     // This access is always safe.
     // If not it should have bailed out before.
@@ -182,6 +170,60 @@ bool BreadthFirstEnumerator::next() {
 }
 
 void BreadthFirstEnumerator::prune() {
+  if (_nextDepth.empty()) {
+    // Nothing to prune, we do not search any further
+    return;
+  }
+
+  // We execute a binarySearch on the nextDepth
+  // vector.
+  // We make use of the following features:
+  // 1. The elements in vector are sorted
+  // 2. The distance between two adjacent
+  //    entries is most likely 1
+  // 3. The element is stored atMost once
+  size_t upperBound = _nextDepth.size();
+  size_t lowerBound = 0;
+  if (_nextDepth[upperBound].sourceIdx < _lastReturned
+      || _lastReturned < _nextDepth[lowerBound].sourceIdx) {
+    // We do not have this vertex
+    // short circuit.
+    return;
+  }
+  size_t candidate = 0;
+  while (true) {
+    TRI_ASSERT(lowerBound <= upperBound);
+    candidate = (upperBound + lowerBound) / 2;
+    size_t toCompare = _nextDepth[candidate].sourceIdx;
+    if (candidate == lowerBound) {
+      // Only possible if they differ by 0 or 1
+      TRI_ASSERT(upperBound - lowerBound < 2);
+      // We do two more compares and we are either done
+      // or give up.
+      if (toCompare == _lastReturned) {
+        // We are done, eliminate
+        _nextDepth.erase(_nextDepth.begin() + candidate);
+        return;
+      }
+      if (_nextDepth[upperBound].sourceIdx == _lastReturned) {
+        // We are done, eliminate
+        _nextDepth.erase(_nextDepth.begin() + upperBound);
+        return;
+      }
+      // Not found
+      return;
+    }
+    if (toCompare == _lastReturned) {
+      // We are done, eliminate
+      _nextDepth.erase(_nextDepth.begin() + candidate);
+      return;
+    }
+    if (toCompare < _lastReturned) {
+      lowerBound = candidate;
+    } else {
+      upperBound = candidate;
+    }
+  }
 }
 
 arangodb::aql::AqlValue BreadthFirstEnumerator::lastVertexToAqlValue() {
@@ -264,4 +306,24 @@ bool BreadthFirstEnumerator::pathContainsEdge(size_t index,
     index = step->sourceIdx;
   }
   return false;
+}
+
+bool BreadthFirstEnumerator::prepareSearchOnNextDepth() {
+  if (_nextDepth.empty()) {
+    // Nothing left to search
+    return false;
+  }
+  // Save copies:
+  // We clear current
+  // we swap current and next.
+  // So now current is filled
+  // and next is empty.
+  _toSearch.clear();
+  _toSearchPos = 0;
+  _toSearch.swap(_nextDepth);
+  _currentDepth++;
+  TRI_ASSERT(_toSearchPos < _toSearch.size());
+  TRI_ASSERT(_nextDepth.empty());
+  TRI_ASSERT(_currentDepth < _opts->maxDepth);
+  return true;
 }

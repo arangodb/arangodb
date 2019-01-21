@@ -3937,7 +3937,109 @@ function exampleGraphsSuite () {
 
 function pruneTraversalSuite() {
   const optRules = {optimizer: { rules: ["-optimize-traversals", "-remove-filter-covered-by-traversal", "-remove-redundant-path-var"]}};
-  return {
+  const optionsToTest = {
+    DFS: {bfs: false},
+    BFS: {bfs: true},
+    Neighbors: {bfs: true, uniqueVertices: 'global'}
+  };
+
+  // We have identical tests for all traversal options.
+  const appendTests = (testObj, name, opts) => {
+    testObj[`testAllowPruningOnV${name}`] = () => {
+      const q = `
+        FOR v IN 1..3 ANY "${vertex.B}" ${en}
+          PRUNE v._key == "C"
+          OPTIONS ${JSON.stringify(opts)}
+          RETURN v._key
+      `;
+      const res = db._query(q, {}, optRules);
+
+      if (name === "Neighbors") {
+        assertEqual(res.count(), 4, `In query ${q}`);
+        assertEqual(res.toArray().sort(), ['A', 'C', 'E', 'F'].sort(), `In query ${q}`);
+      } else {
+        assertEqual(res.count(), 5, `In query ${q}`);
+        assertEqual(res.toArray().sort(), ['A', 'C', 'C', 'E', 'F'].sort(), `In query ${q}`);
+      }
+    };
+
+    testObj[`testAllowPruningOnE${name}`] = () => {
+      const q = `
+        FOR v, e IN 1..3 ANY "${vertex.B}" ${en}
+          PRUNE e._to == "${vertex.C}"
+          OPTIONS ${JSON.stringify(opts)}
+          RETURN v._key
+      `;
+      const res = db._query(q, {}, optRules);
+      if (name === "Neighbors") {
+        assertEqual(res.count(), 4, `In query ${q}`);
+        assertEqual(res.toArray().sort(), ['A', 'C', 'E', 'F'].sort(), `In query ${q}`);
+      } else {
+        assertEqual(res.count(), 5, `In query ${q}`);
+        assertEqual(res.toArray().sort(), ['A', 'C', 'C', 'E', 'F'].sort(), `In query ${q}`);
+      }
+    };
+
+    testObj[`testAllowPruningOnP${name}`] = () => {
+      const q = `
+        FOR v, e, p IN 1..3 ANY "${vertex.B}" ${en}
+          PRUNE p.vertices[1]._key == "C"
+          OPTIONS ${JSON.stringify(opts)}
+          RETURN v._key
+      `;
+      const res = db._query(q, {}, optRules);
+      if (name === "Neighbors") {
+        assertEqual(res.count(), 4, `In query ${q}`);
+        assertEqual(res.toArray().sort(), ['A', 'C', 'E', 'F'].sort(), `In query ${q}`);
+      } else {
+        assertEqual(res.count(), 5, `In query ${q}`);
+        assertEqual(res.toArray().sort(), ['A', 'C', 'C', 'E', 'F'].sort(), `In query ${q}`);
+      }
+    };
+
+    testObj[`testAllowPruningOnPReturnE${name}`] = () => {
+      const q = `
+        FOR v, e, p IN 1..3 ANY "${vertex.B}" ${en}
+          PRUNE p.vertices[1]._key == "C"
+          OPTIONS ${JSON.stringify(opts)}
+          RETURN e._id
+      `;
+      const res = db._query(q, {}, optRules);
+      if (name === "Neighbors") {
+        assertEqual(res.count(), 4, `In query ${q}`);
+        assertEqual(res.toArray().sort(), [edge.AB, edge.BC, edge.EB, edge.FE].sort(), `In query ${q}`);
+      } else {
+        assertEqual(res.count(), 5, `In query ${q}`);
+        assertEqual(res.toArray().sort(), [edge.AB, edge.BC, edge.EB, edge.FE, edge.CF].sort(), `In query ${q}`);
+      }
+    };
+
+    testObj[`testAllowPruningOnOuterVar${name}`] = () => {
+      const q = `
+        FOR key IN ["C", "F"]
+        FOR v IN 1..3 ANY "${vertex.B}" ${en}
+          PRUNE v._key == key
+          OPTIONS ${JSON.stringify(opts)}
+          RETURN v._key
+      `;
+      const res = db._query(q, {}, optRules);
+
+      if (name === "Neighbors") {
+        const resKeyC = ['A', 'C', 'E', 'F'];
+        const resKeyF = ['A', 'C', 'D', 'F', 'E'];
+        assertEqual(res.count(), resKeyC.length + resKeyF.length, `In query ${q}`);
+        assertEqual(res.toArray().sort(), resKeyC.concat(resKeyF).sort(), `In query ${q}`);
+      } else {
+        const resKeyC = ['A', 'C', 'C', 'E', 'F'];
+        const resKeyF = ['A', 'C', 'D', 'F', 'E', 'F'];
+        assertEqual(res.count(), resKeyC.length + resKeyF.length, `In query ${q}`);
+        assertEqual(res.toArray().sort(), resKeyC.concat(resKeyF).sort(), `In query ${q}`);
+      }
+    };
+
+  };
+
+  const testObj = {
     setUpAll: () => {
       cleanup();
       createBaseGraph();
@@ -3945,69 +4047,17 @@ function pruneTraversalSuite() {
 
     tearDownAll: () => {
       cleanup();
-    },
-
-    testAllowPruningOnV: () => {
-      const q = `
-        FOR v IN 1..3 ANY "${vertex.B}" ${en}
-          PRUNE v._key == "C"
-          RETURN v._key
-      `;
-      const res = db._query(q, {}, optRules);
-      assertEqual(res.count(), 5);
-      assertEqual(res.toArray().sort(), ['A', 'C', 'C', 'E', 'F'].sort());
-    },
-
-    testAllowPruningOnE: () => {
-      const q = `
-        FOR v, e IN 1..3 ANY "${vertex.B}" ${en}
-          PRUNE e._to == "${vertex.C}"
-          RETURN v._key
-      `;
-      const res = db._query(q, {}, optRules);
-      assertEqual(res.count(), 5);
-      assertEqual(res.toArray().sort(), ['A', 'C', 'C', 'E', 'F'].sort());
-    },
-
-    testAllowPruningOnP: () => {
-      const q = `
-        FOR v, e, p IN 1..3 ANY "${vertex.B}" ${en}
-          PRUNE p.vertices[1]._key == "C"
-          RETURN v._key
-      `;
-      const res = db._query(q, {}, optRules);
-      assertEqual(res.count(), 5);
-      assertEqual(res.toArray().sort(), ['A', 'C', 'C', 'E', 'F'].sort());
-    },
-
-    testAllowPruningOnPReturnE: () => {
-      const q = `
-        FOR v, e, p IN 1..3 ANY "${vertex.B}" ${en}
-          PRUNE p.vertices[1]._key == "C"
-          RETURN e._id
-      `;
-      const res = db._query(q, {}, optRules);
-      assertEqual(res.count(), 5);
-      assertEqual(res.toArray().sort(), [edge.AB, edge.BC, edge.EB, edge.FE, edge.CF].sort());
-    },
-
-    testAllowPruningOnOuterVar: () => {
-      const q = `
-        FOR key IN ["C", "F"]
-        FOR v IN 1..3 ANY "${vertex.B}" ${en}
-          PRUNE v._key == key
-          RETURN v._key
-      `;
-      const resKeyC = ['A', 'C', 'C', 'E', 'F'];
-      const resKeyF = ['A', 'C', 'D', 'F', 'E', 'F'];
-      const res = db._query(q, {}, optRules);
-      assertEqual(res.count(), resKeyC.length + resKeyF.length);
-      assertEqual(res.toArray().sort(), resKeyC.concat(resKeyF).sort());
-    },
-
+    }
   };
+
+  for(let [name, opts] of Object.entries(optionsToTest)) {
+    appendTests(testObj, name, opts);
+  }
+
+  return testObj;
 }
 
+/*
 jsunity.run(simpleInboundOutboundSuite);
 jsunity.run(limitSuite);
 jsunity.run(nestedSuite);
@@ -4027,6 +4077,7 @@ jsunity.run(exampleGraphsSuite);
 if (!isCluster) {
   jsunity.run(optimizeNonVertexCentricIndexesSuite);
 }
+*/
 
 jsunity.run(pruneTraversalSuite);
 
