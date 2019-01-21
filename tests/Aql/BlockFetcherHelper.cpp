@@ -245,8 +245,5 @@ ConstFetcherHelper::ConstFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>> vPa
 ConstFetcherHelper::~ConstFetcherHelper() = default;
 
 std::pair<ExecutionState, InputAqlItemRow> ConstFetcherHelper::fetchRow() {
-  ExecutionState state;
-  arangodb::aql::InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  std::tie(state, row) = ConstFetcher::fetchRow();
-  return {state, std::move(row)};
+  return  ConstFetcher::fetchRow();
 };

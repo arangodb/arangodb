@@ -71,7 +71,6 @@ class ConstFetcher {
    *           If DONE => Row can be a nullptr (nothing received) or valid.
    */
   TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow();
-
   void injectBlock(std::shared_ptr<InputAqlItemBlockShell> block);
 
  private:
@@ -91,16 +90,9 @@ class ConstFetcher {
    */
   size_t _rowIndex;
 
-  /**
-  * @brief The current row, as returned last by fetchRow(). Must stay valid
-  *        until the next fetchRow() call.
-  */
-  InputAqlItemRow _currentRow;
-
  private:
   bool indexIsValid();
   bool isLastRowInBlock();
-  size_t getRowIndex();
 };
 
 }  // namespace aql

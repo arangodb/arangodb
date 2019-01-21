@@ -112,7 +112,6 @@ class ConstFetcherHelper : public arangodb::aql::ConstFetcher {
   arangodb::velocypack::Slice _data;
   arangodb::aql::ResourceMonitor _resourceMonitor;
   arangodb::aql::AqlItemBlockManager _itemBlockManager;
-  //std::shared_ptr<arangodb::aql::InputAqlItemBlockShell> _itemBlock;
   arangodb::aql::InputAqlItemRow _lastReturnedRow;
 };
 

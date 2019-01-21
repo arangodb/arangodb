@@ -27,59 +27,43 @@
 #include "Aql/FilterExecutor.h"
 #include "ConstFetcher.h"
 
-
 using namespace arangodb;
 using namespace arangodb::aql;
 
-ConstFetcher::ConstFetcher()
-    :  _currentRow{CreateInvalidInputRowHint{}} {}
+ConstFetcher::ConstFetcher() : _currentBlock{nullptr}, _rowIndex(0) {}
 
-void ConstFetcher::injectBlock(std::shared_ptr<InputAqlItemBlockShell> block){
-    _currentBlock = std::move(block);
-    _rowIndex = 0;
-    // get number input regs
+ConstFetcher::ConstFetcher(BlockFetcher& executionBlock)
+    : _currentBlock{nullptr}, _rowIndex(0) {}
+
+void ConstFetcher::injectBlock(std::shared_ptr<InputAqlItemBlockShell> block) {
+  _currentBlock = std::move(block);
+  _rowIndex = 0;
 }
 
 std::pair<ExecutionState, InputAqlItemRow> ConstFetcher::fetchRow() {
-  if (_currentBlock == nullptr || !indexIsValid()) {
+  // This fetcher never waits because it can return only its
+  // injected block and does not have the ability to pull.
+  if (!indexIsValid()) {
     return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
-
-  ExecutionState rowState;
-
   TRI_ASSERT(_currentBlock);
-  _currentRow = InputAqlItemRow{_currentBlock, _rowIndex};
 
-  if (isLastRowInBlock() ) {
+  //set state
+  ExecutionState rowState = ExecutionState::HASMORE;
+  if (isLastRowInBlock()) {
     rowState = ExecutionState::DONE;
-  } else {
-    rowState = ExecutionState::HASMORE;
   }
 
+  //return row
   _rowIndex++;
-
-  return {rowState, _currentRow};
+  return {rowState, InputAqlItemRow{_currentBlock, _rowIndex}};
 }
 
-ConstFetcher::ConstFetcher(BlockFetcher& executionBlock)
-    : _currentRow{CreateInvalidInputRowHint{}} {}
-
 bool ConstFetcher::indexIsValid() {
-  return _currentBlock != nullptr && _rowIndex + 1 <= _currentBlock->block().size();
+  return _currentBlock != nullptr && _rowIndex < _currentBlock->block().size();
 }
 
 bool ConstFetcher::isLastRowInBlock() {
   TRI_ASSERT(indexIsValid());
   return _rowIndex + 1 == _currentBlock->block().size();
 }
-
-size_t ConstFetcher::getRowIndex() {
-  TRI_ASSERT(indexIsValid());
-  return _rowIndex;
-}
-
-//RegisterId ConstFetcher::getNrInputRegisters() const {
-//  std::terminate();
-//  //return _blockFetcher->getNrInputRegisters();
-//}
-
