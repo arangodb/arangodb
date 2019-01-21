@@ -25,6 +25,7 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_VIEW_H 1
 
 #include "IResearchViewMeta.h"
+#include "Basics/HashSet.h"
 #include "Transaction/Status.h"
 #include "Utils/FlushTransaction.h"
 #include "VocBase/LogicalView.h"
@@ -151,18 +152,22 @@ class IResearchView final : public arangodb::LogicalView, public arangodb::Flush
                                       bool partialUpdate) override final;
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @param shards the list of shard to restrict the snaphost to
+  /// @param shards the list of shard to restrict the snapshot to
   ///        nullptr == use all registered links
   ///        !nullptr && shard not registred then return nullptr
   ///        if mode == Find && list found doesn't match then return nullptr
+  /// @param key the specified key will be as snapshot indentifier
+  ///        in a transaction
+  /// 	     (nullptr == view address will be used)
   /// @return pointer to an index reader containing the datastore record
-  /// snapshot
-  ///         associated with 'state'
+  ///         snapshot associated with 'state'
   ///         (nullptr == no view snapshot associated with the specified state)
   ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  Snapshot const* snapshot(transaction::Methods& trx, SnapshotMode mode = SnapshotMode::Find,
-                           std::unordered_set<TRI_voc_cid_t> const* shards = nullptr) const;
+  Snapshot const* snapshot(transaction::Methods& trx,
+                           SnapshotMode mode = SnapshotMode::Find,
+                           arangodb::HashSet<TRI_voc_cid_t> const* shards = nullptr,
+                           void const* key = nullptr) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unlink remove 'cid' from the persisted list of tracked collection
