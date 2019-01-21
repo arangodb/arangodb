@@ -53,18 +53,9 @@ TraversalExecutorInfos::TraversalExecutorInfos(
              (!_fixedSource.empty() && _inputRegister == ExecutionNode::MaxRegisterId));
 }
 
-// We need this Move constructor otherwise the traverser will not be moved properly
-TraversalExecutorInfos::TraversalExecutorInfos(TraversalExecutorInfos&& other)
-    : ExecutorInfos(std::move(other)),
-      _traverser(std::move(other._traverser)),
-      _registerMapping(std::move(other._registerMapping)),
-      _fixedSource(other._fixedSource),
-      _inputRegister(other._inputRegister),
-      _filterConditionVariables(std::move(other._filterConditionVariables)) {
-  TRI_ASSERT(_traverser != nullptr);
-};
+TraversalExecutorInfos::TraversalExecutorInfos(TraversalExecutorInfos&& other) = default;
 
-TraversalExecutorInfos::~TraversalExecutorInfos(){};
+TraversalExecutorInfos::~TraversalExecutorInfos() = default;
 
 Traverser& TraversalExecutorInfos::traverser() {
   TRI_ASSERT(_traverser != nullptr);

@@ -156,9 +156,6 @@ class ExecutionBlockImpl : public ExecutionBlock {
   std::unique_ptr<OutputAqlItemBlockShell> requestWrappedBlock(size_t nrItems,
                                                                RegisterId nrRegs);
 
- protected:
-  Executor _executor;
-
  private:
   /**
    * @brief Used to allow the row Fetcher to access selected methods of this
@@ -180,6 +177,17 @@ class ExecutionBlockImpl : public ExecutionBlock {
   typename Executor::Infos _infos;
 
   std::unique_ptr<OutputAqlItemRow> _outputItemRow;
+
+ protected:
+  /**
+   * @brief the executor to procduce rowes.
+   *
+   * NOTE: It has to be after the _infos as
+   * the executor will get a reference to the _infos
+   * during construction.
+   */
+
+  Executor _executor;
 };
 
 }  // namespace aql

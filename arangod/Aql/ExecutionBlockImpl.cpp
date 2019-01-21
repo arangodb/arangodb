@@ -49,11 +49,11 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  ExecutionNode const* node,
                                                  typename Executor::Infos&& infos)
     : ExecutionBlock(engine, node),
-      _executor(_rowFetcher, _infos),
       _blockFetcher(_dependencies, _engine->itemBlockManager(),
                     infos.getInputRegisters(), infos.numberOfInputRegisters()),
       _rowFetcher(_blockFetcher),
-      _infos(std::move(infos)) {}
+      _infos(std::move(infos)),
+      _executor(_rowFetcher, _infos) {}
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
