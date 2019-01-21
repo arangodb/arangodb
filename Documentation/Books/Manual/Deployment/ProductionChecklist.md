@@ -30,6 +30,6 @@ have been performed on your production system before you go live:
   sc stop arangodb
   ```
   - If you have deployed a Cluster (and/or are using DC2DC) the 
-    _replication factor_ or your collections is set to a value equal
+    _replication factor_ of your collections is set to a value equal
     or higher than 2 (so you can be sure that **you have minimal
     _data redundancy_ in place**).
