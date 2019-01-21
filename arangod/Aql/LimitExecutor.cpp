@@ -38,6 +38,17 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                                       std::unordered_set<RegisterId> registersToClear,
+                                       size_t offset, size_t limit, bool fullCount, size_t queryDepth)
+        : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
+                        std::make_shared<std::unordered_set<RegisterId>>(), nrInputRegisters,
+                        nrOutputRegisters, std::move(registersToClear)),
+          _remainingOffset(offset),
+          _limit(limit),
+          _queryDepth(queryDepth),
+          _fullCount(fullCount) {}
+
 LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos), _fetcher(fetcher){};
 LimitExecutor::~LimitExecutor() = default;
@@ -50,7 +61,6 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
   LimitStats stats{};
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
-  // quick exit for limit == 0
   if (_counter == _infos.getLimit() && !_infos.isFullCountEnabled()) {
     return {ExecutionState::DONE, stats};
   }
@@ -89,6 +99,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
       }
       return {state, stats};
     }
+    TRI_ASSERT(_infos.isFullCountEnabled());
 
     if (_infos.getQueryDepth() == 0) {
       stats.incrFullCount();
@@ -100,14 +111,3 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
     TRI_ASSERT(state == ExecutionState::HASMORE);
   }
 }
-
-LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                                       std::unordered_set<RegisterId> registersToClear,
-                                       size_t offset, size_t limit, bool fullCount, size_t queryDepth)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
-                    std::make_shared<std::unordered_set<RegisterId>>(), nrInputRegisters,
-                    nrOutputRegisters, std::move(registersToClear)),
-      _remainingOffset(offset),
-      _limit(limit),
-      _queryDepth(queryDepth),
-      _fullCount(fullCount) {}

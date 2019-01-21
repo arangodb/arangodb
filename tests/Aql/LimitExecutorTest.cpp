@@ -41,14 +41,14 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-SCENARIO("LimitExecutor", "[AQL][EXECUTOR]") {
+SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
   ExecutionState state;
 
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager(&monitor);
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
-  auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(0);
-  auto& registersToKeep = outputRegisters;
+  auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(std::initializer_list<RegisterId>{});
+  auto registersToKeep = std::make_shared<const std::unordered_set<RegisterId>>(std::initializer_list<RegisterId>{0});
   auto outputBlockShell =
       std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),
                                                 outputRegisters, registersToKeep);
@@ -59,11 +59,8 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR]") {
   // 6th fullCount
   // 7th queryDepth
 
-  // TODO: This test is currently broken.
-  // Waiting for fake query server merge
-
   GIVEN("there are no rows upstream") {
-    LimitExecutorInfos infos(0, 1, {}, 0, 1, true, 0);
+    LimitExecutorInfos infos(1, 1, {}, 0, 1, true, 0);
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
@@ -106,7 +103,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR]") {
 
     WHEN("the producer does not wait: limit 1, offset 0, fullcount false") {
       auto input = VPackParser::fromJson(
-              "[ [true], [false], [true], [false] ]");
+              "[ [1], [2], [3], [4] ]");
       LimitExecutorInfos infos(1, 1, {}, 0, 1, false, 0);
       SingleRowFetcherHelper fetcher(input->steal(), false);
       LimitExecutor testee(fetcher, infos);
@@ -129,7 +126,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR]") {
 
     WHEN("the producer does not wait: limit 1, offset 0, fullcount true") {
       auto input = VPackParser::fromJson(
-              "[ [true], [false], [true], [false] ]");
+              "[ [1], [2], [3], [4] ]");
       LimitExecutorInfos infos(1, 1, {}, 0, 1, true, 0);
       SingleRowFetcherHelper fetcher(input->steal(), false);
       LimitExecutor testee(fetcher, infos);
@@ -150,12 +147,17 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR]") {
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(stats.getFullCount() == 3);
         }
+
+        auto block = row.stealBlock();
+        AqlValue value = block->getValue(0, 0);
+        REQUIRE(value.isNumber());
+        REQUIRE(value.toInt64() == 1);
       }
     }
 
     WHEN("the producer does not wait: limit 1, offset 1, fullcount true") {
       auto input = VPackParser::fromJson(
-              "[ [true], [false], [true], [false] ]");
+              "[ [1], [2], [3], [4] ]");
       LimitExecutorInfos infos(1, 1, {}, 1, 1, true, 0);
       SingleRowFetcherHelper fetcher(input->steal(), false);
       LimitExecutor testee(fetcher, infos);
@@ -176,12 +178,17 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR]") {
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(stats.getFullCount() == 2);
         }
+
+        auto block = row.stealBlock();
+        AqlValue value = block->getValue(0, 0);
+        REQUIRE(value.isNumber());
+        REQUIRE(value.toInt64() == 2);
       }
     }
 
     WHEN("the producer does wait: limit 1, offset 0, fullcount false") {
       auto input = VPackParser::fromJson(
-              "[ [true], [false], [true], [false] ]");
+              "[ [1], [2], [3], [4] ]");
       LimitExecutorInfos infos(1, 1, {}, 0, 1, false, 0);
       SingleRowFetcherHelper fetcher(input->steal(), true);
       LimitExecutor testee(fetcher, infos);
@@ -205,12 +212,17 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR]") {
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!row.produced());
         }
+
+        auto block = row.stealBlock();
+        AqlValue value = block->getValue(0, 0);
+        REQUIRE(value.isNumber());
+        REQUIRE(value.toInt64() == 1);
       }
     }
 
     WHEN("the producer does wait: limit 1, offset 0, fullcount true") {
       auto input = VPackParser::fromJson(
-              "[ [true], [false], [true], [false] ]");
+              "[ [1], [2], [3], [4] ]");
       LimitExecutorInfos infos(1, 1, {}, 0, 1, true, 0);
       SingleRowFetcherHelper fetcher(input->steal(), true);
       LimitExecutor testee(fetcher, infos);
@@ -247,6 +259,11 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR]") {
           REQUIRE(stats.getFullCount() == 1);
           REQUIRE(!row.produced());
         }
+
+        auto block = row.stealBlock();
+        AqlValue value = block->getValue(0, 0);
+        REQUIRE(value.isNumber());
+        REQUIRE(value.toInt64() == 1);
       }
     }
   }
