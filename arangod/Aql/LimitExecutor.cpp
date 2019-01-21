@@ -42,7 +42,7 @@ LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
       _counter(0),
-      _done(false),
+      _done(_counter == _infos.getLimit() && !_infos.isFullCountEnabled()),
       _doFullCount(_infos.isFullCountEnabled() && _infos.getQueryDepth() == 0){};
 LimitExecutor::~LimitExecutor() = default;
 
@@ -50,12 +50,16 @@ ExecutionState LimitExecutor::handleSingleRow(OutputAqlItemRow& output,
                                               LimitStats& stats, bool skipOffset) {
   ExecutionState state;
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
+
+  LOG_DEVEL << this << " fetch row "
+            << std::boolalpha << skipOffset ;
   std::tie(state, input) = _fetcher.fetchRow();
 
   if (state == ExecutionState::DONE) {
     _done = true;
     if (!input.isInitialized()) {
       // no input given nothing to do!
+      TRI_ASSERT(state != ExecutionState::HASMORE);
       return state;
     }
   }
