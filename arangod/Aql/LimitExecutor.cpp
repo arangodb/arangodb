@@ -80,7 +80,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
     if (_counter < _infos.getLimit()) {
       output.copyRow(input);
       _counter++;
-      if (_infos.getQueryDepth() == 0 !_infos.isFullCountEnabled()) {
+      if (_infos.getQueryDepth() == 0 && !_infos.isFullCountEnabled()) {
         stats.incrFullCount();
       }
 
