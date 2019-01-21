@@ -32,6 +32,7 @@
 #include "VocBase/AccessMode.h"
 
 #include <stack>
+#include <boost/variant.hpp>
 
 namespace arangodb {
 
@@ -43,6 +44,7 @@ namespace aql {
 
 struct Collection;
 class GraphNode;
+class GatherNode;
 class ScatterNode;
 class Query;
 
@@ -76,6 +78,11 @@ class EngineInfoContainerDBServer {
 
   struct EngineInfo {
    public:
+    enum class EngineType {
+      Collection, // collection based engine (per-shard)
+      View        // view based engine (per-server)
+    };
+
     explicit EngineInfo(size_t idOfRemoteNode) noexcept;
     EngineInfo(EngineInfo&& other) noexcept;
     ~EngineInfo();
@@ -88,7 +95,7 @@ class EngineInfoContainerDBServer {
     void connectQueryId(QueryId id) noexcept { _otherId = id; }
 
     Collection const* collection() const noexcept;
-    void collection(Collection* col) noexcept { _collection = col; }
+    void collection(Collection* col) noexcept;
 
     void serializeSnippet(Query& query, ShardID id, velocypack::Builder& infoBuilder,
                           bool isResponsibleForInit) const;
@@ -97,29 +104,51 @@ class EngineInfoContainerDBServer {
                           std::vector<ShardID> const& shards,
                           velocypack::Builder& infoBuilder) const;
 
-    /// @returns type of the "main node" if applicable,
-    ///    'ExecutionNode::MAX_NODE_TYPE_VALUE' otherwise
-    ExecutionNode::NodeType type() const noexcept { return _type; }
+    /// @returns type of the engine
+    EngineType type() const noexcept {
+      return static_cast<EngineType>(_source.which());
+    }
 
 #ifdef USE_IRESEARCH
     LogicalView const* view() const noexcept;
-    ScatterNode* scatter() const noexcept;
+    void addClient(ServerID const& server);
 #endif
 
    private:
+    struct CollectionSource {
+      explicit CollectionSource(aql::Collection* collection) noexcept
+        : collection(collection) {
+      }
+      CollectionSource(CollectionSource&&) = default;
+      CollectionSource& operator=(CollectionSource&&) = default;
+
+      aql::Collection* collection{};  // The collection used to connect to this engine
+      std::string restrictedShard;    // The shard this snippet is restricted to
+    };
+
+    struct ViewSource {
+      ViewSource(
+          LogicalView const& view,
+          GatherNode* gather,
+          ScatterNode* scatter) noexcept
+        : view(&view),
+          gather(gather),
+          scatter(scatter) {
+      }
+
+      LogicalView const* view{};  // The view used to connect to this engine
+      GatherNode* gather{};  // The gather associated with the engine
+      ScatterNode* scatter{}; // The scatter associated with the engine
+      size_t numClients{}; // Number of db server to distribute the engine to
+    };
+
     EngineInfo(EngineInfo&) = delete;
     EngineInfo(EngineInfo const& other) = delete;
 
     std::vector<ExecutionNode*> _nodes;
     size_t _idOfRemoteNode;  // id of the remote node
     QueryId _otherId;        // Id of query engine before this one
-    union {
-      Collection* _collection;  // The collection used to connect to this engine
-      LogicalView const* _view;  // The view used to connect to this engine
-    };
-    ShardID _restrictedShard;  // The shard this snippet is restricted to
-    ScatterNode* _scatter{}; // The scatter associated with the engine
-    ExecutionNode::NodeType _type{ExecutionNode::MAX_NODE_TYPE_VALUE};  // type of the "main node"
+    mutable boost::variant<CollectionSource, ViewSource> _source;
   };
 
   struct DBServerInfo {

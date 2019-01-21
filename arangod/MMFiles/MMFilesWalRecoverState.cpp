@@ -470,7 +470,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         ++state->errorCount;
       }
   };
-  TRI_DEFER(visitRecoveryHelpers);
+  TRI_DEFER(visitRecoveryHelpers());
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
