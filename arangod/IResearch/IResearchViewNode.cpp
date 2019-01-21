@@ -125,9 +125,10 @@ void toVelocyPack(velocypack::Builder& builder,
                   IResearchViewNode::Options const& options) {
   VPackObjectBuilder objectScope(&builder);
   builder.add("waitForSync", VPackValue(options.forceSync));
-  builder.add("restrictSources", VPackValue(options.restrictSources));
 
-  if (options.restrictSources) {
+  if (!options.restrictSources) {
+    builder.add("collections", VPackValue(VPackValueType::Null));
+  } else {
     VPackArrayBuilder arrayScope(&builder, "collections");
     for (auto const cid : options.sources) {
       builder.add(VPackValue(cid));
@@ -136,8 +137,12 @@ void toVelocyPack(velocypack::Builder& builder,
 }
 
 bool fromVelocyPack(velocypack::Slice optionsSlice,
-                    IResearchViewNode::Options& options,
-                    aql::Query& /*query*/) {
+                    IResearchViewNode::Options& options) {
+  if (optionsSlice.isNone()) {
+    // no options specified
+    return true;
+  }
+
   if (!optionsSlice.isObject()) {
     return false;
   }
@@ -146,44 +151,40 @@ bool fromVelocyPack(velocypack::Slice optionsSlice,
   {
     auto const optionSlice = optionsSlice.get("waitForSync");
 
-    if (!optionSlice.isBool()) {
-      return false;
-    }
+    if (!optionSlice.isNone()) {
+      // 'waitForSync' is optional
+      if (!optionSlice.isBool()) {
+        return false;
+      }
 
-    options.forceSync = optionSlice.getBool();
+      options.forceSync = optionSlice.getBool();
+    }
   }
 
-  // restrictSources
+  // collections
   {
-    auto const optionSlice = optionsSlice.get("restrictSources");
-
-    if (!optionSlice.isBool()) {
-      return false;
-    }
-
-    options.restrictSources = optionSlice.getBool();
-  }
-
-  // sources
-  if (options.restrictSources) {
     auto const optionSlice = optionsSlice.get("collections");
 
-    if (!optionSlice.isArray()) {
-      return false;
-    }
-
-    for (auto idSlice : VPackArrayIterator(optionSlice)) {
-      if (!idSlice.isNumber()) {
+    if (!optionSlice.isNone() && !optionSlice.isNull()) {
+      if (!optionSlice.isArray()) {
         return false;
       }
 
-      auto const cid = idSlice.getNumber<TRI_voc_cid_t>();
+      for (auto idSlice : VPackArrayIterator(optionSlice)) {
+        if (!idSlice.isNumber()) {
+          return false;
+        }
 
-      if (!cid) {
-        return false;
+        auto const cid = idSlice.getNumber<TRI_voc_cid_t>();
+
+        if (!cid) {
+          return false;
+        }
+
+        options.sources.insert(cid);
       }
 
-      options.sources.insert(cid);
+      options.restrictSources = true;
     }
   }
 
@@ -745,7 +746,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
 
   auto const options = base.get("options");
 
-  if (!::fromVelocyPack(options, _options, *plan.getAst()->query())) {
+  if (!::fromVelocyPack(options, _options)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "failed to parse 'IResearchViewNode' options: " + options.toString());

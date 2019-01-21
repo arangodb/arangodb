@@ -444,7 +444,7 @@ SECTION("constructFromVPackSingleServer") {
   // with options
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], \"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], \"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { \"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : true }, \"viewId\": \"" + std::to_string(logicalView->id()) + "\" }"
+      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], \"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], \"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { \"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : true, \"collections\":[42] }, \"viewId\": \"" + std::to_string(logicalView->id()) + "\" }"
     );
 
     arangodb::iresearch::IResearchViewNode node(
@@ -473,15 +473,18 @@ SECTION("constructFromVPackSingleServer") {
     CHECK(outVariable.id == setHere[0]->id);
     CHECK(outVariable.name == setHere[0]->name);
     CHECK(true == node.options().forceSync);
+    CHECK(true == node.options().restrictSources);
+    CHECK(1 == node.options().sources.size());
+    CHECK(42 == *node.options().sources.begin());
 
     CHECK(0. == node.getCost().estimatedCost); // no dependencies
     CHECK(0 == node.getCost().estimatedNrItems); // no dependencies
   }
 
-  // with invalid options
+  // with options
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], \"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], \"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { \"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : \"false\"}, \"viewId\": \"" + std::to_string(logicalView->id()) + "\" }"
+      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], \"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], \"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { \"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : true, \"collections\":[] }, \"viewId\": \"" + std::to_string(logicalView->id()) + "\" }"
     );
 
     arangodb::iresearch::IResearchViewNode node(
@@ -509,10 +512,108 @@ SECTION("constructFromVPackSingleServer") {
     CHECK(1 == setHere.size());
     CHECK(outVariable.id == setHere[0]->id);
     CHECK(outVariable.name == setHere[0]->name);
-    CHECK(false == node.options().forceSync);
+    CHECK(true == node.options().forceSync);
+    CHECK(true == node.options().restrictSources);
+    CHECK(0 == node.options().sources.size());
 
     CHECK(0. == node.getCost().estimatedCost); // no dependencies
     CHECK(0 == node.getCost().estimatedNrItems); // no dependencies
+  }
+
+  // with options
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], \"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], \"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { \"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : true, \"collection\":null }, \"viewId\": \"" + std::to_string(logicalView->id()) + "\" }"
+    );
+
+    arangodb::iresearch::IResearchViewNode node(
+      *query.plan(), // plan
+      json->slice()
+    );
+
+    CHECK(node.empty()); // view has no links
+    CHECK(node.collections().empty()); // view has no links
+    CHECK(node.shards().empty());
+
+    CHECK(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node.getType());
+    CHECK(outVariable.id == node.outVariable().id);
+    CHECK(outVariable.name == node.outVariable().name);
+    CHECK(query.plan() == node.plan());
+    CHECK(42 == node.id());
+    CHECK(logicalView == node.view());
+    CHECK(node.scorers().empty());
+    CHECK(!node.volatility().first); // filter volatility
+    CHECK(!node.volatility().second); // sort volatility
+    arangodb::HashSet<arangodb::aql::Variable const*> usedHere;
+    node.getVariablesUsedHere(usedHere);
+    CHECK(usedHere.empty());
+    auto const setHere = node.getVariablesSetHere();
+    CHECK(1 == setHere.size());
+    CHECK(outVariable.id == setHere[0]->id);
+    CHECK(outVariable.name == setHere[0]->name);
+    CHECK(true == node.options().forceSync);
+    CHECK(false == node.options().restrictSources);
+    CHECK(0 == node.options().sources.size());
+
+    CHECK(0. == node.getCost().estimatedCost); // no dependencies
+    CHECK(0 == node.getCost().estimatedNrItems); // no dependencies
+  }
+
+  // invalid option 'waitForSync'
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], \"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], \"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { \"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : \"false\"}, \"viewId\": \"" + std::to_string(logicalView->id()) + "\" }"
+    );
+
+    try {
+      arangodb::iresearch::IResearchViewNode node(
+        *query.plan(), // plan
+        json->slice()
+      );
+      CHECK(false);
+    } catch (arangodb::basics::Exception const& e) {
+      CHECK(TRI_ERROR_BAD_PARAMETER == e.code());
+    } catch (...) {
+      CHECK(false);
+    }
+  }
+
+  // invalid option 'collections'
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], \"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], \"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { \"name\":\"variable\", \"id\":0 }, \"options\": { \"collections\" : \"false\"}, \"viewId\": \"" + std::to_string(logicalView->id()) + "\" }"
+    );
+
+    try {
+      arangodb::iresearch::IResearchViewNode node(
+        *query.plan(), // plan
+        json->slice()
+      );
+      CHECK(false);
+    } catch (arangodb::basics::Exception const& e) {
+      CHECK(TRI_ERROR_BAD_PARAMETER == e.code());
+    } catch (...) {
+      CHECK(false);
+    }
+  }
+
+  // invalid option 'collections'
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], \"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], \"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { \"name\":\"variable\", \"id\":0 }, \"options\": { \"collections\" : {}}, \"viewId\": \"" + std::to_string(logicalView->id()) + "\" }"
+    );
+
+    try {
+      arangodb::iresearch::IResearchViewNode node(
+        *query.plan(), // plan
+        json->slice()
+      );
+      CHECK(false);
+    } catch (arangodb::basics::Exception const& e) {
+      CHECK(TRI_ERROR_BAD_PARAMETER == e.code());
+    } catch (...) {
+      CHECK(false);
+    }
   }
 }
 
