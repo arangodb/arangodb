@@ -82,14 +82,14 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 
-      THEN("the executor should first return WAIT with nullptr") {
+      THEN("the executor should first return WAIT") {
         OutputAqlItemRow result(std::move(outputBlockShell));
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
         REQUIRE(stats.getFullCount() == 0);
 
-        AND_THEN("the executor should return DONE with nullptr") {
+        AND_THEN("the executor should return DONE") {
           std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!result.produced());
