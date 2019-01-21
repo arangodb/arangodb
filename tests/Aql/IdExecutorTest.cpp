@@ -64,7 +64,7 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
       IdExecutor testee(fetcher, infos);
       NoStats stats{};
 
-      THEN("the executor should return DONE with nullptr") {
+      THEN("the executor should return DONE with no block produced") {
         OutputAqlItemRow result(std::move(outputBlockShell));
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
