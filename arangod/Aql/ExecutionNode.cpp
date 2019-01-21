@@ -1305,7 +1305,7 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
   EnumerateListExecutorInfos infos(inputRegister, outRegister,
                                    getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                    getRegisterPlan()->nrRegs[getDepth()],
-                                   getRegsToClear(), engine.getQuery()->trx());
+                                   getRegsToClear());
   return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(&engine, this,
                                                                      std::move(infos));
 }
