@@ -1,4 +1,3 @@
-////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
@@ -139,7 +138,7 @@ class EngineInfoContainerDBServer {
       LogicalView const* view{};  // The view used to connect to this engine
       GatherNode* gather{};  // The gather associated with the engine
       ScatterNode* scatter{}; // The scatter associated with the engine
-      size_t numClients{}; // Number of db server to distribute the engine to
+      size_t numClients{}; // A number of db servers the engine is distributed accross
     };
 
     EngineInfo(EngineInfo&) = delete;
