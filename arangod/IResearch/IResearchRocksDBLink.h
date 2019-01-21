@@ -42,13 +42,6 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
     IResearchLink::afterTruncate();
   }
 
-  virtual void batchInsert(
-      transaction::Methods& trx,
-      std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
-      std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override {
-    IResearchLink::batchInsert(trx, documents, queue);
-  }
-
   virtual bool canBeDropped() const override {
     return IResearchLink::canBeDropped();
   }
@@ -68,11 +61,11 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
     return IResearchLink::hasSelectivityEstimate();
   }
 
-  virtual arangodb::Result insertInternal(arangodb::transaction::Methods& trx,
-                                          arangodb::RocksDBMethods* methods,
-                                          arangodb::LocalDocumentId const& documentId,
-                                          arangodb::velocypack::Slice const& doc,
-                                          arangodb::Index::OperationMode mode) override {
+  virtual arangodb::Result insert(arangodb::transaction::Methods& trx,
+                                  arangodb::RocksDBMethods* methods,
+                                  arangodb::LocalDocumentId const& documentId,
+                                  arangodb::velocypack::Slice const& doc,
+                                  arangodb::Index::OperationMode mode) override {
     return IResearchLink::insert(trx, documentId, doc, mode);
   }
 
@@ -96,11 +89,11 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
 
   virtual size_t memory() const override { return IResearchLink::memory(); }
 
-  virtual arangodb::Result removeInternal(arangodb::transaction::Methods& trx,
-                                          arangodb::RocksDBMethods*,
-                                          arangodb::LocalDocumentId const& documentId,
-                                          arangodb::velocypack::Slice const& doc,
-                                          arangodb::Index::OperationMode mode) override {
+  virtual arangodb::Result remove(arangodb::transaction::Methods& trx,
+                                  arangodb::RocksDBMethods*,
+                                  arangodb::LocalDocumentId const& documentId,
+                                  arangodb::velocypack::Slice const& doc,
+                                  arangodb::Index::OperationMode mode) override {
     return IResearchLink::remove(trx, documentId, doc, mode);
   }
 

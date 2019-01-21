@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,31 +17,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Baesler
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_DATETIME_H
-#define ARANGODB_BASICS_DATETIME_H 1
+#include "MMFilesIndex.h"
 
-#include <chrono>
-#include <regex>
+#include "Basics/LocalTaskQueue.h"
 
-namespace arangodb {
+using namespace arangodb;
 
-using tp_sys_clock_ms =
-    std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds>;
-
-namespace basics {
-bool parseDateTime(std::string const& dateTime, 
-                   tp_sys_clock_ms& date_tp);
-
-bool regexIsoDuration(std::string const& isoDuration, 
-                      std::smatch& durationParts);
-
-/// @brief formats a date(time) value according to formatString
-std::string formatDate(std::string const& formatString,
-                       tp_sys_clock_ms const& dateValue);
-}  // namespace basics
-}  // namespace arangodb
-
-#endif
+void MMFilesIndex::batchInsert(transaction::Methods& trx,
+                        std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
+                        std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
+  for (auto const& it : documents) {
+    Result status = insert(trx, it.first, it.second, OperationMode::normal);
+    if (status.errorNumber() != TRI_ERROR_NO_ERROR) {
+      queue->setStatus(status.errorNumber());
+      break;
+    }
+  }
+}

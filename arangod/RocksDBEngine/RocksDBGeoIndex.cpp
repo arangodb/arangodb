@@ -374,10 +374,10 @@ IndexIterator* RocksDBGeoIndex::iteratorForCondition(
 }
 
 /// internal insert function, set batch or trx before calling
-Result RocksDBGeoIndex::insertInternal(transaction::Methods& trx, RocksDBMethods* mthd,
-                                       LocalDocumentId const& documentId,
-                                       velocypack::Slice const& doc,
-                                       arangodb::Index::OperationMode mode) {
+Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
+                               LocalDocumentId const& documentId,
+                               velocypack::Slice const& doc,
+                               arangodb::Index::OperationMode mode) {
   Result res;
 
   // covering and centroid of coordinate / polygon / ...
@@ -419,10 +419,10 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods& trx, RocksDBMethods
 }
 
 /// internal remove function, set batch or trx before calling
-Result RocksDBGeoIndex::removeInternal(transaction::Methods& trx, RocksDBMethods* mthd,
-                                       LocalDocumentId const& documentId,
-                                       velocypack::Slice const& doc,
-                                       arangodb::Index::OperationMode mode) {
+Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
+                               LocalDocumentId const& documentId,
+                               velocypack::Slice const& doc,
+                               arangodb::Index::OperationMode mode) {
   Result res;
 
   // covering and centroid of coordinate / polygon / ...
