@@ -91,7 +91,7 @@ RegisterId SingleRowFetcher<passBlocksThrough>::getNrInputRegisters() const {
 
 template <bool passBlocksThrough>
 bool SingleRowFetcher<passBlocksThrough>::indexIsValid() {
-  return _currentBlock != nullptr && _rowIndex + 1 <= _currentBlock->block().size();
+  return _currentBlock != nullptr && _rowIndex < _currentBlock->block().size();
 }
 
 template <bool passBlocksThrough>
