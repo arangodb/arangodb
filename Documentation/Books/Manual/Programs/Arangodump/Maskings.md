@@ -3,10 +3,10 @@ Arangodump Data Maskings
 
 *--maskings path-of-config*
 
-It is possible to mask certain fields during dump. A JSON config file is
+It is possible to mask certain fields for a dump. A JSON configuration file is
 used to define which fields should be masked and how.
 
-The general structure of the config file is
+The general structure of the config file looks like this:
 
 ```json
 {
@@ -28,20 +28,21 @@ listed explicitly.
 Masking Types
 -------------
 
-This is a string describing how to mask this collection. Possible values are
+`type` is a string describing how to mask the given collection.
+Possible values are:
 
-- "exclude": the collection is ignored completely and not even the structure data
+- `"exclude"`: the collection is ignored completely and not even the structure data
   is dumped.
 
-- "structure": only the collection structure is dumped, but no data at all
+- `"structure"`: only the collection structure is dumped, but no data at all
 
-- "masked": the collection structure and all data is dumped. However, the data
-  is subject to maskings defined in the attribute maskings.
+- `"masked"`: the collection structure and all data is dumped. However, the data
+  is subject to obfuscation defined in the attribute `maskings`.
 
-- "full": the collection structure and all data is dumped. No masking at all
-  is done for this collection.
+- `"full"`: the collection structure and all data is dumped. No masking is
+  applied to this collection at all.
 
-For example:
+**Example**
 
 ```json
 {
@@ -71,17 +72,17 @@ For example:
 }
 ```
 
-In the example the collection "private" is completely ignored. Only the
-structure of the collection "log" is dumped, but not the data itself.
-The collection "person" is dumped completely but masking the "name" field if
-it occurs on the top-level. It masks the field "security_id" anywhere in the
-document. See below for a complete description of the parameters of
-"xifyFont".
+In the example the collection _private_ is completely ignored. Only the
+structure of the collection _log_ is dumped, but not the data itself.
+The collection _person_ is dumped completely but with the _name_ field masked
+if it occurs on the top-level. It also masks fields with the name "security_id"
+anywhere in the document. See below for a complete description of the parameters
+of [type "xifyFont"](#xifyfont-enterprise).
 
 ### Masking vs. dump-data option
 
 *arangodump* also supports a very coarse masking with the option
-`--dump-data false`.  This basically removes all data from the dump.
+`--dump-data false`. This basically removes all data from the dump.
 
 You can either use `--masking` or `--dump-data false`, but not both.
 
@@ -89,7 +90,7 @@ You can either use `--masking` or `--dump-data false`, but not both.
 
 *arangodump* also supports a very coarse masking with the option
 `--include-collection`. This will restrict the collections that are
-dumped to the ones explicitly listed..
+dumped to the ones explicitly listed.
 
 It is possible to combine `--masking` and `--include-collection`.
 This will take the intersection of exportable collections.
@@ -105,8 +106,8 @@ attributes whose value is `null` or of data type `string`, `number`,
 at top level. `person.name` will match the attribute `name` of a leaf
 in the top-level object `person`.
 
-If you have a attribute name that contains a dot, you need to quote the
-name with either a tick or a backtick. For example
+If you have an attribute name that contains a dot, you need to quote the
+name with either a tick or a backtick. For example:
 
     "path": "´name.with.dots´"
 
@@ -143,7 +144,7 @@ The document:
 }
 ```
 
-will be changed as follows:
+… will be changed as follows:
 
 ```json
 {
@@ -228,7 +229,7 @@ Masking Functions
 
 ### randomString
 
-This masking replaces character strings with a random string of the
+This masking type replaces character strings with a random string of the
 same length as the input. Other values, e.g. numbers and booleans, are
 not changed.
 
@@ -251,7 +252,7 @@ original string length.
 
 ### xifyFont (Enterprise)
 
-This masking replaces characters with `x` and blanks. Alphanumeric characters,
+This masking type replaces characters with `x` and blanks. Alphanumeric characters,
 `_` and `-` are replaced by `x`, everything else is replaced by a blank.
 
 ```json
@@ -293,10 +294,10 @@ will become
 
     "xxis is a xxst Do xou xxxee  NAATm8c9hVQ="
 
-Note that the hash is based on a random secrect that is different for
+Note that the hash is based on a random secret that is different for
 each run. This avoids dictionary attacks.
 
-If you need reproducable results, i.e. hashes that do not change between
+If you need reproducible results, i.e. hashes that do not change between
 different runs of *arangodump*, you need to specify a secret as seed,
 a number which must not be `0`.
 
@@ -312,7 +313,7 @@ a number which must not be `0`.
 
 ### zip (Enterprise)
 
-This masking replaces a zip code with a random one.  If the attribute
+This masking type replaces a zip code with a random one.  If the attribute
 value is not a string then the default value of `12345` is used.
 
 ```json
@@ -356,9 +357,9 @@ it will be replaced by (for example)
 Please note that this will generate random zip code value. Therefore
 there is a chance that it will destroy uniqueness.
 
-### datetime (Enterprise)
+### Datetime (Enterprise)
 
-This masking replaces the value of the attribute with a random date.
+This masking type replaces the value of the attribute with a random date.
 
 ```json
 {
@@ -374,9 +375,9 @@ This masking replaces the value of the attribute with a random date.
 The format is described in
 [DATE_FORMAT](https://docs.arangodb.com/3.4/AQL/Functions/Date.html#dateformat).
 
-### integral number (Enterprise)
+### Integral number (Enterprise)
 
-This masking replaces the value of the attribute with a random integral number.
+This masking type replaces the value of the attribute with a random integral number.
 
 ```json
 {
@@ -386,9 +387,9 @@ This masking replaces the value of the attribute with a random integral number.
 }
 ```
 
-### decimal (Enterprise)
+### Decimal (Enterprise)
 
-This masking replaces the value of the attribute with a random decimal.
+This masking type replaces the value of the attribute with a random decimal.
 
 ```json
 {
@@ -413,7 +414,7 @@ will use a scale of 3.
 
 ### Credit card number (Enterprise)
 
-This masking replaces the value of the attribute with a random credit card number.
+This masking type replaces the value of the attribute with a random credit card number.
 
 ```json
 {
@@ -425,7 +426,7 @@ See [Luhn](https://en.wikipedia.org/wiki/Luhn_algorithm) for details.
 
 ### Phone number (Enterprise)
 
-This masking replaces a phone number with a random one. If the attribute value
+This masking type replaces a phone number with a random one. If the attribute value
 is not a string it is replaced by the string `"+1234567890"`.
 
 ```json
@@ -452,6 +453,6 @@ If the attribute value is not a string use the value of default
 
 ### Email address (Enterprise)
 
-This takes an email address, computes a hash value and split this is
+This masking type takes an email address, computes a hash value and splits it into
 three equal parts `AAAA`, `BBBB`, and `CCCC`. The resulting email
 address is `AAAA.BBBB@CCCC.invalid`.
