@@ -201,6 +201,7 @@ SET(ARANGOD_SOURCES
   Aql/Collections.cpp
   Aql/Condition.cpp
   Aql/ConditionFinder.cpp
+  Aql/ConstFetcher.cpp
   Aql/DocumentProducingBlock.cpp
   Aql/DocumentProducingHelper.cpp
   Aql/DocumentProducingNode.cpp
@@ -223,12 +224,14 @@ SET(ARANGOD_SOURCES
   Aql/Functions.cpp
   Aql/GraphNode.cpp
   Aql/Graphs.cpp
+  Aql/IdExecutor.cpp
   Aql/IndexBlock.cpp
   Aql/IndexNode.cpp
   Aql/InputAqlItemRow.cpp
   Aql/ModificationBlocks.cpp
   Aql/ModificationNodes.cpp
   Aql/ModificationOptions.cpp
+  Aql/NoResultsExecutor.cpp
   Aql/NodeFinder.cpp
   Aql/Optimizer.cpp
   Aql/OptimizerRules.cpp

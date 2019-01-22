@@ -40,8 +40,10 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/Function.h"
+#include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/NoResultsExecutor.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/Query.h"
 #include "Aql/ReturnExecutor.h"
@@ -101,6 +103,17 @@ std::unordered_map<int, std::string const> const typeNames{
      "EnumerateViewNode"},
 #endif
 };
+
+// FIXME -- this temporary function should be
+// replaced by a ExecutionNode member variable
+// that shows the subquery depth and if filled
+// during register planning
+bool isInSubQuery(ExecutionNode const* node) {
+  while (node->hasParent()) {
+    node = node->getFirstParent();
+  }
+  return node->plan()->root() != node;
+}
 
 }  // namespace
 
@@ -1184,7 +1197,22 @@ void ExecutionNode::removeDependencies() {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<SingletonBlock>(&engine, this);
+
+  std::unordered_set<RegisterId> toKeep;
+  if (isInSubQuery(this)) {
+    auto const& varinfo = this->getRegisterPlan()->varInfo;
+    for (auto const& var : this->getVarsUsedLater()) {
+      auto it2 = varinfo.find(var->id);
+      if (it2 != varinfo.end()) {
+        auto val = (*it2).second.registerId;
+        toKeep.insert(val);
+      }
+    }
+  }
+
+  IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()], std::move(toKeep), getRegsToClear());
+
+  return std::make_unique<ExecutionBlockImpl<IdExecutor>>(&engine, this, std::move(infos));
 }
 
 /// @brief toVelocyPack, for SingletonNode
@@ -1326,7 +1354,7 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
   EnumerateListExecutorInfos infos(inputRegister, outRegister,
                                    getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                    getRegisterPlan()->nrRegs[getDepth()],
-                                   getRegsToClear(), engine.getQuery()->trx());
+                                   getRegsToClear());
   return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(&engine, this,
                                                                      std::move(infos));
 }
@@ -1961,7 +1989,12 @@ void NoResultsNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) cons
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> NoResultsNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<NoResultsBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  ExecutorInfos infos(0, 0, getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
+  return std::make_unique<ExecutionBlockImpl<NoResultsExecutor>>(&engine, this,
+                                                                 std::move(infos));
 }
 
 /// @brief estimateCost, the cost of a NoResults is nearly 0

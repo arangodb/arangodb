@@ -60,7 +60,7 @@ class OutputAqlItemRow {
   void setValue(RegisterId registerId, InputAqlItemRow const& sourceRow,
                 AqlValue&& value);
 
-  void copyRow(InputAqlItemRow const& sourceRow);
+  void copyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing = false);
 
   std::size_t getNrRegisters() const;
 
