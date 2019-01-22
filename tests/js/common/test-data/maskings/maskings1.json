@@ -3,17 +3,17 @@
     "maskings": [
       {
         "path": "name",
-        "type": "xify_front",
+        "type": "xifyFront",
         "unmaskedLength": 1
       },
       {
         "path": ".name",
-        "type": "xify_front",
+        "type": "xifyFront",
         "unmaskedLength": 2
       },
       {
         "path": "email",
-        "type": "xify_front",
+        "type": "xifyFront",
         "unmaskedLength": 3
       }
     ]
@@ -23,7 +23,7 @@
     "maskings": [
       {
         "path": "random",
-        "type": "random_string"
+        "type": "randomString"
       },
       {
         "path": "zip",
@@ -51,7 +51,7 @@
       },
       {
         "path": "ccard",
-        "type": "ccard"
+        "type": "creditCard"
       },
       {
         "path": "phone",
