@@ -31,6 +31,9 @@ BlockFetcher::fetchBlock() {
   std::tie(state, block) =
       upstreamBlock().getSome(ExecutionBlock::DefaultBatchSize());
   if (block != nullptr) {
+    TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
     auto shell = std::make_shared<InputAqlItemBlockShell>(
         itemBlockManager(), std::move(block), _inputRegisters);
     return {state, shell};
