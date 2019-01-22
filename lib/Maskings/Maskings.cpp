@@ -85,11 +85,21 @@ ParseResult<Maskings> Maskings::parse(VPackSlice const& def) {
 
   for (auto const& entry : VPackObjectIterator(def, false)) {
     std::string key = entry.key.copyString();
-    LOG_TOPIC(TRACE, Logger::CONFIG) << "masking collection '" << key << "'";
 
-    if (_collections.find(key) != _collections.end()) {
-      return ParseResult<Maskings>(ParseResult<Maskings>::DUPLICATE_COLLECTION,
-                                   "duplicate collection entry '" + key + "'");
+    if (key == "*") {
+      LOG_TOPIC(TRACE, Logger::CONFIG) << "default masking";
+
+      if (_hasDefaultCollection) {
+        return ParseResult<Maskings>(ParseResult<Maskings>::DUPLICATE_COLLECTION,
+                                     "duplicate default entry");
+      }
+    } else {
+      LOG_TOPIC(TRACE, Logger::CONFIG) << "masking collection '" << key << "'";
+
+      if (_collections.find(key) != _collections.end()) {
+        return ParseResult<Maskings>(ParseResult<Maskings>::DUPLICATE_COLLECTION,
+                                     "duplicate collection entry '" + key + "'");
+      }
     }
 
     ParseResult<Collection> c = Collection::parse(this, entry.value);
@@ -99,20 +109,30 @@ ParseResult<Maskings> Maskings::parse(VPackSlice const& def) {
                                    c.message);
     }
 
-    _collections[key] = c.result;
+    if (key == "*") {
+      _hasDefaultCollection = true;
+      _defaultCollection = c.result;
+    } else {
+      _collections[key] = c.result;
+    }
   }
 
   return ParseResult<Maskings>(ParseResult<Maskings>::VALID);
 }
 
 bool Maskings::shouldDumpStructure(std::string const& name) {
+  CollectionSelection select = CollectionSelection::EXCLUDE;
   auto const itr = _collections.find(name);
 
   if (itr == _collections.end()) {
-    return false;
+    if (_hasDefaultCollection) {
+      select = _defaultCollection.selection();
+    }
+  } else {
+    select = itr->second.selection();
   }
 
-  switch (itr->second.selection()) {
+  switch (select) {
     case CollectionSelection::FULL:
       return true;
     case CollectionSelection::MASKED:
@@ -129,13 +149,18 @@ bool Maskings::shouldDumpStructure(std::string const& name) {
 }
 
 bool Maskings::shouldDumpData(std::string const& name) {
+  CollectionSelection select = CollectionSelection::EXCLUDE;
   auto const itr = _collections.find(name);
 
   if (itr == _collections.end()) {
-    return false;
+    if (_hasDefaultCollection) {
+      select = _defaultCollection.selection();
+    }
+  } else {
+    select = itr->second.selection();
   }
 
-  switch (itr->second.selection()) {
+  switch (select) {
     case CollectionSelection::FULL:
       return true;
     case CollectionSelection::MASKED:
@@ -289,14 +314,21 @@ void Maskings::mask(std::string const& name, basics::StringBuffer const& data,
                     basics::StringBuffer& result) {
   result.clear();
 
+  Collection* collection;
   auto const itr = _collections.find(name);
 
   if (itr == _collections.end()) {
-    result.copy(data);
-    return;
+    if (_hasDefaultCollection) {
+      collection = &_defaultCollection;
+    } else {
+      result.copy(data);
+      return;
+    }
+  } else {
+    collection = &(itr->second);
   }
 
-  if (itr->second.selection() == CollectionSelection::FULL) {
+  if (collection->selection() == CollectionSelection::FULL) {
     result.copy(data);
     return;
   }
@@ -314,7 +346,7 @@ void Maskings::mask(std::string const& name, basics::StringBuffer const& data,
 
     std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(q, p - q);
 
-    addMasked(itr->second, result, builder->slice());
+    addMasked(*collection, result, builder->slice());
 
     while (p < e && (*p == '\n' || *p == '\r')) {
       ++p;

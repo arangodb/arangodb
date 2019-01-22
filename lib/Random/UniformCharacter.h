@@ -38,11 +38,12 @@ class UniformCharacter {
   UniformCharacter(size_t length, std::string const& characters);
 
  public:
-  std::string random();
-  std::string random(size_t length);
+  std::string random() const;
+  std::string random(size_t length) const;
+  char randomChar() const;
 
  private:
-  size_t _length;
+  size_t const _length;
   std::string const _characters;
 };
 }  // namespace arangodb
