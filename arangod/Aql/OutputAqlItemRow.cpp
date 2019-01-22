@@ -83,7 +83,7 @@ void OutputAqlItemRow::setValue(RegisterId registerId,
   }
 }
 
-void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
+void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing) {
   TRI_ASSERT(sourceRow.isInitialized());
   // While violating the following asserted states would do no harm, the
   // implementation as planned should only copy a row after all values have been
@@ -101,6 +101,9 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
 
   if (mustClone) {
     for (auto itemId : _blockShell->registersToKeep()) {
+      if(ignoreMissing && itemId >= sourceRow.getNrRegisters()){
+        continue;
+      }
       auto const& value = sourceRow.getValue(itemId);
       if (!value.isEmpty()) {
         AqlValue clonedValue = value.clone();
