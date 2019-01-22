@@ -40,6 +40,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/Function.h"
+#include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
 #include "Aql/LimitExecutor.h"
 #include "Aql/ModificationNodes.h"
@@ -1195,7 +1196,22 @@ void ExecutionNode::removeDependencies() {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<SingletonBlock>(&engine, this);
+
+  std::unordered_set<RegisterId> toKeep;
+  if (isInSubQuery(this)) {
+    auto const& varinfo = this->getRegisterPlan()->varInfo;
+    for (auto const& var : this->getVarsUsedLater()) {
+      auto it2 = varinfo.find(var->id);
+      if (it2 != varinfo.end()) {
+        auto val = (*it2).second.registerId;
+        toKeep.insert(val);
+      }
+    }
+  }
+
+  IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()], std::move(toKeep), getRegsToClear());
+
+  return std::make_unique<ExecutionBlockImpl<IdExecutor>>(&engine, this, std::move(infos));
 }
 
 /// @brief toVelocyPack, for SingletonNode

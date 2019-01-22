@@ -92,6 +92,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/ExecutionBlockImplTestInstances.cpp
   Aql/FilterExecutorTest.cpp
   Aql/LimitExecutorTest.cpp
+  Aql/IdExecutorTest.cpp
   Aql/NoResultsExecutorTest.cpp
   Aql/RestAqlHandlerTest.cpp
   Aql/ReturnExecutorTest.cpp

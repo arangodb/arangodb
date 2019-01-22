@@ -36,24 +36,6 @@ class AqlItemBlock;
 
 class ExecutionEngine;
 
-class SingletonBlock final : public ExecutionBlock {
- public:
-  SingletonBlock(ExecutionEngine* engine, SingletonNode const* ep);
-
-  /// @brief initializeCursor, store a copy of the register values coming from
-  /// above
-  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
-
- private:
-  std::pair<ExecutionState, arangodb::Result> getOrSkipSome(size_t atMost, bool skipping,
-                                                            AqlItemBlock*& result,
-                                                            size_t& skipped) override;
-
-  /// @brief _inputRegisterValues
-  std::unique_ptr<AqlItemBlock> _inputRegisterValues;
-
-  std::unordered_set<RegisterId> _whitelist;
-};
 
 
 }  // namespace aql
