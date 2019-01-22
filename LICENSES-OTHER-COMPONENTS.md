@@ -29,6 +29,15 @@
 * License Name: Boost Software License 1.0
 * License Id: BSL-1.0
 
+### CreditCardGenerator 2016
+
+* Name: CreditCardGenerator
+* Version: 1.8.1
+* Project Home: https://github.com/stormdark/CreditCardGenerator
+* License: https://raw.githubusercontent.com/stormdark/CreditCardGenerator/master/LICENSE
+* License Name: MIT License
+* License Id: MIT
+
 ### Curl 7.50.3
 
 * Name: Curl
