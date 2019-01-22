@@ -24,27 +24,10 @@
 
 #include <velocypack/velocypack-aliases.h>
 //#include "Basics/Result.h"
-//#include "RocksDBColumnFamily.h"
 //#include "RocksDBCommon.h"
 #include "Rest/GeneralResponse.h"
 
-
-namespace rocksdb {
-class Transaction;
-class Slice;
-class Iterator;
-class TransactionDB;
-class WriteBatch;
-class WriteBatchWithIndex;
-class Comparator;
-struct ReadOptions;
-}  // namespace rocksdb
-
 namespace arangodb {
-namespace transaction {
-class Methods;
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Base class for various RocksDBHotBackup operations
@@ -54,17 +37,22 @@ class RocksDBHotBackup {
 public:
   static std::shared_ptr<RocksDBHotBackup> operationFactory(arangodb::rest::RequestType const type,
                                                             std::vector<std::string> const & suffixes,
-                                                            VPackSlice & body)
-  { return std::shared_ptr<RocksDBHotBackup>();}
+                                                            VPackSlice & body);
 
-  virtual void execute() = 0;
+  RocksDBHotBackup();
+  virtual ~RocksDBHotBackup();
 
-  virtual ~RocksDBHotBackup() {};
   bool valid() const {return _valid;};
   bool success() const {return _success;};
 
   rest::ResponseCode restResponseCode() const {return _respCode;};
   int restResponseError() const {return _respError;};
+
+  // @brief Validate and extract parameters appropriate to the operation type
+  virtual void parseParameters(rest::RequestType const, VPackSlice &) {};
+
+  // @brief Execute the operation
+  virtual void execute() {};
 
 protected:
 
@@ -77,10 +65,28 @@ protected:
 };// class RocksDBHotBackup
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief POST:  Initiate rocksdb checkpoint on local server
+///        DELETE:  Remove an existing rocksdb checkpoint from local server
+////////////////////////////////////////////////////////////////////////////////
 class RocksDBHotBackupCreate : public RocksDBHotBackup {
 public:
 
+  RocksDBHotBackupCreate();
+  ~RocksDBHotBackupCreate();
+
+  // @brief Validate and extract parameters appropriate to the operation type
+  virtual void parseParameters(rest::RequestType const, VPackSlice &);
+
+  // @brief Execute the operation
   virtual void execute() {};
+
+protected:
+  bool _isCreate;
+  std::string _timestamp;
+  int _timeoutMS;
+  std::string _userString;
+
 
 };// class RocksDBHotBackupCreate
 
