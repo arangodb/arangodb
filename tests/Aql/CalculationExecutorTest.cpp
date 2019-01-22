@@ -154,28 +154,28 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
   ExecutionPlan plan{&ast};
   Expression expr(&plan, &ast, node);
 
-
   auto outRegID = RegisterId(1);
   auto inRegID = RegisterId(0);
 
-  CalculationExecutorInfos infos(
-      outRegID /*out reg*/, RegisterId(1) /*in width*/,
-      RegisterId(2) /*out width*/, std::unordered_set<RegisterId>{} /*to clear*/,
-      &query /*query*/, &expr /*expression*/,
-      std::vector<Variable const*>{&var} /*expression in variables*/,
-      std::vector<RegisterId>{inRegID} /*expression in registers*/
+  CalculationExecutorInfos infos(outRegID /*out reg*/, RegisterId(1) /*in width*/,
+                                 RegisterId(2) /*out width*/,
+                                 std::unordered_set<RegisterId>{} /*to clear*/,
+                                 &query /*query*/, &expr /*expression*/,
+                                 std::vector<Variable const*>{&var} /*expression in variables*/,
+                                 std::vector<RegisterId>{inRegID} /*expression in registers*/
   );
 
   GIVEN("there are no rows upstream") {
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
+    auto blockShell =
+        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
     auto outputBlockShell =
-        std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),
-                                                  infos.getOutputRegisters(),
+        std::make_unique<OutputAqlItemBlockShell>(blockShell, infos.getOutputRegisters(),
                                                   infos.registersToKeep());
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
-      SingleRowFetcherHelper fetcher(input.steal(), false);
+      SingleRowFetcherHelper<true> fetcher(input.steal(), false);
       CalculationExecutor testee(fetcher, infos);
       // Use this instead of std::ignore, so the tests will be noticed and
       // updated when someone changes the stats type in the return value of
@@ -191,7 +191,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
     }
 
     WHEN("the producer waits") {
-      SingleRowFetcherHelper fetcher(input.steal(), true);
+      SingleRowFetcherHelper<true> fetcher(input.steal(), true);
       CalculationExecutor testee(fetcher, infos);
       // Use this instead of std::ignore, so the tests will be noticed and
       // updated when someone changes the stats type in the return value of
@@ -216,15 +216,16 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
 
   GIVEN("there are rows in the upstream") {
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
+    auto blockShell =
+        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
     auto outputBlockShell =
-        std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),
-                                                  infos.getOutputRegisters(),
+        std::make_unique<OutputAqlItemBlockShell>(blockShell, infos.getOutputRegisters(),
                                                   infos.registersToKeep());
 
     auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
 
     WHEN("the producer does not wait") {
-      SingleRowFetcherHelper fetcher(input->steal(), false);
+      SingleRowFetcherHelper<true> fetcher(input->steal(), false);
       CalculationExecutor testee(fetcher, infos);
       NoStats stats{};
 
@@ -258,17 +259,17 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
         // verify calculation
         AqlValue value;
         auto block = row.stealBlock();
-        for(std::size_t index = 0; index < 3; index++){
+        for (std::size_t index = 0; index < 3; index++) {
           value = block->getValue(index, outRegID);
           REQUIRE(value.isNumber());
-          REQUIRE(value.toInt64() == index+1);
+          REQUIRE(value.toInt64() == index + 1);
         }
 
       }  // THEN
     }    // WHEN
 
     WHEN("the producer waits") {
-      SingleRowFetcherHelper fetcher(input->steal(), true);
+      SingleRowFetcherHelper<true> fetcher(input->steal(), true);
       CalculationExecutor testee(fetcher, infos);
       NoStats stats{};
 

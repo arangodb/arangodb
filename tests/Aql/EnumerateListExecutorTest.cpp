@@ -56,13 +56,15 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
   GIVEN("there are no rows upstream") {
     EnumerateListExecutorInfos infos(0, 1, 1, 2, {});
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
-    auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
-        itemBlockManager, std::move(block), infos.getOutputRegisters(),
-        infos.registersToKeep());
+    auto blockShell =
+        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
+    auto outputBlockShell =
+        std::make_unique<OutputAqlItemBlockShell>(blockShell, infos.getOutputRegisters(),
+                                                  infos.registersToKeep());
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
-      SingleRowFetcherHelper fetcher(input.steal(), false);
+      SingleRowFetcherHelper<false> fetcher(input.steal(), false);
       EnumerateListExecutor testee(fetcher, infos);
       // Use this instead of std::ignore, so the tests will be noticed and
       // updated when someone changes the stats type in the return value of
@@ -78,7 +80,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
     }
 
     WHEN("the producer waits") {
-      SingleRowFetcherHelper fetcher(input.steal(), true);
+      SingleRowFetcherHelper<false> fetcher(input.steal(), true);
       EnumerateListExecutor testee(fetcher, infos);
       // Use this instead of std::ignore, so the tests will be noticed and
       // updated when someone changes the stats type in the return value of
@@ -103,13 +105,15 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
   GIVEN("there is one row in the upstream") {
     EnumerateListExecutorInfos infos(3, 4, 4, 5, {});
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 5);
-    auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
-        itemBlockManager, std::move(block), infos.getOutputRegisters(),
-        infos.registersToKeep());
+    auto blockShell =
+        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
+    auto outputBlockShell =
+        std::make_unique<OutputAqlItemBlockShell>(blockShell, infos.getOutputRegisters(),
+                                                  infos.registersToKeep());
     auto input = VPackParser::fromJson("[ [1, 2, 3, [true, true, true]] ]");
 
     WHEN("the producer does wait") {
-      SingleRowFetcherHelper fetcher(input->steal(), true);
+      SingleRowFetcherHelper<false> fetcher(input->steal(), true);
       EnumerateListExecutor testee(fetcher, infos);
       // Use this instead of std::ignore, so the tests will be noticed and
       // updated when someone changes the stats type in the return value of
@@ -194,13 +198,15 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
   GIVEN("there is one empty array row in the upstream") {
     EnumerateListExecutorInfos infos(3, 4, 4, 5, {});
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 5);
-    auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
-        itemBlockManager, std::move(block), infos.getOutputRegisters(),
-        infos.registersToKeep());
+    auto blockShell =
+        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
+    auto outputBlockShell =
+        std::make_unique<OutputAqlItemBlockShell>(blockShell, infos.getOutputRegisters(),
+                                                  infos.registersToKeep());
     auto input = VPackParser::fromJson("[ [1, 2, 3, [] ] ]");
 
     WHEN("the producer does wait") {
-      SingleRowFetcherHelper fetcher(input->steal(), true);
+      SingleRowFetcherHelper<false> fetcher(input->steal(), true);
       EnumerateListExecutor testee(fetcher, infos);
       // Use this instead of std::ignore, so the tests will be noticed and
       // updated when someone changes the stats type in the return value of
@@ -227,13 +233,16 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
   GIVEN("there are rows in the upstream") {
     EnumerateListExecutorInfos infos(3, 4, 4, 5, {});
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 5);
-    auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
-      itemBlockManager, std::move(block), infos.getOutputRegisters(),
-      infos.registersToKeep());
-    auto input = VPackParser::fromJson("[ [1, 2, 3, [true, true, true]], [1, 2, 3, [true, true, true]] ]");
+    auto blockShell =
+        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
+    auto outputBlockShell =
+        std::make_unique<OutputAqlItemBlockShell>(blockShell, infos.getOutputRegisters(),
+                                                  infos.registersToKeep());
+    auto input = VPackParser::fromJson(
+        "[ [1, 2, 3, [true, true, true]], [1, 2, 3, [true, true, true]] ]");
 
     WHEN("the producer does wait") {
-      SingleRowFetcherHelper fetcher(input->steal(), true);
+      SingleRowFetcherHelper<false> fetcher(input->steal(), true);
       EnumerateListExecutor testee(fetcher, infos);
       // Use this instead of std::ignore, so the tests will be noticed and
       // updated when someone changes the stats type in the return value of

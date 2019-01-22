@@ -50,9 +50,10 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
   auto outputRegisters = make_shared_unordered_set({0});
   auto registersToKeep = make_shared_unordered_set();
+  auto blockShell =
+      std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
   auto outputBlockShell =
-      std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),
-                                                outputRegisters, registersToKeep);
+      std::make_unique<OutputAqlItemBlockShell>(blockShell, outputRegisters, registersToKeep);
 
   REQUIRE(outputRegisters->size() == 1);
   REQUIRE((*(outputRegisters->begin()) == 0));
@@ -68,7 +69,7 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
-      SingleRowFetcherHelper fetcher(input.steal(), false);
+      SingleRowFetcherHelper<false> fetcher(input.steal(), false);
       ReturnExecutor testee(fetcher, infos);
       CountStats stats{};
 
@@ -81,7 +82,7 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
     }
 
     WHEN("the producer waits") {
-      SingleRowFetcherHelper fetcher(input.steal(), true);
+      SingleRowFetcherHelper<false> fetcher(input.steal(), true);
       ReturnExecutor testee(fetcher, infos);
       CountStats stats{};
 
@@ -104,7 +105,7 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
     auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
 
     WHEN("the producer does not wait") {
-      SingleRowFetcherHelper fetcher(input->buffer(), false);
+      SingleRowFetcherHelper<false> fetcher(input->buffer(), false);
       ReturnExecutor testee(fetcher, infos);
       CountStats stats{};
 
@@ -145,7 +146,7 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
     }    // GIVEN
 
     WHEN("the producer waits") {
-      SingleRowFetcherHelper fetcher(input->steal(), true);
+      SingleRowFetcherHelper<false> fetcher(input->steal(), true);
       ReturnExecutor testee(fetcher, infos);
       CountStats stats{};
 

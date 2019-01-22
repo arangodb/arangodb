@@ -33,7 +33,8 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-class BlockFetcherMock : public ::arangodb::aql::BlockFetcher {
+template<bool repositShells>
+class BlockFetcherMock : public ::arangodb::aql::BlockFetcher<repositShells> {
  public:
   explicit BlockFetcherMock(arangodb::aql::ResourceMonitor& monitor,
                             ::arangodb::aql::RegisterId nrRegisters);

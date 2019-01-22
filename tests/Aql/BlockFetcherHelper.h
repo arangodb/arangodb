@@ -52,7 +52,8 @@ namespace aql {
 /**
 * @brief Mock for SingleRowFetcher
 */
-class SingleRowFetcherHelper : public ::arangodb::aql::SingleRowFetcher {
+template <bool passBlocksThrough>
+class SingleRowFetcherHelper : public ::arangodb::aql::SingleRowFetcher<passBlocksThrough> {
  public:
   SingleRowFetcherHelper(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer,
                          bool returnsWaiting);

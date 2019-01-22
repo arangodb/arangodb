@@ -52,8 +52,10 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
   auto outputRegisters = make_shared_unordered_set();
   auto& registersToKeep = outputRegisters;
-  auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
-      itemBlockManager, std::move(block), outputRegisters, registersToKeep);
+  auto blockShell =
+      std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
+  auto outputBlockShell =
+      std::make_unique<OutputAqlItemBlockShell>(blockShell, outputRegisters, registersToKeep);
 
   FilterExecutorInfos infos(0, 1, 1, {});
 
@@ -61,7 +63,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
-      SingleRowFetcherHelper fetcher(input.steal(), false);
+      SingleRowFetcherHelper<false> fetcher(input.steal(), false);
       FilterExecutor testee(fetcher, infos);
       FilterStats stats{};
 
@@ -74,7 +76,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
     }
 
     WHEN("the producer waits") {
-      SingleRowFetcherHelper fetcher(input.steal(), true);
+      SingleRowFetcherHelper<false> fetcher(input.steal(), true);
       FilterExecutor testee(fetcher, infos);
       FilterStats stats{};
 
@@ -96,11 +98,11 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
   }
 
   GIVEN("there are rows in the upstream") {
-    auto input =
-        VPackParser::fromJson("[ [true], [false], [true], [false], [false], [true] ]");
+    auto input = VPackParser::fromJson(
+        "[ [true], [false], [true], [false], [false], [true] ]");
 
     WHEN("the producer does not wait") {
-      SingleRowFetcherHelper fetcher(input->steal(), false);
+      SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       FilterExecutor testee(fetcher, infos);
       FilterStats stats{};
 
@@ -138,7 +140,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
     }
 
     WHEN("the producer waits") {
-      SingleRowFetcherHelper fetcher(input->steal(), true);
+      SingleRowFetcherHelper<false> fetcher(input->steal(), true);
       FilterExecutor testee(fetcher, infos);
       FilterStats stats{};
 
@@ -157,58 +159,58 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
         9   => DONE, Row 6               RES3
         */
 
-        //1
+        // 1
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
         REQUIRE(stats.getFiltered() == 0);
 
-        //2
+        // 2
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(row.produced());
         row.advanceRow();
         REQUIRE(stats.getFiltered() == 0);
 
-        //3
+        // 3
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
         REQUIRE(stats.getFiltered() == 0);
 
-        //4
+        // 4
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
         // We have one filter here
         REQUIRE(stats.getFiltered() == 1);
 
-        //5
+        // 5
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(row.produced());
         row.advanceRow();
         REQUIRE(stats.getFiltered() == 0);
 
-        //6
+        // 6
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
         REQUIRE(stats.getFiltered() == 0);
 
-        //7
+        // 7
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
         REQUIRE(stats.getFiltered() == 1);
 
-        //7
+        // 7
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
         REQUIRE(stats.getFiltered() == 1);
 
-        //8
+        // 8
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(row.produced());
@@ -223,7 +225,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
         "[ [true], [false], [true], [false], [false], [true], [false] ]");
 
     WHEN("the producer does not wait") {
-      SingleRowFetcherHelper fetcher(input->steal(), false);
+      SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       FilterExecutor testee(fetcher, infos);
       FilterStats stats{};
 
@@ -262,12 +264,11 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
           REQUIRE(stats.getFiltered() == 0);
           REQUIRE(!row.produced());
         }
-
       }
     }
 
     WHEN("the producer waits") {
-      SingleRowFetcherHelper fetcher(input->steal(), true);
+      SingleRowFetcherHelper<false> fetcher(input->steal(), true);
       FilterExecutor testee(fetcher, infos);
       FilterStats stats{};
 

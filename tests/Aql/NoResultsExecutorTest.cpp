@@ -50,9 +50,10 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
   auto outputRegisters = make_shared_unordered_set({0});
   auto registersToKeep = make_shared_unordered_set();
+  auto blockShell =
+      std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
   auto outputBlockShell =
-      std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),
-                                                outputRegisters, registersToKeep);
+      std::make_unique<OutputAqlItemBlockShell>(blockShell, outputRegisters, registersToKeep);
 
   REQUIRE(outputRegisters->size() == 1);
   REQUIRE((*(outputRegisters->begin()) == 0));
@@ -68,7 +69,7 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
-      SingleRowFetcherHelper fetcher(input.steal(), false);
+      SingleRowFetcherHelper<false> fetcher(input.steal(), false);
       NoResultsExecutor testee(fetcher, infos);
       NoStats stats{};
 
@@ -81,7 +82,7 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
     }
 
     WHEN("the producer waits") {
-      SingleRowFetcherHelper fetcher(input.steal(), true);
+      SingleRowFetcherHelper<false> fetcher(input.steal(), true);
       NoResultsExecutor testee(fetcher, infos);
       NoStats stats{};
 
@@ -105,7 +106,7 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
     auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
 
     WHEN("the producer does not wait") {
-      SingleRowFetcherHelper fetcher(input->steal(), false);
+      SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       NoResultsExecutor testee(fetcher, infos);
       NoStats stats{};
 
@@ -125,7 +126,7 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
     }
 
     WHEN("the producer waits") {
-      SingleRowFetcherHelper fetcher(input->steal(), true);
+      SingleRowFetcherHelper<false> fetcher(input->steal(), true);
       NoResultsExecutor testee(fetcher, infos);
       NoStats stats{};
 

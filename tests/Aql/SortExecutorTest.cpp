@@ -53,11 +53,9 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-int compareAqlValues(
-    irs::sort::prepared const*,
-    arangodb::transaction::Methods* trx,
-    arangodb::aql::AqlValue const& lhs,
-    arangodb::aql::AqlValue const& rhs) {
+int compareAqlValues(irs::sort::prepared const*, arangodb::transaction::Methods* trx,
+                     arangodb::aql::AqlValue const& lhs,
+                     arangodb::aql::AqlValue const& rhs) {
   return arangodb::aql::AqlValue::Compare(trx, lhs, rhs, true);
 }
 
@@ -84,7 +82,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
   std::vector<SortRegister> sortRegisters;
   SortElement sl{&sortVar, true};
 
-#if 0 // #ifdef USE_IRESEARCH
+#if 0  // #ifdef USE_IRESEARCH
   SortRegister sortReg(0, sl, &compareAqlValues);
 #else
   SortRegister sortReg(0, sl);
@@ -93,9 +91,11 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
   sortRegisters.emplace_back(std::move(sortReg));
 
   SortExecutorInfos infos(std::move(sortRegisters), 1, 1, {}, &trx, false);
-  auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
-      itemBlockManager, std::move(block), infos.getOutputRegisters(),
-      infos.registersToKeep());
+  auto blockShell =
+      std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
+  auto outputBlockShell =
+      std::make_unique<OutputAqlItemBlockShell>(blockShell, infos.getOutputRegisters(),
+                                                infos.registersToKeep());
 
   GIVEN("there are no rows upstream") {
     VPackBuilder input;
@@ -136,7 +136,6 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
           REQUIRE(!result.produced());
         }
       }
-
     }
   }
 
@@ -220,6 +219,6 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
     }
   }
 }
-} // aql
-} // tests
-} // arangodb
+}  // namespace aql
+}  // namespace tests
+}  // namespace arangodb
