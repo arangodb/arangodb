@@ -59,7 +59,7 @@ ParseResult<Path> Path::parse(std::string const& def) {
     if (ch < 0) {
       return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
                                "path '" + def + "' contains illegal UTF-8");
-    } else if (ch == U'.') {
+    } else if (ch == 46) {
       if (buffer.size() == 0) {
         return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
                                  "path '" + def +
@@ -68,7 +68,7 @@ ParseResult<Path> Path::parse(std::string const& def) {
 
       components.push_back(buffer);
       buffer.clear();
-    } else if (ch == U'`' || ch == U'´') {
+    } else if (ch == 96 || ch == 180) { // windows does not like U'`' and U'´'
       UChar32 quote = ch;
       U8_NEXT(p, off, len, ch);
 

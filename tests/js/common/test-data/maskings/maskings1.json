@@ -2,12 +2,12 @@
     "type": "masked",
     "maskings": [
       {
-        "path": "name",
+        "path": "´name´",
         "type": "xifyFront",
         "unmaskedLength": 1
       },
       {
-        "path": ".name",
+        "path": ".`name`",
         "type": "xifyFront",
         "unmaskedLength": 2
       },
