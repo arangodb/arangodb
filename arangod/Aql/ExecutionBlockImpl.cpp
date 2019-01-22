@@ -211,7 +211,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor>::initializeCurs
   _blockFetcher.~BlockFetcher();
   new (&_blockFetcher)
       BlockFetcher(_dependencies, _engine->itemBlockManager(),
-                   _infos.getInputRegisters(), _infos.numberOfInputRegisters());
+                   _infos.getInputRegisters(), _infos.numberOfInputRegisters(),
+                   nullptr /* TODO pass repositShell callback */);
 
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
@@ -225,9 +226,10 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor>::initializeCurs
     block = std::unique_ptr<AqlItemBlock>(
         _engine->itemBlockManager().requestBlock(1, _executor._infos.numberOfOutputRegisters()));
   }
-  InputAqlItemBlockShell shell(_engine->itemBlockManager(), std::move(block),
-                               _executor._infos.getInputRegisters());
-  _rowFetcher.injectBlock(std::make_shared<InputAqlItemBlockShell>(std::move(shell)));
+  auto shell = std::make_shared<AqlItemBlockShell>(_engine->itemBlockManager(),
+                                                   std::move(block));
+  InputAqlItemBlockShell inputShell(shell, _executor._infos.getInputRegisters());
+  _rowFetcher.injectBlock(std::make_shared<InputAqlItemBlockShell>(std::move(inputShell)));
 
   // destroy and re-create the Executor
   _executor.~IdExecutor();
@@ -241,17 +243,14 @@ std::unique_ptr<OutputAqlItemBlockShell> ExecutionBlockImpl<Executor>::requestWr
     size_t nrItems, RegisterId nrRegs) {
   AqlItemBlock* block = requestBlock(nrItems, nrRegs);
 
-
   std::shared_ptr<AqlItemBlockShell> blockShell;
   if (Executor::Properties::allowsBlockPassthrough) {
     // TODO reuse input block
-    TRI_ASSERT(false); // not yet implemented
+    TRI_ASSERT(false);  // not yet implemented
   } else {
     blockShell =
-      std::make_shared<AqlItemBlockShell>(
-        _engine->itemBlockManager(),
-        std::unique_ptr<AqlItemBlock>{block}
-      );
+        std::make_shared<AqlItemBlockShell>(_engine->itemBlockManager(),
+                                            std::unique_ptr<AqlItemBlock>{block});
   }
 
   std::unique_ptr<OutputAqlItemBlockShell> outputBlockShell =

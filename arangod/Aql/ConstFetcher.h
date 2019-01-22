@@ -32,6 +32,7 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
+template <bool>
 class BlockFetcher;
 
 /**
@@ -43,6 +44,8 @@ class BlockFetcher;
  *        of fetchRow.
  */
 class ConstFetcher {
+  using BlockFetcher = BlockFetcher<false>;
+
  public:
   explicit ConstFetcher(BlockFetcher& executionBlock);
   TEST_VIRTUAL ~ConstFetcher() = default;
@@ -52,7 +55,6 @@ class ConstFetcher {
   ConstFetcher();
 
  public:
-
   /**
    * @brief Fetch one new AqlItemRow from upstream.
    *        **Guarantee**: the pointer returned is valid only
@@ -74,7 +76,6 @@ class ConstFetcher {
   void injectBlock(std::shared_ptr<InputAqlItemBlockShell> block);
 
  private:
-
   /**
    * @brief Input block currently in use. Used for memory management by the
    *        ConstFetcher. May be moved if the Fetcher implementations

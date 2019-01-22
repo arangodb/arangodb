@@ -59,10 +59,17 @@ class IdExecutorInfos : public ExecutorInfos {
 };
 
 class IdExecutor {
+  // what for? add a comment? one with an answer instead of a question, that is.
   template <typename T>
   friend class ExecutionBlockImpl;
 
  public:
+  struct Properties {
+    static const bool preservesOrder = true;
+    // TODO We actually want to allow passthrough here, but have to adapt the
+    // ConstFetcher, first.
+    static const bool allowsBlockPassthrough = false;
+  };
   using Fetcher = ConstFetcher;
   using Infos = IdExecutorInfos;
   using Stats = NoStats;

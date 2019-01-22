@@ -52,9 +52,10 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
   auto outputRegisters = make_shared_unordered_set();
   auto registersToKeep = make_shared_unordered_set({0});  // this must be set correctly
+  auto blockShell =
+      std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
   auto outputBlockShell =
-      std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),
-                                                outputRegisters, registersToKeep);
+      std::make_unique<OutputAqlItemBlockShell>(blockShell, outputRegisters, registersToKeep);
 
   OutputAqlItemRow row(std::move(outputBlockShell));
   IdExecutorInfos infos(1 /*nrRegs*/, *registersToKeep /*toKeep*/, {} /*toClear*/);
@@ -82,7 +83,6 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
       NoStats stats{};
 
       THEN("the executor should return the rows") {
-
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(row.produced());
