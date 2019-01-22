@@ -51,6 +51,8 @@
 #include "Aql/SubqueryBlock.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 
@@ -1230,10 +1232,23 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
+  auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
+  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+  RegisterId outputRegister = it->second.registerId;
 
-  EnumerateCollectionExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                         getRegisterPlan()->nrRegs[getDepth()],
-                                         getRegsToClear(), &engine, this->_collection);
+  Variable const* outVariable = _outVariable;
+  outVariable = _plan->getAst()->variables()->createVariable(outVariable);
+  TRI_ASSERT(outVariable != nullptr);
+
+  transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
+  bool allowCoveringIndexOptimization = true;
+
+  EnumerateCollectionExecutorInfos infos(
+      outputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
+      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), &engine, this->_collection,
+      outVariable, this->isVarUsedLater(outVariable), this->projections(), trxPtr,
+      this->coveringIndexAttributePositions(), allowCoveringIndexOptimization,
+      EngineSelectorFeature::ENGINE->useRawDocumentPointers(), this->_random);
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(&engine, this,
                                                                            std::move(infos));
 }

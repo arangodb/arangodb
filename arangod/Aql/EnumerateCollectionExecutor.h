@@ -43,9 +43,13 @@ class SingleRowFetcher;
 
 class EnumerateCollectionExecutorInfos : public ExecutorInfos {
  public:
-  EnumerateCollectionExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                                   std::unordered_set<RegisterId> registersToClear,
-                                   ExecutionEngine* engine, Collection const* collection);
+  EnumerateCollectionExecutorInfos(
+      RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+      std::unordered_set<RegisterId> registersToClear, ExecutionEngine* engine,
+      Collection const* collection, Variable const* outVariable, bool produceResult,
+      std::vector<std::string> const& projections, transaction::Methods* trxPtr,
+      std::vector<size_t> const& coveringIndexAttributePositions,
+      bool allowCoveringIndexOptimization, bool useRawDocumentPointers, bool random);
 
   EnumerateCollectionExecutorInfos() = delete;
   EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos&&) = default;
@@ -54,10 +58,33 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
 
   ExecutionEngine* getEngine() { return _engine; };
   Collection const* getCollection() { return _collection; };
+  Variable const* getOutVariable() { return _outVariable; };
+  std::vector<std::string> const& getProjections() { return _projections; };
+  transaction::Methods* getTrxPtr() { return _trxPtr; };
+  std::vector<size_t> const& getCoveringIndexAttributePositions() {
+    return _coveringIndexAttributePositions;
+  };
+  bool getProduceResult() { return _produceResult; };
+  bool getAllowCoveringIndexOptimization() {
+    return _allowCoveringIndexOptimization;
+  };
+  bool getUseRawDocumentPointers() { return _useRawDocumentPointers; };
+  bool getRandom() { return _random; };
+  RegisterId getOutputRegisterId() { return _outputRegisterId; };
 
  private:
+  RegisterId _outputRegisterId;
   ExecutionEngine* _engine;
   Collection const* _collection;
+  Variable const* _outVariable;
+  std::vector<std::string> const& _projections;
+  transaction::Methods* _trxPtr;
+
+  std::vector<size_t> const& _coveringIndexAttributePositions;
+  bool _allowCoveringIndexOptimization;
+  bool _useRawDocumentPointers;
+  bool _produceResult;
+  bool _random;
 };
 
 /**
@@ -82,10 +109,17 @@ class EnumerateCollectionExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
+  typedef std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
+
+  void setProducingFunction(DocumentProducingFunction documentProducer) {
+    _documentProducer = documentProducer;
+  };
+
  private:
   bool waitForSatellites(ExecutionEngine* engine, Collection const* collection) const;
   Infos& _infos;
   Fetcher& _fetcher;
+  DocumentProducingFunction _documentProducer;
 };
 
 }  // namespace aql
