@@ -61,6 +61,7 @@ class SingleRowFetcherHelper : public ::arangodb::aql::SingleRowFetcher {
   virtual ~SingleRowFetcherHelper();
 
   std::pair<::arangodb::aql::ExecutionState, ::arangodb::aql::InputAqlItemRow> fetchRow() override;
+  uint64_t nrCalled(){ return _nrCalled; }
 
  private:
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _vPackBuffer;

@@ -91,21 +91,6 @@ class LimitBlock final : public ExecutionBlock {
   std::unique_ptr<AqlItemBlock> _result;
 };
 
-class NoResultsBlock final : public ExecutionBlock {
- public:
-  NoResultsBlock(ExecutionEngine* engine, ExecutionNode const* ep)
-      : ExecutionBlock(engine, ep) {}
-
-  /// @brief initializeCursor, store a copy of the register values coming from
-  /// above
-  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
-
- private:
-  std::pair<ExecutionState, arangodb::Result> getOrSkipSome(size_t atMost, bool skipping,
-                                                            AqlItemBlock*& result,
-                                                            size_t& skipped) override;
-};
-
 }  // namespace aql
 }  // namespace arangodb
 
