@@ -35,6 +35,7 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
+template <bool>
 class BlockFetcher;
 
 /**
@@ -45,9 +46,10 @@ class BlockFetcher;
  *        this row stays valid until the next call
  *        of fetchRow.
  */
+template <bool passBlocksThrough>
 class SingleRowFetcher {
  public:
-  explicit SingleRowFetcher(BlockFetcher& executionBlock);
+  explicit SingleRowFetcher(BlockFetcher<passBlocksThrough>& executionBlock);
   TEST_VIRTUAL ~SingleRowFetcher() = default;
 
  protected:
@@ -76,7 +78,7 @@ class SingleRowFetcher {
   TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow();
 
  private:
-  BlockFetcher* _blockFetcher;
+  BlockFetcher<passBlocksThrough>* _blockFetcher;
 
   /**
    * @brief Holds state returned by the last fetchBlock() call.

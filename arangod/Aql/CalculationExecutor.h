@@ -37,6 +37,7 @@ namespace aql {
 class ExecutorInfos;
 class InputAqlItemRow;
 class NoStats;
+template <bool>
 class SingleRowFetcher;
 class Expression;
 class Query;
@@ -65,7 +66,11 @@ struct CalculationExecutorInfos : public ExecutorInfos {
 
 class CalculationExecutor {
  public:
-  using Fetcher = SingleRowFetcher;
+  struct Properties {
+    static const bool preservesOrder = true;
+    static const bool allowsBlockPassthrough = true;
+  };
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = CalculationExecutorInfos;
   using Stats = NoStats;
 

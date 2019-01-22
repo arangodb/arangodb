@@ -40,6 +40,7 @@ namespace aql {
  * @brief Thin interface to access the methods of ExecutionBlock that are
  * necessary for the row Fetchers. Makes it easier to test the Fetchers.
  */
+template<bool repositShells>
 class BlockFetcher {
  public:
   /**
@@ -68,11 +69,17 @@ class BlockFetcher {
       std::vector<ExecutionBlock*> const& dependencies,
       AqlItemBlockManager& itemBlockManager,
       std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters,
-      RegisterId nrInputRegisters)
+      RegisterId nrInputRegisters,
+      std::function<void(std::shared_ptr<AqlItemBlockShell>)> repositShell)
       : _dependencies(dependencies),
         _itemBlockManager(itemBlockManager),
         _inputRegisters(std::move(inputRegisters)),
-        _nrInputRegisters(nrInputRegisters) {}
+        _nrInputRegisters(nrInputRegisters),
+        _repositShell(std::move(repositShell)) {
+    // We need a function to reposit shells iff the corresponding template
+    // parameter is true.
+    TRI_ASSERT((_repositShell == nullptr) == repositShells);
+  }
 
   TEST_VIRTUAL ~BlockFetcher() = default;
 
@@ -100,6 +107,7 @@ class BlockFetcher {
   AqlItemBlockManager& _itemBlockManager;
   std::shared_ptr<const std::unordered_set<RegisterId>> const _inputRegisters;
   RegisterId const _nrInputRegisters;
+  std::function<void(std::shared_ptr<AqlItemBlockShell>)> const _repositShell;
 };
 
 }  // namespace aql

@@ -33,6 +33,7 @@ namespace aql {
 
 class AqlItemBlock;
 class InputAqlItemBlockShell;
+template <bool>
 class BlockFetcher;
 
 /**
@@ -41,7 +42,7 @@ class BlockFetcher;
  */
 class AllRowsFetcher {
  public:
-  explicit AllRowsFetcher(BlockFetcher& executionBlock);
+  explicit AllRowsFetcher(BlockFetcher<false>& executionBlock);
 
   TEST_VIRTUAL ~AllRowsFetcher() = default;
 
@@ -70,7 +71,7 @@ class AllRowsFetcher {
   TEST_VIRTUAL std::pair<ExecutionState, AqlItemMatrix const*> fetchAllRows();
 
  private:
-  BlockFetcher* _blockFetcher;
+  BlockFetcher<false>* _blockFetcher;
 
   std::unique_ptr<AqlItemMatrix> _aqlItemMatrix;
 
@@ -85,8 +86,7 @@ class AllRowsFetcher {
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
-  std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
-  fetchBlock();
+  std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>> fetchBlock();
 };
 
 }  // namespace aql

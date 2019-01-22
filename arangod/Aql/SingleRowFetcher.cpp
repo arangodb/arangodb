@@ -30,11 +30,11 @@
 #include "Aql/FilterExecutor.h"
 #include "SingleRowFetcher.h"
 
-
 using namespace arangodb;
 using namespace arangodb::aql;
 
-std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher::fetchRow() {
+template <bool passBlocksThrough>
+std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::fetchRow() {
   // Fetch a new block iff necessary
   if (_currentBlock == nullptr || !indexIsValid()) {
     ExecutionState state;
@@ -71,12 +71,12 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher::fetchRow() {
   return {rowState, _currentRow};
 }
 
-SingleRowFetcher::SingleRowFetcher(BlockFetcher& executionBlock)
-    : _blockFetcher(&executionBlock),
-      _currentRow{CreateInvalidInputRowHint{}} {}
+template <bool passBlocksThrough>
+SingleRowFetcher<passBlocksThrough>::SingleRowFetcher(BlockFetcher<passBlocksThrough>& executionBlock)
+    : _blockFetcher(&executionBlock), _currentRow{CreateInvalidInputRowHint{}} {}
 
-std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
-SingleRowFetcher::fetchBlock() {
+template <bool passBlocksThrough>
+std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>> SingleRowFetcher<passBlocksThrough>::fetchBlock() {
   auto res = _blockFetcher->fetchBlock();
 
   _upstreamState = res.first;
@@ -84,24 +84,31 @@ SingleRowFetcher::fetchBlock() {
   return res;
 }
 
-RegisterId SingleRowFetcher::getNrInputRegisters() const {
+template <bool passBlocksThrough>
+RegisterId SingleRowFetcher<passBlocksThrough>::getNrInputRegisters() const {
   return _blockFetcher->getNrInputRegisters();
 }
 
-bool SingleRowFetcher::indexIsValid() {
+template <bool passBlocksThrough>
+bool SingleRowFetcher<passBlocksThrough>::indexIsValid() {
   return _currentBlock != nullptr && _rowIndex + 1 <= _currentBlock->block().size();
 }
 
-bool SingleRowFetcher::isLastRowInBlock() {
+template <bool passBlocksThrough>
+bool SingleRowFetcher<passBlocksThrough>::isLastRowInBlock() {
   TRI_ASSERT(indexIsValid());
   return _rowIndex + 1 == _currentBlock->block().size();
 }
 
-size_t SingleRowFetcher::getRowIndex() {
+template <bool passBlocksThrough>
+size_t SingleRowFetcher<passBlocksThrough>::getRowIndex() {
   TRI_ASSERT(indexIsValid());
   return _rowIndex;
 }
 
-
-SingleRowFetcher::SingleRowFetcher()
+template <bool passBlocksThrough>
+SingleRowFetcher<passBlocksThrough>::SingleRowFetcher()
     : _blockFetcher(nullptr), _currentRow{CreateInvalidInputRowHint{}} {}
+
+template class ::arangodb::aql::SingleRowFetcher<false>;
+template class ::arangodb::aql::SingleRowFetcher<true>;

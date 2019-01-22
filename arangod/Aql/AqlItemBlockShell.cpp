@@ -33,25 +33,22 @@ AqlItemBlockShell::AqlItemBlockShell(AqlItemBlockManager& manager,
 }
 
 InputAqlItemBlockShell::InputAqlItemBlockShell(
-    AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block,
+    std::shared_ptr<AqlItemBlockShell> blockShell,
     std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters)
-    : AqlItemBlockShell(manager, std::move(block)),
-      _inputRegisters(std::move(inputRegisters)) {
+    : _blockShell(std::move(blockShell)), _inputRegisters(std::move(inputRegisters)) {
   if (_inputRegisters == nullptr) {
-    _inputRegisters =
-        std::make_shared<decltype(_inputRegisters)::element_type>();
+    _inputRegisters = std::make_shared<decltype(_inputRegisters)::element_type>();
   }
 }
 
 OutputAqlItemBlockShell::OutputAqlItemBlockShell(
-    AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block,
+    std::shared_ptr<AqlItemBlockShell> blockShell,
     std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters,
     std::shared_ptr<const std::unordered_set<RegisterId>> registersToKeep)
-    : AqlItemBlockShell(manager, std::move(block)),
+    : _blockShell(std::move(blockShell)),
       _outputRegisters(std::move(outputRegisters)),
       _registersToKeep(std::move(registersToKeep)) {
   if (_outputRegisters == nullptr) {
-    _outputRegisters =
-        std::make_shared<decltype(_outputRegisters)::element_type>();
+    _outputRegisters = std::make_shared<decltype(_outputRegisters)::element_type>();
   }
 }

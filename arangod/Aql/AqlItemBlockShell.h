@@ -56,35 +56,38 @@ class AqlItemBlockDeleter {
  * are allowed to be read or written at the current ExecutionBlock, for usage
  * with InputAqlItemRow or OutputAqlItemRow, respectively.
  *
+ * Thirdly, it allows an Input- and OutputAqlItemBlockShell to share a single
+ * AqlItemBlock at the same time. This is used for ExecutionBlocks that do not
+ * change the number of rows, like CalculationBlock, to reuse the input blocks
+ * instead of copying them.
+ *
  * TODO We should do variable-to-register mapping here. This further reduces
  * dependencies of Executors, Fetchers etc. on internal knowledge of ItemBlocks,
  * and probably shrinks ExecutorInfos.
  */
 class AqlItemBlockShell {
+  friend class OutputAqlItemBlockShell;
+
  public:
-  using SmartAqlItemBlockPtr =
-      std::unique_ptr<AqlItemBlock, AqlItemBlockDeleter>;
+  using SmartAqlItemBlockPtr = std::unique_ptr<AqlItemBlock, AqlItemBlockDeleter>;
 
   AqlItemBlock const& block() const { return *_block; };
   AqlItemBlock& block() { return *_block; };
 
- protected:
-  // This could be made public, but first, there's currently no use for that.
-  // And second, just creating a
-  // std::unique_ptr<AqlItemBlock, AqlItemBlockDeleter> would accomplish the
-  // same.
-  AqlItemBlockShell(AqlItemBlockManager& manager,
-                    std::unique_ptr<AqlItemBlock> block);
+  AqlItemBlockShell(AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block);
 
  protected:
+  // Steal the block. Used in the OutputAqlItemBlockShell only.
+  SmartAqlItemBlockPtr&& stealBlock() { return std::move(_block); }
+
+ private:
   SmartAqlItemBlockPtr _block;
 };
 
-class InputAqlItemBlockShell : public AqlItemBlockShell {
+class InputAqlItemBlockShell {
  public:
-  InputAqlItemBlockShell(
-      AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block,
-      std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters);
+  InputAqlItemBlockShell(std::shared_ptr<AqlItemBlockShell> blockShell,
+                         std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters);
 
  public:
   std::unordered_set<RegisterId> const& inputRegisters() const {
@@ -104,20 +107,23 @@ class InputAqlItemBlockShell : public AqlItemBlockShell {
     return &block() == &other.block();
   }
 
+  AqlItemBlock const& block() const { return _blockShell->block(); };
+  AqlItemBlock& block() { return _blockShell->block(); };
+
  private:
+  std::shared_ptr<AqlItemBlockShell> _blockShell;
   std::shared_ptr<const std::unordered_set<RegisterId>> _inputRegisters;
 };
 
-class OutputAqlItemBlockShell : public AqlItemBlockShell {
+class OutputAqlItemBlockShell {
  public:
   // TODO This constructor would be able to fetch a new block itself from the
   // manager, which is needed anyway. Maybe, at least additionally, we should
   // write a constructor that takes the block dimensions instead of the block
   // itself for convenience.
-  OutputAqlItemBlockShell(
-      AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block,
-      std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters,
-      std::shared_ptr<const std::unordered_set<RegisterId>> registersToKeep);
+  OutputAqlItemBlockShell(std::shared_ptr<AqlItemBlockShell> blockShell,
+                          std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters,
+                          std::shared_ptr<const std::unordered_set<RegisterId>> registersToKeep);
 
  public:
   std::unordered_set<RegisterId> const& outputRegisters() const {
@@ -133,14 +139,20 @@ class OutputAqlItemBlockShell : public AqlItemBlockShell {
   }
 
   /**
-   * @brief Steals the block, in a backwards-compatible unique_ptr. The shell
-   *        is broken after this.
+   * @brief Steals the block, in a backwards-compatible unique_ptr (that is,
+   *        unique_ptr<AqlItemBlock> instead of
+   *        unique_ptr<AqlItemBlock, AqlItemBlockDeleter>). The shell is broken
+   *        after this.
    */
   std::unique_ptr<AqlItemBlock> stealBlockCompat() {
-    return std::unique_ptr<AqlItemBlock>(_block.release());
+    return std::unique_ptr<AqlItemBlock>(_blockShell->stealBlock().release());
   }
 
+  AqlItemBlock const& block() const { return _blockShell->block(); };
+  AqlItemBlock& block() { return _blockShell->block(); };
+
  private:
+  std::shared_ptr<AqlItemBlockShell> _blockShell;
   std::shared_ptr<const std::unordered_set<RegisterId>> _outputRegisters;
   std::shared_ptr<const std::unordered_set<RegisterId>> _registersToKeep;
 };

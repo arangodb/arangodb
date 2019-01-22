@@ -69,7 +69,11 @@ class ReturnExecutorInfos : public ExecutorInfos {
  */
 class ReturnExecutor {
  public:
-  using Fetcher = SingleRowFetcher;
+  struct Properties {
+    static const bool preservesOrder = true;
+    static const bool allowsBlockPassthrough = false;
+  };
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = ReturnExecutorInfos;
   using Stats = CountStats;
 

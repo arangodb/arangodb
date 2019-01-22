@@ -37,8 +37,8 @@
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/NoResultsExecutor.h"
-#include "Aql/SortExecutor.h"
 #include "Aql/ReturnExecutor.h"
+#include "Aql/SortExecutor.h"
 
 #include "Aql/SortRegister.h"
 
@@ -51,7 +51,8 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  typename Executor::Infos&& infos)
     : ExecutionBlock(engine, node),
       _blockFetcher(_dependencies, _engine->itemBlockManager(),
-                    infos.getInputRegisters(), infos.numberOfInputRegisters()),
+                    infos.getInputRegisters(), infos.numberOfInputRegisters(),
+                    nullptr /* TODO pass repositShell callback!*/),
       _rowFetcher(_blockFetcher),
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos) {}
@@ -76,7 +77,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
 template <class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
-  // silence tests -- we need to introduce new fauilure tests for fetchers
+  // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -179,7 +180,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   _blockFetcher.~BlockFetcher();
   new (&_blockFetcher)
       BlockFetcher(_dependencies, _engine->itemBlockManager(),
-                   _infos.getInputRegisters(), _infos.numberOfInputRegisters());
+                   _infos.getInputRegisters(), _infos.numberOfInputRegisters(),
+                   nullptr /* TODO pass repositShell callback */);
 
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
@@ -196,12 +198,24 @@ template <class Executor>
 std::unique_ptr<OutputAqlItemBlockShell> ExecutionBlockImpl<Executor>::requestWrappedBlock(
     size_t nrItems, RegisterId nrRegs) {
   AqlItemBlock* block = requestBlock(nrItems, nrRegs);
-  std::unique_ptr<OutputAqlItemBlockShell> blockShell =
-      std::make_unique<OutputAqlItemBlockShell>(_engine->itemBlockManager(),
-                                                std::unique_ptr<AqlItemBlock>{block},
-                                                _infos.getOutputRegisters(),
+
+
+  std::shared_ptr<AqlItemBlockShell> blockShell;
+  if (Executor::Properties::allowsBlockPassthrough) {
+    // TODO reuse input block
+    TRI_ASSERT(false); // not yet implemented
+  } else {
+    blockShell =
+      std::make_shared<AqlItemBlockShell>(
+        _engine->itemBlockManager(),
+        std::unique_ptr<AqlItemBlock>{block}
+      );
+  }
+
+  std::unique_ptr<OutputAqlItemBlockShell> outputBlockShell =
+      std::make_unique<OutputAqlItemBlockShell>(blockShell, _infos.getOutputRegisters(),
                                                 _infos.registersToKeep());
-  return blockShell;
+  return outputBlockShell;
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor>;

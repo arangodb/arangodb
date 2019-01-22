@@ -47,10 +47,13 @@ struct SortRegister;
 
 class NoResultsExecutor {
  public:
-  using Fetcher = SingleRowFetcher;
+  struct Properties {
+    static const bool preservesOrder = true;
+    static const bool allowsBlockPassthrough = false;
+  };
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = ExecutorInfos;
   using Stats = NoStats;
-
   NoResultsExecutor(Fetcher& fetcher, ExecutorInfos&);
   ~NoResultsExecutor();
 
