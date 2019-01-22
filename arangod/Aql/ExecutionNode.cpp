@@ -1264,9 +1264,9 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
   RegisterId outputRegister = it->second.registerId;
 
-  Variable const* outVariable = _outVariable;
-  outVariable = _plan->getAst()->variables()->createVariable(outVariable);
-  TRI_ASSERT(outVariable != nullptr);
+  // Variable const* outVariable = _outVariable;
+  // outVariable = _plan->getAst()->variables()->createVariable(outVariable);
+  // TRI_ASSERT(outVariable != nullptr);
 
   transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
   bool allowCoveringIndexOptimization = true;
@@ -1274,7 +1274,7 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   EnumerateCollectionExecutorInfos infos(
       outputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), &engine, this->_collection,
-      outVariable, this->isVarUsedLater(outVariable), this->projections(), trxPtr,
+      _outVariable, this->isVarUsedLater(_outVariable), this->projections(), trxPtr,
       this->coveringIndexAttributePositions(), allowCoveringIndexOptimization,
       EngineSelectorFeature::ENGINE->useRawDocumentPointers(), this->_random);
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(&engine, this,
