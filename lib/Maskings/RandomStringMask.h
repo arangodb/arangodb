@@ -35,12 +35,12 @@ class RandomStringMask : public MaskingFunction {
 
  public:
   VPackValue mask(bool) const override;
-  VPackValue mask(std::string const&, std::string& buffer) const override;
+  VPackValue mask(std::string const& data, std::string& buffer) const override;
   VPackValue mask(int64_t) const override;
   VPackValue mask(double) const override;
 
  private:
-  RandomStringMask(Maskings* maskings) : MaskingFunction(maskings) {}
+  explicit RandomStringMask(Maskings* maskings) : MaskingFunction(maskings) {}
 };
 }  // namespace maskings
 }  // namespace arangodb

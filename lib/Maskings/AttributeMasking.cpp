@@ -30,7 +30,7 @@ using namespace arangodb;
 using namespace arangodb::maskings;
 
 void arangodb::maskings::InstallMaskings() {
-  AttributeMasking::installMasking("random_string", RandomStringMask::create);
+  AttributeMasking::installMasking("randomString", RandomStringMask::create);
 }
 
 std::unordered_map<std::string, ParseResult<AttributeMasking> (*)(Path, Maskings*, VPackSlice const&)> AttributeMasking::_maskings;

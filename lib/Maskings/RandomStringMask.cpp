@@ -32,11 +32,13 @@ using namespace arangodb;
 using namespace arangodb::maskings;
 
 ParseResult<AttributeMasking> RandomStringMask::create(Path path, Maskings* maskings,
-                                                       VPackSlice const& def) {
+                                                       VPackSlice const&) {
   return ParseResult<AttributeMasking>(AttributeMasking(path, new RandomStringMask(maskings)));
 }
 
-VPackValue RandomStringMask::mask(bool value) const { return VPackValue(value); }
+VPackValue RandomStringMask::mask(bool value) const {
+  return VPackValue(value);
+}
 
 VPackValue RandomStringMask::mask(std::string const& data, std::string& buffer) const {
   uint64_t len = data.size();
@@ -44,8 +46,8 @@ VPackValue RandomStringMask::mask(std::string const& data, std::string& buffer) 
 
   hash = fasthash64(data.c_str(), data.size(), _maskings->randomSeed());
 
-  std::string hash64 =
-      basics::StringUtils::encodeBase64(std::string((char const*)&hash, 8));
+  std::string hash64 = basics::StringUtils::encodeBase64(
+      std::string((char const*)&hash, sizeof(decltype(hash))));
 
   buffer.clear();
   buffer.reserve(len);
@@ -62,6 +64,10 @@ VPackValue RandomStringMask::mask(std::string const& data, std::string& buffer) 
   return VPackValue(buffer);
 }
 
-VPackValue RandomStringMask::mask(int64_t value) const { return VPackValue(value); }
+VPackValue RandomStringMask::mask(int64_t value) const {
+  return VPackValue(value);
+}
 
-VPackValue RandomStringMask::mask(double value) const { return VPackValue(value); }
+VPackValue RandomStringMask::mask(double value) const {
+  return VPackValue(value);
+}
