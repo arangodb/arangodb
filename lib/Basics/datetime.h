@@ -23,6 +23,8 @@
 #ifndef ARANGODB_BASICS_DATETIME_H
 #define ARANGODB_BASICS_DATETIME_H 1
 
+#include "Basics/Common.h"
+
 #include <chrono>
 #include <regex>
 
@@ -32,9 +34,15 @@ using tp_sys_clock_ms =
     std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds>;
 
 namespace basics {
-bool parse_dateTime(std::string const& dateTime, tp_sys_clock_ms& date_tp);
+bool parseDateTime(std::string const& dateTime, 
+                   tp_sys_clock_ms& date_tp);
 
-bool regex_isoDuration(std::string const& isoDuration, std::smatch& durationParts);
+bool regexIsoDuration(std::string const& isoDuration, 
+                      std::smatch& durationParts);
+
+/// @brief formats a date(time) value according to formatString
+std::string formatDate(std::string const& formatString,
+                       tp_sys_clock_ms const& dateValue);
 }  // namespace basics
 }  // namespace arangodb
 
