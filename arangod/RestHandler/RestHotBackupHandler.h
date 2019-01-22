@@ -19,11 +19,12 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_JOB_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_JOB_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_HOTBACKUP_HANDLER_H
+#define ARANGOD_REST_HANDLER_HOTBACKUP_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "RestHandler/RestBaseHandler.h"
+#include "RocksDBEngine/RocksDBHotBackup.h"
 
 namespace arangodb {
 
@@ -31,9 +32,9 @@ namespace arangodb {
 /// @brief job control request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-class RestJobHandler : public RestBaseHandler {
+class RestHotBackupHandler : public RestBaseHandler {
  public:
-  RestJobHandler(GeneralRequest*, GeneralResponse*);
+  RestHotBackupHandler(GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestHotBackupHandler"; }
@@ -45,7 +46,8 @@ class RestJobHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
  protected:
-
+  std::shared_ptr<RocksDBHotBackup> parseHotBackupParams(RequestType const,
+                                                         std::vector<std::string> const &);
  private:
 
 

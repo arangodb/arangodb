@@ -22,14 +22,13 @@
 #include "RestHotBackupHandler.h"
 
 //#include <velocypack/Builder.h>
-//#include <velocypack/velocypack-aliases.h>
+#include <velocypack/velocypack-aliases.h>
 
 //#include "Basics/StringUtils.h"
 //#include "Basics/conversions.h"
 //#include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "RocksDBEngine/RocksDBHotBackup.h"
 //#include "VocBase/ticks.h"
 
 using namespace arangodb;

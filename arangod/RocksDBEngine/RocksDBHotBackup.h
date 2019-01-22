@@ -22,9 +22,12 @@
 #ifndef ARANGOD_ROCKSDB_HOTBACKUP_H
 #define ARANGOD_ROCKSDB_HOTBACKUP_H 1
 
-#include "Basics/Result.h"
-#include "RocksDBColumnFamily.h"
-#include "RocksDBCommon.h"
+#include <velocypack/velocypack-aliases.h>
+//#include "Basics/Result.h"
+//#include "RocksDBColumnFamily.h"
+//#include "RocksDBCommon.h"
+#include "Rest/GeneralResponse.h"
+
 
 namespace rocksdb {
 class Transaction;
@@ -49,18 +52,27 @@ class Methods;
 
 class RocksDBHotBackup {
 public:
-  static RocksDBHotBackup * operationFactory(arangodb::rest::RequestType const type,
-                                             std::vector<std::string> const & suffixes,
-                                             arangodb::VPackSlice & body);
+  static std::shared_ptr<RocksDBHotBackup> operationFactory(arangodb::rest::RequestType const type,
+                                                            std::vector<std::string> const & suffixes,
+                                                            VPackSlice & body)
+  { return std::shared_ptr<RocksDBHotBackup>();}
 
   virtual void execute() = 0;
 
-  bool valid();
-  bool success();
+  virtual ~RocksDBHotBackup() {};
+  bool valid() const {return _valid;};
+  bool success() const {return _success;};
 
-  int??? restResponseCode();
-  int??? restResponseError();
+  rest::ResponseCode restResponseCode() const {return _respCode;};
+  int restResponseError() const {return _respError;};
 
+protected:
+
+  bool _valid;          // are parameters valid
+  bool _success;        // did operation finish successfully
+
+  rest::ResponseCode _respCode;
+  int _respError;
 
 };// class RocksDBHotBackup
 
