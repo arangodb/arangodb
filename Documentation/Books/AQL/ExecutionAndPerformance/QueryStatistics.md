@@ -53,7 +53,7 @@ The meaning of the statistics attributes is as follows:
   Note that to keep things light-weight, the per-query memory usage is tracked on a relatively 
   high level, not including any memory allocator overhead nor any memory used for temporary
   results calculations (e.g. memory allocated/deallocated inside AQL expressions and function 
-  calls).
+  calls). The attribute *peakMemoryUsage* is available from v3.4.3.
 * *nodes*: _(optional)_ when the query was executed with the option `profile` set to at least *2*,
   then this value contains runtime statistics per query execution node. This field contains the
   node id (in `id`), the number of calls to this node `calls` and the number of items returned

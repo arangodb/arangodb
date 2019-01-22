@@ -141,19 +141,21 @@ using namespace arangodb::aql;
   return callbackFactories[size_t(engine->useRawDocumentPointers())](ctx);
 }
 
-IResearchViewBlockBase::IResearchViewBlockBase(IResearchView::Snapshot const& reader,
-                                               ExecutionEngine& engine,
-                                               IResearchViewNode const& en)
-    : ExecutionBlock(&engine, &en),
-      _filterCtx(1),  // arangodb::iresearch::ExpressionExecutionContext
-      _ctx(engine.getQuery(), en),
-      _reader(reader),
-      _filter(irs::filter::prepared::empty()),
-      _execCtx(*_trx, _ctx),
-      _inflight(0),
-      _hasMore(true),  // has more data initially
-      _volatileSort(true),
-      _volatileFilter(true) {
+IResearchViewBlockBase::IResearchViewBlockBase(
+    std::shared_ptr<IResearchView::Snapshot const> reader,
+    ExecutionEngine& engine,
+    IResearchViewNode const& en)
+  : ExecutionBlock(&engine, &en),
+    _filterCtx(1),  // arangodb::iresearch::ExpressionExecutionContext
+    _ctx(engine.getQuery(), en),
+    _reader(reader),
+    _filter(irs::filter::prepared::empty()),
+    _execCtx(*_trx, _ctx),
+    _inflight(0),
+    _hasMore(true),  // has more data initially
+    _volatileSort(true),
+    _volatileFilter(true) {
+  TRI_ASSERT(_reader);
   TRI_ASSERT(_trx);
 
   // add expression execution context
@@ -221,7 +223,7 @@ void IResearchViewBlockBase::reset() {
     }
 
     // compile filter
-    _filter = root.prepare(_reader, _order, irs::boost::no_boost(), _filterCtx);
+    _filter = root.prepare(*_reader, _order, irs::boost::no_boost(), _filterCtx);
 
     auto const& volatility = viewNode.volatility();
     _volatileSort = volatility.second;
@@ -405,7 +407,7 @@ std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost
 // --SECTION--                                 IResearchViewBlock implementation
 // -----------------------------------------------------------------------------
 
-IResearchViewBlock::IResearchViewBlock(IResearchView::Snapshot const& reader,
+IResearchViewBlock::IResearchViewBlock(std::shared_ptr<IResearchView::Snapshot const> reader,
                                        aql::ExecutionEngine& engine,
                                        IResearchViewNode const& node)
     : IResearchViewUnorderedBlock(reader, engine, node),
@@ -441,12 +443,12 @@ bool IResearchViewBlock::resetIterator() {
 }
 
 bool IResearchViewBlock::next(ReadContext& ctx, size_t limit) {
-  for (size_t count = _reader.size(); _readerOffset < count;) {
+  for (size_t count = _reader->size(); _readerOffset < count;) {
     if (!_itr && !resetIterator()) {
       continue;
     }
 
-    auto const cid = _reader.cid(_readerOffset);  // CID is constant until resetIterator()
+    auto const cid = _reader->cid(_readerOffset);  // CID is constant until resetIterator()
     auto collection = lookupCollection(*_trx, cid);
 
     if (!collection) {
@@ -505,7 +507,7 @@ size_t IResearchViewBlock::skip(size_t limit) {
   TRI_ASSERT(_filter);
   size_t skipped{};
 
-  for (size_t count = _reader.size(); _readerOffset < count;) {
+  for (size_t count = _reader->size(); _readerOffset < count;) {
     if (!_itr && !resetIterator()) {
       continue;
     }
@@ -530,10 +532,11 @@ size_t IResearchViewBlock::skip(size_t limit) {
 // --SECTION--                        IResearchViewUnorderedBlock implementation
 // -----------------------------------------------------------------------------
 
-IResearchViewUnorderedBlock::IResearchViewUnorderedBlock(IResearchView::Snapshot const& reader,
-                                                         aql::ExecutionEngine& engine,
-                                                         IResearchViewNode const& node)
-    : IResearchViewBlockBase(reader, engine, node), _readerOffset(0) {
+IResearchViewUnorderedBlock::IResearchViewUnorderedBlock(
+    std::shared_ptr<IResearchView::Snapshot const> reader,
+    aql::ExecutionEngine& engine,
+    IResearchViewNode const& node)
+  : IResearchViewBlockBase(reader, engine, node), _readerOffset(0) {
   _volatileSort = false;  // do not evaluate sort
 }
 
@@ -541,7 +544,7 @@ bool IResearchViewUnorderedBlock::resetIterator() {
   TRI_ASSERT(_filter);
   TRI_ASSERT(!_itr);
 
-  auto& segmentReader = _reader[_readerOffset];
+  auto& segmentReader = (*_reader)[_readerOffset];
 
   _pkReader = ::pkColumn(segmentReader);
 
@@ -560,12 +563,12 @@ bool IResearchViewUnorderedBlock::resetIterator() {
 bool IResearchViewUnorderedBlock::next(ReadContext& ctx, size_t limit) {
   TRI_ASSERT(_filter);
 
-  for (size_t count = _reader.size(); _readerOffset < count;) {
+  for (size_t count = _reader->size(); _readerOffset < count;) {
     if (!_itr && !resetIterator()) {
       continue;
     }
 
-    auto const cid = _reader.cid(_readerOffset);  // CID is constant until resetIterator()
+    auto const cid = _reader->cid(_readerOffset);  // CID is constant until resetIterator()
     auto collection = lookupCollection(*_trx, cid);
 
     if (!collection) {
@@ -615,7 +618,7 @@ size_t IResearchViewUnorderedBlock::skip(size_t limit) {
   TRI_ASSERT(_filter);
   size_t skipped{};
 
-  for (size_t count = _reader.size(); _readerOffset < count;) {
+  for (size_t count = _reader->size(); _readerOffset < count;) {
     if (!_itr && !resetIterator()) {
       continue;
     }

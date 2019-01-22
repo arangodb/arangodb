@@ -227,12 +227,14 @@ void scatterViewInClusterRule(arangodb::aql::Optimizer* opt,
   for (auto* node : nodes) {
     TRI_ASSERT(node);
     auto& viewNode = *EN::castTo<IResearchViewNode*>(node);
+    auto& options = viewNode.options();
 
-    if (viewNode.empty()) {
+    if (viewNode.empty() || (options.restrictSources && options.sources.empty())) {
       // FIXME we have to invalidate plan cache (if exists)
       // in case if corresponding view has been modified
 
-      // view has no associated collection, nothing to scatter
+      // nothing to scatter, view has no associated collections
+      // or node is restricted to empty collection list
       continue;
     }
 
