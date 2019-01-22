@@ -29,6 +29,7 @@
 //#include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "RocksDBEngine/RocksDBHotBackup.h"
 //#include "VocBase/ticks.h"
 
 using namespace arangodb;
