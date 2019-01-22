@@ -1570,6 +1570,14 @@ void RocksDBEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
 }
+  
+void RocksDBEngine::disableWalFilePruning(bool disable) {
+  _backgroundThread->disableWalFilePruning(disable);
+}
+
+bool RocksDBEngine::disableWalFilePruning() const {
+  return _backgroundThread->disableWalFilePruning();
+}
 
 Result RocksDBEngine::registerRecoveryHelper(std::shared_ptr<RocksDBRecoveryHelper> helper) {
   try {
@@ -2175,10 +2183,6 @@ void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
   if (tick > _releasedTick) {
     _releasedTick = tick;
   }
-}
-
-bool RocksDBEngine::canUseRangeDeleteInWal() const {
-  return ServerState::instance()->isSingleServer();
 }
 
 }  // namespace arangodb

@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018-2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -106,6 +106,64 @@ function backgroundIndexSuite() {
       c.ensureIndex({type: 'hash', fields: ['value'], unique: false, inBackground: true});
 
       // wait for insertion tasks to complete
+      waitForTasks();
+      
+      // sanity checks
+      assertEqual(c.count(), 100000);
+      for (let i = 0; i < 1000; i++) { // 100 entries of each value [0,999]
+        let cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
+                               {'@coll': cn, 'val': i}, {count:true});
+        assertEqual(cursor.count(), 100);
+      }
+
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      let indexes = c.getIndexes(true);
+      for (let i of indexes) {
+        switch (i.type) {
+          case 'primary':
+            break;
+          case 'hash':
+            assertEqual(i.selectivityEstimate, 0.01);
+            break;
+          default:
+            fail();
+        }
+      }
+    },
+
+    testInsertParallelNonUnique2: function () {
+      let c = require("internal").db._collection(cn);
+      // first lets add some initial documents
+      let x = 10; 
+      while(x-- > 0) {
+        let docs = []; 
+        for(let i = 0; i < 1000; i++) {
+          docs.push({value:i});
+        } 
+        c.save(docs);
+      }
+
+      // lets insert the rest via tasks
+      let n = 9;
+      for (let i = 0; i < n; ++i) {
+        if (i == 6) { // create the index in a task
+          let command = `const c = require("internal").db._collection("${cn}"); 
+          c.ensureIndex({type: 'hash', fields: ['value'], unique: false, inBackground: true});`;
+          tasks.register({ name: "UnitTestsIndexCreateIDX" + i, command: command });
+        }
+        let command = `const c = require("internal").db._collection("${cn}"); 
+                       let x = 10;
+                       while(x-- > 0) {
+                         let docs = []; 
+                         for(let i = 0; i < 1000; i++) {
+                           docs.push({value:i})
+                         } 
+                         c.save(docs);
+                       }`;
+        tasks.register({ name: "UnitTestsIndexInsert" + i, command: command });
+      }
+
+      // wait for tasks to complete
       waitForTasks();
       
       // sanity checks
@@ -240,7 +298,7 @@ function backgroundIndexSuite() {
       }
     },
 
-    testRemoveParallel: function () {
+    /*testRemoveParallel: function () {
       let c = require("internal").db._collection(cn);
       // first lets add some initial documents
       let x = 0;
@@ -256,6 +314,12 @@ function backgroundIndexSuite() {
 
       // lets remove half via tasks
       for (let i = 0; i < 10; ++i) {
+        if (i == 4) { // create the index in a task
+          let command = `const c = require("internal").db._collection("${cn}"); 
+          c.ensureIndex({type: 'hash', fields: ['value'], unique: false, inBackground: true});`;
+          tasks.register({ name: "UnitTestsIndexCreateIDX" + i, command: command });
+        }
+
         let command = `const c = require("internal").db._collection("${cn}"); 
                        if (!c) {
                          throw new Error('could not find collection');
@@ -274,9 +338,6 @@ function backgroundIndexSuite() {
                        }`;
         tasks.register({ name: "UnitTestsIndexRemove" + i, command: command });
       }
-
-      // create the index on the main thread
-      c.ensureIndex({type: 'hash', fields: ['value'], inBackground: true });
 
       // wait for insertion tasks to complete
       waitForTasks();
@@ -309,7 +370,7 @@ function backgroundIndexSuite() {
             fail();
         }
       }
-    },
+    },*/
 
     testUpdateParallel: function () {
       let c = require("internal").db._collection(cn);

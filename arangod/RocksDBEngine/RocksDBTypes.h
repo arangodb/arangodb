@@ -86,6 +86,7 @@ enum class RocksDBLogType : char {
   SingleRemoveV2 = 'F',
   CollectionTruncate = 'G',
   FlushSync = 'H', // @see FlushFeature
+  TrackedDocumentRemove = 'I',
 };
 
 /// @brief settings keys

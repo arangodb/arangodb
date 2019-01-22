@@ -335,6 +335,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
       case RocksDBLogType::DocumentOperationsPrologue:
       case RocksDBLogType::DocumentRemove:
       case RocksDBLogType::DocumentRemoveAsPartOfUpdate:
+      case RocksDBLogType::TrackedDocumentRemove:
         break;  // ignore deprecated && unused markers
 
       default:

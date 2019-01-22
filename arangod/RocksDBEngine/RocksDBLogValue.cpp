@@ -100,12 +100,21 @@ RocksDBLogValue RocksDBLogValue::DocumentRemoveV2(TRI_voc_rid_t rid) {
 RocksDBLogValue RocksDBLogValue::SinglePut(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid) {
   return RocksDBLogValue(RocksDBLogType::SinglePut, vocbaseId, cid);
 }
+
 RocksDBLogValue RocksDBLogValue::SingleRemoveV2(TRI_voc_tick_t vocbaseId,
                                                 TRI_voc_cid_t cid, TRI_voc_rid_t rid) {
   return RocksDBLogValue(RocksDBLogType::SingleRemoveV2, vocbaseId, cid, rid);
 }
 
-/*static*/ RocksDBLogValue RocksDBLogValue::Empty() {
+RocksDBLogValue RocksDBLogValue::TrackedDocumentRemove(VPackSlice const& slice) {
+  RocksDBLogValue val{};
+  val._buffer.reserve(sizeof(RocksDBLogType) + slice.byteSize());
+  val._buffer.push_back(static_cast<char>(RocksDBLogType::TrackedDocumentRemove));
+  val._buffer.append(reinterpret_cast<char const*>(slice.begin()), slice.byteSize());
+  return val;
+}
+
+RocksDBLogValue RocksDBLogValue::Empty() {
   return RocksDBLogValue();
 }
 
@@ -320,6 +329,14 @@ StringRef RocksDBLogValue::oldCollectionName(rocksdb::Slice const& slice) {
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
   TRI_ASSERT(type == RocksDBLogType::CollectionRename);
   return StringRef(slice.data() + off, slice.size() - off);
+}
+
+/// @brief get slice from tracked document
+VPackSlice RocksDBLogValue::trackedDocument(rocksdb::Slice const& slice) {
+  TRI_ASSERT(slice.size() >= 2);
+  RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
+  TRI_ASSERT(type == RocksDBLogType::TrackedDocumentRemove);
+  return VPackSlice(slice.data() + sizeof(RocksDBLogType));
 }
 
 bool RocksDBLogValue::containsDatabaseId(RocksDBLogType type) {

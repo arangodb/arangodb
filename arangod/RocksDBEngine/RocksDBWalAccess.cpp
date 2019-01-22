@@ -390,7 +390,8 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
       case RocksDBLogType::DocumentOperationsPrologue:
       case RocksDBLogType::DocumentRemove:
       case RocksDBLogType::DocumentRemoveAsPartOfUpdate:
-        break;  // ignore deprecated markers
+      case RocksDBLogType::TrackedDocumentRemove:
+        break;  // ignore deprecated / unused markers
 
       default:
         LOG_TOPIC(WARN, Logger::REPLICATION)
@@ -614,12 +615,6 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
                                 const rocksdb::Slice& /*end_key*/) override {
     incTick();
     // drop and truncate may use this, but we do not print anything
-    return rocksdb::Status();  // make WAL iterator happy
-  }
-
-  rocksdb::Status MergeCF(uint32_t, const rocksdb::Slice&, const rocksdb::Slice&) override {
-    incTick();
-    // not used for anything in ArangoDB currently
     return rocksdb::Status();  // make WAL iterator happy
   }
 
