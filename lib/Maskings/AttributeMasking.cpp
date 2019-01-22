@@ -83,7 +83,7 @@ ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
   if (it == _maskings.end()) {
     return ParseResult<AttributeMasking>(
         ParseResult<AttributeMasking>::UNKNOWN_TYPE,
-        "expecting unknown attribute masking type '" + type + "'");
+        "unknown attribute masking type '" + type + "'");
   }
 
   return it->second(ap.result, maskings, def);

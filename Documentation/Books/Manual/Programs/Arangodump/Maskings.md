@@ -58,12 +58,12 @@ For example:
     "maskings": [
       {
         "path": "name",
-        "type": "xifyFont",
+        "type": "xifyFront",
         "unmaskedLength": 2
       },
       {
         "path": ".security_id",
-        "type": "xifyFont",
+        "type": "xifyFront",
         "unmaskedLength": 2
       }
     ]
@@ -76,7 +76,7 @@ structure of the collection "log" is dumped, but not the data itself.
 The collection "person" is dumped completely but masking the "name" field if
 it occurs on the top-level. It masks the field "security_id" anywhere in the
 document. See below for a complete description of the parameters of
-"xifyFont".
+"xifyFront".
 
 ### Masking vs. dump-data option
 
@@ -124,7 +124,7 @@ attribute with an "XXXX"-masked string:
 
 ```json
 {
-  "type": "xifyFont",
+  "type": "xifyFront",
   "path": ".name",
   "unmaskedLength": 2
 }
@@ -143,7 +143,7 @@ The document:
 }
 ```
 
-will be changed as follows:
+... will be changed as follows:
 
 ```json
 {
@@ -180,7 +180,7 @@ Masking `email` will convert:
 }
 ```
 
-into:
+... into:
 
 ```json
 { 
@@ -188,7 +188,7 @@ into:
 }
 ```
 
-because `email` is a leaf attribute.
+because `email` is a leaf attribute. The document:
 
 ```json
 { 
@@ -199,7 +199,7 @@ because `email` is a leaf attribute.
 } 
 ```
 
-will be converted into:
+... will be converted into:
 
 ```json
 { 
@@ -210,7 +210,7 @@ will be converted into:
 } 
 ```
 
-because the array is "unfolded".
+... because the array is "unfolded". The document:
 
 ```json
 { 
@@ -220,17 +220,38 @@ because the array is "unfolded".
 }
 ```
 
-will not be changed because `email` is not a leaf attribute.
+... will not be changed because `email` is not a leaf attribute.
 
 
 Masking Functions
 -----------------
 
-### randomString
+{% hint 'info' %}
+The following masking functions are only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
 
-This masking replaces character strings with a random string of the
-same length as the input. Other values, e.g. numbers and booleans, are
-not changed.
+- xify front
+- zip
+- datetime
+- integral number
+- decimal number
+- credit card number
+- phone number
+- email address
+
+The function:
+
+- random string
+
+... is available on Community Edition and in the Enterprise Edition.
+
+
+### Random string
+
+This masking replaces any strings with a random string of a similar
+length as the input. Other values, e.g. numbers and booleans, are not
+changed.
 
 ```json
 {
@@ -244,31 +265,86 @@ anonymized string. It is not guaranteed that the string will be of
 the same length.
 
 A hash of the original string is computed. If the original string is
-shortened then the hash will be used. This will result in a longer
+shorter then the hash will be used. This will result in a longer
 replacement string. If the string is longer than the hash then
 characters will be repeated as many times as needed to reach the full
 original string length.
 
-### xifyFont (Enterprise)
+**Example**
 
-This masking replaces characters with `x` and blanks. Alphanumeric characters,
-`_` and `-` are replaced by `x`, everything else is replaced by a blank.
+Masking name as above, the document:
+
+```json
+{ 
+  "_key" : "38937", 
+  "_id" : "examplecollection/38937", 
+  "_rev" : "_YFaGG1u--_", 
+  "name" : [ 
+    "My Name", 
+    { 
+      "other" : "Hallo Name" 
+    }, 
+    [ 
+      "Name One", 
+      "Name Two" 
+    ], 
+    true, 
+    false, 
+    null,
+    1.0,
+    1234,
+    "This is a very long name"
+  ] 
+}
+```
+
+... will be converted into
+
+```json
+{
+  "_key": "38937",
+  "_id": "examplecollection/38937",
+  "_rev": "_YFaGG1u--_",
+  "name": [
+    "+y5OQiYmp/o=",
+    {
+      "other": "Hallo Name"
+    },
+    [
+      "ihCTrlsKKdk=",
+      "yo/55hfla0U="
+    ],
+    true,
+    false,
+    null,
+    1.0,
+    1234,
+    "hwjAfNe5BGw=hwjAfNe5BGw="
+  ]
+}
+```
+
+### Xify front
+
+This masking replaces the front characters with `x` and
+blanks. Alphanumeric characters, `_` and `-` are replaced by `x`,
+everything else is replaced by a blank.
 
 ```json
 {
   "path": ".name",
-  "type": "xifyFont",
+  "type": "xifyFront",
   "unmaskedLength": 2
 }
 ```
 
-This will mask all alphanumeric characters of a word except the last 2.
-Words of length 1 and 2 are unmasked. If the attribute value is not a
-string the result will be `xxxx`.
+This will mask all alphanumeric characters of a word except the last
+two characters.  Words of length 1 and 2 are unmasked. If the
+attribute value is not a string the result will be `xxxx`.
 
     "This is a test!Do you agree?"
 
-will become
+... will become
 
     "xxis is a xxst Do xou xxxee "
 
@@ -278,7 +354,7 @@ unique index.
 
 ```json
 {
-  "type": "xifyFont",
+  "type": "xifyFront",
   "path": ".name",
   "unmaskedLength": 2,
   "hash": true
@@ -289,12 +365,13 @@ This will add a hash at the end of the string.
 
     "This is a test!Do you agree?"
 
-will become
+... will become
 
     "xxis is a xxst Do xou xxxee  NAATm8c9hVQ="
 
 Note that the hash is based on a random secrect that is different for
-each run. This avoids dictionary attacks.
+each run. This avoids dictionary attacks which can be used to guess
+values based pre-computations on dictionaries.
 
 If you need reproducable results, i.e. hashes that do not change between
 different runs of *arangodump*, you need to specify a secret as seed,
@@ -302,7 +379,7 @@ a number which must not be `0`.
 
 ```json
 {
-  "type": "xifyFont",
+  "type": "xifyFront",
   "path": ".name",
   "unmaskedLength": 2,
   "hash": true,
@@ -310,10 +387,11 @@ a number which must not be `0`.
 }
 ```
 
-### zip (Enterprise)
+### Zip
 
 This masking replaces a zip code with a random one.  If the attribute
-value is not a string then the default value of `12345` is used.
+value is not a string then the default value of `"12345"` is used as
+no zip is known. You can change the default value, see below.
 
 ```json
 {
@@ -322,7 +400,7 @@ value is not a string then the default value of `12345` is used.
 }
 ```
 
-This will replace an existing zip with a random one. It uses the following
+This will replace a real zip code with a random one. It uses the following
 rule: If a character of the original zip code is a digit it will be replaced
 by a random digit. If a character of the original zip code is a letter it
 will be replaced by a random letter keeping the case.
@@ -337,26 +415,28 @@ will be replaced by a random letter keeping the case.
 
 **Example**
 
-If the original zip code is
+If the original zip code is:
 
     50674
 
-it will be replaced by (for example)
+... it will be replaced by e.g.:
 
     98146
 
-If the original zip code is
+If the original zip code is:
 
     SA34-EA
 
-it will be replaced by (for example)
+... it will be replaced by e.g.:
 
     OW91-JI
 
-Please note that this will generate random zip code value. Therefore
-there is a chance that it will destroy uniqueness.
+Note that this will generate random zip code. Therefore there is a
+chance generate the same zip code value multiple times, which can
+cause unique constraint violations if a unique index is or will be
+used on the zip code attribute.
 
-### datetime (Enterprise)
+### Datetime
 
 This masking replaces the value of the attribute with a random date.
 
@@ -369,14 +449,15 @@ This masking replaces the value of the attribute with a random date.
 }
 ```
 
-`begin` and `end` are in ISO8601.
+`begin` and `end` are in ISO8601 format.
 
 The format is described in
-[DATE_FORMAT](https://docs.arangodb.com/3.4/AQL/Functions/Date.html#dateformat).
+[DATE_FORMAT](../../../AQL/Functions/Date.html#dateformat).
 
-### integral number (Enterprise)
+### Integral number
 
 This masking replaces the value of the attribute with a random integral number.
+It will replace the value even if it is a string, boolean, or false.
 
 ```json
 {
@@ -386,9 +467,10 @@ This masking replaces the value of the attribute with a random integral number.
 }
 ```
 
-### decimal (Enterprise)
+### Decimal number
 
 This masking replaces the value of the attribute with a random decimal.
+It will replace the value even if it is a string, boolean, or false.
 
 ```json
 {
@@ -398,7 +480,8 @@ This masking replaces the value of the attribute with a random decimal.
 }
 ```
 
-by default, the decimal has a scale of 2.
+By default, the decimal has a scale of 2. I.e. it has at most 2
+decimal digits. The definition:
 
 ```json
 {
@@ -409,9 +492,9 @@ by default, the decimal has a scale of 2.
 }
 ```
 
-will use a scale of 3.
+... will generate numbers with at most 3 decimal digits.
 
-### Credit card number (Enterprise)
+### Credit card number
 
 This masking replaces the value of the attribute with a random credit card number.
 
@@ -423,7 +506,7 @@ This masking replaces the value of the attribute with a random credit card numbe
 
 See [Luhn](https://en.wikipedia.org/wiki/Luhn_algorithm) for details.
 
-### Phone number (Enterprise)
+### Phone number
 
 This masking replaces a phone number with a random one. If the attribute value
 is not a string it is replaced by the string `"+1234567890"`.
@@ -437,12 +520,11 @@ is not a string it is replaced by the string `"+1234567890"`.
 
 This will replace an existing phone number with a random one. It uses
 the following rule: If a character of the original number is a digit
-it will be replaced by a random digit. If it is letter it is replaced
+it will be replaced by a random digit. If it is a letter it is replaced
 by a letter. All other characters are unchanged.
 
 ```json
-{
-  "type": "zip",
+{  "type": "zip",
   "default": "+4912345123456789"
 }
 ```
@@ -450,8 +532,8 @@ by a letter. All other characters are unchanged.
 If the attribute value is not a string use the value of default
 `"+4912345123456789"`.
 
-### Email address (Enterprise)
+### Email address
 
-This takes an email address, computes a hash value and split this is
+This takes an email address, computes a hash value and split it into
 three equal parts `AAAA`, `BBBB`, and `CCCC`. The resulting email
 address is `AAAA.BBBB@CCCC.invalid`.
