@@ -343,10 +343,10 @@ The following APIs have been added or augmented:
   sharding algorithm.
 
   The available sharding strategies are:
-  - `community-compat`: default sharding used by ArangoDB Community
-    Edition before version 3.4
-  - `enterprise-compat`: default sharding used by ArangoDB Enterprise
-    Edition before version 3.4
+  - `community-compat`: default sharding used by ArangoDB
+    Community Edition before version 3.4
+  - `enterprise-compat`: default sharding used by ArangoDB
+    Enterprise Edition before version 3.4
   - `enterprise-smart-edge-compat`: default sharding used by smart edge
     collections in ArangoDB Enterprise Edition before version 3.4
   - `hash`: default sharding used for new collections starting from version 3.4
