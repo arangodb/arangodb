@@ -126,7 +126,6 @@ void MMFilesDitches::destroy() {
       LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
           << "logic error. shouldn't have document ditches on unload"
           << " (file " << ptr->filename() << ", line " << ptr->line() << ")";
-      TRI_ASSERT(false);
     } else {
       LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "unknown ditch type";
     }
@@ -274,16 +273,7 @@ void MMFilesDitches::freeMMFilesDocumentDitch(MMFilesDocumentDitch* ditch, bool 
     TRI_ASSERT(ditch->usedByTransaction() == true);
   }
 
-  {
-    MUTEX_LOCKER(mutexLocker, _lock);
-
-    unlink(ditch);
-
-    // decrease counter
-    --_numMMFilesDocumentMMFilesDitches;
-  }
-
-  delete ditch;
+  freeDitch(ditch);
 }
 
 /// @brief creates a new document ditch and links it
