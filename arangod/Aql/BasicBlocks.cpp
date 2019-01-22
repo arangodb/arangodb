@@ -29,7 +29,6 @@
 
 using namespace arangodb::aql;
 
-<<<<<<< HEAD
 SingletonBlock::SingletonBlock(ExecutionEngine* engine, SingletonNode const* ep)
     : ExecutionBlock(engine, ep) {
   auto en = ExecutionNode::castTo<SingletonNode const*>(getPlanNode());
