@@ -59,10 +59,8 @@ class SortBlock final : public ExecutionBlock {
     Allocator _allocate;
   };
 
-  enum SorterType { Standard, ConstrainedHeap };
-
  public:
-  SortBlock(ExecutionEngine*, SortNode const*, SorterType type, size_t limit);
+  SortBlock(ExecutionEngine*, SortNode const*, SortNode::SorterType type, size_t limit);
 
   ~SortBlock();
 
@@ -89,7 +87,7 @@ class SortBlock final : public ExecutionBlock {
   bool _mustFetchAll;
 
   /// @brief the type of sorter to use
-  SorterType _type;
+  SortNode::SorterType _type;
 
   /// @brief the maximum number of items to return; unlimited if zero
   size_t _limit;

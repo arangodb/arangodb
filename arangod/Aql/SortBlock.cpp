@@ -154,7 +154,7 @@ class StandardSorter : public arangodb::aql::SortBlock::Sorter {
       : arangodb::aql::SortBlock::Sorter(block, trx, buffer, sortRegisters,
                                          std::move(fetch), std::move(allocate)) {}
 
-  virtual std::pair<arangodb::aql::ExecutionState, arangodb::Result> fetch() {
+  std::pair<arangodb::aql::ExecutionState, arangodb::Result> fetch() override {
     using arangodb::aql::ExecutionBlock;
     using arangodb::aql::ExecutionState;
 
@@ -169,7 +169,7 @@ class StandardSorter : public arangodb::aql::SortBlock::Sorter {
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
-  virtual arangodb::Result sort() {
+  arangodb::Result sort() override {
     using arangodb::aql::AqlItemBlock;
     using arangodb::aql::AqlValue;
     using arangodb::aql::ExecutionBlock;
@@ -266,7 +266,7 @@ class StandardSorter : public arangodb::aql::SortBlock::Sorter {
     return TRI_ERROR_NO_ERROR;
   }
 
-  virtual bool empty() const { return _buffer.empty(); }
+  bool empty() const override { return _buffer.empty(); }
 };
 
 class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
@@ -310,7 +310,7 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
     _rows.reserve(_limit);
   }
 
-  virtual std::pair<arangodb::aql::ExecutionState, arangodb::Result> fetch() {
+  std::pair<arangodb::aql::ExecutionState, arangodb::Result> fetch() override {
     using arangodb::aql::AqlItemBlock;
     using arangodb::aql::ExecutionBlock;
     using arangodb::aql::ExecutionState;
@@ -336,7 +336,7 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
-  virtual arangodb::Result sort() {
+  arangodb::Result sort() override {
     using arangodb::aql::AqlItemBlock;
     using arangodb::basics::catchVoidToResult;
 
@@ -370,7 +370,7 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
     return TRI_ERROR_NO_ERROR;
   }
 
-  virtual bool empty() const { return _buffer.empty() && _rows.empty(); }
+  bool empty() const override { return _buffer.empty() && _rows.empty(); }
 
  private:
   arangodb::Result pushRow(arangodb::aql::AqlItemBlock* block, size_t row) {
@@ -427,7 +427,8 @@ SortBlock::Sorter::Sorter(arangodb::aql::SortBlock& block, transaction::Methods*
 
 SortBlock::Sorter::~Sorter() {}
 
-SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en, SorterType type, size_t limit)
+SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en,
+                     SortNode::SorterType type, size_t limit)
     : ExecutionBlock(engine, en), _stable(en->_stable), _type{type}, _limit{limit} {
   TRI_ASSERT(en && en->plan() && en->getRegisterPlan());
   SortRegister::fill(*en->plan(), *en->getRegisterPlan(), en->elements(), _sortRegisters);
@@ -486,13 +487,13 @@ void SortBlock::initializeSorter() {
       return requestBlock(nrItems, nrRegs);
     };
     switch (_type) {
-      case SorterType::Standard: {
+      case SortNode::SorterType::Standard: {
         _sorter = std::make_unique<::StandardSorter>(*this, _trx, _buffer,
                                                      _sortRegisters, std::move(fetch),
                                                      std::move(allocate));
         break;
       }
-      case SorterType::ConstrainedHeap: {
+      case SortNode::SorterType::ConstrainedHeap: {
         TRI_ASSERT(!_stable && _limit > 0);
         _sorter = std::make_unique<::ConstrainedHeapSorter>(*this, _trx, _buffer, _sortRegisters,
                                                             std::move(fetch),

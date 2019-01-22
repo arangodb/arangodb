@@ -50,17 +50,21 @@ class SortNode : public ExecutionNode {
   friend class SortBlock;
   friend class RedundantCalculationsReplacer;
 
+  enum SorterType { Standard, ConstrainedHeap };
+  static std::string const& sorterTypeName(SorterType);
+
  public:
-  SortNode(ExecutionPlan* plan, size_t id, SortElementVector const& elements,
-           bool stable, size_t limit = 0)
+  SortNode(ExecutionPlan* plan, size_t id, SortElementVector const& elements, bool stable)
       : ExecutionNode(plan, id),
         _reinsertInCluster(true),
         _elements(elements),
-        _stable(stable),
-        _limit(limit) {}
+        _stable(stable) {}
 
   SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
-           SortElementVector const& elements, bool stable, size_t limit = 0);
+           SortElementVector const& elements, bool stable);
+
+  /// @brief if non-zero, limits the number of elements that the node will return
+  void setLimit(size_t limit) { _limit = limit; }
 
   /// @brief return the type of the node
   NodeType getType() const override final { return SORT; }
@@ -117,6 +121,9 @@ class SortNode : public ExecutionNode {
   bool _reinsertInCluster;
 
  private:
+  SorterType sorterType() const;
+
+ private:
   /// @brief pairs, consisting of variable and sort direction
   /// (true = ascending | false = descending)
   SortElementVector _elements;
@@ -125,7 +132,7 @@ class SortNode : public ExecutionNode {
   bool _stable;
 
   /// the maximum number of items to return if non-zero; if zero, unlimited
-  size_t _limit;
+  size_t _limit = 0;
 };
 
 }  // namespace aql

@@ -249,7 +249,7 @@ void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerR
 /// @brief replace FILTER and SORT containing DISTANCE function
 void geoIndexRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>, OptimizerRule const*);
 
-/// @brief replace FILTER and SORT containing DISTANCE function
+/// @brief make sort node aware of limit to enable internal optimizations
 void sortLimitRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>, OptimizerRule const*);
 
 /// @brief push LIMIT into subqueries, and simplify them

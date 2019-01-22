@@ -26,18 +26,33 @@
 #include "Aql/SortBlock.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/VelocyPackHelper.h"
 #include "SortNode.h"
+
+namespace {
+std::string const ConstrainedHeap = "ConstrainedHeap";
+std::string const Standard = "Standard";
+}  // namespace
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
+std::string const& SortNode::sorterTypeName(SorterType type) {
+  switch (type) {
+    case SorterType::Standard:
+      return ::Standard;
+    case SorterType::ConstrainedHeap:
+      return ::ConstrainedHeap;
+  }
+}
+
 SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
-                   SortElementVector const& elements, bool stable, size_t limit)
+                   SortElementVector const& elements, bool stable)
     : ExecutionNode(plan, base),
       _reinsertInCluster(true),
       _elements(elements),
       _stable(stable),
-      _limit(limit) {}
+      _limit(VelocyPackHelper::getNumericValue<size_t>(base, "limit", 0)) {}
 
 /// @brief toVelocyPack, for SortNode
 void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
@@ -62,6 +77,8 @@ void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
     }
   }
   nodes.add("stable", VPackValue(_stable));
+  nodes.add("limit", VPackValue(_limit));
+  nodes.add("strategy", VPackValue(sorterTypeName(sorterType())));
 
   // And close it:
   nodes.close();
@@ -196,9 +213,7 @@ SortInformation SortNode::getSortInformation(ExecutionPlan* plan,
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  auto type = (!isStable() && _limit > 0) ? SortBlock::SorterType::ConstrainedHeap
-                                          : SortBlock::SorterType::Standard;
-  return std::make_unique<SortBlock>(&engine, this, type, _limit);
+  return std::make_unique<SortBlock>(&engine, this, sorterType(), _limit);
 }
 
 /// @brief estimateCost
@@ -211,4 +226,8 @@ CostEstimate SortNode::estimateCost() const {
                               std::log2(static_cast<double>(estimate.estimatedNrItems));
   }
   return estimate;
+}
+
+SortNode::SorterType SortNode::sorterType() const {
+  return (!isStable() && _limit > 0) ? SorterType::ConstrainedHeap : SorterType::Standard;
 }

@@ -6965,6 +6965,10 @@ void arangodb::aql::sortLimitRule(Optimizer* opt, std::unique_ptr<ExecutionPlan>
         limit = ExecutionNode::castTo<LimitNode*>(current);
         break;  // stop parsing after first LIMIT
       } else if (current->getType() == EN::FILTER || current->getType() == EN::RETURN ||
+                 current->getType() == EN::ENUMERATE_COLLECTION ||
+                 current->getType() == EN::ENUMERATE_LIST ||
+                 current->getType() == EN::ENUMERATE_IRESEARCH_VIEW ||
+                 current->getType() == EN::TRAVERSAL || current->getType() == EN::SHORTEST_PATH ||
                  current->getType() == EN::INDEX || current->getType() == EN::COLLECT) {
         // TODO check other end conditions
         break;  // stop parsing
@@ -6976,10 +6980,7 @@ void arangodb::aql::sortLimitRule(Optimizer* opt, std::unique_ptr<ExecutionPlan>
     // aware of the limit
     if (limit != nullptr && shouldApplyHeapOptimization(node, limit)) {
       auto sn = static_cast<SortNode*>(node);
-      auto newNode = new SortNode(plan.get(), plan->nextId(), sn->elements(),
-                                  sn->isStable(), limit->limit() + limit->offset());
-      plan->registerNode(newNode);
-      plan->replaceNode(node, newNode);
+      sn->setLimit(limit->limit() + limit->offset());
       mod = true;
     }
   }
