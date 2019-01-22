@@ -24,7 +24,9 @@
 #include "tests_shared.hpp"
 #include "index/index_tests.hpp"
 #include "store/memory_directory.hpp"
+#include "search/boolean_filter.hpp"
 #include "search/phrase_filter.hpp"
+#include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/scorers.hpp"
 #include "search/sort.hpp"
@@ -32,6 +34,19 @@
 #include "search/bm25.hpp"
 #include "search/term_filter.hpp"
 #include "utils/utf8_path.hpp"
+
+NS_LOCAL
+
+struct bstring_data_output: public data_output {
+  irs::bstring out_;
+  virtual void close() override {}
+  virtual void write_byte(irs::byte_type b) override { write_bytes(&b, 1); }
+  virtual void write_bytes(const irs::byte_type* b, size_t size) override {
+    out_.append(b, size);
+  }
+};
+
+NS_END
 
 NS_BEGIN(tests)
 
@@ -334,6 +349,272 @@ TEST_F(bm25_test, test_query) {
       auto str_seq = irs::read_string<std::string>(in);
       auto seq = strtoull(str_seq.c_str(), nullptr, 10);
       sorted.emplace(score_value, seq);
+    }
+
+    ASSERT_EQ(expected.size(), sorted.size());
+    size_t i = 0;
+
+    for (auto& entry: sorted) {
+      ASSERT_EQ(expected[i++], entry.second);
+    }
+  }
+
+  // by term multi-segment, same term (same score for all docs)
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential_order.json"),
+      [](tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
+        if (data.is_string()) { // field
+          doc.insert(std::make_shared<templates::string_field>(name, data.str), true, false);
+        } else if (data.is_number()) { // seq
+          const auto value = std::to_string(data.as_number<uint64_t>());
+          doc.insert(std::make_shared<templates::string_field>(name, value), false, true);
+        }
+    });
+    auto writer = open_writer(irs::OM_CREATE);
+    const document* doc;
+
+    // add first segment (even 'seq')
+    {
+      gen.reset();
+      while ((doc = gen.next())) {
+        ASSERT_TRUE(insert(
+          *writer,
+          doc->indexed.begin(), doc->indexed.end(),
+          doc->stored.begin(), doc->stored.end()
+        ));
+        gen.next(); // skip 1 doc
+      }
+      writer->commit();
+    }
+
+    // add second segment (odd 'seq')
+    {
+      gen.reset();
+      gen.next(); // skip 1 doc
+      while ((doc = gen.next())) {
+        ASSERT_TRUE(insert(
+          *writer,
+          doc->indexed.begin(), doc->indexed.end(),
+          doc->stored.begin(), doc->stored.end()
+        ));
+        gen.next(); // skip 1 doc
+      }
+      writer->commit();
+    }
+
+    auto reader = irs::directory_reader::open(dir(), codec());
+    irs::by_term filter;
+    filter.field("field").term("6");
+
+    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::vector<uint64_t> expected{
+      0, 2, // segment 0
+      5 // segment 1
+    };
+
+    irs::bytes_ref actual_value;
+    irs::bytes_ref_input in;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+
+    for (auto& segment: reader) {
+      const auto* column = segment.column_reader("seq");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto docs = prepared_filter->execute(segment, prepared_order);
+      auto& score = docs->attributes().get<irs::score>();
+      ASSERT_TRUE(bool(score));
+
+      // ensure that we avoid COW for pre c++11 std::basic_string
+      const irs::bytes_ref score_value = score->value();
+
+      while(docs->next()) {
+        score->evaluate();
+        ASSERT_TRUE(values(docs->value(), actual_value));
+        in.reset(actual_value);
+
+        auto str_seq = irs::read_string<std::string>(in);
+        auto seq = strtoull(str_seq.c_str(), nullptr, 10);
+        sorted.emplace(score_value, seq);
+      }
+    }
+
+    ASSERT_EQ(expected.size(), sorted.size());
+    size_t i = 0;
+
+    for (auto& entry: sorted) {
+      ASSERT_EQ(expected[i++], entry.second);
+    }
+  }
+
+  // by_term disjunction multi-segment, different terms (same score for all docs)
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential_order.json"),
+      [](tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
+        if (data.is_string()) { // field
+          doc.insert(std::make_shared<templates::string_field>(name, data.str), true, false);
+        } else if (data.is_number()) { // seq
+          const auto value = std::to_string(data.as_number<uint64_t>());
+          doc.insert(std::make_shared<templates::string_field>(name, value), false, true);
+        }
+    });
+    auto writer = open_writer(irs::OM_CREATE);
+    const document* doc;
+
+    // add first segment (even 'seq')
+    {
+      gen.reset();
+      while ((doc = gen.next())) {
+        ASSERT_TRUE(insert(
+          *writer,
+          doc->indexed.begin(), doc->indexed.end(),
+          doc->stored.begin(), doc->stored.end()
+        ));
+        gen.next(); // skip 1 doc
+      }
+      writer->commit();
+    }
+
+    // add second segment (odd 'seq')
+    {
+      gen.reset();
+      gen.next(); // skip 1 doc
+      while ((doc = gen.next())) {
+        ASSERT_TRUE(insert(
+          *writer,
+          doc->indexed.begin(), doc->indexed.end(),
+          doc->stored.begin(), doc->stored.end()
+        ));
+        gen.next(); // skip 1 doc
+      }
+      writer->commit();
+    }
+
+    auto reader = irs::directory_reader::open(dir(), codec());
+    irs::Or filter;
+    filter.add<irs::by_term>().field("field").term("6"); // doc 0, 2, 5
+    filter.add<irs::by_term>().field("field").term("8"); // doc 3, 7
+
+    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::vector<uint64_t> expected{
+      3, 7, // same value in 2 documents
+      0, 2, 5 // same value in 3 documents
+    };
+
+    irs::bytes_ref actual_value;
+    irs::bytes_ref_input in;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+
+    for (auto& segment: reader) {
+      const auto* column = segment.column_reader("seq");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto docs = prepared_filter->execute(segment, prepared_order);
+      auto& score = docs->attributes().get<irs::score>();
+      ASSERT_TRUE(bool(score));
+
+      // ensure that we avoid COW for pre c++11 std::basic_string
+      const irs::bytes_ref score_value = score->value();
+
+      while(docs->next()) {
+        score->evaluate();
+        ASSERT_TRUE(values(docs->value(), actual_value));
+        in.reset(actual_value);
+
+        auto str_seq = irs::read_string<std::string>(in);
+        auto seq = strtoull(str_seq.c_str(), nullptr, 10);
+        sorted.emplace(score_value, seq);
+      }
+    }
+
+    ASSERT_EQ(expected.size(), sorted.size());
+    size_t i = 0;
+
+    for (auto& entry: sorted) {
+      ASSERT_EQ(expected[i++], entry.second);
+    }
+  }
+
+  // by_prefix empty multi-segment, different terms (same score for all docs)
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      [](tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
+        if (data.is_string()) { // field
+          doc.insert(std::make_shared<templates::string_field>(name, data.str), true, false);
+        } else if (data.is_number()) { // seq
+          const auto value = std::to_string(data.as_number<uint64_t>());
+          doc.insert(std::make_shared<templates::string_field>(name, value), false, true);
+        }
+    });
+    auto writer = open_writer(irs::OM_CREATE);
+    const document* doc;
+
+    // add first segment (even 'seq')
+    {
+      gen.reset();
+      while ((doc = gen.next())) {
+        ASSERT_TRUE(insert(
+          *writer,
+          doc->indexed.begin(), doc->indexed.end(),
+          doc->stored.begin(), doc->stored.end()
+        ));
+        gen.next(); // skip 1 doc
+      }
+      writer->commit();
+    }
+
+    // add second segment (odd 'seq')
+    {
+      gen.reset();
+      gen.next(); // skip 1 doc
+      while ((doc = gen.next())) {
+        ASSERT_TRUE(insert(
+          *writer,
+          doc->indexed.begin(), doc->indexed.end(),
+          doc->stored.begin(), doc->stored.end()
+        ));
+        gen.next(); // skip 1 doc
+      }
+      writer->commit();
+    }
+
+    auto reader = irs::directory_reader::open(dir(), codec());
+    irs::by_prefix filter;
+    filter.field("prefix").term("");
+
+    std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
+    std::vector<uint64_t> expected{
+      30, 31, // same value in segment 0 and segment 1
+      0, 8, 20, 28, // segment 0
+      3, 15, 23, 25 // segment 1
+    };
+
+    irs::bytes_ref actual_value;
+    irs::bytes_ref_input in;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+
+    for (auto& segment: reader) {
+      const auto* column = segment.column_reader("seq");
+      ASSERT_NE(nullptr, column);
+      auto values = column->values();
+      auto docs = prepared_filter->execute(segment, prepared_order);
+      auto& score = docs->attributes().get<irs::score>();
+      ASSERT_TRUE(bool(score));
+
+      // ensure that we avoid COW for pre c++11 std::basic_string
+      const irs::bytes_ref score_value = score->value();
+
+      while(docs->next()) {
+        score->evaluate();
+        ASSERT_TRUE(values(docs->value(), actual_value));
+        in.reset(actual_value);
+
+        auto str_seq = irs::read_string<std::string>(in);
+        auto seq = strtoull(str_seq.c_str(), nullptr, 10);
+        sorted.emplace(score_value, seq);
+      }
     }
 
     ASSERT_EQ(expected.size(), sorted.size());
@@ -726,6 +1007,143 @@ TEST_F(bm25_test, test_query_norms) {
 }
 
 #ifndef IRESEARCH_DLL
+
+TEST_F(bm25_test, test_collector_serialization) {
+  // initialize test data
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      &tests::payloaded_json_field_factory
+    );
+    auto writer = open_writer(irs::OM_CREATE);
+    const document* doc;
+
+    while ((doc = gen.next())) {
+      ASSERT_TRUE(insert(
+        *writer,
+        doc->indexed.begin(), doc->indexed.end(),
+        doc->stored.begin(), doc->stored.end()
+      ));
+    }
+
+    writer->commit();
+  }
+
+  auto reader = irs::directory_reader::open(dir(), codec());
+  ASSERT_EQ(1, reader.size());
+  auto* field = reader[0].field("name");
+  ASSERT_NE(nullptr, field);
+  auto term = field->iterator();
+  ASSERT_NE(nullptr, term);
+  ASSERT_TRUE(term->next());
+  term->read(); // fill term_meta
+  irs::bstring fcollector_out;
+  irs::bstring tcollector_out;
+
+  // default init (field_collector)
+  {
+    irs::bm25_sort sort;
+    auto prepared_sort = sort.prepare();
+    ASSERT_NE(nullptr, prepared_sort);
+    auto collector = prepared_sort->prepare_field_collector();
+    ASSERT_NE(nullptr, collector);
+    bstring_data_output out0;
+    collector->write(out0);
+    collector->collect(reader[0], *field);
+    bstring_data_output out1;
+    collector->write(out1);
+    fcollector_out = out1.out_;
+    ASSERT_TRUE(out0.out_.size() != out1.out_.size() || 0 != std::memcmp(&out0.out_[0], &out1.out_[0], out0.out_.size()));
+
+    // identical to default
+    collector = prepared_sort->prepare_field_collector();
+    collector->collect(out0.out_);
+    bstring_data_output out2;
+    collector->write(out2);
+    ASSERT_TRUE(out0.out_.size() == out2.out_.size() && 0 == std::memcmp(&out0.out_[0], &out2.out_[0], out0.out_.size()));
+
+    // identical to modified
+    collector = prepared_sort->prepare_field_collector();
+    collector->collect(out1.out_);
+    bstring_data_output out3;
+    collector->write(out3);
+    ASSERT_TRUE(out1.out_.size() == out3.out_.size() && 0 == std::memcmp(&out1.out_[0], &out3.out_[0], out1.out_.size()));
+  }
+
+  // default init (term_collector)
+  {
+    irs::bm25_sort sort;
+    auto prepared_sort = sort.prepare();
+    ASSERT_NE(nullptr, prepared_sort);
+    auto collector = prepared_sort->prepare_term_collector();
+    ASSERT_NE(nullptr, collector);
+    bstring_data_output out0;
+    collector->write(out0);
+    collector->collect(reader[0], *field, term->attributes());
+    bstring_data_output out1;
+    collector->write(out1);
+    tcollector_out = out1.out_;
+    ASSERT_TRUE(out0.out_.size() != out1.out_.size() || 0 != std::memcmp(&out0.out_[0], &out1.out_[0], out0.out_.size()));
+
+    // identical to default
+    collector = prepared_sort->prepare_term_collector();
+    collector->collect(out0.out_);
+    bstring_data_output out2;
+    collector->write(out2);
+    ASSERT_TRUE(out0.out_.size() == out2.out_.size() && 0 == std::memcmp(&out0.out_[0], &out2.out_[0], out0.out_.size()));
+
+    // identical to modified
+    collector = prepared_sort->prepare_term_collector();
+    collector->collect(out1.out_);
+    bstring_data_output out3;
+    collector->write(out3);
+    ASSERT_TRUE(out1.out_.size() == out3.out_.size() && 0 == std::memcmp(&out1.out_[0], &out3.out_[0], out1.out_.size()));
+  }
+
+  // serialized too short (field_collector)
+  {
+    irs::bm25_sort sort;
+    auto prepared_sort = sort.prepare();
+    ASSERT_NE(nullptr, prepared_sort);
+    auto collector = prepared_sort->prepare_field_collector();
+    ASSERT_NE(nullptr, collector);
+    ASSERT_THROW(collector->collect(irs::bytes_ref(&fcollector_out[0], fcollector_out.size() - 1)), irs::io_error);
+  }
+
+  // serialized too short (term_collector)
+  {
+    irs::bm25_sort sort;
+    auto prepared_sort = sort.prepare();
+    ASSERT_NE(nullptr, prepared_sort);
+    auto collector = prepared_sort->prepare_term_collector();
+    ASSERT_NE(nullptr, collector);
+    ASSERT_THROW(collector->collect(irs::bytes_ref(&tcollector_out[0], tcollector_out.size() - 1)), irs::io_error);
+  }
+
+  // serialized too long (field_collector)
+  {
+    irs::bm25_sort sort;
+    auto prepared_sort = sort.prepare();
+    ASSERT_NE(nullptr, prepared_sort);
+    auto collector = prepared_sort->prepare_field_collector();
+    ASSERT_NE(nullptr, collector);
+    auto out = fcollector_out;
+    out.append(1, 42);
+    ASSERT_THROW(collector->collect(out), irs::io_error);
+  }
+
+  // serialized too long (term_collector)
+  {
+    irs::bm25_sort sort;
+    auto prepared_sort = sort.prepare();
+    ASSERT_NE(nullptr, prepared_sort);
+    auto collector = prepared_sort->prepare_term_collector();
+    ASSERT_NE(nullptr, collector);
+    auto out = tcollector_out;
+    out.append(1, 42);
+    ASSERT_THROW(collector->collect(out), irs::io_error);
+  }
+}
 
 TEST_F(bm25_test, test_make) {
   // default values
