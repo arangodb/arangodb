@@ -51,23 +51,32 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     std::vector<std::string> const& projections, transaction::Methods* trxPtr,
     std::vector<size_t> const& coveringIndexAttributePositions,
     bool allowCoveringIndexOptimization, bool useRawDocumentPointers, bool random)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
-                    std::make_shared<std::unordered_set<RegisterId>>(), nrInputRegisters,
+    : ExecutorInfos(make_shared_unordered_set(),
+                    make_shared_unordered_set({outputRegister}), nrInputRegisters,
                     nrOutputRegisters, std::move(registersToClear)),
       _outputRegisterId(outputRegister),
       _engine(engine),
       _collection(collection),
       _outVariable(outVariable),
+      _projections(projections),
       _trxPtr(trxPtr),
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
-      _projections(projections),
       _allowCoveringIndexOptimization(allowCoveringIndexOptimization),
       _useRawDocumentPointers(useRawDocumentPointers),
       _produceResult(produceResult),
       _random(random) {}
 
 EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _fetcher(fetcher){};
+    : _infos(infos),
+      _fetcher(fetcher),
+      _input(ExecutionState::HASMORE, InputAqlItemRow{CreateInvalidInputRowHint{}}) {
+  _cursorHasMore = false;
+  _cursor =
+      _infos.getTrxPtr()->indexScan(_infos.getCollection()->name(),
+                                    (_infos.getRandom()
+                                         ? transaction::Methods::CursorType::ANY
+                                         : transaction::Methods::CursorType::ALL));
+};
 
 EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
 
@@ -80,6 +89,7 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
   EnumerateCollectionStats stats{};
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
+  // TODO: check this every time or within constructor?
   if (!waitForSatellites(_infos.getEngine(), _infos.getCollection())) {
     double maxWait = _infos.getEngine()->getQuery()->queryOptions().satelliteSyncWait;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
@@ -93,15 +103,13 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
       _infos.getProjections(), _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
       _infos.getAllowCoveringIndexOptimization(), _infos.getUseRawDocumentPointers()));
 
-  std::unique_ptr<OperationCursor> cursor =
-      _infos.getTrxPtr()->indexScan(_infos.getCollection()->name(),
-                                    (_infos.getRandom()
-                                         ? transaction::Methods::CursorType::ANY
-                                         : transaction::Methods::CursorType::ALL));
-
   while (true) {
-    std::tie(state, input) = _fetcher.fetchRow();
-    cursor->reset();
+    if (!_cursorHasMore) {
+      _input = _fetcher.fetchRow();
+      _cursor->reset();
+    }
+
+    std::tie(state, input) = _input;
 
     if (state == ExecutionState::WAITING) {
       return {state, stats};
@@ -113,21 +121,16 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
     }
     TRI_ASSERT(input.isInitialized());
 
-    if (cursor->hasMore()) {
-      // res.reset(requestBlock(atMost, nrOutRegs)); // TODO: not needed anymore?
-      // only copy 1st row of registers inherited from previous frame(s)
-      // inheritRegisters(cur, res.get(), _pos); // TODO: not needed anymore?
-
+    if (_cursor->hasMore()) {
       uint64_t atMost = 1;
       TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
-      bool cursorHasMore;
       if (_infos.getProduceResult()) {
         // properly build up results by fetching the actual documents
         // using nextDocument()
-        cursorHasMore = cursor->nextDocument(
+        _cursorHasMore = _cursor->nextDocument(
             [&](LocalDocumentId const&, VPackSlice slice) {
               _documentProducer(input, output, slice, _infos.getOutputRegisterId());
             },
@@ -135,27 +138,33 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
       } else {
         // performance optimization: we do not need the documents at all,
         // so just call next()
-        cursorHasMore = cursor->next(
+        _cursorHasMore = _cursor->next(
             [&](LocalDocumentId const&) {
               _documentProducer(input, output, VPackSlice::nullSlice(),
                                 _infos.getOutputRegisterId());
             },
             atMost);
       }
-      if (!cursorHasMore) {
-        TRI_ASSERT(!cursor->hasMore());
+      stats.incrScanned();
+
+      if (!_cursorHasMore) {
+        TRI_ASSERT(!_cursor->hasMore());
       }
     }
 
-    if (!cursor->hasMore()) {
-      // we have exhausted this cursor
-      // re-initialize fetching of documents
-      cursor->reset();
-    }
-
-    if (state == ExecutionState::DONE) {
+    if (state == ExecutionState::DONE && !_cursor->hasMore()) {
       return {state, stats};
     }
+
+    if (!_cursor->hasMore()) {
+      // we have exhausted this cursor
+      // re-initialize fetching of documents
+      //_cursorHasMore = false;
+      _cursor->reset();
+    }
+
+    return {ExecutionState::HASMORE, stats};
+
     TRI_ASSERT(state == ExecutionState::HASMORE);
   }
 }

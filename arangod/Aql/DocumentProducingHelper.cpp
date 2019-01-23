@@ -132,7 +132,6 @@ DocumentProducingFunction DocumentProducingHelper::buildCallback(
 
         b->close();
 
-        // AqlValue toInsert = AqlValue(b.get());
         output.setValue(registerId, input, AqlValue(b.get()));
       };
       return documentProducer;
@@ -159,7 +158,7 @@ DocumentProducingFunction DocumentProducingHelper::buildCallback(
     if (useRawDocumentPointers) {
       output.setValue(registerId, input, AqlValue(AqlValueHintDocumentNoCopy(vpack)));
     } else {
-      output.setValue(registerId, input, AqlValue(AqlValueHintDocumentNoCopy(vpack)));
+      output.setValue(registerId, input, AqlValue(AqlValueHintCopy(vpack)));
     }
   };
   return documentProducer;

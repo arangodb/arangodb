@@ -31,6 +31,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
+#include "Utils/OperationCursor.h"
 
 #include <memory>
 
@@ -120,6 +121,9 @@ class EnumerateCollectionExecutor {
   Infos& _infos;
   Fetcher& _fetcher;
   DocumentProducingFunction _documentProducer;
+  std::pair<ExecutionState, InputAqlItemRow> _input;
+  std::unique_ptr<OperationCursor> _cursor;
+  bool _cursorHasMore;
 };
 
 }  // namespace aql
