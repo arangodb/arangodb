@@ -40,11 +40,11 @@ var db = internal.db;
 
 function ahuacatlQueryOptimizerLimitTestSuite () {
   var collection = null;
-  var docCount = 100;
+  var docCount = 1000;
   var cn = "UnitTestsAhuacatlOptimizerLimit";
 
-  var explain = function (query, params) {
-    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-indexes", "+use-index-for-sort" ] } })).map(function(node) { return node.type; });
+  var getSorts = function (query, params) {
+    return AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-indexes", "+use-index-for-sort", "+sort-limit" ] } }).plan.nodes.filter(node => node.type === "SortNode");
   };
 
   return {
@@ -71,7 +71,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimization with simple data
+/// @brief check limit optimization with simple data, too short
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitSimple : function () {
@@ -80,14 +80,24 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(3, actual.length);
       assertEqual([1, 2, 3], actual);
 
+      sorts = getSorts(query);
+      assertEqual(sorts.length, 1);
+      assertEqual(sorts[0].limit, 0);
+      assertEqual(sorts[0].strategy, "Standard");
+
       query = "FOR c IN [1,3,5,2,4] SORT c DESC LIMIT 3 RETURN c";
       actual = getQueryResults(query);
       assertEqual(3, actual.length);
       assertEqual([5, 4, 3], actual);
+
+      sorts = getSorts(query);
+      assertEqual(sorts.length, 1);
+      assertEqual(sorts[0].limit, 0);
+      assertEqual(sorts[0].strategy, "Standard");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimization with simple data, filter
+/// @brief check limit optimization with simple data, filter, too short
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitSimpleFilter : function () {
@@ -96,11 +106,93 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(2, actual.length);
       assertEqual([3, 4], actual);
 
+      sorts = getSorts(query);
+      assertEqual(sorts.length, 1);
+      assertEqual(sorts[0].limit, 0);
+      assertEqual(sorts[0].strategy, "Standard");
+
       query = "FOR c IN [1,3,5,2,4] SORT c DESC FILTER c >= 3 LIMIT 2 RETURN c";
       actual = getQueryResults(query);
       assertEqual(2, actual.length);
       assertEqual([5, 4], actual);
+
+      sorts = getSorts(query);
+      assertEqual(sorts.length, 1);
+      assertEqual(sorts[0].limit, 0);
+      assertEqual(sorts[0].strategy, "Standard");
     },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief check limit optimization with simple data
+    ////////////////////////////////////////////////////////////////////////////////
+
+        testLimitSimpleLong : function () {
+          var query = "FOR c IN 1..1000 SORT c LIMIT 3 RETURN c";
+          var actual = getQueryResults(query);
+          assertEqual(3, actual.length);
+          assertEqual([1, 2, 3], actual);
+
+          sorts = getSorts(query);
+          assertEqual(sorts.length, 1);
+          assertEqual(sorts[0].limit, 3);
+          assertEqual(sorts[0].strategy, "ConstrainedHeap");
+
+          var query = "FOR c IN 1..1000 SORT c LIMIT 100, 3 RETURN c";
+          var actual = getQueryResults(query);
+          assertEqual(3, actual.length);
+          assertEqual([101, 102, 103], actual);
+
+          sorts = getSorts(query);
+          assertEqual(sorts.length, 1);
+          assertEqual(sorts[0].limit, 103);
+          assertEqual(sorts[0].strategy, "ConstrainedHeap");
+
+          query = "FOR c IN 1..1000 SORT c DESC LIMIT 3 RETURN c";
+          actual = getQueryResults(query);
+          assertEqual(3, actual.length);
+          assertEqual([1000, 999, 998], actual);
+
+          sorts = getSorts(query);
+          assertEqual(sorts.length, 1);
+          assertEqual(sorts[0].limit, 3);
+          assertEqual(sorts[0].strategy, "ConstrainedHeap");
+          
+          query = "FOR c IN 1..1000 SORT c DESC LIMIT 100, 3 RETURN c";
+          actual = getQueryResults(query);
+          assertEqual(3, actual.length);
+          assertEqual([900, 899, 898], actual);
+
+          sorts = getSorts(query);
+          assertEqual(sorts.length, 1);
+          assertEqual(sorts[0].limit, 103);
+          assertEqual(sorts[0].strategy, "ConstrainedHeap");
+        },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief check limit optimization with simple data, filter
+    ////////////////////////////////////////////////////////////////////////////////
+
+        testLimitSimpleFilterLong : function () {
+          var query = "FOR c IN 1..1000 SORT c FILTER c > 3 LIMIT 3 RETURN c";
+          var actual = getQueryResults(query);
+          assertEqual(3, actual.length);
+          assertEqual([4, 5, 6], actual);
+
+          sorts = getSorts(query);
+          assertEqual(sorts.length, 1);
+          assertEqual(sorts[0].limit, 0);
+          assertEqual(sorts[0].strategy, "Standard");
+
+          query = "FOR c IN 1..1000 SORT c DESC FILTER c < 900 LIMIT 3 RETURN c";
+          actual = getQueryResults(query);
+          assertEqual(3, actual.length);
+          assertEqual([899, 898, 897], actual);
+
+          sorts = getSorts(query);
+          assertEqual(sorts.length, 1);
+          assertEqual(sorts[0].limit, 0);
+          assertEqual(sorts[0].strategy, "Standard");
+        },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check limit optimization with 2 limits
@@ -126,6 +218,11 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 
         var actual = getQueryResults(query);
         assertEqual(test.expectedLength, actual.length);
+
+        sorts = getSorts(query);
+        assertEqual(sorts.length, 1);
+        assertEqual(sorts[0].limit, test.offset + test.limit);
+        assertEqual(sorts[0].strategy, "ConstrainedHeap");
       }
     },
 
@@ -142,7 +239,10 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(21, actual[1].value);
       assertEqual(29, actual[9].value);
 
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
+      sorts = getSorts(query);
+      assertEqual(sorts.length, 1);
+      assertEqual(sorts[0].limit, 0);
+      assertEqual(sorts[0].strategy, "Standard");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +260,10 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(22, actual[2].value);
       assertEqual(29, actual[9].value);
 
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
+      sorts = getSorts(query);
+      assertEqual(sorts.length, 1);
+      assertEqual(sorts[0].limit, 0);
+      assertEqual(sorts[0].strategy, "Standard");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,7 +276,10 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       var actual = getQueryResults(query);
       assertEqual(0, actual.length);
 
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "LimitNode", "CalculationNode", "FilterNode", "ReturnNode" ], explain(query));
+      sorts = getSorts(query);
+      assertEqual(sorts.length, 1);
+      assertEqual(sorts[0].limit, 10);
+      assertEqual(sorts[0].strategy, "ConstrainedHeap");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -191,7 +297,10 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(22, actual[2].value);
       assertEqual(29, actual[9].value);
 
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "LimitNode", "ReturnNode" ], explain(query));
+      sorts = getSorts(query);
+      assertEqual(sorts.length, 1);
+      assertEqual(sorts[0].limit, 10);
+      assertEqual(sorts[0].strategy, "ConstrainedHeap");
     },
 
   };
