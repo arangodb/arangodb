@@ -23,7 +23,6 @@
 #ifndef ARANGOD_AQL_ID_EXECUTOR_H
 #define ARANGOD_AQL_ID_EXECUTOR_H
 
-#include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/Stats.h"
@@ -38,7 +37,7 @@ class Methods;
 
 namespace aql {
 
-class AllRowsFetcher;
+class ConstFetcher;
 class AqlItemMatrix;
 class ExecutorInfos;
 class NoStats;

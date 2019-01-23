@@ -24,7 +24,6 @@
 
 #include "Basics/Common.h"
 
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/InputAqlItemRow.h"
@@ -86,7 +85,7 @@ class OurLessThan {
 
 static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegisterIds(
     std::vector<SortRegister> const& sortRegisters) {
-  auto set = std::make_shared<std::unordered_set<RegisterId>>();
+  auto set = make_shared_unordered_set();
   std::transform(sortRegisters.begin(), sortRegisters.end(),
                  std::inserter(*set, set->begin()),
                  [](SortRegister const& sortReg) { return sortReg.reg; });
