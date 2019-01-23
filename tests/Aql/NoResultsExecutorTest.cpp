@@ -48,20 +48,15 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager(&monitor);
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
-  auto outputRegisters = make_shared_unordered_set({0});
+  auto outputRegisters = make_shared_unordered_set();
   auto registersToKeep = make_shared_unordered_set();
   auto blockShell =
       std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
   auto outputBlockShell =
       std::make_unique<OutputAqlItemBlockShell>(blockShell, outputRegisters, registersToKeep);
 
-  REQUIRE(outputRegisters->size() == 1);
-  REQUIRE((*(outputRegisters->begin()) == 0));
-
   RegisterId inputRegister(0);
-  RegisterId outputRegister(*(outputRegisters->begin()));
-
-  ExecutorInfos infos(make_shared_unordered_set({0}), make_shared_unordered_set(),
+  ExecutorInfos infos(make_shared_unordered_set({inputRegister}), outputRegisters,
                       1 /*nr in*/, 1 /*nr out*/, std::unordered_set<RegisterId>{});
   OutputAqlItemRow result(std::move(outputBlockShell));
 

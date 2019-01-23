@@ -31,6 +31,7 @@
 
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/BlockFetcher.h"
+#include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
