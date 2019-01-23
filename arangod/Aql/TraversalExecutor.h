@@ -37,15 +37,14 @@ class Traverser;
 namespace aql {
 
 class Query;
-class InputAqlItemRow;
 class OutputAqlItemRow;
 class ExecutorInfos;
 class SingleRowFetcher;
 
-enum OutputName { VERTEX, EDGE, PATH };
-
 class TraversalExecutorInfos : public ExecutorInfos {
  public:
+  enum OutputName { VERTEX, EDGE, PATH };
+
   TraversalExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
                          std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
                          RegisterId nrInputRegisters, RegisterId nrOutputRegisters,

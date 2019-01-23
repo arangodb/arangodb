@@ -59,7 +59,7 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
   typedef std::unordered_map<arangodb::StringRef, PathSnippet*> Snippets;
 
  public:
-  explicit ConstantWeightShortestPathFinder(ShortestPathOptions* options);
+  explicit ConstantWeightShortestPathFinder(ShortestPathOptions& options);
 
   ~ConstantWeightShortestPathFinder();
 
@@ -89,11 +89,6 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
 
   std::vector<arangodb::StringRef> _neighbors;
   std::vector<graph::EdgeDocumentToken> _edges;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief The options to modify this shortest path computation
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::graph::ShortestPathOptions* _options;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reusable ManagedDocumentResult that temporarily takes

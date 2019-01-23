@@ -194,7 +194,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   /// @brief create the PathFinder
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit AttributeWeightShortestPathFinder(ShortestPathOptions* options);
+  explicit AttributeWeightShortestPathFinder(ShortestPathOptions& options);
 
   ~AttributeWeightShortestPathFinder();
 
@@ -282,8 +282,6 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
 
  private:
   std::unique_ptr<ManagedDocumentResult> _mmdr;
-
-  ShortestPathOptions* _options;
 };
 
 }  // namespace graph

@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionBlockShutdownableImpl.h"
+#include "Aql/ShortestPathExecutor.h"
 #include "Aql/TraversalExecutor.h"
 #include "ExecutionBlockImpl.h"
 
@@ -49,3 +50,4 @@ std::pair<ExecutionState, Result> ExecutionBlockShutdownableImpl<Executor>::shut
 }
 
 template class ::arangodb::aql::ExecutionBlockShutdownableImpl<TraversalExecutor>;
+template class ::arangodb::aql::ExecutionBlockShutdownableImpl<ShortestPathExecutor>;

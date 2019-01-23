@@ -90,9 +90,9 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine, ShortestPathNode c
   _path = std::make_unique<arangodb::graph::ShortestPathResult>();
 
   if (_opts->useWeight()) {
-    _finder.reset(new arangodb::graph::AttributeWeightShortestPathFinder(_opts));
+    _finder.reset(new arangodb::graph::AttributeWeightShortestPathFinder(*_opts));
   } else {
-    _finder.reset(new arangodb::graph::ConstantWeightShortestPathFinder(_opts));
+    _finder.reset(new arangodb::graph::ConstantWeightShortestPathFinder(*_opts));
   }
 
   if (arangodb::ServerState::instance()->isCoordinator()) {

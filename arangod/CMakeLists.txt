@@ -259,6 +259,7 @@ SET(ARANGOD_SOURCES
   Aql/SharedQueryState.cpp
   Aql/ShortStringStorage.cpp
   Aql/ShortestPathBlock.cpp
+  Aql/ShortestPathExecutor.cpp
   Aql/ShortestPathNode.cpp
   Aql/SingleRowFetcher.cpp
   Aql/SortCondition.cpp
@@ -366,6 +367,7 @@ SET(ARANGOD_SOURCES
   Graph/GraphOperations.cpp
   Graph/NeighborsEnumerator.cpp
   Graph/PathEnumerator.cpp
+  Graph/ShortestPathFinder.cpp
   Graph/ShortestPathOptions.cpp
   Graph/ShortestPathResult.cpp
   Graph/SingleServerEdgeCursor.cpp
