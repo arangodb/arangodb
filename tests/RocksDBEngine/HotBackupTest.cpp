@@ -68,6 +68,11 @@ TEST_CASE("RocksDBHotBackup path tests", "[rocksdb][devel]") {
             "/var/db/SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe_2019-01-23T14.47.42Z_1.2.3.14159");
     CHECK(testee.buildDirectoryPath("2019-01-23T14:47:42Z","Today\'s Hot Backup") ==
             "/var/db/SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe_2019-01-23T14.47.42Z_Today.s_Hot_Backup");
+    std::string raw_string("Toodaay\'s hot");
+    raw_string[1]=(char)1;
+    raw_string[5]=(char)5;
+    CHECK(testee.buildDirectoryPath("2019-01-23T14:47:42Z",raw_string) ==
+            "/var/db/SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe_2019-01-23T14.47.42Z_Today.s_hot");
   }
 
 }

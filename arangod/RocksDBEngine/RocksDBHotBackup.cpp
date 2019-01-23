@@ -109,7 +109,7 @@ std::string RocksDBHotBackup::buildDirectoryPath(const std::string & timestamp, 
     } else if (ispunct(*it)) {
       *it='.';
     } else {
-      suffix.erase(it,it);
+      suffix.erase(it,it+1);
     } // else
   } // for
 
