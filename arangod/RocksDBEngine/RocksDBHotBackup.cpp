@@ -92,12 +92,14 @@ std::string RocksDBHotBackup::buildDirectoryPath(const std::string & timestamp, 
   ret_string = databasePathFeature->directory();
   ret_string += TRI_DIR_SEPARATOR_CHAR;
 
-  if (!ServerState::instance()->isSingleServer()) {
-    ret_string += ServerState::instance()->getPersistedId();
-  } else {
-    ret_string += "hotbackup";
-  } // else
+  // single server does not have UUID file by default, might need to force the issue
+  if (ServerState::instance()->isSingleServer()) {
+    if (!ServerState::instance()->hasPersistedId()) {
+      ServerState::instance()->generatePersistedId(ServerState::ROLE_SINGLE);
+    } // if
+  } // if
 
+  ret_string += ServerState::instance()->getPersistedId();
   ret_string += "_";
   ret_string += timestamp;
 
@@ -209,6 +211,15 @@ void RocksDBHotBackupCreate::executeCreate() {
   if (stat.ok()) {
     _respCode = rest::ResponseCode::OK;
     _respError = TRI_ERROR_NO_ERROR;
+    _success = true;
+
+    // velocypack loves to throw. wrap it.
+    try {
+      _result.add(VPackValue(VPackValueType::Object));
+      _result.add("directory", VPackValue(dirPath));
+      _result.close();
+    } catch (...) {
+    }
   } else {
   } //else
 

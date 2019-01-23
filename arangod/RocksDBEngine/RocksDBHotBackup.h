@@ -54,15 +54,17 @@ public:
   // @brief Execute the operation
   virtual void execute() {};
 
+  VPackSlice resultSlice() {return _result.slice();};
+
 protected:
   std::string buildDirectoryPath(const std::string & timestamp, const std::string & userString);
-
 
   bool _valid;          // are parameters valid
   bool _success;        // did operation finish successfully
 
   rest::ResponseCode _respCode;
   int _respError;
+  VPackBuilder _result;
 
 };// class RocksDBHotBackup
 
