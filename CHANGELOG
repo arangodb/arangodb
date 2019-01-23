@@ -1,5 +1,9 @@
-v3.3.22 (2019-01-17)
+v3.3.22 (2019-01-25)
 --------------------
+
+* upgraded arangodb starter version to 0.14.0
+
+* upgraded arangosync version to 0.6.2
 
 * fixed an issue where a crashed coordinator can lead to some Foxx queue jobs
   erroneously either left hanging or being restarted
