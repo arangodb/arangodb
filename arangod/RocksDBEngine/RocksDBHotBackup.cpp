@@ -22,6 +22,8 @@
 #include "RocksDBHotBackup.h"
 #include "RocksDBHotBackupCoord.h"
 
+#include <ctype.h>
+
 #include "Agency/TimeString.h"
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "Cluster/ServerState.h"
@@ -83,14 +85,48 @@ RocksDBHotBackup::RocksDBHotBackup()
 RocksDBHotBackup::~RocksDBHotBackup() {};
 
 std::string RocksDBHotBackup::buildDirectoryPath(const std::string & timestamp, const std::string & userString) {
-  std::string ret_string;
+  std::string ret_string, suffix;
 
-  // get base path from DatabaseServerFeature
-  auto databasePathFeature =
-      application_features::ApplicationServer::getFeature<DatabasePathFeature>(
-          "DatabasePath");
-  ret_string = databasePathFeature->directory();
+  suffix = getPersistedId();
+  suffix += "_";
+  suffix += timestamp;
+
+  if (0 != userString.length()) {
+    // limit directory name to 254 characters
+    suffix += "_";
+    suffix.append(userString, 0, 254-suffix.size());
+  }
+
+  // clean up directory name
+  for (auto it=suffix.begin(); suffix.end()!=it; ) {
+    if (isalnum(*it)) {
+      ++it;
+    } else if (isspace(*it)) {
+      *it = '_';
+      ++it;
+    } else if ('-'==*it || '_'==*it || '.'==*it) {
+      ++it;
+    } else if (ispunct(*it)) {
+      *it='.';
+    } else {
+      suffix.erase(it,it);
+    } // else
+  } // for
+
+  ret_string = getDatabasePath();
   ret_string += TRI_DIR_SEPARATOR_CHAR;
+  ret_string += suffix;
+
+  return ret_string;
+
+} // RocksDBHotBackup::buildDirectoryPath
+
+
+//
+// @brief Wrapper for ServerState::instance()->getPersistedId() to simplify
+//        unit testing
+//
+std::string RocksDBHotBackup::getPersistedId() {
 
   // single server does not have UUID file by default, might need to force the issue
   if (ServerState::instance()->isSingleServer()) {
@@ -99,20 +135,23 @@ std::string RocksDBHotBackup::buildDirectoryPath(const std::string & timestamp, 
     } // if
   } // if
 
-  ret_string += ServerState::instance()->getPersistedId();
-  ret_string += "_";
-  ret_string += timestamp;
+  return ServerState::instance()->getPersistedId();
 
-// does userString need to be cleaned for directory name ...
-  if (0 != userString.length()) {
-    // limit directory name to 254 characters
-    ret_string += "_";
-    ret_string.append(userString, 0, 254-ret_string.size());
-  }
+} // RocksDBHotBackup::getPersistedId
 
-  return ret_string;
 
-} // RocksDBHotBackup::buildDirectoryPath
+//
+// @brief Wrapper for getFeature<DatabasePathFeature> to simplify
+//        unit testing
+//
+std::string RocksDBHotBackup::getDatabasePath() {
+  // get base path from DatabaseServerFeature
+  auto databasePathFeature =
+      application_features::ApplicationServer::getFeature<DatabasePathFeature>(
+          "DatabasePath");
+  return databasePathFeature->directory();
+
+} // RocksDBHotBackup::getDatabasePath
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief RocksDBHotBackupCreate

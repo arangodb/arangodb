@@ -23,8 +23,6 @@
 #define ARANGOD_ROCKSDB_HOTBACKUP_H 1
 
 #include <velocypack/velocypack-aliases.h>
-//#include "Basics/Result.h"
-//#include "RocksDBCommon.h"
 #include "Rest/GeneralResponse.h"
 
 namespace arangodb {
@@ -57,7 +55,7 @@ public:
   VPackSlice resultSlice() {return _result.slice();};
 
 protected:
-  std::string buildDirectoryPath(const std::string & timestamp, const std::string & userString);
+  virtual std::string buildDirectoryPath(const std::string & timestamp, const std::string & userString);
 
   bool _valid;          // are parameters valid
   bool _success;        // did operation finish successfully
@@ -66,6 +64,12 @@ protected:
   int _respError;
   VPackBuilder _result;
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief The following wrapper routines simplify unit testing
+  ////////////////////////////////////////////////////////////////////////////////
+  virtual std::string getDatabasePath();
+
+  virtual std::string getPersistedId();
 };// class RocksDBHotBackup
 
 

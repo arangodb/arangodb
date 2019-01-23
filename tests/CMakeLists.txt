@@ -138,6 +138,7 @@ set(ARANGODB_TESTS_SOURCES
   Pregel/typedbuffer.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
+  RocksDBEngine/HotBackupTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
