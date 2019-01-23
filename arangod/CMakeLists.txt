@@ -186,7 +186,6 @@ SET(ARANGOD_SOURCES
   Aql/AstNode.cpp
   Aql/AttributeAccessor.cpp
   Aql/BaseExpressionContext.cpp
-  Aql/BasicBlocks.cpp
   Aql/BindParameters.cpp
   Aql/BlockCollector.cpp
   Aql/BlockFetcher.cpp
