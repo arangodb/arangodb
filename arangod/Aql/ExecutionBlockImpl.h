@@ -26,6 +26,9 @@
 #ifndef ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H
 #define ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H 1
 
+#include <functional>
+#include <queue>
+
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/BlockFetcher.h"
 #include "Aql/ExecutionBlock.h"
@@ -92,8 +95,9 @@ class ExecutionBlockImpl : public ExecutionBlock {
   using BlockFetcher =
       typename aql::BlockFetcher<Executor::Properties::allowsBlockPassthrough>;
 
-  static_assert(!Executor::Properties::allowsBlockPassthrough || Executor::Properties::preservesOrder,
-                "allowsBlockPassthrough must imply preservesOrder, but does not!");
+  static_assert(
+      !Executor::Properties::allowsBlockPassthrough || Executor::Properties::preservesOrder,
+      "allowsBlockPassthrough must imply preservesOrder, but does not!");
 
  public:
   /**
@@ -180,8 +184,28 @@ class ExecutionBlockImpl : public ExecutionBlock {
 
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeWithoutTrace(size_t atMost);
 
-  std::unique_ptr<OutputAqlItemBlockShell> requestWrappedBlock(size_t nrItems,
-                                                               RegisterId nrRegs);
+  /**
+   * @brief Allocates a new AqlItemBlock and returns it in a shell, with the
+   *        specified number of rows (nrItems) and columns (nrRegs).
+   *        In case the Executor supports pass-through of blocks (i.e. reuse the
+   *        input blocks as output blocks), it returns such an input block. In
+   *        this case, the number of columns must still match - this has to be
+   *        guaranteed by register planning.
+   *        The state will be HASMORE if and only if it returns an actual block,
+   *        which it always will in the non-pass-through case (modulo
+   *        exceptions). If it is WAITING or DONE, the return shell is always a
+   *        nullptr. This Happens only if upstream is WAITING, or respectively,
+   *        if it is DONE and did not return a new block.
+   */
+  std::pair<ExecutionState, std::unique_ptr<OutputAqlItemBlockShell>> requestWrappedBlock(
+      size_t nrItems, RegisterId nrRegs);
+
+  static std::function<void(std::shared_ptr<AqlItemBlockShell>)> createPassThroughCallback(
+      ExecutionBlockImpl& that);
+
+  void pushPassThroughBlock(std::shared_ptr<AqlItemBlockShell> shell) {
+    _passThroughBlocks.push(shell);
+  }
 
  private:
   /**
@@ -205,6 +229,14 @@ class ExecutionBlockImpl : public ExecutionBlock {
   Executor _executor;
 
   std::unique_ptr<OutputAqlItemRow> _outputItemRow;
+
+  /**
+   * @brief In case the input blocks can be passed through as output blocks, the
+   *        block fetcher will push fetched input blocks onto this queue for us
+   *        to consume when creating OutputAqlItemBlockShells.
+   *        Otherwise, this will stay empty.
+   */
+  std::queue<std::shared_ptr<AqlItemBlockShell>> _passThroughBlocks;
 };
 
 }  // namespace aql

@@ -39,18 +39,19 @@ using namespace arangodb::aql;
 // Note that _itemBlockManager gets passed first to the parent constructor,
 // and only then gets instantiated. That is okay, however, because the
 // constructor will not access it.
-template<bool repositShells>
+template <bool repositShells>
 BlockFetcherMock<repositShells>::BlockFetcherMock(arangodb::aql::ResourceMonitor& monitor,
-                                   ::arangodb::aql::RegisterId nrRegisters)
+                                                  ::arangodb::aql::RegisterId nrRegisters)
     : BlockFetcher<repositShells>({}, _itemBlockManager,
-                   std::shared_ptr<std::unordered_set<RegisterId>>(), nrRegisters, nullptr),
+                                  std::shared_ptr<std::unordered_set<RegisterId>>(),
+                                  nrRegisters, createRepositBlockCallback()),
       _itemsToReturn(),
       _fetchedBlocks(),
       _numFetchBlockCalls(0),
       _monitor(monitor),
       _itemBlockManager(&_monitor) {}
 
-template<bool repositShells>
+template <bool repositShells>
 std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>> BlockFetcherMock<repositShells>::fetchBlock() {
   _numFetchBlockCalls++;
 
@@ -60,10 +61,10 @@ std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>> BlockFetcherM
 
   std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>> returnValue =
       std::move(_itemsToReturn.front());
-  _itemsToReturn.pop_front();
+  _itemsToReturn.pop();
 
   if (returnValue.second != nullptr) {
-    auto blockPtr = reinterpret_cast<AqlItemBlockPtr>(returnValue.second.get());
+    auto blockPtr = reinterpret_cast<AqlItemBlockPtr>(&returnValue.second->block());
     bool didInsert;
     std::tie(std::ignore, didInsert) = _fetchedBlocks.insert(blockPtr);
     // BlockFetcherMock<repositShells>::fetchBlock() should not return the same block twice:
@@ -77,16 +78,16 @@ std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>> BlockFetcherM
  * Test helper functions
  * * * * * * * * * * * * */
 
-template<bool repositShells>
-BlockFetcherMock<repositShells>& BlockFetcherMock<repositShells>::shouldReturn(ExecutionState state,
-                                                 std::unique_ptr<AqlItemBlock> block) {
+template <bool repositShells>
+BlockFetcherMock<repositShells>& BlockFetcherMock<repositShells>::shouldReturn(
+    ExecutionState state, std::unique_ptr<AqlItemBlock> block) {
   // Should only be called once on each instance
   TRI_ASSERT(_itemsToReturn.empty());
 
   return andThenReturn(state, std::move(block));
 }
 
-template<bool repositShells>
+template <bool repositShells>
 BlockFetcherMock<repositShells>& BlockFetcherMock<repositShells>::shouldReturn(
     std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>> firstReturnValue) {
   // Should only be called once on each instance
@@ -95,7 +96,7 @@ BlockFetcherMock<repositShells>& BlockFetcherMock<repositShells>::shouldReturn(
   return andThenReturn(std::move(firstReturnValue));
 }
 
-template<bool repositShells>
+template <bool repositShells>
 BlockFetcherMock<repositShells>& BlockFetcherMock<repositShells>::shouldReturn(
     std::vector<std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>> firstReturnValues) {
   // Should only be called once on each instance
@@ -104,17 +105,17 @@ BlockFetcherMock<repositShells>& BlockFetcherMock<repositShells>::shouldReturn(
   return andThenReturn(std::move(firstReturnValues));
 }
 
-template<bool repositShells>
-BlockFetcherMock<repositShells>& BlockFetcherMock<repositShells>::andThenReturn(ExecutionState state,
-                                                  std::unique_ptr<AqlItemBlock> block) {
+template <bool repositShells>
+BlockFetcherMock<repositShells>& BlockFetcherMock<repositShells>::andThenReturn(
+    ExecutionState state, std::unique_ptr<AqlItemBlock> block) {
   auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
   // add all registers as input
-/* Note: without the `this->` in the following line, I'm getting this error:
-/home/tobias/Documents/ArangoDB/arangodb/arangodb/tests/Aql/BlockFetcherMock.cpp:112:30: error: use of undeclared identifier 'getNrInputRegisters'
-  for (RegisterId i = 0; i < getNrInputRegisters(); i++) {
-                             ^
- * wth? with clang version 6.0.0-1ubuntu2
- */
+  /* Note: without the `this->` in the following line, I'm getting this error:
+  /home/tobias/Documents/ArangoDB/arangodb/arangodb/tests/Aql/BlockFetcherMock.cpp:112:30: error: use of undeclared identifier 'getNrInputRegisters'
+    for (RegisterId i = 0; i < getNrInputRegisters(); i++) {
+                               ^
+   * wth? with clang version 6.0.0-1ubuntu2
+   */
   for (RegisterId i = 0; i < this->getNrInputRegisters(); i++) {
     inputRegisters->emplace(i);
   }
@@ -127,15 +128,15 @@ BlockFetcherMock<repositShells>& BlockFetcherMock<repositShells>::andThenReturn(
   return andThenReturn({state, std::move(inputBlockShell)});
 }
 
-template<bool repositShells>
+template <bool repositShells>
 BlockFetcherMock<repositShells>& BlockFetcherMock<repositShells>::andThenReturn(
     std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>> additionalReturnValue) {
-  _itemsToReturn.emplace_back(std::move(additionalReturnValue));
+  _itemsToReturn.push(std::move(additionalReturnValue));
 
   return *this;
 }
 
-template<bool repositShells>
+template <bool repositShells>
 BlockFetcherMock<repositShells>& BlockFetcherMock<repositShells>::andThenReturn(
     std::vector<std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>> additionalReturnValues) {
   for (auto& it : additionalReturnValues) {
@@ -145,13 +146,27 @@ BlockFetcherMock<repositShells>& BlockFetcherMock<repositShells>::andThenReturn(
   return *this;
 }
 
-template<bool repositShells>
+template <bool repositShells>
 bool BlockFetcherMock<repositShells>::allBlocksFetched() const {
   return _itemsToReturn.empty();
 }
-template<bool repositShells>
+
+template <bool repositShells>
 size_t BlockFetcherMock<repositShells>::numFetchBlockCalls() const {
   return _numFetchBlockCalls;
+}
+
+template <bool repositShells>
+std::function<void(std::shared_ptr<AqlItemBlockShell>)> BlockFetcherMock<repositShells>::createRepositBlockCallback() {
+  if (repositShells) {
+    // We need to pass something non-null to the parent:
+    return [](std::shared_ptr<AqlItemBlockShell>) {
+      // Should never be called, the parent class is not used.
+      REQUIRE(false);
+    };
+  } else {
+    return nullptr;
+  }
 }
 
 }  // namespace aql

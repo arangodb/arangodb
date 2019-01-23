@@ -29,11 +29,11 @@
 #include "catch.hpp"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/InputAqlItemRow.h"
 #include "Aql/BlockFetcher.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/FilterExecutor.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
 
@@ -50,6 +50,9 @@ namespace aql {
 // TODO check that blocks are not returned to early (e.g. not before the next row
 //      is fetched)
 
+// TODO check that, for SingleRowFetcher<true>, blocks are reposited (passed through) immediately
+//      after they have been fetched
+
 SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
   ResourceMonitor monitor;
   ExecutionState state;
@@ -61,27 +64,32 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
  *
  * ATTENTION: The following tests are duplicated this way!
  */
-#define FOR_BOOLS(v1, v2, b) \
-  { constexpr bool TestBool = v1; b; } \
-  { constexpr bool TestBool = v2; b; }
+// clang-format off
+#define _FOR_BLOCK(name, v, block) \
+  { constexpr bool name = v; block; }
+#define FOR_BOOLS(name, block) \
+  _FOR_BLOCK(name, true, block) \
+  _FOR_BLOCK(name, false, block)
+// clang-format on
 
-  FOR_BOOLS(false, true, ({
-    GIVEN("there are no blocks upstream") {
+  FOR_BOOLS(passBlocksThrough, ({
+    // This is necessary so the internal catch name stays unique!
+    GIVEN(std::string{"there are no blocks upstream, passBlocksThrough="} + std::string{passBlocksThrough}) {
       VPackBuilder input;
-      BlockFetcherMock<TestBool> blockFetcherMock{monitor, 0};
+      BlockFetcherMock<passBlocksThrough> blockFetcherMock{monitor, 0};
 
       WHEN("the producer does not wait") {
         blockFetcherMock.shouldReturn(ExecutionState::DONE, nullptr);
 
         {
-          SingleRowFetcher<TestBool> testee(blockFetcherMock);
+          SingleRowFetcher<passBlocksThrough> testee(blockFetcherMock);
 
           THEN("the fetcher should return DONE with nullptr") {
             std::tie(state, row) = testee.fetchRow();
             REQUIRE(state == ExecutionState::DONE);
             REQUIRE(!row);
           }
-        } // testee is destroyed here
+        }  // testee is destroyed here
         // testee must be destroyed before verify, because it may call returnBlock
         // in the destructor
         REQUIRE(blockFetcherMock.allBlocksFetched());
@@ -89,11 +97,10 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
       }
 
       WHEN("the producer waits") {
-        blockFetcherMock.shouldReturn(ExecutionState::WAITING, nullptr)
-                        .andThenReturn(ExecutionState::DONE, nullptr);
+        blockFetcherMock.shouldReturn(ExecutionState::WAITING, nullptr).andThenReturn(ExecutionState::DONE, nullptr);
 
         {
-          SingleRowFetcher<TestBool> testee(blockFetcherMock);
+          SingleRowFetcher<passBlocksThrough> testee(blockFetcherMock);
 
           THEN("the fetcher should first return WAIT with nullptr") {
             std::tie(state, row) = testee.fetchRow();
@@ -106,7 +113,7 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
               REQUIRE(!row);
             }
           }
-        } // testee is destroyed here
+        }  // testee is destroyed here
         // testee must be destroyed before verify, because it may call returnBlock
         // in the destructor
         REQUIRE(blockFetcherMock.allBlocksFetched());
@@ -114,10 +121,11 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
       }
     }
 
-    GIVEN("A single upstream block with a single row") {
+    // This is necessary so the internal catch name stays unique!
+    GIVEN(std::string{"A single upstream block with a single row, passBlocksThrough="} + std::string{passBlocksThrough}) {
       VPackBuilder input;
       ResourceMonitor monitor;
-      BlockFetcherMock<TestBool> blockFetcherMock{monitor, 1};
+      BlockFetcherMock<passBlocksThrough> blockFetcherMock{monitor, 1};
 
       std::unique_ptr<AqlItemBlock> block = buildBlock<1>(&monitor, {{42}});
 
@@ -125,7 +133,7 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
         blockFetcherMock.shouldReturn(ExecutionState::DONE, std::move(block));
 
         {
-          SingleRowFetcher<TestBool> testee(blockFetcherMock);
+          SingleRowFetcher<passBlocksThrough> testee(blockFetcherMock);
 
           THEN("the fetcher should return the row with DONE") {
             std::tie(state, row) = testee.fetchRow();
@@ -134,7 +142,7 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
             REQUIRE(row.getNrRegisters() == 1);
             REQUIRE(row.getValue(0).slice().getInt() == 42);
           }
-        } // testee is destroyed here
+        }  // testee is destroyed here
         // testee must be destroyed before verify, because it may call returnBlock
         // in the destructor
         REQUIRE(blockFetcherMock.allBlocksFetched());
@@ -146,7 +154,7 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
             .andThenReturn(ExecutionState::DONE, nullptr);
 
         {
-          SingleRowFetcher<TestBool> testee(blockFetcherMock);
+          SingleRowFetcher<passBlocksThrough> testee(blockFetcherMock);
 
           THEN("the fetcher should return the row with HASMORE") {
             std::tie(state, row) = testee.fetchRow();
@@ -161,7 +169,7 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
               REQUIRE(!row);
             }
           }
-        } // testee is destroyed here
+        }  // testee is destroyed here
         // testee must be destroyed before verify, because it may call returnBlock
         // in the destructor
         REQUIRE(blockFetcherMock.allBlocksFetched());
@@ -173,7 +181,7 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
             .andThenReturn(ExecutionState::DONE, std::move(block));
 
         {
-          SingleRowFetcher<TestBool> testee(blockFetcherMock);
+          SingleRowFetcher<passBlocksThrough> testee(blockFetcherMock);
 
           THEN("the fetcher should first return WAIT with nullptr") {
             std::tie(state, row) = testee.fetchRow();
@@ -188,7 +196,7 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
               REQUIRE(row.getValue(0).slice().getInt() == 42);
             }
           }
-        } // testee is destroyed here
+        }  // testee is destroyed here
         // testee must be destroyed before verify, because it may call returnBlock
         // in the destructor
         REQUIRE(blockFetcherMock.allBlocksFetched());
@@ -201,7 +209,7 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
             .andThenReturn(ExecutionState::DONE, nullptr);
 
         {
-          SingleRowFetcher<TestBool> testee(blockFetcherMock);
+          SingleRowFetcher<passBlocksThrough> testee(blockFetcherMock);
 
           THEN("the fetcher should first return WAIT with nullptr") {
             std::tie(state, row) = testee.fetchRow();
@@ -222,7 +230,7 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
               }
             }
           }
-        } // testee is destroyed here
+        }  // testee is destroyed here
         // testee must be destroyed before verify, because it may call returnBlock
         // in the destructor
         REQUIRE(blockFetcherMock.allBlocksFetched());
@@ -232,15 +240,16 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
 
     // TODO the following tests should be simplified, a simple output
     // specification should be compared with the actual output.
-    GIVEN("there are multiple blocks upstream") {
+
+    // This is necessary so the internal catch name stays unique!
+    GIVEN(std::string{"there are multiple blocks upstream, passBlocksThrough="} + std::string{passBlocksThrough}) {
       ResourceMonitor monitor;
-      BlockFetcherMock<TestBool> blockFetcherMock{monitor, 1};
+      BlockFetcherMock<passBlocksThrough> blockFetcherMock{monitor, 1};
 
       // three 1-column matrices with 3, 2 and 1 rows, respectively
       std::unique_ptr<AqlItemBlock> block1 = buildBlock<1>(&monitor, {{{1}}, {{2}}, {{3}}}),
                                     block2 = buildBlock<1>(&monitor, {{{4}}, {{5}}}),
                                     block3 = buildBlock<1>(&monitor, {{{6}}});
-
 
       WHEN("the producer does not wait") {
         blockFetcherMock.shouldReturn(ExecutionState::HASMORE, std::move(block1))
@@ -248,7 +257,7 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
                         .andThenReturn(ExecutionState::DONE, std::move(block3));
 
         {
-          SingleRowFetcher<TestBool> testee(blockFetcherMock);
+          SingleRowFetcher<passBlocksThrough> testee(blockFetcherMock);
 
           THEN("the fetcher should return all rows and DONE with the last") {
             int64_t rowIdxAndValue;
@@ -266,7 +275,7 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
             REQUIRE(row.getNrRegisters() == 1);
             REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
           }
-        } // testee is destroyed here
+        }  // testee is destroyed here
         // testee must be destroyed before verify, because it may call returnBlock
         // in the destructor
         REQUIRE(blockFetcherMock.allBlocksFetched());
@@ -282,7 +291,7 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
             .andThenReturn(ExecutionState::DONE, std::move(block3));
 
         {
-          SingleRowFetcher<TestBool> testee(blockFetcherMock);
+          SingleRowFetcher<passBlocksThrough> testee(blockFetcherMock);
 
           THEN("the fetcher should return all rows and DONE with the last") {
             size_t rowIdxAndValue;
@@ -311,7 +320,7 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
             REQUIRE(row.getNrRegisters() == 1);
             REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
           }
-        } // testee is destroyed here
+        }  // testee is destroyed here
         // testee must be destroyed before verify, because it may call returnBlock
         // in the destructor
         REQUIRE(blockFetcherMock.allBlocksFetched());
@@ -329,7 +338,7 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
         ;
 
         {
-          SingleRowFetcher<TestBool> testee(blockFetcherMock);
+          SingleRowFetcher<passBlocksThrough> testee(blockFetcherMock);
 
           THEN("the fetcher should return all rows and DONE with the last") {
             for (size_t rowIdxAndValue = 1; rowIdxAndValue <= 6; rowIdxAndValue++) {
@@ -349,7 +358,7 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
             REQUIRE(state == ExecutionState::DONE);
             REQUIRE(!row);
           }
-        } // testee is destroyed here
+        }  // testee is destroyed here
         // testee must be destroyed before verify, because it may call returnBlock
         // in the destructor
         REQUIRE(blockFetcherMock.allBlocksFetched());

@@ -55,10 +55,12 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
     : ExecutionBlock(engine, node),
       _blockFetcher(_dependencies, _engine->itemBlockManager(),
                     infos.getInputRegisters(), infos.numberOfInputRegisters(),
-                    nullptr /* TODO pass repositShell callback!*/),
+                    createPassThroughCallback(*this)),
       _rowFetcher(_blockFetcher),
       _infos(std::move(infos)),
-      _executor(_rowFetcher, _infos) {}
+      _executor(_rowFetcher, _infos),
+      _outputItemRow(nullptr),
+      _passThroughBlocks() {}
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
@@ -92,7 +94,15 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
   }
 
   if (!_outputItemRow) {
-    auto newBlock = requestWrappedBlock(atMost, _infos.numberOfOutputRegisters());
+    ExecutionState state;
+    std::unique_ptr<OutputAqlItemBlockShell> newBlock;
+    std::tie(state, newBlock) =
+        requestWrappedBlock(atMost, _infos.numberOfOutputRegisters());
+    if (state != ExecutionState::HASMORE) {
+      TRI_ASSERT(newBlock == nullptr);
+      return {state, nullptr};
+    }
+    TRI_ASSERT(newBlock != nullptr);
     _outputItemRow = std::make_unique<OutputAqlItemRow>(std::move(newBlock));
   }
 
@@ -183,7 +193,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   new (&_blockFetcher)
       BlockFetcher(_dependencies, _engine->itemBlockManager(),
                    _infos.getInputRegisters(), _infos.numberOfInputRegisters(),
-                   nullptr /* TODO pass repositShell callback */);
+                   createPassThroughCallback(*this));
 
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
@@ -212,7 +222,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor>::initializeCurs
   new (&_blockFetcher)
       BlockFetcher(_dependencies, _engine->itemBlockManager(),
                    _infos.getInputRegisters(), _infos.numberOfInputRegisters(),
-                   nullptr /* TODO pass repositShell callback */);
+                   createPassThroughCallback(*this));
 
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
@@ -239,14 +249,33 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor>::initializeCurs
 }
 
 template <class Executor>
-std::unique_ptr<OutputAqlItemBlockShell> ExecutionBlockImpl<Executor>::requestWrappedBlock(
-    size_t nrItems, RegisterId nrRegs) {
+std::pair<ExecutionState, std::unique_ptr<OutputAqlItemBlockShell>>
+ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrRegs) {
   AqlItemBlock* block = requestBlock(nrItems, nrRegs);
 
   std::shared_ptr<AqlItemBlockShell> blockShell;
   if (Executor::Properties::allowsBlockPassthrough) {
-    // TODO reuse input block
-    TRI_ASSERT(false);  // not yet implemented
+    // If blocks can be passed through, we do not create new blocks.
+    // Instead, we take the input blocks from _passThroughBlocks which is pushed onto by
+    // the BlockFetcher whenever it fetches an input block from upstream and reuse them.
+    if (_passThroughBlocks.empty()) {
+      ExecutionState state = _blockFetcher.prefetchBlock();
+      if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
+        return {state, nullptr};
+      }
+      TRI_ASSERT(state == ExecutionState::HASMORE);
+    }
+    // Now we must have a block.
+    TRI_ASSERT(!_passThroughBlocks.empty());
+    // Even more than that, there must be exactly one block here. As for all
+    // actual Executor implementations there can never be more than one; and I
+    // don't expect this to change for new Executors.
+    TRI_ASSERT(_passThroughBlocks.size() == 1);
+    blockShell = _passThroughBlocks.front();
+    _passThroughBlocks.pop();
+    // Assert that the block has enough registers. This must be guaranteed by
+    // the register planning.
+    TRI_ASSERT(blockShell->block().getNrRegs() == nrRegs);
   } else {
     blockShell =
         std::make_shared<AqlItemBlockShell>(_engine->itemBlockManager(),
@@ -256,7 +285,19 @@ std::unique_ptr<OutputAqlItemBlockShell> ExecutionBlockImpl<Executor>::requestWr
   std::unique_ptr<OutputAqlItemBlockShell> outputBlockShell =
       std::make_unique<OutputAqlItemBlockShell>(blockShell, _infos.getOutputRegisters(),
                                                 _infos.registersToKeep());
-  return outputBlockShell;
+  return {ExecutionState::HASMORE, std::move(outputBlockShell)};
+}
+
+template <class Executor>
+std::function<void(std::shared_ptr<AqlItemBlockShell>)>
+ExecutionBlockImpl<Executor>::createPassThroughCallback(ExecutionBlockImpl& that) {
+  if (Executor::Properties::allowsBlockPassthrough) {
+    return [&that](std::shared_ptr<AqlItemBlockShell> shell) -> void {
+      that.pushPassThroughBlock(shell);
+    };
+  } else {
+    return nullptr;
+  }
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor>;

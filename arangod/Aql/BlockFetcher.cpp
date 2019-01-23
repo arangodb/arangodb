@@ -25,22 +25,56 @@
 using namespace arangodb::aql;
 
 template <bool repositShells>
-std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>> BlockFetcher<repositShells>::fetchBlock() {
+ExecutionState BlockFetcher<repositShells>::prefetchBlock() {
   ExecutionState state;
   std::unique_ptr<AqlItemBlock> block;
   std::tie(state, block) = upstreamBlock().getSome(ExecutionBlock::DefaultBatchSize());
-  if (block != nullptr) {
-    auto blockShell =
-        std::make_shared<AqlItemBlockShell>(itemBlockManager(), std::move(block));
-    if (repositShells) {
-      _repositShell(blockShell);
-    }
-    auto inputBlockShell =
-        std::make_shared<InputAqlItemBlockShell>(blockShell, _inputRegisters);
-    return {state, inputBlockShell};
-  } else {
-    return {state, nullptr};
+
+  if (state == ExecutionState::WAITING) {
+    TRI_ASSERT(block == nullptr);
+    return state;
   }
+
+  if (block == nullptr) {
+    // We're not waiting and didn't get a block, so we have to be done.
+    TRI_ASSERT(state == ExecutionState::DONE);
+    return state;
+  }
+
+  // Now we definitely have a block.
+  TRI_ASSERT(block != nullptr);
+
+  auto blockShell =
+      std::make_shared<AqlItemBlockShell>(itemBlockManager(), std::move(block));
+  if (repositShells) {
+    // Reposit blockShell in ExecutionBlockImpl, for pass-through executors.
+    _repositShell(blockShell);
+  }
+
+  _blockShellQueue.push({state, blockShell});
+  return ExecutionState::HASMORE;
+}
+
+template <bool repositShells>
+std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>> BlockFetcher<repositShells>::fetchBlock() {
+  if (_blockShellQueue.empty()) {
+    ExecutionState state = prefetchBlock();
+    // prefetchBlock returns HASMORE iff it pushed a block onto _blockShellQueue.
+    // If it didn't, it got either WAITING from upstream, or DONE + nullptr.
+    if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
+      return {state, nullptr};
+    }
+    TRI_ASSERT(state == ExecutionState::HASMORE);
+  }
+
+  ExecutionState state;
+  std::shared_ptr<AqlItemBlockShell> blockShell;
+  std::tie(state, blockShell) = _blockShellQueue.front();
+  _blockShellQueue.pop();
+
+  auto inputBlockShell =
+      std::make_shared<InputAqlItemBlockShell>(blockShell, _inputRegisters);
+  return {state, inputBlockShell};
 }
 
 template class ::arangodb::aql::BlockFetcher<true>;
