@@ -765,6 +765,7 @@ if test "${DOWNLOAD_STARTER}" == 1; then
     STARTER_URL=$(curl -s "https://api.github.com/repos/arangodb-helper/arangodb/releases/tags/${STARTER_REV}" | \
                          grep browser_download_url | \
                          grep "${OSNAME}" | \
+                         grep -vi "ARM" | \
                          ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'
                )
     if test -n "${STARTER_URL}"; then
