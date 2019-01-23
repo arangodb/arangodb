@@ -228,15 +228,36 @@ function optimizerRuleTestSuite () {
         result = AQL_EXECUTE(query[0], { "@cn" : cn });
         assertEqual(query[1], result.json);
       });
+    },
+
+    testJoin : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
+
+      let queries = [
+        "FOR doc1 IN @@cn FOR doc2 IN @@cn FILTER doc1.value == doc2._key RETURN [doc1._key, doc2._key]",
+        "FOR doc1 IN @@cn FOR doc2 IN @@cn FILTER doc1.value == doc2._key RETURN [doc1.value, doc2._key]",
+      ];
+      
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query, { "@cn" : cn });
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+      
+        let found = 0;
+        result.plan.nodes.filter(function(node) { 
+          return node.type === 'IndexNode' || node.type === 'EnumerateCollectionNode';
+        }).forEach(function(node) {
+          assertNotEqual([], node.projections);
+          ++found;
+        });
+
+        assertEqual(2, found);
+      });
     }
     
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(optimizerRuleTestSuite);
 
 return jsunity.done();

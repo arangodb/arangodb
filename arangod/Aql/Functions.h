@@ -50,8 +50,6 @@ typedef AqlValue (*FunctionImplementation)(arangodb::aql::ExpressionContext*,
 
 struct Functions {
  public:
-  static void init();
-
   /// @brief helper function. not callable as a "normal" AQL function
   static void Stringify(transaction::Methods* trx,
                         arangodb::basics::VPackStringBufferAdapter& buffer,

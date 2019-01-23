@@ -908,12 +908,14 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous, AstNode c
   TRI_ASSERT(node->numMembers() == 4);
 
   auto const* variable = node->getMember(0);
+  TRI_ASSERT(variable);
   auto const* expression = node->getMember(1);
+  TRI_ASSERT(expression);
 
   // fetch 1st operand (out variable name)
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
   auto v = static_cast<Variable*>(variable->getData());
-  TRI_ASSERT(v != nullptr);
+  TRI_ASSERT(v);
 
   ExecutionNode* en = nullptr;
 
@@ -949,19 +951,20 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous, AstNode c
   }
 
   if (!view) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                                    "no view for EnumerateView");
   }
 
   auto* search = node->getMember(2);
+  TRI_ASSERT(search);
   TRI_ASSERT(search->type == NODE_TYPE_FILTER);
   TRI_ASSERT(search->numMembers() == 1);
 
   auto* options = node->getMemberUnchecked(3);
+  TRI_ASSERT(options);
+
   if (options->type == NODE_TYPE_NOP) {
     options = nullptr;
-  } else if (!options->isConstObject()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS);
   }
 
   en = registerNode(new iresearch::IResearchViewNode(*this, nextId(), vocbase, view, *v,

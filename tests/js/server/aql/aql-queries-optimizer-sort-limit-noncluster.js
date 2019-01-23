@@ -80,8 +80,8 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(3, actual.length);
       assertEqual([1, 2, 3], actual);
 
-      var query = "FOR c IN [1,3,5,2,4] SORT c DESC LIMIT 3 RETURN c";
-      var actual = getQueryResults(query);
+      query = "FOR c IN [1,3,5,2,4] SORT c DESC LIMIT 3 RETURN c";
+      actual = getQueryResults(query);
       assertEqual(3, actual.length);
       assertEqual([5, 4, 3], actual);
     },
@@ -96,8 +96,8 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(2, actual.length);
       assertEqual([3, 4], actual);
 
-      var query = "FOR c IN [1,3,5,2,4] SORT c DESC FILTER c >= 3 LIMIT 2 RETURN c";
-      var actual = getQueryResults(query);
+      query = "FOR c IN [1,3,5,2,4] SORT c DESC FILTER c >= 3 LIMIT 2 RETURN c";
+      actual = getQueryResults(query);
       assertEqual(2, actual.length);
       assertEqual([5, 4], actual);
     },

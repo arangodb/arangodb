@@ -38,7 +38,7 @@ SCENARIO("testing", "[datetime]") {
     
     for (auto const& dateTime : datesToTest) {
         GIVEN(dateTime) {
-            bool ret = parse_dateTime(dateTime, tp);
+            bool ret = parseDateTime(dateTime, tp);
             
             THEN(dateTime) { REQUIRE(ret == true); }
         }
@@ -46,7 +46,7 @@ SCENARIO("testing", "[datetime]") {
 
     for (auto const& dateTime : datesToFail) {
         GIVEN(dateTime) {
-            bool ret = parse_dateTime(dateTime, tp);
+            bool ret = parseDateTime(dateTime, tp);
             
             THEN(dateTime) { REQUIRE(ret == false); }
         }
