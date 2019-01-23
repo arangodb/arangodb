@@ -46,6 +46,8 @@ RestStatus RestHotBackupHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   std::shared_ptr<RocksDBHotBackup> operation(parseHotBackupParams(type, suffixes));
 
+/// add test for rocksdb engine
+
   if (operation && operation->valid()) {
     operation->execute();
 

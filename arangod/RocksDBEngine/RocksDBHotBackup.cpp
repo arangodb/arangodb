@@ -23,8 +23,13 @@
 #include "RocksDBHotBackupCoord.h"
 
 #include "Agency/TimeString.h"
+#include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "RocksDBEngine/RocksDBCommon.h"
+
+#include <rocksdb/utilities/checkpoint.h>
 
 namespace arangodb {
 
@@ -77,7 +82,35 @@ RocksDBHotBackup::RocksDBHotBackup()
 //
 RocksDBHotBackup::~RocksDBHotBackup() {};
 
+std::string RocksDBHotBackup::buildDirectoryPath(const std::string & timestamp, const std::string & userString) {
+  std::string ret_string;
 
+  // get base path from DatabaseServerFeature
+  auto databasePathFeature =
+      application_features::ApplicationServer::getFeature<DatabasePathFeature>(
+          "DatabasePath");
+  ret_string = databasePathFeature->directory();
+  ret_string += TRI_DIR_SEPARATOR_CHAR;
+
+  if (!ServerState::instance()->isSingleServer()) {
+    ret_string += ServerState::instance()->getPersistedId();
+  } else {
+    ret_string += "hotbackup";
+  } // else
+
+  ret_string += "_";
+  ret_string += timestamp;
+
+// does userString need to be cleaned for directory name ...
+  if (0 != userString.length()) {
+    // limit directory name to 254 characters
+    ret_string += "_";
+    ret_string.append(userString, 0, 254-ret_string.size());
+  }
+
+  return ret_string;
+
+} // RocksDBHotBackup::buildDirectoryPath
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief RocksDBHotBackupCreate
@@ -98,13 +131,13 @@ void RocksDBHotBackupCreate::parseParameters(rest::RequestType const type, VPack
   arangodb::velocypack::ValueLength temp(0);
 
   _isCreate = (rest::RequestType::POST == type);
-  _valid = true;
+  _valid = _isCreate || (rest::RequestType::DELETE_REQ == type);
 
   // single server create, we generate the timestamp
   if (isSingle && _isCreate) {
     _timestamp = timepointToString(std::chrono::system_clock::now());
   } else {
-    _valid = body.hasKey("timestamp");
+    _valid = _valid && body.isObject() && body.hasKey("timestamp");
     if (_valid) {
       tempSlice = body.get("timestamp");
       _timestamp = tempSlice.getString(temp);
@@ -113,19 +146,21 @@ void RocksDBHotBackupCreate::parseParameters(rest::RequestType const type, VPack
   } // else
 
   // timeout is optional
-  if (_valid && body.hasKey("timeoutMS")) {
+  if (_valid && body.isObject() && body.hasKey("timeoutMS")) {
     tempSlice = body.get("timeoutMS");
     _timeoutMS = tempSlice.getInt();
   } // if
 
   // user string is optional
-  if (_valid && body.hasKey("userString")) {
+  if (_valid && body.isObject() && body.hasKey("userString")) {
     tempSlice = body.get("userString");
     _userString = tempSlice.getString(temp);
     // if temp > ??? truncate
     // do character set adjustment
   } // if
 
+
+/// don't wait, continue if timeout fails
 
   if (!_valid) {
     _respCode = rest::ResponseCode::BAD;
@@ -137,5 +172,48 @@ void RocksDBHotBackupCreate::parseParameters(rest::RequestType const type, VPack
 } // RocksDBHotBackupCreate::parseParameters
 
 
+void RocksDBHotBackupCreate::execute() {
+
+  if (_isCreate) {
+    executeCreate();
+  } else {
+    executeDelete();
+  } // else
+
+  return;
+
+} // RocksDBHotBackupCreate
+
+
+void RocksDBHotBackupCreate::executeCreate() {
+
+  // note current time
+  // attempt lock on write transactions
+  // attempt iResearch flush
+  // time remaining, or flag to continue anyway
+
+  rocksdb::Checkpoint * ptr;
+  rocksdb::Status stat;
+  std::string dirPath;
+
+  stat = rocksdb::Checkpoint::Create(rocksutils::globalRocksDB(), &ptr);
+
+  if (stat.ok()) {
+    dirPath = buildDirectoryPath(_timestamp, _userString);
+    stat = ptr->CreateCheckpoint(dirPath);
+    delete ptr;
+  }
+
+
+  // set response codes
+  if (stat.ok()) {
+    _respCode = rest::ResponseCode::OK;
+    _respError = TRI_ERROR_NO_ERROR;
+  } else {
+  } //else
+
+  return;
+
+} // RocksDBHotBackupCreate
 
 }  // namespace arangodb

@@ -55,6 +55,8 @@ public:
   virtual void execute() {};
 
 protected:
+  std::string buildDirectoryPath(const std::string & timestamp, const std::string & userString);
+
 
   bool _valid;          // are parameters valid
   bool _success;        // did operation finish successfully
@@ -78,15 +80,23 @@ public:
   // @brief Validate and extract parameters appropriate to the operation type
   virtual void parseParameters(rest::RequestType const, VPackSlice &);
 
-  // @brief Execute the operation
-  virtual void execute() {};
+  // @brief Execute an operation
+  virtual void execute();
 
 protected:
+  // @brief Execute the create operation
+  void executeCreate();
+
+  // @brief Execute the delete operation
+  void executeDelete() {};
+
+
   bool _isCreate;
   std::string _timestamp;
   int _timeoutMS;
   std::string _userString;
 
+  /// option to continue after timeout fails
 
 };// class RocksDBHotBackupCreate
 
