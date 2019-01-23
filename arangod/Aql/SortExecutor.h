@@ -28,7 +28,6 @@
 #define ARANGOD_AQL_SORT_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-
 #include "Aql/ExecutorInfos.h"
 
 #include <memory>

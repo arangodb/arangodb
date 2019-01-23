@@ -42,7 +42,6 @@
 #include "Aql/LimitExecutor.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/SortExecutor.h"
-
 #include "Aql/SortRegister.h"
 
 #include <type_traits>
