@@ -20,7 +20,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #ifndef ARANGOD_AQL_NORESULTS_EXECUTOR_H
 #define ARANGOD_AQL_NORESULTS_EXECUTOR_H
 
@@ -36,6 +35,7 @@ class Methods;
 
 namespace aql {
 
+template <bool>
 class SingleRowFetcher;
 class AqlItemMatrix;
 class ExecutorInfos;
@@ -66,7 +66,6 @@ class NoResultsExecutor {
  private:
   ExecutorInfos& _infos;
   Fetcher& _fetcher;
-
 };
 }  // namespace aql
 }  // namespace arangodb

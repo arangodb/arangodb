@@ -20,13 +20,12 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #ifndef ARANGOD_AQL_RETURN_EXECUTOR_H
 #define ARANGOD_AQL_RETURN_EXECUTOR_H
 
-#include "Aql/Stats.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/Stats.h"
 
 namespace arangodb {
 namespace transaction {
@@ -35,6 +34,7 @@ class Methods;
 
 namespace aql {
 
+template <bool>
 class SingleRowFetcher;
 class AqlItemMatrix;
 class ExecutorInfos;
@@ -44,13 +44,13 @@ struct SortRegister;
 
 class ReturnExecutorInfos : public ExecutorInfos {
  public:
-  ReturnExecutorInfos(RegisterId inputRegister,
-                RegisterId outputRegisters,
-                RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                std::unordered_set<RegisterId> registersToClear, bool doCount, bool returnInheritedResults);
+  ReturnExecutorInfos(RegisterId inputRegister, RegisterId outputRegisters,
+                      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                      std::unordered_set<RegisterId> registersToClear,
+                      bool doCount, bool returnInheritedResults);
 
   ReturnExecutorInfos() = delete;
-  ReturnExecutorInfos(ReturnExecutorInfos &&) = default;
+  ReturnExecutorInfos(ReturnExecutorInfos&&) = default;
   ReturnExecutorInfos(ReturnExecutorInfos const&) = delete;
   ~ReturnExecutorInfos() = default;
 
@@ -90,7 +90,6 @@ class ReturnExecutor {
  private:
   ReturnExecutorInfos& _infos;
   Fetcher& _fetcher;
-
 };
 }  // namespace aql
 }  // namespace arangodb
