@@ -212,7 +212,12 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   return ExecutionBlock::initializeCursor(items, pos);
 }
 
-// TODO -- remove this when cpp 17 becomes available
+// Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
+// Without the namespaces it fails with
+// error: specialization of 'template<class Executor> std::pair<arangodb::aql::ExecutionState, arangodb::Result> arangodb::aql::ExecutionBlockImpl<Executor>::initializeCursor(arangodb::aql::AqlItemBlock*, size_t)' in different namespace
+namespace arangodb {
+namespace aql {
+// TODO -- remove this specialization when cpp 17 becomes available
 template <>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor>::initializeCursor(
     AqlItemBlock* items, size_t pos) {
@@ -246,6 +251,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor>::initializeCurs
 
   return ExecutionBlock::initializeCursor(items, pos);
 }
+}  // namespace aql
+}  // namespace arangodb
 
 template <class Executor>
 std::pair<ExecutionState, std::unique_ptr<OutputAqlItemBlockShell>>
