@@ -114,7 +114,10 @@ ShortestPathExecutor::ShortestPathExecutor(Fetcher& fetcher, Infos& infos)
       _sourceBuilder{},
       _targetBuilder{} {
   if (!_infos.useRegisterForInput(false)) {
-    // Check in which format we get the constant value
+    _sourceBuilder.add(VPackValue(_infos.getInputValue(false)));
+  }
+  if (!_infos.useRegisterForInput(true)) {
+    _targetBuilder.add(VPackValue(_infos.getInputValue(true)));
   }
 }
 
@@ -144,10 +147,13 @@ std::pair<ExecutionState, TraversalStats> ShortestPathExecutor::produceRow(Outpu
       _posInPath++;
       return {computeState(), s};
     }
+    TRI_ASSERT(_posInPath >= _path->length());
     if (!fetchPath()) {
+      TRI_ASSERT(_posInPath >= _path->length());
       // Either WAITING or DONE
       return {_rowState, s};
     }
+    TRI_ASSERT(_posInPath < _path->length());
   }
 }
 
@@ -167,6 +173,7 @@ bool ShortestPathExecutor::fetchPath() {
     }
     TRI_ASSERT(start.isString());
     TRI_ASSERT(end.isString());
+    _path->clear();
   } while (!_finder.shortestPath(start, end, *_path, [this]() {
     if (_finder.options().query()->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);

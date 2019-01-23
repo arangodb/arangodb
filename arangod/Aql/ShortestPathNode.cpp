@@ -244,7 +244,7 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     TRI_ASSERT(it != varInfo.end());
     inputRegisters->emplace(it->second.registerId);
   }
-  if (usesStartInVariable()) {
+  if (usesTargetInVariable()) {
     auto it = varInfo.find(targetInVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     inputRegisters->emplace(it->second.registerId);
@@ -257,12 +257,14 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     TRI_ASSERT(it != varInfo.end());
     outputRegisterMapping.emplace(ShortestPathExecutorInfos::OutputName::VERTEX,
                                   it->second.registerId);
+    outputRegisters->emplace(it->second.registerId);
   }
   if (usesEdgeOutVariable()) {
     auto it = varInfo.find(edgeOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     outputRegisterMapping.emplace(ShortestPathExecutorInfos::OutputName::EDGE,
                                   it->second.registerId);
+    outputRegisters->emplace(it->second.registerId);
   }
 
   auto opts = static_cast<ShortestPathOptions*>(options());
