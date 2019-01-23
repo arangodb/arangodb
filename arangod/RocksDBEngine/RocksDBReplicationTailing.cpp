@@ -335,6 +335,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
       case RocksDBLogType::DocumentOperationsPrologue:
       case RocksDBLogType::DocumentRemove:
       case RocksDBLogType::DocumentRemoveAsPartOfUpdate:
+      case RocksDBLogType::TrackedDocumentInsert:
       case RocksDBLogType::TrackedDocumentRemove:
         break;  // ignore deprecated && unused markers
 
@@ -436,7 +437,9 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
 
     if (cfId != _primaryCF) {
       return;  // ignore all document operations
-    } else if (_state != TRANSACTION && _state != SINGLE_REMOVE) {
+    }
+    
+    if (_state != TRANSACTION && _state != SINGLE_REMOVE) {
       resetTransientState();
       return;
     }

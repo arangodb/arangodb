@@ -146,7 +146,7 @@ function backgroundIndexSuite() {
       // lets insert the rest via tasks
       let n = 9;
       for (let i = 0; i < n; ++i) {
-        if (i == 6) { // create the index in a task
+        if (i === 6) { // create the index in a task
           let command = `const c = require("internal").db._collection("${cn}"); 
           c.ensureIndex({type: 'hash', fields: ['value'], unique: false, inBackground: true});`;
           tasks.register({ name: "UnitTestsIndexCreateIDX" + i, command: command });
@@ -298,7 +298,7 @@ function backgroundIndexSuite() {
       }
     },
 
-    /*testRemoveParallel: function () {
+    testRemoveParallel: function () {
       let c = require("internal").db._collection(cn);
       // first lets add some initial documents
       let x = 0;
@@ -314,7 +314,7 @@ function backgroundIndexSuite() {
 
       // lets remove half via tasks
       for (let i = 0; i < 10; ++i) {
-        if (i == 4) { // create the index in a task
+        if (i === 3) { // create the index in a task
           let command = `const c = require("internal").db._collection("${cn}"); 
           c.ensureIndex({type: 'hash', fields: ['value'], unique: false, inBackground: true});`;
           tasks.register({ name: "UnitTestsIndexCreateIDX" + i, command: command });
@@ -370,7 +370,7 @@ function backgroundIndexSuite() {
             fail();
         }
       }
-    },*/
+    },
 
     testUpdateParallel: function () {
       let c = require("internal").db._collection(cn);
@@ -388,6 +388,11 @@ function backgroundIndexSuite() {
 
       // lets update all via tasks
       for (let i = 0; i < 10; ++i) {
+        if (i === 5) { // create the index in a task
+          let command = `const c = require("internal").db._collection("${cn}"); 
+          c.ensureIndex({type: 'skiplist', fields: ['value'], unique: false, inBackground: true});`;
+          tasks.register({ name: "UnitTestsIndexCreateIDX" + i, command: command });
+        }
         let command = `const c = require("internal").db._collection("${cn}"); 
                        if (!c) {
                          throw new Error('could not find collection');
@@ -411,9 +416,6 @@ function backgroundIndexSuite() {
       // wait for insertion tasks to complete
       waitForTasks();
       
-      // create the index on the main thread
-      c.ensureIndex({type: 'skiplist', fields: ['value'], inBackground: true });
-
       // sanity checks
       assertEqual(c.count(), 100000);
       // check for new entries via index
@@ -431,6 +433,7 @@ function backgroundIndexSuite() {
           case 'primary':
             break;
           case 'skiplist':
+            print(i);
             break;
           default:
             fail();

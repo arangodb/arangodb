@@ -390,6 +390,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
       case RocksDBLogType::DocumentOperationsPrologue:
       case RocksDBLogType::DocumentRemove:
       case RocksDBLogType::DocumentRemoveAsPartOfUpdate:
+      case RocksDBLogType::TrackedDocumentInsert:
       case RocksDBLogType::TrackedDocumentRemove:
         break;  // ignore deprecated / unused markers
 
@@ -554,7 +555,9 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
 
     if (cfId != _primaryCF) {
       return;  // ignore all document operations
-    } else if (_state != TRANSACTION && _state != SINGLE_REMOVE) {
+    }
+    
+    if (_state != TRANSACTION && _state != SINGLE_REMOVE) {
       resetTransientState();
       return;
     }
@@ -760,11 +763,6 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
       << "WAL tailing call. Scan since: " << since << ", tick start: " << filter.tickStart
       << ", tick end: " << filter.tickEnd << ", chunk size: " << chunkSize;
   while (iterator->Valid() && lastScannedTick <= filter.tickEnd) {
-    s = iterator->status();
-    if (!s.ok()) {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "error during WAL scan: " << s.ToString();
-      break;  // s is considered in the end
-    }
 
     rocksdb::BatchResult batch = iterator->GetBatch();
     // record the first tick we are actually considering

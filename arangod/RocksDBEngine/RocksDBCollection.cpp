@@ -268,8 +268,9 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
   for (std::shared_ptr<Index>& idx : indexes) {
     auto const id = idx->id();
     for (auto const& it : _indexes) {
-      TRI_ASSERT(it->id() != id); // index is there twice
-      idx.reset();
+      if (it->id() == id) { // index is there twice
+        idx.reset();
+      }
     }
     
     if (idx) {
@@ -312,14 +313,16 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  auto colGuard = scopeGuard([&] { vocbase.releaseCollection(&_logicalCollection); });
+  _numIndexCreations.fetch_add(1, std::memory_order_release);
+  auto colGuard = scopeGuard([&] {
+    vocbase.releaseCollection(&_logicalCollection);
+    _numIndexCreations.fetch_sub(1, std::memory_order_release);
+  });
   auto unlockGuard = scopeGuard([&] { this->unlockWrite(); });
   if ((res = lockWrite()).fail()) {
     unlockGuard.cancel();
     THROW_ARANGO_EXCEPTION(res);
   }
-  auto scopeX = scopeGuard([&] { _allowRangeDeleteInWal.store(true, std::memory_order_release); });
-  _allowRangeDeleteInWal.store(false, std::memory_order_release);
   
   std::shared_ptr<Index> idx;
   {  // Step 1. Check for matching index
@@ -388,18 +391,19 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     }
   }
 
-  bool inBackground = basics::VelocyPackHelper::getBooleanValue(
-                        info, StaticStrings::IndexInBackground, false);
+  const bool inBackground = true;
+//  basics::VelocyPackHelper::getBooleanValue(
+//                        info, StaticStrings::IndexInBackground, false);
   // Step 4. fill index
   if (res.ok()) {
-    if (inBackground) {  // allow concurrent inserts into index
+//    if (inBackground) {  // allow concurrent inserts into index
       _indexes.emplace_back(buildIdx);
       res = buildIdx->fillIndexBackground([&] {
         unlockGuard.fire();  // will be called at appropriate time
       });
-    } else {
-      res = buildIdx->fillIndexFast();  // will lock again internally
-    }
+//    } else {
+//      res = buildIdx->fillIndexFast();  // will lock again internally
+//    }
   }
 
   // Step 5. cleanup
@@ -1280,28 +1284,23 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   Result res;
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
-
-  // We NEED to do the PUT first, otherwise WAL tailing breaks
-  RocksDBKeyLeaser newKey(trx);
-  newKey->constructDocument(_objectId, newDocumentId);
-  // simon: we do not need to blacklist the new documentId
-
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthd, trx->isSingleOperationTransaction());
 
-  rocksdb::Status s =
-      mthd->Put(RocksDBColumnFamily::documents(), newKey.ref(),
-                rocksdb::Slice(reinterpret_cast<char const*>(newDoc.begin()),
-                               static_cast<size_t>(newDoc.byteSize())));
+  RocksDBKeyLeaser key(trx);
+  key->constructDocument(_objectId, oldDocumentId);
+  blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
+  
+  rocksdb::Status s = mthd->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
-
-  RocksDBKeyLeaser oldKey(trx);
-  oldKey->constructDocument(_objectId, oldDocumentId);
-  blackListKey(oldKey->string().data(), static_cast<uint32_t>(oldKey->string().size()));
-
-  s = mthd->SingleDelete(RocksDBColumnFamily::documents(), oldKey.ref());
+  
+  key->constructDocument(_objectId, newDocumentId);
+  // simon: we do not need to blacklist the new documentId
+  s = mthd->Put(RocksDBColumnFamily::documents(), key.ref(),
+                rocksdb::Slice(reinterpret_cast<char const*>(newDoc.begin()),
+                               static_cast<size_t>(newDoc.byteSize())));
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
@@ -1631,10 +1630,9 @@ uint64_t RocksDBCollection::recalculateCounts() {
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(ro, cf));
   std::size_t count = 0;
 
-  it->Seek(bounds.start());
-  while (it->Valid() && it->key().compare(upper) < 0) {
+  for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
+    TRI_ASSERT(it->key().compare(upper) < 0);
     ++count;
-    it->Next();
   }
 
   int64_t adjustment = snapNumberOfDocuments - count;
@@ -1753,7 +1751,7 @@ void RocksDBCollection::trackWaitForSync(arangodb::transaction::Methods* trx,
 bool RocksDBCollection::canUseRangeDeleteInWal() const {
   if (ServerState::instance()->isSingleServer()) {
     // disableWalFilePruning is used by createIndex
-    return !rocksutils::globalRocksEngine()->disableWalFilePruning();
+    return _numIndexCreations.load(std::memory_order_acquire) == 0;
   }
   return false;
 }

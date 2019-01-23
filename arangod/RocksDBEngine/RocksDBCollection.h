@@ -251,12 +251,13 @@ class RocksDBCollection final : public PhysicalCollection {
   mutable basics::ReadWriteLock _exclusiveLock;
   /// @brief document cache (optional)
   mutable std::shared_ptr<cache::Cache> _cache;
+  
   // we use this boolean for testing whether _cache is set.
   // it's quicker than accessing the shared_ptr each time
-  mutable bool _cachePresent;
-  bool _cacheEnabled;
-  
-  std::atomic<bool> _allowRangeDeleteInWal;
+  mutable std::atomic<bool> _cachePresent;
+  std::atomic<bool> _cacheEnabled;
+  /// @brief number of index creations in progress
+  std::atomic<int> _numIndexCreations;
 };
 
 inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {

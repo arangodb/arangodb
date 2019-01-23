@@ -106,10 +106,22 @@ RocksDBLogValue RocksDBLogValue::SingleRemoveV2(TRI_voc_tick_t vocbaseId,
   return RocksDBLogValue(RocksDBLogType::SingleRemoveV2, vocbaseId, cid, rid);
 }
 
-RocksDBLogValue RocksDBLogValue::TrackedDocumentRemove(VPackSlice const& slice) {
+RocksDBLogValue RocksDBLogValue::TrackedDocumentInsert(LocalDocumentId docId,
+                                                       VPackSlice const& slice) {
   RocksDBLogValue val{};
-  val._buffer.reserve(sizeof(RocksDBLogType) + slice.byteSize());
+  val._buffer.reserve(sizeof(RocksDBLogType) + sizeof(LocalDocumentId::BaseType) + slice.byteSize());
+  val._buffer.push_back(static_cast<char>(RocksDBLogType::TrackedDocumentInsert));
+  uintToPersistentLittleEndian(val._buffer, docId.id());
+  val._buffer.append(slice.startAs<char>(), slice.byteSize());
+  return val;
+}
+
+RocksDBLogValue RocksDBLogValue::TrackedDocumentRemove(LocalDocumentId docId,
+                                                       VPackSlice const& slice) {
+  RocksDBLogValue val{};
+  val._buffer.reserve(sizeof(RocksDBLogType) + sizeof(LocalDocumentId::BaseType) + slice.byteSize());
   val._buffer.push_back(static_cast<char>(RocksDBLogType::TrackedDocumentRemove));
+  uintToPersistentLittleEndian(val._buffer, docId.id());
   val._buffer.append(reinterpret_cast<char const*>(slice.begin()), slice.byteSize());
   return val;
 }
@@ -332,11 +344,15 @@ StringRef RocksDBLogValue::oldCollectionName(rocksdb::Slice const& slice) {
 }
 
 /// @brief get slice from tracked document
-VPackSlice RocksDBLogValue::trackedDocument(rocksdb::Slice const& slice) {
+std::pair<LocalDocumentId, VPackSlice> RocksDBLogValue::trackedDocument(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= 2);
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
-  TRI_ASSERT(type == RocksDBLogType::TrackedDocumentRemove);
-  return VPackSlice(slice.data() + sizeof(RocksDBLogType));
+  TRI_ASSERT(type == RocksDBLogType::TrackedDocumentInsert ||
+             type == RocksDBLogType::TrackedDocumentRemove);
+  
+  LocalDocumentId id(uintFromPersistentLittleEndian<LocalDocumentId::BaseType>(slice.data() + sizeof(RocksDBLogType)));
+  VPackSlice data(slice.data() + sizeof(RocksDBLogType) + sizeof(LocalDocumentId::BaseType));
+  return std::make_pair(id, data);
 }
 
 bool RocksDBLogValue::containsDatabaseId(RocksDBLogType type) {

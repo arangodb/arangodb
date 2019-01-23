@@ -26,7 +26,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ReadWriteLock.h"
 
-class TRI_vocbase_t; // forward declaration
+struct TRI_vocbase_t; // forward declaration
 
 namespace arangodb {
 

@@ -909,9 +909,8 @@ int RocksDBEngine::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builde
   result.openArray();
 
   auto bounds = RocksDBKeyBounds::DatabaseViews(vocbase.id());
-
-  for (iter->Seek(bounds.start());
-       iter->Valid() && iter->key().compare(bounds.end()) < 0; iter->Next()) {
+  for (iter->Seek(bounds.start()); iter->Valid(); iter->Next()) {
+    TRI_ASSERT(iter->key().compare(bounds.end()) < 0);
     auto slice = VPackSlice(iter->value().data());
 
     LOG_TOPIC(TRACE, Logger::VIEWS) << "got view slice: " << slice.toJson();

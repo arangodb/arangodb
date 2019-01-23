@@ -71,13 +71,11 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   bool hasSelectivityEstimate() const override { return false; }
 
   /// insert index elements into the specified write batch.
-  Result insert(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId,
+  Result insert(transaction::Methods& trx, RocksDBMethods*, LocalDocumentId const& documentId,
                 arangodb::velocypack::Slice const&, OperationMode mode) override;
 
   /// remove index elements and put it in the specified write batch.
-  Result remove(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId,
+  Result remove(transaction::Methods& trx, RocksDBMethods*, LocalDocumentId const& documentId,
                 arangodb::velocypack::Slice const&, OperationMode mode) override;
 
   RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex> const&);
@@ -92,7 +90,7 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   void recalculateEstimates() override { _wrapped->recalculateEstimates(); }
 
   /// @brief fill index, will exclusively lock the collection
-  Result fillIndexFast();
+  //  Result fillIndexFast();
 
   /// @brief fill the index, assume already locked exclusively
   /// @param unlock called when collection lock can be released
@@ -109,10 +107,9 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
  private:
   std::shared_ptr<arangodb::RocksDBIndex> _wrapped;
-  std::function<void(arangodb::transaction::Methods& trx,
-                     arangodb::transaction::Status status)> _trxCallback;
+  std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxCallback;
   std::atomic<bool> _hasError;
-  
+
   std::mutex _errorMutex;
   Result _errorResult;
 };
