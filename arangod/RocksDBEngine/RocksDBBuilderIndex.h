@@ -29,6 +29,8 @@
 #include <mutex>
 
 namespace arangodb {
+  
+class RocksDBCollection;
 
 /// Dummy index class that contains the logic to build indexes
 /// without an exclusive lock. It wraps the actual index implementation
@@ -89,12 +91,19 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   }
   void recalculateEstimates() override { _wrapped->recalculateEstimates(); }
 
-  /// @brief fill index, will exclusively lock the collection
-  //  Result fillIndexFast();
+  struct Locker {
+    Locker(RocksDBCollection* c) : cc(c), locked(false) {}
+    ~Locker() { unlock(); }
+    bool lock();
+    void unlock();
+  private:
+    RocksDBCollection* const cc;
+    bool locked;
+  };
 
   /// @brief fill the index, assume already locked exclusively
   /// @param unlock called when collection lock can be released
-  Result fillIndexBackground(std::function<void()> const& unlock);
+  Result fillIndexBackground(Locker&);
 
   virtual IndexIterator* iteratorForCondition(transaction::Methods* trx,
                                               ManagedDocumentResult* result,

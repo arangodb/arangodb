@@ -318,10 +318,10 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     vocbase.releaseCollection(&_logicalCollection);
     _numIndexCreations.fetch_sub(1, std::memory_order_release);
   });
-  auto unlockGuard = scopeGuard([&] { this->unlockWrite(); });
-  if ((res = lockWrite()).fail()) {
-    unlockGuard.cancel();
-    THROW_ARANGO_EXCEPTION(res);
+  
+  RocksDBBuilderIndex::Locker locker(this);
+  if (!locker.lock()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCK_TIMEOUT);
   }
   
   std::shared_ptr<Index> idx;
@@ -398,9 +398,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   if (res.ok()) {
 //    if (inBackground) {  // allow concurrent inserts into index
       _indexes.emplace_back(buildIdx);
-      res = buildIdx->fillIndexBackground([&] {
-        unlockGuard.fire();  // will be called at appropriate time
-      });
+    res = buildIdx->fillIndexBackground(locker);
 //    } else {
 //      res = buildIdx->fillIndexFast();  // will lock again internally
 //    }
@@ -439,7 +437,6 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     }
   }
 
-//  unlockGuard.fire();  // may have already been fired
   if (res.fail()) {
     {  // We could not create the index. Better abort
       WRITE_LOCKER(guard, _indexesLock);

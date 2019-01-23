@@ -51,7 +51,7 @@ class FlushFeature final : public application_features::ApplicationFeature {
     virtual ~FlushSubscription() = default;
     virtual Result commit(velocypack::Slice const& data) = 0;
   };
-  struct FlushSubscriptionBase; // forward declaration
+  class FlushSubscriptionBase; // forward declaration
 
   explicit FlushFeature(application_features::ApplicationServer& server);
 
