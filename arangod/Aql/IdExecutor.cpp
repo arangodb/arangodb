@@ -23,6 +23,7 @@
 #include "IdExecutor.h"
 #include "Aql/AqlValue.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/ConstFetcher.h"
 #include "Basics/Common.h"
 
 #include <algorithm>

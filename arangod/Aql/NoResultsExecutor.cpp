@@ -24,7 +24,6 @@
 
 #include "Basics/Common.h"
 
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/InputAqlItemRow.h"
