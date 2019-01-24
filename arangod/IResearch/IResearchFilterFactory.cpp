@@ -163,7 +163,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr extractAnalyzerFromArg(
     if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != analyzerValue.type()) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "'" << functionName << "' AQL function: " << argIdx << " argument has invalid type '"
-          << analyzerValue.type() << "' (string expected)";
+          << ScopedAqlValue::typeString(analyzerValue.type()) << "' (string expected)";
       return nullptr;
     }
 
@@ -1110,7 +1110,7 @@ bool fromFuncAnalyzer(irs::boolean_filter* filter, QueryContext const& ctx,
     if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != analyzerId.type()) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "'ANALYZER' AQL function: 'analyzer' argument has invalid type '"
-          << analyzerId.type() << "' (string expected)";
+          << ScopedAqlValue::typeString(analyzerId.type()) << "' (string expected)";
       return false;
     }
 
@@ -1198,7 +1198,7 @@ bool fromFuncBoost(irs::boolean_filter* filter, QueryContext const& ctx,
     if (arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE != boost.type()) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "'BOOST' AQL function: 2nd argument has invalid type '"
-          << boost.type() << "' (double expected)";
+          << ScopedAqlValue::typeString(boost.type()) << "' (double expected)";
       return false;
     }
 
@@ -1278,7 +1278,7 @@ bool fromFuncExists(irs::boolean_filter* filter, QueryContext const& ctx,
       if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != type.type()) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
             << "'EXISTS' AQL function: 2nd argument has invalid type '"
-            << type.type() << "' (string expected)";
+            << ScopedAqlValue::typeString(type.type()) << "' (string expected)";
         return false;
       }
 
@@ -1422,7 +1422,7 @@ bool fromFuncMinMatch(irs::boolean_filter* filter, QueryContext const& ctx,
     if (arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE != minMatchCount.type()) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "'MIN_MATCH' AQL function: " << lastArg << " argument has invalid type '"
-          << minMatchCount.type() << "' (numeric expected)";
+          << ScopedAqlValue::typeString(minMatchCount.type()) << "' (numeric expected)";
       return false;
     }
 
@@ -1567,7 +1567,7 @@ bool fromFuncPhrase(irs::boolean_filter* filter, QueryContext const& ctx,
     if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != inputValue.type()) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "'PHRASE' AQL function: 2nd argument has invalid type '"
-          << inputValue.type() << "' (string expected)";
+          << ScopedAqlValue::typeString(inputValue.type()) << "' (string expected)";
       return false;
     }
 
@@ -1724,7 +1724,7 @@ bool fromFuncStartsWith(irs::boolean_filter* filter, QueryContext const& ctx,
     if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != prefixValue.type()) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "'STARTS_WITH' AQL function: 2nd argument has invalid type '"
-          << prefixValue.type() << "' (string expected)";
+          << ScopedAqlValue::typeString(prefixValue.type()) << "' (string expected)";
       return false;
     }
 
@@ -1758,7 +1758,8 @@ bool fromFuncStartsWith(irs::boolean_filter* filter, QueryContext const& ctx,
       if (arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE != scoringLimitValue.type()) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
             << "'STARTS_WITH' AQL function: 3rd argument has invalid type '"
-            << scoringLimitValue.type() << "' (numeric expected)";
+            << ScopedAqlValue::typeString(scoringLimitValue.type())
+            << "' (numeric expected)";
         return false;
       }
 
