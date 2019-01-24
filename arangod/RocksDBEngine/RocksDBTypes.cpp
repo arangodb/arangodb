@@ -185,6 +185,8 @@ char const* arangodb::rocksDBLogTypeName(arangodb::RocksDBLogType type) {
       return "SingleRemoveV2";
     case arangodb::RocksDBLogType::Invalid:
       return "Invalid";
+    case arangodb::RocksDBLogType::FlushSync:
+      return "FlushSync"
   }
   return "Invalid";
 }
