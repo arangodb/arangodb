@@ -120,11 +120,6 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
  private:
   std::shared_ptr<arangodb::RocksDBIndex> _wrapped;
-  std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxCallback;
-  std::atomic<bool> _hasError;
-
-  std::mutex _errorMutex;
-  Result _errorResult;
 };
 }  // namespace arangodb
 

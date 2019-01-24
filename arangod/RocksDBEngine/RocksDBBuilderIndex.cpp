@@ -78,9 +78,7 @@ RocksDBBuilderIndex::RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex>
     : RocksDBIndex(wp->id(), wp->collection(), wp->fields(), wp->unique(),
                    wp->sparse(), wp->columnFamily(), wp->objectId(),
                    /*useCache*/ false),
-      _wrapped(wp),
-      _trxCallback(nullptr),
-      _hasError(false) {
+      _wrapped(wp) {
   TRI_ASSERT(_wrapped);
 }
 
