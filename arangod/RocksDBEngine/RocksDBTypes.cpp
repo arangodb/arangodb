@@ -186,7 +186,7 @@ char const* arangodb::rocksDBLogTypeName(arangodb::RocksDBLogType type) {
     case arangodb::RocksDBLogType::Invalid:
       return "Invalid";
     case arangodb::RocksDBLogType::FlushSync:
-      return "FlushSync"
+      return "FlushSync";
   }
   return "Invalid";
 }
