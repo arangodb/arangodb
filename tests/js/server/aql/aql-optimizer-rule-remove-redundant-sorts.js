@@ -262,7 +262,7 @@ function optimizerRuleTestSuite () {
       `;
 
       const result = AQL_EXECUTE(query, {}, paramEnabled).json;
-      assertEqual(result, [{val: 2}]);
+      assertEqual(result, [2]);
     },
 
   };
