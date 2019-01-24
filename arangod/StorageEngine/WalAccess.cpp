@@ -68,15 +68,14 @@ TRI_vocbase_t* WalAccessContext::loadVocbase(TRI_voc_tick_t dbid) {
   auto const& it = _vocbases.find(dbid);
 
   if (it == _vocbases.end()) {
-    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->useDatabase(dbid);
+    auto vocbase = DatabaseFeature::DATABASE->useDatabase(dbid);
 
     if (vocbase != nullptr) {
-      TRI_DEFER(vocbase->release());
       _vocbases.emplace(std::piecewise_construct, std::forward_as_tuple(dbid),
                         std::forward_as_tuple(*vocbase));
     }
 
-    return vocbase;
+    return vocbase.get();
   } else {
     return &(it->second.database());
   }

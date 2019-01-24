@@ -180,7 +180,7 @@ struct StorageEngineWrapper {
 
 struct IResearchAnalyzerFeatureSetup {
   StorageEngineWrapper engine; // can only nullify 'ENGINE' after all TRI_vocbase_t and ApplicationServer have been destroyed
-  std::unique_ptr<Vocbase> system; // ensure destruction after 'server'
+  std::shared_ptr<Vocbase> system; // ensure destruction after 'server'
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
@@ -197,7 +197,7 @@ struct IResearchAnalyzerFeatureSetup {
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required for constructing TRI_vocbase_t
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<Vocbase>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE); // QueryRegistryFeature required for instantiation
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system), false); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
 
     #if USE_ENTERPRISE
@@ -1182,7 +1182,7 @@ SECTION("test_tokens") {
   auto* analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server);
   auto* functions = new arangodb::aql::AqlFunctionFeature(server);
   auto* sharding = new arangodb::ShardingFeature(server);
-  auto* systemdb = new arangodb::SystemDatabaseFeature(server, s.system.get());
+  auto* systemdb = new arangodb::SystemDatabaseFeature(server, s.system);
 
   arangodb::application_features::ApplicationServer::server->addFeature(analyzers);
   arangodb::application_features::ApplicationServer::server->addFeature(functions);

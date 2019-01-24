@@ -147,18 +147,18 @@ void CheckVersionFeature::checkVersion() {
 
   // iterate over all databases
   for (auto& name : databaseFeature->getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
-    methods::VersionResult res = methods::Version::check(vocbase);
+    auto vocbase = databaseFeature->lookupDatabase(name);
+    auto res = methods::Version::check(vocbase.get());
     TRI_ASSERT(vocbase != nullptr);
 
     if (res.status == methods::VersionResult::CANNOT_PARSE_VERSION_FILE ||
         res.status == methods::VersionResult::CANNOT_READ_VERSION_FILE) {
       if (ignoreDatafileErrors) {
         // try to install a fresh new, empty VERSION file instead
-        if (methods::Version::write(vocbase, std::map<std::string, bool>(), true)
+        if (methods::Version::write(vocbase.get(), std::map<std::string, bool>(), true)
                 .ok()) {
           // give it another try
-          res = methods::Version::check(vocbase);
+          res = methods::Version::check(vocbase.get());
         }
       } else {
         LOG_TOPIC(WARN, Logger::STARTUP)

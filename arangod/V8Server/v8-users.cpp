@@ -64,7 +64,7 @@ arangodb::Result existsCollection(std::string const& database, std::string const
     return arangodb::Result();  // wildcard always matches
   }
 
-  auto* vocbase = databaseFeature->lookupDatabase(database);
+  auto vocbase = databaseFeature->lookupDatabase(database);
 
   if (!vocbase) {
     return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);

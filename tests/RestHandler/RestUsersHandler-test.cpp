@@ -99,7 +99,7 @@ struct ViewFactory: public arangodb::ViewFactory {
 struct RestUsersHandlerSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
+  std::shared_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
   ViewFactory viewFactory;
 
@@ -115,7 +115,7 @@ struct RestUsersHandlerSetup {
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
     system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
     features.emplace_back(new arangodb::ShardingFeature(server), false); // required for LogicalCollection::LogicalCollection(...)
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system), false); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::ViewTypesFeature(server), false); // required for LogicalView::create(...)
 
     #if USE_ENTERPRISE
@@ -151,6 +151,7 @@ struct RestUsersHandlerSetup {
 
   ~RestUsersHandlerSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
+    arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>()->unprepare(); // release system database before reseting the 'ENGINE'
     arangodb::application_features::ApplicationServer::server = nullptr;
 
     // destroy application features
@@ -185,7 +186,7 @@ SECTION("test_collection_auth") {
   auto usersJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"_users\", \"isSystem\": true }");
   static const std::string userName("testUser");
   auto* databaseFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabaseFeature>("Database");
-  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
   REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(1, "testDatabase", vocbase)));
   auto grantRequestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
   auto& grantRequest = *grantRequestPtr;

@@ -118,7 +118,7 @@ struct ViewFactory: public arangodb::ViewFactory {
 struct V8UsersSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
+  std::shared_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
   ViewFactory viewFactory;
 
@@ -137,7 +137,7 @@ struct V8UsersSetup {
     system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
     features.emplace_back(new arangodb::ReplicationFeature(server), false); // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::ShardingFeature(server), false); // required for LogicalCollection::LogicalCollection(...)
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system), false); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::ViewTypesFeature(server), false); // required for LogicalView::create(...)
 
     #if USE_ENTERPRISE
@@ -173,6 +173,7 @@ struct V8UsersSetup {
 
   ~V8UsersSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
+    arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>()->unprepare(); // release system database before reseting the 'ENGINE'
     arangodb::application_features::ApplicationServer::server = nullptr;
 
     // destroy application features
@@ -207,7 +208,7 @@ SECTION("test_collection_auth") {
   auto usersJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"_users\", \"isSystem\": true }");
   static const std::string userName("testUser");
   auto* databaseFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabaseFeature>("Database");
-  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
   REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(1, "testDatabase", vocbase)));
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
@@ -224,8 +225,8 @@ SECTION("test_collection_auth") {
   v8::Context::Scope contextScope(context); // required for TRI_AddMethodVocbase(...)
   std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
   v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
-  v8g->_vocbase = vocbase;
-  TRI_InitV8Users(context, vocbase, v8g.get(), isolate.get());
+  v8g->_vocbase = vocbase.get();
+  TRI_InitV8Users(context, vocbase.get(), v8g.get(), isolate.get());
 
   auto arangoUsers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->UsersTempl)->NewInstance();
   auto fn_grantCollection = arangoUsers->Get(TRI_V8_ASCII_STRING(isolate.get(), "grantCollection"));

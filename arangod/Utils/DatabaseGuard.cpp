@@ -29,35 +29,52 @@
 namespace {
 
 template <typename T>
-TRI_vocbase_t& vocbase(T& id) {
+std::shared_ptr<TRI_vocbase_t> vocbase(T& id) {
   auto* databaseFeature = arangodb::DatabaseFeature::DATABASE;
 
   if (!databaseFeature) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto* vocbase = databaseFeature->useDatabase(id);
-
-  if (!vocbase) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  return *vocbase;
+  return databaseFeature->useDatabase(id);
 }
 
 }  // namespace
 
 namespace arangodb {
 
+DatabaseGuard::DatabaseGuard(TRI_vocbase_t& vocbase) {
+  if (!vocbase.use()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  try {
+    _vocbase.reset( // scoped-release pointer
+      &vocbase, // vocbase
+      [](TRI_vocbase_t* ptr) { ptr->release(); } // release vocbase
+    );
+  } catch(...) {
+    vocbase.release();
+  }
+}
+
 /// @brief create the guard, using a database id
 DatabaseGuard::DatabaseGuard(TRI_voc_tick_t id) : _vocbase(vocbase(id)) {
-  TRI_ASSERT(!_vocbase.isDangling());
+  if (!_vocbase) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  TRI_ASSERT(!_vocbase->isDangling());
 }
 
 /// @brief create the guard, using a database name
 DatabaseGuard::DatabaseGuard(std::string const& name)
     : _vocbase(vocbase(name)) {
-  TRI_ASSERT(!_vocbase.isDangling());
+  if (!_vocbase) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  TRI_ASSERT(!_vocbase->isDangling());
 }
 
 }  // namespace arangodb

@@ -29,6 +29,7 @@
 #include "VocBase/voc-types.h"
 
 enum TRI_col_type_e : uint32_t;
+class TRI_vocbase_t; // forward declaration
 
 namespace arangodb {
 

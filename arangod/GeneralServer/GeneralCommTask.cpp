@@ -88,7 +88,8 @@ GeneralCommTask::~GeneralCommTask() {
 // -----------------------------------------------------------------------------
 
 namespace {
-TRI_vocbase_t* lookupDatabaseFromRequest(GeneralRequest& req) {
+
+std::shared_ptr<TRI_vocbase_t> lookupDatabaseFromRequest(GeneralRequest& req) {
   DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
 
   // get database name from request
@@ -98,17 +99,16 @@ TRI_vocbase_t* lookupDatabaseFromRequest(GeneralRequest& req) {
     // if no databases was specified in the request, use system database name
     // as a fallback
     req.setDatabaseName(StaticStrings::SystemDatabase);
+
     return databaseFeature->useDatabase(StaticStrings::SystemDatabase);
   }
 
   return databaseFeature->useDatabase(dbName);
 }
-}  // namespace
 
 /// Set the appropriate requestContext
-namespace {
 bool resolveRequestContext(GeneralRequest& req) {
-  TRI_vocbase_t* vocbase = ::lookupDatabaseFromRequest(req);
+  auto vocbase = ::lookupDatabaseFromRequest(req);
 
   // invalid database name specified, database not found etc.
   if (vocbase == nullptr) {
@@ -117,8 +117,16 @@ bool resolveRequestContext(GeneralRequest& req) {
 
   TRI_ASSERT(!vocbase->isDangling());
 
+  // increment use count since VocbaseContext will call release()
+  if (!vocbase->use()) {
+    return false;
+  }
+
   std::unique_ptr<VocbaseContext> guard(VocbaseContext::create(req, *vocbase));
+
   if (!guard) {
+    vocbase->release(); // release to match the call to use() above
+
     return false;
   }
 
@@ -129,6 +137,7 @@ bool resolveRequestContext(GeneralRequest& req) {
   // the "true" means the request is the owner of the context
   return true;
 }
+
 }  // namespace
 
 /// Must be called before calling executeRequest, will add an error

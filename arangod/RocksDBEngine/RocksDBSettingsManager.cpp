@@ -164,19 +164,22 @@ Result RocksDBSettingsManager::sync(bool force) {
   for (auto const& pair : mappings) {
     TRI_voc_tick_t dbid = pair.first;
     TRI_voc_cid_t cid = pair.second;
-    TRI_vocbase_t* vocbase = dbfeature->useDatabase(dbid);
+    auto vocbase = dbfeature->useDatabase(dbid);
+
     if (!vocbase) {
       continue;
     }
+
     TRI_ASSERT(!vocbase->isDangling());
-    TRI_DEFER(vocbase->release());
 
     // intentionally do not `useCollection`, tends to break CI tests
     TRI_vocbase_col_status_e status;
     std::shared_ptr<LogicalCollection> coll = vocbase->useCollection(cid, status);
+
     if (!coll) {
       continue;
     }
+
     TRI_DEFER(vocbase->releaseCollection(coll.get()));
 
     auto* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());

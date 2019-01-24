@@ -113,12 +113,6 @@ void MMFilesWalRecoverState::releaseResources() {
   }
 
   openedCollections.clear();
-
-  // release all databases
-  for (auto it = openedDatabases.begin(); it != openedDatabases.end(); ++it) {
-    (*it).second->release();
-  }
-
   openedDatabases.clear();
 }
 
@@ -127,17 +121,18 @@ TRI_vocbase_t* MMFilesWalRecoverState::useDatabase(TRI_voc_tick_t databaseId) {
   auto it = openedDatabases.find(databaseId);
 
   if (it != openedDatabases.end()) {
-    return (*it).second;
+    return it->second.get();
   }
 
-  TRI_vocbase_t* vocbase = databaseFeature->useDatabase(databaseId);
+  auto vocbase = databaseFeature->useDatabase(databaseId);
 
   if (vocbase == nullptr) {
     return nullptr;
   }
 
   openedDatabases.emplace(databaseId, vocbase);
-  return vocbase;
+
+  return vocbase.get();
 }
 
 /// @brief release a database (so it can be dropped)
@@ -148,7 +143,7 @@ TRI_vocbase_t* MMFilesWalRecoverState::releaseDatabase(TRI_voc_tick_t databaseId
     return nullptr;
   }
 
-  TRI_vocbase_t* vocbase = (*it).second;
+  auto vocbase = it->second;
 
   TRI_ASSERT(vocbase != nullptr);
 
@@ -162,7 +157,7 @@ TRI_vocbase_t* MMFilesWalRecoverState::releaseDatabase(TRI_voc_tick_t databaseId
 
     if (collection->vocbase().id() == databaseId) {
       // correct database, now release the collection
-      TRI_ASSERT(vocbase == &(collection->vocbase()));
+      TRI_ASSERT(vocbase.get() == &(collection->vocbase()));
       vocbase->releaseCollection(collection.get());
       // get new iterator position
       it2 = openedCollections.erase(it2);
@@ -172,10 +167,9 @@ TRI_vocbase_t* MMFilesWalRecoverState::releaseDatabase(TRI_voc_tick_t databaseId
     }
   }
 
-  vocbase->release();
   openedDatabases.erase(databaseId);
 
-  return vocbase;
+  return vocbase.get();
 }
 
 /// @brief release a collection (so it can be dropped)
@@ -1197,7 +1191,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             ",\"tasks\":{}}";
 
         // remove already existing database with same name
-        vocbase = state->databaseFeature->lookupDatabase(nameString);
+        vocbase = state->databaseFeature->lookupDatabase(nameString).get();
 
         if (vocbase != nullptr) {
           TRI_voc_tick_t otherId = vocbase->id();
@@ -1208,9 +1202,10 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         }
 
         MMFilesPersistentIndexFeature::dropDatabase(databaseId);
-
-        vocbase = nullptr;
-        int res = state->databaseFeature->createDatabase(databaseId, nameString, vocbase);
+        std::shared_ptr<TRI_vocbase_t> vocbasePtr;
+        auto res = state->databaseFeature->createDatabase( // create vocbase
+          databaseId, nameString, vocbasePtr // args
+        );
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_TOPIC(WARN, arangodb::Logger::ENGINES)

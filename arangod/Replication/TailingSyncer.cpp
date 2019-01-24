@@ -283,7 +283,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     }
     TRI_ASSERT(data.get("name") == nameSlice);
 
-    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
+    auto vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
 
     if (vocbase != nullptr && name != TRI_VOC_SYSTEM_DATABASE) {
       LOG_TOPIC(WARN, Logger::REPLICATION)
@@ -305,7 +305,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
 
     return res;
   } else if (type == REPLICATION_DATABASE_DROP) {
-    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
+    auto vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
 
     if (vocbase != nullptr && name != TRI_VOC_SYSTEM_DATABASE) {
       auto system = sysDbFeature->use();

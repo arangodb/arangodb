@@ -39,7 +39,7 @@ void SystemDatabaseFeature::VocbaseReleaser::operator()(TRI_vocbase_t* ptr) {
 }
 
 SystemDatabaseFeature::SystemDatabaseFeature(application_features::ApplicationServer& server,
-                                             TRI_vocbase_t* vocbase /*= nullptr*/
+    std::shared_ptr<TRI_vocbase_t> const& vocbase /*= nullptr*/
                                              )
     : ApplicationFeature(server, SystemDatabaseFeature::name()), _vocbase(vocbase) {
   startsAfter("Database");
@@ -55,7 +55,9 @@ void SystemDatabaseFeature::start() {
           "Database");
 
   if (feature) {
-    _vocbase.store(feature->lookupDatabase(TRI_VOC_SYSTEM_DATABASE));
+    std::atomic_store( // atomic operation
+      &_vocbase, feature->lookupDatabase(TRI_VOC_SYSTEM_DATABASE) // args
+    );
 
     return;
   }
@@ -66,12 +68,12 @@ void SystemDatabaseFeature::start() {
   FATAL_ERROR_EXIT();
 }
 
-void SystemDatabaseFeature::unprepare() { _vocbase.store(nullptr); }
+void SystemDatabaseFeature::unprepare() { _vocbase.reset(); }
 
 SystemDatabaseFeature::ptr SystemDatabaseFeature::use() const {
-  auto* vocbase = _vocbase.load();
+  auto vocbase = std::atomic_load(&_vocbase);
 
-  return ptr(vocbase && vocbase->use() ? vocbase : nullptr);
+  return ptr(vocbase && vocbase->use() ? vocbase.get() : nullptr);
 }
 
 }  // namespace arangodb

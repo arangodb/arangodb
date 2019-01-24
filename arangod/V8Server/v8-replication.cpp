@@ -612,7 +612,7 @@ static void StateApplierReplicationAll(v8::FunctionCallbackInfo<v8::Value> const
   VPackBuilder builder;
   builder.openObject();
   for (auto& name : databaseFeature->getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+    auto vocbase = databaseFeature->lookupDatabase(name);
 
     if (vocbase == nullptr) {
       continue;

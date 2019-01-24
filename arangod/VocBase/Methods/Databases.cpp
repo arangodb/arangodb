@@ -52,7 +52,7 @@ using namespace arangodb::methods;
 
 TRI_vocbase_t* Databases::lookup(std::string const& dbname) {
   if (DatabaseFeature::DATABASE != nullptr) {
-    return DatabaseFeature::DATABASE->lookupDatabase(dbname);
+    return DatabaseFeature::DATABASE->lookupDatabase(dbname).get();
   }
   return nullptr;
 }
@@ -221,10 +221,12 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
     // database was created successfully in agency
 
     // now wait for heartbeat thread to create the database object
-    TRI_vocbase_t* vocbase = nullptr;
+    std::shared_ptr<TRI_vocbase_t> vocbase = nullptr;
     int tries = 0;
+
     while (++tries <= 6000) {
       vocbase = databaseFeature->useDatabase(id);
+
       if (vocbase != nullptr) {
         break;
       }
@@ -235,7 +237,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
     if (vocbase == nullptr) {
       return Result(TRI_ERROR_INTERNAL, "unable to find database");
     }
-    TRI_DEFER(vocbase->release());
+
     TRI_ASSERT(vocbase->id() == id);
     TRI_ASSERT(vocbase->name() == dbName);
 
@@ -259,16 +261,15 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
       id = basics::VelocyPackHelper::stringUInt64(options, "id");
     }
 
-    TRI_vocbase_t* vocbase = nullptr;
+    std::shared_ptr<TRI_vocbase_t> vocbase = nullptr;
     int res = databaseFeature->createDatabase(id, dbName, vocbase);
+
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res);
     }
 
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(!vocbase->isDangling());
-
-    TRI_DEFER(vocbase->release());
 
     // we need to add the permissions before running the upgrade script
     if (ExecContext::CURRENT != nullptr && um != nullptr) {
@@ -310,15 +311,17 @@ namespace {
 int dropDBCoordinator(std::string const& dbName) {
   // Arguments are already checked, there is exactly one argument
   DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
-  TRI_vocbase_t* vocbase = databaseFeature->useDatabase(dbName);
+  TRI_voc_tick_t id;
 
-  if (vocbase == nullptr) {
-    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+  {
+    auto vocbase = databaseFeature->useDatabase(dbName);
+
+    if (vocbase == nullptr) {
+      return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+    }
+
+    id = vocbase->id();
   }
-
-  TRI_voc_tick_t const id = vocbase->id();
-
-  vocbase->release();
 
   ClusterInfo* ci = ClusterInfo::instance();
   auto res = ci->dropDatabaseCoordinator(dbName, 120.0);
@@ -331,17 +334,18 @@ int dropDBCoordinator(std::string const& dbName) {
   int tries = 0;
 
   while (++tries <= 6000) {
-    TRI_vocbase_t* vocbase = databaseFeature->useDatabase(id);
+    {
+      auto vocbase = databaseFeature->useDatabase(id);
 
-    if (vocbase == nullptr) {
-      // object has vanished
-      break;
+      if (vocbase == nullptr) {
+        break; // object has vanished
+      }
     }
 
-    vocbase->release();
     // sleep
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
+
   return TRI_ERROR_NO_ERROR;
 }
 }  // namespace

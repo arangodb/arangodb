@@ -178,7 +178,7 @@ struct MMFilesWalRecoverState {
   TRI_voc_tick_t lastTick;
   std::vector<MMFilesWalLogfile*> logfilesToProcess;
   std::unordered_map<TRI_voc_cid_t, std::shared_ptr<arangodb::LogicalCollection>> openedCollections;
-  std::unordered_map<TRI_voc_tick_t, TRI_vocbase_t*> openedDatabases;
+  std::unordered_map<TRI_voc_tick_t, std::shared_ptr<TRI_vocbase_t>> openedDatabases; // non-nullptr in-use vocbases
   std::vector<std::string> emptyLogfiles;
 
   bool ignoreRecoveryErrors;

@@ -205,7 +205,7 @@ SECTION("test_drop") {
   REQUIRE(nullptr != database);
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE(nullptr != ci);
-  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
 
   // create database
   {
@@ -301,7 +301,7 @@ SECTION("test_drop_cid") {
   REQUIRE((nullptr != database));
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE((nullptr != ci));
-  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
 
   // create database
   {
@@ -358,7 +358,7 @@ SECTION("test_drop_database") {
   auto restore = irs::make_finally([&before]()->void { PhysicalCollectionMock::before = before; });
   PhysicalCollectionMock::before = [&beforeCount]()->void { ++beforeCount; };
 
-  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
   REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
   REQUIRE((nullptr != vocbase));
   REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.).ok()));
@@ -385,7 +385,7 @@ SECTION("test_ensure") {
   REQUIRE((nullptr != database));
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE((nullptr != ci));
-  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
 
   // create database
   {
@@ -518,7 +518,7 @@ SECTION("test_query") {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"view\": \"testView\", \"type\": \"arangosearch\", \"includeAllFields\": true }");
-    TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+    std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase0", vocbase)));
     CHECK((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0).ok()));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
@@ -554,7 +554,7 @@ SECTION("test_query") {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"view\": \"testView\", \"type\": \"arangosearch\", \"includeAllFields\": true }");
-    TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+    std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase1", vocbase)));
     CHECK((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0).ok()));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
@@ -615,7 +615,7 @@ SECTION("test_query") {
     }");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\":442 }");
 
-    TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+    std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
     REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.).ok()));
@@ -718,7 +718,7 @@ SECTION("test_query") {
       arangodb::FlushFeature
     >("Flush");
     REQUIRE(feature);
-    TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+    std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
     REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.).ok()));
@@ -960,7 +960,7 @@ SECTION("test_transaction_snapshot") {
   REQUIRE((nullptr != database));
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE((nullptr != ci));
-  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
 
   // create database
   {
@@ -1098,7 +1098,7 @@ SECTION("test_updateProperties") {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, \"consolidationIntervalMsec\": 42 }");
-    TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+    std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
     REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.).ok()));
@@ -1188,7 +1188,7 @@ SECTION("test_updateProperties") {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, \"consolidationIntervalMsec\": 42 }");
-    TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+    std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
     REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.).ok()));
@@ -1278,7 +1278,7 @@ SECTION("test_updateProperties") {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"view\": \"testView\", \"type\": \"arangosearch\", \"includeAllFields\": true }");
     auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, \"consolidationIntervalMsec\": 42 }");
-    TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+    std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
     REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.).ok()));
@@ -1373,7 +1373,7 @@ SECTION("test_updateProperties") {
     auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\", \"id\": \"123\" }");
     auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"view\": \"testView\", \"type\": \"arangosearch\", \"includeAllFields\": true }");
     auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, \"consolidationIntervalMsec\": 42 }");
-    TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+    std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
     REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.).ok()));

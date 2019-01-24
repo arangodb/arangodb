@@ -129,7 +129,7 @@ REGISTER_ANALYZER_JSON(InvalidAnalyzer, InvalidAnalyzer::make);
 struct IResearchDocumentSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
+  std::shared_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
   IResearchDocumentSetup(): engine(server), server(nullptr, nullptr) {
@@ -146,7 +146,7 @@ struct IResearchDocumentSetup {
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required for constructing TRI_vocbase_t
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system), false); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::ShardingFeature(server), true);
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
@@ -186,6 +186,7 @@ struct IResearchDocumentSetup {
 
   ~IResearchDocumentSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
+    arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>()->unprepare(); // release system database before reseting the 'ENGINE'
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;

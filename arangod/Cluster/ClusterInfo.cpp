@@ -563,7 +563,7 @@ void ClusterInfo::loadPlan() {
           }
 
           std::string const databaseName = databasePairSlice.key.copyString();
-          TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(databaseName);
+          auto vocbase = databaseFeature->lookupDatabase(databaseName);
 
           if (vocbase == nullptr) {
             // No database with this name found.
@@ -722,7 +722,7 @@ void ClusterInfo::loadPlan() {
 
           DatabaseCollections databaseCollections;
           std::string const databaseName = databasePairSlice.key.copyString();
-          TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(databaseName);
+          auto vocbase = databaseFeature->lookupDatabase(databaseName);
 
           if (vocbase == nullptr) {
             // No database with this name found.

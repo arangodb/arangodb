@@ -224,7 +224,7 @@ TEST_CASE("ClusterInfoTest", "[cluster]") {
   ClusterInfoSetup s;
   (void)(s);
 
-SECTION("test_drop_databse") {
+SECTION("test_drop_database") {
   auto* database = arangodb::DatabaseFeature::DATABASE;
   REQUIRE(nullptr != database);
   auto* ci = arangodb::ClusterInfo::instance();
@@ -233,7 +233,7 @@ SECTION("test_drop_databse") {
   // test LogicalView dropped when database dropped
   {
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+    std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase)));
     REQUIRE((nullptr != vocbase));
     REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).ok()));

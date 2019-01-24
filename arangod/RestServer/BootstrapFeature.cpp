@@ -348,11 +348,10 @@ void BootstrapFeature::unprepare() {
           "Database");
 
   for (auto& name : databaseFeature->getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature->useDatabase(name);
+    auto vocbase = databaseFeature->useDatabase(name);
 
     if (vocbase != nullptr) {
       vocbase->queryList()->killAll(true);
-      vocbase->release();
     }
   }
 }

@@ -1569,7 +1569,8 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // check if the other database exists, and increase its refcount
-  vocbase = databaseFeature->useDatabase(name);
+  vocbase = databaseFeature->useDatabase(name).get();
+  vocbase = vocbase && vocbase->use() ? vocbase : nullptr; // increase refcount
 
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);

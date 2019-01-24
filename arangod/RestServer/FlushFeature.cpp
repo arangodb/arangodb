@@ -136,7 +136,7 @@ arangodb::Result applyRecoveryMarker(
     );
   }
 
-  auto* vocbase = dbFeature->useDatabase(dbId);
+  auto vocbase = dbFeature->useDatabase(dbId);
 
   if (!vocbase) {
     return arangodb::Result(
@@ -144,8 +144,6 @@ arangodb::Result applyRecoveryMarker(
       std::string("failed to find database '") + std::to_string(dbId) + "' while applying 'Flush' recovery marker of type '" + type + "'"
     );
   }
-
-  TRI_DEFER(vocbase->release());
 
   if (!slice.hasKey(TYPE_ATTRIBUTE)) {
     return arangodb::Result(

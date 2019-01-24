@@ -99,7 +99,7 @@ struct IResearchLinkCoordinatorSetup {
   GeneralClientConnectionAgencyMock* agency;
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
+  std::shared_ptr<TRI_vocbase_t> system;
   std::map<std::string, std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
   std::vector<arangodb::application_features::ApplicationFeature*> orderedFeatures;
   std::string testFilesystemPath;
@@ -148,7 +148,7 @@ struct IResearchLinkCoordinatorSetup {
     buildFeatureEntry(tmpFeature = new arangodb::QueryRegistryFeature(server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(tmpFeature); // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    buildFeatureEntry(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    buildFeatureEntry(new arangodb::SystemDatabaseFeature(server, system), false); // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::RandomFeature(server), false); // required by AuthenticationFeature
     buildFeatureEntry(new arangodb::AuthenticationFeature(server), false);
     buildFeatureEntry(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(server), false);
@@ -210,6 +210,7 @@ struct IResearchLinkCoordinatorSetup {
 
   ~IResearchLinkCoordinatorSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
+    arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>()->unprepare(); // release system database before reseting the 'ENGINE'
     TRI_RemoveDirectory(testFilesystemPath.c_str());
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT);
@@ -252,7 +253,7 @@ SECTION("test_create_drop") {
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE(nullptr != ci);
 
-  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
 
   // create database
   {

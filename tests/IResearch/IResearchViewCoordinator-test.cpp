@@ -104,7 +104,7 @@ struct IResearchViewCoordinatorSetup {
   GeneralClientConnectionAgencyMock* agency;
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
+  std::shared_ptr<TRI_vocbase_t> system;
   std::map<std::string, std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
   std::vector<arangodb::application_features::ApplicationFeature*> orderedFeatures;
   std::string testFilesystemPath;
@@ -151,7 +151,7 @@ struct IResearchViewCoordinatorSetup {
     buildFeatureEntry(tmpFeature = new arangodb::QueryRegistryFeature(server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(tmpFeature); // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    buildFeatureEntry(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    buildFeatureEntry(new arangodb::SystemDatabaseFeature(server, system), false); // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::RandomFeature(server), false); // required by AuthenticationFeature
     buildFeatureEntry(new arangodb::AuthenticationFeature(server), false);
     buildFeatureEntry(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(server), false);
@@ -218,6 +218,7 @@ struct IResearchViewCoordinatorSetup {
 
   ~IResearchViewCoordinatorSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
+    arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>()->unprepare(); // release system database before reseting the 'ENGINE'
     TRI_RemoveDirectory(testFilesystemPath.c_str());
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT);
@@ -315,7 +316,7 @@ SECTION("test_defaults") {
   REQUIRE(nullptr != database);
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE((nullptr != ci));
-  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
 
   // create database
   {
@@ -541,7 +542,7 @@ SECTION("test_create_drop_view") {
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE(nullptr != ci);
 
-  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
 
   // create database
   {
@@ -603,7 +604,7 @@ SECTION("test_create_drop_view") {
     CHECK(viewId == std::to_string(view->id()));
     CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
     CHECK(arangodb::LogicalView::category() == view->category());
-    CHECK(vocbase == &view->vocbase());
+    CHECK(vocbase.get() == &view->vocbase());
 
     // create duplicate view
     CHECK((TRI_ERROR_ARANGO_DUPLICATE_NAME == ci->createViewCoordinator(vocbase->name(), viewId, json->slice()).errorNumber()));
@@ -641,7 +642,7 @@ SECTION("test_create_drop_view") {
     CHECK(42 == view->id());
     CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
     CHECK(arangodb::LogicalView::category() == view->category());
-    CHECK(vocbase == &view->vocbase());
+    CHECK(vocbase.get() == &view->vocbase());
 
     // create duplicate view
     CHECK((TRI_ERROR_ARANGO_DUPLICATE_NAME == ci->createViewCoordinator(vocbase->name(), viewId, json->slice()).errorNumber()));
@@ -665,7 +666,7 @@ SECTION("test_drop_with_link") {
   REQUIRE(nullptr != database);
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE((nullptr != ci));
-  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
 
   // create database
   {
@@ -769,7 +770,7 @@ SECTION("test_update_properties") {
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE(nullptr != ci);
 
-  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
 
   // create database
   {
@@ -803,7 +804,7 @@ SECTION("test_update_properties") {
     CHECK(viewId == std::to_string(view->id()));
     CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
     CHECK(arangodb::LogicalView::category() == view->category());
-    CHECK(vocbase == &view->vocbase());
+    CHECK(vocbase.get() == &view->vocbase());
 
     // check default properties
     {
@@ -838,7 +839,7 @@ SECTION("test_update_properties") {
       CHECK(viewId == std::to_string(fullyUpdatedView->id()));
       CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == fullyUpdatedView->type());
       CHECK(arangodb::LogicalView::category() == fullyUpdatedView->category());
-      CHECK(vocbase == &fullyUpdatedView->vocbase());
+      CHECK(vocbase.get() == &fullyUpdatedView->vocbase());
 
       // check recently updated properties
       {
@@ -889,7 +890,7 @@ SECTION("test_update_properties") {
       CHECK(viewId == std::to_string(partiallyUpdatedView->id()));
       CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == partiallyUpdatedView->type());
       CHECK(arangodb::LogicalView::category() == partiallyUpdatedView->category());
-      CHECK(vocbase == &partiallyUpdatedView->vocbase());
+      CHECK(vocbase.get() == &partiallyUpdatedView->vocbase());
 
       // check recently updated properties
       {
@@ -925,7 +926,7 @@ SECTION("test_update_links_partial_remove") {
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE(nullptr != ci);
 
-  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
 
   // create database
   {
@@ -1039,7 +1040,7 @@ SECTION("test_update_links_partial_remove") {
   CHECK(42 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   CHECK(arangodb::LogicalView::category() == view->category());
-  CHECK(vocbase == &view->vocbase());
+  CHECK(vocbase.get() == &view->vocbase());
 
   // visit collections
   {
@@ -1276,7 +1277,7 @@ SECTION("test_update_links_partial_remove") {
   CHECK(42 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   CHECK(arangodb::LogicalView::category() == view->category());
-  CHECK(vocbase == &view->vocbase());
+  CHECK(vocbase.get() == &view->vocbase());
 
   // visit collections
   {
@@ -1475,7 +1476,7 @@ SECTION("test_update_links_partial_add") {
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE(nullptr != ci);
 
-  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
 
   // create database
   {
@@ -1584,7 +1585,7 @@ SECTION("test_update_links_partial_add") {
   CHECK(42 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   CHECK(arangodb::LogicalView::category() == view->category());
-  CHECK(vocbase == &view->vocbase());
+  CHECK(vocbase.get() == &view->vocbase());
 
   // visit collections
   {
@@ -1761,7 +1762,7 @@ SECTION("test_update_links_partial_add") {
   CHECK(42 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   CHECK(arangodb::LogicalView::category() == view->category());
-  CHECK(vocbase == &view->vocbase());
+  CHECK(vocbase.get() == &view->vocbase());
 
   // visit collections
   {
@@ -2068,7 +2069,7 @@ SECTION("test_update_links_replace") {
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE(nullptr != ci);
 
-  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
 
   // create database
   {
@@ -2177,7 +2178,7 @@ SECTION("test_update_links_replace") {
   CHECK(42 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   CHECK(arangodb::LogicalView::category() == view->category());
-  CHECK(vocbase == &view->vocbase());
+  CHECK(vocbase.get() == &view->vocbase());
 
   // visit collections
   {
@@ -2365,7 +2366,7 @@ SECTION("test_update_links_replace") {
   CHECK(42 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   CHECK(arangodb::LogicalView::category() == view->category());
-  CHECK(vocbase == &view->vocbase());
+  CHECK(vocbase.get() == &view->vocbase());
 
   // visit collections
   {
@@ -2486,7 +2487,7 @@ SECTION("test_update_links_replace") {
   CHECK(42 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   CHECK(arangodb::LogicalView::category() == view->category());
-  CHECK(vocbase == &view->vocbase());
+  CHECK(vocbase.get() == &view->vocbase());
 
   // visit collections
   {
@@ -2622,7 +2623,7 @@ SECTION("test_update_links_clear") {
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE(nullptr != ci);
 
-  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
 
   // create database
   {
@@ -2736,7 +2737,7 @@ SECTION("test_update_links_clear") {
   CHECK(42 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   CHECK(arangodb::LogicalView::category() == view->category());
-  CHECK(vocbase == &view->vocbase());
+  CHECK(vocbase.get() == &view->vocbase());
 
   // visit collections
   {
@@ -2981,7 +2982,7 @@ SECTION("test_update_links_clear") {
   CHECK(42 == view->id());
   CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   CHECK(arangodb::LogicalView::category() == view->category());
-  CHECK(vocbase == &view->vocbase());
+  CHECK(vocbase.get() == &view->vocbase());
 
   // visit collections
   {
@@ -3046,7 +3047,7 @@ SECTION("test_drop_link") {
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE(nullptr != ci);
 
-  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
 
   // create database
   {
@@ -3116,7 +3117,7 @@ SECTION("test_drop_link") {
     CHECK(42 == view->id());
     CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
     CHECK(arangodb::LogicalView::category() == view->category());
-    CHECK(vocbase == &view->vocbase());
+    CHECK(vocbase.get() == &view->vocbase());
 
     // visit collections
     {
@@ -3231,7 +3232,7 @@ SECTION("test_drop_link") {
     CHECK(42 == view->id());
     CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
     CHECK(arangodb::LogicalView::category() == view->category());
-    CHECK(vocbase == &view->vocbase());
+    CHECK(vocbase.get() == &view->vocbase());
 
     // visit collections
     CHECK(view->visitCollections([](TRI_voc_cid_t) {
@@ -3314,7 +3315,7 @@ SECTION("test_update_overwrite") {
   REQUIRE(nullptr != database);
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE((nullptr != ci));
-  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
 
   // create database
   {
@@ -3853,7 +3854,7 @@ SECTION("test_update_partial") {
   REQUIRE(nullptr != database);
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE((nullptr != ci));
-  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
 
   // create database
   {
@@ -4399,7 +4400,7 @@ SECTION("IResearchViewNode::createBlock") {
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE(nullptr != ci);
 
-  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+  std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
 
   // create database
   {
@@ -4433,7 +4434,7 @@ SECTION("IResearchViewNode::createBlock") {
     CHECK(viewId == std::to_string(view->id()));
     CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
     CHECK(arangodb::LogicalView::category() == view->category());
-    CHECK(vocbase == &view->vocbase());
+    CHECK(vocbase.get() == &view->vocbase());
 
     // dummy query
     arangodb::aql::Query query(

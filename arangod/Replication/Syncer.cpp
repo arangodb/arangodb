@@ -448,7 +448,7 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
 
   if (it == _state.vocbases.end()) {
     // automatically checks for id in string
-    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
+    auto vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
 
     if (vocbase != nullptr) {
       _state.vocbases.emplace(std::piecewise_construct, std::forward_as_tuple(name),
@@ -457,7 +457,7 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
       LOG_TOPIC(DEBUG, Logger::REPLICATION) << "could not find database '" << name << "'";
     }
 
-    return vocbase;
+    return vocbase.get();
   } else {
     return &(it->second.database());
   }

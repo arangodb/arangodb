@@ -24,23 +24,29 @@
 #define APPLICATION_FEATURES_DATABASE_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/DataProtector.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
 class LogicalCollection;
 
-namespace aql {
-class QueryRegistry;
 }
+
+namespace arangodb {
+namespace velocypack {
+
+  class Builder; // forward declaration
+  class Slice; // forward declaration
+
+} // velocypack
+} //arangodb
+
+namespace arangodb {
 
 class DatabaseManagerThread final : public Thread {
  public:
@@ -96,17 +102,21 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   std::vector<std::string> getDatabaseNames();
   std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
 
-  int createDatabase(TRI_voc_tick_t id, std::string const& name, TRI_vocbase_t*& result);
+  int createDatabase( // create a vocbase
+    TRI_voc_tick_t id, // vocbase id
+    std::string const& name, //vocbase name
+    std::shared_ptr<TRI_vocbase_t>& result // created vocbase (not marked as used)
+  );
   int dropDatabase(std::string const& name, bool waitForDeletion, bool removeAppsDirectory);
   int dropDatabase(TRI_voc_tick_t id, bool waitForDeletion, bool removeAppsDirectory);
 
   void inventory(arangodb::velocypack::Builder& result, TRI_voc_tick_t,
                  std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
-  TRI_vocbase_t* useDatabase(std::string const& name);
-  TRI_vocbase_t* useDatabase(TRI_voc_tick_t id);
+  std::shared_ptr<TRI_vocbase_t> useDatabase(std::string const& name);
+  std::shared_ptr<TRI_vocbase_t> useDatabase(TRI_voc_tick_t id);
 
-  TRI_vocbase_t* lookupDatabase(std::string const& name);
+  std::shared_ptr<TRI_vocbase_t> lookupDatabase(std::string const& name);
   void enumerateDatabases(std::function<void(TRI_vocbase_t& vocbase)> const& func);
   std::string translateCollectionName(std::string const& dbName,
                                       std::string const& collectionName);
@@ -160,12 +170,9 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool _ignoreDatafileErrors;
   std::atomic<bool> _throwCollectionNotLoadedError;
 
+  struct DatabasesLists; // forward declaration
+  std::shared_ptr<DatabasesLists> _databasesLists;
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
-
-  std::atomic<DatabasesLists*> _databasesLists;
-  // TODO: Make this again a template once everybody has gcc >= 4.9.2
-  // arangodb::basics::DataProtector<64>
-  arangodb::basics::DataProtector _databasesProtector;
   arangodb::Mutex _databasesMutex;
 
   bool _isInitiallyEmpty;

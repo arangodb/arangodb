@@ -2052,9 +2052,11 @@ void RestReplicationHandler::handleCommandApplierGetStateAll() {
           "Database");
 
   VPackBuilder builder;
+
   builder.openObject();
+
   for (auto& name : databaseFeature->getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+    auto vocbase = databaseFeature->lookupDatabase(name);
 
     if (vocbase == nullptr) {
       continue;
@@ -2070,6 +2072,7 @@ void RestReplicationHandler::handleCommandApplierGetStateAll() {
     applier->toVelocyPack(builder);
     builder.close();
   }
+
   builder.close();
 
   generateResult(rest::ResponseCode::OK, builder.slice());

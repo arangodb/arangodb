@@ -42,7 +42,8 @@ class SystemDatabaseFeature final : public application_features::ApplicationFeat
   typedef std::unique_ptr<TRI_vocbase_t, VocbaseReleaser> ptr;
 
   SystemDatabaseFeature(application_features::ApplicationServer& server,
-                        TRI_vocbase_t* vocbase = nullptr);
+    std::shared_ptr<TRI_vocbase_t>const& vocbase = nullptr // vocbase to use prior to start()
+  );
 
   static std::string const& name() noexcept;
   void start() override;
@@ -50,7 +51,7 @@ class SystemDatabaseFeature final : public application_features::ApplicationFeat
   ptr use() const;
 
  private:
-  std::atomic<TRI_vocbase_t*> _vocbase;  // cached pointer to the system database
+  std::shared_ptr<TRI_vocbase_t> _vocbase;  // cached pointer to the system database
 };
 
 }  // namespace arangodb

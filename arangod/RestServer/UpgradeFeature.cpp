@@ -188,7 +188,7 @@ void UpgradeFeature::upgradeDatabase() {
   }
 
   for (auto& name : databaseFeature->getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+    auto vocbase = databaseFeature->lookupDatabase(name);
     TRI_ASSERT(vocbase != nullptr);
 
     auto res = methods::Upgrade::startup(*vocbase, _upgrade, ignoreDatafileErrors);

@@ -427,7 +427,7 @@ SECTION("test_upgrade0_1") {
     );
     auto* ci = arangodb::ClusterInfo::instance();
     REQUIRE((nullptr != ci));
-    TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+    std::shared_ptr<TRI_vocbase_t> vocbase; // will be owned by DatabaseFeature
 
     REQUIRE((TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase)));
     REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).ok()));

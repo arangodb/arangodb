@@ -37,11 +37,7 @@ class DatabaseGuard {
   DatabaseGuard& operator=(DatabaseGuard const&) = delete;
 
   /// @brief create guard on existing db
-  explicit DatabaseGuard(TRI_vocbase_t& vocbase) : _vocbase(vocbase) {
-    if (!_vocbase.use()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-    }
-  }
+  explicit DatabaseGuard(TRI_vocbase_t& vocbase);
 
   /// @brief create the guard, using a database id
   explicit DatabaseGuard(TRI_voc_tick_t id);
@@ -51,16 +47,15 @@ class DatabaseGuard {
 
   /// @brief destroy the guard
   ~DatabaseGuard() {
-    TRI_ASSERT(!_vocbase.isDangling());
-    _vocbase.release();
+    TRI_ASSERT(!_vocbase->isDangling());
   }
 
   /// @brief return the database pointer
-  inline TRI_vocbase_t& database() const { return _vocbase; }
+  inline TRI_vocbase_t& database() const { return *_vocbase; }
 
  private:
   /// @brief pointer to database
-  TRI_vocbase_t& _vocbase;
+  std::shared_ptr<TRI_vocbase_t> _vocbase; // guaranteed non-nullptr by constructor
 };
 
 }  // namespace arangodb

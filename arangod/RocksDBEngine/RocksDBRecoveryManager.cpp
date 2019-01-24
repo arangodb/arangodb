@@ -188,30 +188,37 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
           continue;
         }
         auto vocbase = dbfeature->useDatabase(dbColPair.first);
+
         if (vocbase == nullptr) {
           continue;
         }
-        TRI_DEFER(vocbase->release());
+
         auto collection = vocbase->lookupCollection(dbColPair.second);
+
         if (collection == nullptr) {
           continue;
         }
 
         auto* rcoll = static_cast<RocksDBCollection*>(collection->getPhysical());
+
         if (ops.mustTruncate) {  // first we must reset the counter
           rcoll->meta().countRefUnsafe()._added = 0;
           rcoll->meta().countRefUnsafe()._removed = 0;
         }
+
         rcoll->meta().countRefUnsafe()._added += ops.added;
         rcoll->meta().countRefUnsafe()._removed += ops.removed;
+
         if (ops.lastRevisionId) {
           rcoll->meta().countRefUnsafe()._revisionId = ops.lastRevisionId;
         }
+
         TRI_ASSERT(rcoll->meta().countRefUnsafe()._added >=
                    rcoll->meta().countRefUnsafe()._removed);
         rcoll->loadInitialNumberDocuments();
 
         auto const& it = _generators.find(rcoll->objectId());
+
         if (it != _generators.end()) {
           std::string k(basics::StringUtils::itoa(it->second));
           collection->keyGenerator()->track(k.data(), k.size());
@@ -227,20 +234,24 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
             continue;
           }
           auto vocbase = dbfeature->useDatabase(dbColPair.first);
+
           if (vocbase == nullptr) {
             continue;
           }
-          TRI_DEFER(vocbase->release());
 
           auto collection = vocbase->lookupCollection(dbColPair.second);
+
           if (collection == nullptr) {
             continue;
           }
+
           std::string k(basics::StringUtils::itoa(gen.second));
+
           collection->keyGenerator()->track(k.data(), k.size());
         }
       }
     });
+
     return rv;
   }
 
@@ -291,18 +302,21 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   bool truncateIndexes(uint64_t objectId) {
     RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
     RocksDBEngine::CollectionPair pair = engine->mapObjectToCollection(objectId);
+
     if (pair.first == 0 || pair.second == 0) {
       return false;
     }
 
     DatabaseFeature* df = DatabaseFeature::DATABASE;
-    TRI_vocbase_t* vb = df->useDatabase(pair.first);
+    auto vb = df->useDatabase(pair.first);
+
     if (vb == nullptr) {
       return false;
     }
-    TRI_DEFER(vb->release());
+
 
     auto coll = vb->lookupCollection(pair.second);
+
     if (coll == nullptr) {
       return false;
     }
@@ -310,6 +324,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     for (std::shared_ptr<arangodb::Index> const& idx : coll->getIndexes()) {
       RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
       RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
+
       if (est && est->committedSeq() < _currentSequence) {
         est->clear();
       }
@@ -327,11 +342,11 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     }
 
     DatabaseFeature* df = DatabaseFeature::DATABASE;
-    TRI_vocbase_t* vb = df->useDatabase(std::get<0>(triple));
+    auto vb = df->useDatabase(std::get<0>(triple));
+
     if (vb == nullptr) {
       return nullptr;
     }
-    TRI_DEFER(vb->release());
 
     auto coll = vb->lookupCollection(std::get<1>(triple));
 
@@ -340,9 +355,11 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     }
 
     std::shared_ptr<Index> index = coll->lookupIndex(std::get<2>(triple));
+
     if (index == nullptr) {
       return nullptr;
     }
+
     return static_cast<RocksDBIndex*>(index.get())->estimator();
   }
 

@@ -128,7 +128,7 @@ void ensureLink(arangodb::DatabaseFeature& db,
     return;
   }
 
-  TRI_vocbase_t* vocbase = db.useDatabase(dbId);
+  auto vocbase = db.useDatabase(dbId);
 
   if (!vocbase) {
     // if the underlying database is gone, we can go on
