@@ -185,9 +185,23 @@ static void ValidateResult(ShortestPathExecutorInfos& infos, OutputAqlItemRow& r
           if (infos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
             AqlValue value =
                 block->getValue(index, infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX));
+            CHECK(value.isObject());
             CHECK(arangodb::basics::VelocyPackHelper::compare(
                       value.slice(),
                       translator.translateVertex(StringRef(path[j])), false) == 0);
+          }
+          if (infos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
+            AqlValue value =
+                block->getValue(index, infos.getOutputRegister(ShortestPathExecutorInfos::EDGE));
+            if (j == 0) {
+              CHECK(value.isNull(false));
+            } else {
+              CHECK(value.isObject());
+              VPackSlice edge = value.slice();
+              // FROM and TO checks are enough here.
+              CHECK(StringRef(edge.get(StaticStrings::FromString)).compare(path[j - 1]) == 0);
+              CHECK(StringRef(edge.get(StaticStrings::ToString)).compare(path[j]) == 0);
+            }
           }
           ++index;
         }
@@ -275,7 +289,8 @@ static void TestExecutor(ShortestPathExecutorInfos& infos,
 }
 
 static void RunTestWithFullCombination(ShortestPathExecutorInfos::InputVertex&& source,
-                                       ShortestPathExecutorInfos::InputVertex&& target) {
+                                       ShortestPathExecutorInfos::InputVertex&& target,
+                                       bool useEdgeOutput) {
   RegisterId vOutReg = 2;
   RegisterId eOutReg = 3;
   ExecutionState state;
@@ -287,6 +302,10 @@ static void RunTestWithFullCombination(ShortestPathExecutorInfos::InputVertex&& 
       std::initializer_list<RegisterId>{vOutReg});
   std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId> registerMapping{
       {ShortestPathExecutorInfos::OutputName::VERTEX, vOutReg}};
+  if (useEdgeOutput) {
+    registerMapping.emplace(ShortestPathExecutorInfos::OutputName::EDGE, eOutReg);
+    outputRegisters->emplace(eOutReg);
+  }
   TestShortestPathOptions options(fakedQuery.get());
   TokenTranslator& translator = *(static_cast<TokenTranslator*>(options.cache()));
   std::unique_ptr<ShortestPathFinder> finderPtr =
@@ -370,20 +389,41 @@ SCENARIO("ShortestPathExecutor", "[AQL][EXECUTOR][SHORTESTPATHEXE]") {
   ShortestPathExecutorInfos::InputVertex regSource{sourceIn};
   ShortestPathExecutorInfos::InputVertex regTarget{targetIn};
 
-  WHEN("using constant source input") {
-    WHEN("using constant target input") {
-      RunTestWithFullCombination(std::move(constSource), std::move(constTarget));
+  WHEN("using vertex output only") {
+    WHEN("using constant source input") {
+      WHEN("using constant target input") {
+        RunTestWithFullCombination(std::move(constSource), std::move(constTarget), false);
+      }
+      WHEN("using register target input") {
+        RunTestWithFullCombination(std::move(constSource), std::move(regTarget), false);
+      }
     }
-    WHEN("using register target input") {
-      RunTestWithFullCombination(std::move(constSource), std::move(regTarget));
+    WHEN("using register source input") {
+      WHEN("using constant target input") {
+        RunTestWithFullCombination(std::move(regSource), std::move(constTarget), false);
+      }
+      WHEN("using register target input") {
+        RunTestWithFullCombination(std::move(regSource), std::move(regTarget), false);
+      }
     }
   }
-  WHEN("using register source input") {
-    WHEN("using constant target input") {
-      RunTestWithFullCombination(std::move(regSource), std::move(constTarget));
+
+  WHEN("using vertex and edge output") {
+    WHEN("using constant source input") {
+      WHEN("using constant target input") {
+        RunTestWithFullCombination(std::move(constSource), std::move(constTarget), true);
+      }
+      WHEN("using register target input") {
+        RunTestWithFullCombination(std::move(constSource), std::move(regTarget), true);
+      }
     }
-    WHEN("using register target input") {
-      RunTestWithFullCombination(std::move(regSource), std::move(regTarget));
+    WHEN("using register source input") {
+      WHEN("using constant target input") {
+        RunTestWithFullCombination(std::move(regSource), std::move(constTarget), true);
+      }
+      WHEN("using register target input") {
+        RunTestWithFullCombination(std::move(regSource), std::move(regTarget), true);
+      }
     }
   }
 };
