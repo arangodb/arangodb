@@ -992,7 +992,8 @@ void DumpFeature::start() {
     maskings::MaskingsResult m = maskings::Maskings::fromFile(_options.maskingsFile);
 
     if (m.status != maskings::MaskingsResult::VALID) {
-      LOG_TOPIC(FATAL, Logger::CONFIG) << m.message;
+      LOG_TOPIC(FATAL, Logger::CONFIG)
+          << m.message << " in maskings file '" << _options.maskingsFile << "'";
       FATAL_ERROR_EXIT();
     }
 

@@ -107,17 +107,11 @@ If the path starts with a `.` then it is considered to match any path
 ending in `name`. For example, `.name` will match the field
 `name` of all leaf attributes in the document. Leaf attributes are
 attributes whose value is `null` or of data type `string`, `number`,
-`bool` or `array`. That means, it matches `name` at the top level
-as well as at any nested level (e.g. `foo.bar.name`), but not sub-objects.
-
-On the other hand, `name` will only match leaf attributes
-at top level. `person.name` will match the attribute `name` of a leaf
-in the top-level object `person`. If `person` was itself an object,
-then the masking settings for this path would be ignored, because it
-is not a leaf attribute.
-
-If the attribute value is an **array** then the masking is applied to
-**all array elements individually**.
+`bool` or `array`. That means, it matches `name` at the top level as
+well as at any nested level (e.g. `foo.bar.name`), but not
+sub-objects.  `name` will only match leaf attributes at top
+level. `person.name` will match the attribute `name` of a leaf in the
+top-level object `person`.
 
 If you have an attribute name that contains a dot, you need to quote the
 name with either a tick or a backtick. For example:
@@ -479,8 +473,8 @@ Boolean, or `null`.
 ### Decimal Number
 
 This masking type replaces the value of the attribute with a random
-floating point number. It will replace the value even if it is a string,
-Boolean, or `null`.
+decimal.  It will replace the value even if it is a string, boolean,
+or `null`.
 
 ```json
 {
