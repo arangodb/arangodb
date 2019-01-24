@@ -388,7 +388,7 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
 
     // TODO this is dirty. if you have an idea how to improve this, please do.
     // Can't we omit this?
-    if (_lastBlock == nullptr) {
+    if (!skipping && _lastBlock == nullptr) {
       // call only on the first row of the first block
       TRI_ASSERT(_pos == 0);
       inheritRegisters(cur, _result.get(), 0);
