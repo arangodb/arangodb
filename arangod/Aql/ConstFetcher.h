@@ -44,7 +44,7 @@ class BlockFetcher;
  *        of fetchRow.
  */
 class ConstFetcher {
-  using BlockFetcher = BlockFetcher<false>;
+  using BlockFetcher = aql::BlockFetcher<false>;
 
  public:
   explicit ConstFetcher(BlockFetcher& executionBlock);
