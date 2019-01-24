@@ -78,7 +78,10 @@ DocumentProducingFunction DocumentProducingHelper::buildCallback(
     bool allowCoveringIndexOptimization, bool useRawDocumentPointers) {
   if (!produceResult) {
     // no result needed
-    documentProducer = [](InputAqlItemRow& input, OutputAqlItemRow& output, VPackSlice, RegisterId registerId) {};
+    documentProducer = [](InputAqlItemRow& input, OutputAqlItemRow& output, VPackSlice, RegisterId registerId) {
+      // TODO: optimize this within the register planning mechanism?
+      output.setValue(registerId, input, AqlValue(AqlValueHintNull()));
+    };
     return documentProducer;
   }
 

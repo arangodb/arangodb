@@ -76,6 +76,19 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
                                     (_infos.getRandom()
                                          ? transaction::Methods::CursorType::ANY
                                          : transaction::Methods::CursorType::ALL));
+
+  if (!waitForSatellites(_infos.getEngine(), _infos.getCollection())) {
+    double maxWait = _infos.getEngine()->getQuery()->queryOptions().satelliteSyncWait;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
+                                   "collection " + _infos.getCollection()->name() +
+                                       " did not come into sync in time (" +
+                                       std::to_string(maxWait) + ")");
+  }
+  this->setProducingFunction(DocumentProducingHelper::buildCallback(
+          _documentProducer, _infos.getOutVariable(), _infos.getProduceResult(),
+          _infos.getProjections(), _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
+          _infos.getAllowCoveringIndexOptimization(), _infos.getUseRawDocumentPointers()));
+
 };
 
 EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
@@ -88,20 +101,6 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
   ExecutionState state;
   EnumerateCollectionStats stats{};
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
-
-  // TODO: check this every time or within constructor?
-  if (!waitForSatellites(_infos.getEngine(), _infos.getCollection())) {
-    double maxWait = _infos.getEngine()->getQuery()->queryOptions().satelliteSyncWait;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-                                   "collection " + _infos.getCollection()->name() +
-                                       " did not come into sync in time (" +
-                                       std::to_string(maxWait) + ")");
-  }
-
-  this->setProducingFunction(DocumentProducingHelper::buildCallback(
-      _documentProducer, _infos.getOutVariable(), _infos.getProduceResult(),
-      _infos.getProjections(), _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
-      _infos.getAllowCoveringIndexOptimization(), _infos.getUseRawDocumentPointers()));
 
   while (true) {
     if (!_cursorHasMore) {
