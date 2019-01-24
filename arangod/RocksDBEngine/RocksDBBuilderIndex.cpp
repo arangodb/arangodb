@@ -231,7 +231,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
     }
   }
 
-  if (!it->status().ok()) {
+  if (!it->status().ok() && res.ok()) {
     res = rocksutils::convertStatus(it->status(), rocksutils::StatusHint::index);
   }
 
@@ -245,37 +245,33 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
 
   // if an error occured drop() will be called
   LOG_DEVEL << "SNAPSHOT CAPTURED " << numDocsWritten << " " << res.errorMessage();
-//  std::this_thread::sleep_for(std::chrono::seconds(1));
-//#warning REMOVE
-  
+
   return res;
 }
 
-/// non-transactional: fill index with existing documents
-/// from this collection
-// arangodb::Result RocksDBBuilderIndex::fillIndexFast() {
-//  RocksDBIndex* internal = _wrapped.get();
-//  TRI_ASSERT(internal != nullptr);
-//  std::function<void()> empty;
-//
-//  const rocksdb::Snapshot* snap = nullptr;rootDB->GetSnapshot();
-//
-//  Result res;
-//  if (this->unique()) {
-//    const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
-//    // unique index. we need to keep track of all our changes because we need to
-//    // avoid duplicate index keys. must therefore use a WriteBatchWithIndex
-//    rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
-//    res = ::fillIndex<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(*internal, batch, snap, empty);
-//  } else {
-//    // non-unique index. all index keys will be unique anyway because they
-//    // contain the document id we can therefore get away with a cheap WriteBatch
-//    rocksdb::WriteBatch batch(32 * 1024 * 1024);
-//    res = ::fillIndex<rocksdb::WriteBatch, RocksDBBatchedMethods>(*internal, batch, snap, empty);
-//  }
-//
-//  return res;
-//}
+ arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
+  RocksDBIndex* internal = _wrapped.get();
+  TRI_ASSERT(internal != nullptr);
+  std::function<void()> empty;
+
+  const rocksdb::Snapshot* snap = nullptr;
+
+  Result res;
+  if (this->unique()) {
+    const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
+    // unique index. we need to keep track of all our changes because we need to
+    // avoid duplicate index keys. must therefore use a WriteBatchWithIndex
+    rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
+    res = ::fillIndex<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(*internal, batch, snap);
+  } else {
+    // non-unique index. all index keys will be unique anyway because they
+    // contain the document id we can therefore get away with a cheap WriteBatch
+    rocksdb::WriteBatch batch(32 * 1024 * 1024);
+    res = ::fillIndex<rocksdb::WriteBatch, RocksDBBatchedMethods>(*internal, batch, snap);
+  }
+
+  return res;
+}
 
 namespace {
 
@@ -487,6 +483,7 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
   }
 
   if (!iterator->status().ok() && res.ok()) {
+    LOG_DEVEL << "iterator error " << s.ToString();
     res = rocksutils::convertStatus(iterator->status());
   }
 
@@ -504,19 +501,19 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
 }  // namespace
 
 bool RocksDBBuilderIndex::Locker::lock() {
-  if (!locked) {
-    if (cc->lockWrite() != TRI_ERROR_NO_ERROR) {
+  if (!_locked) {
+    if (_collection->lockWrite() != TRI_ERROR_NO_ERROR) {
       return false;
     }
-    locked = true;
+    _locked = true;
   }
   return true;
 }
 
 void RocksDBBuilderIndex::Locker::unlock() {
-  if (locked) {
-    cc->unlockWrite();
-    locked = false;
+  if (_locked) {
+    _collection->unlockWrite();
+    _locked = false;
   }
 }
 
@@ -589,7 +586,12 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
       return res;
     }
     TRI_ASSERT(lastScanned >= scanFrom);
-  } while (numScanned > 5000 && maxCatchups-- != 0);
+    
+    if (numScanned > 5000 && maxCatchups-- != 0) {
+      std::this_thread::yield();
+      continue;
+    }
+  } while (false);
 
   if (!locker.lock()) {
     return res.reset(TRI_ERROR_LOCK_TIMEOUT);

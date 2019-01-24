@@ -91,19 +91,22 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   }
   void recalculateEstimates() override { _wrapped->recalculateEstimates(); }
 
+  /// @brief assumes an exclusive lock on the collection
+  Result fillIndexForeground();
+  
   struct Locker {
-    Locker(RocksDBCollection* c) : cc(c), locked(false) {}
+    Locker(RocksDBCollection* c) : _collection(c), _locked(false) {}
     ~Locker() { unlock(); }
     bool lock();
     void unlock();
   private:
-    RocksDBCollection* const cc;
-    bool locked;
+    RocksDBCollection* const _collection;
+    bool _locked;
   };
 
   /// @brief fill the index, assume already locked exclusively
-  /// @param unlock called when collection lock can be released
-  Result fillIndexBackground(Locker&);
+  /// @param locker locks and unlocks the collection
+  Result fillIndexBackground(Locker& locker);
 
   virtual IndexIterator* iteratorForCondition(transaction::Methods* trx,
                                               ManagedDocumentResult* result,

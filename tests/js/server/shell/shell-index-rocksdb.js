@@ -285,17 +285,6 @@ function backgroundIndexSuite() {
       
       // sanity checks
       assertEqual(c.count(), 50001);
-
-      let indexes = c.getIndexes();
-      for (let i of indexes) {
-        switch (i.type) {
-          case 'primary':
-            break;
-          case 'hash':
-          default:
-            fail();
-        }
-      }
     },
 
     testRemoveParallel: function () {
@@ -359,12 +348,14 @@ function backgroundIndexSuite() {
         }
       }
 
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       let indexes = c.getIndexes(true);
       for (let i of indexes) {
         switch (i.type) {
           case 'primary':
             break;
           case 'hash':
+          assertTrue(Math.abs(i.selectivityEstimate - 1.0) < 0.005, i);
             break;
           default:
             fail();
@@ -427,14 +418,15 @@ function backgroundIndexSuite() {
                                   {'@coll': cn, 'val': 100000}, {count:true});
       assertEqual(oldCursor.count(), 0);
 
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       let indexes = c.getIndexes(true);
       for (let i of indexes) {
         switch (i.type) {
           case 'primary':
             break;
           case 'skiplist':
-            print(i);
-            break;
+          assertTrue(Math.abs(i.selectivityEstimate - 1.0) < 0.005, i);
+          break;
           default:
             fail();
         }
