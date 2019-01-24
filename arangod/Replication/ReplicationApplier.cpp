@@ -410,7 +410,7 @@ void ReplicationApplier::removeState() {
   }
 }
 
-Result ReplicationApplier::resetState() {
+Result ReplicationApplier::resetState(bool reducedSet) {
   // make sure the both vars below match your needs
   static const bool resetPhase = false;
   static const bool doSync = false;
@@ -421,7 +421,7 @@ Result ReplicationApplier::resetState() {
   std::string const filename = getStateFilename();
 
   WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
-  _state.reset(resetPhase);
+  _state.reset(resetPhase, reducedSet);
 
   if (!filename.empty() && TRI_ExistsFile(filename.c_str())) {
     LOG_TOPIC(TRACE, Logger::REPLICATION) << "removing replication state file '"

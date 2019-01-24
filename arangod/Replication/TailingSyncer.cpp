@@ -1196,7 +1196,7 @@ retry:
 
       LOG_TOPIC(DEBUG, Logger::REPLICATION)
             << "stopped replication applier for database '" << _state.databaseName;
-      auto rv = _applier->resetState();
+      auto rv = _applier->resetState(true /*reducedSet*/);
       if(rv.fail()){
         return rv;
       }

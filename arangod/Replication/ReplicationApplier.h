@@ -118,7 +118,7 @@ class ReplicationApplier {
   void persistState(bool doSync);
   Result persistStateResult(bool doSync);
 
-  Result resetState();
+  Result resetState(bool reducedSet = false);
 
   /// @brief store the current applier state in the passed vpack builder
   void toVelocyPack(arangodb::velocypack::Builder& result) const;
