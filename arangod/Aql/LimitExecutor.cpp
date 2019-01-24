@@ -23,7 +23,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "FilterExecutor.h"
+#include "LimitExecutor.h"
 
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
@@ -38,26 +38,32 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-FilterExecutorInfos::FilterExecutorInfos(
-        RegisterId inputRegister, RegisterId nrInputRegisters,
-        RegisterId nrOutputRegisters,
-        std::unordered_set<RegisterId> registersToClear)
-        : ExecutorInfos(
-        std::make_shared<std::unordered_set<RegisterId>>(inputRegister),
-        nullptr, nrInputRegisters, nrOutputRegisters,
-        std::move(registersToClear)),
-          _inputRegister(inputRegister) {}
+LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                                       std::unordered_set<RegisterId> registersToClear,
+                                       size_t offset, size_t limit, bool fullCount, size_t queryDepth)
+        : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
+                        std::make_shared<std::unordered_set<RegisterId>>(), nrInputRegisters,
+                        nrOutputRegisters, std::move(registersToClear)),
+          _remainingOffset(offset),
+          _limit(limit),
+          _queryDepth(queryDepth),
+          _fullCount(fullCount) {}
 
-FilterExecutor::FilterExecutor(Fetcher& fetcher, Infos& infos) : _infos(infos), _fetcher(fetcher){};
-FilterExecutor::~FilterExecutor() = default;
+LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
+    : _infos(infos), _fetcher(fetcher){};
+LimitExecutor::~LimitExecutor() = default;
 
-std::pair<ExecutionState, FilterStats> FilterExecutor::produceRow(OutputAqlItemRow &output) {
-  TRI_IF_FAILURE("FilterExecutor::produceRow") {
-     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("LimitExecutor::produceRow") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   ExecutionState state;
-  FilterStats stats{};
+  LimitStats stats{};
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
+
+  if (_counter == _infos.getLimit() && !_infos.isFullCountEnabled()) {
+    return {ExecutionState::DONE, stats};
+  }
 
   while (true) {
     std::tie(state, input) = _fetcher.fetchRow();
@@ -72,11 +78,31 @@ std::pair<ExecutionState, FilterStats> FilterExecutor::produceRow(OutputAqlItemR
     }
     TRI_ASSERT(input.isInitialized());
 
-    if (input.getValue(_infos.getInputRegister()).toBoolean()) {
+    if (_infos.getRemainingOffset() > 0) {
+      _infos.decrRemainingOffset();
+
+      if (_infos.isFullCountEnabled() && _infos.getQueryDepth() == 0) {
+        stats.incrFullCount();
+      }
+      continue;
+    }
+
+    if (_counter < _infos.getLimit()) {
       output.copyRow(input);
+      _counter++;
+      if (_infos.getQueryDepth() == 0 && _infos.isFullCountEnabled()) {
+        stats.incrFullCount();
+      }
+
+      if (_counter == _infos.getLimit() && !_infos.isFullCountEnabled()) {
+        return {ExecutionState::DONE, stats};
+      }
       return {state, stats};
-    } else {
-      stats.incrFiltered();
+    }
+    TRI_ASSERT(_infos.isFullCountEnabled());
+
+    if (_infos.getQueryDepth() == 0) {
+      stats.incrFullCount();
     }
 
     if (state == ExecutionState::DONE) {

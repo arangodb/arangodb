@@ -28,7 +28,6 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
-#include "Aql/BasicBlocks.h"
 #include "Aql/CalculationExecutor.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
@@ -42,6 +41,7 @@
 #include "Aql/Function.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
+#include "Aql/LimitExecutor.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/NodeFinder.h"
@@ -1413,7 +1413,22 @@ LimitNode::LimitNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<LimitBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  // this is currently required to check weather we're in a subquery
+  // or not. We do not count fullCounts inside a subquery.
+  size_t queryDepth = 0;
+  if (isInSubQuery(this)) {
+    queryDepth = 1;
+  }
+
+  LimitExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                           getRegisterPlan()->nrRegs[getDepth()],
+                           getRegsToClear(), _offset, _limit, _fullCount, queryDepth);
+
+  return std::make_unique<ExecutionBlockImpl<LimitExecutor>>(&engine, this,
+                                                             std::move(infos));
 }
 
 // @brief toVelocyPack, for LimitNode
