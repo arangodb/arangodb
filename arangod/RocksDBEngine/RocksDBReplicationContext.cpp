@@ -160,15 +160,14 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
     if (rcoll->lockWrite(to) == TRI_ERROR_NO_ERROR) {
       // fetch number docs and snapshot under exclusive lock
       // this should enable us to correct the count later
-      numberDocuments = rcoll->numberDocuments();
       isNumberDocsExclusive = true;
     } else {
       lockGuard.cancel();
     }
+    numberDocuments = rcoll->numberDocuments();
     lazyCreateSnapshot();
   } else {             // fetch non-exclusive
     numberDocuments = rcoll->numberDocuments();
-    lazyCreateSnapshot();
   }
   TRI_ASSERT(_snapshot != nullptr);
 
