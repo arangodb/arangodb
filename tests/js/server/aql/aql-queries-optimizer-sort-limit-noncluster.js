@@ -126,73 +126,73 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     /// @brief check limit optimization with simple data
     ////////////////////////////////////////////////////////////////////////////////
 
-        testLimitSimpleLong : function () {
-          var query = "FOR c IN 1..1000 SORT c LIMIT 3 RETURN c";
-          var actual = getQueryResults(query);
-          assertEqual(3, actual.length);
-          assertEqual([1, 2, 3], actual);
+    testLimitSimpleLong : function () {
+      var query = "FOR c IN 1..1000 SORT c LIMIT 3 RETURN c";
+      var actual = getQueryResults(query);
+      assertEqual(3, actual.length);
+      assertEqual([1, 2, 3], actual);
 
-          sorts = getSorts(query);
-          assertEqual(sorts.length, 1);
-          assertEqual(sorts[0].limit, 3);
-          assertEqual(sorts[0].strategy, "ConstrainedHeap");
+      sorts = getSorts(query);
+      assertEqual(sorts.length, 1);
+      assertEqual(sorts[0].limit, 3);
+      assertEqual(sorts[0].strategy, "ConstrainedHeap");
 
-          var query = "FOR c IN 1..1000 SORT c LIMIT 100, 3 RETURN c";
-          var actual = getQueryResults(query);
-          assertEqual(3, actual.length);
-          assertEqual([101, 102, 103], actual);
+      var query = "FOR c IN 1..1000 SORT c LIMIT 100, 3 RETURN c";
+      var actual = getQueryResults(query);
+      assertEqual(3, actual.length);
+      assertEqual([101, 102, 103], actual);
 
-          sorts = getSorts(query);
-          assertEqual(sorts.length, 1);
-          assertEqual(sorts[0].limit, 103);
-          assertEqual(sorts[0].strategy, "ConstrainedHeap");
+      sorts = getSorts(query);
+      assertEqual(sorts.length, 1);
+      assertEqual(sorts[0].limit, 103);
+      assertEqual(sorts[0].strategy, "ConstrainedHeap");
 
-          query = "FOR c IN 1..1000 SORT c DESC LIMIT 3 RETURN c";
-          actual = getQueryResults(query);
-          assertEqual(3, actual.length);
-          assertEqual([1000, 999, 998], actual);
+      query = "FOR c IN 1..1000 SORT c DESC LIMIT 3 RETURN c";
+      actual = getQueryResults(query);
+      assertEqual(3, actual.length);
+      assertEqual([1000, 999, 998], actual);
 
-          sorts = getSorts(query);
-          assertEqual(sorts.length, 1);
-          assertEqual(sorts[0].limit, 3);
-          assertEqual(sorts[0].strategy, "ConstrainedHeap");
+      sorts = getSorts(query);
+      assertEqual(sorts.length, 1);
+      assertEqual(sorts[0].limit, 3);
+      assertEqual(sorts[0].strategy, "ConstrainedHeap");
           
-          query = "FOR c IN 1..1000 SORT c DESC LIMIT 100, 3 RETURN c";
-          actual = getQueryResults(query);
-          assertEqual(3, actual.length);
-          assertEqual([900, 899, 898], actual);
+      query = "FOR c IN 1..1000 SORT c DESC LIMIT 100, 3 RETURN c";
+      actual = getQueryResults(query);
+      assertEqual(3, actual.length);
+      assertEqual([900, 899, 898], actual);
 
-          sorts = getSorts(query);
-          assertEqual(sorts.length, 1);
-          assertEqual(sorts[0].limit, 103);
-          assertEqual(sorts[0].strategy, "ConstrainedHeap");
-        },
+      sorts = getSorts(query);
+      assertEqual(sorts.length, 1);
+      assertEqual(sorts[0].limit, 103);
+      assertEqual(sorts[0].strategy, "ConstrainedHeap");
+    },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief check limit optimization with simple data, filter
     ////////////////////////////////////////////////////////////////////////////////
 
-        testLimitSimpleFilterLong : function () {
-          var query = "FOR c IN 1..1000 SORT c FILTER c > 3 LIMIT 3 RETURN c";
-          var actual = getQueryResults(query);
-          assertEqual(3, actual.length);
-          assertEqual([4, 5, 6], actual);
+    testLimitSimpleFilterLong : function () {
+      var query = "FOR c IN 1..1000 SORT c FILTER c > 3 LIMIT 3 RETURN c";
+      var actual = getQueryResults(query);
+      assertEqual(3, actual.length);
+      assertEqual([4, 5, 6], actual);
 
-          sorts = getSorts(query);
-          assertEqual(sorts.length, 1);
-          assertEqual(sorts[0].limit, 0);
-          assertEqual(sorts[0].strategy, "Standard");
+      sorts = getSorts(query);
+      assertEqual(sorts.length, 1);
+      assertEqual(sorts[0].limit, 0);
+      assertEqual(sorts[0].strategy, "Standard");
 
-          query = "FOR c IN 1..1000 SORT c DESC FILTER c < 900 LIMIT 3 RETURN c";
-          actual = getQueryResults(query);
-          assertEqual(3, actual.length);
-          assertEqual([899, 898, 897], actual);
+      query = "FOR c IN 1..1000 SORT c DESC FILTER c < 900 LIMIT 3 RETURN c";
+      actual = getQueryResults(query);
+      assertEqual(3, actual.length);
+      assertEqual([899, 898, 897], actual);
 
-          sorts = getSorts(query);
-          assertEqual(sorts.length, 1);
-          assertEqual(sorts[0].limit, 0);
-          assertEqual(sorts[0].strategy, "Standard");
-        },
+      sorts = getSorts(query);
+      assertEqual(sorts.length, 1);
+      assertEqual(sorts[0].limit, 0);
+      assertEqual(sorts[0].strategy, "Standard");
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check limit optimization with 2 limits
