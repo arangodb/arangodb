@@ -596,9 +596,9 @@ TEST_F(tfidf_test, test_query) {
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{
-      30, 31, // same value in segment 0 and segment 1
       0, 8, 20, 28, // segment 0
-      3, 15, 23, 25 // segment 1
+      3, 15, 23, 25, // segment 1
+      30, 31, // same value in segment 0 and segment 1 (smaller idf() -> smaller tfidf() + reverse)
     };
 
     irs::bytes_ref actual_value;

@@ -113,16 +113,23 @@ void limited_sample_scorer::score(
     auto term_itr = scored_state.state.reader->iterator();
 
     // find the stats for the current term
-    auto& stats_entry = map_utils::try_emplace(
+    auto res = map_utils::try_emplace(
       term_stats,
       make_hashed_ref(bytes_ref(scored_state.term), std::hash<irs::bytes_ref>()),
       order
-    ).first->second;
+    );
+    auto inserted = res.second;
+    auto& stats_entry = res.first->second;
     auto& collectors = stats_entry.collectors;
     auto& field = *scored_state.state.reader;
     auto& segment = scored_state.sub_reader;
 
-    collectors.collect(segment, field); // collect field statistics once per segment
+    // once per every 'state_t' collect field statistics over the entire index
+    if (inserted) {
+      for (auto& sr: index) {
+        collectors.collect(sr, field); // collect field statistics once per segment
+      }
+    }
 
     // find term attributes using cached state
     // use bytes_ref::blank here since we just "jump" to cached state,
