@@ -80,7 +80,8 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
       _cacheEnabled(
           !collection.system() &&
           basics::VelocyPackHelper::readBooleanValue(info, "cacheEnabled", false) &&
-          CacheManagerFeature::MANAGER != nullptr) {
+          CacheManagerFeature::MANAGER != nullptr),
+      _numIndexCreations(0) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   VPackSlice s = info.get("isVolatile");
   if (s.isBoolean() && s.getBoolean()) {
@@ -108,7 +109,8 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
       _cache(nullptr),
       _cachePresent(false),
       _cacheEnabled(static_cast<RocksDBCollection const*>(physical)->_cacheEnabled &&
-                    CacheManagerFeature::MANAGER != nullptr) {
+                    CacheManagerFeature::MANAGER != nullptr),
+      _numIndexCreations(0)  {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   rocksutils::globalRocksEngine()->addCollectionMapping(
       _objectId, _logicalCollection.vocbase().id(), _logicalCollection.id());
