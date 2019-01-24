@@ -519,6 +519,8 @@ void RocksDBBuilderIndex::Locker::unlock() {
 
 // Background index filler task
 arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
+  TRI_ASSERT(locker.isLocked());
+  
   arangodb::Result res;
   RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(internal != nullptr);
@@ -585,9 +587,9 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     if (res.fail()) {
       return res;
     }
-    TRI_ASSERT(lastScanned >= scanFrom);
     
     if (numScanned > 5000 && maxCatchups-- != 0) {
+      TRI_ASSERT(lastScanned > scanFrom);
       std::this_thread::yield();
       continue;
     }
