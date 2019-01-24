@@ -32,6 +32,7 @@
 #include "Aql/Query.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/ShortestPathExecutor.h"
+#include "Aql/Stats.h"
 #include "Basics/StringRef.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathFinder.h"
@@ -216,7 +217,7 @@ static void TestExecutor(ShortestPathExecutorInfos& infos,
   AqlItemBlockManager itemBlockManager{&monitor};
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 4);
 
-  TraversalStats stats{};
+  NoStats stats{};
   ExecutionState state = ExecutionState::HASMORE;
   auto outputBlockShell =
       std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),

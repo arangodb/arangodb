@@ -25,11 +25,13 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Aql/Stats.h"
 #include "Basics/StringRef.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -129,8 +131,8 @@ std::pair<ExecutionState, Result> ShortestPathExecutor::shutdown(int errorCode) 
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::pair<ExecutionState, TraversalStats> ShortestPathExecutor::produceRow(OutputAqlItemRow& output) {
-  TraversalStats s;
+std::pair<ExecutionState, NoStats> ShortestPathExecutor::produceRow(OutputAqlItemRow& output) {
+  NoStats s;
 
   // Can be length 0 but never nullptr.
   TRI_ASSERT(_path);

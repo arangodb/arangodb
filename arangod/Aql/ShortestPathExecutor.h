@@ -26,9 +26,17 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/TraversalStats.h"
+
+#include <velocypack/Builder.h>
 
 namespace arangodb {
+
+class Result;
+
+namespace velocypack {
+class Slice;
+}
+
 namespace graph {
 class ShortestPathFinder;
 class ShortestPathResult;
@@ -39,6 +47,7 @@ namespace aql {
 
 class SingleRowFetcher;
 class OutputAqlItemRow;
+class NoStats;
 
 class ShortestPathExecutorInfos : public ExecutorInfos {
  public:
@@ -126,7 +135,7 @@ class ShortestPathExecutor {
  public:
   using Fetcher = SingleRowFetcher;
   using Infos = ShortestPathExecutorInfos;
-  using Stats = TraversalStats;
+  using Stats = NoStats;
 
   ShortestPathExecutor() = delete;
   ShortestPathExecutor(ShortestPathExecutor&&) = default;
