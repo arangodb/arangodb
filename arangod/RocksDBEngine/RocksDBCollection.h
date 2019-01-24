@@ -253,8 +253,8 @@ class RocksDBCollection final : public PhysicalCollection {
 
   // we use this boolean for testing whether _cache is set.
   // it's quicker than accessing the shared_ptr each time
-  mutable std::atomic<bool> _cachePresent;
-  std::atomic<bool> _cacheEnabled;
+  mutable bool _cachePresent;
+  bool _cacheEnabled;
   /// @brief number of index creations in progress
   std::atomic<int> _numIndexCreations;
 };
