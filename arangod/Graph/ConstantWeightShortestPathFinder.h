@@ -34,10 +34,6 @@ namespace arangodb {
 class ManagedDocumentResult;
 class StringRef;
 
-namespace aql {
-class ShortestPathBlock;
-}
-
 namespace velocypack {
 class Slice;
 }

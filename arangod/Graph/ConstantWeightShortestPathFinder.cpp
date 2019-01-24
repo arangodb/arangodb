@@ -23,11 +23,11 @@
 
 #include "ConstantWeightShortestPathFinder.h"
 
-#include "Aql/ShortestPathBlock.h"
 #include "Basics/StringRef.h"
 #include "Cluster/ServerState.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
+#include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Graph/TraverserCache.h"
 #include "Transaction/Helpers.h"

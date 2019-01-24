@@ -258,7 +258,6 @@ SET(ARANGOD_SOURCES
   Aql/Scopes.cpp
   Aql/SharedQueryState.cpp
   Aql/ShortStringStorage.cpp
-  Aql/ShortestPathBlock.cpp
   Aql/ShortestPathExecutor.cpp
   Aql/ShortestPathNode.cpp
   Aql/SingleRowFetcher.cpp
