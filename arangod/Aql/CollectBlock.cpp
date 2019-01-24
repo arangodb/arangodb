@@ -386,14 +386,6 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     AqlItemBlock* cur = _buffer.front();
     TRI_ASSERT(cur != nullptr);
 
-    // TODO this is dirty. if you have an idea how to improve this, please do.
-    // Can't we omit this?
-    if (!skipping && _lastBlock == nullptr) {
-      // call only on the first row of the first block
-      TRI_ASSERT(_pos == 0);
-      inheritRegisters(cur, _result.get(), 0);
-    }
-
     // if the current block changed, move the last block's infos into the
     // current group; then delete it.
     if (_lastBlock != nullptr && _lastBlock != cur) {
@@ -409,6 +401,13 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     // returns true iff a group was emitted (so false when called on the first
     // empty current group, while still initializing it)
     bool emittedGroup = updateCurrentGroup(cur, _pos, _result.get());
+
+    if (!skipping && emittedGroup && _skipped == 0) {
+      // clone registers from input block when the first row of every block is
+      // written. Note that the input variables that are still available after
+      // the block can only be constant over all input rows.
+      inheritRegisters(cur, _result.get(), 0);
+    }
 
     AqlItemBlock* removedBlock = advanceCursor(1, emittedGroup ? 1 : 0);
     TRI_ASSERT(removedBlock == nullptr || removedBlock == _lastBlock);
@@ -478,9 +477,9 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
                                    size_t row, bool skipping) {
   TRI_ASSERT(res != nullptr);
 
-  // TODO removing this block doesn't seem to have any effect.
-  // find out if it's necessary, and why, and what it has to do with
-  // the inheritRegisters call in getOrSkipSome.
+  // Copy input registers from the first row. Note that the input variables that
+  // are still available after the block can only be constant over all input
+  // rows.
   if (row > 0 && !skipping) {
     // re-use already copied AqlValues
     TRI_ASSERT(cur != nullptr);
