@@ -11,8 +11,8 @@ The general structure of the config file looks like this:
 ```json
 {
   "collection-name": {
-    "type": MASKING_TYPE
-    "maskings" : [
+    "type": MASKING_TYPE,
+    "maskings": [
       MASKING1,
       MASKING2,
       ...
@@ -22,8 +22,9 @@ The general structure of the config file looks like this:
 }
 ```
 
-Using `"*"` as collection name defines a default behavior for collections not
-listed explicitly.
+At the top level, there is an object with collection names and the masking
+settings to be applied to them. Using `"*"` as collection name defines a
+default behavior for collections not listed explicitly.
 
 Masking Types
 -------------
@@ -37,7 +38,11 @@ Possible values are:
 - `"structure"`: only the collection structure is dumped, but no data at all
 
 - `"masked"`: the collection structure and all data is dumped. However, the data
-  is subject to obfuscation defined in the attribute `maskings`.
+  is subject to obfuscation defined in the attribute `maskings`. It is an array
+  of objects, with one object per field to mask. Each needs at least a `path`
+  and a `type` attribute to [define which field to mask](#path) and which
+  [masking function](#masking-functions) to apply. Depending on the
+  masking type, there may exist additional attributes.
 
 - `"full"`: the collection structure and all data is dumped. No masking is
   applied to this collection at all.
@@ -99,14 +104,20 @@ Path
 ----
 
 If the path starts with a `.` then it is considered to match any path
-ending in `name`. For example, `.name` will match the attribute name
-`name` all leaf attributes in the document. Leaf attributes are
+ending in `name`. For example, `.name` will match the field
+`name` of all leaf attributes in the document. Leaf attributes are
 attributes whose value is `null` or of data type `string`, `number`,
-`bool` or `array`. That means, it matches `name` at the top level as
-well as at any nested level (e.g. `foo.bar.name`), but not
-sub-objects.  `name` will only match leaf attributes at top
-level. `person.name` will match the attribute `name` of a leaf in the
-top-level object `person`.
+`bool` or `array`. That means, it matches `name` at the top level
+as well as at any nested level (e.g. `foo.bar.name`), but not sub-objects.
+
+On the other hand, `name` will only match leaf attributes
+at top level. `person.name` will match the attribute `name` of a leaf
+in the top-level object `person`. If `person` was itself an object,
+then the masking settings for this path would be ignored, because it
+is not a leaf attribute.
+
+If the attribute value is an **array** then the masking is applied to
+**all array elements individually**.
 
 If you have an attribute name that contains a dot, you need to quote the
 name with either a tick or a backtick. For example:
@@ -117,13 +128,10 @@ or
 
     "path": "`name.with.dots`"
 
-If the attribute value is an array the masking is applied to all the
-array elements individually.
-
 **Example**
 
-The following configuration will replace the value of the "name"
-attribute with an "XXXX"-masked string:
+The following configuration will replace the value of the `name`
+attribute with an "xxxx"-masked string:
 
 ```json
 {
@@ -231,26 +239,25 @@ Masking Functions
 
 {% hint 'info' %}
 The following masking functions are only available in the
-[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/).
 {% endhint %}
 
-- xify front
-- zip
-- datetime
-- integral number
-- decimal number
-- credit card number
-- phone number
-- email address
+- [Xify Front](#xify-front)
+- [Zip](#zip)
+- [Datetime](#datetime)
+- [Integral Number](#integral-number)
+- [Decimal Number](#decimal-number)
+- [Credit Card Number](#credit-card-number)
+- [Phone Number](#phone-number)
+- [Email Address](#email-address)
 
-The function:
+The masking function:
 
-- random string
+- [Random String](#random-string)
 
-… is available on Community Edition and in the Enterprise Edition.
+… is available in the Community Edition as well as the Enterprise Edition.
 
-
-### Random string
+### Random String
 
 ```json
 {
@@ -323,7 +330,7 @@ Masking name as above, the document:
 }
 ```
 
-### Xify front
+### Xify Front
 
 This masking type replaces the front characters with `x` and
 blanks. Alphanumeric characters, `_` and `-` are replaced by `x`,
@@ -338,12 +345,12 @@ everything else is replaced by a blank.
 ```
 
 This will mask all alphanumeric characters of a word except the last
-two characters.  Words of length 1 and 2 are unmasked. If the
+two characters. Words of length 1 and 2 are unmasked. If the
 attribute value is not a string the result will be `xxxx`.
 
     "This is a test!Do you agree?"
 
-… will become
+… will become:
 
     "xxis is a xxst Do xou xxxee "
 
@@ -368,7 +375,7 @@ This will add a hash at the end of the string.
 
     "xxis is a xxst Do xou xxxee  NAATm8c9hVQ="
 
-Note that the hash is based on a random secrect that is different for
+Note that the hash is based on a random secret that is different for
 each run. This avoids dictionary attacks which can be used to guess
 values based pre-computations on dictionaries.
 
@@ -430,15 +437,15 @@ If the original zip code is:
 
     OW91-JI
 
-Note that this will generate random zip code. Therefore there is a
-chance generate the same zip code value multiple times, which can
+Note that this will generate random zip codes. Therefore there is a
+chance that the same zip code value is generated multiple times, which can
 cause unique constraint violations if a unique index is or will be
 used on the zip code attribute.
 
 ### Datetime
 
 This masking type replaces the value of the attribute with a random
-date.
+date between two configured dates in a customizable format.
 
 ```json
 {
@@ -449,16 +456,17 @@ date.
 }
 ```
 
-`begin` and `end` are in ISO8601 format.
+`begin` and `end` are in [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601)
+format.
 
-The format is described in
-[DATE_FORMAT](../../../AQL/Functions/Date.html#dateformat).
+The formatting string format is described in
+[DATE_FORMAT()](../../../AQL/Functions/Date.html#dateformat).
 
 ### Integral Number
 
 This masking type replaces the value of the attribute with a random
-integral number.  It will replace the value even if it is a string,
-boolean, or false.
+integral number. It will replace the value even if it is a string,
+Boolean, or `null`.
 
 ```json
 {
@@ -471,8 +479,8 @@ boolean, or false.
 ### Decimal Number
 
 This masking type replaces the value of the attribute with a random
-decimal.  It will replace the value even if it is a string, boolean,
-or `null`.
+floating point number. It will replace the value even if it is a string,
+Boolean, or `null`.
 
 ```json
 {
@@ -482,8 +490,8 @@ or `null`.
 }
 ```
 
-By default, the decimal has a scale of 2. I.e. it has at most 2
-decimal digits. The definition:
+By default, the decimal has a scale of 2. That means, it has at most 2
+digits after the dot. The definition:
 
 ```json
 {
@@ -496,7 +504,7 @@ decimal digits. The definition:
 
 … will generate numbers with at most 3 decimal digits.
 
-### Credit card number
+### Credit Card Number
 
 This masking type replaces the value of the attribute with a random
 credit card number.
@@ -509,7 +517,7 @@ credit card number.
 
 See [Luhn](https://en.wikipedia.org/wiki/Luhn_algorithm) for details.
 
-### Phone number
+### Phone Number
 
 This masking type replaces a phone number with a random one. If the
 attribute value is not a string it is replaced by the string
@@ -523,9 +531,12 @@ attribute value is not a string it is replaced by the string
 ```
 
 This will replace an existing phone number with a random one. It uses
-the following rule: If a character of the original number is a digit
-it will be replaced by a random digit. If it is a letter it is replaced
-by a letter. All other characters are unchanged.
+the following rule:
+
+- If a character of the original number is a digit
+  it will be replaced by a random digit.
+- If it is a letter it is replaced by a letter.
+- All other characters are left unchanged.
 
 ```json
 {  "type": "zip",
@@ -536,8 +547,8 @@ by a letter. All other characters are unchanged.
 If the attribute value is not a string use the value of default
 `"+4912345123456789"`.
 
-### Email address
+### Email Address
 
 This masking type takes an email address, computes a hash value and
-split it into three equal parts `AAAA`, `BBBB`, and `CCCC`. The
-resulting email address is `AAAA.BBBB@CCCC.invalid`.
+splits it into three equal parts `AAAA`, `BBBB`, and `CCCC`. The
+resulting email address is in the format `AAAA.BBBB@CCCC.invalid`.
