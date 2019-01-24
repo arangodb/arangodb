@@ -98,7 +98,7 @@ void RocksDBBackgroundThread::run() {
         });
       }
 
-      if (disableWalFilePruning()) {
+      if (!disableWalFilePruning()) {
         // only start pruning of obsolete WAL files a few minutes after
         // server start. if we start pruning too early, replication slaves
         // will not have a chance to reconnect to a restarted master in
