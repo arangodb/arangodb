@@ -33,6 +33,7 @@ namespace arangodb {
 namespace aql {
 
 class InputAqlItemBlockShell;
+class AqlItemBlockShell;
 class AqlItemBlock;
 struct AqlValue;
 
@@ -56,8 +57,7 @@ class InputAqlItemRow {
   // The default constructor contains an invalid item row
   explicit InputAqlItemRow(CreateInvalidInputRowHint);
 
-  InputAqlItemRow(std::shared_ptr<InputAqlItemBlockShell> blockShell,
-                  size_t baseIndex);
+  InputAqlItemRow(std::shared_ptr<InputAqlItemBlockShell> blockShell, size_t baseIndex);
 
   /**
    * @brief Get a reference to the value of the given Variable Nr
@@ -76,6 +76,13 @@ class InputAqlItemRow {
   bool isInitialized() const noexcept { return _blockShell != nullptr; }
 
   explicit operator bool() const noexcept { return isInitialized(); }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  /**
+   * @brief Compare the underlying block. Only for assertions.
+   */
+  bool internalBlockIs(const std::shared_ptr<AqlItemBlockShell>& other) const;
+#endif
 
  private:
   AqlItemBlock& block();

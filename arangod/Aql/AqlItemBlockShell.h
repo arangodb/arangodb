@@ -76,6 +76,11 @@ class AqlItemBlockShell {
 
   AqlItemBlockShell(AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block);
 
+  /**
+   * @brief Returns false after the block has been stolen.
+   */
+  bool hasBlock() const noexcept { return _block != nullptr; }
+
  protected:
   // Steal the block. Used in the OutputAqlItemBlockShell only.
   SmartAqlItemBlockPtr&& stealBlock() { return std::move(_block); }
@@ -109,6 +114,16 @@ class InputAqlItemBlockShell {
 
   AqlItemBlock const& block() const { return _blockShell->block(); };
   AqlItemBlock& block() { return _blockShell->block(); };
+
+  bool hasBlock() const noexcept {
+    return _blockShell != nullptr && _blockShell->hasBlock();
+  }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::shared_ptr<AqlItemBlockShell> const& blockShell() const {
+    return _blockShell;
+  }
+#endif
 
  private:
   std::shared_ptr<AqlItemBlockShell> _blockShell;
@@ -150,6 +165,12 @@ class OutputAqlItemBlockShell {
 
   AqlItemBlock const& block() const { return _blockShell->block(); };
   AqlItemBlock& block() { return _blockShell->block(); };
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::shared_ptr<AqlItemBlockShell> const& blockShell() const {
+    return _blockShell;
+  }
+#endif
 
  private:
   std::shared_ptr<AqlItemBlockShell> _blockShell;

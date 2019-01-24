@@ -69,3 +69,9 @@ AqlItemBlock const& InputAqlItemRow::block() const {
 std::size_t InputAqlItemRow::getNrRegisters() const {
   return block().getNrRegs();
 }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+bool InputAqlItemRow::internalBlockIs(const std::shared_ptr<AqlItemBlockShell> &other) const {
+  return _blockShell->blockShell() == other;
+}
+#endif

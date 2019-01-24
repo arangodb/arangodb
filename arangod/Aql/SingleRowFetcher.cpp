@@ -36,7 +36,7 @@ using namespace arangodb::aql;
 template <bool passBlocksThrough>
 std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::fetchRow() {
   // Fetch a new block iff necessary
-  if (_currentBlock == nullptr || !indexIsValid()) {
+  if (!indexIsValid()) {
     ExecutionState state;
     std::shared_ptr<InputAqlItemBlockShell> newBlock;
     std::tie(state, newBlock) = fetchBlock();
@@ -91,7 +91,20 @@ RegisterId SingleRowFetcher<passBlocksThrough>::getNrInputRegisters() const {
 
 template <bool passBlocksThrough>
 bool SingleRowFetcher<passBlocksThrough>::indexIsValid() {
-  return _currentBlock != nullptr && _rowIndex < _currentBlock->block().size();
+  // TODO Hopefully we can get rid of this distinction later. When there are no
+  // more old blocks, we can replace the old getSome interface easily,
+  // specifically replace std::unique_ptr<AqlItemBlock> with a shared_ptr
+  // with a custom deleter (like AqlItemBlockShell), or a shared_ptr to an
+  // AqlItemBlockShell. Then we will never lose the block.
+  if /* constexpr */ (passBlocksThrough) {
+    return _currentBlock != nullptr && _currentBlock->hasBlock() &&
+           _rowIndex < _currentBlock->block().size();
+  } else {
+    // The current block must never become invalid (i.e. !hasBlock()), unless
+    // it's passed through and therefore the output block steals it.
+    TRI_ASSERT(_currentBlock == nullptr || _currentBlock->hasBlock());
+    return _currentBlock != nullptr && _rowIndex < _currentBlock->block().size();
+  }
 }
 
 template <bool passBlocksThrough>

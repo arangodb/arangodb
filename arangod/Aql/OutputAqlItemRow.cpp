@@ -34,13 +34,14 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-OutputAqlItemRow::OutputAqlItemRow(
-    std::unique_ptr<OutputAqlItemBlockShell> blockShell)
+OutputAqlItemRow::OutputAqlItemRow(std::unique_ptr<OutputAqlItemBlockShell> blockShell,
+                                   CopyRowBehaviour copyRowBehaviour)
     : _blockShell(std::move(blockShell)),
       _baseIndex(0),
       _inputRowCopied(false),
       _lastSourceRow{CreateInvalidInputRowHint{}},
-      _numValuesWritten(0) {
+      _numValuesWritten(0),
+      _doNotCopyInputRow(copyRowBehaviour == CopyRowBehaviour::DoNotCopyInputRows) {
   TRI_ASSERT(_blockShell != nullptr);
 }
 
@@ -91,6 +92,15 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow, bool ignoreMiss
   TRI_ASSERT(!_inputRowCopied);
   TRI_ASSERT(allValuesWritten());
   if (_inputRowCopied) {
+    return;
+  }
+
+  // This may only be set if the input block is the same as the output block,
+  // because it is passed through.
+  if (_doNotCopyInputRow) {
+    TRI_ASSERT(sourceRow.internalBlockIs(_blockShell->blockShell()));
+    _inputRowCopied = true;
+    _lastSourceRow = sourceRow;
     return;
   }
 

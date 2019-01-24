@@ -46,7 +46,7 @@ ExecutionState BlockFetcher<repositShells>::prefetchBlock() {
 
   auto blockShell =
       std::make_shared<AqlItemBlockShell>(itemBlockManager(), std::move(block));
-  if (repositShells) {
+  if /* constexpr */ (repositShells) {
     // Reposit blockShell in ExecutionBlockImpl, for pass-through executors.
     _repositShell(blockShell);
   }

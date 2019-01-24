@@ -102,7 +102,7 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
       return {state, nullptr};
     }
     TRI_ASSERT(newBlock != nullptr);
-    _outputItemRow = std::make_unique<OutputAqlItemRow>(std::move(newBlock));
+    _outputItemRow = createOutputRow(newBlock);
   }
 
   // TODO It's not very obvious that `state` will be initialized, because
@@ -114,6 +114,7 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
 
   TRI_ASSERT(atMost > 0);
 
+  TRI_ASSERT(!_outputItemRow->isFull());
   while (!_outputItemRow->isFull()) {
     std::tie(state, executorStats) = _executor.produceRow(*_outputItemRow);
     // Count global but executor-specific statistics, like number of filtered
@@ -142,13 +143,28 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
   }
 
   TRI_ASSERT(state == ExecutionState::HASMORE);
-  TRI_ASSERT(_outputItemRow->numRowsWritten() == atMost);
+  // When we're passing blocks through we have no control over the size of the
+  // output block.
+  if /* constexpr */ (!Executor::Properties::allowsBlockPassthrough) {
+    TRI_ASSERT(_outputItemRow->numRowsWritten() == atMost);
+  }
 
   auto outputBlock = _outputItemRow->stealBlock();
   // TODO OutputAqlItemRow could get "reset" and "isValid" methods and be reused
   _outputItemRow.reset(nullptr);
 
   return {state, std::move(outputBlock)};
+}
+
+template <class Executor>
+std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
+    std::unique_ptr<OutputAqlItemBlockShell>& newBlock) const {
+  if /* constexpr */ (Executor::Properties::allowsBlockPassthrough) {
+    return std::make_unique<OutputAqlItemRow>(move(newBlock),
+                                              OutputAqlItemRow::CopyRowBehaviour::DoNotCopyInputRows);
+  } else {
+    return std::make_unique<OutputAqlItemRow>(move(newBlock));
+  }
 }
 
 template <class Executor>
@@ -260,7 +276,7 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
   AqlItemBlock* block = requestBlock(nrItems, nrRegs);
 
   std::shared_ptr<AqlItemBlockShell> blockShell;
-  if (Executor::Properties::allowsBlockPassthrough) {
+  if /* constexpr */ (Executor::Properties::allowsBlockPassthrough) {
     // If blocks can be passed through, we do not create new blocks.
     // Instead, we take the input blocks from _passThroughBlocks which is pushed onto by
     // the BlockFetcher whenever it fetches an input block from upstream and reuse them.
@@ -282,6 +298,14 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
     // Assert that the block has enough registers. This must be guaranteed by
     // the register planning.
     TRI_ASSERT(blockShell->block().getNrRegs() == nrRegs);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    for (auto const& reg : *this->_infos.getOutputRegisters()) {
+      for (size_t row = 0; row < blockShell->block().size(); row++) {
+        AqlValue const& val = blockShell->block().getValueReference(row, reg);
+        TRI_ASSERT(val.isEmpty());
+      }
+    }
+#endif
   } else {
     blockShell =
         std::make_shared<AqlItemBlockShell>(_engine->itemBlockManager(),
@@ -291,13 +315,14 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
   std::unique_ptr<OutputAqlItemBlockShell> outputBlockShell =
       std::make_unique<OutputAqlItemBlockShell>(blockShell, _infos.getOutputRegisters(),
                                                 _infos.registersToKeep());
+
   return {ExecutionState::HASMORE, std::move(outputBlockShell)};
 }
 
 template <class Executor>
 std::function<void(std::shared_ptr<AqlItemBlockShell>)>
 ExecutionBlockImpl<Executor>::createPassThroughCallback(ExecutionBlockImpl& that) {
-  if (Executor::Properties::allowsBlockPassthrough) {
+  if /* constexpr */ (Executor::Properties::allowsBlockPassthrough) {
     return [&that](std::shared_ptr<AqlItemBlockShell> shell) -> void {
       that.pushPassThroughBlock(shell);
     };

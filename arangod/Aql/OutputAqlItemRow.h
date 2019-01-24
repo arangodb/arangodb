@@ -45,8 +45,11 @@ struct AqlValue;
  */
 class OutputAqlItemRow {
  public:
-  explicit OutputAqlItemRow(
-      std::unique_ptr<OutputAqlItemBlockShell> blockShell);
+  // TODO Implement this behaviour via a template parameter instead?
+  enum class CopyRowBehaviour { CopyInputRows, DoNotCopyInputRows };
+
+  explicit OutputAqlItemRow(std::unique_ptr<OutputAqlItemBlockShell> blockShell,
+                            CopyRowBehaviour = CopyRowBehaviour::CopyInputRows);
 
   // Clones the given AqlValue
   void setValue(RegisterId registerId, InputAqlItemRow const& sourceRow,
@@ -57,8 +60,7 @@ class OutputAqlItemRow {
   // Note that there is no real move happening here, just a trivial copy of
   // the passed AqlValue. However, that means the output block will take
   // responsibility of possibly referenced external memory.
-  void setValue(RegisterId registerId, InputAqlItemRow const& sourceRow,
-                AqlValue&& value);
+  void setValue(RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValue&& value);
 
   void copyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing = false);
 
@@ -72,26 +74,24 @@ class OutputAqlItemRow {
   void advanceRow();
 
   // returns true if row was produced
-  bool produced() const {
-    return allValuesWritten() && _inputRowCopied;
-  }
+  bool produced() const { return allValuesWritten() && _inputRowCopied; }
 
   /**
-  * @brief Steal the AqlItemBlock held by the OutputAqlItemRow. The returned
-  *        block will contain exactly the number of written rows. e.g., if 42
-  *        rows were written, block->size() will be 42, even if the original
-  *        block was larger.
-  *        The block will never be empty. If no rows were written, this will
-  *        return a nullptr.
-  *        After stealBlock(), the OutputAqlItemRow is unusable!
-  */
+   * @brief Steal the AqlItemBlock held by the OutputAqlItemRow. The returned
+   *        block will contain exactly the number of written rows. e.g., if 42
+   *        rows were written, block->size() will be 42, even if the original
+   *        block was larger.
+   *        The block will never be empty. If no rows were written, this will
+   *        return a nullptr.
+   *        After stealBlock(), the OutputAqlItemRow is unusable!
+   */
   std::unique_ptr<AqlItemBlock> stealBlock();
 
   bool isFull();
 
   /**
-  * @brief Returns the number of rows that were fully written.
-  */
+   * @brief Returns the number of rows that were fully written.
+   */
   size_t numRowsWritten() const noexcept {
     // If the current line was fully written, the number of fully written rows
     // is the index plus one.
@@ -138,11 +138,14 @@ class OutputAqlItemRow {
    */
   size_t _numValuesWritten;
 
- private:
+  /**
+   * @brief Set if and only if the current ExecutionBlock passes the
+   * AqlItemBlocks through.
+   */
+  bool const _doNotCopyInputRow;
 
-  size_t nextUnwrittenIndex() const noexcept {
-    return numRowsWritten();
-  }
+ private:
+  size_t nextUnwrittenIndex() const noexcept { return numRowsWritten(); }
 
   size_t numRegistersToWrite() const;
 
