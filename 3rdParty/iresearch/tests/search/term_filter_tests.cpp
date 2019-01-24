@@ -426,17 +426,25 @@ protected:
       filter.field("prefix").term("abcy");
 
       // create order
-      size_t collect_count = 0;
+      size_t collect_field_count = 0;
+      size_t collect_term_count = 0;
       size_t finish_count = 0;
       iresearch::order ord;
       auto& scorer = ord.add<sort::custom_sort>(false);
-      scorer.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
-        ++collect_count;
+
+      scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+        ++collect_field_count;
       };
-      scorer.collector_finish = [&finish_count](irs::attribute_store&, const irs::index_reader&)->void{
+      scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+        ++collect_term_count;
+      };
+      scorer.collectors_collect_ = [&finish_count](irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++finish_count;
       };
-      scorer.prepare_collector = [&scorer]()->irs::sort::collector::ptr{
+      scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
+        return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer);
+      };
+      scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
         return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer);
       };
 
@@ -454,7 +462,8 @@ protected:
       }
 
       ASSERT_TRUE(expected.empty());
-      ASSERT_EQ(1, collect_count);
+      ASSERT_EQ(1, collect_field_count); // 1 field in 1 segment
+      ASSERT_EQ(1, collect_term_count); // 1 term in 1 field in 1 segment
       ASSERT_EQ(1, finish_count); // 1 unique term
     }
   }

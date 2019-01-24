@@ -238,7 +238,7 @@ struct TRI_vocbase_t {
   void forceUse();
 
   /// @brief decrease the reference counter for a database
-  void release();
+  void release() noexcept;
 
   /// @brief returns whether the database is dangling
   bool isDangling() const;

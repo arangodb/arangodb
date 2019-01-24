@@ -195,11 +195,11 @@ void IResearchViewBlockBase::reset() {
 
     if (!arangodb::iresearch::FilterFactory::filter(&root, queryCtx,
                                                     viewNode.filterCondition())) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failed to build filter while querying arangosearch view , query '"
-          << viewNode.filterCondition().toVelocyPack(true)->toJson() << "'";
-
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "failed to build filter while querying arangosearch view, query '"
+        + viewNode.filterCondition().toVelocyPack(true)->toJson() + "'"
+      );
     }
 
     if (_volatileSort) {
