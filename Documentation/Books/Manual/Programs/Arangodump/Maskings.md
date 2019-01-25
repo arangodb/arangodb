@@ -217,48 +217,48 @@ Masking `email` will convert:
 
 
 ```json
-{ 
-  "email" : "email address" 
+{
+  "email" : "email address"
 }
 ```
 
 … into:
 
 ```json
-{ 
-  "email" : "xxil xxxxxxss" 
+{
+  "email" : "xxil xxxxxxss"
 }
 ```
 
 because `email` is a leaf attribute. The document:
 
 ```json
-{ 
-  "email" : [ 
-    "address one", 
-    "address two" 
-  ] 
-} 
+{
+  "email" : [
+    "address one",
+    "address two"
+  ]
+}
 ```
 
 … will be converted into:
 
 ```json
-{ 
-  "email" : [ 
-    "xxxxxss xne", 
-    "xxxxxss xwo" 
-  ] 
-} 
+{
+  "email" : [
+    "xxxxxss xne",
+    "xxxxxss xwo"
+  ]
+}
 ```
 
 … because the array is "unfolded". The document:
 
 ```json
-{ 
-  "email" : { 
-    "address" : "email address" 
-  } 
+{
+  "email" : {
+    "address" : "email address"
+  }
 }
 ```
 
@@ -290,13 +290,6 @@ The masking function:
 
 ### Random String
 
-```json
-{
-  "path": ".name",
-  "type": "randomString"
-}
-```
-
 This masking type will replace all values of attributes with key
 `name` with an anonymized string. It is not guaranteed that the string
 will be of the same length.
@@ -307,41 +300,56 @@ replacement string. If the string is longer than the hash then
 characters will be repeated as many times as needed to reach the full
 original string length.
 
+Masking settings:
+
+- `path` (string): which field to mask
+- `type` (string): masking function name `"randomString"`
+
 **Example**
 
-Masking name as above, the document:
+```json
+{
+  "path": ".name",
+  "type": "randomString"
+}
+```
+
+Above masking setting applies to all leaf attributes with name `.name`.
+A document like:
 
 ```json
-{ 
-  "_key" : "38937", 
-  "_id" : "examplecollection/38937", 
-  "_rev" : "_YFaGG1u--_", 
-  "name" : [ 
-    "My Name", 
-    { 
-      "other" : "Hallo Name" 
-    }, 
-    [ 
-      "Name One", 
-      "Name Two" 
-    ], 
-    true, 
-    false, 
+{
+  "_key" : "1234",
+  "name" : [
+    "My Name",
+    {
+      "other" : "Hallo Name"
+    },
+    [
+      "Name One",
+      "Name Two"
+    ],
+    true,
+    false,
     null,
     1.0,
     1234,
     "This is a very long name"
-  ] 
+  ],
+  "deeply": {
+    "nested": {
+      "name": "John Doe",
+      "not-a-name": "Pizza"
+    }
+  }
 }
 ```
 
-… will be converted into
+… will be converted to:
 
 ```json
 {
-  "_key": "38937",
-  "_id": "examplecollection/38937",
-  "_rev": "_YFaGG1u--_",
+  "_key": "1234",
   "name": [
     "+y5OQiYmp/o=",
     {
@@ -357,7 +365,13 @@ Masking name as above, the document:
     1.0,
     1234,
     "hwjAfNe5BGw=hwjAfNe5BGw="
-  ]
+  ],
+  "deeply": {
+    "nested": {
+      "name": "55fHctEM/wY=",
+      "not-a-name": "Pizza"
+    }
+  }
 }
 ```
 
@@ -366,6 +380,20 @@ Masking name as above, the document:
 This masking type replaces the front characters with `x` and
 blanks. Alphanumeric characters, `_` and `-` are replaced by `x`,
 everything else is replaced by a blank.
+
+Masking settings:
+
+- `path` (string): which field to mask
+- `type` (string): masking function name `"xifyFront"`
+- `unmaskedLength` (integer<!--, _default: ???_-->): how many characters to
+  leave as-is on the right-hand side of each word
+- `hash` (bool, _default: `false`_): whether to append a hash value to the
+  masked string to avoid possible unique constraint violations caused by
+  the obfuscation
+- `seed` (integer, _default: `0`_): used as secret for computing the hash.
+  A value of `0` means a random seed
+
+**Examples**
 
 ```json
 {
@@ -426,9 +454,17 @@ a number which must not be `0`.
 
 ### Zip
 
-This masking type replaces a zip code with a random one.  If the
-attribute value is not a string then the default value of `"12345"` is
-used as no zip is known. You can change the default value, see below.
+This masking type replaces a zip code with a random one. If the
+attribute value is not a string then the default value is used.
+
+Masking settings:
+
+- `path` (string): which field to mask
+- `type` (string): masking function name `"zip"`
+- `default` (string, _default: `"12345"`_): if the input field is not of
+  data type `string`, then this value is used
+
+**Examples**
 
 ```json
 {
@@ -449,8 +485,6 @@ will be replaced by a random letter keeping the case.
   "default": "abcdef"
 }
 ```
-
-**Example**
 
 If the original zip code is:
 
@@ -478,8 +512,22 @@ used on the zip code attribute.
 This masking type replaces the value of the attribute with a random
 date between two configured dates in a customizable format.
 
+Masking settings:
+
+- `path` (string): which field to mask
+- `type` (string): masking function name `"datetime"`
+- `begin` (string): earliest point in time to return.
+  Date time string in ISO 8601 format
+- `end` (string): latest point in time to return.
+  Date time string in ISO 8601 format
+- `format` (string<!--, default: ???-->): the formatting string format is
+  described in [DATE_FORMAT()](../../../AQL/Functions/Date.html#dateformat).
+
+**Example**
+
 ```json
 {
+  "path": "eventDate",
   "type": "datetime",
   "begin" : "2019-01-01",
   "end": "2019-12-31",
@@ -487,11 +535,9 @@ date between two configured dates in a customizable format.
 }
 ```
 
-`begin` and `end` are in [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601)
-format.
-
-The formatting string format is described in
-[DATE_FORMAT()](../../../AQL/Functions/Date.html#dateformat).
+Above example masks the field `eventDate` by returning a random date time
+string in the range of January 1st and December 31st in 2019 using a format
+like `2019-06-17`.
 
 ### Integral Number
 
@@ -499,13 +545,26 @@ This masking type replaces the value of the attribute with a random
 integral number. It will replace the value even if it is a string,
 Boolean, or `null`.
 
+Masking settings:
+
+- `path` (string): which field to mask
+- `type` (string): masking function name `"integer"`
+- `lower` (number): smallest integer value to return
+- `upper` (number): largest integer value to return
+
+**Example**
+
 ```json
 {
+  "path": "count",
   "type": "integer",
   "lower" : -100,
   "upper": 100
 }
 ```
+
+This masks the field `count` with a random number between
+-100 and 100 (inclusive).
 
 ### Decimal Number
 
@@ -513,20 +572,36 @@ This masking type replaces the value of the attribute with a random
 decimal.  It will replace the value even if it is a string, boolean,
 or `null`.
 
+Masking settings:
+
+- `path` (string): which field to mask
+- `type` (string): masking function name `"decimal"`
+- `lower` (number): smallest floating point value to return
+- `upper` (number): largest floating point value to return
+- `scale` (number, _default: `2`_): maximal amount of digits in the
+  decimal fraction part
+
+**Examples**
+
 ```json
 {
-  "type": "float",
+  "path": "rating",
+  "type": "decimal",
   "lower" : -0.3,
   "upper": 0.3
 }
 ```
 
-By default, the decimal has a scale of 2. That means, it has at most 2
-digits after the dot. The definition:
+This masks the field `rating` with a random floating point number between
+-0.3 and +0.3 (inclusive). By default, the decimal has a scale of 2.
+That means, it has at most 2 digits after the dot.
+
+The configuration:
 
 ```json
 {
-  "type": "float",
+  "path": "rating",
+  "type": "decimal",
   "lower" : -0.3,
   "upper": 0.3,
   "scale": 3
@@ -539,47 +614,86 @@ digits after the dot. The definition:
 
 This masking type replaces the value of the attribute with a random
 credit card number.
+See [Luhn algorithm](https://en.wikipedia.org/wiki/Luhn_algorithm)
+for details.
+
+Masking settings:
+
+- `path` (string): which field to mask
+- `type` (string): masking function name `"creditCard"`
+
+**Example**
 
 ```json
 {
-  "type": "creditCard",
+  "path": "ccNumber",
+  "type": "creditCard"
 }
 ```
 
-See [Luhn](https://en.wikipedia.org/wiki/Luhn_algorithm) for details.
+This generates a random credit card number to mask field `ccNumber`.
 
 ### Phone Number
 
-This masking type replaces a phone number with a random one. If the
-attribute value is not a string it is replaced by the string
-`"+1234567890"`.
-
-```json
-{
-  "type": "phone",
-  "default": "+4912345123456789"
-}
-```
-
-This will replace an existing phone number with a random one. It uses
-the following rule:
+This masking type replaces a phone number with a random one.
+It uses the following rule:
 
 - If a character of the original number is a digit
   it will be replaced by a random digit.
-- If it is a letter it is replaced by a letter.
+- If it is a letter it is replaced by a random letter.
 - All other characters are left unchanged.
+- If the attribute value is not a string it is replaced by the
+  default value.
+
+Masking settings:
+
+- `path` (string): which field to mask
+- `type` (string): masking function name `"phone"`
+- `default` (string, _default: `"+1234567890"`_): if the input field
+  is not of data type `string`, then this value is used
+
+**Examples**
 
 ```json
-{  "type": "zip",
-  "default": "+4912345123456789"
+{
+  "path": "phone.landline",
+  "type": "phone"
 }
 ```
 
-If the attribute value is not a string use the value of default
-`"+4912345123456789"`.
+This will replace an existing phone number with a random one, for instance
+`"+31 66-77-88-xx"` might get substituted by `"+75 10-79-52-sb"`.
+
+```json
+{
+  "path": "phone.landline",
+  "type": "phone",
+  "default": "+49 12345 123456789"
+}
+```
+
+This masks a phone number as before, but falls back to a different default
+phone number in case the input value is not a string.
 
 ### Email Address
 
 This masking type takes an email address, computes a hash value and
 splits it into three equal parts `AAAA`, `BBBB`, and `CCCC`. The
 resulting email address is in the format `AAAA.BBBB@CCCC.invalid`.
+
+Masking settings:
+
+- `path` (string): which field to mask
+- `type` (string): masking function name `"email"`
+
+**Example**
+
+```json
+{
+  "path": ".email",
+  "type": "email"
+}
+```
+
+This masks every leaf attribute `email` with a random email address
+similar to `"EHwG.3AOg@hGU=.invalid"`.
