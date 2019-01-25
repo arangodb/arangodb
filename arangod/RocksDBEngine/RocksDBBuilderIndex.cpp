@@ -242,8 +242,8 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
   }
 
   // if an error occured drop() will be called
-  LOG_DEVEL << "SNAPSHOT CAPTURED " << numDocsWritten << " " << res.errorMessage();
-
+  LOG_TOPIC(DEBUG, Logger::ENGINES) << "SNAPSHOT CAPTURED " << numDocsWritten << " " << res.errorMessage();
+  
   return res;
 }
 
@@ -453,7 +453,7 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
     }
   };
 
-  LOG_DEVEL << "Scanning from " << startingFrom;
+  LOG_TOPIC(DEBUG, Logger::ENGINES) << "Scanning from " << startingFrom;
 
   for (; iterator->Valid(); iterator->Next()) {
     rocksdb::BatchResult batch = iterator->GetBatch();
@@ -481,7 +481,7 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
   }
 
   if (!iterator->status().ok() && res.ok()) {
-    LOG_DEVEL << "iterator error " << s.ToString();
+    LOG_TOPIC(ERR, Logger::ENGINES) << "iterator error " << s.ToString();
     res = rocksutils::convertStatus(iterator->status());
   }
 
@@ -490,7 +490,7 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
     res = trx.commit();  // important for iresearch
   }
 
-  LOG_DEVEL << "WAL REPLAYED insertions: " << replay.numInserted
+  LOG_TOPIC(DEBUG, Logger::ENGINES) << "WAL REPLAYED insertions: " << replay.numInserted
             << "; deletions: " << replay.numRemoved << "; lastScannedTick "
             << lastScannedTick;
 
@@ -563,7 +563,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
   uint64_t numScanned = 0;
   
   int maxCatchups = 4;
-  do {
+  while(true) {
     lastScanned = 0;
     if (internal->unique()) {
       const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
@@ -586,12 +586,12 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
       return res;
     }
     
-    if (numScanned > 5000 && maxCatchups-- != 0) {
+    if (numScanned < 5000 || maxCatchups-- == 0) {
       TRI_ASSERT(lastScanned > scanFrom);
       std::this_thread::yield();
-      continue;
+      break;
     }
-  } while (false);
+  }
 
   if (!locker.lock()) {
     return res.reset(TRI_ERROR_LOCK_TIMEOUT);

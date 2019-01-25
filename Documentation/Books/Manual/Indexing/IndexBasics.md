@@ -23,7 +23,7 @@ Using the system attribute `_id` in user-defined indexes is not possible, but
 indexing `_key`, `_rev`, `_from`, and `_to` is.
 
 Creating new indexes is by default done under an exclusive collection lock. The collection is not
-available as long as the index is created.  This "foreground" index creation can be undesirable, 
+available while the index is being created.  This "foreground" index creation can be undesirable, 
 if you have to perform it on a live system without a dedicated maintenance window.
 
 For potentially long running index  creation operations the _rocksdb_ storage-engine also supports 
