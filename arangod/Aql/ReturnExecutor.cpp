@@ -22,8 +22,10 @@
 
 #include "ReturnExecutor.h"
 #include "Aql/AqlValue.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Basics/Common.h"
+
 
 #include <algorithm>
 

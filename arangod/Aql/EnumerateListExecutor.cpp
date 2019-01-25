@@ -39,22 +39,15 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
-    RegisterId inputRegister, RegisterId outputRegister,
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(
-                        std::initializer_list<RegisterId>{inputRegister}),
-                    std::make_shared<std::unordered_set<RegisterId>>(
-                        std::initializer_list<RegisterId>{outputRegister}),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear)),
+    RegisterId inputRegister, RegisterId outputRegister, RegisterId nrInputRegisters,
+    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear)
+    : ExecutorInfos(make_shared_unordered_set({inputRegister}),
+                    make_shared_unordered_set({outputRegister}), nrInputRegisters,
+                    nrOutputRegisters, std::move(registersToClear)),
       _inputRegister(inputRegister),
-      _outputRegister(outputRegister) {
-}
+      _outputRegister(outputRegister) {}
 
-
-EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher,
-                                             EnumerateListExecutorInfos& infos)
+EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher, EnumerateListExecutorInfos& infos)
     : _infos(infos),
       _fetcher(fetcher),
       _currentRow{CreateInvalidInputRowHint{}},
@@ -62,8 +55,7 @@ EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher,
       _inputArrayPosition(0),
       _inputArrayLength(0){};
 
-std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(
-    OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(OutputAqlItemRow& output) {
   while (true) {
     // HIT in first run, because pos and length are initiliazed
     // both with 0
@@ -118,9 +110,8 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
-      output.setValue(
-          _infos.getOutputRegister(), _currentRow,
-          std::move(innerValue));  // NOLINT(performance-move-const-arg)
+      output.setValue(_infos.getOutputRegister(), _currentRow,
+                      std::move(innerValue));  // NOLINT(performance-move-const-arg)
       // The output row (respectively the AqlItemBlock underneath) is now
       // responsible for the memory.
       guard.steal();
@@ -144,8 +135,7 @@ void EnumerateListExecutor::initialize() {
 
 /// @brief create an AqlValue from the inVariable using the current _index
 AqlValue EnumerateListExecutor::getAqlValue(AqlValue const& inVarReg,
-                                            size_t const& pos,
-                                            bool& mustDestroy) {
+                                            size_t const& pos, bool& mustDestroy) {
   TRI_IF_FAILURE("EnumerateListBlock::getAqlValue") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }

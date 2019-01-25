@@ -36,12 +36,16 @@
 #include "Aql/CalculationExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/FilterExecutor.h"
+#include "Aql/IdExecutor.h"
+#include "Aql/LimitExecutor.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/ShortestPathExecutor.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/TraversalExecutor.h"
+
+#include <type_traits>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -99,7 +103,6 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
   // won't help much because it's unclear whether the value will be correct.
   ExecutionState state = ExecutionState::HASMORE;
   ExecutorStats executorStats{};
-  std::unique_ptr<OutputAqlItemRow> row;  // holds temporary rows
 
   TRI_ASSERT(atMost > 0);
 
@@ -189,9 +192,56 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   // destroy and re-create the Executor
   _executor.~Executor();
   new (&_executor) Executor(_rowFetcher, _infos);
+  // // use this with c++17 instead of specialisation below
+  // if constexpr (std::is_same_v<Executor, IdExecutor>) {
+  //   if (items != nullptr) {
+  //     _executor._inputRegisterValues.reset(
+  //         items->slice(pos, *(_executor._infos.registersToKeep())));
+  //   }
+  // }
 
   return ExecutionBlock::initializeCursor(items, pos);
 }
+
+// Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
+// Without the namespaces it fails with
+// error: specialization of 'template<class Executor> std::pair<arangodb::aql::ExecutionState, arangodb::Result> arangodb::aql::ExecutionBlockImpl<Executor>::initializeCursor(arangodb::aql::AqlItemBlock*, size_t)' in different namespace
+namespace arangodb {
+namespace aql {
+// TODO -- remove this specialization when cpp 17 becomes available
+template <>
+std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor>::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
+  // destroy and re-create the BlockFetcher
+  _blockFetcher.~BlockFetcher();
+  new (&_blockFetcher)
+      BlockFetcher(_dependencies, _engine->itemBlockManager(),
+                   _infos.getInputRegisters(), _infos.numberOfInputRegisters());
+
+  // destroy and re-create the Fetcher
+  _rowFetcher.~Fetcher();
+  new (&_rowFetcher) Fetcher(_blockFetcher);
+
+  std::unique_ptr<AqlItemBlock> block;
+  if (items != nullptr) {
+    block = std::unique_ptr<AqlItemBlock>(
+        items->slice(pos, *(_executor._infos.registersToKeep())));
+  } else {
+    block = std::unique_ptr<AqlItemBlock>(
+        _engine->itemBlockManager().requestBlock(1, _executor._infos.numberOfOutputRegisters()));
+  }
+  InputAqlItemBlockShell shell(_engine->itemBlockManager(), std::move(block),
+                               _executor._infos.getInputRegisters());
+  _rowFetcher.injectBlock(std::make_shared<InputAqlItemBlockShell>(std::move(shell)));
+
+  // destroy and re-create the Executor
+  _executor.~IdExecutor();
+  new (&_executor) IdExecutor(_rowFetcher, _infos);
+
+  return ExecutionBlock::initializeCursor(items, pos);
+}
+}  // namespace aql
+}  // namespace arangodb
 
 template <class Executor>
 std::unique_ptr<OutputAqlItemBlockShell> ExecutionBlockImpl<Executor>::requestWrappedBlock(
@@ -208,6 +258,8 @@ std::unique_ptr<OutputAqlItemBlockShell> ExecutionBlockImpl<Executor>::requestWr
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;

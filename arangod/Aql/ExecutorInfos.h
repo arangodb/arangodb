@@ -37,6 +37,12 @@ inline std::shared_ptr<std::unordered_set<RegisterId>> make_shared_unordered_set
   return std::make_shared<std::unordered_set<RegisterId>>(list);
 }
 
+template <typename Iterator>
+inline std::shared_ptr<std::unordered_set<RegisterId>> make_shared_unordered_set(Iterator begin,
+                                                                                 Iterator end) {
+  return std::make_shared<std::unordered_set<RegisterId>>(begin, end);
+}
+
 /**
  * @brief Class to be handed into Executors during construction
  *        This class should be independend from AQL internal
@@ -66,7 +72,7 @@ class ExecutorInfos {
                 RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                 std::unordered_set<RegisterId> registersToClear);
 
-  //TODO - This constructor needs to be removed once the register planning is updated.
+  // TODO - This constructor needs to be removed once the register planning is updated.
   //       It was introduced to implement the ReturnExecutor.
   ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
                 std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,

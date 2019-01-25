@@ -25,9 +25,7 @@
 #define ARANGOD_AQL_NORESULTS_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-
 #include "Aql/ExecutorInfos.h"
-#include "Aql/SingleRowFetcher.h"
 
 #include <memory>
 
@@ -38,7 +36,7 @@ class Methods;
 
 namespace aql {
 
-class AllRowsFetcher;
+class SingleRowFetcher;
 class AqlItemMatrix;
 class ExecutorInfos;
 class NoStats;

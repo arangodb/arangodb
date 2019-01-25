@@ -53,6 +53,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchQueryJoin-test.cpp
     IResearch/IResearchQueryAggregate-test.cpp
     IResearch/IResearchQueryTraversal-test.cpp
+    IResearch/IResearchQueryOptions-test.cpp
     IResearch/RestHandlerMock.cpp
     IResearch/IResearchViewNode-test.cpp
     IResearch/VelocyPackHelper-test.cpp
@@ -90,6 +91,8 @@ set(ARANGODB_TESTS_SOURCES
   Aql/ExecutionBlockImplTest.cpp
   Aql/ExecutionBlockImplTestInstances.cpp
   Aql/FilterExecutorTest.cpp
+  Aql/LimitExecutorTest.cpp
+  Aql/IdExecutorTest.cpp
   Aql/NoResultsExecutorTest.cpp
   Aql/RestAqlHandlerTest.cpp
   Aql/ReturnExecutorTest.cpp

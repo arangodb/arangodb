@@ -186,7 +186,6 @@ SET(ARANGOD_SOURCES
   Aql/AstNode.cpp
   Aql/AttributeAccessor.cpp
   Aql/BaseExpressionContext.cpp
-  Aql/BasicBlocks.cpp
   Aql/BindParameters.cpp
   Aql/BlockCollector.cpp
   Aql/BlockFetcher.cpp
@@ -201,6 +200,7 @@ SET(ARANGOD_SOURCES
   Aql/Collections.cpp
   Aql/Condition.cpp
   Aql/ConditionFinder.cpp
+  Aql/ConstFetcher.cpp
   Aql/DocumentProducingBlock.cpp
   Aql/DocumentProducingNode.cpp
   Aql/EngineInfoContainerCoordinator.cpp
@@ -218,11 +218,13 @@ SET(ARANGOD_SOURCES
   Aql/ExecutorInfos.cpp
   Aql/Expression.cpp
   Aql/FilterExecutor.cpp
+  Aql/LimitExecutor.cpp
   Aql/FixedVarExpressionContext.cpp
   Aql/Function.cpp
   Aql/Functions.cpp
   Aql/GraphNode.cpp
   Aql/Graphs.cpp
+  Aql/IdExecutor.cpp
   Aql/IndexBlock.cpp
   Aql/IndexNode.cpp
   Aql/InputAqlItemRow.cpp
