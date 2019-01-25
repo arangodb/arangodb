@@ -273,8 +273,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor>::initializeCurs
 template <class Executor>
 std::pair<ExecutionState, std::unique_ptr<OutputAqlItemBlockShell>>
 ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrRegs) {
-  AqlItemBlock* block = requestBlock(nrItems, nrRegs);
-
   std::shared_ptr<AqlItemBlockShell> blockShell;
   if /* constexpr */ (Executor::Properties::allowsBlockPassthrough) {
     // If blocks can be passed through, we do not create new blocks.
@@ -307,6 +305,8 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
     }
 #endif
   } else {
+    AqlItemBlock* block = requestBlock(nrItems, nrRegs);
+
     blockShell =
         std::make_shared<AqlItemBlockShell>(_engine->itemBlockManager(),
                                             std::unique_ptr<AqlItemBlock>{block});
