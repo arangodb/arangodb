@@ -50,6 +50,7 @@ class SortNode : public ExecutionNode {
   friend class SortBlock;
   friend class RedundantCalculationsReplacer;
 
+ public:
   enum SorterType { Standard, ConstrainedHeap };
   static std::string const& sorterTypeName(SorterType);
 
@@ -116,12 +117,11 @@ class SortNode : public ExecutionNode {
   /// values (e.g. when a FILTER condition exists that guarantees this)
   void removeConditions(size_t count);
 
+  SorterType sorterType() const;
+
   // reinsert node when building gather node - this is used e.g for the
   // geo-index
   bool _reinsertInCluster;
-
- private:
-  SorterType sorterType() const;
 
  private:
   /// @brief pairs, consisting of variable and sort direction
