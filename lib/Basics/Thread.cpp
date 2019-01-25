@@ -70,7 +70,7 @@ void Thread::startThread(void* arg) {
   LOCAL_THREAD_NAME = ptr->name().c_str();
 
   // make sure we drop our reference when we are finished!
-  auto guard = scopeGuard([&ptr]() {
+  auto guard = scopeGuard([ptr]() {
     LOCAL_THREAD_NAME = nullptr;
     ptr->releaseRef();
   });
@@ -175,11 +175,11 @@ void Thread::beginShutdown() {
   ThreadState state = _state.load();
 
   while (state == ThreadState::CREATED) {
-    _state.compare_exchange_strong(state, ThreadState::STOPPED);
+    _state.compare_exchange_weak(state, ThreadState::STOPPED);
   }
 
   while (state != ThreadState::STOPPING && state != ThreadState::STOPPED) {
-    _state.compare_exchange_strong(state, ThreadState::STOPPING);
+    _state.compare_exchange_weak(state, ThreadState::STOPPING);
   }
 
   LOG_TOPIC(TRACE, Logger::THREADS) << "beginShutdown(" << _name << ") reached state "
