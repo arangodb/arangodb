@@ -3,10 +3,13 @@ Arangodump Data Maskings
 
 *--maskings path-of-config*
 
-It is possible to mask certain fields for a dump. A JSON configuration file is
-used to define which fields should be masked and how.
+This feature allows you to define how sensitive data shall be dumped.
+It is possible to exclude collections entirely, limit the dump to the
+structural information of a collection (name, indexes, sharding etc.)
+or to obfuscate certain fields for a dump. A JSON configuration file is
+used to define which collections and fields to mask and how.
 
-The general structure of the config file looks like this:
+The general structure of the configuration file looks like this:
 
 ```json
 {
@@ -32,15 +35,15 @@ Masking Types
 `type` is a string describing how to mask the given collection.
 Possible values are:
 
-- `"exclude"`: the collection is ignored completely and not even the structure data
-  is dumped.
+- `"exclude"`: the collection is ignored completely and not even the
+  structure data is dumped.
 
 - `"structure"`: only the collection structure is dumped, but no data at all
 
 - `"masked"`: the collection structure and all data is dumped. However, the data
   is subject to obfuscation defined in the attribute `maskings`. It is an array
-  of objects, with one object per field to mask. Each needs at least a `path`
-  and a `type` attribute to [define which field to mask](#path) and which
+  of objects, with one object per field to mask. Each object needs at least a
+  `path` and a `type` attribute to [define which field to mask](#path) and which
   [masking function](#masking-functions) to apply. Depending on the
   masking type, there may exist additional attributes.
 
@@ -77,12 +80,13 @@ Possible values are:
 }
 ```
 
-In the example the collection _private_ is completely ignored. Only the
-structure of the collection _log_ is dumped, but not the data itself.
-The collection _person_ is dumped completely but with the _name_ field masked
-if it occurs on the top-level. It also masks fields with the name "security_id"
-anywhere in the document. See below for a complete description of the parameters
-of [type "xifyFront"](#xify-front).
+- The collection called _private_ is completely ignored.
+- Only the structure of the collection _log_ is dumped, but not the data itself.
+- The collection _person_ is dumped completely but with maskings applied:
+  - The _name_ field is masked if it occurs on the top-level.
+  - It also masks fields with the name _security_id_ anywhere in the document.
+  - The masking function is of type [_xifyFront_](#xify-front) in both cases.
+    The additional setting `unmaskedLength` is specific so _xifyFront_.
 
 ### Masking vs. dump-data option
 
@@ -103,15 +107,47 @@ This will take the intersection of exportable collections.
 Path
 ----
 
-If the path starts with a `.` then it is considered to match any path
-ending in `name`. For example, `.name` will match the field
-`name` of all leaf attributes in the document. Leaf attributes are
-attributes whose value is `null` or of data type `string`, `number`,
-`bool` or `array`. That means, it matches `name` at the top level as
-well as at any nested level (e.g. `foo.bar.name`), but not
-sub-objects.  `name` will only match leaf attributes at top
-level. `person.name` will match the attribute `name` of a leaf in the
-top-level object `person`.
+`path` defines which field to obfuscate. There can only be a single
+path per masking, but an unlimited amount of maskings per collection.
+
+To mask a top-level attribute value, the path is simply the attribute
+name, for instance `"name"` to mask the value `"foobar"`:
+
+```json
+{
+  "_key": "1234",
+  "name": "foobar"
+}
+```
+
+The path to a nested attribute `name` with a top-level attribute `person`
+as its parent is `"person.name"`:
+
+```json
+{
+  "_key": "1234",
+  "person": {
+    "name": "foobar"
+  }
+}
+```
+
+If the path starts with a `.` then it matches any path ending in `name`.
+For example, `.name` will match the field `name` of all leaf attributes
+in the document. Leaf attributes are attributes whose value is `null`,
+`true`, `false`, or of data type `string`, `number` or `array`.
+That means, it matches `name` at the top level
+as well as at any nested level (e.g. `foo.bar.name`), but not nested
+objects themselves.
+
+On the other hand, `name` will only match leaf attributes
+at top level. `person.name` will match the attribute `name` of a leaf
+in the top-level object `person`. If `person` was itself an object,
+then the masking settings for this path would be ignored, because it
+is not a leaf attribute.
+
+If the attribute value is an **array** then the masking is applied to
+**all array elements individually**.
 
 If you have an attribute name that contains a dot, you need to quote the
 name with either a tick or a backtick. For example:
@@ -171,8 +207,9 @@ If you specify a path and the attribute value is an array then the
 masking decision is applied to each element of the array as if this
 was the value of the attribute.
 
-If the attribute value is an object, then the attribute is not masked.
-Instead the nested object is checked further for leaf attributes.
+If the attribute value is an object, then it is ignored and the attribute
+does not get masked. To mask nested fields, specify the full path for each
+leaf attribute.
 
 **Example**
 
