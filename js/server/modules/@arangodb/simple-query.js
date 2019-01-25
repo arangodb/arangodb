@@ -92,7 +92,8 @@ SimpleQueryAll.prototype.execute = function () {
   var bindVars = { '@collection': this._collection.name() };
 
   var query = 'FOR doc IN @@collection ' + limitString(this._skip, this._limit) + ' RETURN doc';
-  var documents = require('internal').db._query({ query, bindVars}).toArray();
+  const options = {stream: false};
+  var documents = require('internal').db._query({ query, bindVars, options}).toArray();
 
   this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length;
@@ -132,8 +133,8 @@ SimpleQueryByExample.prototype.execute = function () {
 
   var query = 'FOR doc IN @@collection ' + filters.join(' ') + ' ' +
     limitString(this._skip, this._limit) + ' RETURN doc';
-
-  var documents = require('internal').db._query({ query, bindVars}).toArray();
+  const options = {stream: false};
+  var documents = require('internal').db._query({ query, bindVars, options}).toArray();
 
   this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length;
@@ -167,7 +168,8 @@ SimpleQueryRange.prototype.execute = function () {
 
   query += limitString(this._skip, this._limit) + ' RETURN doc';
 
-  var documents = require('internal').db._query({ query, bindVars}).toArray();
+  const options = {stream: false};
+  var documents = require('internal').db._query({ query, bindVars, options}).toArray();
 
   this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length - this._skip;
@@ -226,7 +228,8 @@ SimpleQueryNear.prototype.execute = function () {
 
   query += limitString(this._skip, this._limit) + ' RETURN doc';
 
-  let documents = require('internal').db._query({ query, bindVars }).toArray();
+  const options = {stream: false};
+  let documents = require('internal').db._query({ query, bindVars, options }).toArray();
 
   this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length - this._skip;
@@ -281,7 +284,8 @@ SimpleQueryWithin.prototype.execute = function () {
 
   query += limitString(this._skip, this._limit) + ' RETURN doc';
 
-  let documents = require('internal').db._query({ query, bindVars }).toArray();
+  const options = {stream: false};
+  let documents = require('internal').db._query({ query, bindVars, options }).toArray();
 
   this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length - this._skip;
@@ -343,7 +347,8 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
   
   query += limitString(this._skip, this._limit) + ' RETURN doc';
 
-  let documents = require('internal').db._query({ query, bindVars }).toArray();
+  const options = {stream: false};
+  let documents = require('internal').db._query({ query, bindVars, options }).toArray();
 
   this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length - this._skip;

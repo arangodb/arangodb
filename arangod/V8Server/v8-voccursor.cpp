@@ -239,7 +239,7 @@ struct V8Cursor final {
         return false;
       }
     }
-    return true;
+    return true; // still got some data
   }
 
   /// @brief fetch the next batch
@@ -260,7 +260,6 @@ struct V8Cursor final {
     _tmpResult.close();
 
     TRI_ASSERT(_tmpResult.slice().isObject());
-    // TODO as an optimization
     for (auto pair : VPackObjectIterator(_tmpResult.slice(), true)) {
       if (pair.key.isEqualString("result")) {
         _dataSlice = pair.value;
@@ -367,9 +366,35 @@ struct V8Cursor final {
     TRI_V8_TRY_CATCH_BEGIN(isolate);
     v8::Isolate* isolate = args.GetIsolate();
     v8::HandleScope scope(isolate);
-    TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_NOT_IMPLEMENTED,
-        "toArray() is not supported on ArangoQueryStreamCursor");
+    
+    V8Cursor* self = V8Cursor::unwrap(args.Holder());
+    if (self == nullptr) {
+      TRI_V8_RETURN_UNDEFINED();
+    }
+    
+    v8::Handle<v8::Array> resArray = v8::Array::New(isolate);
+
+    // iterate over result and return it
+    uint32_t j = 0;
+    while (self->maybeFetchBatch(isolate)) {
+      if (!self->_dataIterator) {
+        break;
+      }
+      
+      if (V8PlatformFeature::isOutOfMemory(isolate)) {
+        TRI_V8_SET_EXCEPTION_MEMORY();
+      }
+      
+      while (self->_dataIterator->valid()) {
+        VPackSlice s = self->_dataIterator->value();
+        resArray->Set(j++, TRI_VPackToV8(isolate, s, &self->_options));
+        ++(*self->_dataIterator);
+      }
+      // reset so that the next one can fetch again
+      self->_dataIterator.reset();
+    }
+    TRI_V8_RETURN(resArray);
+    
     TRI_V8_TRY_CATCH_END
   }
 
@@ -421,8 +446,9 @@ struct V8Cursor final {
 
     if (self->_dataIterator != nullptr) {
       TRI_V8_RETURN_TRUE();
+    } else {
+      TRI_V8_RETURN_FALSE();
     }
-    TRI_V8_RETURN_FALSE();
     TRI_V8_TRY_CATCH_END
   }
 

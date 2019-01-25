@@ -1,6 +1,10 @@
 devel
 -----
 
+* AQL queries started from V8 in arangod (i.e. from a Foxx app) will not by
+  default use the option `stream: true` in the `db._query(..)` call. 
+  This does not apply to queries with the `count` or  `fullCount` option set.
+
 * fixed arangoimp script for MacOSX CLI Bundle
 
 * added "peakMemoryUsage" in query results figures, showing the peak memory

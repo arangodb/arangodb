@@ -76,6 +76,9 @@ ArangoStatement.prototype.execute = function () {
     if (this._cache !== undefined) {
       opts.cache = this._cache;
     }
+    if (!opts.count && !opts.fullCount && (typeof opts.stream === "undefined")) {
+      opts.stream = true;
+    }
     if (opts.stream) {
       return new ArangoQueryStreamCursor(this._query, this._bindVars, opts);
     }
