@@ -124,6 +124,28 @@ The document revision is stored in the `_rev` attribute of a document, and is se
 
 ArangoDB currently uses 64bit unsigned integer values to maintain document revisions internally. When returning document revisions to clients, ArangoDB will put them into a string to ensure the revision id is not clipped by clients that do not support big integers. Clients should treat the revision id returned by ArangoDB as an opaque string when they store or use it locally. This will allow ArangoDB to change the format of revision ids later if this should be required. Clients can use revisions ids to perform simple equality/non-equality comparisons (e.g. to check whether a document has changed or not), but they should not use revision ids to perform greater/less than comparisons with them to check if a document revision is older than one another, even if this might work for some cases.
 
+{% hint 'warning' %}
+When an existing document is updated or replaced, ArangoDB will write a new
+version of this document to the write-ahead logfile, regardless of the
+storage engine. When the new version of the document has been written, the
+old version(s) will still be present, at least on disk. The same is true when
+an existing document (version) gets removed: for some time, the old version
+of the document plus the removal operation will be on disk.
+
+On disk it is therefore possible that many revisions of the same document
+(as identified by the same `_key` value) exist at the same time.
+
+Howerver even if there might be multiple revisions of the same document (as
+identified by the same `_key` value) somewhere on the disk, **they are not
+accessible**. Once a document was updated or removed successfully, no query
+or other data retrieval operation done by the users will be able to see it
+any more. Furthemore, after some time, old revisions will be internally removed.
+This is to avoid ever-growing disk usage.
+
+Therefore **from a user perspective, there is just one single document revision
+present per different `_key` at every point in time**.
+{% endhint %}
+
 Edge
 ----
 
