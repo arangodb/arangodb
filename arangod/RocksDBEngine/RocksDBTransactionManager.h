@@ -53,12 +53,14 @@ class RocksDBTransactionManager final : public TransactionManager {
   void registerTransaction(TRI_voc_tid_t transactionId,
                            std::unique_ptr<TransactionData> data) override {
     TRI_ASSERT(data == nullptr);
+    _rwLock.readLock();
     ++_nrRunning;
   }
 
   // unregister a transaction
   void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed) override {
     --_nrRunning;
+    _rwLock.unlockRead();
   }
 
   // iterate all the active transactions
@@ -67,8 +69,17 @@ class RocksDBTransactionManager final : public TransactionManager {
 
   uint64_t getActiveTransactionCount() override { return _nrRunning; }
 
+  // temporarily block all new transactions
+  virtual bool holdTransactions(uint64_t timeout) {return _rwLock.writeLock(timeout);};
+  virtual bool holdTransactions(std::chrono::microseconds timeout) {return _rwLock.writeLock(timeout);};
+
+  // remove the block
+  virtual void releaseTransactions() {_rwLock.unlockWrite();};
+
+
  private:
   std::atomic<uint64_t> _nrRunning;
+  basics::ReadWriteLock _rwLock;
 };
 }  // namespace arangodb
 

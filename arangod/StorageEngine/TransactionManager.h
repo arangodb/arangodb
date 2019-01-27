@@ -24,6 +24,8 @@
 #ifndef ARANGOD_STORAGE_ENGINE_TRANSACTION_MANAGER_H
 #define ARANGOD_STORAGE_ENGINE_TRANSACTION_MANAGER_H 1
 
+#include <chrono>
+
 #include "Basics/Common.h"
 #include "VocBase/voc-types.h"
 
@@ -60,6 +62,14 @@ class TransactionManager {
       std::function<void(TRI_voc_tid_t, TransactionData const*)> const& callback) = 0;
 
   virtual uint64_t getActiveTransactionCount() = 0;
+
+  // functions to block transactions during hotbackup or restore
+  //  (not yet implemented/needed in all storage engines)
+  // holdTransactions: true on successful hold, false on timeout or error
+  virtual bool holdTransactions(uint64_t timeout) {return true;};
+  virtual bool holdTransactions(std::chrono::microseconds timeout) {return true;};
+
+  virtual void releaseTransactions() {};
 };
 
 }  // namespace arangodb
