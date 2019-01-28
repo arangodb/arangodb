@@ -569,8 +569,8 @@ This masks the field `count` with a random number between
 ### Decimal Number
 
 This masking type replaces the value of the attribute with a random
-decimal.  It will replace the value even if it is a string, boolean,
-or `null`.
+floating point number. It will replace the value even if it is a string,
+Boolean, or `null`.
 
 Masking settings:
 
