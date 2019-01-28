@@ -28,18 +28,18 @@
 #include "fakeit.hpp"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/Collection.h"
+#include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Transaction/Context.h"
-#include "Transaction/Methods.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/Context.h"
+#include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -58,8 +58,8 @@ namespace aql {
 
 using CursorType = arangodb::transaction::Methods::CursorType;
 
-
-SCENARIO("EnumerateCollectionExecutor", "[AQL][EXECUTOR][ENUMERATECOLLECTIONEXECUTOR]") {
+SCENARIO("EnumerateCollectionExecutor",
+         "[AQL][EXECUTOR][ENUMERATECOLLECTIONEXECUTOR]") {
   ExecutionState state;
 
   ResourceMonitor monitor;
@@ -72,6 +72,10 @@ SCENARIO("EnumerateCollectionExecutor", "[AQL][EXECUTOR][ENUMERATECOLLECTIONEXEC
 
     fakeit::Mock<transaction::Methods> mockTrx;
     transaction::Methods& trx = mockTrx.get();
+
+    fakeit::Mock<OperationCursor> mockCursor;
+    fakeit::Fake(Dtor(mockCursor));
+    OperationCursor& cursor = mockCursor.get();
 
     // Slice = VPackSlice::emptyObjectSlice();
     Variable _outVariable("name", 1);
@@ -86,19 +90,25 @@ SCENARIO("EnumerateCollectionExecutor", "[AQL][EXECUTOR][ENUMERATECOLLECTIONEXEC
     fakeit::Mock<TRI_vocbase_t> vocbaseMock;
     TRI_vocbase_t& vocbase = vocbaseMock.get();
 
-    fakeit::When(Method(mockTrx, indexScan)).AlwaysDo(
-     std::function<std::unique_ptr<OperationCursor>(std::string const&, CursorType&)>(
-      [](std::string const&, CursorType&)->std::unique_ptr<OperationCursor> {return nullptr;})
-    );
+    fakeit::When(Method(mockCursor, reset)).AlwaysDo([&]() -> void {
+      // just do nothing
+    });
+
+    fakeit::When(Method(mockTrx, indexScan))
+        .AlwaysDo(std::function<std::unique_ptr<OperationCursor>(std::string const&, CursorType&)>(
+            [&cursor](std::string const&, CursorType&) -> std::unique_ptr<OperationCursor> {
+              return std::unique_ptr<OperationCursor>(&cursor);
+            }));
 
     // Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type);
     Collection const abc("blabli", &vocbase, arangodb::AccessMode::Type::READ);
     bool useRawPointers = false;
 
-    EnumerateCollectionExecutorInfos infos(
-        0, 1, 1, regToClear, &engine, &abc, &_outVariable, _varUsedLater, projections,
-        &trx, coveringIndexAttributePositions, allowCoveringIndexOptimization,
-        useRawPointers, _random);
+    EnumerateCollectionExecutorInfos infos(0, 1, 1, regToClear, &engine, &abc,
+                                           &_outVariable, _varUsedLater, projections,
+                                           &trx, coveringIndexAttributePositions,
+                                           allowCoveringIndexOptimization,
+                                           useRawPointers, _random);
 
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
     auto outputBlockShell =
