@@ -597,10 +597,6 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
           replicationFeature->startApplier(vocbase.get());
         }
       }
-
-      // increase reference counter
-      bool result = vocbase->use();
-      TRI_ASSERT(result);
     }
 
     {
@@ -619,6 +615,22 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
 
       if (newLists != nullptr) {
         std::atomic_store(&_databasesLists, newLists);
+      }
+    }
+
+    // increase reference counter
+    if (!engine->inRecovery()) {
+      if (vocbase->use()) {
+        try {
+          vocbase = std::shared_ptr<TRI_vocbase_t>( // scoped-release pointer
+            vocbase.get(), // vocbase
+            [vocbase](TRI_vocbase_t* ptr) { ptr->release(); } // release vocbase
+          );
+        } catch(...) {
+          vocbase->release();
+        }
+      } else {
+        TRI_ASSERT(false);
       }
     }
   }  // release _databaseCreateLock
