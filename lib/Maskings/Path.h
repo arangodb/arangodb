@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,34 +17,35 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_RANDOM_UNIFORM_CHARACTER_H
-#define ARANGODB_RANDOM_UNIFORM_CHARACTER_H 1
+#ifndef ARANGODB_MASKINGS_PATH_H
+#define ARANGODB_MASKINGS_PATH_H 1
 
 #include "Basics/Common.h"
 
+#include "Maskings/ParseResult.h"
+
 namespace arangodb {
-class UniformCharacter {
- private:
-  UniformCharacter(UniformCharacter const&);
-  UniformCharacter& operator=(UniformCharacter const&);
+namespace maskings {
+class Path {
+ public:
+  static ParseResult<Path> parse(std::string const&);
 
  public:
-  explicit UniformCharacter(size_t length);
-  explicit UniformCharacter(std::string const& characters);
-  UniformCharacter(size_t length, std::string const& characters);
+  Path() : _wildcard(false) {}
 
- public:
-  std::string random() const;
-  std::string random(size_t length) const;
-  char randomChar() const;
+  Path(bool wildcard, std::vector<std::string> const& components)
+      : _wildcard(wildcard), _components(components) {}
+
+  bool match(std::vector<std::string> const& path) const;
 
  private:
-  size_t const _length;
-  std::string const _characters;
+  bool _wildcard;
+  std::vector<std::string> _components;
 };
+}  // namespace maskings
 }  // namespace arangodb
 
 #endif
