@@ -238,9 +238,8 @@ arangodb::Result dumpJsonObjects(arangodb::DumpFeature::JobData& jobData,
   file.write(result->c_str(), result->length());
 
   if (file.status().fail()) {
-    return {TRI_ERROR_CANNOT_WRITE_FILE,
-            std::string("cannot write file '") + file.path() +
-                "': " + file.status().errorMessage()};
+    return {TRI_ERROR_CANNOT_WRITE_FILE, std::string("cannot write file '") + file.path() +
+                                             "': " + file.status().errorMessage()};
   }
 
   jobData.stats.totalWritten += static_cast<uint64_t>(result->length());
@@ -479,15 +478,16 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
       dumpData = jobData.maskings->shouldDumpData(jobData.name);
     }
 
+    // always create the file so that arangorestore does not complain
+    auto file = jobData.directory.writableFile(jobData.name + "_" + hexString +
+                                                   ".data.json",
+                                               true);
+    if (!::fileOk(file.get())) {
+      return ::fileError(file.get(), true);
+    }
+
     if (dumpData) {
       // save the actual data
-      auto file = jobData.directory.writableFile(jobData.name + "_" +
-                                                     hexString + ".data.json",
-                                                 true);
-      if (!::fileOk(file.get())) {
-        return ::fileError(file.get(), true);
-      }
-
       if (jobData.options.clusterMode) {
         result = ::handleCollectionCluster(client, jobData, *file);
       } else {
@@ -992,8 +992,7 @@ void DumpFeature::start() {
     maskings::MaskingsResult m = maskings::Maskings::fromFile(_options.maskingsFile);
 
     if (m.status != maskings::MaskingsResult::VALID) {
-      LOG_TOPIC(FATAL, Logger::CONFIG)
-          << m.message << " in maskings file '" << _options.maskingsFile << "'";
+      LOG_TOPIC(FATAL, Logger::CONFIG) << m.message;
       FATAL_ERROR_EXIT();
     }
 
