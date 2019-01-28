@@ -621,14 +621,10 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     // increase reference counter
     if (!engine->inRecovery()) {
       if (vocbase->use()) {
-        try {
-          vocbase = std::shared_ptr<TRI_vocbase_t>( // scoped-release pointer
-            vocbase.get(), // vocbase
-            [vocbase](TRI_vocbase_t* ptr) { ptr->release(); } // release vocbase
-          );
-        } catch(...) {
-          vocbase->release();
-        }
+        vocbase = std::shared_ptr<TRI_vocbase_t>( // scoped-release pointer
+          vocbase.get(), // vocbase
+          [vocbase](TRI_vocbase_t* ptr) { ptr->release(); } // release vocbase
+        );
       } else {
         TRI_ASSERT(false);
       }
@@ -908,14 +904,10 @@ std::shared_ptr<TRI_vocbase_t> DatabaseFeature::useDatabase( // mark in-use
     auto vocbase = it->second;
 
     if (vocbase->use()) {
-      try {
-        return std::shared_ptr<TRI_vocbase_t>( // scoped-release pointer
-          vocbase.get(), // vocbase
-          [vocbase](TRI_vocbase_t* ptr) { ptr->release(); } // release vocbase
-        );
-      } catch(...) {
-        vocbase->release();
-      }
+      return std::shared_ptr<TRI_vocbase_t>( // scoped-release pointer
+        vocbase.get(), // vocbase
+        [vocbase](TRI_vocbase_t* ptr) { ptr->release(); } // release vocbase
+      );
     }
   }
 
@@ -932,14 +924,10 @@ std::shared_ptr<TRI_vocbase_t> DatabaseFeature::useDatabase( // mark in-use
 
     if (vocbase->id() == id) {
       if (vocbase->use()) {
-        try {
-          return std::shared_ptr<TRI_vocbase_t>( // scoped-release pointer
-            vocbase.get(), // vocbase
-            [vocbase](TRI_vocbase_t* ptr) { ptr->release(); } // release vocbase
-          );
-        } catch(...) {
-          vocbase->release();
-        }
+        return std::shared_ptr<TRI_vocbase_t>( // scoped-release pointer
+          vocbase.get(), // vocbase
+          [vocbase](TRI_vocbase_t* ptr) { ptr->release(); } // release vocbase
+        );
       }
 
       break;
