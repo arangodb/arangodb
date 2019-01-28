@@ -106,7 +106,8 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
   // Maybe deprecate this option in devel
   options->addOption("--server.jwt-secret",
                      "secret to use when doing jwt authentication",
-                     new StringParameter(&_jwtSecretProgramOption));
+                     new StringParameter(&_jwtSecretProgramOption))
+                     .setDeprecatedIn(30322).setDeprecatedIn(30402);
 
   options->addOption("--server.jwt-secret-keyfile",
                      "file containing jwt secret to use when doing jwt authentication.",
