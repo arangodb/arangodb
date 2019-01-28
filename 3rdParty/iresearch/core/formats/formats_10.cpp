@@ -5243,7 +5243,7 @@ irs::postings_reader::ptr format::get_postings_reader() const {
   return irs::format::ptr(irs::format::ptr(), &INSTANCE);
 }
 
-DEFINE_FORMAT_TYPE_NAMED(::format, format_traits::NAME);
+DEFINE_FORMAT_TYPE_NAMED(::format, format_traits::NAME)
 REGISTER_FORMAT(::format);
 
 NS_END

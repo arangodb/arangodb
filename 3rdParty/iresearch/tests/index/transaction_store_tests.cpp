@@ -83,7 +83,7 @@ struct incompatible_attribute: irs::attribute {
 };
 
 REGISTER_ATTRIBUTE(incompatible_attribute);
-DEFINE_ATTRIBUTE_TYPE(incompatible_attribute);
+DEFINE_ATTRIBUTE_TYPE(incompatible_attribute)
 
 class transaction_store_tests: public test_base {
   virtual void SetUp() {
