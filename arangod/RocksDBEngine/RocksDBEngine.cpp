@@ -902,13 +902,15 @@ int RocksDBEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
 }
 
 int RocksDBEngine::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) {
-  rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(
-      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
-
-  result.openArray();
-
   auto bounds = RocksDBKeyBounds::DatabaseViews(vocbase.id());
+  rocksdb::Slice upper = bounds.end();
+  rocksdb::ColumnFamilyHandle* cf = RocksDBColumnFamily::definitions();
+  
+  rocksdb::ReadOptions ro;
+  ro.iterate_upper_bound = &upper;
+  
+  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(ro, cf));
+  result.openArray();
   for (iter->Seek(bounds.start()); iter->Valid(); iter->Next()) {
     TRI_ASSERT(iter->key().compare(bounds.end()) < 0);
     auto slice = VPackSlice(iter->value().data());
