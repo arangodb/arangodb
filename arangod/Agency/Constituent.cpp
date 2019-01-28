@@ -81,9 +81,7 @@ Constituent::Constituent()
 
 /// Shutdown if not already
 Constituent::~Constituent() {
-  if (!isStopping()) {
-    shutdown();
-  }
+  shutdown();
 }
 
 /// Wait for sync

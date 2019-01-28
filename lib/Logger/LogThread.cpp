@@ -40,7 +40,6 @@ LogThread::~LogThread() {
   Logger::_threaded = false;
   Logger::_active = false;
 
-  beginShutdown();
   shutdown();
 }
 
