@@ -67,6 +67,7 @@ class ClientFeature final : public application_features::ApplicationFeature,
   std::string const& jwtSecret() const { return _jwtSecret; }
   double connectionTimeout() const { return _connectionTimeout; }
   double requestTimeout() const { return _requestTimeout; }
+  void requestTimeout(double value) { _requestTimeout = value; }
   uint64_t maxPacketSize() const { return _maxPacketSize; }
   uint64_t sslProtocol() const { return _sslProtocol; }
 
