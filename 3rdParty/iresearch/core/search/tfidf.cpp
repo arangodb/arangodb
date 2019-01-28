@@ -147,6 +147,82 @@ irs::sort::ptr make_json(const irs::string_ref& args) {
 
 REGISTER_SCORER_JSON(irs::tfidf_sort, make_json);
 
+struct byte_ref_iterator
+  : public std::iterator<std::input_iterator_tag, irs::byte_type, void, void, void> {
+  const irs::byte_type* end_;
+  const irs::byte_type* pos_;
+  byte_ref_iterator(const irs::bytes_ref& in)
+    : end_(in.c_str() + in.size()), pos_(in.c_str()) {
+  }
+
+  irs::byte_type operator*() {
+    if (pos_ >= end_) {
+      throw irs::io_error("invalid read past end of input");
+    }
+
+    return *pos_;
+  }
+
+  void operator++() { ++pos_; }
+};
+
+struct field_collector final: public irs::sort::field_collector {
+  uint64_t docs_with_field = 0; // number of documents containing the matched field (possibly without matching terms)
+
+  virtual void collect(
+    const irs::sub_reader& segment,
+    const irs::term_reader& field
+  ) override {
+    docs_with_field += field.docs_count();
+  }
+
+  virtual void collect(const irs::bytes_ref& in) override {
+    byte_ref_iterator itr(in);
+    auto docs_with_field_value = irs::vread<uint64_t>(itr);
+
+    if (itr.pos_ != itr.end_) {
+      throw irs::io_error("input not read fully");
+    }
+
+    docs_with_field += docs_with_field_value;
+  }
+
+  virtual void write(irs::data_output& out) const override {
+    out.write_vlong(docs_with_field);
+  }
+};
+
+struct term_collector final: public irs::sort::term_collector {
+  uint64_t docs_with_term = 0; // number of documents containing the matched term
+
+  virtual void collect(
+    const irs::sub_reader& segment,
+    const irs::term_reader& field,
+    const irs::attribute_view& term_attrs
+  ) override {
+    auto& meta = term_attrs.get<irs::term_meta>();
+
+    if (meta) {
+      docs_with_term += meta->docs_count;
+    }
+  }
+
+  virtual void collect(const irs::bytes_ref& in) override {
+    byte_ref_iterator itr(in);
+    auto docs_with_term_value = irs::vread<uint64_t>(itr);
+
+    if (itr.pos_ != itr.end_) {
+      throw irs::io_error("input not read fully");
+    }
+
+    docs_with_term += docs_with_term_value;
+  }
+
+  virtual void write(irs::data_output& out) const override {
+    out.write_vlong(docs_with_term);
+  }
+};
+
 NS_END // LOCAL
 
 NS_ROOT
@@ -163,54 +239,14 @@ struct idf final : basic_stored_attribute<float_t> {
   void clear() { value = 0.f; }
 };
 
-DEFINE_ATTRIBUTE_TYPE(irs::tfidf::idf);
-DEFINE_FACTORY_DEFAULT(idf);
+DEFINE_ATTRIBUTE_TYPE(irs::tfidf::idf)
+DEFINE_FACTORY_DEFAULT(idf)
 
 typedef tfidf_sort::score_t score_t;
 
-class collector final : public irs::sort::collector {
- public:
-  explicit collector(bool normalize) NOEXCEPT
-    : normalize_(normalize) {
-  }
-
-  virtual void collect(
-      const sub_reader& /*segment*/,
-      const term_reader& field,
-      const attribute_view& term_attrs
-  ) override {
-    auto& meta = term_attrs.get<irs::term_meta>();
-
-    docs_with_field += field.docs_count();
-
-    if (meta) {
-      docs_with_term += meta->docs_count;
-    }
-  }
-
-  virtual void finish(
-      attribute_store& filter_attrs,
-      const irs::index_reader& /*index*/
-  ) override {
-    auto& idf = filter_attrs.emplace<tfidf::idf>();
-    idf->value += float_t(std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0);
-    assert(idf->value >= 0);
-
-    // add norm attribute if requested
-    if (normalize_) {
-      filter_attrs.emplace<norm>();
-    }
-  }
-
- private:
-  uint64_t docs_with_field = 0; // number of documents containing at least one term for processed field
-  uint64_t docs_with_term = 0; // number of documents containing processed term
-  bool normalize_;
-}; // collector
-
 class scorer : public irs::sort::scorer_base<tfidf::score_t> {
  public:
-  DEFINE_FACTORY_INLINE(scorer);
+  DEFINE_FACTORY_INLINE(scorer)
 
   scorer(
       irs::boost::boost_t boost,
@@ -237,7 +273,7 @@ class scorer : public irs::sort::scorer_base<tfidf::score_t> {
 
 class norm_scorer final : public scorer {
  public:
-  DEFINE_FACTORY_INLINE(norm_scorer);
+  DEFINE_FACTORY_INLINE(norm_scorer)
 
   norm_scorer(
       const irs::norm* norm,
@@ -259,10 +295,42 @@ class norm_scorer final : public scorer {
 
 class sort final: irs::sort::prepared_basic<tfidf::score_t> {
  public:
-  DEFINE_FACTORY_INLINE(prepared);
+  DEFINE_FACTORY_INLINE(prepared)
 
   sort(bool normalize) NOEXCEPT
     : normalize_(normalize) {
+  }
+
+  virtual void collect(
+      irs::attribute_store& filter_attrs,
+      const irs::index_reader& index,
+      const irs::sort::field_collector* field,
+      const irs::sort::term_collector* term
+  ) const override {
+    auto& idf = filter_attrs.emplace<tfidf::idf>();
+
+#ifdef IRESEARCH_DEBUG
+    auto* field_ptr = dynamic_cast<const field_collector*>(field);
+    assert(!field || field_ptr);
+    auto* term_ptr = dynamic_cast<const term_collector*>(term);
+    assert(!term || term_ptr);
+#else
+    auto* field_ptr = static_cast<const field_collector*>(field);
+    auto* term_ptr = static_cast<const term_collector*>(term);
+#endif
+
+    const auto docs_with_field = field_ptr ? field_ptr->docs_with_field : 0; // nullptr possible if e.g. 'all' filter
+    const auto docs_with_term = term_ptr ? term_ptr->docs_with_term : 0; // nullptr possible if e.g.'by_column_existence' filter
+
+    idf->value += float_t(
+      std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0
+    );
+    assert(idf->value >= 0);
+
+    // add norm attribute if requested
+    if (normalize_) {
+      filter_attrs.emplace<norm>();
+    }
   }
 
   virtual const flags& features() const override {
@@ -274,8 +342,8 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t> {
     return FEATURES[normalize_];
   }
 
-  virtual collector::ptr prepare_collector() const override {
-    return irs::sort::collector::make<tfidf::collector>(normalize_);
+  virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
+    return irs::memory::make_unique<field_collector>();
   }
 
   virtual scorer::ptr prepare_scorer(
@@ -306,6 +374,10 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t> {
     );
   }
 
+  virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
+    return irs::memory::make_unique<term_collector>();
+  }
+
  private:
   const std::function<bool(score_t, score_t)>* less_;
   bool normalize_;
@@ -313,8 +385,8 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t> {
 
 NS_END // tfidf 
 
-DEFINE_SORT_TYPE_NAMED(irs::tfidf_sort, "tfidf");
-DEFINE_FACTORY_DEFAULT(irs::tfidf_sort);
+DEFINE_SORT_TYPE_NAMED(irs::tfidf_sort, "tfidf")
+DEFINE_FACTORY_DEFAULT(irs::tfidf_sort)
 
 tfidf_sort::tfidf_sort(bool normalize) NOEXCEPT
   : sort(tfidf_sort::type()),

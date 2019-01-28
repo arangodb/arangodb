@@ -1219,10 +1219,10 @@ void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
 
   for (auto& it : _options.numberOfShards) {
     auto parts = basics::StringUtils::split(it, '=');
-    if (parts.size() == 1 && basics::StringUtils::uint64(parts[0]) > 0) {
+    if (parts.size() == 1 && basics::StringUtils::int64(parts[0]) > 0) {
       // valid
       continue;
-    } else if (parts.size() == 2 && basics::StringUtils::uint64(parts[1]) > 0) {
+    } else if (parts.size() == 2 && basics::StringUtils::int64(parts[1]) > 0) {
       // valid
       continue;
     }
@@ -1235,12 +1235,12 @@ void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
   for (auto& it : _options.replicationFactor) {
     auto parts = basics::StringUtils::split(it, '=');
     if (parts.size() == 1) {
-      if (parts[0] == "satellite" || basics::StringUtils::uint64(parts[0]) > 0) {
+      if (parts[0] == "satellite" || basics::StringUtils::int64(parts[0]) > 0) {
         // valid
         continue;
       }
     } else if (parts.size() == 2) {
-      if (parts[1] == "satellite" || basics::StringUtils::uint64(parts[1]) > 0) {
+      if (parts[1] == "satellite" || basics::StringUtils::int64(parts[1]) > 0) {
         // valid
         continue;
       }

@@ -277,7 +277,7 @@ class GatherNode final : public ExecutionNode {
   friend class RedundantCalculationsReplacer;
 
  public:
-  enum class SortMode : uint32_t { MinElement, Heap };
+  enum class SortMode : uint32_t { MinElement, Heap, Default };
 
   /// @brief inspect dependencies starting from a specified 'node'
   /// and return first corresponding collection within

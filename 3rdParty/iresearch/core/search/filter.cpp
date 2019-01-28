@@ -73,8 +73,8 @@ filter::prepared::~prepared() {}
 // --SECTION--                                                             empty
 // -----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(irs::empty);
-DEFINE_FACTORY_DEFAULT(irs::empty);
+DEFINE_FILTER_TYPE(irs::empty)
+DEFINE_FACTORY_DEFAULT(irs::empty)
 
 empty::empty(): filter(empty::type()) {
 }
