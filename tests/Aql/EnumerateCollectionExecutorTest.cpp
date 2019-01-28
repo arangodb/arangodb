@@ -43,8 +43,11 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "arangod/Transaction/Methods.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+#include <functional>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -52,6 +55,9 @@ using namespace arangodb::aql;
 namespace arangodb {
 namespace tests {
 namespace aql {
+
+using CursorType = arangodb::transaction::Methods::CursorType;
+
 
 SCENARIO("EnumerateCollectionExecutor", "[AQL][EXECUTOR][ENUMERATECOLLECTIONEXECUTOR]") {
   ExecutionState state;
@@ -80,7 +86,10 @@ SCENARIO("EnumerateCollectionExecutor", "[AQL][EXECUTOR][ENUMERATECOLLECTIONEXEC
     fakeit::Mock<TRI_vocbase_t> vocbaseMock;
     TRI_vocbase_t& vocbase = vocbaseMock.get();
 
-    fakeit::When(Method(mockTrx, indexScan)).AlwaysDo([](){return std::unique_ptr<OperationCursor>(nullptr);});
+    fakeit::When(Method(mockTrx, indexScan)).AlwaysDo(
+     std::function<std::unique_ptr<OperationCursor>(std::string const&, CursorType&)>(
+      [](std::string const&, CursorType&)->std::unique_ptr<OperationCursor> {return nullptr;})
+    );
 
     // Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type);
     Collection const abc("blabli", &vocbase, arangodb::AccessMode::Type::READ);
