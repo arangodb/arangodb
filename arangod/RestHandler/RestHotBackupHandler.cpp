@@ -21,15 +21,11 @@
 
 #include "RestHotBackupHandler.h"
 
-//#include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-//#include "Basics/StringUtils.h"
-//#include "Basics/conversions.h"
-//#include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-//#include "VocBase/ticks.h"
+#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -41,25 +37,31 @@ RestHotBackupHandler::RestHotBackupHandler(GeneralRequest* request, GeneralRespo
 }
 
 RestStatus RestHotBackupHandler::execute() {
-  // extract the request specifics
-  RequestType const type = _request->requestType();
-  std::vector<std::string> const& suffixes = _request->suffixes();
-  std::shared_ptr<RocksDBHotBackup> operation(parseHotBackupParams(type, suffixes));
+  if (nullptr == ExecContext::CURRENT || ExecContext::CURRENT->isAdminUser()) {
+
+    // extract the request specifics
+    RequestType const type = _request->requestType();
+    std::vector<std::string> const& suffixes = _request->suffixes();
+    std::shared_ptr<RocksDBHotBackup> operation(parseHotBackupParams(type, suffixes));
 
 /// add test for rocksdb engine
 
-  if (operation && operation->valid()) {
-    operation->execute();
+    if (operation && operation->valid()) {
+      operation->execute();
 
-    if (operation->success()) {
-      generateResult(rest::ResponseCode::OK, operation->resultSlice());
+      if (operation->success()) {
+        generateResult(rest::ResponseCode::OK, operation->resultSlice());
+      } else {
+        generateError(operation->restResponseCode(),
+                      operation->restResponseError());
+      } // else
     } else {
-      generateError(operation->restResponseCode(),
-                    operation->restResponseError());
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     } // else
   } else {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-  }
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "you need admin rights for hotbackup operations");
+  } // else
 
   return RestStatus::DONE;
 
