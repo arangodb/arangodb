@@ -151,7 +151,8 @@ rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                             rocksdb::Slice const& key, std::string* val) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
-  TRI_ASSERT(ro.snapshot != nullptr);
+  TRI_ASSERT(ro.snapshot != nullptr ||
+             _state->isReadOnlyTransaction() && _state->isSingleOperation());
   return _db->Get(ro, cf, key, val);
 }
 
@@ -160,7 +161,8 @@ rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                             rocksdb::PinnableSlice* val) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
-  TRI_ASSERT(ro.snapshot != nullptr);
+  TRI_ASSERT(ro.snapshot != nullptr ||
+             _state->isReadOnlyTransaction() && _state->isSingleOperation());
   return _db->Get(ro, cf, key, val);
 }
 
