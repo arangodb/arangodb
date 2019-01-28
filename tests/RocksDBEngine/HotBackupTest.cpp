@@ -25,6 +25,7 @@
 
 //#include "Basics/Exceptions.h"
 //#include "Basics/VelocyPackHelper.h"
+#include <velocypack/velocypack-aliases.h>
 #include "RocksDBEngine/RocksDBHotBackup.h"
 
 using namespace arangodb;
@@ -73,6 +74,53 @@ TEST_CASE("RocksDBHotBackup path tests", "[rocksdb][devel]") {
     raw_string[5]=(char)5;
     CHECK(testee.buildDirectoryPath("2019-01-23T14:47:42Z",raw_string) ==
             "/var/db/SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe_2019-01-23T14.47.42Z_Today.s_hot");
+  }
+
+}
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        test suite
+// -----------------------------------------------------------------------------
+
+/// @brief test RocksDBHotBackup create operation parameters
+TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
+  RocksDBHotBackupCreate testee;
+
+  SECTION("test_defaults") {
+    CHECK(true == testee.isCreate());
+    CHECK(testee.getTimestamp() == "");
+    CHECK(10000 == testee.getTimeoutMS());
+    CHECK(testee.getUserString() == "");
+  }
+
+  SECTION("test_simple") {
+    VPackBuilder opBuilder;
+    { VPackObjectBuilder a(&opBuilder);
+      opBuilder.add("timeoutMS", VPackValue(12345));
+      opBuilder.add("timestamp", VPackValue("2017-08-01T09:00:00Z"));
+      opBuilder.add("userString", VPackValue("first day"));
+    }
+
+    testee.parseParameters(rest::RequestType::DELETE_REQ, opBuilder.slice());
+    CHECK(testee.valid());
+    CHECK(false == testee.isCreate());
+    CHECK(12345 == testee.getTimeoutMS());
+    CHECK(testee.getTimestamp() == "2017-08-01T09:00:00Z");
+    CHECK(testee.getUserString() == "first day");
+  }
+
+  SECTION("test_timestamp_exception") {
+    VPackBuilder opBuilder;
+    { VPackObjectBuilder a(&opBuilder);
+      opBuilder.add("timeoutMS", VPackValue("12345"));
+      opBuilder.add("timestamp", VPackValue("2017-08-01T09:00:00Z"));   // needed for exception
+      opBuilder.add("userString", VPackValue("makes timeoutMS throw")); //  to happen
+    }
+
+    testee.parseParameters(rest::RequestType::DELETE_REQ, opBuilder.slice());
+    CHECK(!testee.valid());
+    CHECK((testee.resultSlice().isObject() && testee.resultSlice().hasKey("timeoutMS")));
   }
 
 }

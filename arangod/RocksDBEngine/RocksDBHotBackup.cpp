@@ -158,7 +158,9 @@ std::string RocksDBHotBackup::getDatabasePath() {
 ///        POST:  Initiate rocksdb checkpoint on local server
 ///        DELETE:  Remove an existing rocksdb checkpoint from local server
 ////////////////////////////////////////////////////////////////////////////////
-RocksDBHotBackupCreate::RocksDBHotBackupCreate() {
+RocksDBHotBackupCreate::RocksDBHotBackupCreate()
+  : _isCreate(true), _timeoutMS(10000)
+{
 }
 
 
@@ -166,42 +168,50 @@ RocksDBHotBackupCreate::~RocksDBHotBackupCreate() {
 }
 
 
-void RocksDBHotBackupCreate::parseParameters(rest::RequestType const type, VPackSlice & body) {
+void RocksDBHotBackupCreate::parseParameters(rest::RequestType const type, const VPackSlice & body) {
   bool isSingle(ServerState::instance()->isSingleServer());
   VPackSlice tempSlice;
-  arangodb::velocypack::ValueLength temp(0);
+  std::string param;
 
   _isCreate = (rest::RequestType::POST == type);
   _valid = _isCreate || (rest::RequestType::DELETE_REQ == type);
 
-  // single server create, we generate the timestamp
-  if (isSingle && _isCreate) {
-    _timestamp = timepointToString(std::chrono::system_clock::now());
-  } else {
-    _valid = _valid && body.isObject() && body.hasKey("timestamp");
-    if (_valid) {
-      tempSlice = body.get("timestamp");
-      _timestamp = tempSlice.getString(temp);
-      _valid = (20 == temp);
+  try {
+    // single server create, we generate the timestamp
+    if (isSingle && _isCreate) {
+      _timestamp = timepointToString(std::chrono::system_clock::now());
+    } else {
+      param = "timestamp";
+      _valid = _valid && body.isObject() && body.hasKey(param);
+      if (_valid) {
+        tempSlice = body.get(param);
+        _timestamp = tempSlice.copyString();
+        _valid = (20 == _timestamp.length());
+      } // if
+    } // else
+
+    // timeout is optional
+    param = "timeoutMS";
+    if (_valid && body.isObject() && body.hasKey(param)) {
+      tempSlice = body.get(param);
+      _timeoutMS = tempSlice.getInt();
     } // if
-  } // else
 
-  // timeout is optional
-  if (_valid && body.isObject() && body.hasKey("timeoutMS")) {
-    tempSlice = body.get("timeoutMS");
-    _timeoutMS = tempSlice.getInt();
-  } // if
+    // user string is optional
+    param = "userString";
+    if (_valid && body.isObject() && body.hasKey(param)) {
+      tempSlice = body.get(param);
+      _userString = tempSlice.copyString();
+    } // if
 
-  // user string is optional
-  if (_valid && body.isObject() && body.hasKey("userString")) {
-    tempSlice = body.get("userString");
-    _userString = tempSlice.getString(temp);
-    // if temp > ??? truncate
-    // do character set adjustment
-  } // if
+/// param for don't wait, continue if timeout fails
 
-
-/// don't wait, continue if timeout fails
+  } catch(VPackException const &vexcept) {
+    _valid = false;
+    _result.add(VPackValue(VPackValueType::Object));
+    _result.add(param, VPackValue(vexcept.what()));
+    _result.close();
+  };
 
   if (!_valid) {
     _respCode = rest::ResponseCode::BAD;

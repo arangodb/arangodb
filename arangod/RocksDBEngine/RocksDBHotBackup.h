@@ -23,6 +23,7 @@
 #define ARANGOD_ROCKSDB_HOTBACKUP_H 1
 
 #include <velocypack/velocypack-aliases.h>
+#include "Basics/Result.h"
 #include "Rest/GeneralResponse.h"
 
 namespace arangodb {
@@ -84,10 +85,16 @@ public:
   ~RocksDBHotBackupCreate();
 
   // @brief Validate and extract parameters appropriate to the operation type
-  virtual void parseParameters(rest::RequestType const, VPackSlice &);
+  virtual void parseParameters(rest::RequestType const, const VPackSlice &);
 
   // @brief Execute an operation
   virtual void execute();
+
+  // @brief accessors to the parameters
+  bool isCreate() const {return _isCreate;}
+  const std::string & getTimestamp() const {return _timestamp;}
+  int getTimeoutMS() const {return _timeoutMS;}
+  const std::string & getUserString() const {return _userString;}
 
 protected:
   // @brief Execute the create operation
