@@ -53,14 +53,15 @@ class RocksDBTransactionManager final : public TransactionManager {
   void registerTransaction(TRI_voc_tid_t transactionId,
                            std::unique_ptr<TransactionData> data) override {
     TRI_ASSERT(data == nullptr);
-    _rwLock.readLock();
+//    _rwLock.readLock();
     ++_nrRunning;
   }
 
   // unregister a transaction
   void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed) override {
+    TRI_ASSERT(_nrRunning != 0);
     --_nrRunning;
-    _rwLock.unlockRead();
+//    _rwLock.unlockRead();
   }
 
   // iterate all the active transactions
