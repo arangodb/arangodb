@@ -127,16 +127,14 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     _rocksReadOptions.prefix_same_as_start = true;  // should always be true
 
     if (isReadOnlyTransaction()) {
-      TRI_ASSERT(_readSnapshot == nullptr);
-      if (!isSingleOperation()) {
+      if (_readSnapshot == nullptr) {       // replication may donate a snapshot
         _readSnapshot = db->GetSnapshot();  // must call ReleaseSnapshot later
-        TRI_ASSERT(_readSnapshot != nullptr);
-        _rocksReadOptions.snapshot = _readSnapshot;
-      } else {  // a single *trx.document(...)` does not need a snapshot
-        TRI_ASSERT(!hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS));
       }
+      TRI_ASSERT(_readSnapshot != nullptr);
+      _rocksReadOptions.snapshot = _readSnapshot;
       _rocksMethods.reset(new RocksDBReadOnlyMethods(this));
     } else {
+      TRI_ASSERT(_readSnapshot == nullptr);
       createTransaction();
       _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
       if (hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS)) {
@@ -373,12 +371,17 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
                _rocksTransaction->GetNumPuts() == 0 &&
                _rocksTransaction->GetNumDeletes() == 0);
     // this is most likely the fill index case
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    rocksdb::SequenceNumber seq = _rocksTransaction->GetSnapshot()->GetSequenceNumber();
     for (auto& trxColl : _collections) {
+      TRI_IF_FAILURE("RocksDBCommitCounts") { continue; }
       auto* rcoll = static_cast<RocksDBTransactionCollection*>(trxColl);
-      TRI_ASSERT(rcoll->stealTrackedOperations().empty());
+      rcoll->prepareCommit(id(), seq);
+      // We get here if we have filled indexes. So let us commit counts and
+      // any buffered index estimator updates
+      rcoll->commitCounts(id(), seq + 1);
     }
-#endif
+    // don't write anything if the transaction is empty
+    result = rocksutils::convertStatus(_rocksTransaction->Rollback());
   }
 
   return result;
@@ -564,8 +567,6 @@ uint64_t RocksDBTransactionState::sequenceNumber() const {
     return static_cast<uint64_t>(_rocksTransaction->GetSnapshot()->GetSequenceNumber());
   } else if (_readSnapshot != nullptr) {
     return static_cast<uint64_t>(_readSnapshot->GetSequenceNumber());
-  } else if (isSingleOperation() && isReadOnlyTransaction()) {
-    return rocksutils::latestSequenceNumber();
   }
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "No snapshot set");
