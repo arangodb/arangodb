@@ -48,10 +48,10 @@ class MaskingFunction {
   virtual ~MaskingFunction() {}
 
  public:
-  virtual VPackValue mask(bool) const = 0;
+  virtual VPackValue mask(bool, std::string& buffer) const = 0;
   virtual VPackValue mask(std::string const&, std::string& buffer) const = 0;
-  virtual VPackValue mask(int64_t) const = 0;
-  virtual VPackValue mask(double) const = 0;
+  virtual VPackValue mask(int64_t, std::string& buffer) const = 0;
+  virtual VPackValue mask(double, std::string& buffer) const = 0;
 
  protected:
   Maskings* _maskings;
