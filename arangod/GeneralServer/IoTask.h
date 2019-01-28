@@ -40,7 +40,7 @@ class IoTask : public std::enable_shared_from_this<IoTask> {
   IoTask& operator=(IoTask const&) = delete;
 
  public:
-  IoTask(GeneralServer &server, GeneralServer::IoContext&, std::string const& name);
+  IoTask(GeneralServer& server, GeneralServer::IoContext&, std::string const& name);
   virtual ~IoTask() = default;
 
  public:
@@ -51,14 +51,14 @@ class IoTask : public std::enable_shared_from_this<IoTask> {
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
  protected:
-  GeneralServer::IoContext &_context;
-  GeneralServer &_server;
+  GeneralServer::IoContext& _context;
+  GeneralServer& _server;
   uint64_t const _taskId;
 
  private:
   std::string const _name;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

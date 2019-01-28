@@ -34,7 +34,7 @@ namespace arangodb {
 
 class LogicalCollection;
 class LogicalDataSource;
-class LogicalView; // forward declaration
+class LogicalView;  // forward declaration
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief data-source id/name resolver and cache (single-server and cluster)
@@ -42,7 +42,6 @@ class LogicalView; // forward declaration
 ////////////////////////////////////////////////////////////////////////////////
 class CollectionNameResolver {
  public:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the resolver
   //////////////////////////////////////////////////////////////////////////////
@@ -64,9 +63,7 @@ class CollectionNameResolver {
   /// @return the local collection on dbserver / standalone
   ///         the cluster collection on coordinator
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<LogicalCollection> getCollection(
-    TRI_voc_cid_t id
-  ) const;
+  std::shared_ptr<LogicalCollection> getCollection(TRI_voc_cid_t id) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection struct for a
@@ -74,9 +71,7 @@ class CollectionNameResolver {
   /// @return the local collection on dbserver / standalone
   ///         the cluster collection on coordinator
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<LogicalCollection> getCollection(
-    std::string const& nameOrId
-  ) const;
+  std::shared_ptr<LogicalCollection> getCollection(std::string const& nameOrId) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection id for a collection name (local case),
@@ -104,16 +99,12 @@ class CollectionNameResolver {
   TRI_voc_cid_t getCollectionId(std::string const& name) const;
 
  private:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection struct for a collection name
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<arangodb::LogicalCollection> getCollectionStruct(
-    std::string const& name
-  ) const;
+  std::shared_ptr<arangodb::LogicalCollection> getCollectionStruct(std::string const& name) const;
 
  public:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection name for a collection id, this implements
   /// some magic in the cluster case: a DBserver in a cluster will automatically
@@ -139,9 +130,7 @@ class CollectionNameResolver {
   /// @return the local data-source on dbserver / standalone
   ///         the cluster data-source on coordinator
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<LogicalDataSource> getDataSource(
-    TRI_voc_cid_t id
-  ) const;
+  std::shared_ptr<LogicalDataSource> getDataSource(TRI_voc_cid_t id) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a data-source struct for a
@@ -149,9 +138,7 @@ class CollectionNameResolver {
   /// @return the local data-source on dbserver / standalone
   ///         the cluster data-source on coordinator
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<LogicalDataSource> getDataSource(
-    std::string const& nameOrId
-  ) const;
+  std::shared_ptr<LogicalDataSource> getDataSource(std::string const& nameOrId) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a view struct for a view id
@@ -166,9 +153,7 @@ class CollectionNameResolver {
   /// @return the local view on dbserver / standalone
   ///         the cluster view on coordinator
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<LogicalView> getView(
-    std::string const& nameOrId
-  ) const;
+  std::shared_ptr<LogicalView> getView(std::string const& nameOrId) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the vocbase instance this resolver instance uses
@@ -179,14 +164,12 @@ class CollectionNameResolver {
   /// @brief invoke visitor on all collections that map to the specified 'id'
   /// @return visitation was successful
   //////////////////////////////////////////////////////////////////////////////
-  bool visitCollections(
-    std::function<bool(LogicalCollection&)> const& visitor,
-    TRI_voc_cid_t id
-  ) const;
+  bool visitCollections(std::function<bool(LogicalCollection&)> const& visitor,
+                        TRI_voc_cid_t id) const;
 
  private:
-  mutable std::unordered_map<TRI_voc_cid_t, std::shared_ptr<LogicalDataSource>> _dataSourceById; // cached data-source by id
-  mutable std::unordered_map<std::string, std::shared_ptr<LogicalDataSource>> _dataSourceByName; // cached data-source by name
+  mutable std::unordered_map<TRI_voc_cid_t, std::shared_ptr<LogicalDataSource>> _dataSourceById;  // cached data-source by id
+  mutable std::unordered_map<std::string, std::shared_ptr<LogicalDataSource>> _dataSourceByName;  // cached data-source by name
 
   std::string localNameLookup(TRI_voc_cid_t cid) const;
 
@@ -214,6 +197,6 @@ class CollectionNameResolver {
   mutable basics::ReadWriteLock _idLock;
 };
 
-}
+}  // namespace arangodb
 
 #endif

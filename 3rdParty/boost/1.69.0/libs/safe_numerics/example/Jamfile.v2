@@ -1,0 +1,31 @@
+#  Boost.SafeNumerics Library test Jamfile
+#
+#  Copyright (c) 2017 Robert Ramey
+#
+#  Distributed under the Boost Software License, Version 1.0.
+#  See accompanying file LICENSE_1_0.txt or copy at
+#  http://www.boost.org/LICENSE_1_0.txt
+
+import testing ;
+
+run example1.cpp ;
+run example11.cpp ;
+run example2.cpp ;
+run example3.cpp ;
+run example4.cpp ;
+run example5.cpp ;
+run example6.cpp ;
+run example7.cpp ;
+run example8.cpp ;
+compile-fail example81.cpp ;
+# run example81.cpp ; # requires console input
+run example82.cpp ;
+run example83.cpp ;
+# run example84.cpp ; # requires console input
+run example10.cpp ;
+run example11.cpp ;
+run example13.cpp ;
+run example15.cpp ;
+run example92.cpp ;
+run example93.cpp ;
+

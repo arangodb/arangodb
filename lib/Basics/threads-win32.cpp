@@ -33,11 +33,9 @@ struct thread_data_t {
   void (*_starter)(void*);
   void* _data;
   std::string _name;
-  
-  thread_data_t(void (*starter)(void*), void* data, char const* name) 
-      : _starter(starter),
-        _data(data),
-        _name(name) {}
+
+  thread_data_t(void (*starter)(void*), void* data, char const* name)
+      : _starter(starter), _data(data), _name(name) {}
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,14 +67,15 @@ void TRI_InitThread(TRI_thread_t* thread) { *thread = 0; }
 /// @brief starts a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
-                     char const* name, void (*starter)(void*), void* data) {
+bool TRI_StartThread(TRI_thread_t* thread, char const* name,
+                     void (*starter)(void*), void* data) {
   std::unique_ptr<thread_data_t> d;
 
   try {
     d.reset(new thread_data_t(starter, data, name));
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::THREADS) << "could not start thread: out of memory";
+    LOG_TOPIC(ERR, arangodb::Logger::THREADS)
+        << "could not start thread: out of memory";
     return false;
   }
 
@@ -86,10 +85,11 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
                          ThreadStarter,  // thread function name
                          d.release(),    // argument to thread function
                          0,              // use default creation flags
-                         threadId);      // returns the thread identifier
+                         nullptr);       // returns the thread identifier
 
   if (*thread == 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::THREADS) << "could not start thread: " << strerror(errno) << " ";
+    LOG_TOPIC(ERR, arangodb::Logger::THREADS)
+        << "could not start thread: " << strerror(errno) << " ";
     return false;
   }
 
@@ -101,11 +101,13 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_JoinThread(TRI_thread_t* thread) {
+  TRI_ASSERT(thread != nullptr);
   DWORD result = WaitForSingleObject(*thread, INFINITE);
 
   switch (result) {
     case WAIT_ABANDONED: {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not join thread --> WAIT_ABANDONED"; 
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "could not join thread --> WAIT_ABANDONED";
       break;
     }
 
@@ -115,13 +117,15 @@ int TRI_JoinThread(TRI_thread_t* thread) {
     }
 
     case WAIT_TIMEOUT: {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not join thread --> WAIT_TIMEOUT"; 
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "could not join thread --> WAIT_TIMEOUT";
       break;
     }
 
     case WAIT_FAILED: {
       result = GetLastError();
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not join thread --> WAIT_FAILED - reason -->" << result; 
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "could not join thread --> WAIT_FAILED - reason -->" << result;
       break;
     }
   }
@@ -130,15 +134,17 @@ int TRI_JoinThread(TRI_thread_t* thread) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief detaches a thread 
+/// @brief detaches a thread
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DetachThread(TRI_thread_t* thread) {
   // If the function succeeds, the return value is nonzero.
-  // If the function fails, the return value is zero. To get extended error information, call GetLastError. 
-  BOOL res = CloseHandle(thread);
+  // If the function fails, the return value is zero. To get extended error
+  // information, call GetLastError.
+  TRI_ASSERT(thread != nullptr);
+  BOOL res = CloseHandle(*thread);
 
-  if (res == 0) { 
+  if (res == 0) {
     DWORD result = GetLastError();
     LOG_TOPIC(ERR, arangodb::Logger::THREADS) << "cannot detach thread: " << result;
     return TRI_ERROR_INTERNAL;
@@ -157,11 +163,6 @@ bool TRI_IsSelfThread(TRI_thread_t* thread) {
   // TODO: Change the TRI_thread_t into a structure which stores the thread id
   // as well as the thread handle. This can then be passed around
   // ...........................................................................
-  return (GetCurrentThreadId() == GetThreadId(thread));
+  TRI_ASSERT(thread != nullptr);
+  return (GetCurrentThreadId() == GetThreadId(*thread));
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the process affinity
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetProcessorAffinity(TRI_thread_t* thread, size_t core) {}

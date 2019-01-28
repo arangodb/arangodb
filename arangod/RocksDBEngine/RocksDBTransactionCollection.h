@@ -46,8 +46,7 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// @brief whether or not any write operations for the collection happened
   bool hasOperations() const override;
 
-  void freeOperations(transaction::Methods* activeTrx,
-                      bool mustRollback) override;
+  void freeOperations(transaction::Methods* activeTrx, bool mustRollback) override;
 
   bool canAccess(AccessMode::Type accessType) const override;
   int updateUsage(AccessMode::Type accessType, int nestingLevel) override;
@@ -64,9 +63,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   uint64_t numRemoves() const { return _numRemoves; }
 
   /// @brief add an operation for a transaction collection
-  void addOperation(TRI_voc_document_operation_e operationType,
-                    TRI_voc_rid_t revisionId);
-  
+  void addOperation(TRI_voc_document_operation_e operationType, TRI_voc_rid_t revisionId);
+
   /**
    * @brief Prepare collection for commit by placing index blockers
    * @param trxId        Active transaction ID
@@ -95,11 +93,25 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   ///        Used to update the estimate after the trx commited
   void trackIndexRemove(uint64_t idxObjectId, uint64_t hash);
 
+  /// @brief tracked index operations
+  struct IndexOperations {
+    std::vector<uint64_t> inserts;
+    std::vector<uint64_t> removals;
+  };
+  typedef std::unordered_map<uint64_t, IndexOperations> OperationsMap;
+
+  /// @brief steal the tracked operations from the map
+  OperationsMap stealTrackedOperations() {
+    OperationsMap empty;
+    _trackedIndexOperations.swap(empty);
+    return empty;
+  }
+
  private:
   /// @brief request a lock for a collection
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-  /// returns any other error code otherwise
+  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired
+  /// and no other error occurred returns any other error code otherwise
   int doLock(AccessMode::Type, int nestingLevel) override;
 
   /// @brief request an unlock for a collection
@@ -114,15 +126,10 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   uint64_t _numRemoves;
   bool _usageLocked;
 
-  struct IndexOperations {
-    std::vector<uint64_t> inserts;
-    std::vector<uint64_t> removals;
-  };
-  
   /// @brief A list where all indexes with estimates can store their operations
   ///        Will be applied to the inserter on commit and not applied on abort
-  std::unordered_map<uint64_t, IndexOperations> _trackedIndexOperations;
+  OperationsMap _trackedIndexOperations;
 };
-}
+}  // namespace arangodb
 
 #endif

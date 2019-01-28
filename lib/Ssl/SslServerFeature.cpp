@@ -34,16 +34,14 @@ using namespace arangodb::options;
 
 SslServerFeature* SslServerFeature::SSL = nullptr;
 
-SslServerFeature::SslServerFeature(
-    application_features::ApplicationServer& server
-)
+SslServerFeature::SslServerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "SslServer"),
       _cafile(),
       _keyfile(),
       _sessionCache(false),
       _cipherList("HIGH:!EXPORT:!aNULL@STRENGTH"),
       _sslProtocol(TLS_V12),
-      _sslOptions(asio::ssl::context::default_workarounds | asio::ssl::context::single_dh_use),
+      _sslOptions(asio_ns::ssl::context::default_workarounds | asio_ns::ssl::context::single_dh_use),
       _ecdhCurve("prime256v1") {
   setOptional(true);
   startsAfter("AQLPhase");
@@ -75,10 +73,8 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
 
-  options->addOption("--ssl.protocol",
-                     availableSslProtocolsDescription(),
-                     new DiscreteValuesParameter<UInt64Parameter>(
-                         &_sslProtocol, sslProtocols));
+  options->addOption("--ssl.protocol", availableSslProtocolsDescription(),
+                     new DiscreteValuesParameter<UInt64Parameter>(&_sslProtocol, sslProtocols));
 
   options->addOption("--ssl.options",
                      "ssl connection options, see OpenSSL documentation",
@@ -94,18 +90,20 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void SslServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // check for SSLv2
   if (_sslProtocol == SslProtocol::SSL_V2) {
-    LOG_TOPIC(FATAL, arangodb::Logger::SSL) << "SSLv2 is not supported any longer because of security vulnerabilities in this protocol";
+    LOG_TOPIC(FATAL, arangodb::Logger::SSL)
+        << "SSLv2 is not supported any longer because of security "
+           "vulnerabilities in this protocol";
     FATAL_ERROR_EXIT();
   }
 }
 
 void SslServerFeature::prepare() {
-  LOG_TOPIC(INFO, arangodb::Logger::SSL) << "using SSL options: "
-                                         << stringifySslOptions(_sslOptions);
+  LOG_TOPIC(INFO, arangodb::Logger::SSL)
+      << "using SSL options: " << stringifySslOptions(_sslOptions);
 
   if (!_cipherList.empty()) {
-    LOG_TOPIC(INFO, arangodb::Logger::SSL) << "using SSL cipher-list '"
-                                           << _cipherList << "'";
+    LOG_TOPIC(INFO, arangodb::Logger::SSL)
+        << "using SSL cipher-list '" << _cipherList << "'";
   }
 
   UniformCharacter r(
@@ -116,14 +114,15 @@ void SslServerFeature::prepare() {
 }
 
 void SslServerFeature::unprepare() {
-  LOG_TOPIC(TRACE, arangodb::Logger::SSL) << "unpreparing ssl: "
-                                          << stringifySslOptions(_sslOptions);
+  LOG_TOPIC(TRACE, arangodb::Logger::SSL)
+      << "unpreparing ssl: " << stringifySslOptions(_sslOptions);
 }
 
 void SslServerFeature::verifySslOptions() {
   // check keyfile
   if (_keyfile.empty()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::SSL) << "no value specified for '--ssl.keyfile'";
+    LOG_TOPIC(FATAL, arangodb::Logger::SSL)
+        << "no value specified for '--ssl.keyfile'";
     FATAL_ERROR_EXIT();
   }
 
@@ -140,8 +139,8 @@ void SslServerFeature::verifySslOptions() {
       << protocolName(SslProtocol(_sslProtocol)) << "'";
 
   if (!FileUtils::exists(_keyfile)) {
-    LOG_TOPIC(FATAL, arangodb::Logger::SSL) << "unable to find SSL keyfile '"
-                                            << _keyfile << "'";
+    LOG_TOPIC(FATAL, arangodb::Logger::SSL)
+        << "unable to find SSL keyfile '" << _keyfile << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -163,21 +162,19 @@ class BIOGuard {
  public:
   BIO* _bio;
 };
-}
+}  // namespace
 
-asio::ssl::context SslServerFeature::createSslContext() const {
+asio_ns::ssl::context SslServerFeature::createSslContext() const {
   try {
     // create context
-    asio::ssl::context sslContext = ::sslContext(SslProtocol(_sslProtocol), _keyfile);
-    
+    asio_ns::ssl::context sslContext = ::sslContext(SslProtocol(_sslProtocol), _keyfile);
+
     // and use this native handle
-    asio::ssl::context::native_handle_type nativeContext =
-        sslContext.native_handle();
+    asio_ns::ssl::context::native_handle_type nativeContext = sslContext.native_handle();
 
     // set cache mode
-    SSL_CTX_set_session_cache_mode(nativeContext, _sessionCache
-                                                      ? SSL_SESS_CACHE_SERVER
-                                                      : SSL_SESS_CACHE_OFF);
+    SSL_CTX_set_session_cache_mode(nativeContext, _sessionCache ? SSL_SESS_CACHE_SERVER
+                                                                : SSL_SESS_CACHE_OFF);
 
     if (_sessionCache) {
       LOG_TOPIC(TRACE, arangodb::Logger::SSL) << "using SSL session caching";
@@ -188,8 +185,7 @@ asio::ssl::context SslServerFeature::createSslContext() const {
 
     if (!_cipherList.empty()) {
       if (SSL_CTX_set_cipher_list(nativeContext, _cipherList.c_str()) != 1) {
-        LOG_TOPIC(ERR, arangodb::Logger::SSL) << "cannot set SSL cipher list '"
-                                              << _cipherList
+        LOG_TOPIC(ERR, arangodb::Logger::SSL) << "cannot set SSL cipher list '" << _cipherList
                                               << "': " << lastSSLError();
         throw std::runtime_error("cannot create SSL context");
       }
@@ -200,9 +196,8 @@ asio::ssl::context SslServerFeature::createSslContext() const {
       int sslEcdhNid = OBJ_sn2nid(_ecdhCurve.c_str());
 
       if (sslEcdhNid == 0) {
-        LOG_TOPIC(ERR, arangodb::Logger::SSL)
-            << "SSL error: " << lastSSLError()
-            << " Unknown curve name: " << _ecdhCurve;
+        LOG_TOPIC(ERR, arangodb::Logger::SSL) << "SSL error: " << lastSSLError()
+                                              << " Unknown curve name: " << _ecdhCurve;
         throw std::runtime_error("cannot create SSL context");
       }
 
@@ -226,15 +221,15 @@ asio::ssl::context SslServerFeature::createSslContext() const {
       SSL_CTX_set_options(nativeContext, SSL_OP_SINGLE_ECDH_USE);
     }
 #endif
-    
+
     // set ssl context
-    int res = SSL_CTX_set_session_id_context(
-        nativeContext, (unsigned char const*)_rctx.c_str(), (int)_rctx.size());
+    int res = SSL_CTX_set_session_id_context(nativeContext,
+                                             (unsigned char const*)_rctx.c_str(),
+                                             (int)_rctx.size());
 
     if (res != 1) {
       LOG_TOPIC(ERR, arangodb::Logger::SSL)
-          << "cannot set SSL session id context '" << _rctx
-          << "': " << lastSSLError();
+          << "cannot set SSL session id context '" << _rctx << "': " << lastSSLError();
       throw std::runtime_error("cannot create SSL context");
     }
 
@@ -271,15 +266,13 @@ asio::ssl::context SslServerFeature::createSslContext() const {
             BIOGuard bout(BIO_new(BIO_s_mem()));
 
             X509_NAME_print_ex(bout._bio, cert, 0,
-                              (XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_DN_REV |
-                                ASN1_STRFLGS_UTF8_CONVERT) &
-                                  ~ASN1_STRFLGS_ESC_MSB);
+                               (XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_DN_REV | ASN1_STRFLGS_UTF8_CONVERT) &
+                                   ~ASN1_STRFLGS_ESC_MSB);
 
             char* r;
             long len = BIO_get_mem_data(bout._bio, &r);
 
-            LOG_TOPIC(TRACE, arangodb::Logger::SSL) << "name: "
-                                                    << std::string(r, len);
+            LOG_TOPIC(TRACE, arangodb::Logger::SSL) << "name: " << std::string(r, len);
           }
         }
       }

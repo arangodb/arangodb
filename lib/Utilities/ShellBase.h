@@ -43,7 +43,6 @@ class ShellBase {
   enum console_state_e { STATE_NONE = 0, STATE_OPENED = 1, STATE_CLOSED = 2 };
 
  public:
-
   enum EofType { EOF_NONE = 0, EOF_ABORT = 1, EOF_FORCE_ABORT = 2 };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -68,8 +67,7 @@ class ShellBase {
   /// @brief line editor prompt
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string prompt(std::string const& prompt, std::string const& begin,
-                     EofType& eof);
+  std::string prompt(std::string const& prompt, std::string const& begin, EofType& eof);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -139,6 +137,6 @@ class ShellBase {
 
   Completer* _completer;
 };
-}
+}  // namespace arangodb
 
 #endif

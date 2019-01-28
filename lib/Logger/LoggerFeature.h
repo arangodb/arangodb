@@ -67,6 +67,6 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool _threaded = false;
 };
 
-}
+}  // namespace arangodb
 
 #endif

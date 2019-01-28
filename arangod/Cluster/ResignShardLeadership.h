@@ -34,17 +34,15 @@ namespace arangodb {
 namespace maintenance {
 
 class ResignShardLeadership : public ActionBase {
-
-public:
-
+ public:
   ResignShardLeadership(MaintenanceFeature&, ActionDescription const& d);
 
   virtual ~ResignShardLeadership();
 
   virtual bool first() override final;
-
 };
 
-}}
+}  // namespace maintenance
+}  // namespace arangodb
 
 #endif

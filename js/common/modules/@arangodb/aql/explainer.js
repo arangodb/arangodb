@@ -40,15 +40,15 @@ const anonymize = function(doc) {
   return doc;
 };
 
-var stringBuilder = {
+let stringBuilder = {
   output: '',
+  prefix: '',
 
   appendLine: function (line) {
-    if (!line) {
-      this.output += '\n';
-    } else {
-      this.output += line + '\n';
+    if (line) {
+      this.output += this.prefix + line;
     }
+    this.output += '\n';
   },
 
   getOutput: function () {
@@ -57,6 +57,11 @@ var stringBuilder = {
 
   clearOutput: function () {
     this.output = '';
+  },
+
+  wrap: function (str, width) {
+    let re = '.{1,' + width + '}(\\s|$)|\\S+?(\\s|$)';
+    return str.match(new RegExp(re, 'g')).join('\n' + this.prefix).replace(/\n+/g, '\n ' + this.prefix);
   }
 
 };
@@ -154,12 +159,6 @@ function pad (n) {
   return new Array(n).join(' ');
 }
 
-function wrap (str, width) {
-  'use strict';
-  var re = '.{1,' + width + '}(\\s|$)|\\S+?(\\s|$)';
-  return str.match(new RegExp(re, 'g')).join('\n');
-}
-
 /* print functions */
 
 /* print query string */
@@ -174,7 +173,7 @@ function printQuery (query) {
   } else {
     stringBuilder.appendLine(section('Query String:'));
   }
-  stringBuilder.appendLine(' ' + value(wrap(query, 100).replace(/\n+/g, '\n ', query)));
+  stringBuilder.appendLine(' ' + value(stringBuilder.wrap(query, 100)));
   stringBuilder.appendLine();
 }
 
@@ -605,7 +604,7 @@ function printShortestPathDetails (shortestPaths) {
 }
 
 /* analyze and print execution plan */
-function processQuery (query, explain) {
+function processQuery (query, explain, planIndex) {
   'use strict';
   var nodes = { },
     parents = { },
@@ -617,8 +616,12 @@ function processQuery (query, explain) {
     maxCallsLen = String('Calls').length,
     maxItemsLen = String('Items').length,
     maxRuntimeLen = String('Runtime [s]').length,
-    plan = explain.plan,
     stats = explain.stats;
+    
+  let plan = explain.plan;
+  if (planIndex !== undefined) {
+    plan = explain.plans[planIndex];
+  }
 
   /// mode with actual runtime stats per node
   let profileMode = stats && stats.hasOwnProperty('nodes');
@@ -1017,7 +1020,15 @@ function processQuery (query, explain) {
         if (node.condition && node.condition.hasOwnProperty('type')) {
           condition = ' ' + keyword('SEARCH') + ' ' + buildExpression(node.condition);
         }
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + condition + '   ' + annotation('/* view query */');
+
+        var scorers = '';
+        if (node.scorers && node.scorers.length > 0) {
+          scorers = keyword(' LET ' ) + node.scorers.map(function(scorer) {
+            return variableName(scorer) + ' = ' + buildExpression(scorer.node);
+          }).join(', ');
+        }
+
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + condition + scorers + '   ' + annotation('/* view query */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
         node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, false); });
@@ -1528,7 +1539,9 @@ function processQuery (query, explain) {
     postHandle(node);
   };
 
-  printQuery(query);
+  if (planIndex === undefined) {
+    printQuery(query);
+  }
 
   stringBuilder.appendLine(section('Execution plan:'));
 
@@ -1601,8 +1614,24 @@ function explain(data, options, shouldPrint) {
 
   stringBuilder.clearOutput();
   let stmt = db._createStatement(data);
-  let result = stmt.explain(options); // TODO why is this there ?
-  processQuery(data.query, result);
+  let result = stmt.explain(options); 
+  if (options.allPlans) {
+    // multiple plans
+    printQuery(data.query);
+    for (let i = 0; i < result.plans.length; ++i) {
+      if (i > 0) {
+        stringBuilder.appendLine();
+      }
+      stringBuilder.appendLine(section("Plan #" + (i + 1) + " of " + result.plans.length + " (estimated cost: " + result.plans[i].estimatedCost.toFixed(2) + ")"));
+      stringBuilder.prefix = ' ';
+      stringBuilder.appendLine();
+      processQuery(data.query, result, i);
+      stringBuilder.prefix = '';
+    }
+  } else {
+    // single plan
+    processQuery(data.query, result, undefined);
+  }
 
   if (shouldPrint === undefined || shouldPrint) {
     print(stringBuilder.getOutput());
@@ -1620,13 +1649,14 @@ function profileQuery(data, shouldPrint) {
   }
   let options =  data.options || { };
   options.silent = true;
+  options.allPlans = false; // always turn this off, as it will not work with profiling
   setColors(options.colors === undefined ? true : options.colors);
 
   stringBuilder.clearOutput();
   let stmt = db._createStatement(data);
   let cursor = stmt.execute();
   let extra = cursor.getExtra();
-  processQuery(data.query, extra);
+  processQuery(data.query, extra, undefined);
 
   if (shouldPrint === undefined || shouldPrint) {
     print(stringBuilder.getOutput());

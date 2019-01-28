@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_FUNCTION_H
 #define ARANGOD_AQL_FUNCTION_H 1
 
-#include "Basics/Common.h"
 #include "Aql/Functions.h"
+#include "Basics/Common.h"
 
 #include <type_traits>
 
@@ -33,26 +33,27 @@ namespace arangodb {
 namespace aql {
 
 struct Function {
-  enum class Conversion : uint8_t { 
-    None = 0,
-    Optional = 1,
-    Required = 2
-  };
+  enum class Conversion : uint8_t { None = 0, Optional = 1, Required = 2 };
 
-  /// @brief arbitrary function flags. note that these must be mutually exclusive
-  /// when bit-ORed  
-  enum class Flags : uint8_t { 
+  /// @brief arbitrary function flags. note that these must be mutually
+  /// exclusive when bit-ORed
+  enum class Flags : uint8_t {
     None = 0,
-  
-    /// @brief whether or not the function is deterministic (i.e. its results are
-    /// identical when called repeatedly with the same input values)
+
+    /// @brief whether or not the function is deterministic (i.e. its results
+    /// are identical when called repeatedly with the same input values)
     Deterministic = 1,
-    
-    /// @brief whether or not the function result is cacheable in the query cache
+
+    /// @brief whether or not the function result is cacheable in the query
+    /// cache
     Cacheable = 2,
- 
+
     /// @brief whether or not the function may be executed on DB servers
-    CanRunOnDBServer = 4
+    CanRunOnDBServer = 4,
+    
+    /// @brief exclude the function from being evaluated during AST optimizations
+    /// evaluation of function will only happen at query runtime
+    NoEval = 8
   };
 
   /// @brief helper for building flags
@@ -60,7 +61,7 @@ struct Function {
   static inline std::underlying_type<Flags>::type makeFlags(Flags flag, Args... args) {
     return static_cast<std::underlying_type<Flags>::type>(flag) + makeFlags(args...);
   }
-  
+
   static inline std::underlying_type<Flags>::type makeFlags() {
     return static_cast<std::underlying_type<Flags>::type>(Flags::None);
   }
@@ -68,8 +69,7 @@ struct Function {
   Function() = delete;
 
   /// @brief create the function
-  Function(std::string const& name,
-           char const* arguments, 
+  Function(std::string const& name, char const* arguments,
            std::underlying_type<Flags>::type flags,
            FunctionImplementation implementation = nullptr);
 
@@ -120,7 +120,7 @@ struct Function {
   /// @brief maximum number of function arguments that can be used
   static constexpr size_t maxArguments = 65536;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

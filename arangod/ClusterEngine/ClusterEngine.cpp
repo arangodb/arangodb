@@ -54,8 +54,8 @@
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "Transaction/Context.h"
 #include "Transaction/Options.h"
-#include "VocBase/ticks.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/ticks.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -69,28 +69,27 @@ bool ClusterEngine::Mocking = false;
 
 // create the storage engine
 ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
-  : StorageEngine(
-      server,
-      "Cluster",
-      "ClusterEngine",
-      std::unique_ptr<IndexFactory>(new ClusterIndexFactory())
-    ),
-    _actualEngine(nullptr) {
+    : StorageEngine(server, "Cluster", "ClusterEngine",
+                    std::unique_ptr<IndexFactory>(new ClusterIndexFactory())),
+      _actualEngine(nullptr) {
   setOptional(true);
 }
 
-ClusterEngine::~ClusterEngine() { }
+ClusterEngine::~ClusterEngine() {}
 
 bool ClusterEngine::isRocksDB() const {
-  return !ClusterEngine::Mocking && _actualEngine && _actualEngine->name() == RocksDBEngine::FeatureName;
+  return !ClusterEngine::Mocking && _actualEngine &&
+         _actualEngine->name() == RocksDBEngine::FeatureName;
 }
 
 bool ClusterEngine::isMMFiles() const {
-  return !ClusterEngine::Mocking && _actualEngine && _actualEngine->name() == MMFilesEngine::FeatureName;
+  return !ClusterEngine::Mocking && _actualEngine &&
+         _actualEngine->name() == MMFilesEngine::FeatureName;
 }
 
 bool ClusterEngine::isMock() const {
-  return ClusterEngine::Mocking || (_actualEngine && _actualEngine->name() == "Mock");
+  return ClusterEngine::Mocking ||
+         (_actualEngine && _actualEngine->name() == "Mock");
 }
 
 ClusterEngineType ClusterEngine::engineType() const {
@@ -129,33 +128,21 @@ std::unique_ptr<TransactionManager> ClusterEngine::createTransactionManager() {
 }
 
 std::unique_ptr<transaction::ContextData> ClusterEngine::createTransactionContextData() {
-  return std::unique_ptr<transaction::ContextData>(
-    new ClusterTransactionContextData()
-  );
+  return std::unique_ptr<transaction::ContextData>(new ClusterTransactionContextData());
 }
 
 std::unique_ptr<TransactionState> ClusterEngine::createTransactionState(
-    TRI_vocbase_t& vocbase,
-    transaction::Options const& options
-) {
-  return std::make_unique<ClusterTransactionState>(
-    vocbase, TRI_NewTickServer(), options
-  );
+    TRI_vocbase_t& vocbase, transaction::Options const& options) {
+  return std::make_unique<ClusterTransactionState>(vocbase, TRI_NewTickServer(), options);
 }
 
 std::unique_ptr<TransactionCollection> ClusterEngine::createTransactionCollection(
-    TransactionState& state,
-    TRI_voc_cid_t cid,
-    AccessMode::Type accessType,
-    int nestingLevel
-) {
+    TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel) {
   return std::unique_ptr<TransactionCollection>(
-    new ClusterTransactionCollection(&state, cid, accessType, nestingLevel)
-  );
+      new ClusterTransactionCollection(&state, cid, accessType, nestingLevel));
 }
 
-void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,
-                                                  VPackSlice info) {
+void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {
   if (isRocksDB()) {
     // deliberately not add objectId
     if (!info.hasKey("cacheEnabled") || !info.get("cacheEnabled").isBool()) {
@@ -166,12 +153,9 @@ void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,
 
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
-    LogicalCollection& collection,
-    VPackSlice const& info
-) {
+    LogicalCollection& collection, VPackSlice const& info) {
   return std::unique_ptr<PhysicalCollection>(
-    new ClusterCollection(collection, engineType(), info)
-  );
+      new ClusterCollection(collection, engineType(), info));
 }
 
 void ClusterEngine::getStatistics(velocypack::Builder& builder) const {
@@ -187,42 +171,27 @@ void ClusterEngine::getDatabases(arangodb::velocypack::Builder& result) {
   // we should only ever need system here
   VPackArrayBuilder arr(&result);
   VPackObjectBuilder obj(&result);
-  obj->add(StaticStrings::DataSourceId, VPackValue("1")); // always pick 1
+  obj->add(StaticStrings::DataSourceId, VPackValue("1"));  // always pick 1
   obj->add(StaticStrings::DataSourceDeleted, VPackValue(false));
   obj->add(StaticStrings::DataSourceName, VPackValue(StaticStrings::SystemDatabase));
 }
 
-void ClusterEngine::getCollectionInfo(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t cid,
-    arangodb::velocypack::Builder& builder,
-    bool includeIndexes,
-    TRI_voc_tick_t maxTick
-) {
+void ClusterEngine::getCollectionInfo(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+                                      arangodb::velocypack::Builder& builder,
+                                      bool includeIndexes, TRI_voc_tick_t maxTick) {}
 
-}
-
-int ClusterEngine::getCollectionsAndIndexes(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Builder& result,
-    bool wasCleanShutdown,
-    bool isUpgrade
-) {
-
+int ClusterEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
+                                            arangodb::velocypack::Builder& result,
+                                            bool wasCleanShutdown, bool isUpgrade) {
   return TRI_ERROR_NO_ERROR;
 }
 
-int ClusterEngine::getViews(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result
-) {
-
+int ClusterEngine::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) {
   return TRI_ERROR_NO_ERROR;
 }
 
-VPackBuilder ClusterEngine::getReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase,
-    int& status
-) {
+VPackBuilder ClusterEngine::getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
+                                                               int& status) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -233,11 +202,11 @@ VPackBuilder ClusterEngine::getReplicationApplierConfiguration(int& status) {
 // database, collection and index management
 // -----------------------------------------
 
-std::unique_ptr<TRI_vocbase_t> ClusterEngine::openDatabase(
-    arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) {
+std::unique_ptr<TRI_vocbase_t> ClusterEngine::openDatabase(arangodb::velocypack::Slice const& args,
+                                                           bool isUpgrade, int& status) {
   VPackSlice idSlice = args.get("id");
-  TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(
-      basics::StringUtils::uint64(idSlice.copyString()));
+  TRI_voc_tick_t id =
+      static_cast<TRI_voc_tick_t>(basics::StringUtils::uint64(idSlice.copyString()));
   std::string const name = args.get("name").copyString();
 
   status = TRI_ERROR_NO_ERROR;
@@ -249,21 +218,16 @@ std::unique_ptr<TRI_vocbase_t> ClusterEngine::createDatabase(
     TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) {
   status = TRI_ERROR_NO_ERROR;
 
-  return std::make_unique<TRI_vocbase_t>(
-    TRI_VOCBASE_TYPE_COORDINATOR, id, args.get("name").copyString()
-  );
+  return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, id,
+                                         args.get("name").copyString());
 }
 
-int ClusterEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
-                                             VPackSlice const& slice) {
+int ClusterEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
   return TRI_ERROR_NO_ERROR;
 }
 
-void ClusterEngine::prepareDropDatabase(
-    TRI_vocbase_t& vocbase,
-    bool useWriteMarker,
-    int& status
-) {
+void ClusterEngine::prepareDropDatabase(TRI_vocbase_t& vocbase,
+                                        bool useWriteMarker, int& status) {
   status = TRI_ERROR_NO_ERROR;
 }
 
@@ -272,102 +236,75 @@ Result ClusterEngine::dropDatabase(TRI_vocbase_t& database) {
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
-void ClusterEngine::waitUntilDeletion(TRI_voc_tick_t /* id */, bool /* force */,
-                                      int& status) {
+void ClusterEngine::waitUntilDeletion(TRI_voc_tick_t /* id */, bool /* force */, int& status) {
   // can delete databases instantly
   status = TRI_ERROR_NO_ERROR;
 }
 
 // wal in recovery
 bool ClusterEngine::inRecovery() {
-  return false; // never
+  return false;  // never
 }
 
 void ClusterEngine::recoveryDone(TRI_vocbase_t& vocbase) {
   // nothing to do here
 }
 
-std::string ClusterEngine::createCollection(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t cid,
-    LogicalCollection const& collection
-) {
-  TRI_ASSERT(cid != 0);
-  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(cid));
+std::string ClusterEngine::createCollection(TRI_vocbase_t& vocbase,
+                                            LogicalCollection const& collection) {
+  TRI_ASSERT(collection.id() != 0);
+  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(collection.id()));
   return std::string();  // no need to return a path
 }
 
-arangodb::Result ClusterEngine::persistCollection(
-    TRI_vocbase_t& vocbase,
-    LogicalCollection const& collection
-) {
+arangodb::Result ClusterEngine::persistCollection(TRI_vocbase_t& vocbase,
+                                                  LogicalCollection const& collection) {
   return {};
 }
 
-arangodb::Result ClusterEngine::dropCollection(
-    TRI_vocbase_t& vocbase,
-    LogicalCollection& collection
-) {
+arangodb::Result ClusterEngine::dropCollection(TRI_vocbase_t& vocbase,
+                                               LogicalCollection& collection) {
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
-void ClusterEngine::destroyCollection(
-    TRI_vocbase_t& /*vocbase*/,
-    LogicalCollection& /*collection*/
+void ClusterEngine::destroyCollection(TRI_vocbase_t& /*vocbase*/, LogicalCollection& /*collection*/
 ) {
   // not required
 }
 
-void ClusterEngine::changeCollection(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
-    LogicalCollection const& collection,
-    bool doSync
-) {
+void ClusterEngine::changeCollection(TRI_vocbase_t& vocbase,
+                                     LogicalCollection const& collection, bool doSync) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-arangodb::Result ClusterEngine::renameCollection(
-  TRI_vocbase_t& vocbase,
-  LogicalCollection const& collection,
-  std::string const& oldName
-) {
+arangodb::Result ClusterEngine::renameCollection(TRI_vocbase_t& vocbase,
+                                                 LogicalCollection const& collection,
+                                                 std::string const& oldName) {
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
-void ClusterEngine::unloadCollection(
-    TRI_vocbase_t& /*vocbase*/,
-    LogicalCollection& collection
-) {
+void ClusterEngine::unloadCollection(TRI_vocbase_t& /*vocbase*/, LogicalCollection& collection) {
   collection.setStatus(TRI_VOC_COL_STATUS_UNLOADED);
 }
 
-Result ClusterEngine::createView(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
-    arangodb::LogicalView const& /*view*/
+Result ClusterEngine::createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
+                                 arangodb::LogicalView const& /*view*/
 ) {
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
-arangodb::Result ClusterEngine::dropView(
-    TRI_vocbase_t& vocbase,
-    LogicalView& view
-) {
+arangodb::Result ClusterEngine::dropView(TRI_vocbase_t const& vocbase,
+                                         LogicalView const& view) {
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
-void ClusterEngine::destroyView(
-    TRI_vocbase_t& /*vocbase*/,
-    LogicalView& /*view*/
-) noexcept {
+void ClusterEngine::destroyView(TRI_vocbase_t const& /*vocbase*/, LogicalView const& /*view*/
+                                ) noexcept {
   // nothing to do here
 }
 
-Result ClusterEngine::changeView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view,
-    bool /*doSync*/
+Result ClusterEngine::changeView(TRI_vocbase_t& vocbase,
+                                 arangodb::LogicalView const& view, bool /*doSync*/
 ) {
   if (inRecovery()) {
     // nothing to do
@@ -408,17 +345,14 @@ void ClusterEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
 
 void ClusterEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) {
   // fixes tests by allowing us to reload the cluster selectivity estimates
-  // If test `shell-cluster-collection-selectivity.js` fails consider increasing timeout
+  // If test `shell-cluster-collection-selectivity.js` fails consider increasing
+  // timeout
   std::this_thread::sleep_for(std::chrono::seconds(5));
 }
 
 /// @brief open an existing database. internal function
 std::unique_ptr<TRI_vocbase_t> ClusterEngine::openExistingDatabase(
-    TRI_voc_tick_t id,
-    std::string const& name,
-    bool wasCleanShutdown,
-    bool isUpgrade
-) {
+    TRI_voc_tick_t id, std::string const& name, bool wasCleanShutdown, bool isUpgrade) {
   return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, id, name);
 }
 

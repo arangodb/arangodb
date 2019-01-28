@@ -34,14 +34,16 @@
 
 using namespace arangodb;
 
-void RocksDBRestHandlers::registerResources(
-    rest::RestHandlerFactory* handlerFactory) {
+void RocksDBRestHandlers::registerResources(rest::RestHandlerFactory* handlerFactory) {
   handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::COLLECTION_PATH,
                                    RestHandlerCreator<RocksDBRestCollectionHandler>::createNoData);
   auto queryRegistry = QueryRegistryFeature::registry();
-  handlerFactory->addPrefixHandler("/_api/export",
-      RestHandlerCreator<RocksDBRestExportHandler>::createData<aql::QueryRegistry*>, queryRegistry);
+  handlerFactory->addPrefixHandler(
+      "/_api/export",
+      RestHandlerCreator<RocksDBRestExportHandler>::createData<aql::QueryRegistry*>,
+      queryRegistry);
   handlerFactory->addPrefixHandler("/_api/replication",
                                    RestHandlerCreator<RocksDBRestReplicationHandler>::createNoData);
-  handlerFactory->addPrefixHandler("/_admin/wal", RestHandlerCreator<RocksDBRestWalHandler>::createNoData);
+  handlerFactory->addPrefixHandler("/_admin/wal",
+                                   RestHandlerCreator<RocksDBRestWalHandler>::createNoData);
 }

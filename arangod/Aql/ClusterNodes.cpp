@@ -44,14 +44,12 @@ arangodb::velocypack::StringRef const SortModeUnset("unset");
 arangodb::velocypack::StringRef const SortModeMinElement("minelement");
 arangodb::velocypack::StringRef const SortModeHeap("heap");
 
-bool toSortMode(
-    arangodb::velocypack::StringRef const& str,
-    GatherNode::SortMode& mode
-) noexcept {
+bool toSortMode(arangodb::velocypack::StringRef const& str, GatherNode::SortMode& mode) noexcept {
   // std::map ~25-30% faster than std::unordered_map for small number of elements
-  static std::map<arangodb::velocypack::StringRef, GatherNode::SortMode> const NameToValue {
-    { SortModeMinElement, GatherNode::SortMode::MinElement},
-    { SortModeHeap, GatherNode::SortMode::Heap}
+  static std::map<arangodb::velocypack::StringRef, GatherNode::SortMode> const NameToValue{
+      {SortModeMinElement, GatherNode::SortMode::MinElement},
+      {SortModeHeap, GatherNode::SortMode::Heap},
+      {SortModeUnset, GatherNode::SortMode::Default}
   };
 
   auto const it = NameToValue.find(str);
@@ -71,13 +69,15 @@ arangodb::velocypack::StringRef toString(GatherNode::SortMode mode) noexcept {
       return SortModeMinElement;
     case GatherNode::SortMode::Heap:
       return SortModeHeap;
+    case GatherNode::SortMode::Default:
+      return SortModeUnset;
     default:
       TRI_ASSERT(false);
       return {};
   }
 }
 
-}
+}  // namespace
 
 /// @brief constructor for RemoteNode
 RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -86,16 +86,13 @@ RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
       _server(base.get("server").copyString()),
       _ownName(base.get("ownName").copyString()),
       _queryId(base.get("queryId").copyString()),
-      _isResponsibleForInitializeCursor(base.get("isResponsibleForInitializeCursor").getBoolean()) {}
+      _isResponsibleForInitializeCursor(
+          base.get("isResponsibleForInitializeCursor").getBoolean()) {}
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-) const {
-  return std::make_unique<RemoteBlock>(
-    &engine, this, server(), ownName(), queryId()
-  );
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+  return std::make_unique<RemoteBlock>(&engine, this, server(), ownName(), queryId());
 }
 
 /// @brief toVelocyPack, for RemoteNode
@@ -107,8 +104,7 @@ void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   nodes.add("server", VPackValue(_server));
   nodes.add("ownName", VPackValue(_ownName));
   nodes.add("queryId", VPackValue(_queryId));
-  nodes.add("isResponsibleForInitializeCursor",
-            VPackValue(_isResponsibleForInitializeCursor));
+  nodes.add("isResponsibleForInitializeCursor", VPackValue(_isResponsibleForInitializeCursor));
 
   // And close it:
   nodes.close();
@@ -130,21 +126,15 @@ CostEstimate RemoteNode::estimateCost() const {
 }
 
 /// @brief construct a scatter node
-ScatterNode::ScatterNode(
-    ExecutionPlan* plan,
-    arangodb::velocypack::Slice const& base
-) : ExecutionNode(plan, base) {
+ScatterNode::ScatterNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+    : ExecutionNode(plan, base) {
   readClientsFromVelocyPack(base);
 }
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-) const {
-  return std::make_unique<ScatterBlock>(
-    &engine, this, _clients
-  );
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+  return std::make_unique<ScatterBlock>(&engine, this, _clients);
 }
 
 /// @brief toVelocyPack, for ScatterNode
@@ -164,7 +154,8 @@ bool ScatterNode::readClientsFromVelocyPack(VPackSlice base) {
 
   if (!clientsSlice.isArray()) {
     LOG_TOPIC(ERR, Logger::AQL)
-      << "invalid serialized ScatterNode definition, 'clients' attribute is expected to be an array of string";
+        << "invalid serialized ScatterNode definition, 'clients' attribute is "
+           "expected to be an array of string";
     return false;
   }
 
@@ -172,8 +163,11 @@ bool ScatterNode::readClientsFromVelocyPack(VPackSlice base) {
   for (auto const clientSlice : velocypack::ArrayIterator(clientsSlice)) {
     if (!clientSlice.isString()) {
       LOG_TOPIC(ERR, Logger::AQL)
-        << "invalid serialized ScatterNode definition, 'clients' attribute is expected to be an array of string but got not a string at line " << pos;
-      _clients.clear(); // clear malformed node
+          << "invalid serialized ScatterNode definition, 'clients' attribute "
+             "is expected to be an array of string but got not a string at "
+             "line "
+          << pos;
+      _clients.clear();  // clear malformed node
       return false;
     }
 
@@ -199,38 +193,34 @@ CostEstimate ScatterNode::estimateCost() const {
 }
 
 /// @brief construct a distribute node
-DistributeNode::DistributeNode(
-    ExecutionPlan* plan,
-    arangodb::velocypack::Slice const& base)
-  : ScatterNode(plan, base),
-    CollectionAccessingNode(plan, base),
-    _variable(nullptr),
-    _alternativeVariable(nullptr),
-    _createKeys(base.get("createKeys").getBoolean()),
-    _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
-    _allowSpecifiedKeys(false) {
+DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+    : ScatterNode(plan, base),
+      CollectionAccessingNode(plan, base),
+      _variable(nullptr),
+      _alternativeVariable(nullptr),
+      _createKeys(base.get("createKeys").getBoolean()),
+      _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
+      _allowSpecifiedKeys(false) {
   if (base.hasKey("variable") && base.hasKey("alternativeVariable")) {
     _variable = Variable::varFromVPack(plan->getAst(), base, "variable");
-    _alternativeVariable = Variable::varFromVPack(plan->getAst(), base, "alternativeVariable");
+    _alternativeVariable =
+        Variable::varFromVPack(plan->getAst(), base, "alternativeVariable");
   } else {
-    _variable = plan->getAst()->variables()->getVariable(base.get("varId").getNumericValue<VariableId>());
-    _alternativeVariable = plan->getAst()->variables()->getVariable(base.get("alternativeVarId").getNumericValue<VariableId>());
+    _variable = plan->getAst()->variables()->getVariable(
+        base.get("varId").getNumericValue<VariableId>());
+    _alternativeVariable = plan->getAst()->variables()->getVariable(
+        base.get("alternativeVarId").getNumericValue<VariableId>());
   }
 }
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-) const {
-  return std::make_unique<DistributeBlock>(
-    &engine, this, clients(), collection()
-  );
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+  return std::make_unique<DistributeBlock>(&engine, this, clients(), collection());
 }
 
 /// @brief toVelocyPack, for DistributedNode
-void DistributeNode::toVelocyPackHelper(VPackBuilder& builder,
-                                        unsigned flags) const {
+void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
 
@@ -241,8 +231,7 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder,
   writeClientsToVelocyPack(builder);
 
   builder.add("createKeys", VPackValue(_createKeys));
-  builder.add("allowKeyConversionToObject",
-              VPackValue(_allowKeyConversionToObject));
+  builder.add("allowKeyConversionToObject", VPackValue(_allowKeyConversionToObject));
   builder.add(VPackValue("variable"));
   _variable->toVelocyPack(builder);
   builder.add(VPackValue("alternativeVariable"));
@@ -257,18 +246,8 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder,
   builder.close();
 }
 
-/// @brief getVariablesUsedHere, returning a vector
-std::vector<Variable const*> DistributeNode::getVariablesUsedHere() const {
-  std::vector<Variable const*> vars;
-  vars.emplace_back(_variable);
-  if (_variable != _alternativeVariable) {
-    vars.emplace_back(_alternativeVariable);
-  }
-  return vars;
-}
-
 /// @brief getVariablesUsedHere, modifying the set in-place
-void DistributeNode::getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const {
+void DistributeNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
   vars.emplace(_variable);
   vars.emplace(_alternativeVariable);
 }
@@ -280,9 +259,7 @@ CostEstimate DistributeNode::estimateCost() const {
   return estimate;
 }
 
-/*static*/ Collection const* GatherNode::findCollection(
-    GatherNode const& root
-) noexcept {
+/*static*/ Collection const* GatherNode::findCollection(GatherNode const& root) noexcept {
   ExecutionNode const* node = root.getFirstDependency();
 
   while (node) {
@@ -295,7 +272,7 @@ CostEstimate DistributeNode::estimateCost() const {
       case SHORTEST_PATH:
         return castTo<GraphNode const*>(node)->collection();
       case SCATTER:
-        return nullptr; // diamond boundary
+        return nullptr;  // diamond boundary
       default:
         node = node->getFirstDependency();
         break;
@@ -306,30 +283,21 @@ CostEstimate DistributeNode::estimateCost() const {
 }
 
 /// @brief construct a gather node
-GatherNode::GatherNode(
-    ExecutionPlan* plan,
-    arangodb::velocypack::Slice const& base,
-    SortElementVector const& elements)
-  : ExecutionNode(plan, base),
-    _elements(elements),
-    _sortmode(SortMode::MinElement) {
+GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
+                       SortElementVector const& elements)
+    : ExecutionNode(plan, base), _elements(elements), _sortmode(SortMode::MinElement) {
   if (!_elements.empty()) {
     auto const sortModeSlice = base.get("sortmode");
 
     if (!toSortMode(VelocyPackHelper::getStringRef(sortModeSlice, ""), _sortmode)) {
-      LOG_TOPIC(ERR, Logger::AQL)
-          << "invalid sort mode detected while creating 'GatherNode' from vpack";
+      LOG_TOPIC(ERR, Logger::AQL) << "invalid sort mode detected while "
+                                     "creating 'GatherNode' from vpack";
     }
   }
 }
 
-GatherNode::GatherNode(
-    ExecutionPlan* plan,
-    size_t id,
-    SortMode sortMode) noexcept
-  : ExecutionNode(plan, id),
-    _sortmode(sortMode) {
-}
+GatherNode::GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode) noexcept
+    : ExecutionNode(plan, id), _sortmode(sortMode) {}
 
 /// @brief toVelocyPack, for GatherNode
 void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
@@ -366,9 +334,7 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-) const {
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   if (_elements.empty()) {
     return std::make_unique<UnsortingGatherBlock>(engine, *this);
   }
@@ -384,30 +350,23 @@ CostEstimate GatherNode::estimateCost() const {
 }
 
 SingleRemoteOperationNode::SingleRemoteOperationNode(
-    ExecutionPlan* plan,
-    size_t id,
-    NodeType mode,
-    bool replaceIndexNode,
-    std::string const& key,
-    Collection const* collection,
-    ModificationOptions const& options,
-    Variable const* in,
-    Variable const* out,
-    Variable const* OLD,
-    Variable const* NEW
-) : ExecutionNode(plan, id),
-    CollectionAccessingNode(collection),
-    _replaceIndexNode(replaceIndexNode),
-    _key(key),
-    _mode(mode),
-    _inVariable(in),
-    _outVariable(out),
-    _outVariableOld(OLD),
-    _outVariableNew(NEW),
-    _options(options) {
-  if (_mode == NodeType::INDEX) { //select
+    ExecutionPlan* plan, size_t id, NodeType mode, bool replaceIndexNode,
+    std::string const& key, Collection const* collection,
+    ModificationOptions const& options, Variable const* in, Variable const* out,
+    Variable const* OLD, Variable const* NEW)
+    : ExecutionNode(plan, id),
+      CollectionAccessingNode(collection),
+      _replaceIndexNode(replaceIndexNode),
+      _key(key),
+      _mode(mode),
+      _inVariable(in),
+      _outVariable(out),
+      _outVariableOld(OLD),
+      _outVariableNew(NEW),
+      _options(options) {
+  if (_mode == NodeType::INDEX) {  // select
     TRI_ASSERT(!_key.empty());
-    TRI_ASSERT(_inVariable== nullptr);
+    TRI_ASSERT(_inVariable == nullptr);
     TRI_ASSERT(_outVariable != nullptr);
     TRI_ASSERT(_outVariableOld == nullptr);
     TRI_ASSERT(_outVariableNew == nullptr);
@@ -424,9 +383,7 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(
 
 /// @brief creates corresponding SingleRemoteOperationNode
 std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-) const {
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   return std::make_unique<SingleRemoteOperationBlock>(&engine, this);
 }
 
@@ -459,7 +416,7 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
     isAnyVarUsedLater |= isVarUsedLater(_outVariableNew);
   }
 
-  if (_inVariable!= nullptr) {
+  if (_inVariable != nullptr) {
     nodes.add(VPackValue("inVariable"));
     _inVariable->toVelocyPack(nodes);
   }

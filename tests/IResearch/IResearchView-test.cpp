@@ -89,7 +89,7 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 
-NS_LOCAL
+namespace {
 
 struct DocIdScorer: public irs::sort {
   DECLARE_SORT_TYPE() { static irs::sort::type_id type("test_doc_id"); return type; }
@@ -99,10 +99,12 @@ struct DocIdScorer: public irs::sort {
 
   struct Prepared: public irs::sort::prepared_base<uint64_t> {
     virtual void add(irs::byte_type* dst, const irs::byte_type* src) const override { score_cast(dst) = score_cast(src); }
+    virtual void collect(irs::attribute_store& filter_attrs, const irs::index_reader& index, const irs::sort::field_collector* field, const irs::sort::term_collector* term) const override {}
     virtual irs::flags const& features() const override { return irs::flags::empty_instance(); }
     virtual bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override { return score_cast(lhs) < score_cast(rhs); }
-    virtual irs::sort::collector::ptr prepare_collector() const override { return nullptr; }
+    virtual irs::sort::field_collector::ptr prepare_field_collector() const override { return nullptr; }
     virtual void prepare_score(irs::byte_type* score) const override { }
+    virtual irs::sort::term_collector::ptr prepare_term_collector() const override { return nullptr; }
     virtual irs::sort::scorer::ptr prepare_scorer(
       irs::sub_reader const& segment,
       irs::term_reader const& field,
@@ -124,7 +126,7 @@ struct DocIdScorer: public irs::sort {
 
 REGISTER_SCORER_TEXT(DocIdScorer, DocIdScorer::make);
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -461,7 +463,7 @@ SECTION("test_cleanup") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+    CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
     CHECK(view->commit().ok());
   }
@@ -479,7 +481,7 @@ SECTION("test_cleanup") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    CHECK((link->remove(&trx, arangodb::LocalDocumentId(0), arangodb::velocypack::Slice::emptyObjectSlice(), arangodb::Index::OperationMode::normal).ok()));
+    CHECK((link->remove(trx, arangodb::LocalDocumentId(0), arangodb::velocypack::Slice::emptyObjectSlice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
     CHECK(view->commit().ok());
   }
@@ -570,7 +572,7 @@ SECTION("test_drop_with_link") {
   arangodb::Result res = view->properties(links->slice(), true);
   CHECK(true == res.ok());
   CHECK((false == logicalCollection->getIndexes().empty()));
-  dataPath = ((((irs::utf8_path()/=s.testFilesystemPath)/=std::string("databases"))/=(std::string("database-") + std::to_string(vocbase.id())))/=(std::string("arangosearch-") + std::to_string(logicalCollection->id()) + "_" + std::to_string(view->planId()))).utf8();
+  dataPath = ((((irs::utf8_path()/=s.testFilesystemPath)/=std::string("databases"))/=(std::string("database-") + std::to_string(vocbase.id())))/=(std::string("arangosearch-") + std::to_string(logicalCollection->id()) + "_" + std::to_string(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *view)->id()))).utf8();
   CHECK((true == TRI_IsDirectory(dataPath.c_str())));
 
   {
@@ -668,7 +670,7 @@ SECTION("test_drop_cid") {
         arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
     }
@@ -682,7 +684,7 @@ SECTION("test_drop_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(1 == snapshot->live_docs_count());
     }
 
@@ -707,7 +709,7 @@ SECTION("test_drop_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(0 == snapshot->live_docs_count());
     }
   }
@@ -743,7 +745,7 @@ SECTION("test_drop_cid") {
         arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
     }
@@ -757,7 +759,7 @@ SECTION("test_drop_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(1 == snapshot->live_docs_count());
     }
 
@@ -782,7 +784,7 @@ SECTION("test_drop_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(0 == snapshot->live_docs_count());
     }
   }
@@ -800,7 +802,7 @@ SECTION("test_drop_cid") {
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((false == !view));
     std::shared_ptr<arangodb::Index> index;
-    REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
+    REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), __LINE__, false).ok()));
     REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     REQUIRE((false == !link));
@@ -818,7 +820,7 @@ SECTION("test_drop_cid") {
         arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
     }
@@ -832,7 +834,7 @@ SECTION("test_drop_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(1 == snapshot->live_docs_count());
     }
 
@@ -860,7 +862,7 @@ SECTION("test_drop_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(0 == snapshot->live_docs_count());
     }
 
@@ -892,7 +894,7 @@ SECTION("test_drop_cid") {
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((false == !view));
     std::shared_ptr<arangodb::Index> index;
-    REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
+    REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), __LINE__, false).ok()));
     REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     REQUIRE((false == !link));
@@ -910,7 +912,7 @@ SECTION("test_drop_cid") {
         arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
     }
@@ -924,7 +926,7 @@ SECTION("test_drop_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(1 == snapshot->live_docs_count());
     }
 
@@ -947,7 +949,7 @@ SECTION("test_drop_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(1 == snapshot->live_docs_count());
     }
 
@@ -979,7 +981,7 @@ SECTION("test_drop_cid") {
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((false == !view));
     std::shared_ptr<arangodb::Index> index;
-    REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
+    REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), __LINE__, false).ok()));
     REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     REQUIRE((false == !link));
@@ -997,7 +999,7 @@ SECTION("test_drop_cid") {
         arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
     }
@@ -1011,7 +1013,7 @@ SECTION("test_drop_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(1 == snapshot->live_docs_count());
     }
 
@@ -1039,7 +1041,7 @@ SECTION("test_drop_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(0 == snapshot->live_docs_count());
     }
 
@@ -1066,7 +1068,7 @@ SECTION("test_drop_cid") {
         arangodb::DatabaseFeature
       >("Database");
 
-      CHECK_THROWS((feature->recoveryDone()));
+      CHECK_NOTHROW((feature->recoveryDone()));
     }
   }
 }
@@ -1158,7 +1160,7 @@ SECTION("test_truncate_cid") {
        arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
     }
@@ -1172,7 +1174,7 @@ SECTION("test_truncate_cid") {
        EMPTY,
        arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(1 == snapshot->live_docs_count());
     }
 
@@ -1197,7 +1199,7 @@ SECTION("test_truncate_cid") {
        EMPTY,
        arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(0 == snapshot->live_docs_count());
     }
   }
@@ -1233,7 +1235,7 @@ SECTION("test_truncate_cid") {
        arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
     }
@@ -1247,7 +1249,7 @@ SECTION("test_truncate_cid") {
        EMPTY,
        arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(1 == snapshot->live_docs_count());
     }
 
@@ -1272,7 +1274,7 @@ SECTION("test_truncate_cid") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK(0 == snapshot->live_docs_count());
     }
   }
@@ -1573,7 +1575,7 @@ SECTION("test_emplace_cid") {
         arangodb::DatabaseFeature
       >("Database");
 
-      CHECK_THROWS((feature->recoveryDone()));
+      CHECK_NOTHROW((feature->recoveryDone()));
     }
   }
 }
@@ -1619,10 +1621,10 @@ SECTION("test_insert") {
 
       linkMeta._includeAllFields = true;
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
     }
@@ -1634,7 +1636,7 @@ SECTION("test_insert") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     CHECK(2 == snapshot->live_docs_count());
   }
 
@@ -1675,8 +1677,8 @@ SECTION("test_insert") {
 
       linkMeta._includeAllFields = true;
       CHECK((trx.begin().ok()));
-      link->batchInsert(&trx, batch, taskQueuePtr);
-      link->batchInsert(&trx, batch, taskQueuePtr); // 2nd time
+      link->batchInsert(trx, batch, taskQueuePtr);
+      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
       CHECK((TRI_ERROR_NO_ERROR == taskQueue.status()));
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
@@ -1689,7 +1691,7 @@ SECTION("test_insert") {
         EMPTY,
         arangodb::transaction::Options()
       );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     CHECK((2 == snapshot->live_docs_count()));
   }
 
@@ -1722,10 +1724,10 @@ SECTION("test_insert") {
 
       linkMeta._includeAllFields = true;
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
     }
@@ -1737,7 +1739,7 @@ SECTION("test_insert") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     CHECK((4 == snapshot->docs_count()));
   }
 
@@ -1772,10 +1774,10 @@ SECTION("test_insert") {
 
       linkMeta._includeAllFields = true;
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), arangodb::Index::OperationMode::normal).ok())); // 2nd time
       CHECK((trx.commit().ok()));
     }
 
@@ -1786,7 +1788,7 @@ SECTION("test_insert") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
     CHECK((4 == snapshot->docs_count()));
   }
 
@@ -1822,7 +1824,7 @@ SECTION("test_insert") {
 
       linkMeta._includeAllFields = true;
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
     }
 
@@ -1833,7 +1835,7 @@ SECTION("test_insert") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
     CHECK((1 == snapshot->docs_count()));
   }
 
@@ -1872,8 +1874,8 @@ SECTION("test_insert") {
 
       linkMeta._includeAllFields = true;
       CHECK((trx.begin().ok()));
-      link->batchInsert(&trx, batch, taskQueuePtr);
-      link->batchInsert(&trx, batch, taskQueuePtr); // 2nd time
+      link->batchInsert(trx, batch, taskQueuePtr);
+      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
       CHECK((TRI_ERROR_NO_ERROR == taskQueue.status()));
       CHECK((trx.commit().ok()));
       CHECK(view->commit().ok());
@@ -1886,7 +1888,7 @@ SECTION("test_insert") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     CHECK((4 == snapshot->docs_count()));
   }
 
@@ -1926,8 +1928,8 @@ SECTION("test_insert") {
 
       linkMeta._includeAllFields = true;
       CHECK((trx.begin().ok()));
-      link->batchInsert(&trx, batch, taskQueuePtr);
-      link->batchInsert(&trx, batch, taskQueuePtr); // 2nd time
+      link->batchInsert(trx, batch, taskQueuePtr);
+      link->batchInsert(trx, batch, taskQueuePtr); // 2nd time
       CHECK((TRI_ERROR_NO_ERROR == taskQueue.status()));
       CHECK((trx.commit().ok()));
     }
@@ -1939,7 +1941,7 @@ SECTION("test_insert") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
     CHECK((4 == snapshot->docs_count()));
   }
 }
@@ -1987,7 +1989,7 @@ SECTION("test_query") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     CHECK(0 == snapshot->docs_count());
   }
 
@@ -2023,7 +2025,7 @@ SECTION("test_query") {
       CHECK((trx.begin().ok()));
 
       for (size_t i = 0; i < 12; ++i) {
-        CHECK((link->insert(&trx, arangodb::LocalDocumentId(i), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+        CHECK((link->insert(trx, arangodb::LocalDocumentId(i), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       }
 
       CHECK((trx.commit().ok()));
@@ -2037,7 +2039,7 @@ SECTION("test_query") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     CHECK(12 == snapshot->docs_count());
   }
 
@@ -2089,7 +2091,7 @@ SECTION("test_query") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot0 = view->snapshot(trx0, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot0 = view->snapshot(trx0, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     CHECK(12 == snapshot0->docs_count());
 
     // add more data
@@ -2125,7 +2127,7 @@ SECTION("test_query") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot1 = view->snapshot(trx1, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot1 = view->snapshot(trx1, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     CHECK(24 == snapshot1->docs_count());
   }
 
@@ -2191,7 +2193,7 @@ SECTION("test_query") {
           EMPTY,
           options
         );
-        auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
+        auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
         CHECK(i == snapshot->docs_count());
       }
     }
@@ -2305,7 +2307,7 @@ SECTION("test_register_link") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK((0 == snapshot->docs_count()));
     }
 
@@ -2329,7 +2331,7 @@ SECTION("test_register_link") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     CHECK((0 == snapshot->docs_count())); // link addition does trigger collection load
 
     // link addition does modify view meta
@@ -2367,7 +2369,7 @@ SECTION("test_register_link") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK((nullptr == snapshot));
     }
 
@@ -2399,7 +2401,7 @@ SECTION("test_register_link") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK((0 == snapshot->docs_count())); // link addition does trigger collection load
     }
 
@@ -2431,7 +2433,7 @@ SECTION("test_register_link") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
     CHECK((0 == snapshot->docs_count())); // link addition does trigger collection load
 
     {
@@ -2470,7 +2472,7 @@ SECTION("test_unregister_link") {
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((false == !view));
     std::shared_ptr<arangodb::Index> index;
-    REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
+    REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), __LINE__, false).ok()));
     REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     REQUIRE((false == !link));
@@ -2489,14 +2491,14 @@ SECTION("test_unregister_link") {
         arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
       CHECK((view->commit().ok()));
     }
 
-    auto links = arangodb::velocypack::Parser::fromJson("{ \
-      \"links\": { \"testCollection\": {} } \
-    }");
+    auto links = arangodb::velocypack::Parser::fromJson(
+      "{ \"links\": { \"testCollection\": { \"id\": " + std::to_string(link->id()) + " } } }" // same link ID
+    );
 
     link->unload(); // unload link before creating a new link instance
     arangodb::Result res = logicalView->properties(links->slice(), true);
@@ -2513,7 +2515,7 @@ SECTION("test_unregister_link") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK((1 == snapshot->docs_count()));
     }
 
@@ -2549,7 +2551,7 @@ SECTION("test_unregister_link") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK((0 == snapshot->docs_count()));
     }
 
@@ -2575,7 +2577,7 @@ SECTION("test_unregister_link") {
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((false == !view));
     std::shared_ptr<arangodb::Index> index;
-    REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
+    REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), __LINE__, false).ok()));
     REQUIRE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     REQUIRE((false == !link));
@@ -2594,14 +2596,14 @@ SECTION("test_unregister_link") {
         arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
       CHECK((view->commit().ok()));
     }
 
-    auto links = arangodb::velocypack::Parser::fromJson("{ \
-      \"links\": { \"testCollection\": {} } \
-    }");
+    auto links = arangodb::velocypack::Parser::fromJson(
+      "{ \"links\": { \"testCollection\": {\"id\": " + std::to_string(link->id()) + " } } }" // same link ID
+    );
 
     link->unload(); // unload link before creating a new link instance
     arangodb::Result res = logicalView->properties(links->slice(), true);
@@ -2618,7 +2620,7 @@ SECTION("test_unregister_link") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK((1 == snapshot->docs_count()));
     }
 
@@ -2650,7 +2652,7 @@ SECTION("test_unregister_link") {
         EMPTY,
         arangodb::transaction::Options()
       );
-      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+      auto* snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
       CHECK((0 == snapshot->docs_count()));
     }
 
@@ -2735,14 +2737,6 @@ SECTION("test_unregister_link") {
         REQUIRE((!link->self()->get())); // check that link is unregistred from view
       }
     }
-  }
-}
-
-SECTION("test_self_token") {
-  // test empty token
-  {
-    arangodb::iresearch::IResearchView::AsyncViewPtr::element_type empty(nullptr);
-    CHECK((nullptr == empty.get()));
   }
 }
 
@@ -2873,7 +2867,7 @@ SECTION("test_tracked_cids") {
         arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
       feature->executeCallbacks(); // commit to persisted store
     }
@@ -2990,7 +2984,11 @@ SECTION("test_transaction_registration") {
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection1->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0", "testCollection1" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3012,7 +3010,11 @@ SECTION("test_transaction_registration") {
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection1->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0", "testCollection1" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3034,7 +3036,11 @@ SECTION("test_transaction_registration") {
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection1->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0", "testCollection1" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3056,7 +3062,11 @@ SECTION("test_transaction_registration") {
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection1->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0", "testCollection1" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3078,7 +3088,11 @@ SECTION("test_transaction_registration") {
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection1->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0", "testCollection1" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3100,7 +3114,11 @@ SECTION("test_transaction_registration") {
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection1->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0", "testCollection1" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3124,7 +3142,11 @@ SECTION("test_transaction_registration") {
     CHECK((1 == trx.state()->numCollections()));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3145,7 +3167,11 @@ SECTION("test_transaction_registration") {
     CHECK((1 == trx.state()->numCollections()));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3166,7 +3192,11 @@ SECTION("test_transaction_registration") {
     CHECK((1 == trx.state()->numCollections()));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3187,7 +3217,11 @@ SECTION("test_transaction_registration") {
     CHECK((1 == trx.state()->numCollections()));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3208,7 +3242,11 @@ SECTION("test_transaction_registration") {
     CHECK((1 == trx.state()->numCollections()));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3229,7 +3267,11 @@ SECTION("test_transaction_registration") {
     CHECK((1 == trx.state()->numCollections()));
     CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0" };
-    auto actualNames = trx.state()->collectionNames();
+    std::unordered_set<std::string> actualNames;
+    trx.state()->allCollections([&actualNames](arangodb::TransactionCollection& col)->bool {
+      actualNames.emplace(col.collection()->name());
+      return true;
+    });
 
     for(auto& entry: actualNames) {
       CHECK((1 == expectedNames.erase(entry)));
@@ -3271,7 +3313,7 @@ SECTION("test_transaction_snapshot") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    CHECK((link->insert(&trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+    CHECK((link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
   }
 
@@ -3297,10 +3339,10 @@ SECTION("test_transaction_snapshot") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    CHECK(nullptr == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find));
-    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
-    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find));
-    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate));
+    CHECK(nullptr == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
+    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
+    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate));
     CHECK(nullptr != snapshot);
     CHECK((0 == snapshot->live_docs_count()));
   }
@@ -3330,10 +3372,10 @@ SECTION("test_transaction_snapshot") {
       EMPTY,
       opts
     );
-    CHECK(nullptr == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find));
-    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
-    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find));
-    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate));
+    CHECK(nullptr == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
+    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
+    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
+    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate));
     CHECK((nullptr != snapshot));
     CHECK((1 == snapshot->live_docs_count()));
   }
@@ -3351,7 +3393,7 @@ SECTION("test_transaction_snapshot") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    CHECK((link->insert(&trx, arangodb::LocalDocumentId(1), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
+    CHECK((link->insert(trx, arangodb::LocalDocumentId(1), doc->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
   }
 
@@ -3383,9 +3425,9 @@ SECTION("test_transaction_snapshot") {
     );
     CHECK((true == viewImpl->apply(trx)));
     CHECK((true == trx.begin().ok()));
-    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
-    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find));
-    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate));
+    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
+    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate));
     CHECK((nullptr != snapshot));
     CHECK((1 == snapshot->live_docs_count()));
     CHECK(true == trx.abort().ok()); // prevent assertion in destructor
@@ -3405,8 +3447,8 @@ SECTION("test_transaction_snapshot") {
     CHECK((true == viewImpl->apply(trx)));
     CHECK((true == trx.begin().ok()));
     state->waitForSync(true);
-    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
-    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find));
+    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
     CHECK((nullptr != snapshot));
     CHECK((1 == snapshot->live_docs_count()));
     CHECK(true == trx.abort().ok()); // prevent assertion in destructor
@@ -3426,8 +3468,8 @@ SECTION("test_transaction_snapshot") {
     REQUIRE(state);
     CHECK((true == viewImpl->apply(trx)));
     CHECK((true == trx.begin().ok()));
-    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
-    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find));
+    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
+    CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
     CHECK((nullptr != snapshot));
     CHECK((2 == snapshot->live_docs_count()));
     CHECK(true == trx.abort().ok()); // prevent assertion in destructor

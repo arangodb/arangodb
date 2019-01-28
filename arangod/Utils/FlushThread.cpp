@@ -34,9 +34,7 @@
 using namespace arangodb;
 
 FlushThread::FlushThread(uint64_t flushInterval)
-    : Thread("FlushThread"),
-      _condition(),
-      _flushInterval(flushInterval) {}
+    : Thread("FlushThread"), _condition(), _flushInterval(flushInterval) {}
 
 /// @brief begin shutdown sequence
 void FlushThread::beginShutdown() {
@@ -54,7 +52,9 @@ void FlushThread::wakeup() {
 
 /// @brief main loop
 void FlushThread::run() {
-  FlushFeature* flushFeature = application_features::ApplicationServer::getFeature<FlushFeature>("Flush");
+  FlushFeature* flushFeature =
+      application_features::ApplicationServer::getFeature<FlushFeature>(
+          "Flush");
   TRI_ASSERT(flushFeature != nullptr);
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
@@ -85,7 +85,7 @@ void FlushThread::run() {
       // sleep if nothing to do
       CONDITION_LOCKER(guard, _condition);
       guard.wait(_flushInterval);
-    } catch(basics::Exception const& ex) {
+    } catch (basics::Exception const& ex) {
       if (ex.code() == TRI_ERROR_SHUTTING_DOWN) {
         break;
       }

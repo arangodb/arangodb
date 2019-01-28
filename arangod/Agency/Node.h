@@ -218,7 +218,7 @@ class Node {
 
   /// @brief Is UInt
   bool isUInt() const;
-  
+
   /// @brief Is number
   bool isNumber() const;
 
@@ -265,7 +265,8 @@ class Node {
 
   /// @brief accessor to Node then write to builder
   /// @return  second is true if url exists, first is ignored
-  std::pair<void *, bool> hasAsBuilder(std::string const&, Builder&, bool showHidden = false) const;
+  std::pair<void*, bool> hasAsBuilder(std::string const&, Builder&,
+                                      bool showHidden = false) const;
 
   /// @brief accessor to Node's value as a Builder object
   /// @return  second is true if url exists, first populated if second true
@@ -298,7 +299,7 @@ class Node {
   // The protected accessors are the "old" interface.  They throw.
   //  Please use the hasAsXXX replacements.
   //
-protected:
+ protected:
   /// @brief Get node specified by path string, always throw if not there
   Node const& get(std::string const& path) const;
 
@@ -324,12 +325,12 @@ protected:
 
   void rebuildVecBuf() const;
 
-  std::string _nodeName;  ///< @brief my name
-  Node* _parent;           ///< @brief parent
-  Store* _store;           ///< @brief Store
-  Children _children;      ///< @brief child nodes
-  TimePoint _ttl;          ///< @brief my expiry
-  std::vector<Buffer<uint8_t>> _value; ///< @brief my value
+  std::string _nodeName;                ///< @brief my name
+  Node* _parent;                        ///< @brief parent
+  Store* _store;                        ///< @brief Store
+  Children _children;                   ///< @brief child nodes
+  TimePoint _ttl;                       ///< @brief my expiry
+  std::vector<Buffer<uint8_t>> _value;  ///< @brief my value
   mutable Buffer<uint8_t> _vecBuf;
   mutable bool _vecBufDirty;
   bool _isArray;
@@ -338,7 +339,7 @@ protected:
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {
   return n.print(o);
 }
-}
-}  // namespaces
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

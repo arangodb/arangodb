@@ -44,17 +44,19 @@ class VelocyPackDumper {
   VelocyPackDumper& operator=(VelocyPackDumper const&) = delete;
 
  public:
-  explicit VelocyPackDumper(StringBuffer* buffer, velocypack::Options const* options = &velocypack::Options::Defaults)
+  explicit VelocyPackDumper(StringBuffer* buffer,
+                            velocypack::Options const* options = &velocypack::Options::Defaults)
       : options(options), _buffer(buffer) {
     TRI_ASSERT(buffer != nullptr);
     TRI_ASSERT(options != nullptr);
   }
 
   ~VelocyPackDumper() = default;
-  
+
   void dumpValue(velocypack::Slice const* slice, velocypack::Slice const* = nullptr);
-  
-  inline void dumpValue(velocypack::Slice const& slice, velocypack::Slice const* base = nullptr) {
+
+  inline void dumpValue(velocypack::Slice const& slice,
+                        velocypack::Slice const* base = nullptr) {
     dumpValue(&slice, base);
   }
 
@@ -64,7 +66,7 @@ class VelocyPackDumper {
   void appendUInt(uint64_t);
 
   void appendDouble(double);
-  
+
   void appendString(char const* src, velocypack::ValueLength length);
 
   void handleUnsupportedType(velocypack::Slice const* slice);
@@ -78,7 +80,7 @@ class VelocyPackDumper {
   StringBuffer* _buffer;
 };
 
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

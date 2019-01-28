@@ -891,7 +891,7 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
     irs::memory_directory impl;
     failing_directory dir(impl);
     dir.register_failure(failing_directory::Failure::CREATE, "_1.doc"); // postings list (documents)
-    dir.register_failure(failing_directory::Failure::CREATE, "_2.1.doc_mask"); // deleted docs
+    dir.register_failure(failing_directory::Failure::CREATE, "_2.2.doc_mask"); // deleted docs
     dir.register_failure(failing_directory::Failure::CREATE, "_3.cm"); // column meta
     dir.register_failure(failing_directory::Failure::CREATE, "_4.ti"); // term index
     dir.register_failure(failing_directory::Failure::CREATE, "_5.tm"); // term data
@@ -943,7 +943,7 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
     irs::memory_directory impl;
     failing_directory dir(impl);
     dir.register_failure(failing_directory::Failure::CREATE, "_1.doc"); // postings list (documents)
-    dir.register_failure(failing_directory::Failure::CREATE, "_2.1.doc_mask"); // deleted docs
+    dir.register_failure(failing_directory::Failure::CREATE, "_2.2.doc_mask"); // deleted docs
     dir.register_failure(failing_directory::Failure::CREATE, "_3.cm"); // column meta
     dir.register_failure(failing_directory::Failure::CREATE, "_4.ti"); // term index
     dir.register_failure(failing_directory::Failure::CREATE, "_5.tm"); // term data
@@ -1027,9 +1027,9 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
   {
     irs::memory_directory impl;
     failing_directory dir(impl);
-    dir.register_failure(failing_directory::Failure::SYNC, "_1.1.sm"); // segment meta
+    dir.register_failure(failing_directory::Failure::SYNC, "_1.2.sm"); // segment meta
     dir.register_failure(failing_directory::Failure::SYNC, "_2.doc"); // postings list (documents)
-    dir.register_failure(failing_directory::Failure::SYNC, "_3.1.doc_mask"); // deleted docs
+    dir.register_failure(failing_directory::Failure::SYNC, "_3.2.doc_mask"); // deleted docs
     dir.register_failure(failing_directory::Failure::SYNC, "_4.cm"); // column meta
     dir.register_failure(failing_directory::Failure::SYNC, "_5.cs"); // columnstore
     dir.register_failure(failing_directory::Failure::SYNC, "_6.ti"); // term index
@@ -1080,9 +1080,9 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
 
     irs::memory_directory impl;
     failing_directory dir(impl);
-    dir.register_failure(failing_directory::Failure::SYNC, "_1.1.sm"); // segment meta
+    dir.register_failure(failing_directory::Failure::SYNC, "_1.2.sm"); // segment meta
     dir.register_failure(failing_directory::Failure::SYNC, "_2.doc"); // postings list (documents)
-    dir.register_failure(failing_directory::Failure::SYNC, "_3.1.doc_mask"); // deleted docs
+    dir.register_failure(failing_directory::Failure::SYNC, "_3.2.doc_mask"); // deleted docs
     dir.register_failure(failing_directory::Failure::SYNC, "_4.cm"); // column meta
     dir.register_failure(failing_directory::Failure::SYNC, "_5.cs"); // columnstore
     dir.register_failure(failing_directory::Failure::SYNC, "_6.ti"); // term index
@@ -2374,7 +2374,7 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     dir.register_failure(failing_directory::Failure::CREATE, "_8.0.sm"); // segment meta
 
     // write index
-    irs::index_writer::options opts;
+    irs::index_writer::init_options opts;
     opts.segment_docs_max = 1; // flush every 2nd document
 
     auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
@@ -2422,7 +2422,7 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     dir.register_failure(failing_directory::Failure::CREATE, "_8.0.sm"); // segment meta
 
     // write index
-    irs::index_writer::options opts;
+    irs::index_writer::init_options opts;
     opts.segment_docs_max = 1; // flush every 2nd document
 
     auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
@@ -2485,6 +2485,26 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     ASSERT_EQ("C", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
+}
+
+TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flush) {
+  const auto all_features = irs::flags{
+    irs::document::type(),
+    irs::frequency::type(),
+    irs::position::type(),
+    irs::payload::type(),
+    irs::offset::type()
+  };
+
+  tests::json_doc_generator gen(
+    test_base::resource("simple_sequential.json"),
+    &tests::payloaded_json_field_factory
+  );
+  const auto* doc1 = gen.next();
+  const auto* doc2 = gen.next();
+
+  auto codec = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec);
 
   // columnstore creation failure
   {
@@ -2492,7 +2512,7 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     failing_directory dir(impl);
 
     // write index
-    irs::index_writer::options opts;
+    irs::index_writer::init_options opts;
     opts.segment_docs_max = 1; // flush every 2nd document
 
     auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
@@ -2548,6 +2568,26 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     ASSERT_EQ("A", irs::to_string<irs::string_ref>(actual_value.c_str())); // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
+}
+
+TEST(index_death_test_formats_10, columnstore_creation_sync_fail_implicit_segment_flush) {
+  const auto all_features = irs::flags{
+    irs::document::type(),
+    irs::frequency::type(),
+    irs::position::type(),
+    irs::payload::type(),
+    irs::offset::type()
+  };
+
+  tests::json_doc_generator gen(
+    test_base::resource("simple_sequential.json"),
+    &tests::payloaded_json_field_factory
+  );
+  const auto* doc1 = gen.next();
+  const auto* doc2 = gen.next();
+
+  auto codec = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec);
 
   // columnstore creation + sync failures
   {
@@ -2555,7 +2595,7 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     failing_directory dir(impl);
 
     // write index
-    irs::index_writer::options opts;
+    irs::index_writer::init_options opts;
     opts.segment_docs_max = 1; // flush every 2nd document
 
     auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
@@ -2635,8 +2675,8 @@ TEST(index_death_test_formats_10, open_reader) {
 
   // register failures
   dir.register_failure(failing_directory::Failure::OPEN, "_1.doc"); // postings list (documents)
-  dir.register_failure(failing_directory::Failure::EXISTS, "_1.1.doc_mask"); // deleted docs
-  dir.register_failure(failing_directory::Failure::OPEN, "_1.1.doc_mask"); // deleted docs
+  dir.register_failure(failing_directory::Failure::EXISTS, "_1.2.doc_mask"); // deleted docs
+  dir.register_failure(failing_directory::Failure::OPEN, "_1.2.doc_mask"); // deleted docs
   dir.register_failure(failing_directory::Failure::EXISTS, "_1.cm"); // column meta
   dir.register_failure(failing_directory::Failure::OPEN, "_1.cm"); // column meta
   dir.register_failure(failing_directory::Failure::EXISTS, "_1.cs"); // columnstore
@@ -2943,3 +2983,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
   ASSERT_FALSE(live_docs->next());
   ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), live_docs->value());
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

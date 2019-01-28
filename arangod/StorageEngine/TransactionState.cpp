@@ -31,17 +31,15 @@
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
 
 /// @brief transaction type
-TransactionState::TransactionState(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_tid_t tid,
-    transaction::Options const& options
-):
-      _vocbase(vocbase),
+TransactionState::TransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+                                   transaction::Options const& options)
+    : _vocbase(vocbase),
       _id(tid),
       _type(AccessMode::Type::READ),
       _status(transaction::Status::CREATED),
@@ -64,24 +62,9 @@ TransactionState::~TransactionState() {
   }
 }
 
-std::vector<std::string> TransactionState::collectionNames(std::unordered_set<std::string> const& initial) const {
-  std::vector<std::string> result;
-  result.reserve(_collections.size() + initial.size());
-  for (auto const& it : initial) {
-    result.emplace_back(it);
-  }
-  for (auto const& trxCollection : _collections) {
-    if (trxCollection->collection() != nullptr) {
-      result.emplace_back(trxCollection->collectionName());
-    }
-  }
-
-  return result;
-}
-
 /// @brief return the collection from a transaction
-TransactionCollection* TransactionState::collection(
-    TRI_voc_cid_t cid, AccessMode::Type accessType) {
+TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid,
+                                                    AccessMode::Type accessType) {
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
 
@@ -96,30 +79,25 @@ TransactionCollection* TransactionState::collection(
   return trxCollection;
 }
 
-TransactionState::Cookie* TransactionState::cookie(
-    void const* key
-) noexcept {
+TransactionState::Cookie* TransactionState::cookie(void const* key) noexcept {
   auto itr = _cookies.find(key);
 
   return itr == _cookies.end() ? nullptr : itr->second.get();
 }
 
-TransactionState::Cookie::ptr TransactionState::cookie(
-    void const* key,
-    TransactionState::Cookie::ptr&& cookie
-) {
+TransactionState::Cookie::ptr TransactionState::cookie(void const* key,
+                                                       TransactionState::Cookie::ptr&& cookie) {
   _cookies[key].swap(cookie);
 
   return std::move(cookie);
 }
 
 /// @brief add a collection to a transaction
-int TransactionState::addCollection(TRI_voc_cid_t cid,
-                                    std::string const& cname,
+int TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cname,
                                     AccessMode::Type accessType,
                                     int nestingLevel, bool force) {
   LOG_TRX(this, nestingLevel) << "adding collection " << cid;
-  
+
   // upgrade transaction type if required
   if (nestingLevel == 0) {
     if (!force) {
@@ -140,8 +118,8 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
 
   if (trxCollection != nullptr) {
     static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
-                  AccessMode::Type::READ < AccessMode::Type::WRITE &&
-                  AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE,
+                      AccessMode::Type::READ < AccessMode::Type::WRITE &&
+                      AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE,
                   "AccessMode::Type total order fail");
     // we may need to recheck permissions here
     if (trxCollection->accessType() < accessType) {
@@ -165,21 +143,20 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
       (isRunning() && !_options.allowImplicitCollections)) {
     return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
   }
-  
+
   // now check the permissions
   int res = checkCollectionPermission(cid, cname, accessType);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-  
+
   // collection was not contained. now create and insert it
   TRI_ASSERT(trxCollection == nullptr);
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
-  trxCollection = engine->createTransactionCollection(
-    *this, cid, accessType, nestingLevel
-  ).release();
+  trxCollection =
+      engine->createTransactionCollection(*this, cid, accessType, nestingLevel).release();
 
   TRI_ASSERT(trxCollection != nullptr);
 
@@ -201,9 +178,12 @@ Result TransactionState::ensureCollections(int nestingLevel) {
 }
 
 /// @brief run a callback on all collections
-void TransactionState::allCollections(std::function<bool(TransactionCollection*)> const& cb) {
+void TransactionState::allCollections( // iterate
+    std::function<bool(TransactionCollection&)> const& cb // callback to invoke
+) {
   for (auto& trxCollection : _collections) {
-    if (!cb(trxCollection)) {
+    TRI_ASSERT(trxCollection); // ensured by addCollection(...)
+    if (!cb(*trxCollection)) {
       // abort early
       return;
     }
@@ -245,8 +225,7 @@ int TransactionState::lockCollections() {
 }
 
 /// @brief find a collection in the transaction's list of collections
-TransactionCollection* TransactionState::findCollection(
-    TRI_voc_cid_t cid) const {
+TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid) const {
   for (auto* trxCollection : _collections) {
     if (cid == trxCollection->id()) {
       // found
@@ -269,14 +248,14 @@ TransactionCollection* TransactionState::findCollection(
 ///        defines where the collection should be inserted,
 ///        so whenever we want to insert the collection we
 ///        have to use this position for insert.
-TransactionCollection* TransactionState::findCollection(
-    TRI_voc_cid_t cid, size_t& position) const {
+TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid,
+                                                        size_t& position) const {
   size_t const n = _collections.size();
   size_t i;
 
   for (i = 0; i < n; ++i) {
     auto trxCollection = _collections[i];
-    
+
     if (cid == trxCollection->id()) {
       // found
       return trxCollection;
@@ -296,8 +275,7 @@ TransactionCollection* TransactionState::findCollection(
 }
 
 void TransactionState::setType(AccessMode::Type type) {
-  if (AccessMode::isWriteOrExclusive(type) &&
-      AccessMode::isWriteOrExclusive(_type)) {
+  if (AccessMode::isWriteOrExclusive(type) && AccessMode::isWriteOrExclusive(_type)) {
     // type already correct. do nothing
     return;
   }
@@ -317,8 +295,8 @@ void TransactionState::setType(AccessMode::Type type) {
 }
 
 bool TransactionState::isLockedShard(std::string const& shard) const {
-    auto it = _lockedShards.find(shard);
-    return it != _lockedShards.end();
+  auto it = _lockedShards.find(shard);
+  return it != _lockedShards.end();
 }
 
 void TransactionState::setLockedShard(std::string const& shard) {
@@ -329,7 +307,7 @@ void TransactionState::setLockedShards(std::unordered_set<std::string> const& lo
   // Explicitly copy!
   _lockedShards = lockedShards;
 }
-   
+
 bool TransactionState::isOnlyExclusiveTransaction() const {
   if (!AccessMode::isWriteOrExclusive(_type)) {
     return false;
@@ -342,19 +320,18 @@ bool TransactionState::isOnlyExclusiveTransaction() const {
   return true;
 }
 
-int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
-                                                std::string const& cname,
+int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid, std::string const& cname,
                                                 AccessMode::Type accessType) const {
   ExecContext const* exec = ExecContext::CURRENT;
 
   // no need to check for superuser, cluster_sync tests break otherwise
   if (exec != nullptr && !exec->isSuperuser() && ExecContext::isAuthEnabled()) {
     auto level = exec->collectionAuthLevel(_vocbase.name(), cname);
-    TRI_ASSERT(level != auth::Level::UNDEFINED); // not allowed here
+    TRI_ASSERT(level != auth::Level::UNDEFINED);  // not allowed here
 
     if (level == auth::Level::NONE) {
-      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
-      << " has collection auth::Level::NONE";
+      LOG_TOPIC(TRACE, Logger::AUTHORIZATION)
+          << "User " << exec->user() << " has collection auth::Level::NONE";
 
       return TRI_ERROR_FORBIDDEN;
     }
@@ -362,8 +339,8 @@ int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
     bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
 
     if (level == auth::Level::RO && collectionWillWrite) {
-      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
-      << " has no write right for collection " << cname;
+      LOG_TOPIC(TRACE, Logger::AUTHORIZATION)
+          << "User " << exec->user() << " has no write right for collection " << cname;
 
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
@@ -398,9 +375,12 @@ void TransactionState::clearQueryCache() {
     std::vector<std::string> collections;
 
     for (auto& trxCollection : _collections) {
-      if (trxCollection->hasOperations()) {
+      if (trxCollection // valid instance
+          && trxCollection->collection() // has a valid collection
+          && trxCollection->hasOperations() // may have been modified
+         ) {
         // we're only interested in collections that may have been modified
-        collections.emplace_back(trxCollection->collectionName());
+        collections.emplace_back(trxCollection->collection()->guid());
       }
     }
 
@@ -417,9 +397,10 @@ void TransactionState::clearQueryCache() {
 /// @brief update the status of a transaction
 void TransactionState::updateStatus(transaction::Status status) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (_status != transaction::Status::CREATED && 
-      _status != transaction::Status::RUNNING) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "trying to update transaction status with an invalid state. current: " << _status << ", future: " << status;
+  if (_status != transaction::Status::CREATED && _status != transaction::Status::RUNNING) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "trying to update transaction status with "
+                                     "an invalid state. current: "
+                                  << _status << ", future: " << status;
   }
 #endif
 

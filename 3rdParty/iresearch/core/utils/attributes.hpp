@@ -480,7 +480,7 @@ const attribute_map<T, Ref, Args...>::ref<U>::NIL;
 /// @brief storage of shared_ptr to attributes
 //////////////////////////////////////////////////////////////////////////////
 
-MSVC_ONLY(template class IRESEARCH_API irs::attribute_map<stored_attribute, std::shared_ptr>);
+MSVC_ONLY(template class IRESEARCH_API irs::attribute_map<stored_attribute, std::shared_ptr>;)
 
 class IRESEARCH_API attribute_store
     : public attribute_map<stored_attribute, std::shared_ptr> {
@@ -505,14 +505,13 @@ class IRESEARCH_API attribute_store
   }
 
   template<typename T, typename... Args>
-  typename ref<T>::type& emplace(Args&&... args) {
+  typename ref<T>::type& try_emplace(bool& inserted, Args&&... args) {
     REGISTER_TIMER_DETAILED();
 
     typedef typename std::enable_if<
       std::is_base_of<stored_attribute, T>::value, T
     >::type type;
 
-    bool inserted;
     auto& attr = attribute_map::emplace(inserted, type::type());
 
     if (inserted) {
@@ -520,6 +519,12 @@ class IRESEARCH_API attribute_store
     }
 
     return reinterpret_cast<typename ref<T>::type&>(attr);
+  }
+
+  template<typename T, typename... Args>
+  typename ref<T>::type& emplace(Args&&... args) {
+    bool inserted;
+    return try_emplace<T>(inserted, std::forward<Args>(args)...);
   }
 }; // attribute_store
 
@@ -575,7 +580,7 @@ FORCE_INLINE bool operator!=(
 /// @brief storage of data pointers to attributes
 //////////////////////////////////////////////////////////////////////////////
 
-MSVC_ONLY(template class IRESEARCH_API irs::attribute_map<attribute, pointer_wrapper>);
+MSVC_ONLY(template class IRESEARCH_API irs::attribute_map<attribute, pointer_wrapper>;)
 
 class IRESEARCH_API attribute_view
     : public attribute_map<attribute, pointer_wrapper> {

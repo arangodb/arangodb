@@ -31,4 +31,3 @@ std::ostream& operator<<(std::ostream& stream, arangodb::transaction::Status con
   stream << arangodb::transaction::statusString(s);
   return stream;
 }
-

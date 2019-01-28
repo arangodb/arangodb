@@ -2,7 +2,7 @@ Compiling ArangoDB from Source
 ===============================
 
 ArangoDB can be compiled directly from source. It will compile on most Linux and
-Mac OS X systems, as well as on Windows.
+macOS systems, as well as on Windows.
 
 We assume that you use the GNU C/C++ compiler or clang/clang++ to compile the
 source. ArangoDB has been tested with these compilers, but should be able to

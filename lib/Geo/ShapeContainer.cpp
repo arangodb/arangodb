@@ -101,18 +101,15 @@ S2Point ShapeContainer::centroid() const noexcept {
       return (static_cast<S2Polygon const*>(_data))->GetCentroid().Normalize();
     }
     case ShapeContainer::Type::S2_MULTIPOINT: {
-      S2MultiPointRegion const* pts =
-          (static_cast<S2MultiPointRegion const*>(_data));
+      S2MultiPointRegion const* pts = (static_cast<S2MultiPointRegion const*>(_data));
       S2LatLng c = S2LatLng::FromDegrees(0.0, 0.0);
       for (int k = 0; k < pts->num_points(); k++) {
-        c = c + ((1 / static_cast<double>(pts->num_points())) *
-                 S2LatLng(pts->point(k)));
+        c = c + ((1 / static_cast<double>(pts->num_points())) * S2LatLng(pts->point(k)));
       }
       return c.ToPoint().Normalize();  // FIXME probably broken
     }
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
-      S2MultiPolyline const* lines =
-          (static_cast<S2MultiPolyline const*>(_data));
+      S2MultiPolyline const* lines = (static_cast<S2MultiPolyline const*>(_data));
       S2LatLng c = S2LatLng::FromDegrees(0.0, 0.0);
       double totalWeight = 0.0;
       for (size_t k = 0; k < lines->num_lines(); k++) {
@@ -133,8 +130,7 @@ S2Point ShapeContainer::centroid() const noexcept {
   return S2Point();
 }
 
-std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer* coverer) const
-    noexcept {
+std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer* coverer) const noexcept {
   TRI_ASSERT(coverer != nullptr && _data != nullptr);
 
   std::vector<S2CellId> cover;
@@ -150,16 +146,14 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer* coverer) const
       break;
     }
     case ShapeContainer::Type::S2_MULTIPOINT: {  // multi-optimization
-      S2MultiPointRegion const* pts =
-          (static_cast<S2MultiPointRegion const*>(_data));
+      S2MultiPointRegion const* pts = (static_cast<S2MultiPointRegion const*>(_data));
       for (int k = 0; k < pts->num_points(); k++) {
         cover.emplace_back(S2CellId(pts->point(k)));
       }
       break;
     }
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {  // multi-optimization
-      S2MultiPolyline const* lines =
-          (static_cast<S2MultiPolyline const*>(_data));
+      S2MultiPolyline const* lines = (static_cast<S2MultiPolyline const*>(_data));
       for (size_t k = 0; k < lines->num_lines(); k++) {
         std::vector<S2CellId> tmp;
         coverer->GetCovering(*lines, &tmp);
@@ -198,14 +192,14 @@ void ShapeContainer::updateBounds(QueryParams& qp) const noexcept {
 
   S2LatLng ll(this->centroid());
   qp.origin = ll;
-  
+
   S2LatLngRect rect = _data->GetRectBound();
   if (!rect.is_empty() && !rect.is_point()) {
     S1Angle a1(ll, rect.lo());
     S1Angle a2(ll, S2LatLng(rect.lat_lo(), rect.lng_hi()));
     S1Angle a3(ll, S2LatLng(rect.lat_hi(), rect.lng_lo()));
     S1Angle a4(ll, rect.hi());
-    
+
     double rad = geo::kRadEps + std::max(std::max(a1.radians(), a2.radians()),
                                          std::max(a3.radians(), a4.radians()));
     qp.maxDistance = rad * kEarthRadiusInMeters;
@@ -274,8 +268,7 @@ bool ShapeContainer::contains(S2LatLngRect const* other) const {
   switch (_type) {
     case ShapeContainer::Type::S2_POINT:
       if (other->is_point()) {
-        return static_cast<S2PointRegion*>(_data)->point() ==
-               other->lo().ToPoint();
+        return static_cast<S2PointRegion*>(_data)->point() == other->lo().ToPoint();
       }
       return false;
 
@@ -428,8 +421,7 @@ bool ShapeContainer::equals(Coordinate const* cc) const {
   return false;
 }
 
-bool ShapeContainer::equals(Coordinate const& point,
-                            Coordinate const& other) const {
+bool ShapeContainer::equals(Coordinate const& point, Coordinate const& other) const {
   if (point.latitude == other.latitude && point.longitude == other.longitude) {
     return true;
   }
@@ -454,8 +446,7 @@ bool ShapeContainer::equals(S2Polyline const* other) const {
   return ll->Equals(other);
 }
 
-bool ShapeContainer::equals(S2Polyline const* poly,
-                            S2Polyline const* other) const {
+bool ShapeContainer::equals(S2Polyline const* poly, S2Polyline const* other) const {
   return poly->Equals(other);
 }
 
@@ -479,8 +470,7 @@ bool ShapeContainer::equals(ShapeContainer const* cc) const {
   switch (cc->_type) {
     case ShapeContainer::Type::S2_POINT: {
       S2Point const& p = static_cast<S2PointRegion*>(cc->_data)->point();
-      return equals(S2LatLng::Latitude(p).degrees(),
-                    S2LatLng::Longitude(p).degrees());
+      return equals(S2LatLng::Latitude(p).degrees(), S2LatLng::Longitude(p).degrees());
     }
     case ShapeContainer::Type::S2_POLYLINE: {
       return equals(static_cast<S2Polyline const*>(cc->_data));
@@ -500,11 +490,10 @@ bool ShapeContainer::equals(ShapeContainer const* cc) const {
       }
 
       for (int k = 0; k < pts1->num_points(); k++) {
-        if (!equals(
-                Coordinate(S2LatLng::Latitude(pts1->point(k)).degrees(),
-                           S2LatLng::Longitude(pts1->point(k)).degrees()),
-                Coordinate(S2LatLng::Latitude(pts2->point(k)).degrees(),
-                           S2LatLng::Longitude(pts2->point(k)).degrees()))) {
+        if (!equals(Coordinate(S2LatLng::Latitude(pts1->point(k)).degrees(),
+                               S2LatLng::Longitude(pts1->point(k)).degrees()),
+                    Coordinate(S2LatLng::Latitude(pts2->point(k)).degrees(),
+                               S2LatLng::Longitude(pts2->point(k)).degrees()))) {
           return false;
         }
       }
@@ -584,15 +573,15 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
     case ShapeContainer::Type::S2_POLYGON: {
       S2Polygon const* self = static_cast<S2Polygon const*>(_data);
       if (other->is_full()) {
-        return true; // rectangle spans entire sphere
+        return true;  // rectangle spans entire sphere
       } else if (other->is_point()) {
-        return self->Contains(other->lo().ToPoint()); // easy case
+        return self->Contains(other->lo().ToPoint());  // easy case
       } else if (!other->Intersects(self->GetRectBound())) {
-        return false; // cheap rejection
+        return false;  // cheap rejection
       }
       // construct bounding polyline of rect
       S2Polyline rectBound({other->GetVertex(0), other->GetVertex(1),
-        other->GetVertex(2), other->GetVertex(3)});
+                            other->GetVertex(2), other->GetVertex(3)});
       return self->Intersects(rectBound);
     }
 
@@ -621,11 +610,11 @@ bool ShapeContainer::intersects(S2Polygon const* other) const {
     case ShapeContainer::Type::S2_LATLNGRECT: {
       S2LatLngRect const* self = static_cast<S2LatLngRect const*>(_data);
       if (self->is_full()) {
-        return true; // rectangle spans entire sphere
+        return true;  // rectangle spans entire sphere
       } else if (self->is_point()) {
-        return other->Contains(self->lo().ToPoint()); // easy case
+        return other->Contains(self->lo().ToPoint());  // easy case
       } else if (!self->Intersects(other->GetRectBound())) {
-        return false; // cheap rejection
+        return false;  // cheap rejection
       }
       // construct bounding polyline of rect
       S2Polyline rectBound({self->GetVertex(0), self->GetVertex(1),

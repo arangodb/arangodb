@@ -24,16 +24,21 @@
 #include "SslClientConnection.h"
 
 #include <openssl/ssl.h>
+#include <openssl/opensslv.h>
+
+#ifndef OPENSSL_VERSION_NUMBER
+#error expecting OPENSSL_VERSION_NUMBER to be defined
+#endif
 
 #ifdef TRI_HAVE_WINSOCK2_H
-#include <WinSock2.h>
 #include <WS2tcpip.h>
+#include <WinSock2.h>
 #endif
 
 #include <sys/types.h>
 
-#include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/ssl.h>
 #include "Basics/Exceptions.h"
 #include "Basics/socket-utils.h"
 #include "Logger/Logger.h"
@@ -100,10 +105,9 @@ static char const* sslMessageType(int sslVersion, int msg) {
       case SSL2_MT_CLIENT_CERTIFICATE:
         return "Client CERT";
     }
-  }
-  else
+  } else
 #endif
-  if (sslVersion == SSL3_VERSION_MAJOR) {
+      if (sslVersion == SSL3_VERSION_MAJOR) {
     switch (msg) {
       case SSL3_MT_HELLO_REQUEST:
         return "Hello request";
@@ -149,42 +153,36 @@ static void sslTlsTrace(int direction, int sslVersion, int contentType,
     else
       tlsRtName = "";
 
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "SSL connection trace: " << (direction ? "out" : "in") << ", " << tlsRtName << ", " << sslMessageType(sslVersion, *static_cast<char const*>(buf));
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "SSL connection trace: " << (direction ? "out" : "in") << ", " << tlsRtName
+        << ", " << sslMessageType(sslVersion, *static_cast<char const*>(buf));
   }
 }
 #endif
 
-}
+}  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-SslClientConnection::SslClientConnection(Endpoint* endpoint,
-                                         double requestTimeout,
+SslClientConnection::SslClientConnection(Endpoint* endpoint, double requestTimeout,
                                          double connectTimeout,
-                                         size_t connectRetries,
-                                         uint64_t sslProtocol)
-    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout,
-                              connectRetries),
+                                         size_t connectRetries, uint64_t sslProtocol)
+    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries),
       _ssl(nullptr),
       _ctx(nullptr),
       _sslProtocol(sslProtocol) {
-
   init(sslProtocol);
 }
 
 SslClientConnection::SslClientConnection(std::unique_ptr<Endpoint>& endpoint,
-                                         double requestTimeout,
-                                         double connectTimeout,
-                                         size_t connectRetries,
-                                         uint64_t sslProtocol)
-    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout,
-                              connectRetries),
+                                         double requestTimeout, double connectTimeout,
+                                         size_t connectRetries, uint64_t sslProtocol)
+    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries),
       _ssl(nullptr),
       _ctx(nullptr),
       _sslProtocol(sslProtocol) {
-
   init(sslProtocol);
 }
 
@@ -215,7 +213,8 @@ void SslClientConnection::init(uint64_t sslProtocol) {
 
   switch (SslProtocol(sslProtocol)) {
     case SSL_V2:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "support for SSLv2 has been dropped");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                     "support for SSLv2 has been dropped");
 
 #ifndef OPENSSL_NO_SSL3_METHOD
     case SSL_V3:
@@ -227,29 +226,46 @@ void SslClientConnection::init(uint64_t sslProtocol) {
       meth = SSLv23_method();
       break;
 
-#if defined OPENSSL_VERSION_MAJOR && OPENSSL_VERSION_MAJOR == 1
-#if defined OPENSSL_VERSION_MINOR && OPENSSL_VERSION_MINOR >= 1
     case TLS_V1:
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      meth = TLS_client_method();
+#else
+      meth = TLSv1_method();
+#endif
+      break;
+
     case TLS_V12:
-    case SSL_UNKNOWN:
-    default:
-      // default is to use TLSv12
-      meth = TLS_method();
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      meth = TLS_client_method();
+#else
+      meth = TLSv1_2_method();
+#endif
+      break;
+
+    case TLS_V13:
+      // TLS 1.3, only supported from OpenSSL 1.1.1 onwards
+
+      // openssl version number format is
+      // MNNFFPPS: major minor fix patch status
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+      meth = TLS_client_method();
       break;
 #else
-    case TLS_V1:
-      meth = TLSv1_method();
-      break;
-    case TLS_V12:
-      meth = TLSv1_2_method();
-      break;
+      // no TLS 1.3 support
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                     "TLS 1.3 is not supported in this build");
+#endif
+
     case SSL_UNKNOWN:
     default:
-      // default is to use TLSv12
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      // The actual protocol version used will be negotiated to the highest version mutually supported by the client and the server. The supported protocols are SSLv3, TLSv1, TLSv1.1 and TLSv1.2. Applications should use these methods, and avoid the version-specific methods described below.
+      meth = TLS_method();
+#else
+      // default to TLS 1.2
       meth = TLSv1_2_method();
+#endif
       break;
-#endif
-#endif
   }
 
   _ctx = SSL_CTX_new(meth);
@@ -260,11 +276,11 @@ void SslClientConnection::init(uint64_t sslProtocol) {
 #endif
     SSL_CTX_set_cipher_list(_ctx, "ALL");
     // TODO: better use the following ciphers...
-    // SSL_CTX_set_cipher_list(_ctx, "ALL:!EXPORT:!EXPORT40:!EXPORT56:!aNULL:!LOW:!RC4:@STRENGTH");
+    // SSL_CTX_set_cipher_list(_ctx,
+    // "ALL:!EXPORT:!EXPORT40:!EXPORT56:!aNULL:!LOW:!RC4:@STRENGTH");
 
     bool sslCache = true;
-    SSL_CTX_set_session_cache_mode(
-        _ctx, sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
+    SSL_CTX_set_session_cache_mode(_ctx, sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
   }
 }
 
@@ -303,6 +319,7 @@ bool SslClientConnection::connectSocket() {
   switch (SslProtocol(_sslProtocol)) {
     case TLS_V1:
     case TLS_V12:
+    case TLS_V13:
     default:
       SSL_set_tlsext_host_name(_ssl, _endpoint->host().c_str());
   }
@@ -330,22 +347,23 @@ bool SslClientConnection::connectSocket() {
     long certError;
 
     errorDetail = SSL_get_error(_ssl, ret);
-    if ((errorDetail == SSL_ERROR_WANT_READ) ||
-        (errorDetail == SSL_ERROR_WANT_WRITE)) {
+    if ((errorDetail == SSL_ERROR_WANT_READ) || (errorDetail == SSL_ERROR_WANT_WRITE)) {
       return true;
     }
-      
+
     /* Gets the earliest error code from the
        thread's error queue and removes the entry. */
     unsigned long lastError = ERR_get_error();
-     
+
     if (errorDetail == SSL_ERROR_SYSCALL && lastError == 0) {
       if (ret == 0) {
-        _errorDetails += "an EOF was observed that violates the protocol. this may happen when the other side has closed the connection";
+        _errorDetails +=
+            "an EOF was observed that violates the protocol. this may happen "
+            "when the other side has closed the connection";
       } else if (ret == -1) {
         _errorDetails += "I/O reported by BIO";
       }
-    } 
+    }
 
     switch (errorDetail) {
       case 0x1407E086:
@@ -366,7 +384,8 @@ bool SslClientConnection::connectSocket() {
           _errorDetails += std::string("certificate problem: ") +
                            X509_verify_cert_error_string(certError);
         } else {
-          _errorDetails = std::string("certificate problem, verify that the CA cert is OK");
+          _errorDetails =
+              std::string("certificate problem, verify that the CA cert is OK");
         }
         break;
 
@@ -376,16 +395,16 @@ bool SslClientConnection::connectSocket() {
         _errorDetails += std::string(" - details: ") + errorBuffer;
         break;
     }
-    
+
     disconnectSocket();
     _isConnected = false;
     return false;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "SSL connection opened: " 
-             << SSL_get_cipher(_ssl) << ", " 
-             << SSL_get_cipher_version(_ssl) 
-             << " (" << SSL_get_cipher_bits(_ssl, nullptr) << " bits)"; 
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      << "SSL connection opened: " << SSL_get_cipher(_ssl) << ", "
+      << SSL_get_cipher_version(_ssl) << " ("
+      << SSL_get_cipher_bits(_ssl, nullptr) << " bits)";
 
   return true;
 }
@@ -408,8 +427,7 @@ void SslClientConnection::disconnectSocket() {
 /// @brief write data to the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SslClientConnection::writeClientConnection(void const* buffer,
-                                                size_t length,
+bool SslClientConnection::writeClientConnection(void const* buffer, size_t length,
                                                 size_t* bytesWritten) {
   TRI_ASSERT(bytesWritten != nullptr);
 
@@ -427,7 +445,9 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
   switch (err) {
     case SSL_ERROR_NONE:
       *bytesWritten = written;
-
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _written += written;
+#endif
       return true;
 
     case SSL_ERROR_ZERO_RETURN:
@@ -447,7 +467,7 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
       break;
     }
 
-    case SSL_ERROR_SSL:{
+    case SSL_ERROR_SSL: {
       /*  A failure in the SSL library occurred, usually a protocol error.
           The OpenSSL error queue contains more information on the error. */
       unsigned long errorDetail = ERR_get_error();
@@ -456,11 +476,10 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
       _errorDetails = std::string("SSL: while writing: ") + errorBuffer;
       break;
     }
-      
+
     default:
       /* a true error */
-      _errorDetails =
-          std::string("SSL: while writing: error ") + std::to_string(err);
+      _errorDetails = std::string("SSL: while writing: error ") + std::to_string(err);
   }
 
   return false;
@@ -470,8 +489,7 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
 /// @brief read data from the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SslClientConnection::readClientConnection(StringBuffer& stringBuffer,
-                                               bool& connectionClosed) {
+bool SslClientConnection::readClientConnection(StringBuffer& stringBuffer, bool& connectionClosed) {
 #ifdef _WIN32
   char windowsErrorBuf[256];
 #endif
@@ -502,6 +520,9 @@ bool SslClientConnection::readClientConnection(StringBuffer& stringBuffer,
     switch (SSL_get_error(_ssl, lenRead)) {
       case SSL_ERROR_NONE:
         stringBuffer.increaseLength(lenRead);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        _read += lenRead;
+#endif
         break;
 
       case SSL_ERROR_ZERO_RETURN:

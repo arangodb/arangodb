@@ -199,7 +199,7 @@ install:
   - cd %BOOST_ROOT%
   - bootstrap.bat
   - b2 --build-dir=%BOOST_ROOT%\build --build-type=complete stage address-model=64 --with-locale --with-system --with-thread
- 
+
   ############################################################################
   # Install Lz4
   ############################################################################
@@ -209,11 +209,11 @@ install:
   - appveyor-retry git clone --depth 1 --recursive --quiet %LZ4_URL% %LZ4_DIR%
   - cd %LZ4_DIR%
   - mkdir build && cd build
-  - cmake -DCMAKE_INSTALL_PREFIX=%LZ4_ROOT%\build -DBUILD_STATIC_LIBS=on -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ../contrib/cmake_unofficial
+  - cmake -DCMAKE_INSTALL_PREFIX=%LZ4_DIR%\build -DBUILD_SHARED_LIBS=ON -DBUILD_STATIC_LIBS=ON -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ../contrib/cmake_unofficial
   - cmake --build . %CMAKE_BUILD_OPTIONS%
   - cmake --build . --target install
-  - set LZ4_ROOT=%LZ4_ROOT%\build
-  
+  - set LZ4_ROOT=%LZ4_DIR%\build
+
   ############################################################################
   # Setup bison
   ############################################################################

@@ -40,6 +40,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/IResearchView.h"
 #include "Logger/Logger.h"
@@ -178,7 +179,7 @@ SECTION("test_defaults") {
     CHECK((true == !link));
   }
 
-  // no view can be found
+  // no view can be found (e.g. db-server coming up with view not available from Agency yet)
   {
     s.engine.views.clear();
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -187,8 +188,8 @@ SECTION("test_defaults") {
     REQUIRE((nullptr != logicalCollection));
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": \"42\" }");
     std::shared_ptr<arangodb::Index> link;
-    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(link, *logicalCollection, json->slice(), 1, false).errorNumber()));
-    CHECK((true == !link));
+    CHECK((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(link, *logicalCollection, json->slice(), 1, false).ok()));
+    CHECK((false == !link));
   }
 
   // valid link creation
@@ -214,7 +215,6 @@ SECTION("test_defaults") {
     CHECK((false == link->hasExpansion()));
     CHECK((false == link->hasSelectivityEstimate()));
     CHECK((false == link->implicitlyUnique()));
-    CHECK((true == link->isPersistent()));
     CHECK((false == link->isSorted()));
     CHECK((0 < link->memory()));
     CHECK((true == link->sparse()));
@@ -266,7 +266,6 @@ SECTION("test_defaults") {
     CHECK((false == link->hasExpansion()));
     CHECK((false == link->hasSelectivityEstimate()));
     CHECK((false == link->implicitlyUnique()));
-    CHECK((true == link->isPersistent()));
     CHECK((false == link->isSorted()));
     CHECK((0 < link->memory()));
     CHECK((true == link->sparse()));
@@ -498,7 +497,7 @@ SECTION("test_drop") {
     }
 
     CHECK((true == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(link0.get()) == *logicalView)));
-    CHECK((TRI_ERROR_NO_ERROR == link0->drop()));
+    CHECK((link0->drop().ok()));
     CHECK((true == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(link0.get()) == *logicalView)));
 
     // collection not in view after
@@ -649,7 +648,6 @@ SECTION("test_write") {
   REQUIRE((false == !link && created));
   auto reader = irs::directory_reader::open(directory);
   CHECK((0 == reader.reopen().live_docs_count()));
-  CHECK((TRI_ERROR_BAD_PARAMETER == link->insert(nullptr, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).errorNumber()));
   {
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
@@ -659,7 +657,9 @@ SECTION("test_write") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    CHECK((link->insert(&trx, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).ok()));
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    REQUIRE(l != nullptr);
+    CHECK((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
   }
 
@@ -676,7 +676,9 @@ SECTION("test_write") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    CHECK((link->insert(&trx, arangodb::LocalDocumentId(2), doc1->slice(), arangodb::Index::OperationMode::normal).ok()));
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    REQUIRE(l != nullptr);
+    CHECK((l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
   }
 
@@ -693,7 +695,9 @@ SECTION("test_write") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    CHECK((link->remove(&trx, arangodb::LocalDocumentId(2), doc1->slice(), arangodb::Index::OperationMode::normal).ok()));
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    REQUIRE(l != nullptr);
+    CHECK((l->remove(trx, arangodb::LocalDocumentId(2), doc1->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
   }
 

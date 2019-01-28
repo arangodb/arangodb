@@ -155,6 +155,6 @@ class RangeIterator {
    return _current != _end ? static_cast<EdgeEntry<E>>(_current) : nullptr;
    }*/
 };
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 #endif

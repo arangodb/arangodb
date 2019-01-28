@@ -1,0 +1,232 @@
+# Boost.Context Library Tests Jamfile
+
+#          Copyright Oliver Kowalke 2009.
+# Distributed under the Boost Software License, Version 1.0.
+#    (See accompanying file LICENSE_1_0.txt or copy at
+#          http://www.boost.org/LICENSE_1_0.txt)
+
+import common ;
+import feature ;
+import indirect ;
+import modules ;
+import os ;
+import testing ;
+import toolset ;
+import ../../config/checks/config : requires ;
+
+project boost/context/test
+    : requirements
+      <library>../../test/build//boost_unit_test_framework
+      <library>/boost/context//boost_context
+      <toolset>gcc,<segmented-stacks>on:<cxxflags>-fsplit-stack
+      <toolset>gcc,<segmented-stacks>on:<cxxflags>-DBOOST_USE_SEGMENTED_STACKS
+      <toolset>clang,<segmented-stacks>on:<cxxflags>-fsplit-stack
+      <toolset>clang,<segmented-stacks>on:<cxxflags>-DBOOST_USE_SEGMENTED_STACKS
+      <link>static
+      <threading>multi
+      <variant>release
+    ;
+
+
+rule native-impl ( properties * )
+{
+    local result  ;
+    if ( <target-os>darwin in $(properties) || <target-os>android in $(properties) )
+    {
+        result = <build>no ;
+    }
+    else if ( ! ( <target-os>windows in $(properties) ) )
+    {
+        result = <context-impl>ucontext ;
+    }
+    else
+    {
+        result = <context-impl>winfib ;
+    }
+    return $(result) ;
+}
+
+rule segmented-stack ( properties * )
+{
+    local result  ;
+    if ( <toolset>gcc in $(properties) )
+    {
+        result = <segmented-stacks>on ;
+    }
+    else
+    {
+        result = <build>no ;
+    }
+    return $(result) ;
+}
+
+test-suite minimal :
+[ run test_invoke.cpp :
+    : :
+    [ requires cxx11_auto_declarations
+               cxx11_constexpr
+               cxx11_defaulted_functions
+               cxx11_final
+               cxx11_hdr_thread
+               cxx11_hdr_tuple
+               cxx11_lambdas
+               cxx11_noexcept
+               cxx11_nullptr
+               cxx11_rvalue_references
+               cxx11_template_aliases
+               cxx11_thread_local
+               cxx11_variadic_templates ] ]
+
+[ run test_apply.cpp :
+    : :
+    [ requires cxx11_auto_declarations
+               cxx11_constexpr
+               cxx11_defaulted_functions
+               cxx11_final
+               cxx11_hdr_thread
+               cxx11_hdr_tuple
+               cxx11_lambdas
+               cxx11_noexcept
+               cxx11_nullptr
+               cxx11_rvalue_references
+               cxx11_template_aliases
+               cxx11_thread_local
+               cxx11_variadic_templates ] ]
+
+[ run test_fiber.cpp :
+    : :
+    <context-impl>fcontext
+    [ requires cxx11_auto_declarations
+               cxx11_constexpr
+               cxx11_defaulted_functions
+               cxx11_final
+               cxx11_hdr_thread
+               cxx11_hdr_tuple
+               cxx11_lambdas
+               cxx11_noexcept
+               cxx11_nullptr
+               cxx11_rvalue_references
+               cxx11_template_aliases
+               cxx11_thread_local
+               cxx11_variadic_templates ]
+    : test_fiber_asm ]
+
+[ run test_fiber.cpp :
+    : :
+    <conditional>@native-impl
+    [ requires cxx11_auto_declarations
+               cxx11_constexpr
+               cxx11_defaulted_functions
+               cxx11_final
+               cxx11_hdr_thread
+               cxx11_hdr_tuple
+               cxx11_lambdas
+               cxx11_noexcept
+               cxx11_nullptr
+               cxx11_rvalue_references
+               cxx11_template_aliases
+               cxx11_thread_local
+               cxx11_variadic_templates ]
+    : test_fiber_native ]
+
+[ run test_fiber.cpp :
+    : :
+    <context-impl>ucontext
+    <conditional>@segmented-stack
+    [ requires cxx11_auto_declarations
+               cxx11_constexpr
+               cxx11_defaulted_functions
+               cxx11_final
+               cxx11_hdr_thread
+               cxx11_hdr_tuple
+               cxx11_lambdas
+               cxx11_noexcept
+               cxx11_nullptr
+               cxx11_rvalue_references
+               cxx11_template_aliases
+               cxx11_thread_local
+               cxx11_variadic_templates ]
+    : test_fiber_segmented ]
+
+[ run test_callcc.cpp :
+    : :
+    <context-impl>fcontext
+    [ requires cxx11_auto_declarations
+               cxx11_constexpr
+               cxx11_defaulted_functions
+               cxx11_final
+               cxx11_hdr_thread
+               cxx11_hdr_tuple
+               cxx11_lambdas
+               cxx11_noexcept
+               cxx11_nullptr
+               cxx11_rvalue_references
+               cxx11_template_aliases
+               cxx11_thread_local
+               cxx11_variadic_templates ]
+    : test_callcc_asm ]
+
+[ run test_callcc.cpp :
+    : :
+    <conditional>@native-impl
+    [ requires cxx11_auto_declarations
+               cxx11_constexpr
+               cxx11_defaulted_functions
+               cxx11_final
+               cxx11_hdr_thread
+               cxx11_hdr_tuple
+               cxx11_lambdas
+               cxx11_noexcept
+               cxx11_nullptr
+               cxx11_rvalue_references
+               cxx11_template_aliases
+               cxx11_thread_local
+               cxx11_variadic_templates ]
+    : test_callcc_native ]
+
+[ run test_callcc.cpp :
+    : :
+    <context-impl>ucontext
+    <conditional>@segmented-stack
+    [ requires cxx11_auto_declarations
+               cxx11_constexpr
+               cxx11_defaulted_functions
+               cxx11_final
+               cxx11_hdr_thread
+               cxx11_hdr_tuple
+               cxx11_lambdas
+               cxx11_noexcept
+               cxx11_nullptr
+               cxx11_rvalue_references
+               cxx11_template_aliases
+               cxx11_thread_local
+               cxx11_variadic_templates ]
+    : test_callcc_segmented ]
+
+[ run test_execution_context_v2.cpp :
+    : :
+    [ requires cxx11_auto_declarations
+               cxx11_constexpr
+               cxx11_defaulted_functions
+               cxx11_final
+               cxx11_hdr_thread
+               cxx11_hdr_tuple
+               cxx11_lambdas
+               cxx11_noexcept
+               cxx11_nullptr
+               cxx11_rvalue_references
+               cxx11_template_aliases
+               cxx11_thread_local
+               cxx11_variadic_templates ] ] ;
+
+
+test-suite full :
+    minimal ;
+
+test-suite fc :
+[ run test_fcontext.cpp :
+    : :
+    ] ;
+
+explicit minimal ;
+explicit fc ;

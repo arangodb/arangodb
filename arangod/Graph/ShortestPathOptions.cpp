@@ -47,8 +47,7 @@ ShortestPathOptions::ShortestPathOptions(aql::Query* query)
       bidirectional(true),
       multiThreaded(true) {}
 
-ShortestPathOptions::ShortestPathOptions(aql::Query* query,
-                                         VPackSlice const& info)
+ShortestPathOptions::ShortestPathOptions(aql::Query* query, VPackSlice const& info)
     : BaseOptions(query),
       direction("outbound"),
       weightAttribute(""),
@@ -67,8 +66,7 @@ ShortestPathOptions::ShortestPathOptions(aql::Query* query,
       VelocyPackHelper::getNumericValue<double>(info, "defaultWeight", 1);
 }
 
-ShortestPathOptions::ShortestPathOptions(aql::Query* query, VPackSlice info,
-                                         VPackSlice collections)
+ShortestPathOptions::ShortestPathOptions(aql::Query* query, VPackSlice info, VPackSlice collections)
     : BaseOptions(query, info, collections),
       direction("outbound"),
       weightAttribute(""),
@@ -168,11 +166,11 @@ double ShortestPathOptions::estimateCost(size_t& nrItems) const {
   return std::pow(baseCost, 7);
 }
 
-void ShortestPathOptions::addReverseLookupInfo(
-    aql::ExecutionPlan* plan, std::string const& collectionName,
-    std::string const& attributeName, aql::AstNode* condition) {
-  injectLookupInfoInList(_reverseLookupInfos, plan, collectionName,
-                         attributeName, condition);
+void ShortestPathOptions::addReverseLookupInfo(aql::ExecutionPlan* plan,
+                                               std::string const& collectionName,
+                                               std::string const& attributeName,
+                                               aql::AstNode* condition) {
+  injectLookupInfoInList(_reverseLookupInfos, plan, collectionName, attributeName, condition);
 }
 
 double ShortestPathOptions::weightEdge(VPackSlice edge) {
@@ -181,8 +179,7 @@ double ShortestPathOptions::weightEdge(VPackSlice edge) {
       edge, weightAttribute.c_str(), defaultWeight);
 }
 
-EdgeCursor* ShortestPathOptions::nextCursor(ManagedDocumentResult* mmdr,
-                                            StringRef vid) {
+EdgeCursor* ShortestPathOptions::nextCursor(ManagedDocumentResult* mmdr, StringRef vid) {
   if (_isCoordinator) {
     return nextCursorCoordinator(vid);
   }
@@ -190,8 +187,7 @@ EdgeCursor* ShortestPathOptions::nextCursor(ManagedDocumentResult* mmdr,
   return nextCursorLocal(mmdr, vid, _baseLookupInfos);
 }
 
-EdgeCursor* ShortestPathOptions::nextReverseCursor(ManagedDocumentResult* mmdr,
-                                                   StringRef vid) {
+EdgeCursor* ShortestPathOptions::nextReverseCursor(ManagedDocumentResult* mmdr, StringRef vid) {
   if (_isCoordinator) {
     return nextReverseCursorCoordinator(vid);
   }
@@ -209,19 +205,18 @@ EdgeCursor* ShortestPathOptions::nextReverseCursorCoordinator(StringRef vid) {
   return cursor.release();
 }
 
-void ShortestPathOptions::fetchVerticesCoordinator(
-    std::deque<StringRef> const& vertexIds) {
-  //TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
+void ShortestPathOptions::fetchVerticesCoordinator(std::deque<StringRef> const& vertexIds) {
+  // TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   if (!arangodb::ServerState::instance()->isCoordinator()) {
     return;
   }
-  
+
   // In Coordinator all caches are ClusterTraverserCache instances
   auto ch = reinterpret_cast<ClusterTraverserCache*>(cache());
   TRI_ASSERT(ch != nullptr);
   // get the map of _ids into the datalake
   std::unordered_map<StringRef, VPackSlice>& cache = ch->cache();
-  
+
   std::unordered_set<StringRef> fetch;
   for (auto it : vertexIds) {
     if (cache.find(it) == cache.end()) {
@@ -232,13 +227,7 @@ void ShortestPathOptions::fetchVerticesCoordinator(
   if (!fetch.empty()) {
     transaction::BuilderLeaser leased(trx());
 
-    fetchVerticesFromEngines(
-      trx()->vocbase().name(),
-      ch->engines(),
-      fetch,
-      cache,
-      ch->datalake(),
-      *(leased.get())
-    );
+    fetchVerticesFromEngines(trx()->vocbase().name(), ch->engines(), fetch,
+                             cache, ch->datalake(), *(leased.get()));
   }
 }

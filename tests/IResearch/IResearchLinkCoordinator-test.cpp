@@ -252,7 +252,6 @@ SECTION("test_create_drop") {
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE(nullptr != ci);
 
-  std::string error;
   TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
 
   // create database
@@ -265,10 +264,7 @@ SECTION("test_create_drop") {
     CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
     CHECK(1 == vocbase->id());
 
-    CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
-      vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
-    ));
-    CHECK("no error" == error);
+    CHECK((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0).ok()));
   }
 
   // create collection
@@ -280,9 +276,7 @@ SECTION("test_create_drop") {
       "{ \"name\": \"testCollection\", \"replicationFactor\":1, \"shards\":{} }"
     );
 
-    CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
-      vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
-    ));
+    CHECK((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), 0.0).ok()));
 
     logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     REQUIRE((nullptr != logicalCollection));
@@ -298,12 +292,12 @@ SECTION("test_create_drop") {
     CHECK(!link);
   }
 
-  // no view can be found
+  // no view can be found (e.g. db-server coming up with view not available from Agency yet)
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": \"42\" }");
     std::shared_ptr<arangodb::Index> link;
-    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(link, *logicalCollection.get(), json->slice(), 1, true).errorNumber()));
-    CHECK(!link);
+    CHECK((arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(link, *logicalCollection.get(), json->slice(), 1, true).ok()));
+    CHECK((false ==!link));
   }
 
   auto const currentCollectionPath =
@@ -347,7 +341,6 @@ SECTION("test_create_drop") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));
@@ -359,7 +352,7 @@ SECTION("test_create_drop") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
-    error.clear();
+    std::string error;
     CHECK(actualMeta.init(builder->slice(), error));
     CHECK(error.empty());
     CHECK(expectedMeta == actualMeta);
@@ -456,7 +449,6 @@ SECTION("test_create_drop") {
     CHECK((false == index->hasExpansion()));
     CHECK((false == index->hasSelectivityEstimate()));
     CHECK((false == index->implicitlyUnique()));
-    CHECK((true == index->isPersistent()));
     CHECK((false == index->isSorted()));
     CHECK((0 < index->memory()));
     CHECK((true == index->sparse()));

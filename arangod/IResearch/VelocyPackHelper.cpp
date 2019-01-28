@@ -26,13 +26,11 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
-bool mergeSlice(
-    arangodb::velocypack::Builder& builder,
-    arangodb::velocypack::Slice const& slice
-) {
+bool mergeSlice(arangodb::velocypack::Builder& builder,
+                arangodb::velocypack::Slice const& slice) {
   if (builder.isOpenArray()) {
     if (slice.isArray()) {
       builder.add(arangodb::velocypack::ArrayIterator(slice));
@@ -52,13 +50,11 @@ bool mergeSlice(
   return false;
 }
 
-bool mergeSliceSkipKeys(
-  arangodb::velocypack::Builder& builder,
-  arangodb::velocypack::Slice const& slice,
-  std::function<bool(irs::string_ref const& key)> const& acceptor
-) {
+bool mergeSliceSkipKeys(arangodb::velocypack::Builder& builder,
+                        arangodb::velocypack::Slice const& slice,
+                        std::function<bool(irs::string_ref const& key)> const& acceptor) {
   if (!builder.isOpenObject() || !slice.isObject()) {
-    return mergeSlice(builder, slice); // no keys to skip for non-objects
+    return mergeSlice(builder, slice);  // no keys to skip for non-objects
   }
 
   for (arangodb::velocypack::ObjectIterator itr(slice); itr.valid(); ++itr) {
@@ -79,13 +75,11 @@ bool mergeSliceSkipKeys(
   return true;
 }
 
-bool mergeSliceSkipOffsets(
-  arangodb::velocypack::Builder& builder,
-  arangodb::velocypack::Slice const& slice,
-  std::function<bool(size_t offset)> const& acceptor
-) {
+bool mergeSliceSkipOffsets(arangodb::velocypack::Builder& builder,
+                           arangodb::velocypack::Slice const& slice,
+                           std::function<bool(size_t offset)> const& acceptor) {
   if (!builder.isOpenArray() || !slice.isArray()) {
-    return mergeSlice(builder, slice); // no offsets to skip for non-arrays
+    return mergeSlice(builder, slice);  // no offsets to skip for non-arrays
   }
 
   for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -107,8 +101,8 @@ void Iterator::reset() {
 
   // according to Iterator.h:160 and Iterator.h:194
   auto const offset = isCompactArrayOrObject(_slice)
-    ? _slice.getNthOffset(0)
-    : _slice.findDataOffset(_slice.head());
+                          ? _slice.getNthOffset(0)
+                          : _slice.findDataOffset(_slice.head());
 
   _value.reset(_slice.start() + offset);
 }
@@ -150,9 +144,9 @@ ObjectIterator& ObjectIterator::operator++() {
   return *this;
 }
 
-NS_END // iresearch
-NS_END // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
+// --SECTION-- END-OF-FILE
 // -----------------------------------------------------------------------------

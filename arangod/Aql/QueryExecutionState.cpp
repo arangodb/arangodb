@@ -27,15 +27,15 @@ using namespace arangodb::aql;
 
 /// @brief names of query phases / states
 static std::string const StateNames[] = {
-    "initializing",        // INITIALIZATION
-    "parsing",             // PARSING
-    "optimizing ast",      // AST_OPTIMIZATION
-    "loading collections", // LOADING_COLLECTIONS
-    "instantiating plan",  // PLAN_INSTANTIATION
-    "optimizing plan",     // PLAN_OPTIMIZATION
-    "executing",           // EXECUTION
-    "finalizing",          // FINALIZATION
-    "finished",            // FINISHED
+    "initializing",         // INITIALIZATION
+    "parsing",              // PARSING
+    "optimizing ast",       // AST_OPTIMIZATION
+    "loading collections",  // LOADING_COLLECTIONS
+    "instantiating plan",   // PLAN_INSTANTIATION
+    "optimizing plan",      // PLAN_OPTIMIZATION
+    "executing",            // EXECUTION
+    "finalizing",           // FINALIZATION
+    "finished",             // FINISHED
 
     "invalid"  // INVALID
 };
@@ -60,12 +60,14 @@ std::string QueryExecutionState::toString(QueryExecutionState::ValueType state) 
   return StateNames[static_cast<int>(state)];
 }
 
-/// @brief get a description of the query's current state, prefixed with " (while "
+/// @brief get a description of the query's current state, prefixed with "
+/// (while "
 std::string QueryExecutionState::toStringWithPrefix(QueryExecutionState::ValueType state) {
   return std::string(" (while " + StateNames[static_cast<int>(state)] + ")");
 }
 
-std::ostream& operator<<(std::ostream& stream, arangodb::aql::QueryExecutionState::ValueType state) {
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::aql::QueryExecutionState::ValueType state) {
   stream << StateNames[static_cast<int>(state)];
   return stream;
 }

@@ -29,8 +29,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
-#include "Transaction/StandaloneContext.h"
 #include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -42,18 +42,16 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
-ResignShardLeadership::ResignShardLeadership(
-  MaintenanceFeature& feature, ActionDescription const& desc)
-  : ActionBase(feature, desc) {
-
+ResignShardLeadership::ResignShardLeadership(MaintenanceFeature& feature,
+                                             ActionDescription const& desc)
+    : ActionBase(feature, desc) {
   std::stringstream error;
-  
+
   _labels.emplace(FAST_TRACK);
 
   if (!desc.has(DATABASE)) {
@@ -71,18 +69,16 @@ ResignShardLeadership::ResignShardLeadership(
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
-
 }
 
-ResignShardLeadership::~ResignShardLeadership() {};
+ResignShardLeadership::~ResignShardLeadership(){};
 
 bool ResignShardLeadership::first() {
-
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(SHARD);
 
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-    << "trying to withdraw as leader of shard '" << database << "/" << collection;
+      << "trying to withdraw as leader of shard '" << database << "/" << collection;
 
   // This starts a write transaction, just to wait for any ongoing
   // write transaction on this shard to terminate. We will then later
@@ -92,11 +88,10 @@ bool ResignShardLeadership::first() {
   // problem, since similar problems can arise in failover scenarios anyway.
 
   try {
-
     // Guard database againts deletion for now
     DatabaseGuard guard(database);
     auto vocbase = &guard.database();
-    
+
     auto col = vocbase->lookupCollection(collection);
     if (col == nullptr) {
       std::stringstream error;
@@ -135,5 +130,4 @@ bool ResignShardLeadership::first() {
 
   notify();
   return false;
-
 }

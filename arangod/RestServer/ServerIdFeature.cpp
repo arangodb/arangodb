@@ -36,9 +36,7 @@ namespace arangodb {
 
 TRI_server_id_t ServerIdFeature::SERVERID = 0;
 
-ServerIdFeature::ServerIdFeature(
-    application_features::ApplicationServer& server
-)
+ServerIdFeature::ServerIdFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ServerId") {
   setOptional(false);
   startsAfter("BasicsPhase");
@@ -48,11 +46,14 @@ ServerIdFeature::ServerIdFeature(
 }
 
 void ServerIdFeature::start() {
-  auto databasePath = application_features::ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
+  auto databasePath =
+      application_features::ApplicationServer::getFeature<DatabasePathFeature>(
+          "DatabasePath");
   _idFilename = databasePath->subdirectoryName("SERVER");
 
-  auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
-  
+  auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>(
+      "Database");
+
   // read the server id or create a new one
   bool const checkVersion = database->checkVersion();
   int res = determineId(checkVersion);
@@ -70,7 +71,8 @@ void ServerIdFeature::start() {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "reading/creating server id file failed: " << TRI_errno_string(res);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "reading/creating server id file failed: " << TRI_errno_string(res);
     THROW_ARANGO_EXCEPTION(res);
   }
 }
@@ -86,7 +88,6 @@ void ServerIdFeature::generateId() {
 
   TRI_ASSERT(SERVERID != 0);
 }
-
 
 /// @brief reads server id from file
 int ServerIdFeature::readId() {
@@ -142,18 +143,21 @@ int ServerIdFeature::writeId() {
     builder.close();
   } catch (...) {
     // out of memory
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save server id in file '" << _idFilename
-             << "': out of memory";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save server id in file '"
+                                            << _idFilename << "': out of memory";
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // save json info to file
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Writing server id to file '" << _idFilename << "'";
-  bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(
-      _idFilename, builder.slice(), true);
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+      << "Writing server id to file '" << _idFilename << "'";
+  bool ok = arangodb::basics::VelocyPackHelper::velocyPackToFile(_idFilename,
+                                                                 builder.slice(), true);
 
   if (!ok) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not save server id in file '" << _idFilename << "': " << TRI_last_error();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "could not save server id in file '" << _idFilename
+        << "': " << TRI_last_error();
 
     return TRI_ERROR_INTERNAL;
   }
@@ -172,7 +176,7 @@ int ServerIdFeature::determineId(bool checkVersion) {
 
     // id file does not yet exist. now create it
     generateId();
-    
+
     // id was generated. now save it
     res = writeId();
   }
@@ -180,4 +184,4 @@ int ServerIdFeature::determineId(bool checkVersion) {
   return res;
 }
 
-} // arangodb
+}  // namespace arangodb

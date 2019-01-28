@@ -42,19 +42,15 @@ namespace transaction {
 class Methods;
 struct Options;
 
-}
+}  // namespace transaction
 
 class TransactionCollection;
 
 /// @brief transaction type
 class ClusterTransactionState final : public TransactionState {
-
  public:
-  ClusterTransactionState(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_tid_t tid,
-    transaction::Options const& options
-  );
+  ClusterTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+                          transaction::Options const& options);
   ~ClusterTransactionState();
 
   /// @brief begin a transaction
@@ -65,11 +61,8 @@ class ClusterTransactionState final : public TransactionState {
 
   /// @brief abort a transaction
   Result abortTransaction(transaction::Methods* trx) override;
-  
-  bool hasFailedOperations() const override {
-    return false;
-  }
 
+  bool hasFailedOperations() const override { return false; }
 };
 
 }  // namespace arangodb
