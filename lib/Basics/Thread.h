@@ -52,7 +52,7 @@ class Thread {
 #error OS not supported
 #endif
 
-  enum class ThreadState { CREATED, STARTED, STOPPING, STOPPED, DETACHED };
+  enum class ThreadState { CREATED, STARTING, STARTED, STOPPING, STOPPED };
 
   static std::string stringify(ThreadState);
 
@@ -90,17 +90,14 @@ class Thread {
   virtual bool isSilent() { return false; }
 
   /// @brief flags the thread as stopping
+  /// Classes that override this function must ensure that they
+  /// always call Thread::beginShutdown()!
   virtual void beginShutdown();
 
   bool runningInThisThread() const {
     return currentThreadNumber() == this->threadNumber();
   }
 
- protected:
-  /// @brief called from the destructor
-  void shutdown();
-
- public:
   /// @brief name of a thread
   std::string const& name() const { return _name; }
 
@@ -123,23 +120,36 @@ class Thread {
   /// @brief starts the thread
   bool start(basics::ConditionVariable* _finishedCondition = nullptr);
 
-  /// @brief optional notification call when thread gets unplanned exception
-  virtual void crashNotification(std::exception const&) {}
-
  protected:
+  /// @brief MUST be called from the destructor of the MOST DERIVED class
+  ///
+  /// shutdown sets the _state to signal the thread that it should stop
+  /// and waits for the thread to finish. This is necessary to avoid any
+  /// races in the destructor.
+  /// That is also the reason why it has to be called by the MOST DERIVED
+  /// class (potential race on the objects vtable). Usually the call to
+  /// shutdown should be the very first thing in the destructur. Any access
+  /// to members of the thread that happen before the call to shutdown must
+  /// be threadsafe!
+  void shutdown();
+
   /// @brief the thread program
   virtual void run() = 0;
+
+  /// @brief optional notification call when thread gets unplanned exception
+  virtual void crashNotification(std::exception const&) {}
 
  private:
   /// @brief static started with access to the private variables
   static void startThread(void* arg);
   void markAsStopped();
   void runMe();
-  void cleanupMe();
+  void releaseRef();
 
  private:
   bool const _deleteOnExit;
   bool _threadStructInitialized;
+  std::atomic<int> _refs;
 
   // name of the thread
   std::string const _name;
