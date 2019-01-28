@@ -264,7 +264,7 @@ namespace {
 struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
   arangodb::Index::IndexType const _type;
 
-  DefaultIndexFactory(arangodb::Index::IndexType type) : _type(type) {}
+  explicit DefaultIndexFactory(arangodb::Index::IndexType type) : _type(type) {}
 
   virtual bool equal(arangodb::velocypack::Slice const& lhs,
                      arangodb::velocypack::Slice const& rhs) const override {
