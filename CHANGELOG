@@ -21,6 +21,8 @@ v3.4.2 (2019-01-24)
 
       FILTER (... && ...) || doc.indexAttribute IN non-empty-array
 
+* added configurable masking of dumped data via `arangodump` tool to obfuscate exported sensible data
+
 * upgraded arangodb starter version to 0.14.0
 
 * upgraded arangosync version to 0.6.2
