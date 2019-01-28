@@ -175,11 +175,11 @@ void Thread::beginShutdown() {
   ThreadState state = _state.load();
 
   while (state == ThreadState::CREATED) {
-    _state.compare_exchange_strong(state, ThreadState::STOPPED);
+    _state.compare_exchange_weak(state, ThreadState::STOPPED);
   }
 
   while (state != ThreadState::STOPPING && state != ThreadState::STOPPED) {
-    _state.compare_exchange_strong(state, ThreadState::STOPPING);
+    _state.compare_exchange_weak(state, ThreadState::STOPPING);
   }
 
   LOG_TOPIC(TRACE, Logger::THREADS) << "beginShutdown(" << _name << ") reached state "
