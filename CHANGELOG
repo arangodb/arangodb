@@ -3,25 +3,25 @@ v3.4.3 (XXXX-XX-XX)
 
 * updated bundled curl library to version 7.63.0
 
+* added "peakMemoryUsage" in query results figures, showing the peak memory
+  usage of the executed query. In a cluster, the value contains the peak memory
+  usage across all shards, but it is not summed up across shards.
+
+
+v3.4.2 (2019-01-24)
+-------------------
+
 * fixed an issue with AQL query IN index lookup conditions being converted into
   empty arrays when they were shared between multiple nodes of a lookup condition
   that used an IN array lookup in an OR that was multiplied due to DNF transformations
-  
+
   This issue affected queries such as the following
 
       FILTER (... && ...) || doc.indexAttribute IN non-empty-array
 
-* added "peakMemoryUsage" in query results figures, showing the peak memory
-  usage of the executed query. In a cluster, the value contains the peak memory 
-  usage across all shards, but it is not summed up across shards.
-  
-
-v3.4.2 (2019-01-15)
--------------------
-
 * upgraded arangodb starter version to 0.14.0
 
-* upgraded arangosync version to 0.6.1
+* upgraded arangosync version to 0.6.2
 
 * fixed an issue where a crashed coordinator can lead to some Foxx queue jobs
   erroneously either left hanging or being restarted
@@ -29,7 +29,7 @@ v3.4.2 (2019-01-15)
 * fix issue #7903: Regression on ISO8601 string compatibility in AQL
 
   millisecond parts of AQL date values were limited to up to 3 digits.
-  Now the length of the millisecond part is unrestricted, but the 
+  Now the length of the millisecond part is unrestricted, but the
   millisecond precision is still limited to up to 3 digits.
 
 * fix issue #7900: Bind values of `null` are not replaced by
@@ -855,39 +855,39 @@ v3.4.0-rc.1 (2018-09-06)
   * in case only a few results are used from a non-modifying subquery, the rule
     will add a LIMIT statement into the subquery. For example
 
-        LET docs = (
-          FOR doc IN collection
-            FILTER ...
-            RETURN doc
-        )
-        RETURN docs[0]
+	LET docs = (
+	  FOR doc IN collection
+	    FILTER ...
+	    RETURN doc
+	)
+	RETURN docs[0]
 
     will be turned into
 
-        LET docs = (
-          FOR doc IN collection
-            FILTER ...
-            LIMIT 1
-            RETURN doc
-        )
-        RETURN docs[0]
+	LET docs = (
+	  FOR doc IN collection
+	    FILTER ...
+	    LIMIT 1
+	    RETURN doc
+	)
+	RETURN docs[0]
 
     Another optimization performed by this rule is to modify the result value
     of subqueries in case only the number of results is checked later. For example
 
-        RETURN LENGTH(
-          FOR doc IN collection
-            FILTER ...
-            RETURN doc
-        )
+	RETURN LENGTH(
+	  FOR doc IN collection
+	    FILTER ...
+	    RETURN doc
+	)
 
     will be turned into
 
-        RETURN LENGTH(
-          FOR doc IN collection
-            FILTER ...
-            RETURN true
-        )
+	RETURN LENGTH(
+	  FOR doc IN collection
+	    FILTER ...
+	    RETURN true
+	)
 
   This saves copying the document data from the subquery to the outer scope and may
   enable follow-up optimizations.
@@ -1877,16 +1877,16 @@ v3.3.4 (2018-03-01)
   --javascript.app-path it will now be created (if possible)
 
 * fixed: REST API `POST _api/foxx` now returns HTTP code 201 on success, as documented.
-         returned 200 before.
+	 returned 200 before.
 
 * fixed: REST API `PATCH _api/foxx/dependencies` now updates the existing dependencies
-         instead of replacing them.
+	 instead of replacing them.
 
 * fixed: Foxx upload of single javascript file. You now can upload via http-url pointing
-         to a javascript file.
+	 to a javascript file.
 
 * fixed issue #4395: If your foxx app includes an `APP` folder it got
-         accidently removed by selfhealing this is not the case anymore.
+	 accidently removed by selfhealing this is not the case anymore.
 
 * fixed internal issue #1969 - command apt-get purge/remove arangodb3e was failing
 
@@ -2126,7 +2126,7 @@ v3.3.rc1 (2017-11-17)
       arangosh1> db._collections();  // shell1 lists all collections
       arangosh2> db._create("test"); // shell2 now creates a new collection 'test'
       arangosh1> db.test.insert({}); // shell1 is not aware of the collection created
-                                     // in shell2, so the insert will fail
+				     // in shell2, so the insert will fail
 
 * make AQL `DISTINCT` not change the order of the results it is applied on
 
@@ -2325,16 +2325,16 @@ v3.2.12 (2018-02-27)
   --javascript.app-path it will now be created (if possible)
 
 * fixed: REST API `POST _api/foxx` now returns HTTP code 201 on success, as documented.
-         returned 200 before.
+	 returned 200 before.
 
 * fixed: REST API `PATCH _api/foxx/dependencies` now updates the existing dependencies
-         instead of replacing them.
+	 instead of replacing them.
 
 * fixed: Foxx upload of single javascript file. You now can upload via http-url pointing
-         to a javascript file.
+	 to a javascript file.
 
 * fixed issue #4395: If your foxx app includes an `APP` folder it got accidently removed by selfhealing
-         this is not the case anymore.
+	 this is not the case anymore.
 
 * fix internal issue 1770: collection creation using distributeShardsLike yields
   errors and did not distribute shards correctly in the following cases:
@@ -2959,7 +2959,7 @@ v3.2.1 (2017-08-09)
       // set to false to turn tracking of bind variables off
       var value = true;
       require("@arangodb/aql/queries").properties({
-        trackBindVars: value
+	trackBindVars: value
       });
 
 * index selectivity estimates are now available in the cluster as well
@@ -3277,15 +3277,15 @@ v3.2.alpha4 (2017-04-25)
   and `doc.longitude` attributes):
 
       FOR doc in geoSort
-        SORT DISTANCE(doc.latitude, doc.longitude, 0, 0)
-        LIMIT 5
-        RETURN doc
+	SORT DISTANCE(doc.latitude, doc.longitude, 0, 0)
+	LIMIT 5
+	RETURN doc
 
   `WITHIN` can be substituted with the following AQL:
 
       FOR doc in geoFilter
-        FILTER DISTANCE(doc.latitude, doc.longitude, 0, 0) < 2000
-        RETURN doc
+	FILTER DISTANCE(doc.latitude, doc.longitude, 0, 0) < 2000
+	RETURN doc
 
   Compared to using the special purpose AQL functions this approach has the
   advantage that it is more composable, and will also honor any `LIMIT` values
@@ -3802,21 +3802,21 @@ v3.1.10 (2017-02-02)
 
       db._create("test", { numberOfShards: 10 });
       for (i = 0; i < 1000; ++i) {
-        db.test.insert({value: i});
+	db.test.insert({value: i});
       }
       db.test.count(true);
 
       {
-        "s100058" : 99,
-        "s100057" : 103,
-        "s100056" : 100,
-        "s100050" : 94,
-        "s100055" : 90,
-        "s100054" : 122,
-        "s100051" : 109,
-        "s100059" : 99,
-        "s100053" : 95,
-        "s100052" : 89
+	"s100058" : 99,
+	"s100057" : 103,
+	"s100056" : 100,
+	"s100050" : 94,
+	"s100055" : 90,
+	"s100054" : 122,
+	"s100051" : 109,
+	"s100059" : 99,
+	"s100053" : 95,
+	"s100052" : 89
       }
 
 * added optional memory limit for AQL queries:
@@ -4174,10 +4174,10 @@ v3.1.alpha2 (2016-09-01)
   For example, in the following query
 
       FOR doc IN collection
-        LET cond1 = (doc.value == 1)
-        LET cond2 = (doc.value == 2)
-        FILTER cond1 || cond2
-        RETURN { doc, cond1, cond2 }
+	LET cond1 = (doc.value == 1)
+	LET cond2 = (doc.value == 2)
+	FILTER cond1 || cond2
+	RETURN { doc, cond1, cond2 }
 
   the optimizer will now inject the conditions for `cond1` and `cond2` into the filter
   condition `cond1 || cond2`, expanding it to `(doc.value == 1) || (doc.value == 2)`
@@ -4188,9 +4188,9 @@ v3.1.alpha2 (2016-09-01)
   elsewhere. For example, the filter condition in the query
 
       FOR doc IN collection
-        LET cond = (doc.value == 1)
-        FILTER cond
-        RETURN { doc }
+	LET cond = (doc.value == 1)
+	FILTER cond
+	RETURN { doc }
 
   already got optimized before because `cond` was only used once in the query and
   the optimizer decided to inject it into the place where it was used.
@@ -4200,9 +4200,9 @@ v3.1.alpha2 (2016-09-01)
   in the following query:
 
       FOR doc IN collection
-        LET cond = (doc.value == 1)
-        FILTER cond
-        RETURN { doc, cond }
+	LET cond = (doc.value == 1)
+	FILTER cond
+	RETURN { doc, cond }
 
   The fix for #2070 now will enable this optimization so that the query can
   use an index on `doc.value` if available.
@@ -5228,13 +5228,13 @@ v2.8.2 (2016-02-09)
 
       db._useDatabase("_system");
       require("@arangodb/replication").setupReplication({
-        endpoint: "tcp://master.domain.org:8529",
-        username: "myuser",
-        password: "mypasswd",
-        verbose: false,
-        includeSystem: false,
-        incremental: true,
-        autoResync: true
+	endpoint: "tcp://master.domain.org:8529",
+	username: "myuser",
+	password: "mypasswd",
+	verbose: false,
+	includeSystem: false,
+	incremental: true,
+	autoResync: true
       });
 
 * the *sync* and *syncCollection* functions now always start the data synchronization
@@ -5329,14 +5329,14 @@ v2.8.0-beta7 (2016-01-06)
   the declaration of grouping keys:
 
       FOR doc IN collection
-        COLLECT gender = doc.gender AGGREGATE minAge = MIN(doc.age), maxAge = MAX(doc.age)
-        RETURN { gender, minAge, maxAge }
+	COLLECT gender = doc.gender AGGREGATE minAge = MIN(doc.age), maxAge = MAX(doc.age)
+	RETURN { gender, minAge, maxAge }
 
   or, if no grouping keys are used, it can follow the `COLLECT` keyword:
 
       FOR doc IN collection
-        COLLECT AGGREGATE minAge = MIN(doc.age), maxAge = MAX(doc.age)
-        RETURN {
+	COLLECT AGGREGATE minAge = MIN(doc.age), maxAge = MAX(doc.age)
+	RETURN {
   minAge, maxAge
 }
 
@@ -5525,7 +5525,7 @@ v2.8.0-alpha1 (2015-12-03)
   attribute name:
 
       FOR doc IN `OUTBOUND`
-        RETURN doc.`any`
+	RETURN doc.`any`
 
 * issue #1593: added AQL `POW` function for exponentation
 
@@ -5582,13 +5582,13 @@ v2.8.0-alpha1 (2015-12-03)
     status of the started asynchronous synchronization job can be queried from the
     ArangoShell like this:
 
-        /* starts initial synchronization */
-        var replication = require("@arangodb/replication");
-        var id = replication.sync({
-          endpoint: "tcp://master.domain.org:8529",
-          username: "myuser",
-          password: "mypasswd",
-          async: true
+	/* starts initial synchronization */
+	var replication = require("@arangodb/replication");
+	var id = replication.sync({
+	  endpoint: "tcp://master.domain.org:8529",
+	  username: "myuser",
+	  password: "mypasswd",
+	  async: true
        });
 
        /* now query the id of the returned async job and print the status */
@@ -5678,8 +5678,8 @@ v2.8.0-alpha1 (2015-12-03)
   indexes and no filters are used, e.g.
 
       FOR doc IN collection
-        LIMIT 1000000, 10
-        RETURN doc
+	LIMIT 1000000, 10
+	RETURN doc
 
 * Added array indexes
 
@@ -5701,8 +5701,8 @@ v2.8.0-alpha1 (2015-12-03)
   tags array using the following AQL query:
 
       FOR doc IN colName
-        FILTER "ArangoDB" IN doc.tags[*]
-        RETURN doc
+	FILTER "ArangoDB" IN doc.tags[*]
+	RETURN doc
 
 * rewrote AQL query optimizer rule `use-index-range` and renamed it to `use-indexes`.
   The name change affects rule names in the optimizer's output.
@@ -5897,18 +5897,18 @@ v2.7.1 (2015-11-07)
   a single object, e.g.
 
       RETURN MERGE([
-        { foo: 'bar' },
-        { quux: 'quetzalcoatl', ruled: true },
-        { bar: 'baz', foo: 'done' }
+	{ foo: 'bar' },
+	{ quux: 'quetzalcoatl', ruled: true },
+	{ bar: 'baz', foo: 'done' }
       ])
 
   will now return:
 
       {
-        "foo": "done",
-        "quux": "quetzalcoatl",
-        "ruled": true,
-        "bar": "baz"
+	"foo": "done",
+	"quux": "quetzalcoatl",
+	"ruled": true,
+	"bar": "baz"
       }
 
 * fixed potential deadlock in collection status changing on Windows
@@ -5973,10 +5973,10 @@ v2.7.0-rc2 (2015-09-22)
   e.g.
 
       require("org/arangodb/replication").syncCollection("myCollection", {
-        endpoint: "tcp://127.0.0.1:8529",  /* master */
-        username: "root",                  /* username for master */
-        password: "secret",                /* password for master */
-        incremental: true                  /* use incremental mode */
+	endpoint: "tcp://127.0.0.1:8529",  /* master */
+	username: "root",                  /* username for master */
+	password: "secret",                /* password for master */
+	incremental: true                  /* use incremental mode */
       });
 
 
@@ -6267,7 +6267,7 @@ v2.7.0-rc1 (2015-09-17)
 * added `RETURN DISTINCT` for AQL queries to return unique results:
 
       FOR doc IN collection
-        RETURN DISTINCT doc.status
+	RETURN DISTINCT doc.status
 
   This change also introduces `DISTINCT` as an AQL keyword.
 
@@ -6360,10 +6360,10 @@ v2.7.0-rc1 (2015-09-17)
   constructs, e.g.
 
       FOR doc IN @@collection
-        FILTER doc.value >= @value
-        SORT doc.value DESC
-        LIMIT 1
-        RETURN doc
+	FILTER doc.value >= @value
+	SORT doc.value DESC
+	LIMIT 1
+	RETURN doc
 
 * the `skip()` function for simple queries does not accept negative input any longer.
   This feature was deprecated in 2.6.0.
@@ -6607,18 +6607,18 @@ v2.6.0 (2015-06-20)
   which are more flexible because they can be combined with other operations:
 
       FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit)
-        RETURN doc
+	RETURN doc
 
       FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distanceAttributeName)
-        RETURN doc
+	RETURN doc
 
       FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit)
-        RETURN doc
+	RETURN doc
 
       FOR doc IN @@collection
-        FILTER doc.value >= @left && doc.value < @right
-        LIMIT @skip, @limit
-        RETURN doc`
+	FILTER doc.value >= @left && doc.value < @right
+	LIMIT @skip, @limit
+	RETURN doc`
 
   The above simple query functions and REST API methods may be removed in future versions
   of ArangoDB.
@@ -6849,9 +6849,9 @@ v2.6.0 (2015-06-20)
   syntax for this was quite limited and verbose:
 
       FOR i IN 1..10
-        INSERT { value: i } IN test
-        LET inserted = NEW
-        RETURN inserted
+	INSERT { value: i } IN test
+	LET inserted = NEW
+	RETURN inserted
 
   The `LET inserted = NEW RETURN inserted` was required literally to return the inserted
   documents. No calculations could be made using the inserted documents.
@@ -6863,8 +6863,8 @@ v2.6.0 (2015-06-20)
   This allows returning projections of inserted or updated documents, e.g.:
 
       FOR i IN 1..10
-        INSERT { value: i } IN test
-        RETURN { _key: NEW._key, value: i }
+	INSERT { value: i } IN test
+	RETURN { _key: NEW._key, value: i }
 
   Still not every construct is allowed after a data-modification clause. For example, no functions
   can be called that may access documents.
@@ -6880,9 +6880,9 @@ v2.6.0 (2015-06-20)
   executed. If there is a match, the *update* / *replace* part will be carried out:
 
       UPSERT { page: 'index.html' }                 /* search example */
-        INSERT { page: 'index.html', pageViews: 1 } /* insert part */
-        UPDATE { pageViews: OLD.pageViews + 1 }     /* update part */
-        IN pageViews
+	INSERT { page: 'index.html', pageViews: 1 } /* insert part */
+	UPDATE { pageViews: OLD.pageViews + 1 }     /* update part */
+	IN pageViews
 
   `UPSERT` can be used with an `UPDATE` or `REPLACE` clause. The `UPDATE` clause will perform
   a partial update of the found document, whereas the `REPLACE` clause will replace the found
@@ -6895,10 +6895,10 @@ v2.6.0 (2015-06-20)
   contain the inserted / updated document:
 
       UPSERT { page: 'index.html' }                 /* search example */
-        INSERT { page: 'index.html', pageViews: 1 } /* insert part */
-        UPDATE { pageViews: OLD.pageViews + 1 }     /* update part */
-        IN pageViews
-        RETURN { found: OLD, updated: NEW }
+	INSERT { page: 'index.html', pageViews: 1 } /* insert part */
+	UPDATE { pageViews: OLD.pageViews + 1 }     /* update part */
+	IN pageViews
+	RETURN { found: OLD, updated: NEW }
 
   A more detailed description of `UPSERT` can be found here:
   http://jsteemann.github.io/blog/2015/03/27/preview-of-the-upsert-command/
@@ -6977,16 +6977,16 @@ v2.6.0 (2015-06-20)
       [object ArangoQueryCursor, count: 15, hasMore: true]
 
       [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10
+	1,
+	2,
+	3,
+	4,
+	5,
+	6,
+	7,
+	8,
+	9,
+	10
       ]
 
       type 'more' to show more documents
@@ -6996,11 +6996,11 @@ v2.6.0 (2015-06-20)
       [object ArangoQueryCursor, count: 15, hasMore: false]
 
       [
-        11,
-        12,
-        13,
-        14,
-        15
+	11,
+	12,
+	13,
+	14,
+	15
       ]
 
 * Disallow batchSize value 0 in HTTP `POST /_api/cursor`:
@@ -7052,8 +7052,8 @@ v2.6.0 (2015-06-20)
   This can now be achieved by:
 
   FOR va IN NEIGHBORS(Users, relations, 'Users/123', 'outbound') FOR vc IN NEIGHBORS(Products, relations, va, 'outbound', null, {includeData: true}) RETURN vc
-                                                                                                          ^^^^                  ^^^^^^^^^^^^^^^^^^^
-                                                                                                  Use intermediate directly     include Data for final
+													  ^^^^                  ^^^^^^^^^^^^^^^^^^^
+												  Use intermediate directly     include Data for final
 
 * INCOMPATIBLE CHANGE:
 
@@ -7666,8 +7666,8 @@ v2.5.0-beta2 (2015-02-23)
   index, even if one was created on attribute `attr`:
 
       FOR doc In collection
-        FILTER doc.attr == null
-        RETURN doc
+	FILTER doc.attr == null
+	RETURN doc
 
   If the lookup value is non-constant, a sparse index may or may not be used, depending on
   the other types of conditions in the query. If the optimizer can safely determine that
@@ -7678,13 +7678,13 @@ v2.5.0-beta2 (2015-02-23)
   will not know beforehand whether the comparison values for `doc.attr` will include `null`:
 
       FOR doc In collection
-        FILTER doc.attr == SOME_FUNCTION(...)
-        RETURN doc
+	FILTER doc.attr == SOME_FUNCTION(...)
+	RETURN doc
 
       FOR other IN otherCollection
-        FOR doc In collection
-          FILTER doc.attr == other.attr
-          RETURN doc
+	FOR doc In collection
+	  FILTER doc.attr == other.attr
+	  RETURN doc
 
   Sparse skiplist indexes can be used for sorting if the optimizer can safely detect that the
   index range does not include `null` for any of the index attributes.
@@ -7705,7 +7705,7 @@ v2.5.0-beta2 (2015-02-23)
   Example:
 
       FOR i IN 1..100
-        RETURN { [ CONCAT('value-of-', i) ] : i }
+	RETURN { [ CONCAT('value-of-', i) ] : i }
 
 * make AQL optimizer rule "use-index-for-sort" remove sort also in case a non-sorted
   index (e.g. a hash index) is used for only equality lookups and all sort attributes
@@ -8152,7 +8152,7 @@ v2.4.0-beta1 (2014-12-26)
 
     FOR doc IN collection
       FILTER (doc.indexedAttribute > 2 && doc.indexedAttribute < 10) ||
-             (doc.indexedAttribute > 23 && doc.indexedAttribute < 42)
+	     (doc.indexedAttribute > 23 && doc.indexedAttribute < 42)
       RETURN doc
 
 * fixed issue #500: AQL parentheses issue
@@ -8165,14 +8165,14 @@ v2.4.0-beta1 (2014-12-26)
   This allows more efficient group count calculation queries, e.g.
 
       FOR doc IN collection
-        COLLECT age = doc.age WITH COUNT INTO length
-        RETURN { age: age, count: length }
+	COLLECT age = doc.age WITH COUNT INTO length
+	RETURN { age: age, count: length }
 
   A count-only query is also possible:
 
       FOR doc IN collection
-        COLLECT WITH COUNT INTO length
-        RETURN length
+	COLLECT WITH COUNT INTO length
+	RETURN length
 
 * fixed missing makeDirectory when fetching a Foxx application from a zip file
 
@@ -8207,9 +8207,9 @@ v2.4.0-beta1 (2014-12-26)
   `restrictCollections` attribute, e.g.:
 
       replication.applier.properties({
-        includeSystem: true,
-        restrictType: "exclude",
-        restrictCollections: [ "_users", "_graphs", "foo" ]
+	includeSystem: true,
+	restrictType: "exclude",
+	restrictCollections: [ "_users", "_graphs", "foo" ]
       });
 
   The HTTP API methods for fetching the replication inventory and for dumping collections
@@ -8802,26 +8802,26 @@ v2.2.3 (2014-09-02)
   documents will be returned, e.g.
 
       [
-        `/_api/document/test/mykey1`,
-        `/_api/document/test/mykey2`,
-        ...
+	`/_api/document/test/mykey1`,
+	`/_api/document/test/mykey2`,
+	...
       ]
 
   To return a list of document ids instead of paths, the `type` URL parameter can be
   set to `id`:
 
       [
-        `test/mykey1`,
-        `test/mykey2`,
-        ...
+	`test/mykey1`,
+	`test/mykey2`,
+	...
       ]
 
   To return a list of document keys only, the `type` URL parameter can be set to `key`:
 
       [
-        `mykey1`,
-        `mykey2`,
-        ...
+	`mykey1`,
+	`mykey2`,
+	...
       ]
 
 
@@ -8845,20 +8845,20 @@ v2.2.2 (2014-08-08)
   prevented storing documents inside other documents, e.g.:
 
       {
-        "_key" : "foo",
-        "_type" : "mydoc",
-        "references" : [
-          {
-            "_key" : "something",
-            "_rev" : "...",
-            "value" : 1
-          },
-          {
-            "_key" : "something else",
-            "_rev" : "...",
-            "value" : 2
-          }
-        ]
+	"_key" : "foo",
+	"_type" : "mydoc",
+	"references" : [
+	  {
+	    "_key" : "something",
+	    "_rev" : "...",
+	    "value" : 1
+	  },
+	  {
+	    "_key" : "something else",
+	    "_rev" : "...",
+	    "value" : 2
+	  }
+	]
       }
 
   In the above example, previous versions of ArangoDB removed all attributes and
@@ -9670,21 +9670,21 @@ v2.0.0-rc1 (2014-02-28)
 
       // using user-defined AQL functions for edge and vertex filtering
       RETURN TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
-        followEdges: "myfunctions::checkedge",
-        filterVertices: "myfunctions::checkvertex"
+	followEdges: "myfunctions::checkedge",
+	filterVertices: "myfunctions::checkvertex"
       })
 
       // using the following custom filter functions
       var aqlfunctions = require("org/arangodb/aql/functions");
       aqlfunctions.register("myfunctions::checkedge", function (config, vertex, edge, path) {
-        return (edge.type !== 'dislikes'); // don't follow these edges
+	return (edge.type !== 'dislikes'); // don't follow these edges
       }, false);
 
       aqlfunctions.register("myfunctions::checkvertex", function (config, vertex, path) {
-        if (vertex.isDeleted || ! vertex.isActive) {
-          return [ "prune", "exclude" ]; // exclude these and don't follow them
-        }
-        return [ ]; // include everything else
+	if (vertex.isDeleted || ! vertex.isActive) {
+	  return [ "prune", "exclude" ]; // exclude these and don't follow them
+	}
+	return [ ]; // include everything else
       }, false);
 
 * fail if invalid `strategy`, `order` or `itemOrder` attribute values
@@ -9897,14 +9897,14 @@ v1.4.11 (2014-02-27)
   attributes or custom logic:
 
       RETURN SHORTEST_PATH(cities, motorways, "cities/CGN", "cities/MUC", "outbound", {
-        paths: true,
-        distance: "myfunctions::citydistance"
+	paths: true,
+	distance: "myfunctions::citydistance"
       })
 
       // using the following custom distance function
       var aqlfunctions = require("org/arangodb/aql/functions");
       aqlfunctions.register("myfunctions::distance", function (config, vertex1, vertex2, edge) {
-        return Math.sqrt(Math.pow(vertex1.x - vertex2.x) + Math.pow(vertex1.y - vertex2.y));
+	return Math.sqrt(Math.pow(vertex1.x - vertex2.x) + Math.pow(vertex1.y - vertex2.y));
       }, false);
 
 * fixed bug in Graph.pathTo function
@@ -9959,19 +9959,19 @@ v1.4.9 (2014-02-07)
 
       /* return all documents with mycollection.created > 12345678 */
       FOR doc IN SKIPLIST(mycollection, { created: [[ '>', 12345678 ]] })
-        RETURN doc
+	RETURN doc
 
       /* return first document with mycollection.created > 12345678 */
       FOR doc IN SKIPLIST(mycollection, { created: [[ '>', 12345678 ]] }, 0, 1)
-        RETURN doc
+	RETURN doc
 
       /* return all documents with mycollection.created between 12345678 and 123456790 */
       FOR doc IN SKIPLIST(mycollection, { created: [[ '>', 12345678 ], [ '<=', 123456790 ]] })
-        RETURN doc
+	RETURN doc
 
       /* return all documents with mycollection.a equal 1 and .b equal 2 */
       FOR doc IN SKIPLIST(mycollection, { a: [[ '==', 1 ]], b: [[ '==', 2 ]] })
-        RETURN doc
+	RETURN doc
 
   The function requires a skiplist index with the exact same attributes to
   be present on the specified collection. All attributes present in the skiplist
@@ -10002,21 +10002,21 @@ v1.4.9 (2014-02-07)
 
       // using user-defined AQL functions for edge and vertex filtering
       RETURN TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
-        followEdges: "myfunctions::checkedge",
-        filterVertices: "myfunctions::checkvertex"
+	followEdges: "myfunctions::checkedge",
+	filterVertices: "myfunctions::checkvertex"
       })
 
       // using the following custom filter functions
       var aqlfunctions = require("org/arangodb/aql/functions");
       aqlfunctions.register("myfunctions::checkedge", function (config, vertex, edge, path) {
-        return (edge.type !== 'dislikes'); // don't follow these edges
+	return (edge.type !== 'dislikes'); // don't follow these edges
       }, false);
 
       aqlfunctions.register("myfunctions::checkvertex", function (config, vertex, path) {
-        if (vertex.isDeleted || ! vertex.isActive) {
-          return [ "prune", "exclude" ]; // exclude these and don't follow them
-        }
-        return [ ]; // include everything else
+	if (vertex.isDeleted || ! vertex.isActive) {
+	  return [ "prune", "exclude" ]; // exclude these and don't follow them
+	}
+	return [ ]; // include everything else
       }, false);
 
 * issue #748: add vertex filtering to AQL's TRAVERSAL[_TREE]() function
@@ -10348,12 +10348,12 @@ v1.4.0 (2013-10-29)
     version. If the API compatibility is `10300`, the `location` headers returned
     will look like this:
 
-        location: /_api/document/....
+	location: /_api/document/....
 
     whereas when an API compatibility of `10400` or higher is used, the `location`
     headers will look like this:
 
-        location: /_db/<database name>/_api/document/...
+	location: /_db/<database name>/_api/document/...
 
   Please note that even in the presence of this, old API versions still may not
   be supported forever by the server.
@@ -10704,7 +10704,7 @@ v1.4.0-beta1 (2013-10-01)
 
       c = db._create("test");
       for (i = 0; i < 1000; ++i) {
-        c.save(...); // insert lots of data here
+	c.save(...); // insert lots of data here
       }
 
       ...

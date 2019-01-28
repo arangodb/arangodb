@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global fail, assertEqual */
+/* global fail, assertEqual, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for dump/reload
@@ -42,12 +42,13 @@ function runSetup () {
   internal.wait(1, false);
 
   internal.debugSetFailAt('BreakHeaderMarker');
+  internal.debugSetFailAt('LogfileManagerFlush');
+  internal.debugSetFailAt('CollectorThreadCollect');
   for (var i = 0; i < 10; ++i) {
     c.insert({ value: i });
   }
-  internal.wal.flush(true, true);
+  internal.wal.flush(true);
   
-  internal.debugSetFailAt('LogfileManagerFlush');
   internal.wait(5, false);
   
   internal.debugSegfault('crashing server');
@@ -70,12 +71,9 @@ function recoverySuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCorruptedCrc: function () {
-      try {
-        db._collection('UnitTestsRecovery').count();
-        fail();
-      } catch (err) {
-        assertEqual(internal.errors.ERROR_ARANGO_CORRUPTED_COLLECTION.code, err.errorNum);
-      }
+      // counting must succeed in all cases, but we don't know how many
+      // documents we will recover
+      assertTrue(db._collection('UnitTestsRecovery').count() >= 0);
     }
 
   };

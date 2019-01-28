@@ -64,6 +64,10 @@ class V8ClientConnection {
 
   void connect(ClientFeature*);
   void reconnect(ClientFeature*);
+  
+  double timeout() const;
+  
+  void timeout(double value);
 
   std::string const& databaseName() const { return _databaseName; }
   void setDatabaseName(std::string const& value) { _databaseName = value; }

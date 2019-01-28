@@ -227,6 +227,9 @@ void PregelFeature::start() {
 
 void PregelFeature::beginShutdown() {
   cleanupAll();
+}
+
+void PregelFeature::stop() {
   Instance = nullptr;
 }
 
