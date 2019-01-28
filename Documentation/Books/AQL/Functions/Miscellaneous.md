@@ -49,11 +49,11 @@ Database functions
 
 Returns *true* if *document* is a valid document object, i.e. a document
 without any duplicate attribute names. Will return *false* for any
-on-objects/non-documents or documents with duplicate attribute names.
+non-objects/non-documents or documents with duplicate attribute names.
 
 {% hint 'warning' %}
 This is an internal function for validating database objects and
-is not supposed to be any useful for anything else.
+is not supposed to be useful for anything else.
 {% endhint %}
 
 The primary use case for this function is to apply it on all
