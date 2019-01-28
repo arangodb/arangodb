@@ -53,15 +53,17 @@ class RocksDBTransactionManager final : public TransactionManager {
   void registerTransaction(TRI_voc_tid_t transactionId,
                            std::unique_ptr<TransactionData> data) override {
     TRI_ASSERT(data == nullptr);
-//    _rwLock.readLock();
+    _rwLock.readLock();
     ++_nrRunning;
   }
 
   // unregister a transaction
   void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed) override {
-    TRI_ASSERT(_nrRunning != 0);
-    --_nrRunning;
-//    _rwLock.unlockRead();
+//    TRI_ASSERT(_nrRunning != 0);
+    if (0 != _nrRunning) {  // temporary hack until larger problem addressed
+      --_nrRunning;
+      _rwLock.unlockRead();
+    } // if
   }
 
   // iterate all the active transactions
@@ -71,11 +73,11 @@ class RocksDBTransactionManager final : public TransactionManager {
   uint64_t getActiveTransactionCount() override { return _nrRunning; }
 
   // temporarily block all new transactions
-  virtual bool holdTransactions(uint64_t timeout) {return _rwLock.writeLock(timeout);};
-  virtual bool holdTransactions(std::chrono::microseconds timeout) {return _rwLock.writeLock(timeout);};
+  bool holdTransactions(uint64_t timeout) override {return _rwLock.writeLock(timeout);}
+  bool holdTransactions(std::chrono::microseconds timeout) override {return _rwLock.writeLock(timeout);}
 
   // remove the block
-  virtual void releaseTransactions() {_rwLock.unlockWrite();};
+  void releaseTransactions() override {_rwLock.unlockWrite();}
 
 
  private:

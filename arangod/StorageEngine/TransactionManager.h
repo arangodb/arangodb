@@ -66,10 +66,10 @@ class TransactionManager {
   // functions to block transactions during hotbackup or restore
   //  (not yet implemented/needed in all storage engines)
   // holdTransactions: true on successful hold, false on timeout or error
-  virtual bool holdTransactions(uint64_t timeout) {return true;};
-  virtual bool holdTransactions(std::chrono::microseconds timeout) {return true;};
+  virtual bool holdTransactions(uint64_t timeout) {return true;}
+  virtual bool holdTransactions(std::chrono::microseconds timeout) {return true;}
 
-  virtual void releaseTransactions() {};
+  virtual void releaseTransactions() {}
 };
 
 }  // namespace arangodb

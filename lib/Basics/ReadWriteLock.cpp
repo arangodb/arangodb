@@ -51,7 +51,7 @@ void ReadWriteLock::writeLock() {
 }
 
 /// @brief lock for writes with microsecond timeout
-bool ReadWriteLock::writeLock(std::chrono::microseconds timeoutx) {
+bool ReadWriteLock::writeLock(std::chrono::microseconds timeout) {
   if (tryWriteLock()) {
     return true;
   }
@@ -72,7 +72,7 @@ bool ReadWriteLock::writeLock(std::chrono::microseconds timeoutx) {
         return true;
       }
     }
-    status = _writers_bell.wait_for(guard, timeoutx);
+    status = _writers_bell.wait_for(guard, timeout);
   }
   return false;
 }
