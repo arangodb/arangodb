@@ -642,7 +642,11 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
     if (!sortCondition->isEmpty()) {
       // only take into account the costs for sorting if there is actually
       // something to sort
-      totalCost += sortCost;
+      if (supportsSort) {
+        totalCost += sortCost;
+      } else {
+        totalCost += estimatedItems * std::log2(static_cast<double>(estimatedItems));
+      }
     }
 
     LOG_TOPIC(TRACE, Logger::FIXME)
