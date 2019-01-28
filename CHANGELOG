@@ -11,6 +11,8 @@ v3.4.3 (XXXX-XX-XX)
 v3.4.2 (2019-01-24)
 -------------------
 
+* a bug affecting stream cursor was fixed (internal issue #3169)
+
 * fixed an issue with AQL query IN index lookup conditions being converted into
   empty arrays when they were shared between multiple nodes of a lookup condition
   that used an IN array lookup in an OR that was multiplied due to DNF transformations
