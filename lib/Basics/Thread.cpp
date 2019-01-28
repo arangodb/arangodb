@@ -70,7 +70,7 @@ void Thread::startThread(void* arg) {
   LOCAL_THREAD_NAME = ptr->name().c_str();
 
   // make sure we drop our reference when we are finished!
-  auto guard = scopeGuard([&ptr]() {
+  auto guard = scopeGuard([ptr]() {
     LOCAL_THREAD_NAME = nullptr;
     ptr->releaseRef();
   });
