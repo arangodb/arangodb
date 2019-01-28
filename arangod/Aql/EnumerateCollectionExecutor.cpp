@@ -84,7 +84,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
                                        " did not come into sync in time (" +
                                        std::to_string(maxWait) + ")");
   }
-  this->setProducingFunction(DocumentProducingHelper::buildCallback(
+  this->setProducingFunction(buildCallback(
           _documentProducer, _infos.getOutVariable(), _infos.getProduceResult(),
           _infos.getProjections(), _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
           _infos.getAllowCoveringIndexOptimization(), _infos.getUseRawDocumentPointers()));
