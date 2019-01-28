@@ -177,7 +177,7 @@ bool TRI_vocbase_t::use() {
 void TRI_vocbase_t::forceUse() { _refCount += 2; }
 
 /// @brief decrease the reference counter for a database
-void TRI_vocbase_t::release() {
+void TRI_vocbase_t::release() noexcept {
   // decrease the reference counter by 2.
   // this is because we use odd values to indicate that the database has been
   // marked as deleted
@@ -1506,7 +1506,6 @@ arangodb::Result TRI_vocbase_t::renameCollection(TRI_voc_cid_t cid,
 
   // invalidate all entries for the two collections
   arangodb::aql::PlanCache::instance()->invalidate(this);
-  arangodb::aql::QueryCache::instance()->invalidate(this, std::vector<std::string>{oldName, newName});
 
   return TRI_ERROR_NO_ERROR;
 }

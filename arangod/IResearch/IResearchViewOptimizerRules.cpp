@@ -47,20 +47,6 @@ using EN = arangodb::aql::ExecutionNode;
 
 namespace {
 
-size_t numberOfShards(arangodb::CollectionNameResolver const& resolver,
-                      arangodb::LogicalView const& view) {
-  size_t numberOfShards = 0;
-
-  auto visitor = [&numberOfShards](arangodb::LogicalCollection const& collection) noexcept {
-    numberOfShards += collection.numberOfShards();
-    return true;
-  };
-
-  resolver.visitCollections(visitor, view.id());
-
-  return numberOfShards;
-}
-
 bool addView(arangodb::LogicalView const& view, arangodb::aql::Query& query) {
   auto* collections = query.collections();
 
@@ -257,7 +243,6 @@ void scatterViewInClusterRule(arangodb::aql::Optimizer* opt,
     }
 
     auto& vocbase = viewNode.vocbase();
-    auto& view = *viewNode.view();
 
     bool const isRootNode = plan->isRoot(node);
     plan->unlinkNode(node, true);
@@ -283,8 +268,12 @@ void scatterViewInClusterRule(arangodb::aql::Optimizer* opt,
     TRI_ASSERT(node);
     remoteNode->addDependency(node);
 
+    // so far we don't know the exact number of db servers where
+    // this query will be distributed, mode will be adjusted
+    // during query distribution phase by EngineInfoContainerDBServer
+    auto const sortMode = GatherNode::SortMode::Default;
+
     // insert gather node
-    auto const sortMode = GatherNode::evaluateSortMode(numberOfShards(*resolver, view));
     auto* gatherNode = plan->registerNode(
         std::make_unique<GatherNode>(plan.get(), plan->nextId(), sortMode));
     TRI_ASSERT(remoteNode);
