@@ -222,16 +222,6 @@ void SupervisedScheduler::runWorker() {
 
     _jobsDone.fetch_add(1, std::memory_order_release);
   }
-      
-  // drain the queue if there are still items left
-  std::unique_ptr<WorkItem> work;
-  for (size_t i = 0; i < 3; ++i) {
-    if (_queue[i].pop(work)) {
-      // mark job as done
-      ++_jobsDone;
-      // discard work item immediately after
-    }
-  }
 }
 
 void SupervisedScheduler::runSupervisor() {
