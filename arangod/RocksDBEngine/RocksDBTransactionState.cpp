@@ -374,19 +374,11 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
                _rocksTransaction->GetNumDeletes() == 0);
     // this is most likely the fill index case
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-//    rocksdb::SequenceNumber seq = _rocksTransaction->GetSnapshot()->GetSequenceNumber();
     for (auto& trxColl : _collections) {
-//      TRI_IF_FAILURE("RocksDBCommitCounts") { continue; }
       auto* rcoll = static_cast<RocksDBTransactionCollection*>(trxColl);
       TRI_ASSERT(rcoll->stealTrackedOperations().empty());
-//      rcoll->prepareCommit(id(), seq);
-//      // We get here if we have filled indexes. So let us commit counts and
-//      // any buffered index estimator updates
-//      rcoll->commitCounts(id(), seq + 1);
     }
 #endif
-    // don't write anything if the transaction is empty
-//    result = rocksutils::convertStatus(_rocksTransaction->Rollback());
   }
 
   return result;

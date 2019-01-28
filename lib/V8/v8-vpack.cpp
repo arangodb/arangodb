@@ -67,7 +67,7 @@ static v8::Handle<v8::Value> ObjectVPackObject(v8::Isolate* isolate, VPackSlice 
 
   TRI_GET_GLOBALS();
 
-  VPackObjectIterator it(slice, true);
+  VPackObjectIterator it(slice, false);
   while (it.valid()) {
     arangodb::velocypack::ValueLength l;
     VPackSlice k = it.key(false);
