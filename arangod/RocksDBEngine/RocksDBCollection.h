@@ -181,12 +181,8 @@ class RocksDBCollection final : public PhysicalCollection {
   RocksDBCollectionMeta& meta() { return _meta; }
 
  private:
-  /// @brief track the usage of waitForSync option in an operation
-  void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
-
   /// @brief return engine-specific figures
   void figuresSpecific(std::shared_ptr<velocypack::Builder>&) override;
-  void addIndex(std::shared_ptr<arangodb::Index> idx);
 
   // @brief return the primary index
   // WARNING: Make sure that this instance
@@ -232,7 +228,14 @@ class RocksDBCollection final : public PhysicalCollection {
     return (_cacheEnabled && _cachePresent);
   }
 
+  /// @brief track key in file
   void blackListKey(char const* data, std::size_t len) const;
+
+  /// @brief track the usage of waitForSync option in an operation
+  void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
+
+  /// @brief can use non transactional range delete in write ahead log
+  bool canUseRangeDeleteInWal() const;
 
  private:
   uint64_t const _objectId;     // rocksdb-specific object id for collection
@@ -247,10 +250,13 @@ class RocksDBCollection final : public PhysicalCollection {
   mutable basics::ReadWriteLock _exclusiveLock;
   /// @brief document cache (optional)
   mutable std::shared_ptr<cache::Cache> _cache;
+
   // we use this boolean for testing whether _cache is set.
   // it's quicker than accessing the shared_ptr each time
   mutable bool _cachePresent;
   bool _cacheEnabled;
+  /// @brief number of index creations in progress
+  std::atomic<int> _numIndexCreations;
 };
 
 inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {
