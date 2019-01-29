@@ -613,7 +613,7 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
   _options.maxChunkSize =
       boost::algorithm::clamp(_options.maxChunkSize, _options.initialChunkSize, ::MaxChunkSize);
 
-  if (_options.tickStart < _options.tickEnd) {
+  if (_options.tickEnd < _options.tickStart) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid values for --tick-start or --tick-end";
     FATAL_ERROR_EXIT();
