@@ -8,7 +8,7 @@ of documents.
 
 User-defined indexes can be created on collection level. Most user-defined indexes 
 can be created by specifying the names of the index attributes.
-Some index types allow indexing just one attribute (e.g. fulltext index) whereas 
+Some index types allow indexing just one attribute (e.g. *fulltext* index) whereas 
 other index types allow indexing multiple attributes at the same time.
 
 Learn how to use different indexes efficiently by going through the
@@ -22,15 +22,14 @@ are covered by an edge collection's edge index automatically.
 Using the system attribute `_id` in user-defined indexes is not possible, but 
 indexing `_key`, `_rev`, `_from`, and `_to` is.
 
-{###
-Creating new indexes is usually done under an exclusive collection lock. The collection is not
-available as long as the index is created.  This "foreground" index creation can be undesirable, 
+Creating new indexes is by default done under an exclusive collection lock. The collection is not
+available while the index is being created.  This "foreground" index creation can be undesirable, 
 if you have to perform it on a live system without a dedicated maintenance window.
 
 For potentially long running index  creation operations the _rocksdb_ storage-engine also supports 
-creating indexes in "background". The collection remains available during the index creation, 
-see the section "Creating Indexes in Background" for more information.
-###}
+creating indexes in "background". The collection remains (mostly) available during the index creation, 
+see the section [Creating Indexes in Background](#creating-indexes-in-background) for more information.
+
 
 ArangoDB provides the following index types:
 
@@ -551,7 +550,7 @@ based on the costs it estimates, even if a vertex centric index might
 in fact be faster. Vertex centric indexes are more likely to be chosen
 for highly connected graphs and with RocksDB storage engine.
 
-{###
+
 Creating Indexes in Background
 ------------------------------
 
@@ -610,4 +609,4 @@ if this list grows to tens of millions of entries.
 
 Building an index is always a write heavy operation (internally), it is always a good idea to build indexes
 during times with less load.
-###}
+

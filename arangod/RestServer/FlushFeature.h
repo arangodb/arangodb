@@ -26,7 +26,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ReadWriteLock.h"
 
-class TRI_vocbase_t; // forward declaration
+struct TRI_vocbase_t; // forward declaration
 
 namespace arangodb {
 
@@ -51,7 +51,7 @@ class FlushFeature final : public application_features::ApplicationFeature {
     virtual ~FlushSubscription() = default;
     virtual Result commit(velocypack::Slice const& data) = 0;
   };
-  struct FlushSubscriptionBase; // forward declaration
+  class FlushSubscriptionBase; // forward declaration
 
   explicit FlushFeature(application_features::ApplicationServer& server);
 

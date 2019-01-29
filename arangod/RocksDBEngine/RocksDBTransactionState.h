@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
-#include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBKey.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"

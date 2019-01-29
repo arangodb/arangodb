@@ -264,7 +264,7 @@ namespace {
 struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
   arangodb::Index::IndexType const _type;
 
-  DefaultIndexFactory(arangodb::Index::IndexType type) : _type(type) {}
+  explicit DefaultIndexFactory(arangodb::Index::IndexType type) : _type(type) {}
 
   virtual bool equal(arangodb::velocypack::Slice const& lhs,
                      arangodb::velocypack::Slice const& rhs) const override {
@@ -447,8 +447,7 @@ struct GeoIndexFactory : public DefaultIndexFactory {
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
         !definition.hasKey("objectId")) {
-      normalized.add("objectId",
-                     arangodb::velocypack::Value(std::to_string(TRI_NewTickServer())));
+      normalized.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
     }
 
     return EnhanceJsonIndexGeo(definition, normalized, isCreation);

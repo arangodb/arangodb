@@ -295,8 +295,10 @@ class RocksDBEngine final : public StorageEngine {
  public:
   static std::string const EngineName;
   static std::string const FeatureName;
-
-  bool canUseRangeDeleteInWal() const;
+  
+  /// @brief allow / disbable removal of WAL files
+  void disableWalFilePruning(bool disable);
+  bool disableWalFilePruning() const;
 
   rocksdb::Options const& rocksDBOptions() const { return _options; }
 
