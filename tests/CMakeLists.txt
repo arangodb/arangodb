@@ -53,6 +53,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchQueryJoin-test.cpp
     IResearch/IResearchQueryAggregate-test.cpp
     IResearch/IResearchQueryTraversal-test.cpp
+    IResearch/IResearchQueryOptions-test.cpp
     IResearch/RestHandlerMock.cpp
     IResearch/StorageEngineMock.cpp
     IResearch/IResearchViewNode-test.cpp
@@ -149,6 +150,7 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/IndexEstimatorTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
+  VocBase/VersionTest.cpp
   ${IRESEARCH_TESTS_SOURCES}
 )
 

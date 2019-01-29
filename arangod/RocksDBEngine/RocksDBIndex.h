@@ -42,7 +42,6 @@ namespace cache {
 class Cache;
 }
 class LogicalCollection;
-class RocksDBSettingsManager;
 class RocksDBMethods;
 
 class RocksDBIndex : public Index {
@@ -72,18 +71,6 @@ class RocksDBIndex : public Index {
 
   Result drop() override;
 
-  Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
-                velocypack::Slice const& doc, Index::OperationMode mode) override {
-    auto mthds = RocksDBTransactionState::toMethods(&trx);
-    return insertInternal(trx, mthds, documentId, doc, mode);
-  }
-
-  Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const& doc, Index::OperationMode mode) override {
-    auto mthds = RocksDBTransactionState::toMethods(&trx);
-    return removeInternal(trx, mthds, documentId, doc, mode);
-  }
-
   virtual void afterTruncate(TRI_voc_tick_t tick) override;
 
   void load() override;
@@ -106,22 +93,22 @@ class RocksDBIndex : public Index {
   void destroyCache();
 
   /// insert index elements into the specified write batch.
-  virtual Result insertInternal(transaction::Methods& trx, RocksDBMethods* methods,
-                                LocalDocumentId const& documentId,
-                                arangodb::velocypack::Slice const& doc,
-                                Index::OperationMode mode) = 0;
+  virtual Result insert(transaction::Methods& trx, RocksDBMethods* methods,
+                        LocalDocumentId const& documentId,
+                        arangodb::velocypack::Slice const& doc,
+                        Index::OperationMode mode) = 0;
 
   /// remove index elements and put it in the specified write batch.
-  virtual Result removeInternal(transaction::Methods& trx, RocksDBMethods* methods,
-                                LocalDocumentId const& documentId,
-                                arangodb::velocypack::Slice const& doc,
-                                Index::OperationMode mode) = 0;
+  virtual Result remove(transaction::Methods& trx, RocksDBMethods* methods,
+                        LocalDocumentId const& documentId,
+                        arangodb::velocypack::Slice const& doc,
+                        Index::OperationMode mode) = 0;
 
-  virtual Result updateInternal(transaction::Methods& trx, RocksDBMethods* methods,
-                                LocalDocumentId const& oldDocumentId,
-                                arangodb::velocypack::Slice const& oldDoc,
-                                LocalDocumentId const& newDocumentId,
-                                velocypack::Slice const& newDoc, Index::OperationMode mode);
+  virtual Result update(transaction::Methods& trx, RocksDBMethods* methods,
+                        LocalDocumentId const& oldDocumentId,
+                        arangodb::velocypack::Slice const& oldDoc,
+                        LocalDocumentId const& newDocumentId,
+                        velocypack::Slice const& newDoc, Index::OperationMode mode);
 
   rocksdb::ColumnFamilyHandle* columnFamily() const { return _cf; }
 

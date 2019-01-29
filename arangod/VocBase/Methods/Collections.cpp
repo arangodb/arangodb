@@ -558,12 +558,12 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   auto& databaseName = collection->vocbase().name();
   auto cid = std::to_string(collection->id());
   ClusterInfo* ci = ClusterInfo::instance();
-  std::string errorMsg;
+  auto res = ci->dropCollectionCoordinator(databaseName, cid, 300.0);
 
-  int res = ci->dropCollectionCoordinator(databaseName, cid, errorMsg, 300.0);
-  if (res != TRI_ERROR_NO_ERROR) {
-    return Result(res, errorMsg);
+  if (!res.ok()) {
+    return res;
   }
+
   collection->setStatus(TRI_VOC_COL_STATUS_DELETED);
 
   return TRI_ERROR_NO_ERROR;

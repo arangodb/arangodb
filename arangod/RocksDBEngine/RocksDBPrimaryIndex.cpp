@@ -288,7 +288,6 @@ bool RocksDBPrimaryIndexInIterator::nextCovering(DocumentCallback const& cb, siz
   }
 
   while (limit > 0) {
-    // TODO: prevent copying of the value into result, as we don't need it here!
     LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(*_iterator));
     if (documentId.isSet()) {
       cb(documentId, *_iterator);
@@ -432,10 +431,10 @@ bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx, arangodb::St
   return true;
 }
 
-Result RocksDBPrimaryIndex::insertInternal(transaction::Methods& trx, RocksDBMethods* mthd,
-                                           LocalDocumentId const& documentId,
-                                           velocypack::Slice const& slice,
-                                           Index::OperationMode mode) {
+Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
+                                   LocalDocumentId const& documentId,
+                                   velocypack::Slice const& slice,
+                                   Index::OperationMode mode) {
   Result res;
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
   TRI_ASSERT(keySlice.isString());
@@ -472,12 +471,12 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods& trx, RocksDBMet
   return res;
 }
 
-Result RocksDBPrimaryIndex::updateInternal(transaction::Methods& trx, RocksDBMethods* mthd,
-                                           LocalDocumentId const& oldDocumentId,
-                                           velocypack::Slice const& oldDoc,
-                                           LocalDocumentId const& newDocumentId,
-                                           velocypack::Slice const& newDoc,
-                                           Index::OperationMode mode) {
+Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
+                                   LocalDocumentId const& oldDocumentId,
+                                   velocypack::Slice const& oldDoc,
+                                   LocalDocumentId const& newDocumentId,
+                                   velocypack::Slice const& newDoc,
+                                   Index::OperationMode mode) {
   Result res;
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
@@ -498,10 +497,10 @@ Result RocksDBPrimaryIndex::updateInternal(transaction::Methods& trx, RocksDBMet
   return res;
 }
 
-Result RocksDBPrimaryIndex::removeInternal(transaction::Methods& trx, RocksDBMethods* mthd,
-                                           LocalDocumentId const& documentId,
-                                           velocypack::Slice const& slice,
-                                           Index::OperationMode mode) {
+Result RocksDBPrimaryIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
+                                   LocalDocumentId const& documentId,
+                                   velocypack::Slice const& slice,
+                                   Index::OperationMode mode) {
   Result res;
 
   // TODO: deal with matching revisions?

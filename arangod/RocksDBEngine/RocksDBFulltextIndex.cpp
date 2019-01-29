@@ -172,10 +172,10 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-Result RocksDBFulltextIndex::insertInternal(transaction::Methods& trx, RocksDBMethods* mthd,
-                                            LocalDocumentId const& documentId,
-                                            velocypack::Slice const& doc,
-                                            Index::OperationMode mode) {
+Result RocksDBFulltextIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
+                                    LocalDocumentId const& documentId,
+                                    velocypack::Slice const& doc,
+                                    Index::OperationMode mode) {
   Result res;
   std::set<std::string> words = wordlist(doc);
 
@@ -205,10 +205,10 @@ Result RocksDBFulltextIndex::insertInternal(transaction::Methods& trx, RocksDBMe
   return res;
 }
 
-Result RocksDBFulltextIndex::removeInternal(transaction::Methods& trx, RocksDBMethods* mthd,
-                                            LocalDocumentId const& documentId,
-                                            velocypack::Slice const& doc,
-                                            Index::OperationMode mode) {
+Result RocksDBFulltextIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
+                                    LocalDocumentId const& documentId,
+                                    velocypack::Slice const& doc,
+                                    Index::OperationMode mode) {
   Result res;
   std::set<std::string> words = wordlist(doc);
 
@@ -420,12 +420,13 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
   rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
   ro.iterate_upper_bound = &end;
   std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(ro, _cf);
-  iter->Seek(bounds.start());
 
   // set is used to perform an intersection with the result set
   std::set<LocalDocumentId> intersect;
   // apply left to right logic, merging all current results with ALL previous
-  while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
+  for (iter->Seek(bounds.start());
+       iter->Valid() && cmp->Compare(iter->key(), end) < 0;
+       iter->Next()) {
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
 
     rocksdb::Status s = iter->status();
@@ -442,7 +443,6 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
     } else if (token.operation == FulltextQueryToken::EXCLUDE) {
       resultSet.erase(documentId);
     }
-    iter->Next();
   }
   if (token.operation == FulltextQueryToken::AND) {
     if (resultSet.empty() || intersect.empty()) {

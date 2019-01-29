@@ -25,6 +25,8 @@
 
 #include "Basics/Common.h"
 
+#include "Basics/Utf8Helper.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
@@ -37,9 +39,8 @@ class Maskings;
 
 class MaskingFunction {
  public:
-  static bool isNameChar(char c) {
-    return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') ||
-           ('0' <= c && c <= '9') || c == '_' || c == '-';
+  static bool isNameChar(UChar32 ch) {
+    return u_isalpha(ch) || u_isdigit(ch) || ch == U'_' || ch == U'-';
   }
 
  public:

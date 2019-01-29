@@ -182,8 +182,8 @@ NS_ROOT
 // --SECTION--                                by_column_existence implementation
 // -----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(by_column_existence);
-DEFINE_FACTORY_DEFAULT(by_column_existence);
+DEFINE_FILTER_TYPE(by_column_existence)
+DEFINE_FACTORY_DEFAULT(by_column_existence)
 
 by_column_existence::by_column_existence() NOEXCEPT
   : filter(by_column_existence::type()) {
@@ -213,8 +213,10 @@ filter::prepared::ptr by_column_existence::prepare(
 ) const {
   attribute_store attrs;
 
-  // skip filed-level/term-level statistics because there are no fields/terms
-  order.prepare_stats().finish(attrs, reader);
+  // skip field-level/term-level statistics because there are no explicit
+  // fields/terms, but still collect index-level statistics
+  // i.e. all fields and terms implicitly match
+  order.prepare_collectors(attrs, reader);
 
   irs::boost::apply(attrs, boost() * filter_boost); // apply boost
 

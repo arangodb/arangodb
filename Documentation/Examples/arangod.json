@@ -3077,7 +3077,10 @@
   "server.jwt-secret" : {
     "category" : "option",
     "default" : "",
-    "deprecatedIn" : null,
+    "deprecatedIn" : [
+      "v3.3.22",
+      "v3.4.2"
+    ],
     "description" : "secret to use when doing jwt authentication",
     "dynamic" : false,
     "enterpriseOnly" : false,

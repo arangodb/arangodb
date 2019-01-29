@@ -80,6 +80,8 @@ class ViewTrxState final : public arangodb::TransactionState::Cookie,
     _collections.clear();
     _subReaders.clear();
     _snapshots.clear();
+    _live_docs_count = 0;
+    _docs_count = 0;
   }
 
   template <typename Itr>
@@ -96,11 +98,13 @@ class ViewTrxState final : public arangodb::TransactionState::Cookie,
     return _collections.size() == count;
   }
 
-  virtual uint64_t docs_count() const override;
-  virtual uint64_t live_docs_count() const override;
+  virtual uint64_t docs_count() const noexcept override { return _docs_count; }
+  virtual uint64_t live_docs_count() const noexcept override { return _live_docs_count; }
   virtual size_t size() const noexcept override { return _subReaders.size(); }
 
  private:
+  size_t _docs_count{};
+  size_t _live_docs_count{};
   std::unordered_set<TRI_voc_cid_t> _collections;
   std::vector<arangodb::iresearch::IResearchLink::Snapshot> _snapshots;  // prevent data-store deallocation (lock @ AsyncSelf)
   std::vector<std::pair<TRI_voc_cid_t, irs::sub_reader const*>> _subReaders;
@@ -108,35 +112,16 @@ class ViewTrxState final : public arangodb::TransactionState::Cookie,
 
 void ViewTrxState::add(TRI_voc_cid_t cid,
                        arangodb::iresearch::IResearchLink::Snapshot&& snapshot) {
-  for (auto& entry : static_cast<irs::index_reader const&>(snapshot)) {
+  auto& reader = static_cast<irs::index_reader const&>(snapshot);
+  for (auto& entry : reader) {
     _subReaders.emplace_back(std::piecewise_construct, std::forward_as_tuple(cid),
                              std::forward_as_tuple(&entry));
   }
 
+  _docs_count += reader.docs_count();
+  _live_docs_count += reader.live_docs_count();
   _collections.emplace(cid);
   _snapshots.emplace_back(std::move(snapshot));
-}
-
-uint64_t ViewTrxState::docs_count() const {
-  uint64_t count = 0;
-
-  for (auto& entry : _subReaders) {
-    TRI_ASSERT(entry.second);  // non-nullptr ensured by add(...)
-    count += entry.second->docs_count();
-  }
-
-  return count;
-}
-
-uint64_t ViewTrxState::live_docs_count() const {
-  uint64_t count = 0;
-
-  for (auto& entry : _subReaders) {
-    TRI_ASSERT(entry.second);  // non-nullptr ensured by add(...)
-    count += entry.second->live_docs_count();
-  }
-
-  return count;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -941,8 +926,8 @@ arangodb::Result IResearchView::renameImpl(std::string const& oldName) {
 IResearchView::Snapshot const* IResearchView::snapshot(
     transaction::Methods& trx,
     IResearchView::SnapshotMode mode /*= IResearchView::SnapshotMode::Find*/,
-    std::unordered_set<TRI_voc_cid_t> const* shards /*= nullptr*/
-    ) const {
+    arangodb::HashSet<TRI_voc_cid_t> const* shards /*= nullptr*/,
+    void const* key /*= nullptr*/) const {
   if (!trx.state()) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "failed to get transaction state while creating arangosearch view "
@@ -951,18 +936,22 @@ IResearchView::Snapshot const* IResearchView::snapshot(
     return nullptr;
   }
 
-  std::unordered_set<TRI_voc_cid_t> collections;  // use set to avoid duplicate iteration of same link
+  arangodb::HashSet<TRI_voc_cid_t> restrictedCollections;  // use set to avoid duplicate iteration of same link
+  auto const* collections = &restrictedCollections;
 
-  if (shards) {  // add requested shards
-    collections = *shards;
+  if (shards) {  // set requested shards
+    collections = shards;
   } else {  // add all known shards
     for (auto& entry : _links) {
-      collections.emplace(entry.first);
+      restrictedCollections.emplace(entry.first);
     }
   }
 
+  if (!key) {
+    key = this;
+  }
+
   auto& state = *(trx.state());
-  auto* key = this;
 
 // TODO FIXME find a better way to look up a ViewState
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -973,13 +962,17 @@ IResearchView::Snapshot const* IResearchView::snapshot(
 
   switch (mode) {
     case SnapshotMode::Find:
-      return ctx && ctx->equalCollections(collections.begin(),
-                                          collections.end())
+      return ctx && ctx->equalCollections(collections->begin(),
+                                          collections->end())
                  ? ctx
                  : nullptr;  // ensure same collections
     case SnapshotMode::FindOrCreate:
-      if (ctx && ctx->equalCollections(collections.begin(), collections.end())) {
-        return ctx;  // ensure same collections
+      if (ctx) {
+        if (ctx->equalCollections(collections->begin(), collections->end())) {
+          return ctx;  // ensure same collections
+        }
+
+        ctx->clear(); // reassemble snapshot
       }
       break;
     case SnapshotMode::SyncAndReplace: {
@@ -1023,7 +1016,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
 
   try {
     // collect snapshots from all requested links
-    for (auto& cid : collections) {
+    for (auto const cid : *collections) {
       auto itr = _links.find(cid);
       auto* link = itr != _links.end() && itr->second
                        ? itr->second->get()

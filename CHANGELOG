@@ -1,6 +1,14 @@
 devel
 -----
 
+* added configurable masking of dumped data via `arangodump` tool to obfuscate exported sensible data
+
+* fixed arangoimp script for MacOSX CLI Bundle
+
+* added "peakMemoryUsage" in query results figures, showing the peak memory
+  usage of the executed query. In a cluster, the value the peak memory usage
+  of all shards, but it is not summed up across shards.
+
 * fixed an issue where a crashed coordinator can lead to some Foxx queue jobs
   erroneously either left hanging or being restarted
 
@@ -12,7 +20,7 @@ devel
 
   millisecond parts of AQL date values were limited to up to 3 digits.
   Now the length of the millisecond part is unrestricted, but the 
-  millisecond precision is still limit to up to 3 digits.
+  millisecond precision is still limited to up to 3 digits.
 
 * fix issue #7900: Bind values of `null` are not replaced by empty string 
   anymore, when toggling between JSON and table view in the web UI

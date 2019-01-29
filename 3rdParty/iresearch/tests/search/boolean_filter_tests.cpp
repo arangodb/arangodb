@@ -83,12 +83,21 @@ struct basic_sort : irs::sort {
 
     explicit prepared_sort(size_t idx) : idx(idx) { }
 
+    virtual void collect(
+      irs::attribute_store& filter_attrs,
+      const irs::index_reader& index,
+      const irs::sort::field_collector* field,
+      const irs::sort::term_collector* term
+    ) const {
+      // do not need to collect stats
+    }
+
     const irs::flags& features() const override {
       return irs::flags::empty_instance();
     }
 
-    collector::ptr prepare_collector() const override {
-      return nullptr;
+    virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
+      return nullptr; // do not need to collect stats
     }
 
     scorer::ptr prepare_scorer(
@@ -102,6 +111,10 @@ struct basic_sort : irs::sort {
 
     void prepare_score(irs::byte_type* score) const override {
       score_cast<size_t>(score) = 0;
+    }
+
+    virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
+      return nullptr; // do not need to collect stats
     }
 
     void add(irs::byte_type* dst, const irs::byte_type* src) const override {
@@ -126,7 +139,7 @@ struct basic_sort : irs::sort {
   size_t idx;
 };
 
-DEFINE_SORT_TYPE(::tests::detail::basic_sort);
+DEFINE_SORT_TYPE(::tests::detail::basic_sort)
 
 class basic_doc_iterator: public iresearch::doc_iterator {
  public:
@@ -321,8 +334,8 @@ struct boosted: public iresearch::filter {
   basic_doc_iterator::docids_t docs;
 }; // boosted
 
-DEFINE_FILTER_TYPE(boosted);
-DEFINE_FACTORY_DEFAULT(boosted);
+DEFINE_FILTER_TYPE(boosted)
+DEFINE_FACTORY_DEFAULT(boosted)
 
 NS_END // detail
 
@@ -1230,8 +1243,8 @@ struct unestimated: public iresearch::filter {
   unestimated() : filter(unestimated::type()) {}
 }; // unestimated
 
-DEFINE_FILTER_TYPE(unestimated);
-DEFINE_FACTORY_DEFAULT(unestimated);
+DEFINE_FILTER_TYPE(unestimated)
+DEFINE_FACTORY_DEFAULT(unestimated)
 
 struct estimated: public iresearch::filter {
   struct doc_iterator : iresearch::doc_iterator {
@@ -1297,8 +1310,8 @@ struct estimated: public iresearch::filter {
   iresearch::cost::cost_t est{};
 }; // estimated
 
-DEFINE_FILTER_TYPE(estimated);
-DEFINE_FACTORY_DEFAULT(estimated);
+DEFINE_FILTER_TYPE(estimated)
+DEFINE_FACTORY_DEFAULT(estimated)
 
 NS_END // detail
 
@@ -6222,15 +6235,19 @@ protected:
       not_node.filter<irs::by_term>().field(column_name).term("abcd");
 
       irs::order order;
-      size_t collector_collect_count = 0;
+      size_t collector_collect_field_count = 0;
+      size_t collector_collect_term_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
       auto& sort = order.add<sort::custom_sort>(false);
 
-      sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
-        ++collector_collect_count;
+      sort.collector_collect_field = [&collector_collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void {
+        ++collector_collect_field_count;
       };
-      sort.collector_finish = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&)->void {
+      sort.collector_collect_term = [&collector_collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
+        ++collector_collect_term_count;
+      };
+      sort.collectors_collect_ = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++collector_finish_count;
       };
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
@@ -6267,7 +6284,8 @@ protected:
 
       ASSERT_EQ(expected.size(), docs_count);
 
-      ASSERT_EQ(0, collector_collect_count); // should not be executed
+      ASSERT_EQ(0, collector_collect_field_count); // should not be executed (a negated possibly complex filter)
+      ASSERT_EQ(0, collector_collect_term_count); // should not be executed
       ASSERT_EQ(1, collector_finish_count); // from "all" query
       ASSERT_EQ(expected.size(), scorer_score_count);
 
@@ -6302,15 +6320,19 @@ protected:
       root.add<irs::Not>().filter<irs::by_term>().field(column_name).term("abcd");
 
       irs::order order;
-      size_t collector_collect_count = 0;
+      size_t collector_collect_field_count = 0;
+      size_t collector_collect_term_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
       auto& sort = order.add<sort::custom_sort>(false);
 
-      sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
-        ++collector_collect_count;
+      sort.collector_collect_field = [&collector_collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void {
+        ++collector_collect_field_count;
       };
-      sort.collector_finish = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&)->void {
+      sort.collector_collect_term = [&collector_collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
+        ++collector_collect_term_count;
+      };
+      sort.collectors_collect_ = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++collector_finish_count;
       };
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
@@ -6347,7 +6369,8 @@ protected:
 
       ASSERT_EQ(expected.size(), docs_count);
 
-      ASSERT_EQ(0, collector_collect_count); // should not be executed
+      ASSERT_EQ(0, collector_collect_field_count); // should not be executed (a negated possibly complex filter)
+      ASSERT_EQ(0, collector_collect_term_count); // should not be executed
       ASSERT_EQ(1, collector_finish_count); // from "all" query
       ASSERT_EQ(expected.size(), scorer_score_count);
 

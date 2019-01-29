@@ -331,6 +331,16 @@ void visitReferencedVariables(aql::AstNode const& root,
 
 arangodb::aql::AstNode const ScopedAqlValue::INVALID_NODE(arangodb::aql::NODE_TYPE_ROOT);
 
+/*static*/ irs::string_ref const& ScopedAqlValue::typeString(ScopedValueType type) noexcept {
+  static irs::string_ref const TYPE_NAMES[] = {
+    "invalid", "null", "boolean", "double", "string", "array", "range"
+  };
+
+  TRI_ASSERT(size_t(type) < IRESEARCH_COUNTOF(TYPE_NAMES));
+
+  return TYPE_NAMES[size_t(type)];
+}
+
 // ----------------------------------------------------------------------------
 // --SECTION--                                    ScopedAqlValue implementation
 // ----------------------------------------------------------------------------

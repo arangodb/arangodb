@@ -120,6 +120,10 @@ class StringRef {
             (memcmp(data(), other.data(), size()) == 0));
   }
 
+  bool operator<(StringRef const& other) const noexcept {
+    return (compare(other) < 0);
+  }
+
   inline std::string toString() const {
     return std::string(_data, _length);
   }
