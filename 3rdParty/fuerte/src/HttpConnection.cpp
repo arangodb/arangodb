@@ -41,7 +41,10 @@ using namespace arangodb::fuerte::v1::http;
 int on_message_began(http_parser* parser) { return 0; }
 int on_status(http_parser* parser, const char* at, size_t len) {
   RequestItem* data = static_cast<RequestItem*>(parser->data);
-  data->_response->header.meta.emplace(std::string("http/") + std::to_string(parser->http_major) + '.' + std::to_string(parser->http_minor), std::string(at, len));
+  data->_response->header.meta.emplace(std::string("http/") +
+                                       std::to_string(parser->http_major) + '.' +
+                                       std::to_string(parser->http_minor),
+                                       std::string(at, len));
   return 0; 
 }
 int on_header_field(http_parser* parser, const char* at, size_t len) {
@@ -80,7 +83,11 @@ static int on_header_complete(http_parser* parser) {
   // head has no body, but may have a Content-Length
   if (data->_request->header.restVerb == RestVerb::Head) {
     data->message_complete = true;
+  } else if (parser->content_length > 0 && parser->content_length < ULLONG_MAX) {
+    uint64_t maxReserve = std::min<uint64_t>(2 << 24, parser->content_length);
+    data->_responseBuffer.reserve(maxReserve);
   }
+  
   return 0;
 }
 static int on_body(http_parser* parser, const char* at, size_t len) {
@@ -153,14 +160,18 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   item->_request = std::move(req);
   item->_callback = std::move(cb);
   
+  const size_t payloadSize = item->_request->payloadSize();
   // Prepare a new request
   uint64_t id = item->_messageID;
   if (!_queue.push(item.get())) {
     FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
     throw std::length_error("connection queue capacity exceeded");
   }
-  item.release();
-  _numQueued.fetch_add(1, std::memory_order_relaxed);
+  item.release(); // queue owns this now
+  
+  _numQueued.fetch_add(1, std::memory_order_release);
+  _bytesToSend.fetch_add(payloadSize, std::memory_order_release);
+  
   FUERTE_LOG_HTTPTRACE << "queued item: this=" << this << "\n";
   
   // _state.load() after queuing request, to prevent race with connect
@@ -247,7 +258,8 @@ void HttpConnection<ST>::shutdownConnection(const ErrorCondition ec) {
   RequestItem* item = nullptr;
   while (_queue.pop(item)) {
     std::unique_ptr<RequestItem> guard(item);
-    _numQueued.fetch_sub(1, std::memory_order_relaxed);
+    _numQueued.fetch_sub(1, std::memory_order_release);
+    _bytesToSend.fetch_sub(item->_request->payloadSize(), std::memory_order_release);
     guard->invokeOnError(errorToInt(ec));
   }
   
@@ -372,9 +384,9 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
     // a request got queued in-between last minute
     _active.store(true);
   }
-  std::shared_ptr<http::RequestItem> item(ptr);
-  _numQueued.fetch_sub(1, std::memory_order_relaxed);
+  _numQueued.fetch_sub(1, std::memory_order_release);
   
+  std::shared_ptr<http::RequestItem> item(ptr);
   setTimeout(item->_request->timeout());
   std::vector<asio_ns::const_buffer> buffers(2);
   buffers.emplace_back(item->_requestHeader.data(),
@@ -389,6 +401,7 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
   asio_ns::async_write(_protocol.socket, buffers,
                        [this, self, item](asio_ns::error_code const& ec,
                                           std::size_t transferred) {
+    _bytesToSend.fetch_sub(item->_request->payloadSize(), std::memory_order_release);
     asyncWriteCallback(ec, transferred, std::move(item));
   });
   FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: done, this=" << this << "\n";

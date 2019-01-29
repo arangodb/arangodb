@@ -73,15 +73,21 @@ MessageID VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   item->_expires = std::chrono::steady_clock::time_point::max();
   item->prepareForNetwork(_vstVersion);
   
+  const size_t payloadSize = item->_request->payloadSize();
+  
   // Add item to send queue
   if (!_writeQueue.push(item.get())) {
     FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
     throw std::length_error("connection queue capacity exceeded");
   }
-  item.release();
+  item.release(); // queue owns this now
+  
+  _bytesToSend.fetch_add(payloadSize, std::memory_order_release);
+  
+  FUERTE_LOG_VSTTRACE << "queued item: this=" << this << "\n";
+  
   // WRITE_LOOP_ACTIVE, READ_LOOP_ACTIVE are synchronized via cmpxchg
   uint32_t loop = _loopState.fetch_add(WRITE_LOOP_QUEUE_INC, std::memory_order_seq_cst);
-  FUERTE_LOG_VSTTRACE << "queued item: this=" << this << "\n";
 
   // _state.load() after queuing request, to prevent race with connect
   Connection::State state = _state.load(std::memory_order_acquire);
@@ -174,6 +180,7 @@ void VstConnection<ST>::shutdownConnection(const ErrorCondition ec) {
   while (_writeQueue.pop(item)) {
     std::unique_ptr<RequestItem> guard(item);
     _loopState.fetch_sub(WRITE_LOOP_QUEUE_INC, std::memory_order_release);
+    _bytesToSend.fetch_sub(item->_request->payloadSize(), std::memory_order_release);
     guard->invokeOnError(errorToInt(ec));
   }
   
@@ -358,6 +365,7 @@ void VstConnection<ST>::asyncWriteNextRequest() {
   
   auto self = shared_from_this();
   auto cb = [self, item, this](asio_ns::error_code const& ec, std::size_t transferred) {
+    _bytesToSend.fetch_sub(item->_request->payloadSize(), std::memory_order_release);
     asyncWriteCallback(ec, transferred, std::move(item));
   };
   asio_ns::async_write(_protocol.socket, item->_requestBuffers, cb);
