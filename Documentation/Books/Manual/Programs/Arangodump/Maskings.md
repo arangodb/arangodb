@@ -170,6 +170,14 @@ was the value of the attribute.
 If the attribute value is an object, then the attribute is not masked.
 Instead the nested object is checked further for leaf attributes.
 
+{% hint 'tip' %}
+If some documents have an attribute `name` with a string as value, but other
+documents store a nested object under the same attribute name, then make sure
+to set up proper masking for the latter case, in which sub-attributes will not
+get masked if there is only a masking configured for the attribute `name`
+but not its nested attributes.
+{% endhint %}
+
 **Example**
 
 Masking `email` will convert:
