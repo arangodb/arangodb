@@ -168,12 +168,14 @@ function recovery (options) {
       print(BLUE + "running recovery of test " + count + " - " + test + RESET);
       params.options.disableMonitor = options.disableMonitor;
       params.setup = false;
-      tu.writeTestResult(params.args['temp.path'], {
-        failed: 1,
-        status: false, 
-        message: "unable to run recovery test " + test,
-        duration: -1
-      });
+      try {
+        tu.writeTestResult(params.args['temp.path'], {
+          failed: 1,
+          status: false, 
+          message: "unable to run recovery test " + test,
+          duration: -1
+        });
+      } catch (er) {}
       runArangodRecovery(params);
 
       results[test] = tu.readTestResult(
