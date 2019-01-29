@@ -41,6 +41,8 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "Scheduler/JobGuard.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Ssl/SslInterface.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
@@ -192,10 +194,18 @@ void auth::UserManager::loadFromDB() {
   if (_internalVersion.load(std::memory_order_acquire) == globalVersion()) {
     return;
   }
+                     
   MUTEX_LOCKER(guard, _loadFromDBLock);
   uint64_t tmp = globalVersion();
   if (_internalVersion.load(std::memory_order_acquire) == tmp) {
     return;
+  }
+  
+  JobGuard jobGuard(SchedulerFeature::SCHEDULER);
+  if (ServerState::instance()->isCoordinator()) {
+    // mark the current thread as being busy, because we will very soon be
+    // doing blocking cluster-internal communication
+    jobGuard.work();
   }
 
   try {
