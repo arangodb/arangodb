@@ -1,6 +1,8 @@
 v3.4.3 (XXXX-XX-XX)
 -------------------
 
+* fix broken validation of tick range in arangodump
+
 * updated bundled curl library to version 7.63.0
 
 * added "peakMemoryUsage" in query results figures, showing the peak memory
