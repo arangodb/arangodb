@@ -211,6 +211,14 @@ If the attribute value is an object, then it is ignored and the attribute
 does not get masked. To mask nested fields, specify the full path for each
 leaf attribute.
 
+{% hint 'tip' %}
+If some documents have an attribute `name` with a string as value, but other
+documents store a nested object under the same attribute name, then make sure
+to set up proper masking for the latter case, in which sub-attributes will not
+get masked if there is only a masking configured for the attribute `name`
+but not its nested attributes.
+{% endhint %}
+
 **Example**
 
 Masking `email` will convert:
