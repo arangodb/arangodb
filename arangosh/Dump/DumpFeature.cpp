@@ -154,7 +154,7 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
     _maxChunkSize = _chunkSize;
   }
 
-  if (_tickStart < _tickEnd) {
+  if (_tickEnd < _tickStart) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid values for --tick-start or --tick-end";
     FATAL_ERROR_EXIT();
