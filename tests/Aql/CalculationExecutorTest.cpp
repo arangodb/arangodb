@@ -316,6 +316,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
       }
     }
   }
+  query.injectTransaction(nullptr);
 
 }  // SCENARIO
 
