@@ -179,7 +179,7 @@ arangodb::Result applyRecoveryMarker(
 class MMFilesFlushMarker final: public arangodb::MMFilesWalMarker {
  public:
   /// @brief read constructor
-  MMFilesFlushMarker(MMFilesMarker const& marker) {
+  explicit MMFilesFlushMarker(MMFilesMarker const& marker) {
     TRI_ASSERT(type() == marker.getType());
     auto* data = reinterpret_cast<uint8_t const*>(&marker);
     auto* ptr = data + sizeof(MMFilesMarker);
@@ -298,7 +298,7 @@ class MMFilesRecoveryHelper final: public arangodb::MMFilesRecoveryHelper {
 class RocksDBFlushMarker {
  public:
   /// @brief read constructor
-  RocksDBFlushMarker(rocksdb::Slice const& marker) {
+  explicit RocksDBFlushMarker(rocksdb::Slice const& marker) {
     TRI_ASSERT(arangodb::RocksDBLogType::FlushSync == arangodb::RocksDBLogValue::type(marker));
     auto* data = marker.data();
     auto* ptr = data + sizeof(arangodb::RocksDBLogType);
