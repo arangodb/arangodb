@@ -1522,7 +1522,6 @@ static void JS_DebugShouldFailAt(v8::FunctionCallbackInfo<v8::Value> const& args
   if (v8g->_vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
-  std::string dbname(v8g->_vocbase->name());
 
   // extract arguments
   if (args.Length() != 1) {
