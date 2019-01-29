@@ -172,9 +172,7 @@ Supervision::Supervision()
       _upgraded(false) {}
 
 Supervision::~Supervision() {
-  if (!isStopping()) {
-    shutdown();
-  }
+  shutdown();
 }
 
 static std::string const syncPrefix = "/Sync/ServerStates/";

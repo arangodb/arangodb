@@ -491,11 +491,11 @@ aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif  // ARANGOD_IRESEARCH__AQL_HELPER_H
-
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
+
+#endif  // ARANGOD_IRESEARCH__AQL_HELPER_H
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

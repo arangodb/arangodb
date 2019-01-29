@@ -42,14 +42,13 @@ function runSetup () {
   internal.wait(1, false);
 
   internal.debugSetFailAt('BreakHeaderMarker');
-  internal.debugSetFailAt('LogfileManagerFlush');
-  internal.debugSetFailAt('CollectorThreadCollect');
   for (var i = 0; i < 10; ++i) {
     c.insert({ value: i });
   }
-  internal.wal.flush(true);
+  internal.wal.flush(true, true);
+  internal.wal.waitForCollector('UnitTestsRecovery');
   
-  internal.wait(5, false);
+//  internal.wait(5, false);
   
   internal.debugSegfault('crashing server');
 }
@@ -70,10 +69,19 @@ function recoverySuite () {
     // / @brief test whether we can start the server
     // //////////////////////////////////////////////////////////////////////////////
 
-    testCorruptedCrc: function () {
-      // counting must succeed in all cases, but we don't know how many
-      // documents we will recover
-      assertTrue(db._collection('UnitTestsRecovery').count() >= 0);
+    testCorruptedCrcDatafile: function () {
+      if (require("internal").options()["database.ignore-datafile-errors"]) {
+        // counting must succeed in all cases
+        assertTrue(db._collection('UnitTestsRecovery').count() >= 0);
+      } else {
+        // if datafile errors are not ignored, then any counting must fail here
+        try {
+          db._collection('UnitTestsRecovery').count();
+          fail();
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_ARANGO_CORRUPTED_COLLECTION.code, err.errorNum);
+        }
+      }
     }
 
   };

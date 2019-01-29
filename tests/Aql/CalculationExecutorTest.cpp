@@ -130,6 +130,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
   fakeit::Mock<transaction::Context> mockContext;
   transaction::Context& ctxt = mockContext.get();
 
+  fakeit::Fake(Dtor(mockTrx));
   fakeit::When(Method(mockTrx, transactionContextPtr)).AlwaysReturn(&ctxt);
   fakeit::When(Method(mockContext, getVPackOptions)).AlwaysReturn(&arangodb::velocypack::Options::Defaults);
 
@@ -316,7 +317,6 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
       }
     }
   }
-  query.injectTransaction(nullptr);
 
 }  // SCENARIO
 

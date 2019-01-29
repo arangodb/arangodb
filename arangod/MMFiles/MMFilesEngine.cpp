@@ -3186,8 +3186,14 @@ char* MMFilesEngine::nextFreeMarkerPosition(LogicalCollection* collection, TRI_v
     if (ditch == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
-
-    cache->addDitch(ditch);
+ 
+    try {
+      cache->addDitch(ditch);
+    } catch (...) {
+      // prevent leaking here
+      arangodb::MMFilesCollection::toMMFilesCollection(collection)->ditches()->freeDitch(ditch);
+      throw;
+    }
   }
 
   TRI_ASSERT(dst != nullptr);

@@ -55,7 +55,7 @@ class SupervisedSchedulerThread : virtual public Thread {
  public:
   explicit SupervisedSchedulerThread(SupervisedScheduler& scheduler)
       : Thread("Scheduler"), _scheduler(scheduler) {}
-  ~SupervisedSchedulerThread() { shutdown(); }
+  ~SupervisedSchedulerThread() {} // shutdown is called by derived implementation!
 
  protected:
   SupervisedScheduler& _scheduler;
@@ -65,6 +65,7 @@ class SupervisedSchedulerManagerThread final : public SupervisedSchedulerThread 
  public:
   explicit SupervisedSchedulerManagerThread(SupervisedScheduler& scheduler)
       : Thread("SchedMan"), SupervisedSchedulerThread(scheduler) {}
+  ~SupervisedSchedulerManagerThread() { shutdown(); }
   void run() override { _scheduler.runSupervisor(); };
 };
 
@@ -72,6 +73,7 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
  public:
   explicit SupervisedSchedulerWorkerThread(SupervisedScheduler& scheduler)
       : Thread("SchedWorker"), SupervisedSchedulerThread(scheduler) {}
+  ~SupervisedSchedulerWorkerThread() { shutdown(); }
   void run() override { _scheduler.runWorker(); };
 };
 
