@@ -1569,7 +1569,7 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // check if the other database exists, and increase its refcount
-  vocbase = databaseFeature->useDatabase(name).get();
+  vocbase = databaseFeature->lookupDatabase(name).get();
   vocbase = vocbase && vocbase->use() ? vocbase : nullptr; // increase refcount
 
   if (vocbase == nullptr) {

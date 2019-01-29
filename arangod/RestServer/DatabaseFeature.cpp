@@ -904,24 +904,7 @@ void DatabaseFeature::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
   result.close();
 }
 
-DatabaseFeature::RefCntPtr DatabaseFeature::useDatabase( // mark in-use
-    std::string const& name // database name
-) {
-  auto theLists = std::atomic_load(&_databasesLists);
-  auto it = theLists->_databases.find(name);
-
-  if (it != theLists->_databases.end()) {
-    auto vocbase = it->second;
-
-    if (vocbase->use()) {
-      return RefCntPtr(vocbase.get(), RefCntDeleter(vocbase)); // scoped-release pointer
-    }
-  }
-
-  return nullptr;
-}
-
-DatabaseFeature::RefCntPtr DatabaseFeature::useDatabase( // mark in-use
+DatabaseFeature::RefCntPtr DatabaseFeature::lookupDatabase( // find database
     TRI_voc_tick_t id // database id
 ) {
   auto theLists = std::atomic_load(&_databasesLists);
@@ -941,35 +924,32 @@ DatabaseFeature::RefCntPtr DatabaseFeature::useDatabase( // mark in-use
   return nullptr;
 }
 
-/// @brief lookup a database by its name, not increasing its reference count
-std::shared_ptr<TRI_vocbase_t> DatabaseFeature::lookupDatabase( // find database
+DatabaseFeature::RefCntPtr DatabaseFeature::lookupDatabase( // find database
     std::string const& name // database name
 ) {
   if (name.empty()) {
     return nullptr;
   }
 
-  auto theLists = std::atomic_load(&_databasesLists);
-
   // database names with a number in front are invalid names
   if (name[0] >= '0' && name[0] <= '9') {
     TRI_voc_tick_t id =
         NumberUtils::atoi_zero<TRI_voc_tick_t>(name.data(), name.data() + name.size());
 
-    for (auto& p : theLists->_databases) {
-      auto& vocbase = p.second;
+    return lookupDatabase(id);
+  }
 
-      if (vocbase->id() == id) {
-        return vocbase;
-      }
-    }
-  } else {
+  auto theLists = std::atomic_load(&_databasesLists);
+
     for (auto& p : theLists->_databases) {
       auto& vocbase = p.second;
 
       if (name == vocbase->name()) {
-        return vocbase;
+      if (vocbase->use()) {
+        return RefCntPtr(vocbase.get(), RefCntDeleter(vocbase)); // scoped-release pointer
       }
+
+      break;
     }
   }
 
@@ -1022,7 +1002,7 @@ void DatabaseFeature::updateContexts() {
     return;
   }
 
-  auto* vocbase = useDatabase(TRI_VOC_SYSTEM_DATABASE).get();
+  auto* vocbase = lookupDatabase(TRI_VOC_SYSTEM_DATABASE).get();
   vocbase = vocbase && vocbase->use() ? vocbase : nullptr; // increase refcount
   TRI_ASSERT(vocbase);
 

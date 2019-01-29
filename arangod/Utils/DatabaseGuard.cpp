@@ -36,7 +36,7 @@ std::shared_ptr<TRI_vocbase_t> vocbase(T& id) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  return databaseFeature->useDatabase(id);
+  return databaseFeature->lookupDatabase(id);
 }
 
 }  // namespace

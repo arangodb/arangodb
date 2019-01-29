@@ -100,10 +100,10 @@ std::shared_ptr<TRI_vocbase_t> lookupDatabaseFromRequest(GeneralRequest& req) {
     // as a fallback
     req.setDatabaseName(StaticStrings::SystemDatabase);
 
-    return databaseFeature->useDatabase(StaticStrings::SystemDatabase);
+    return databaseFeature->lookupDatabase(StaticStrings::SystemDatabase);
   }
 
-  return databaseFeature->useDatabase(dbName);
+  return databaseFeature->lookupDatabase(dbName);
 }
 
 /// Set the appropriate requestContext

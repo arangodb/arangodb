@@ -68,7 +68,7 @@ TRI_vocbase_t* WalAccessContext::loadVocbase(TRI_voc_tick_t dbid) {
   auto const& it = _vocbases.find(dbid);
 
   if (it == _vocbases.end()) {
-    auto vocbase = DatabaseFeature::DATABASE->useDatabase(dbid);
+    auto vocbase = DatabaseFeature::DATABASE->lookupDatabase(dbid);
 
     if (vocbase != nullptr) {
       _vocbases.emplace(std::piecewise_construct, std::forward_as_tuple(dbid),

@@ -125,7 +125,7 @@ TRI_vocbase_t* MMFilesWalRecoverState::useDatabase(TRI_voc_tick_t databaseId) {
   }
 
   auto vocbase = // exisitng vocbase
-    std::shared_ptr<TRI_vocbase_t>(databaseFeature->useDatabase(databaseId));
+    std::shared_ptr<TRI_vocbase_t>(databaseFeature->lookupDatabase(databaseId));
 
   if (vocbase == nullptr) {
     return nullptr;

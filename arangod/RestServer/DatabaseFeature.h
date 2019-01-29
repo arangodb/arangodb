@@ -121,10 +121,9 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void inventory(arangodb::velocypack::Builder& result, TRI_voc_tick_t,
                  std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
-  RefCntPtr useDatabase(std::string const& name);
-  RefCntPtr useDatabase(TRI_voc_tick_t id);
+  RefCntPtr lookupDatabase(TRI_voc_tick_t id);
+  RefCntPtr lookupDatabase(std::string const& nameOrId);
 
-  std::shared_ptr<TRI_vocbase_t> lookupDatabase(std::string const& name);
   void enumerateDatabases(std::function<void(TRI_vocbase_t& vocbase)> const& func);
   std::string translateCollectionName(std::string const& dbName,
                                       std::string const& collectionName);

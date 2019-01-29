@@ -1127,7 +1127,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       // known plan IDs
       ids.push_back(id);
 
-      auto vocbase = databaseFeature->useDatabase(name);
+      auto vocbase = databaseFeature->lookupDatabase(name);
 
       if (vocbase == nullptr) {
         // database does not yet exist, create it now

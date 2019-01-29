@@ -164,7 +164,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   for (auto const& pair : mappings) {
     TRI_voc_tick_t dbid = pair.first;
     TRI_voc_cid_t cid = pair.second;
-    auto vocbase = dbfeature->useDatabase(dbid);
+    auto vocbase = dbfeature->lookupDatabase(dbid);
 
     if (!vocbase) {
       continue;

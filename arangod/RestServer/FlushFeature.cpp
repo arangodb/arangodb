@@ -49,6 +49,11 @@
 
 namespace arangodb {
 
+  // used by catch tests
+  #ifdef USE_CATCH_TESTS
+    /*static*/ FlushFeature::DefaultFlushSubscription FlushFeature::_defaultFlushSubscription;
+  #endif
+
   /// @brief base class for FlushSubscription implementations
   class FlushFeature::FlushSubscriptionBase
       : public FlushFeature::FlushSubscription {
@@ -136,7 +141,7 @@ arangodb::Result applyRecoveryMarker(
     );
   }
 
-  auto vocbase = dbFeature->useDatabase(dbId);
+  auto vocbase = dbFeature->lookupDatabase(dbId);
 
   if (!vocbase) {
     return arangodb::Result(
@@ -181,7 +186,7 @@ class MMFilesFlushMarker final: public arangodb::MMFilesWalMarker {
     TRI_ASSERT(type() == marker.getType());
     auto* data = reinterpret_cast<uint8_t const*>(&marker);
     auto* ptr = data + sizeof(MMFilesMarker);
-    auto* end = data + marker.getSize();
+    auto* end = ptr + marker.getSize();
 
     TRI_ASSERT(sizeof(TRI_voc_tick_t) <= size_t(end - ptr));
     _databaseId = arangodb::encoding::readNumber<TRI_voc_tick_t>(
@@ -300,7 +305,7 @@ class RocksDBFlushMarker {
     TRI_ASSERT(arangodb::RocksDBLogType::FlushSync == arangodb::RocksDBLogValue::type(marker));
     auto* data = marker.data();
     auto* ptr = data + sizeof(arangodb::RocksDBLogType);
-    auto* end = data + marker.size();
+    auto* end = ptr + marker.size() - sizeof(arangodb::RocksDBLogType);
 
     TRI_ASSERT(sizeof(uint64_t) <= size_t(end - ptr));
     _databaseId = arangodb::rocksutils::uint64FromPersistent(ptr);
@@ -531,6 +536,36 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
 
     return subscription;
   }
+
+  #ifdef USE_CATCH_TESTS
+    if (_defaultFlushSubscription) {
+      struct DelegatingFlushSubscription: public FlushSubscriptionBase {
+        DefaultFlushSubscription _delegate;
+        TRI_vocbase_t const& _vocbase;
+        DelegatingFlushSubscription( // constructor
+          std::string const& type, // subscription type
+          TRI_vocbase_t const& vocbase, // subscription vocbase
+          DefaultFlushSubscription& delegate // subscription delegate
+        ): arangodb::FlushFeature::FlushSubscriptionBase( // base class
+             type, vocbase.id(), *EngineSelectorFeature::ENGINE // args
+           ),
+           _delegate(delegate),
+           _vocbase(vocbase) {
+        }
+        Result commit(velocypack::Slice const& data) override {
+          return _delegate(_type, _vocbase, data);
+        }
+      };
+      auto subscription = std::make_shared<DelegatingFlushSubscription>( // wrapper
+        type, vocbase, _defaultFlushSubscription // args
+      );
+      std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
+
+      _flushSubscriptions.emplace(subscription);
+
+      return subscription;
+    }
+  #endif
 
   LOG_TOPIC(ERR, Logger::FLUSH)
     << "failed to identify storage engine while registering 'Flush' marker subscription for type '" << type << "'";

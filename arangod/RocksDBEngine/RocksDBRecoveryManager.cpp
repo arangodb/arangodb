@@ -187,7 +187,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
           // collection with this objectID not known.Skip.
           continue;
         }
-        auto vocbase = dbfeature->useDatabase(dbColPair.first);
+        auto vocbase = dbfeature->lookupDatabase(dbColPair.first);
 
         if (vocbase == nullptr) {
           continue;
@@ -233,7 +233,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
             // collection with this objectID not known.Skip.
             continue;
           }
-          auto vocbase = dbfeature->useDatabase(dbColPair.first);
+          auto vocbase = dbfeature->lookupDatabase(dbColPair.first);
 
           if (vocbase == nullptr) {
             continue;
@@ -308,7 +308,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     }
 
     DatabaseFeature* df = DatabaseFeature::DATABASE;
-    auto vb = df->useDatabase(pair.first);
+    auto vb = df->lookupDatabase(pair.first);
 
     if (vb == nullptr) {
       return false;
@@ -342,7 +342,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     }
 
     DatabaseFeature* df = DatabaseFeature::DATABASE;
-    auto vb = df->useDatabase(std::get<0>(triple));
+    auto vb = df->lookupDatabase(std::get<0>(triple));
 
     if (vb == nullptr) {
       return nullptr;

@@ -55,9 +55,11 @@ void SystemDatabaseFeature::start() {
           "Database");
 
   if (feature) {
-    std::atomic_store( // atomic operation
-      &_vocbase, feature->lookupDatabase(TRI_VOC_SYSTEM_DATABASE) // args
+    auto vocbase = std::shared_ptr<TRI_vocbase_t>( // system vocbase
+      feature->lookupDatabase(TRI_VOC_SYSTEM_DATABASE) // args
     );
+
+    std::atomic_store(&_vocbase, vocbase);
 
     return;
   }

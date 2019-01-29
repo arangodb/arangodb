@@ -225,7 +225,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
     int tries = 0;
 
     while (++tries <= 6000) {
-      vocbase = databaseFeature->useDatabase(id);
+      vocbase = databaseFeature->lookupDatabase(id);
 
       if (vocbase != nullptr) {
         break;
@@ -314,7 +314,7 @@ int dropDBCoordinator(std::string const& dbName) {
   TRI_voc_tick_t id;
 
   {
-    auto vocbase = databaseFeature->useDatabase(dbName);
+    auto vocbase = databaseFeature->lookupDatabase(dbName);
 
     if (vocbase == nullptr) {
       return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
@@ -335,7 +335,7 @@ int dropDBCoordinator(std::string const& dbName) {
 
   while (++tries <= 6000) {
     {
-      auto vocbase = databaseFeature->useDatabase(id);
+      auto vocbase = databaseFeature->lookupDatabase(id);
 
       if (vocbase == nullptr) {
         break; // object has vanished

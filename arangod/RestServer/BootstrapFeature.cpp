@@ -348,7 +348,7 @@ void BootstrapFeature::unprepare() {
           "Database");
 
   for (auto& name : databaseFeature->getDatabaseNames()) {
-    auto vocbase = databaseFeature->useDatabase(name);
+    auto vocbase = databaseFeature->lookupDatabase(name);
 
     if (vocbase != nullptr) {
       vocbase->queryList()->killAll(true);

@@ -50,7 +50,7 @@ namespace {
 std::shared_ptr<arangodb::LogicalCollection> lookupCollection(
     arangodb::DatabaseFeature& db, arangodb::RocksDBEngine& engine, uint64_t objectId) {
   auto pair = engine.mapObjectToCollection(objectId);
-  auto vocbase = db.useDatabase(pair.first);
+  auto vocbase = db.lookupDatabase(pair.first);
 
   return vocbase ? vocbase->lookupCollection(pair.second) : nullptr;
 }
@@ -128,7 +128,7 @@ void ensureLink(arangodb::DatabaseFeature& db,
     return;
   }
 
-  auto vocbase = db.useDatabase(dbId);
+  auto vocbase = db.lookupDatabase(dbId);
 
   if (!vocbase) {
     // if the underlying database is gone, we can go on
