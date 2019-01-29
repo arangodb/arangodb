@@ -964,7 +964,7 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(Query* query, tp_sys_clock_ms con
   year_month_day ymd{floor<days>(tp)};
   auto day_time = make_time(tp - sys_days(ymd));
   std::smatch duration_parts;
-  if (!basics::regex_isoDuration(duration, duration_parts)) {
+  if (!basics::regexIsoDuration(duration, duration_parts)) {
     if (isSubtract) {
       ::registerWarning(query, "DATE_SUBTRACT", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     } else {
@@ -1037,7 +1037,7 @@ bool parameterToTimePoint(Query* query, transaction::Methods* trx,
     tp = tp_sys_clock_ms(milliseconds(value.toInt64(trx)));
   } else {
     std::string const dateVal = value.slice().copyString();
-    if (!basics::parse_dateTime(dateVal, tp)) {
+    if (!basics::parseDateTime(dateVal, tp)) {
       ::registerWarning(query, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return false;
     }
@@ -3500,7 +3500,7 @@ AqlValue Functions::IsDatestring(arangodb::aql::Query*, transaction::Methods*,
 
   if (value.isString()) {
     tp_sys_clock_ms tp;  // unused
-    isValid = basics::parse_dateTime(value.slice().copyString(), tp);
+    isValid = basics::parseDateTime(value.slice().copyString(), tp);
   }
 
   return AqlValue(AqlValueHintBool(isValid));

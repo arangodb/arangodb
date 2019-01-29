@@ -31,6 +31,7 @@
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
+#include "Basics/SmallVector.h"
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -96,7 +97,7 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
     // name has changed by the lookup, so we need to reserve the collection
     // name on the heap and update our StringRef
     char* p = query.registerString(dataSourceName.data(), dataSourceName.size());
-    nameRef = StringRef(p, dataSourceName.size());
+    nameRef = arangodb::StringRef(p, dataSourceName.size());
   }
 
   // add views to the collection list
@@ -662,7 +663,7 @@ AstNode* Ast::createNodeDataSource(arangodb::CollectionNameResolver const& resol
                                    char const* name, size_t nameLength,
                                    AccessMode::Type accessType,
                                    bool validateName, bool failIfDoesNotExist) {
-  StringRef nameRef(name, nameLength);
+  arangodb::StringRef nameRef(name, nameLength);
 
   // will throw if validation fails
   validateDataSourceName(nameRef, validateName);
@@ -689,7 +690,7 @@ AstNode* Ast::createNodeDataSource(arangodb::CollectionNameResolver const& resol
 AstNode* Ast::createNodeCollection(arangodb::CollectionNameResolver const& resolver,
                                    char const* name, size_t nameLength,
                                    AccessMode::Type accessType) {
-  StringRef nameRef(name, nameLength);
+  arangodb::StringRef nameRef(name, nameLength);
 
   // will throw if validation fails
   validateDataSourceName(nameRef, true);
@@ -1045,16 +1046,24 @@ AstNode* Ast::createNodeArray(size_t size) {
 }
 
 /// @brief create an AST unique array node, AND-merged from two other arrays
+/// the resulting array has no particular order
 AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs) {
   TRI_ASSERT(lhs->isArray() && lhs->isConstant());
   TRI_ASSERT(rhs->isArray() && rhs->isConstant());
 
-  size_t const nl = lhs->numMembers();
-  size_t const nr = rhs->numMembers();
+  size_t nl = lhs->numMembers();
+  size_t nr = rhs->numMembers();
+
+  if (nl > nr) {
+    // we want lhs to be the shorter of the two arrays, so we use less
+    // memory for the lookup cache
+    std::swap(lhs, rhs);
+    std::swap(nl, nr);
+  }
 
   std::unordered_map<VPackSlice, AstNode const*, arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
-      cache(nl + nr, arangodb::basics::VelocyPackHelper::VPackHash(),
+      cache(nl, arangodb::basics::VelocyPackHelper::VPackHash(),
             arangodb::basics::VelocyPackHelper::VPackEqual());
 
   for (size_t i = 0; i < nl; ++i) {
@@ -1064,7 +1073,7 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs)
     cache.emplace(slice, member);
   }
 
-  auto node = createNodeArray(nr / 2);
+  auto node = createNodeArray(cache.size() + nr);
 
   for (size_t i = 0; i < nr; ++i) {
     auto member = rhs->getMemberUnchecked(i);
@@ -1081,12 +1090,15 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs)
 }
 
 /// @brief create an AST unique array node, OR-merged from two other arrays
+/// the resulting array will be sorted by value
 AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
   TRI_ASSERT(lhs->isArray() && lhs->isConstant());
   TRI_ASSERT(rhs->isArray() && rhs->isConstant());
 
   size_t const nl = lhs->numMembers();
   size_t const nr = rhs->numMembers();
+
+  auto node = createNodeArray(nl + nr);
 
   std::unordered_map<VPackSlice, AstNode const*, arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
@@ -1102,14 +1114,12 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
     }
     VPackSlice slice = member->computeValue();
 
-    cache.emplace(slice, member);
+    if (cache.emplace(slice, member).second) {
+      // only insert unique values
+      node->addMember(member);
+    }
   }
 
-  auto node = createNodeArray(cache.size());
-
-  for (auto& it : cache) {
-    node->addMember(it.second);
-  }
   node->sort();
 
   return node;
@@ -1156,7 +1166,7 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections,
     if (c->isStringValue()) {
       std::string const name = c->getString();
       // this call may update nameRef
-      StringRef nameRef(name);
+      arangodb::StringRef nameRef(name);
       LogicalDataSource::Category const* category =
           injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, nameRef);
       if (category == LogicalCollection::category()) {
@@ -1172,7 +1182,7 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections,
             auto names = coll->realNames();
 
             for (auto const& n : names) {
-              StringRef shardsNameRef(n);
+              arangodb::StringRef shardsNameRef(n);
               LogicalDataSource::Category const* shardsCategory =
                   injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ,
                                           false, shardsNameRef);
@@ -1208,7 +1218,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
   auto ci = ClusterInfo::instance();
   auto ss = ServerState::instance();
   auto doTheAdd = [&](std::string const& name) {
-    StringRef nameRef(name);
+    arangodb::StringRef nameRef(name);
     LogicalDataSource::Category const* category =
         injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, nameRef);
     if (category == LogicalCollection::category()) {
@@ -1218,7 +1228,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
           auto const& names = c->realNames();
 
           for (auto const& n : names) {
-            StringRef shardsNameRef(n);
+            arangodb::StringRef shardsNameRef(n);
             LogicalDataSource::Category const* shardsCategory =
                 injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ,
                                         false, shardsNameRef);
@@ -1572,7 +1582,7 @@ void Ast::injectBindParameters(BindParameters& parameters,
             auto const& c = it.first;
 
             if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
-                paramRef == StringRef(c->getStringValue(), c->getStringLength())) {
+                paramRef == arangodb::StringRef(c->getStringValue(), c->getStringLength())) {
               isWriteCollection = true;
               break;
             }
@@ -1589,7 +1599,7 @@ void Ast::injectBindParameters(BindParameters& parameters,
               auto& c = _writeCollections[i].first;
 
               if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
-                  paramRef == StringRef(c->getStringValue(), c->getStringLength())) {
+                  paramRef == arangodb::StringRef(c->getStringValue(), c->getStringLength())) {
                 c = node;
                 // no break here. replace all occurrences
               }
@@ -1692,7 +1702,7 @@ AstNode* Ast::replaceAttributeAccess(AstNode* node, Variable const* variable,
     return node;
   }
 
-  std::vector<StringRef> attributePath;
+  std::vector<arangodb::StringRef> attributePath;
 
   auto visitor = [&](AstNode* node) -> AstNode* {
     if (node == nullptr) {
@@ -1827,7 +1837,7 @@ void Ast::validateAndOptimize() {
       auto func = static_cast<Function*>(node->getData());
       TRI_ASSERT(func != nullptr);
 
-      if (func->name == "NOOPT") {
+      if (func->hasFlag(Function::Flags::NoEval)) {
         // NOOPT will turn all function optimizations off
         ++(ctx->stopOptimizationRequests);
       }
@@ -1900,7 +1910,7 @@ void Ast::validateAndOptimize() {
       auto func = static_cast<Function*>(node->getData());
       TRI_ASSERT(func != nullptr);
 
-      if (func->name == "NOOPT") {
+      if (func->hasFlag(Function::Flags::NoEval)) {
         // NOOPT will turn all function optimizations off
         --ctx->stopOptimizationRequests;
       }
@@ -3304,7 +3314,7 @@ AstNode* Ast::optimizeIndexedAccess(AstNode* node) {
     // found a string value (e.g. a['foo']). now turn this into
     // an attribute access (e.g. a.foo) in order to make the node qualify
     // for being turned into an index range later
-    StringRef indexValue(index->getStringValue(), index->getStringLength());
+    arangodb::StringRef indexValue(index->getStringValue(), index->getStringLength());
 
     if (!indexValue.empty() && (indexValue[0] < '0' || indexValue[0] > '9')) {
       // we have to be careful with numeric values here...
@@ -3532,10 +3542,11 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
 
-  std::vector<std::string> attributeNames;
+  SmallVector<arangodb::StringRef>::allocator_type::arena_type a;
+  SmallVector<arangodb::StringRef> attributeNames{a};
 
   while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    attributeNames.emplace_back(node->getString());
+    attributeNames.push_back(node->getStringRef());
     node = node->getMember(0);
   }
 
@@ -3550,15 +3561,15 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
 
     if (node->type == NODE_TYPE_OBJECT) {
       TRI_ASSERT(which > 0);
-      std::string const& attributeName = attributeNames[which - 1];
+      arangodb::StringRef const& attributeName = attributeNames[which - 1];
       --which;
 
       size_t const n = node->numMembers();
       for (size_t i = 0; i < n; ++i) {
-        auto member = node->getMember(i);
+        auto member = node->getMemberUnchecked(i);
 
         if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-            StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
+            arangodb::StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
           // found the attribute
           node = member->getMember(0);
           if (which == 0) {
@@ -3717,7 +3728,7 @@ AstNode* Ast::createNode(AstNodeType type) {
 
 /// @brief validate the name of the given datasource
 /// in case validation fails, will throw an exception
-void Ast::validateDataSourceName(StringRef const& name, bool validateStrict) {
+void Ast::validateDataSourceName(arangodb::StringRef const& name, bool validateStrict) {
   // common validation
   if (name.empty() ||
       (validateStrict &&
@@ -3731,7 +3742,7 @@ void Ast::validateDataSourceName(StringRef const& name, bool validateStrict) {
 
 /// @brief create an AST collection node
 /// private function, does no validation
-AstNode* Ast::createNodeCollectionNoValidation(StringRef const& name,
+AstNode* Ast::createNodeCollectionNoValidation(arangodb::StringRef const& name,
                                                AccessMode::Type accessType) {
   if (ServerState::instance()->isCoordinator()) {
     auto ci = ClusterInfo::instance();
