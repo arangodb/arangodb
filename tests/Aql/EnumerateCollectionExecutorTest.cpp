@@ -66,49 +66,44 @@ SCENARIO("EnumerateCollectionExecutor",
   AqlItemBlockManager itemBlockManager{&monitor};
 
   GIVEN("there are no rows upstream") {
-    // EnumerateCollectionExecutorInfos infos(0, 1, 1, 2, {});
     fakeit::Mock<ExecutionEngine> mockEngine;
-    ExecutionEngine& engine = mockEngine.get();
 
+    // fake transaction::Methods
     fakeit::Mock<transaction::Methods> mockTrx;
-    transaction::Methods& trx = mockTrx.get();
-
+    // fake indexScan
     fakeit::Mock<OperationCursor> mockCursor;
     fakeit::Fake(Dtor(mockCursor));
-    OperationCursor& cursor = mockCursor.get();
-
-    // Slice = VPackSlice::emptyObjectSlice();
-    Variable _outVariable("name", 1);
-    std::vector<std::string> const projections;
-    bool _varUsedLater = false;
-    std::vector<size_t> const coveringIndexAttributePositions;
-    bool allowCoveringIndexOptimization = false;
-    bool _random = false;
-    std::unordered_set<RegisterId> const regToClear;
-    // TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-
-    fakeit::Mock<TRI_vocbase_t> vocbaseMock;
-    TRI_vocbase_t& vocbase = vocbaseMock.get();
-
-    fakeit::When(Method(mockCursor, reset)).AlwaysDo([&]() -> void {
-      // just do nothing
-    });
-
+    fakeit::Fake(Method(mockCursor, reset));
+    OperationCursor& cursor = mockCursor.get();  // required as return value for index scan
     fakeit::When(Method(mockTrx, indexScan))
         .AlwaysDo(std::function<std::unique_ptr<OperationCursor>(std::string const&, CursorType&)>(
             [&cursor](std::string const&, CursorType&) -> std::unique_ptr<OperationCursor> {
               return std::unique_ptr<OperationCursor>(&cursor);
             }));
+    // fake transaction::Methods - end
 
-    // Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type);
+    fakeit::Mock<TRI_vocbase_t> vocbaseMock;
+    TRI_vocbase_t& vocbase = vocbaseMock.get();  // required to create collection
+
+    // parameters for infos in order of ctor
+    Variable outVariable("name", 1);
+    bool varUsedLater = false;
+    std::unordered_set<RegisterId> const regToClear;
+    ExecutionEngine& engine = mockEngine.get();
     Collection const abc("blabli", &vocbase, arangodb::AccessMode::Type::READ);
+    std::vector<std::string> const projections;
+    transaction::Methods& trx = mockTrx.get();
+    std::vector<size_t> const coveringIndexAttributePositions;
+    bool allowCoveringIndexOptimization = false;
     bool useRawPointers = false;
+    bool random = false;
 
-    EnumerateCollectionExecutorInfos infos(0, 1, 1, regToClear, &engine, &abc,
-                                           &_outVariable, _varUsedLater, projections,
-                                           &trx, coveringIndexAttributePositions,
+    EnumerateCollectionExecutorInfos infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/,
+                                           regToClear, &engine, &abc, &outVariable,
+                                           varUsedLater, projections, &trx,
+                                           coveringIndexAttributePositions,
                                            allowCoveringIndexOptimization,
-                                           useRawPointers, _random);
+                                           useRawPointers, random);
 
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
     auto outputBlockShell =
