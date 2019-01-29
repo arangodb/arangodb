@@ -1134,7 +1134,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
         // create a local database object...
         // the database will not be marked as used
-        int res = databaseFeature->createDatabase(id, name, vocbase);
+        std::shared_ptr<TRI_vocbase_t> created;
+        auto res = databaseFeature->createDatabase(id, name, created);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_TOPIC(ERR, arangodb::Logger::HEARTBEAT)
@@ -1164,7 +1165,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         databaseFeature->dropDatabase(id, false, true);
       }
     }
-
   } else {
     return false;
   }

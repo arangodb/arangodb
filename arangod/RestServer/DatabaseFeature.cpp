@@ -222,6 +222,17 @@ void DatabaseManagerThread::run() {
   }
 }
 
+DatabaseFeature::RefCntDeleter::RefCntDeleter( // constructor
+    std::shared_ptr<TRI_vocbase_t> const& vocbase // vocbase
+) noexcept: _vocbase(vocbase) {
+}
+
+void DatabaseFeature::RefCntDeleter::operator()(TRI_vocbase_t*) const noexcept {
+  if (_vocbase) {
+    _vocbase->release();
+  }
+}
+
 DatabaseFeature::DatabaseFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Database"),
       _maximalJournalSize(TRI_JOURNAL_DEFAULT_SIZE),
@@ -622,8 +633,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     if (!engine->inRecovery()) {
       if (vocbase->use()) {
         vocbase = std::shared_ptr<TRI_vocbase_t>( // scoped-release pointer
-          vocbase.get(), // vocbase
-          [vocbase](TRI_vocbase_t* ptr) { ptr->release(); } // release vocbase
+          RefCntPtr(vocbase.get(), RefCntDeleter(vocbase)) // ref count releasing pointer
         );
       } else {
         TRI_ASSERT(false);
@@ -894,7 +904,7 @@ void DatabaseFeature::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
   result.close();
 }
 
-std::shared_ptr<TRI_vocbase_t> DatabaseFeature::useDatabase( // mark in-use
+DatabaseFeature::RefCntPtr DatabaseFeature::useDatabase( // mark in-use
     std::string const& name // database name
 ) {
   auto theLists = std::atomic_load(&_databasesLists);
@@ -904,17 +914,14 @@ std::shared_ptr<TRI_vocbase_t> DatabaseFeature::useDatabase( // mark in-use
     auto vocbase = it->second;
 
     if (vocbase->use()) {
-      return std::shared_ptr<TRI_vocbase_t>( // scoped-release pointer
-        vocbase.get(), // vocbase
-        [vocbase](TRI_vocbase_t* ptr) { ptr->release(); } // release vocbase
-      );
+      return RefCntPtr(vocbase.get(), RefCntDeleter(vocbase)); // scoped-release pointer
     }
   }
 
   return nullptr;
 }
 
-std::shared_ptr<TRI_vocbase_t> DatabaseFeature::useDatabase( // mark in-use
+DatabaseFeature::RefCntPtr DatabaseFeature::useDatabase( // mark in-use
     TRI_voc_tick_t id // database id
 ) {
   auto theLists = std::atomic_load(&_databasesLists);
@@ -924,10 +931,7 @@ std::shared_ptr<TRI_vocbase_t> DatabaseFeature::useDatabase( // mark in-use
 
     if (vocbase->id() == id) {
       if (vocbase->use()) {
-        return std::shared_ptr<TRI_vocbase_t>( // scoped-release pointer
-          vocbase.get(), // vocbase
-          [vocbase](TRI_vocbase_t* ptr) { ptr->release(); } // release vocbase
-        );
+        return RefCntPtr(vocbase.get(), RefCntDeleter(vocbase)); // scoped-release pointer
       }
 
       break;

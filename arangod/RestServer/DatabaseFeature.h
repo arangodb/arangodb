@@ -67,6 +67,14 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   friend class DatabaseManagerThread;
 
  public:
+  struct RefCntDeleter {
+    std::shared_ptr<TRI_vocbase_t> _vocbase; // hold a reference to the underlying vocbase
+    RefCntDeleter() = default;
+    RefCntDeleter(std::shared_ptr<TRI_vocbase_t> const& vocbase) noexcept;
+    void operator()(TRI_vocbase_t*) const noexcept;
+  };
+  typedef std::unique_ptr<TRI_vocbase_t, RefCntDeleter> RefCntPtr; // pointer to vocbase which calls release() on deallocation
+
   static DatabaseFeature* DATABASE;
 
   explicit DatabaseFeature(application_features::ApplicationServer& server);
@@ -113,8 +121,8 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void inventory(arangodb::velocypack::Builder& result, TRI_voc_tick_t,
                  std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
-  std::shared_ptr<TRI_vocbase_t> useDatabase(std::string const& name);
-  std::shared_ptr<TRI_vocbase_t> useDatabase(TRI_voc_tick_t id);
+  RefCntPtr useDatabase(std::string const& name);
+  RefCntPtr useDatabase(TRI_voc_tick_t id);
 
   std::shared_ptr<TRI_vocbase_t> lookupDatabase(std::string const& name);
   void enumerateDatabases(std::function<void(TRI_vocbase_t& vocbase)> const& func);
