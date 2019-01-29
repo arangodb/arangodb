@@ -400,7 +400,7 @@
   },
   "output-directory" : {
     "category" : "option",
-    "default" : "/home/jenkins/stable-3.4/export",
+    "default" : "/oskar/work/ArangoDB/export",
     "deprecatedIn" : null,
     "description" : "output directory",
     "dynamic" : false,
