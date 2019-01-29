@@ -17,27 +17,38 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BlockFetcher.h"
+#ifndef ARANGOD_AQL_LIMIT_STATS_H
+#define ARANGOD_AQL_LIMIT_STATS_H
 
-using namespace arangodb::aql;
+#include <cstddef>
+#include "ExecutionStats.h"
 
-std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
-BlockFetcher::fetchBlock() {
-  ExecutionState state;
-  std::unique_ptr<AqlItemBlock> block;
-  std::tie(state, block) =
-      upstreamBlock().getSome(ExecutionBlock::DefaultBatchSize());
-  if (block != nullptr) {
-    TRI_IF_FAILURE("ExecutionBlock::getBlock") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    auto shell = std::make_shared<InputAqlItemBlockShell>(
-        itemBlockManager(), std::move(block), _inputRegisters);
-    return {state, shell};
-  } else {
-    return {state, nullptr};
-  }
+
+namespace arangodb {
+namespace aql {
+
+class LimitStats {
+ public:
+  LimitStats() noexcept : _fullCount(0) {}
+
+  void incrFullCount() noexcept { _fullCount++; }
+
+  std::size_t getFullCount() const noexcept { return _fullCount; }
+
+ private:
+  std::size_t _fullCount;
+};
+
+inline ExecutionStats& operator+=(ExecutionStats& executionStats,
+                           LimitStats const& limitStats) noexcept {
+  executionStats.fullCount += limitStats.getFullCount();
+  return executionStats;
 }
+
+}
+}
+
+#endif // ARANGOD_AQL_LIMIT_STATS_H
