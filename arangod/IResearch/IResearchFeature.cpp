@@ -426,22 +426,18 @@ void registerRecoveryMarkerHandler() {
       slice.get(FLUSH_COLLECTION_FIELD).getNumber<TRI_voc_cid_t>() // args
     );
 
+    // arangosearch handler failed to find collection from the recovery marker, possibly already removed
     if (!collection) {
-      return arangodb::Result( // result
-        TRI_ERROR_BAD_PARAMETER, // code
-        "arangosearch handler failed to find collection from the recovery marker" // message
-      );
+      return arangodb::Result();
     }
 
     auto link = arangodb::iresearch::IResearchLinkHelper::find( // link of the recovery marker
       *collection, slice.get(FLUSH_INDEX_FIELD).getNumber<TRI_idx_iid_t>() // args
     );
 
+    // arangosearch handler failed to find link from the recovery marker, possibly already removed
     if (!link) {
-      return arangodb::Result( // result
-        TRI_ERROR_BAD_PARAMETER, // code
-        "arangosearch handler failed to find link from the recovery marker" // message
-      );
+      return arangodb::Result();
     }
 
     return link->walFlushMarker(slice.get(FLUSH_VALUE_FIELD));

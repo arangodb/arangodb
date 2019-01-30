@@ -409,7 +409,7 @@ SECTION("test_flush_marker") {
     arangodb::MMFilesWalRecoverState state(false);
     CHECK((0 == state.errorCount));
     CHECK((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
-    CHECK((1 == state.errorCount));
+    CHECK((0 == state.errorCount)); // missing collection treated as a removed collection (after the WAL marker)
   }
 
   // recovery missing link
@@ -425,7 +425,7 @@ SECTION("test_flush_marker") {
     arangodb::MMFilesWalRecoverState state(false);
     CHECK((0 == state.errorCount));
     CHECK((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
-    CHECK((1 == state.errorCount));
+    CHECK((0 == state.errorCount)); // missing link treated as a removed index (after the WAL marker)
   }
 
   // recovery non-string value
