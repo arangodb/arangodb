@@ -49,8 +49,10 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
   auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(std::initializer_list<RegisterId>{});
   auto registersToKeep = std::make_shared<const std::unordered_set<RegisterId>>(std::initializer_list<RegisterId>{0});
+  auto blockShell =
+      std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
   auto outputBlockShell =
-      std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),
+      std::make_unique<OutputAqlItemBlockShell>(std::move(blockShell),
                                                 outputRegisters, registersToKeep);
 
   // Special parameters:
@@ -64,7 +66,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
-      SingleRowFetcherHelper fetcher(input.steal(), false);
+      SingleRowFetcherHelper<false> fetcher(input.steal(), false);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 
@@ -78,7 +80,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
     }
 
     WHEN("the producer waits") {
-      SingleRowFetcherHelper fetcher(input.steal(), true);
+      SingleRowFetcherHelper<false> fetcher(input.steal(), true);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 
@@ -105,7 +107,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       auto input = VPackParser::fromJson(
               "[ [1], [2], [3], [4] ]");
       LimitExecutorInfos infos(1, 1, {}, 0, 1, false, 0);
-      SingleRowFetcherHelper fetcher(input->steal(), false);
+      SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 
@@ -128,7 +130,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       auto input = VPackParser::fromJson(
               "[ [1], [2], [3], [4] ]");
       LimitExecutorInfos infos(1, 1, {}, 0, 1, true, 0);
-      SingleRowFetcherHelper fetcher(input->steal(), false);
+      SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 
@@ -159,7 +161,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       auto input = VPackParser::fromJson(
               "[ [1], [2], [3], [4] ]");
       LimitExecutorInfos infos(1, 1, {}, 1, 1, true, 0);
-      SingleRowFetcherHelper fetcher(input->steal(), false);
+      SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 
@@ -190,7 +192,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       auto input = VPackParser::fromJson(
               "[ [1], [2], [3], [4] ]");
       LimitExecutorInfos infos(1, 1, {}, 0, 1, false, 0);
-      SingleRowFetcherHelper fetcher(input->steal(), true);
+      SingleRowFetcherHelper<false> fetcher(input->steal(), true);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 
@@ -224,7 +226,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       auto input = VPackParser::fromJson(
               "[ [1], [2], [3], [4] ]");
       LimitExecutorInfos infos(1, 1, {}, 0, 1, true, 0);
-      SingleRowFetcherHelper fetcher(input->steal(), true);
+      SingleRowFetcherHelper<false> fetcher(input->steal(), true);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 

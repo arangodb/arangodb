@@ -37,6 +37,7 @@ ConstFetcher::ConstFetcher(BlockFetcher& executionBlock)
 
 void ConstFetcher::injectBlock(std::shared_ptr<InputAqlItemBlockShell> block) {
   _currentBlock = std::move(block);
+  _blockForPassThrough = _currentBlock->blockShell();
   _rowIndex = 0;
 }
 

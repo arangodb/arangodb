@@ -96,8 +96,13 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
     std::unique_ptr<OutputAqlItemBlockShell> newBlock;
     std::tie(state, newBlock) =
         requestWrappedBlock(atMost, _infos.numberOfOutputRegisters());
-    if (state != ExecutionState::HASMORE) {
+    if (state == ExecutionState::WAITING) {
       TRI_ASSERT(newBlock == nullptr);
+      return {state, nullptr};
+    }
+    if (newBlock == nullptr) {
+      TRI_ASSERT(state == ExecutionState::DONE);
+      // _rowFetcher must be DONE now already
       return {state, nullptr};
     }
     TRI_ASSERT(newBlock != nullptr);
@@ -248,14 +253,14 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor>::initializeCurs
   std::unique_ptr<AqlItemBlock> block;
   if (items != nullptr) {
     block = std::unique_ptr<AqlItemBlock>(
-        items->slice(pos, *(_executor._infos.registersToKeep())));
+        items->slice(pos, *(_infos.registersToKeep()), _infos.numberOfOutputRegisters()));
   } else {
     block = std::unique_ptr<AqlItemBlock>(
-        _engine->itemBlockManager().requestBlock(1, _executor._infos.numberOfOutputRegisters()));
+        _engine->itemBlockManager().requestBlock(1, _infos.numberOfOutputRegisters()));
   }
   auto shell = std::make_shared<AqlItemBlockShell>(_engine->itemBlockManager(),
                                                    std::move(block));
-  InputAqlItemBlockShell inputShell(shell, _executor._infos.getInputRegisters());
+  InputAqlItemBlockShell inputShell(shell, _infos.getInputRegisters());
   _rowFetcher.injectBlock(std::make_shared<InputAqlItemBlockShell>(std::move(inputShell)));
 
   // destroy and re-create the Executor
