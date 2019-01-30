@@ -1265,7 +1265,7 @@ function processQuery (query, explain, planIndex) {
       case 'SortNode':
         return keyword('SORT') + ' ' + node.elements.map(function (node) {
             return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-          }).join(', ') + annotation(`   /* sorting strategy: ${node.strategy} */`);
+          }).join(', ') + annotation(`   /* sorting strategy: ${node.strategy.split("-").join(" ")} */`);
       case 'LimitNode':
         return keyword('LIMIT') + ' ' + value(JSON.stringify(node.offset)) + ', ' + value(JSON.stringify(node.limit)) + (node.fullCount ? '  ' + annotation('/* fullCount */') : '');
       case 'ReturnNode':

@@ -135,7 +135,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       var sorts = getSorts(query);
       assertEqual(sorts.length, 1);
       assertEqual(sorts[0].limit, 3);
-      assertEqual(sorts[0].strategy, "constrainedHeap");
+      assertEqual(sorts[0].strategy, "constrained-heap");
 
       query = "FOR c IN 1..1000 SORT c LIMIT 100, 3 RETURN c";
       actual = getQueryResults(query);
@@ -145,7 +145,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       sorts = getSorts(query);
       assertEqual(sorts.length, 1);
       assertEqual(sorts[0].limit, 103);
-      assertEqual(sorts[0].strategy, "constrainedHeap");
+      assertEqual(sorts[0].strategy, "constrained-heap");
 
       query = "FOR c IN 1..1000 SORT c DESC LIMIT 3 RETURN c";
       actual = getQueryResults(query);
@@ -155,7 +155,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       sorts = getSorts(query);
       assertEqual(sorts.length, 1);
       assertEqual(sorts[0].limit, 3);
-      assertEqual(sorts[0].strategy, "constrainedHeap");
+      assertEqual(sorts[0].strategy, "constrained-heap");
           
       query = "FOR c IN 1..1000 SORT c DESC LIMIT 100, 3 RETURN c";
       actual = getQueryResults(query);
@@ -165,7 +165,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       sorts = getSorts(query);
       assertEqual(sorts.length, 1);
       assertEqual(sorts[0].limit, 103);
-      assertEqual(sorts[0].strategy, "constrainedHeap");
+      assertEqual(sorts[0].strategy, "constrained-heap");
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -222,7 +222,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
         var sorts = getSorts(query);
         assertEqual(sorts.length, 1);
         assertEqual(sorts[0].limit, test.offset + test.limit);
-        assertEqual(sorts[0].strategy, "constrainedHeap");
+        assertEqual(sorts[0].strategy, "constrained-heap");
       }
     },
 
@@ -279,7 +279,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       var sorts = getSorts(query);
       assertEqual(sorts.length, 1);
       assertEqual(sorts[0].limit, 10);
-      assertEqual(sorts[0].strategy, "constrainedHeap");
+      assertEqual(sorts[0].strategy, "constrained-heap");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -300,7 +300,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       var sorts = getSorts(query);
       assertEqual(sorts.length, 1);
       assertEqual(sorts[0].limit, 10);
-      assertEqual(sorts[0].strategy, "constrainedHeap");
+      assertEqual(sorts[0].strategy, "constrained-heap");
     },
 
   };

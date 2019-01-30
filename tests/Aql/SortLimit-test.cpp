@@ -163,7 +163,7 @@ struct SortLimitSetup {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
-
+#include <iostream>
 TEST_CASE("SortLimit", "[aql][sort-limit]") {
   SortLimitSetup s;
   UNUSED(s);
@@ -197,20 +197,26 @@ TEST_CASE("SortLimit", "[aql][sort-limit]") {
 
   auto verifyExpectedResults =
       [&insertedDocs](TRI_vocbase_t& vocbase, std::string const& query,
-                      std::vector<size_t> const& expected) -> void {
+                      std::vector<size_t> const& expected) -> bool {
     auto result = arangodb::tests::executeQuery(vocbase, query);
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    REQUIRE((TRI_ERROR_NO_ERROR == result.code));
     auto slice = result.result->slice();
-    CHECK(slice.isArray());
+    REQUIRE(slice.isArray());
+
+    if (slice.length() != expected.size()) {
+      return false;
+    }
 
     size_t i = 0;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(
-                      insertedDocs[expected[i++]].slice(), resolved, true)));
+      if (0 != arangodb::basics::VelocyPackHelper::compare(
+                   insertedDocs[expected[i++]].slice(), resolved, true)) {
+        return false;
+      };
     }
-    CHECK((i == expected.size()));
+
+    return true;
   };
 
   // create collection0
@@ -246,24 +252,91 @@ TEST_CASE("SortLimit", "[aql][sort-limit]") {
     CHECK(insertedDocs.size() == total);
   }
 
-  // check simple limit sorted in insertion order
+  // check simple limit sorted asc in insertion order
   {
     std::string query =
         "FOR d IN testCollection0 SORT d.valAsc LIMIT 0, 10 RETURN d";
     std::vector<size_t> expected = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-    verifyExpectedResults(vocbase, query, expected);
-    auto actual = sorterType(vocbase, query);
-    CHECK(actual == "constrainedHeap");
+    CHECK(verifyExpectedResults(vocbase, query, expected));
+    CHECK(sorterType(vocbase, query) == "constrained-heap");
   }
 
-  // check limit with offset sorted in insertion order
+  // check limit with offset sorted asc in insertion order
   {
     std::string query =
         "FOR d IN testCollection0 SORT d.valAsc LIMIT 10, 10 RETURN d";
     std::vector<size_t> expected = {10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
-    verifyExpectedResults(vocbase, query, expected);
-    auto actual = sorterType(vocbase, query);
-    CHECK(actual == "constrainedHeap");
+    CHECK(verifyExpectedResults(vocbase, query, expected));
+    CHECK(sorterType(vocbase, query) == "constrained-heap");
+  }
+
+  // check simple limit sorted asc in reverse insertion order
+  {
+    std::string query =
+        "FOR d IN testCollection0 SORT d.valDsc LIMIT 0, 10 RETURN d";
+    std::vector<size_t> expected = {9999, 9998, 9997, 9996, 9995,
+                                    9994, 9993, 9992, 9991, 9990};
+    CHECK(verifyExpectedResults(vocbase, query, expected));
+    CHECK(sorterType(vocbase, query) == "constrained-heap");
+  }
+
+  // check limit with offset sorted asc in reverse insertion order
+  {
+    std::string query =
+        "FOR d IN testCollection0 SORT d.valDsc LIMIT 10, 10 RETURN d";
+    std::vector<size_t> expected = {9989, 9988, 9987, 9986, 9985,
+                                    9984, 9983, 9982, 9981, 9980};
+    CHECK(verifyExpectedResults(vocbase, query, expected));
+    CHECK(sorterType(vocbase, query) == "constrained-heap");
+  }
+
+  // check simple limit sorted dsc in insertion order
+  {
+    std::string query =
+        "FOR d IN testCollection0 SORT d.valAsc DESC LIMIT 0, 10 RETURN d";
+    std::vector<size_t> expected = {9999, 9998, 9997, 9996, 9995,
+                                    9994, 9993, 9992, 9991, 9990};
+    CHECK(verifyExpectedResults(vocbase, query, expected));
+    CHECK(sorterType(vocbase, query) == "constrained-heap");
+  }
+
+  // check limit with offset sorted dsc in insertion order
+  {
+    std::string query =
+        "FOR d IN testCollection0 SORT d.valAsc DESC LIMIT 10, 10 RETURN d";
+    std::vector<size_t> expected = {9989, 9988, 9987, 9986, 9985,
+                                    9984, 9983, 9982, 9981, 9980};
+    CHECK(verifyExpectedResults(vocbase, query, expected));
+    CHECK(sorterType(vocbase, query) == "constrained-heap");
+  }
+
+  // check simple limit sorted dsc in reverse insertion order
+  {
+    std::string query =
+        "FOR d IN testCollection0 SORT d.valDsc DESC LIMIT 0, 10 RETURN d";
+    std::vector<size_t> expected = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    CHECK(verifyExpectedResults(vocbase, query, expected));
+    CHECK(sorterType(vocbase, query) == "constrained-heap");
+  }
+
+  // check limit with offset sorted dsc in reverse insertion order
+  {
+    std::string query =
+        "FOR d IN testCollection0 SORT d.valDsc DESC LIMIT 10, 10 RETURN d";
+    std::vector<size_t> expected = {10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
+    CHECK(verifyExpectedResults(vocbase, query, expected));
+    CHECK(sorterType(vocbase, query) == "constrained-heap");
+  }
+
+  // check limit with offset compound sort
+  {
+    std::string query =
+        "FOR d IN testCollection0 SORT d.mod, d.valAsc LIMIT 10, 10 RETURN "
+        "d";
+    std::vector<size_t> expected = {1000, 1100, 1200, 1300, 1400,
+                                    1500, 1600, 1700, 1800, 1900};
+    CHECK(verifyExpectedResults(vocbase, query, expected));
+    CHECK(sorterType(vocbase, query) == "constrained-heap");
   }
 }
 

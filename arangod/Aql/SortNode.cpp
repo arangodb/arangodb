@@ -30,7 +30,7 @@
 #include "SortNode.h"
 
 namespace {
-std::string const ConstrainedHeap = "constrainedHeap";
+std::string const ConstrainedHeap = "constrained-heap";
 std::string const Standard = "standard";
 }  // namespace
 

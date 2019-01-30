@@ -32,6 +32,10 @@ namespace {
 void stealRow(std::unordered_map<arangodb::aql::AqlValue, arangodb::aql::AqlValue>& cache,
               arangodb::aql::RegisterId const nrRegs, arangodb::aql::AqlItemBlock* src,
               size_t sRow, arangodb::aql::AqlItemBlock* dst, size_t dRow) {
+  using arangodb::Result;
+  using arangodb::aql::AqlValue;
+  using arangodb::basics::catchVoidToResult;
+
   for (arangodb::aql::RegisterId reg = 0; reg < nrRegs; reg++) {
     auto const& original = src->getValueReference(sRow, reg);
     // If we have already dealt with this value for the next
@@ -55,27 +59,30 @@ void stealRow(std::unordered_map<arangodb::aql::AqlValue, arangodb::aql::AqlValu
 
           if (vCount == 0) {
             // Was already stolen for another block
-            arangodb::aql::AqlValue copy = original.clone();
-            try {
+            AqlValue copy = original.clone();
+            Result res = catchVoidToResult([&cache, &original, &copy]() -> void {
               TRI_IF_FAILURE("SortBlock::doSortingCache") {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
               }
               cache.emplace(original, copy);
-            } catch (...) {
+            });
+            if (res.fail()) {
               copy.destroy();
-              throw;
+              THROW_ARANGO_EXCEPTION(res);
             }
 
-            try {
+            res = catchVoidToResult([dRow, dst, &reg, &copy]() -> void {
               TRI_IF_FAILURE("SortBlock::doSortingNext1") {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
               }
               dst->setValue(dRow, reg, copy);
-            } catch (...) {
+            });
+            if (res.fail()) {
               cache.erase(copy);
               copy.destroy();
-              throw;
+              THROW_ARANGO_EXCEPTION(res);
             }
+
             // It does not matter whether the following works or not,
             // since the source block keeps its responsibility
             // for original:
@@ -117,6 +124,9 @@ void stealRow(std::unordered_map<arangodb::aql::AqlValue, arangodb::aql::AqlValu
 void stealRowNoCache(arangodb::aql::RegisterId const nrRegs,
                      arangodb::aql::AqlItemBlock* src, size_t sRow,
                      arangodb::aql::AqlItemBlock* dst, size_t dRow) {
+  using arangodb::Result;
+  using arangodb::basics::catchVoidToResult;
+
   for (arangodb::aql::RegisterId reg = 0; reg < nrRegs; reg++) {
     auto const& original = src->getValueReference(sRow, reg);
     // If we have already dealt with this value for the next
@@ -132,15 +142,17 @@ void stealRowNoCache(arangodb::aql::RegisterId const nrRegs,
           // Was already stolen for another block
           arangodb::aql::AqlValue copy = original.clone();
 
-          try {
+          Result res = catchVoidToResult([dRow, dst, &reg, &copy]() -> void {
             TRI_IF_FAILURE("SortBlock::doSortingNext1") {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
             }
             dst->setValue(dRow, reg, copy);
-          } catch (...) {
+          });
+          if (res.fail()) {
             copy.destroy();
-            throw;
+            THROW_ARANGO_EXCEPTION(res);
           }
+
           // It does not matter whether the following works or not,
           // since the source block keeps its responsibility
           // for original:
@@ -334,18 +346,22 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
   class OurLessThan {
    public:
     OurLessThan(arangodb::transaction::Methods* trx,
-                std::deque<arangodb::aql::AqlItemBlock*>& lhsBuffer,
-                std::deque<arangodb::aql::AqlItemBlock*>& rhsBuffer,
                 std::vector<arangodb::aql::SortRegister>& sortRegisters) noexcept
-        : _trx(trx),
-          _lhsBuffer(lhsBuffer),
-          _rhsBuffer(rhsBuffer),
-          _sortRegisters(sortRegisters) {}
+        : _trx(trx), _lhsBuffer(nullptr), _rhsBuffer(nullptr), _sortRegisters(sortRegisters) {}
+
+    void setBuffers(arangodb::aql::AqlItemBlock* lhsBuffer,
+                    arangodb::aql::AqlItemBlock* rhsBuffer) {
+      _lhsBuffer = lhsBuffer;
+      _rhsBuffer = rhsBuffer;
+    }
 
     bool operator()(uint32_t const& a, uint32_t const& b) const {
+      TRI_ASSERT(_lhsBuffer);
+      TRI_ASSERT(_rhsBuffer);
+
       for (auto const& reg : _sortRegisters) {
-        auto const& lhs = _lhsBuffer.front()->getValueReference(a, reg.reg);
-        auto const& rhs = _rhsBuffer.front()->getValueReference(b, reg.reg);
+        auto const& lhs = _lhsBuffer->getValueReference(a, reg.reg);
+        auto const& rhs = _rhsBuffer->getValueReference(b, reg.reg);
 
         int const cmp = arangodb::aql::AqlValue::Compare(_trx, lhs, rhs, true);
 
@@ -361,8 +377,8 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
 
    private:
     arangodb::transaction::Methods* _trx;
-    std::deque<arangodb::aql::AqlItemBlock*>& _lhsBuffer;
-    std::deque<arangodb::aql::AqlItemBlock*>& _rhsBuffer;
+    arangodb::aql::AqlItemBlock* _lhsBuffer;
+    arangodb::aql::AqlItemBlock* _rhsBuffer;
     std::vector<arangodb::aql::SortRegister>& _sortRegisters;
   };  // OurLessThan
 
@@ -374,8 +390,8 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
       : arangodb::aql::SortBlock::Sorter(block, trx, buffer, sortRegisters,
                                          std::move(fetch), std::move(allocate)),
         _limit{limit},
-        _cmpInput{_trx, _heapBuffer, _buffer, _sortRegisters},
-        _cmpHeap{_trx, _heapBuffer, _heapBuffer, _sortRegisters} {
+        _cmpHeap(_trx, _sortRegisters),
+        _cmpInput(_trx, _sortRegisters) {
     TRI_ASSERT(_limit > 0);
     _rows.reserve(_limit);
   }
@@ -395,12 +411,15 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
         return {res, TRI_ERROR_NO_ERROR};
       }
 
+      if (!_buffer.empty()) {
+        ensureHeapBuffer(_buffer.front());  // make sure we have a dst
+      }
       // handle batch
       while (!_buffer.empty()) {
         std::unique_ptr<AqlItemBlock> src{_buffer.front()};
+        _cmpInput.setBuffers(_heapBuffer.get(), src.get());
         auto cleanup =
             arangodb::scopeGuard([this]() -> void { _buffer.pop_front(); });
-        ensureHeapBuffer(src.get());  // make sure we have a dst
         for (size_t row = 0; row < src->size(); row++) {
           pushRow(row);
         }
@@ -431,7 +450,7 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
     // here we collect the new blocks:
     TRI_ASSERT(_buffer.empty());
     count = 0;
-    RegisterId const nrRegs = _heapBuffer.front()->getNrRegs();
+    RegisterId const nrRegs = _heapBuffer->getNrRegs();
     std::unordered_map<AqlValue, AqlValue> cache;
 
     // install the rearranged values from _buffer into newbuffer
@@ -450,10 +469,10 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
 
       // only copy as much as needed!
       for (size_t i = 0; i < sizeNext; i++) {
-        ::stealRow(cache, nrRegs, _heapBuffer.front(), _rows[count], p, i);
+        ::stealRow(cache, nrRegs, _heapBuffer.get(), _rows[count], p, i);
         count++;
       }
-      
+
       cache.clear();
     }
 
@@ -463,7 +482,9 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
     return TRI_ERROR_NO_ERROR;
   }
 
-  bool empty() const override { return _buffer.empty() && _heapBuffer.empty(); }
+  bool empty() const override {
+    return _buffer.empty() && _heapBuffer == nullptr;
+  }
 
  private:
   arangodb::Result pushRow(size_t sRow) {
@@ -471,14 +492,14 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
     using arangodb::aql::AqlValue;
     using arangodb::aql::RegisterId;
 
-    if (_rowsPushed >= _limit && _cmpInput(0, sRow)) {
+    if (_rowsPushed >= _limit && _cmpInput(_rows.front(), sRow)) {
       // skip row, already too low in sort order to make it past limit
       return TRI_ERROR_NO_ERROR;
     }
 
     AqlItemBlock* srcBlock = _buffer.front();
     TRI_ASSERT(srcBlock != nullptr);
-    AqlItemBlock* dstBlock = _heapBuffer.front();
+    AqlItemBlock* dstBlock = _heapBuffer.get();
     TRI_ASSERT(dstBlock != nullptr);
     size_t dRow = _rowsPushed;
 
@@ -489,6 +510,7 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
       eraseRow(dRow);
       _rows.pop_back();
     }
+    TRI_ASSERT(dRow < _limit);
 
     TRI_IF_FAILURE("SortBlock::doSortingInner") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -506,36 +528,30 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
   }
 
   void eraseRow(size_t row) {
-    arangodb::aql::AqlItemBlock* block = _heapBuffer.front();
-    arangodb::aql::RegisterId const nrRegs = block->getNrRegs();
+    arangodb::aql::RegisterId const nrRegs = _heapBuffer->getNrRegs();
     for (size_t i = 0; i < nrRegs; i++) {
-      block->destroyValue(row, i);
+      _heapBuffer->destroyValue(row, i);
     }
   }
 
   void ensureHeapBuffer(arangodb::aql::AqlItemBlock* src) {
-    if (_heapBuffer.empty()) {
+    TRI_ASSERT(src != nullptr);
+    if (_heapBuffer == nullptr) {
       arangodb::aql::RegisterId const nrRegs = src->getNrRegs();
-      std::unique_ptr<arangodb::aql::AqlItemBlock> newBlock(_allocate(_limit, nrRegs));
-      _heapBuffer.emplace_back(newBlock.get());
-      newBlock.release();
+      _heapBuffer.reset(_allocate(_limit, nrRegs));
+      _cmpHeap.setBuffers(_heapBuffer.get(), _heapBuffer.get());
     }
   }
 
-  void releaseHeapBuffer() {
-    for (auto& x : _heapBuffer) {
-      delete x;
-    }
-    _heapBuffer.clear();
-  }
+  void releaseHeapBuffer() { _heapBuffer.reset(); }
 
  private:
   size_t _limit;
   size_t _rowsPushed = 0;
-  std::deque<arangodb::aql::AqlItemBlock*> _heapBuffer;
+  std::unique_ptr<arangodb::aql::AqlItemBlock> _heapBuffer;
   std::vector<uint32_t> _rows;
-  OurLessThan _cmpInput;
   OurLessThan _cmpHeap;
+  OurLessThan _cmpInput;
 };
 }  // namespace
 
