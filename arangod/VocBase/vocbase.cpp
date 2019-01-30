@@ -1112,8 +1112,6 @@ std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
 
 /// @brief looks up a view by identifier
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(TRI_voc_cid_t id) const {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   return std::dynamic_pointer_cast<arangodb::LogicalView>(lookupDataSource(id));
 #else
@@ -1127,8 +1125,6 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(TRI_voc_cid_t i
 
 /// @brief looks up a view by name or stringified cid or uuid
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(std::string const& nameOrId) const {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   return std::dynamic_pointer_cast<arangodb::LogicalView>(lookupDataSource(nameOrId));
 #else
@@ -1313,7 +1309,6 @@ arangodb::Result TRI_vocbase_t::dropCollection(TRI_voc_cid_t cid,
 
 /// @brief renames a view
 arangodb::Result TRI_vocbase_t::renameView(TRI_voc_cid_t cid, std::string const& oldName) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto const view = lookupView(cid);
 
   if (!view) {
@@ -1574,7 +1569,6 @@ void TRI_vocbase_t::releaseCollection(arangodb::LogicalCollection* collection) {
 /// using a cid of > 0 is supported to import dumps from other servers etc.
 /// but the functionality is not advertised
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::velocypack::Slice parameters) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto* engine = EngineSelectorFeature::ENGINE;
 
   if (!engine) {
@@ -1636,7 +1630,6 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
 
 /// @brief drops a view
 arangodb::Result TRI_vocbase_t::dropView(TRI_voc_cid_t cid, bool allowDropSystem) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto const view = lookupView(cid);
 
   if (!view) {
@@ -1929,7 +1922,6 @@ void TRI_vocbase_t::garbageCollectReplicationClients(double expireStamp) {
 }
 
 std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   std::vector<std::shared_ptr<arangodb::LogicalView>> views;
 
   {
