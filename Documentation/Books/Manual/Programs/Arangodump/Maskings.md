@@ -3,8 +3,6 @@ Arangodump Data Maskings
 
 *--maskings path-of-config*
 
-<small>Introduced in: v3.3.22, v3.4.2</small>
-
 This feature allows you to define how sensitive data shall be dumped.
 It is possible to exclude collections entirely, limit the dump to the
 structural information of a collection (name, indexes, sharding etc.)
@@ -268,7 +266,7 @@ because `email` is a leaf attribute. The document:
 ```
 
 … because the masking is applied to each array element individually
-(the array is "unfolded"). The document:
+including the elements of the sub-array. The document:
 
 ```json
 {
