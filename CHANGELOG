@@ -1,6 +1,8 @@
 v3.3.22 (2019-01-25)
 --------------------
 
+* backported data maskings
+
 * fix broken validation of tick range in arangodump
 
 * upgraded arangodb starter version to 0.14.0
