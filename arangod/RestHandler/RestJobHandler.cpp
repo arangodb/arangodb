@@ -28,16 +28,17 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "VocBase/ticks.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestJobHandler::RestJobHandler(GeneralRequest* request,
-                               GeneralResponse* response,
+RestJobHandler::RestJobHandler(GeneralRequest* request, GeneralResponse* response,
                                AsyncJobManager* jobManager)
     : RestBaseHandler(request, response), _jobManager(jobManager) {
   TRI_ASSERT(jobManager != nullptr);
@@ -77,7 +78,7 @@ void RestJobHandler::putJob() {
   uint64_t jobId = StringUtils::uint64(value);
 
   AsyncJobResult::Status status;
-  GeneralResponse* response = _jobManager->getJobResult(jobId, status, true); //gets job and removes it form the manager
+  GeneralResponse* response = _jobManager->getJobResult(jobId, status, true);  // gets job and removes it form the manager
 
   if (status == AsyncJobResult::JOB_UNDEFINED) {
     // unknown or already fetched job
@@ -152,7 +153,7 @@ void RestJobHandler::getJobById(std::string const& value) {
   // numeric job id, just pull the job status and return it
   AsyncJobResult::Status status;
   TRI_ASSERT(_jobManager != nullptr);
-  _jobManager->getJobResult(jobId, status, false); //just gets status
+  _jobManager->getJobResult(jobId, status, false);  // just gets status
 
   if (status == AsyncJobResult::JOB_UNDEFINED) {
     // unknown or already fetched job
@@ -240,4 +241,23 @@ void RestJobHandler::deleteJob() {
   json.close();
   VPackSlice slice(json.start());
   generateResult(rest::ResponseCode::OK, slice);
+}
+
+/// @brief returns the short id of the server which should handle this request
+uint32_t RestJobHandler::forwardingTarget() {
+  rest::RequestType const type = _request->requestType();
+  if (type != rest::RequestType::GET && type != rest::RequestType::PUT &&
+      type != rest::RequestType::DELETE_REQ) {
+    return 0;
+  }
+
+  std::vector<std::string> const& suffixes = _request->suffixes();
+  if (suffixes.size() < 1) {
+    return 0;
+  }
+
+  uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
+  uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
+
+  return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
 }

@@ -140,8 +140,7 @@ std::string escapeHex(std::string const& name, char quote = '%');
 /// @brief escape hex
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string escapeHex(std::string const& name, std::string const& specials,
-                      char quote = '%');
+std::string escapeHex(std::string const& name, std::string const& specials, char quote = '%');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief escape as C code
@@ -153,8 +152,7 @@ std::string escapeC(std::string const& name);
 /// @brief splits a string
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::string> split(std::string const& source, char delim = ',',
-                               char quote = '\\');
+std::vector<std::string> split(std::string const& source, char delim = ',', char quote = '\\');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief splits a string
@@ -318,8 +316,7 @@ std::string urlEncode(char const* src, size_t const len);
 /// @brief unicode hexidecmial characters to utf8
 ////////////////////////////////////////////////////////////////////////////////
 
-bool unicodeToUTF8(char const* inputStr, size_t const& len,
-                   std::string& outputStr);
+bool unicodeToUTF8(char const* inputStr, size_t const& len, std::string& outputStr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts an utf16 symbol which needs UTF16 to UTF8
@@ -608,17 +605,15 @@ std::string encodeHex(std::string const& str);
 
 std::string decodeHex(std::string const& str);
 
-bool gzipUncompress(char const* compressed, size_t compressedLength,
-                    std::string& uncompressed);
+bool gzipUncompress(char const* compressed, size_t compressedLength, std::string& uncompressed);
 
 bool gzipUncompress(std::string const& compressed, std::string& uncompressed);
 
-bool gzipDeflate(char const* compressed, size_t compressedLength,
-                 std::string& uncompressed);
+bool gzipDeflate(char const* compressed, size_t compressedLength, std::string& uncompressed);
 
 bool gzipDeflate(std::string const& compressed, std::string& uncompressed);
-}
-}
-}
+}  // namespace StringUtils
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

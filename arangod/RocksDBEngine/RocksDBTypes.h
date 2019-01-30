@@ -75,7 +75,7 @@ enum class RocksDBLogType : char {
   SingleRemove = '@',
   DocumentRemoveAsPartOfUpdate = 'A'
 };
-  
+
 enum class RocksDBSettingsType : char {
   Invalid = 0,
   Version = 'V',

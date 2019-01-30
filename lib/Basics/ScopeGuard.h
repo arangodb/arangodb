@@ -39,7 +39,7 @@ class ScopeGuard {
 
   std::function<void()> _onExit;
 };
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

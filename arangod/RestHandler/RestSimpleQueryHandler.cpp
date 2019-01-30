@@ -30,9 +30,9 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Scheduler/JobQueue.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
@@ -42,13 +42,15 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestSimpleQueryHandler::RestSimpleQueryHandler(
-    GeneralRequest* request, GeneralResponse* response,
-    arangodb::aql::QueryRegistry* queryRegistry)
+RestSimpleQueryHandler::RestSimpleQueryHandler(GeneralRequest* request,
+                                               GeneralResponse* response,
+                                               arangodb::aql::QueryRegistry* queryRegistry)
     : RestCursorHandler(request, response, queryRegistry) {}
 
 // returns the queue name
-size_t RestSimpleQueryHandler::queue() const { return JobQueue::BACKGROUND_QUEUE; }
+size_t RestSimpleQueryHandler::queue() const {
+  return JobQueue::BACKGROUND_QUEUE;
+}
 
 RestStatus RestSimpleQueryHandler::execute() {
   // extract the sub-request type
@@ -73,8 +75,7 @@ RestStatus RestSimpleQueryHandler::execute() {
     }
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -84,17 +85,16 @@ RestStatus RestSimpleQueryHandler::execute() {
 
 void RestSimpleQueryHandler::allDocuments() {
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
 
   if (!parseSuccess) {
     // error message generated in parseVelocyPackBody
     return;
   }
-  
+
   std::string collectionName;
   VPackSlice body = parsedBody.get()->slice();
-  
+
   if (body.isObject() && body.hasKey("collection")) {
     VPackSlice const value = body.get("collection");
     if (value.isString()) {
@@ -104,13 +104,13 @@ void RestSimpleQueryHandler::allDocuments() {
   } else {
     collectionName = _request->value("collection");
   }
-  
+
   if (collectionName.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting string for <collection>");
     return;
   }
-      
+
   auto const* col = _vocbase->lookupCollection(collectionName);
 
   if (col != nullptr && collectionName != col->name()) {
@@ -176,8 +176,7 @@ void RestSimpleQueryHandler::allDocuments() {
 
 void RestSimpleQueryHandler::allDocumentKeys() {
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
 
   if (!parseSuccess) {
     // error message generated in parseVelocyPackBody
@@ -196,13 +195,13 @@ void RestSimpleQueryHandler::allDocumentKeys() {
   } else {
     collectionName = _request->value("collection");
   }
-      
+
   if (collectionName.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting string for <collection>");
     return;
   }
-  
+
   auto const* col = _vocbase->lookupCollection(collectionName);
 
   if (col != nullptr && collectionName != col->name()) {
@@ -213,7 +212,8 @@ void RestSimpleQueryHandler::allDocumentKeys() {
 
   std::string returnType;
   if (body.isObject() && body.hasKey("type")) {
-    returnType = arangodb::basics::VelocyPackHelper::getStringValue(body, "type", "");
+    returnType =
+        arangodb::basics::VelocyPackHelper::getStringValue(body, "type", "");
   } else {
     returnType = _request->value("type");
   }
@@ -225,7 +225,7 @@ void RestSimpleQueryHandler::allDocumentKeys() {
     aql.append("doc._id");
   } else {
     aql.append(std::string("CONCAT('/_db/") + _vocbase->name() +
-                "/_api/document/', doc._id)");
+               "/_api/document/', doc._id)");
   }
 
   VPackBuilder data;
@@ -244,32 +244,34 @@ void RestSimpleQueryHandler::allDocumentKeys() {
   processQuery(s);
 }
 
-static void buildExampleQuery(VPackBuilder& result,
-                              std::string const& cname,
-                              VPackSlice const& doc,
-                              size_t skip, size_t limit) {
+static void buildExampleQuery(VPackBuilder& result, std::string const& cname,
+                              VPackSlice const& doc, size_t skip, size_t limit) {
   TRI_ASSERT(doc.isObject());
   std::string query = "FOR doc IN @@collection";
-  
+
   result.add("bindVars", VPackValue(VPackValueType::Object));
   result.add("@collection", VPackValue(cname));
   size_t i = 0;
   for (auto pair : VPackObjectIterator(doc, true)) {
-    std::string key = basics::StringUtils::replace(pair.key.copyString(), "`", "");
-    key = basics::StringUtils::join(basics::StringUtils::split(key, "."), "`.`");
+    std::string key =
+        basics::StringUtils::replace(pair.key.copyString(), "`", "");
+    key =
+        basics::StringUtils::join(basics::StringUtils::split(key, "."), "`.`");
     std::string istr = std::to_string(i++);
     query.append(" FILTER doc.`").append(key).append("` == @value").append(istr);
     result.add(std::string("value") + istr, pair.value);
   }
   result.close();
-  
+
   if (limit > 0 || skip > 0) {
-    query.append(" LIMIT ").append(std::to_string(skip))
-         .append(", ").append(limit > 0 ? std::to_string(limit) : "null")
-         .append(" ");
+    query.append(" LIMIT ")
+        .append(std::to_string(skip))
+        .append(", ")
+        .append(limit > 0 ? std::to_string(limit) : "null")
+        .append(" ");
   }
   query.append(" RETURN doc");
-  
+
   result.add("query", VPackValue(query));
 }
 
@@ -279,18 +281,16 @@ static void buildExampleQuery(VPackBuilder& result,
 
 void RestSimpleQueryHandler::byExample() {
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
 
   if (!parseSuccess) {
     // error message generated in parseVPackBody
     return;
   }
-  
+
   VPackSlice body = parsedBody.get()->slice();
 
-  if (!body.isObject() || !body.hasKey("example") ||
-      !body.get("example").isObject()) {
+  if (!body.isObject() || !body.hasKey("example") || !body.get("example").isObject()) {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     return;
   }

@@ -51,9 +51,8 @@ using namespace arangodb;
 /// @brief process the fields list and add them to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ProcessIndexFields(VPackSlice const definition,
-                              VPackBuilder& builder, int numFields,
-                              bool create) {
+static int ProcessIndexFields(VPackSlice const definition, VPackBuilder& builder,
+                              int numFields, bool create) {
   TRI_ASSERT(builder.isOpenObject());
   std::unordered_set<StringRef> fields;
 
@@ -96,10 +95,8 @@ static int ProcessIndexFields(VPackSlice const definition,
 /// @brief process the unique flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ProcessIndexUniqueFlag(VPackSlice const definition,
-                                   VPackBuilder& builder) {
-  bool unique =
-      basics::VelocyPackHelper::getBooleanValue(definition, "unique", false);
+static void ProcessIndexUniqueFlag(VPackSlice const definition, VPackBuilder& builder) {
+  bool unique = basics::VelocyPackHelper::getBooleanValue(definition, "unique", false);
   builder.add("unique", VPackValue(unique));
 }
 
@@ -123,10 +120,8 @@ static void ProcessIndexSparseFlag(VPackSlice const definition,
 /// @brief process the deduplicate flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ProcessIndexDeduplicateFlag(VPackSlice const definition,
-                                        VPackBuilder& builder) {
-  bool dup =
-      basics::VelocyPackHelper::getBooleanValue(definition, "deduplicate", true);
+static void ProcessIndexDeduplicateFlag(VPackSlice const definition, VPackBuilder& builder) {
+  bool dup = basics::VelocyPackHelper::getBooleanValue(definition, "deduplicate", true);
   builder.add("deduplicate", VPackValue(dup));
 }
 
@@ -179,8 +174,7 @@ static int EnhanceJsonIndexPersistent(VPackSlice const definition,
 /// @brief process the geojson flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ProcessIndexGeoJsonFlag(VPackSlice const definition,
-                                    VPackBuilder& builder) {
+static void ProcessIndexGeoJsonFlag(VPackSlice const definition, VPackBuilder& builder) {
   VPackSlice fieldsSlice = definition.get("fields");
   if (fieldsSlice.isArray() && fieldsSlice.length() == 1) {
     // only add geoJson for indexes with a single field (with needs to be an
@@ -255,8 +249,7 @@ static int EnhanceJsonIndexFulltext(VPackSlice const definition,
 }
 
 int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
-                                                VPackBuilder& enhanced,
-                                                bool create,
+                                                VPackBuilder& enhanced, bool create,
                                                 bool isCoordinator) const {
   // extract index type
   Index::IndexType type = Index::TRI_IDX_TYPE_UNKNOWN;
@@ -281,8 +274,7 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
   }
 
   if (create) {
-    if (type == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-        type == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+    if (type == Index::TRI_IDX_TYPE_PRIMARY_INDEX || type == Index::TRI_IDX_TYPE_EDGE_INDEX) {
       // creating these indexes yourself is forbidden
       return TRI_ERROR_FORBIDDEN;
     }
@@ -304,8 +296,7 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
 
   if (create && !isCoordinator) {
     if (!definition.hasKey("objectId")) {
-      enhanced.add("objectId",
-                    VPackValue(std::to_string(TRI_NewTickServer())));
+      enhanced.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
     }
   }
 
@@ -355,7 +346,6 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
 std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
     arangodb::velocypack::Slice info, bool generateKey, LogicalCollection* col,
     bool isClusterConstructor) const {
-  
   TRI_idx_iid_t iid = IndexFactory::validateSlice(info, generateKey, isClusterConstructor);
 
   // extract type
@@ -371,7 +361,7 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
     if (!isClusterConstructor) {
       // this indexes cannot be created directly
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                      "cannot create primary index");
+                                     "cannot create primary index");
     }
     return std::make_shared<RocksDBPrimaryIndex>(col, info);
   }
@@ -379,13 +369,12 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
     if (!isClusterConstructor) {
       // this indexes cannot be created directly
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                      "cannot create edge index");
+                                     "cannot create edge index");
     }
     VPackSlice fields = info.get("fields");
     TRI_ASSERT(fields.isArray() && fields.length() == 1);
     std::string direction = fields.at(0).copyString();
-    TRI_ASSERT(direction == StaticStrings::FromString ||
-                direction == StaticStrings::ToString);
+    TRI_ASSERT(direction == StaticStrings::FromString || direction == StaticStrings::ToString);
     return std::make_shared<RocksDBEdgeIndex>(iid, col, info, direction);
   }
   if (typeString == "hash") {
@@ -404,12 +393,13 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
     return std::make_shared<RocksDBFulltextIndex>(iid, col, info);
   }
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, std::string("invalid or unsupported index type '") + typeString + "'");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      std::string("invalid or unsupported index type '") + typeString + "'");
 }
 
-void RocksDBIndexFactory::fillSystemIndexes(
-    arangodb::LogicalCollection* col,
-    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const {
+void RocksDBIndexFactory::fillSystemIndexes(arangodb::LogicalCollection* col,
+                                            std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const {
   // create primary index
   VPackBuilder builder;
   builder.openObject();
@@ -419,10 +409,12 @@ void RocksDBIndexFactory::fillSystemIndexes(
       std::make_shared<arangodb::RocksDBPrimaryIndex>(col, builder.slice()));
   // create edges indexes
   if (col->type() == TRI_COL_TYPE_EDGE) {
-    systemIndexes.emplace_back(std::make_shared<arangodb::RocksDBEdgeIndex>(
-        1, col, builder.slice(), StaticStrings::FromString));
-    systemIndexes.emplace_back(std::make_shared<arangodb::RocksDBEdgeIndex>(
-        2, col, builder.slice(), StaticStrings::ToString));
+    systemIndexes.emplace_back(
+        std::make_shared<arangodb::RocksDBEdgeIndex>(1, col, builder.slice(),
+                                                     StaticStrings::FromString));
+    systemIndexes.emplace_back(
+        std::make_shared<arangodb::RocksDBEdgeIndex>(2, col, builder.slice(),
+                                                     StaticStrings::ToString));
   }
 }
 

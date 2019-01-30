@@ -123,11 +123,10 @@ struct repairingDistributeShardsLike;
 struct shardsById;
 struct deleted;
 struct isSmart;
-}
+}  // namespace tag
 namespace {
 keyword<tag::database, std::string> _database = decltype(_database)::instance;
-keyword<tag::collectionId, std::string> _collectionId =
-    decltype(_collectionId)::instance;
+keyword<tag::collectionId, std::string> _collectionId = decltype(_collectionId)::instance;
 keyword<tag::collectionName, std::string> _collectionName =
     decltype(_collectionName)::instance;
 keyword<tag::protoCollectionId, std::string> _protoCollectionId =
@@ -135,8 +134,7 @@ keyword<tag::protoCollectionId, std::string> _protoCollectionId =
 keyword<tag::protoCollectionName, std::string> _protoCollectionName =
     decltype(_protoCollectionName)::instance;
 keyword<tag::shard, std::string> _shard = decltype(_shard)::instance;
-keyword<tag::protoShard, std::string> _protoShard =
-    decltype(_protoShard)::instance;
+keyword<tag::protoShard, std::string> _protoShard = decltype(_protoShard)::instance;
 keyword<tag::from, std::string> _from = decltype(_from)::instance;
 keyword<tag::to, std::string> _to = decltype(_to)::instance;
 keyword<tag::isLeader, bool> _isLeader = decltype(_isLeader)::instance;
@@ -151,20 +149,18 @@ keyword<tag::renameDistributeShardsLike, bool> _renameDistributeShardsLike =
 keyword<tag::shards, std::vector<ShardWithProtoAndDbServers>> _shards =
     decltype(_shards)::instance;
 keyword<tag::leader, std::string> _leader = decltype(_leader)::instance;
-keyword<tag::followers, std::vector<std::string>> _followers =
-    decltype(_followers)::instance;
+keyword<tag::followers, std::vector<std::string>> _followers = decltype(_followers)::instance;
 keyword<tag::protoFollowers, std::vector<std::string>> _protoFollowers =
     decltype(_protoFollowers)::instance;
-keyword<tag::distributeShardsLike, boost::optional<CollectionID>>
-    _distributeShardsLike = decltype(_distributeShardsLike)::instance;
-keyword<tag::repairingDistributeShardsLike, boost::optional<CollectionID>>
-    _repairingDistributeShardsLike =
-        decltype(_repairingDistributeShardsLike)::instance;
-keyword<tag::shardsById, std::map<ShardID, DBServers, VersionSort>>
-    _shardsById = decltype(_shardsById)::instance;
+keyword<tag::distributeShardsLike, boost::optional<CollectionID>> _distributeShardsLike =
+    decltype(_distributeShardsLike)::instance;
+keyword<tag::repairingDistributeShardsLike, boost::optional<CollectionID>> _repairingDistributeShardsLike =
+    decltype(_repairingDistributeShardsLike)::instance;
+keyword<tag::shardsById, std::map<ShardID, DBServers, VersionSort>> _shardsById =
+    decltype(_shardsById)::instance;
 keyword<tag::deleted, bool> _deleted = decltype(_deleted)::instance;
 keyword<tag::isSmart, bool> _isSmart = decltype(_isSmart)::instance;
-}
+}  // namespace
 
 // Applies the following changes iff renameDistributeShardsLike is true:
 //  * Renames "distributeShardsLike" to "repairingDistributeShardsLike"
@@ -200,14 +196,10 @@ struct BeginRepairsOperation {
       tagged_argument<tag::collectionId, CollectionID> collectionId_,
       tagged_argument<tag::collectionName, std::string> collectionName_,
       tagged_argument<tag::protoCollectionId, CollectionID> protoCollectionId_,
-      tagged_argument<tag::protoCollectionName, std::string>
-          protoCollectionName_,
-      tagged_argument<tag::collectionReplicationFactor, uint64_t>
-          collectionReplicationFactor_,
-      tagged_argument<tag::protoReplicationFactor, uint64_t>
-          protoReplicationFactor_,
-      tagged_argument<tag::renameDistributeShardsLike, bool>
-          renameDistributeShardsLike_);
+      tagged_argument<tag::protoCollectionName, std::string> protoCollectionName_,
+      tagged_argument<tag::collectionReplicationFactor, uint64_t> collectionReplicationFactor_,
+      tagged_argument<tag::protoReplicationFactor, uint64_t> protoReplicationFactor_,
+      tagged_argument<tag::renameDistributeShardsLike, bool> renameDistributeShardsLike_);
 };
 
 // Applies the following changes:
@@ -241,10 +233,8 @@ struct FinishRepairsOperation {
       tagged_argument<tag::collectionId, CollectionID> collectionId_,
       tagged_argument<tag::collectionName, std::string> collectionName_,
       tagged_argument<tag::protoCollectionId, CollectionID> protoCollectionId_,
-      tagged_argument<tag::protoCollectionName, std::string>
-          protoCollectionName_,
-      tagged_argument<tag::shards, std::vector<ShardWithProtoAndDbServers>>
-          shards_,
+      tagged_argument<tag::protoCollectionName, std::string> protoCollectionName_,
+      tagged_argument<tag::shards, std::vector<ShardWithProtoAndDbServers>> shards_,
       tagged_argument<tag::replicationFactor, uint64_t> replicationFactor_);
 };
 
@@ -264,18 +254,16 @@ struct MoveShardOperation {
   MoveShardOperation() = delete;
 
   // constructor with named parameters
-  MoveShardOperation(
-      tagged_argument<tag::database, DatabaseID> database_,
-      tagged_argument<tag::collectionId, CollectionID> collectionId_,
-      tagged_argument<tag::collectionName, std::string> collectionName_,
-      tagged_argument<tag::shard, ShardID> shard_,
-      tagged_argument<tag::from, ServerID> from_,
-      tagged_argument<tag::to, ServerID> to_,
-      tagged_argument<tag::isLeader, bool> isLeader_);
+  MoveShardOperation(tagged_argument<tag::database, DatabaseID> database_,
+                     tagged_argument<tag::collectionId, CollectionID> collectionId_,
+                     tagged_argument<tag::collectionName, std::string> collectionName_,
+                     tagged_argument<tag::shard, ShardID> shard_,
+                     tagged_argument<tag::from, ServerID> from_,
+                     tagged_argument<tag::to, ServerID> to_,
+                     tagged_argument<tag::isLeader, bool> isLeader_);
 
-  VPackBufferPtr toVPackTodo(
-      uint64_t jobId,
-      std::chrono::system_clock::time_point jobCreationTimestamp) const;
+  VPackBufferPtr toVPackTodo(uint64_t jobId,
+                             std::chrono::system_clock::time_point jobCreationTimestamp) const;
 };
 
 // Applies the following changes:
@@ -305,63 +293,47 @@ struct FixServerOrderOperation {
       tagged_argument<tag::collectionId, CollectionID> collectionId_,
       tagged_argument<tag::collectionName, std::string> collectionName_,
       tagged_argument<tag::protoCollectionId, CollectionID> protoCollectionId_,
-      tagged_argument<tag::protoCollectionName, std::string>
-          protoCollectionName_,
+      tagged_argument<tag::protoCollectionName, std::string> protoCollectionName_,
       tagged_argument<tag::shard, ShardID> shard_,
       tagged_argument<tag::protoShard, ShardID> protoShard_,
       tagged_argument<tag::leader, ServerID> leader_,
       tagged_argument<tag::followers, std::vector<ServerID>> followers_,
-      tagged_argument<tag::protoFollowers, std::vector<ServerID>>
-          protoFollowers_);
+      tagged_argument<tag::protoFollowers, std::vector<ServerID>> protoFollowers_);
 };
 
-bool operator==(BeginRepairsOperation const& left,
-                BeginRepairsOperation const& right);
+bool operator==(BeginRepairsOperation const& left, BeginRepairsOperation const& right);
 
-bool operator==(FinishRepairsOperation const& left,
-                FinishRepairsOperation const& right);
+bool operator==(FinishRepairsOperation const& left, FinishRepairsOperation const& right);
 
-bool operator==(MoveShardOperation const& left,
-                MoveShardOperation const& right);
+bool operator==(MoveShardOperation const& left, MoveShardOperation const& right);
 
-bool operator==(FixServerOrderOperation const& left,
-                FixServerOrderOperation const& right);
+bool operator==(FixServerOrderOperation const& left, FixServerOrderOperation const& right);
 
-std::ostream& operator<<(std::ostream& ostream,
-                         BeginRepairsOperation const& operation);
+std::ostream& operator<<(std::ostream& ostream, BeginRepairsOperation const& operation);
 
-std::ostream& operator<<(std::ostream& ostream,
-                         FinishRepairsOperation const& operation);
+std::ostream& operator<<(std::ostream& ostream, FinishRepairsOperation const& operation);
 
-std::ostream& operator<<(std::ostream& ostream,
-                         MoveShardOperation const& operation);
+std::ostream& operator<<(std::ostream& ostream, MoveShardOperation const& operation);
 
-std::ostream& operator<<(std::ostream& ostream,
-                         FixServerOrderOperation const& operation);
+std::ostream& operator<<(std::ostream& ostream, FixServerOrderOperation const& operation);
 
 using RepairOperation =
-    boost::variant<BeginRepairsOperation const, FinishRepairsOperation const,
-                   MoveShardOperation const, FixServerOrderOperation const>;
+    boost::variant<BeginRepairsOperation const, FinishRepairsOperation const, MoveShardOperation const, FixServerOrderOperation const>;
 
 std::string getTypeAsString(RepairOperation const& op);
 
-std::ostream& operator<<(std::ostream& ostream,
-                         RepairOperation const& operation);
+std::ostream& operator<<(std::ostream& ostream, RepairOperation const& operation);
 
 // Converts any RepairOperation to a Transaction. If its a job (i.e. put in
 // Target/ToDo/), it returns the corresponding job id as well.
 class RepairOperationToTransactionVisitor
-    : public boost::static_visitor<
-          std::pair<AgencyWriteTransaction, boost::optional<uint64_t>>> {
-  using ReturnValueT =
-      std::pair<AgencyWriteTransaction, boost::optional<uint64_t>>;
+    : public boost::static_visitor<std::pair<AgencyWriteTransaction, boost::optional<uint64_t>>> {
+  using ReturnValueT = std::pair<AgencyWriteTransaction, boost::optional<uint64_t>>;
 
  public:
   RepairOperationToTransactionVisitor();
-  RepairOperationToTransactionVisitor(
-      std::function<uint64_t()> getJobId,
-      std::function<std::chrono::system_clock::time_point()>
-          getJobCreationTimestamp);
+  RepairOperationToTransactionVisitor(std::function<uint64_t()> getJobId,
+                                      std::function<std::chrono::system_clock::time_point()> getJobCreationTimestamp);
 
   ReturnValueT operator()(BeginRepairsOperation const& op);
 
@@ -374,13 +346,11 @@ class RepairOperationToTransactionVisitor
  private:
   std::vector<VPackBufferPtr> _vpackBufferArray;
   std::function<uint64_t()> _getJobId;
-  std::function<std::chrono::system_clock::time_point()>
-      _getJobCreationTimestamp;
+  std::function<std::chrono::system_clock::time_point()> _getJobCreationTimestamp;
 
   std::vector<VPackBufferPtr>&& steal();
 
-  std::string agencyCollectionId(DatabaseID database,
-                                 CollectionID collection) const;
+  std::string agencyCollectionId(DatabaseID database, CollectionID collection) const;
 
   VPackBufferPtr createShardDbServerArray(ServerID const& leader,
                                           DBServers const& followers) const;
@@ -411,7 +381,7 @@ class RepairOperationToVPackVisitor : public boost::static_visitor<void> {
 
   VPackBuilder& builder();
 };
-}
-}
+}  // namespace cluster_repairs
+}  // namespace arangodb
 
 #endif  // ARANGOD_CLUSTER_CLUSTER_REPAIR_OPERATIONS_H

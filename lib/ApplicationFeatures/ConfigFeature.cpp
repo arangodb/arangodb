@@ -69,8 +69,7 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            new BooleanParameter(&_checkConfiguration));
 }
 
-void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options,
-                                char const* binaryPath) {
+void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options, char const* binaryPath) {
   for (auto const& def : _defines) {
     arangodb::options::DefineEnvironment(def);
   }
@@ -83,8 +82,7 @@ void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options,
 }
 
 void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
-                                   std::string const& progname,
-                                   char const* binaryPath) {
+                                   std::string const& progname, char const* binaryPath) {
   if (StringUtils::tolower(_file) == "none") {
     LOG_TOPIC(DEBUG, Logger::CONFIG) << "using no config file at all";
     return;
@@ -102,8 +100,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   // always prefer an explicitly given config file
   if (!_file.empty()) {
     if (!FileUtils::exists(_file)) {
-      LOG_TOPIC(FATAL, Logger::CONFIG) << "cannot read config file '" << _file
-                                       << "'";
+      LOG_TOPIC(FATAL, Logger::CONFIG) << "cannot read config file '" << _file << "'";
       FATAL_ERROR_EXIT();
     }
 
@@ -119,8 +116,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
       }
     }
 
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << "using user supplied config file '"
-                                     << _file << "'";
+    LOG_TOPIC(DEBUG, Logger::CONFIG) << "using user supplied config file '" << _file << "'";
 
     if (!parser.parse(_file, true)) {
       FATAL_ERROR_EXIT();
@@ -153,8 +149,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     auto root = context->runRoot();
     auto location = FileUtils::buildFilename(root, _SYSCONFDIR_);
 
-    LOG_TOPIC(TRACE, Logger::CONFIG) << "checking root location '" << root
-                                     << "'";
+    LOG_TOPIC(TRACE, Logger::CONFIG) << "checking root location '" << root << "'";
 
     locations.emplace_back(location);
   }

@@ -27,8 +27,7 @@
 #include "Basics/threads.h"
 
 namespace arangodb {
-class SupervisorFeature final
-    : public application_features::ApplicationFeature {
+class SupervisorFeature final : public application_features::ApplicationFeature {
  public:
   explicit SupervisorFeature(application_features::ApplicationServer* server);
 
@@ -43,6 +42,6 @@ class SupervisorFeature final
  private:
   TRI_pid_t _clientPid;
 };
-};
+};  // namespace arangodb
 
 #endif

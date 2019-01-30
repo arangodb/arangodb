@@ -61,7 +61,7 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       _hasMultipleExpansions(false),
       _returned(0) {
   _mmdr.reset(new ManagedDocumentResult);
-    
+
   TRI_ASSERT(!_indexes.empty());
 
   if (_condition != nullptr) {
@@ -90,7 +90,7 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       }
     }
   }
-  
+
   // count how many attributes in the index are expanded (array index)
   // if more than a single attribute, we always need to deduplicate the
   // result later on
@@ -108,17 +108,16 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       }
     }
   }
- 
+
   // build the _documentProducer callback for extracting
-  // documents from the index 
+  // documents from the index
   buildCallback();
 }
 
 IndexBlock::~IndexBlock() { cleanupNonConstExpressions(); }
 
 /// @brief adds a UNIQUE() to a dynamic IN condition
-arangodb::aql::AstNode* IndexBlock::makeUnique(
-    arangodb::aql::AstNode* node) const {
+arangodb::aql::AstNode* IndexBlock::makeUnique(arangodb::aql::AstNode* node) const {
   if (node->type != arangodb::aql::NODE_TYPE_ARRAY || node->numMembers() >= 2) {
     // an non-array or an array with more than 1 member
     auto en = static_cast<IndexNode const*>(getPlanNode());
@@ -128,8 +127,7 @@ arangodb::aql::AstNode* IndexBlock::makeUnique(
     auto trx = transaction();
     bool isSorted = false;
     bool isSparse = false;
-    auto unused =
-        trx->getIndexFeatures(_indexes[_currentIndex], isSorted, isSparse);
+    auto unused = trx->getIndexFeatures(_indexes[_currentIndex], isSorted, isSparse);
     if (isSparse) {
       // the index is sorted. we need to use SORTED_UNIQUE to get the
       // result back in index order
@@ -183,8 +181,7 @@ int IndexBlock::initialize() {
   auto ast = en->_plan->getAst();
 
   // instantiate expressions:
-  auto instantiateExpression = [&](size_t i, size_t j, size_t k,
-                                   AstNode* a) -> void {
+  auto instantiateExpression = [&](size_t i, size_t j, size_t k, AstNode* a) -> void {
     // all new AstNodes are registered with the Ast in the Query
     auto e = std::make_unique<Expression>(en->_plan, ast, a);
 
@@ -301,19 +298,20 @@ bool IndexBlock::initIndexes() {
 
       // must have a V8 context here to protect Expression::execute()
       auto engine = _engine;
-      arangodb::basics::ScopeGuard guard{
-          [&engine]() -> void { engine->getQuery()->enterContext(); },
-          [&]() -> void {
-            if (isRunningInCluster) {
-              // must invalidate the expression now as we might be called from
-              // different threads
-              for (auto const& e : _nonConstExpressions) {
-                e->expression->invalidate();
-              }
+      arangodb::basics::ScopeGuard guard{[&engine]() -> void {
+                                           engine->getQuery()->enterContext();
+                                         },
+                                         [&]() -> void {
+                                           if (isRunningInCluster) {
+                                             // must invalidate the expression now as we might be called from
+                                             // different threads
+                                             for (auto const& e : _nonConstExpressions) {
+                                               e->expression->invalidate();
+                                             }
 
-              engine->getQuery()->exitContext();
-            }
-          }};
+                                             engine->getQuery()->exitContext();
+                                           }
+                                         }};
 
       ISOLATE;
       v8::HandleScope scope(isolate);  // do not delete this!
@@ -432,15 +430,13 @@ bool IndexBlock::skipIndex(size_t atMost) {
     }
   }
   return false;
-  
+
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
 // this is called every time we need to fetch data from the indexes
-bool IndexBlock::readIndex(
-    size_t atMost,
-    IndexIterator::DocumentCallback const& callback) {
+bool IndexBlock::readIndex(size_t atMost, IndexIterator::DocumentCallback const& callback) {
   DEBUG_BEGIN_BLOCK();
   // this is called every time we want to read the index.
   // For the primary key index, this only reads the index once, and never
@@ -454,7 +450,7 @@ bool IndexBlock::readIndex(
     // All indexes exhausted
     return false;
   }
-    
+
   while (_cursor != nullptr) {
     if (!_cursor->hasMore()) {
       startNextCursor();
@@ -473,22 +469,25 @@ bool IndexBlock::readIndex(
     }
 
     TRI_ASSERT(atMost >= _returned);
-     
+
     bool res;
     if (!produceResult()) {
-      // optimization: iterate over index (e.g. for filtering), but do not fetch the
-      // actual documents
-      res = _cursor->next([&callback](LocalDocumentId const& id) {
-        callback(id, VPackSlice::nullSlice());
-      }, atMost - _returned);
+      // optimization: iterate over index (e.g. for filtering), but do not fetch
+      // the actual documents
+      res = _cursor->next(
+          [&callback](LocalDocumentId const& id) {
+            callback(id, VPackSlice::nullSlice());
+          },
+          atMost - _returned);
     } else {
-      // check if the *current* cursor supports covering index queries or not 
+      // check if the *current* cursor supports covering index queries or not
       // if we can optimize or not must be stored in our instance, so the
       // DocumentProducingBlock can access the flag
       _allowCoveringIndexOptimization = _cursor->hasCovering();
-      
-      if (_allowCoveringIndexOptimization && 
-          !static_cast<IndexNode const*>(_exeNode)->coveringIndexAttributePositions().empty()) {
+
+      if (_allowCoveringIndexOptimization && !static_cast<IndexNode const*>(_exeNode)
+                                                  ->coveringIndexAttributePositions()
+                                                  .empty()) {
         // index covers all projections
         res = _cursor->nextCovering(callback, atMost - _returned);
       } else {
@@ -542,11 +541,10 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   TRI_ASSERT(atMost > 0);
   size_t curRegs;
 
-  std::unique_ptr<AqlItemBlock> res(
-      requestBlock(atMost,
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
-  _returned = 0;   // here we count how many of this AqlItemBlock we have
-                   // already filled
+  std::unique_ptr<AqlItemBlock> res(requestBlock(
+      atMost, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  _returned = 0;       // here we count how many of this AqlItemBlock we have
+                       // already filled
   size_t copyFromRow;  // The row to copy values from
 
   // The following callbacks write one index lookup result into res at
@@ -571,7 +569,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
           return;
         }
       }
-      
+
       _documentProducer(res.get(), slice, curRegs, _returned, copyFromRow);
     };
   } else {
@@ -617,7 +615,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     TRI_ASSERT(!_indexesExhausted);
     AqlItemBlock* cur = _buffer.front();
     curRegs = cur->getNrRegs();
-   
+
     TRI_ASSERT(curRegs <= res->getNrRegs());
 
     // only copy 1st row of registers inherited from previous frame(s)
@@ -741,9 +739,9 @@ arangodb::OperationCursor* IndexBlock::orderCursor(size_t currentIndex) {
   if (!_nonConstExpressions.empty() || _cursors[currentIndex] == nullptr) {
     // yet no cursor for index, so create it
     IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
-    _cursors[currentIndex].reset(_trx->indexScanForCondition(
-        _indexes[currentIndex], conditionNode, node->outVariable(), _mmdr.get(),
-        node->_reverse));
+    _cursors[currentIndex].reset(
+        _trx->indexScanForCondition(_indexes[currentIndex], conditionNode,
+                                    node->outVariable(), _mmdr.get(), node->_reverse));
   } else {
     // cursor for index already exists, reset and reuse it
     _cursors[currentIndex]->reset();

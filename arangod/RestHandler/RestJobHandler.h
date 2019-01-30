@@ -32,7 +32,7 @@ namespace arangodb {
 namespace rest {
 class AsyncJobManager;
 class Dispatcher;
-}
+}  // namespace rest
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief job control request handler
@@ -89,6 +89,9 @@ class RestJobHandler : public RestBaseHandler {
 
   void deleteJob();
 
+ protected:
+  virtual uint32_t forwardingTarget() override;
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief async job manager
@@ -96,6 +99,6 @@ class RestJobHandler : public RestBaseHandler {
 
   rest::AsyncJobManager* _jobManager;
 };
-}
+}  // namespace arangodb
 
 #endif

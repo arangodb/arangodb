@@ -49,7 +49,7 @@ class ClusterSelectivityEstimates {
   bool defined() const;
 
   static constexpr double defaultExpireTime = 15.0;
-  
+
  private:
   mutable basics::ReadWriteLock _lock;
 

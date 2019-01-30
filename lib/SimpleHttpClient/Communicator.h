@@ -41,9 +41,8 @@ typedef std::unordered_map<std::string, std::string> HeadersInProgress;
 typedef uint64_t Ticket;
 
 struct RequestInProgress {
-  RequestInProgress(Destination destination, Callbacks callbacks,
-                    Ticket ticketId, std::string const& requestBody,
-                    Options const& options)
+  RequestInProgress(Destination destination, Callbacks callbacks, Ticket ticketId,
+                    std::string const& requestBody, Options const& options)
       : _destination(destination),
         _callbacks(callbacks),
         _ticketId(ticketId),
@@ -88,7 +87,7 @@ struct CurlHandle {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
     curl_easy_setopt(_handle, CURLOPT_PRIVATE, _rip.get());
-    curl_easy_setopt(_handle, CURLOPT_PATH_AS_IS, 1L); 
+    curl_easy_setopt(_handle, CURLOPT_PATH_AS_IS, 1L);
   }
   ~CurlHandle() {
     if (_handle != nullptr) {
@@ -102,8 +101,8 @@ struct CurlHandle {
   CURL* _handle;
   std::unique_ptr<RequestInProgress> _rip;
 };
-}
-}
+}  // namespace communicator
+}  // namespace arangodb
 
 namespace arangodb {
 namespace communicator {
@@ -120,16 +119,14 @@ class Communicator {
   ~Communicator();
 
  public:
-  Ticket addRequest(Destination, std::unique_ptr<GeneralRequest>, Callbacks,
-                    Options);
+  Ticket addRequest(Destination, std::unique_ptr<GeneralRequest>, Callbacks, Options);
 
   int work_once();
   void wait();
   void abortRequest(Ticket ticketId);
   void abortRequests();
   void disable() { _enabled = false; };
-  void enable()  { _enabled = true; };
-
+  void enable() { _enabled = true; };
 
  private:
   struct NewRequest {
@@ -148,7 +145,7 @@ class Communicator {
 
   Mutex _handlesLock;
   std::unordered_map<uint64_t, std::unique_ptr<CurlHandle>> _handlesInProgress;
-  
+
   CURLM* _curl;
   CURLMcode _mc;
   curl_waitfd _wakeup;
@@ -171,19 +168,20 @@ class Communicator {
   std::string createSafeDottedCurlUrl(std::string const& originalUrl);
 
   void callErrorFn(RequestInProgress*, int const&, std::unique_ptr<GeneralResponse>);
-  void callErrorFn(Ticket const&, Destination const&, Callbacks const&, int const&, std::unique_ptr<GeneralResponse>);
-  void callSuccessFn(Ticket const&, Destination const&, Callbacks const&, std::unique_ptr<GeneralResponse>);
+  void callErrorFn(Ticket const&, Destination const&, Callbacks const&,
+                   int const&, std::unique_ptr<GeneralResponse>);
+  void callSuccessFn(Ticket const&, Destination const&, Callbacks const&,
+                     std::unique_ptr<GeneralResponse>);
 
  private:
   static size_t readBody(void*, size_t, size_t, void*);
-  static size_t readHeaders(char* buffer, size_t size, size_t nitems,
-                            void* userdata);
+  static size_t readHeaders(char* buffer, size_t size, size_t nitems, void* userdata);
   static int curlDebug(CURL*, curl_infotype, char*, size_t, void*);
   static int curlProgress(void*, curl_off_t, curl_off_t, curl_off_t, curl_off_t);
   static void logHttpHeaders(std::string const&, std::string const&);
   static void logHttpBody(std::string const&, std::string const&);
 };
-}
-}
+}  // namespace communicator
+}  // namespace arangodb
 
 #endif

@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_QUERY_PROFILE_H
 #define ARANGOD_AQL_QUERY_PROFILE_H 1
 
-#include "Basics/Common.h"
 #include "Aql/QueryExecutionState.h"
+#include "Basics/Common.h"
 
 #include <array>
 
@@ -62,10 +62,12 @@ struct QueryProfile {
 
 // we want the number of execution states to be quite low
 // as we reserve a statically sized array for it
-static_assert(static_cast<int>(QueryExecutionState::ValueType::INITIALIZATION) == 0, "unexpected min QueryExecutionState enum value");
-static_assert(static_cast<int>(QueryExecutionState::ValueType::INVALID_STATE) < 10, "unexpected max QueryExecutionState enum value");
+static_assert(static_cast<int>(QueryExecutionState::ValueType::INITIALIZATION) == 0,
+              "unexpected min QueryExecutionState enum value");
+static_assert(static_cast<int>(QueryExecutionState::ValueType::INVALID_STATE) < 10,
+              "unexpected max QueryExecutionState enum value");
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

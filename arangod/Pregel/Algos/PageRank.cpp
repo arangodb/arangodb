@@ -37,7 +37,7 @@ static std::string const kConvergence = "convergence";
 
 struct PRWorkerContext : public WorkerContext {
   PRWorkerContext() {}
-  
+
   float commonProb = 0;
   void preGlobalSuperstep(uint64_t gss) override {
     if (gss == 0) {
@@ -50,8 +50,7 @@ struct PRWorkerContext : public WorkerContext {
 
 PageRank::PageRank(VPackSlice const& params)
     : SimpleAlgorithm("PageRank", params) {
-  _maxGSS =
-      basics::VelocyPackHelper::getNumericValue(params, "maxIterations", 250);
+  _maxGSS = basics::VelocyPackHelper::getNumericValue(params, "maxIterations", 250);
 }
 
 struct PRComputation : public VertexComputation<float, float, float> {
@@ -78,8 +77,7 @@ struct PRComputation : public VertexComputation<float, float, float> {
   }
 };
 
-VertexComputation<float, float, float>* PageRank::createComputation(
-    WorkerConfig const* config) const {
+VertexComputation<float, float, float>* PageRank::createComputation(WorkerConfig const* config) const {
   return new PRComputation();
 }
 
@@ -107,7 +105,6 @@ struct PRMasterContext : public MasterContext {
 MasterContext* PageRank::masterContext(VPackSlice userParams) const {
   return new PRMasterContext(userParams);
 }
-
 
 IAggregator* PageRank::aggregator(std::string const& name) const {
   if (name == kConvergence) {

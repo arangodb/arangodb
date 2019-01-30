@@ -27,11 +27,9 @@
 #include "VocBase/ViewImplementation.h"
 
 namespace arangodb {
-class ViewTypesFeature final
-    : public application_features::ApplicationFeature {
+class ViewTypesFeature final : public application_features::ApplicationFeature {
  public:
-  explicit ViewTypesFeature(
-      application_features::ApplicationServer* server);
+  explicit ViewTypesFeature(application_features::ApplicationServer* server);
 
  public:
   void prepare() override final;
@@ -46,6 +44,6 @@ class ViewTypesFeature final
  private:
   static std::unordered_map<std::string, arangodb::ViewCreator> _viewCreators;
 };
-}
+}  // namespace arangodb
 
 #endif

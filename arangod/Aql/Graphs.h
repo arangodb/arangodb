@@ -24,15 +24,15 @@
 #ifndef ARANGOD_AQL_GRAPHS_H
 #define ARANGOD_AQL_GRAPHS_H 1
 
-#include "Basics/Common.h"
 #include "Aql/VariableGenerator.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
 struct AstNode;
@@ -45,7 +45,6 @@ struct AstNode;
 // has to free them.
 // In AQL the AST is responsible to free all nodes.
 class EdgeConditionBuilder {
-
  protected:
   /// @brief a condition checking for _from
   /// not used directly
@@ -73,7 +72,7 @@ class EdgeConditionBuilder {
   virtual void buildToCondition() = 0;
 
  public:
-  virtual ~EdgeConditionBuilder() {};
+  virtual ~EdgeConditionBuilder(){};
 
   EdgeConditionBuilder(EdgeConditionBuilder const&) = delete;
   EdgeConditionBuilder(EdgeConditionBuilder&&) = delete;

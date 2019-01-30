@@ -34,9 +34,7 @@ class SocketTcp final : public Socket {
 
  public:
   SocketTcp(asio_ns::io_context& ioService)
-      : Socket(ioService, /*encrypted*/ false),
-        _socket(ioService),
-        _peerEndpoint() {}
+      : Socket(ioService, /*encrypted*/ false), _socket(ioService), _peerEndpoint() {}
 
   SocketTcp(SocketTcp const& that) = delete;
 
@@ -50,24 +48,19 @@ class SocketTcp final : public Socket {
 
   void setNonBlocking(bool v) override { _socket.non_blocking(v); }
 
-  size_t writeSome(basics::StringBuffer* buffer,
-                   asio_ns::error_code& ec) override {
-    return _socket.write_some(
-        asio_ns::buffer(buffer->begin(), buffer->length()), ec);
+  size_t writeSome(basics::StringBuffer* buffer, asio_ns::error_code& ec) override {
+    return _socket.write_some(asio_ns::buffer(buffer->begin(), buffer->length()), ec);
   }
 
-  void asyncWrite(asio_ns::mutable_buffers_1 const& buffer,
-                  AsyncHandler const& handler) override {
+  void asyncWrite(asio_ns::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override {
     return asio_ns::async_write(_socket, buffer, strand.wrap(handler));
   }
 
-  size_t readSome(asio_ns::mutable_buffers_1 const& buffer,
-                  asio_ns::error_code& ec) override {
+  size_t readSome(asio_ns::mutable_buffers_1 const& buffer, asio_ns::error_code& ec) override {
     return _socket.read_some(buffer, ec);
   }
 
-  void asyncRead(asio_ns::mutable_buffers_1 const& buffer,
-                 AsyncHandler const& handler) override {
+  void asyncRead(asio_ns::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override {
     return _socket.async_read_some(buffer, strand.wrap(handler));
   }
 
@@ -100,6 +93,6 @@ class SocketTcp final : public Socket {
   asio_ns::ip::tcp::socket _socket;
   asio_ns::ip::tcp::acceptor::endpoint_type _peerEndpoint;
 };
-}
+}  // namespace arangodb
 
 #endif

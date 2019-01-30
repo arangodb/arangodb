@@ -31,8 +31,7 @@
 
 using namespace arangodb;
 
-RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine* eng,
-                                                 double interval)
+RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine* eng, double interval)
     : Thread("RocksDBThread"), _engine(eng), _interval(interval) {}
 
 RocksDBBackgroundThread::~RocksDBBackgroundThread() { shutdown(); }
@@ -68,17 +67,16 @@ void RocksDBBackgroundThread::run() {
         minTick = cmTick;
       }
       if (DatabaseFeature::DATABASE != nullptr) {
-        DatabaseFeature::DATABASE->enumerateDatabases(
-            [force, &minTick](TRI_vocbase_t* vocbase) {
-              vocbase->cursorRepository()->garbageCollect(force);
-              vocbase->garbageCollectReplicationClients(TRI_microtime());
-              auto clients = vocbase->getReplicationClients();
-              for (auto c : clients) {
-                if (std::get<3>(c) < minTick) {
-                  minTick = std::get<3>(c);
-                }
-              }
-            });
+        DatabaseFeature::DATABASE->enumerateDatabases([force, &minTick](TRI_vocbase_t* vocbase) {
+          vocbase->cursorRepository()->garbageCollect(force);
+          vocbase->garbageCollectReplicationClients(TRI_microtime());
+          auto clients = vocbase->getReplicationClients();
+          for (auto c : clients) {
+            if (std::get<3>(c) < minTick) {
+              minTick = std::get<3>(c);
+            }
+          }
+        });
       }
 
       // only start pruning of obsolete WAL files a few minutes after

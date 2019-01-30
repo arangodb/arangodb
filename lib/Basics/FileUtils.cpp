@@ -75,6 +75,29 @@ std::string removeTrailingSeparator(std::string const& name) {
 
 void normalizePath(std::string& name) {
   std::replace(name.begin(), name.end(), '/', TRI_DIR_SEPARATOR_CHAR);
+
+#ifdef _WIN32
+  // for Windows the situation is a bit more complicated,
+  // as a mere replacement of all forward slashes to backslashes
+  // may leave us with a double backslash for sequences like "bla/\foo".
+  // in this case we collapse duplicate dir separators to a single one.
+  // we intentionally ignore the first 2 characters, because they may
+  // contain a network share filename such as "\\foo\bar"
+
+  size_t const n = name.size();
+  size_t out = 0;
+
+  for (size_t i = 0; i < n; ++i) {
+    if (name[i] == TRI_DIR_SEPARATOR_CHAR && out > 1 && name[out - 1] == TRI_DIR_SEPARATOR_CHAR) {
+      continue;
+    }
+    name[out++] = name[i];
+  }
+
+  if (out != n) {
+    name.resize(out);
+  }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,8 +149,7 @@ static void throwFileReadError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
   int res = TRI_errno();
 
-  std::string message("read failed for file '" + filename + "': " +
-                      strerror(res));
+  std::string message("read failed for file '" + filename + "': " + strerror(res));
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << message;
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
@@ -189,16 +211,14 @@ static void throwFileWriteError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
   int res = TRI_errno();
 
-  std::string message("write failed for file '" + filename + "': " +
-                      strerror(res));
+  std::string message("write failed for file '" + filename + "': " + strerror(res));
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "" << message;
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
 }
 
 void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
-  int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
-                                   O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
+  int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
                                    S_IRUSR | S_IWUSR | S_IRGRP);
 
   if (fd == -1) {
@@ -246,8 +266,7 @@ bool remove(std::string const& fileName, int* errorNumber) {
   return (result != 0) ? false : true;
 }
 
-bool rename(std::string const& oldName, std::string const& newName,
-            int* errorNumber) {
+bool rename(std::string const& oldName, std::string const& newName, int* errorNumber) {
   if (errorNumber != nullptr) {
     *errorNumber = 0;
   }
@@ -290,8 +309,7 @@ bool createDirectory(std::string const& name, int mask, int* errorNumber) {
   return (result != 0) ? false : true;
 }
 
-bool copyRecursive(std::string const& source, 
-                   std::string const& target,
+bool copyRecursive(std::string const& source, std::string const& target,
                    std::function<bool(std::string const&)> const& filter,
                    std::string& error) {
   if (isDirectory(source)) {
@@ -306,8 +324,7 @@ bool copyRecursive(std::string const& source,
 
 /// @brief will not copy files/directories for which the filter function
 /// returns true
-bool copyDirectoryRecursive(std::string const& source,
-                            std::string const& target,
+bool copyDirectoryRecursive(std::string const& source, std::string const& target,
                             std::function<bool(std::string const&)> const& filter,
                             std::string& error) {
   bool rc = true;
@@ -355,7 +372,7 @@ bool copyDirectoryRecursive(std::string const& source,
 
     std::string dst = target + TRI_DIR_SEPARATOR_STR + TRI_DIR_FN(oneItem);
     std::string src = source + TRI_DIR_SEPARATOR_STR + TRI_DIR_FN(oneItem);
-    
+
     if (filter(src)) {
       continue;
     }
@@ -412,7 +429,8 @@ std::vector<std::string> listFiles(std::string const& directory) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     int res = TRI_errno();
 
-    std::string message("failed to enumerate files in directory '" + directory + "': " + strerror(res));
+    std::string message("failed to enumerate files in directory '" + directory +
+                        "': " + strerror(res));
     THROW_ARANGO_EXCEPTION_MESSAGE(res, message);
   }
 
@@ -432,7 +450,8 @@ std::vector<std::string> listFiles(std::string const& directory) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     int res = TRI_errno();
 
-    std::string message("failed to enumerate files in directory '" + directory + "': " + strerror(res));
+    std::string message("failed to enumerate files in directory '" + directory +
+                        "': " + strerror(res));
     THROW_ARANGO_EXCEPTION_MESSAGE(res, message);
   }
 
@@ -508,8 +527,7 @@ off_t size(std::string const& path) {
   return (off_t)result;
 }
 
-std::string stripExtension(std::string const& path,
-                           std::string const& extension) {
+std::string stripExtension(std::string const& path, std::string const& extension) {
   size_t pos = path.rfind(extension);
   if (pos == std::string::npos) {
     return path;
@@ -584,8 +602,7 @@ static void throwProgramError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
   int res = TRI_errno();
 
-  std::string message("open failed for file '" + filename + "': " +
-                      strerror(res));
+  std::string message("open failed for file '" + filename + "': " + strerror(res));
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << message;
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
@@ -605,7 +622,7 @@ std::string slurpProgram(std::string const& program) {
     int c;
 
     while ((c = getc(fp)) != EOF) {
-      buffer.appendChar((char) c);
+      buffer.appendChar((char)c);
     }
 
 #ifdef _WIN32
@@ -623,6 +640,6 @@ std::string slurpProgram(std::string const& program) {
 
   return std::string(buffer.data(), buffer.length());
 }
-}
-}
-}
+}  // namespace FileUtils
+}  // namespace basics
+}  // namespace arangodb

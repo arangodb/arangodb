@@ -33,7 +33,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
-#include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
@@ -45,9 +44,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace {
-std::string const& lookupStringInMap(
-    std::unordered_map<std::string, std::string> const& map,
-    std::string const& key, bool& found) {
+std::string const& lookupStringInMap(std::unordered_map<std::string, std::string> const& map,
+                                     std::string const& key, bool& found) {
   auto it = map.find(key);
   if (it != map.end()) {
     found = true;
@@ -57,7 +55,7 @@ std::string const& lookupStringInMap(
   found = false;
   return StaticStrings::Empty;
 }
-}
+}  // namespace
 
 VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
                        VstInputMessage&& message, uint64_t messageId, bool isFake)
@@ -68,7 +66,7 @@ VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
   _protocol = "vst";
   _contentType = ContentType::VPACK;
   _contentTypeResponse = ContentType::VPACK;
-  if(!isFake){
+  if (!isFake) {
     parseHeaderInformation();
   }
   _user = "root";
@@ -80,23 +78,20 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
   return _message.payload();
 }
 
-std::unordered_map<std::string, std::string> const& VstRequest::headers()
-    const {
+std::unordered_map<std::string, std::string> const& VstRequest::headers() const {
   if (!_headers) {
     using namespace std;
     _headers = make_unique<unordered_map<string, string>>();
     VPackSlice meta = _message.header().at(6);  // get meta
     for (auto const& it : VPackObjectIterator(meta)) {
       // must lower-case the header key
-      _headers->emplace(StringUtils::tolower(it.key.copyString()),
-                        it.value.copyString());
+      _headers->emplace(StringUtils::tolower(it.key.copyString()), it.value.copyString());
     }
   }
   return *_headers;
 }
 
-std::string const& VstRequest::header(std::string const& key,
-                                      bool& found) const {
+std::string const& VstRequest::header(std::string const& key, bool& found) const {
   headers();
   return lookupStringInMap(*_headers, key, found);
 }
@@ -139,8 +134,8 @@ void VstRequest::parseHeaderInformation() {
 
     for (auto const& param : _arrayValues) {
       for (auto const& value : param.second) {
-        _fullUrl.append(param.first + "[]=" +
-                        basics::StringUtils::urlEncode(value) + "&");
+        _fullUrl.append(param.first +
+                        "[]=" + basics::StringUtils::urlEncode(value) + "&");
       }
     }
     _fullUrl.pop_back();
@@ -151,8 +146,7 @@ void VstRequest::parseHeaderInformation() {
   }
 }
 
-std::string const& VstRequest::value(std::string const& key,
-                                     bool& found) const {
+std::string const& VstRequest::value(std::string const& key, bool& found) const {
   return lookupStringInMap(_values, key, found);
 }
 

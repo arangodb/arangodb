@@ -24,9 +24,9 @@
 #ifndef ARANGOD_AQL_QUERY_REGISTRY_H
 #define ARANGOD_AQL_QUERY_REGISTRY_H 1
 
+#include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-#include "Aql/types.h"
 
 struct TRI_vocbase_t;
 
@@ -81,7 +81,7 @@ class QueryRegistry {
 
   /// @brief for shutdown, we need to shut down all queries:
   void destroyAll();
-  
+
   /// @brief return the default TTL value
   double defaultTTL() const { return _defaultTTL; }
 
@@ -101,17 +101,16 @@ class QueryRegistry {
   };
 
   /// @brief _queries, the actual map of maps for the registry
-  std::unordered_map<std::string, std::unordered_map<QueryId, QueryInfo*>>
-      _queries;
+  std::unordered_map<std::string, std::unordered_map<QueryId, QueryInfo*>> _queries;
 
   /// @brief _lock, the read/write lock for access
   basics::ReadWriteLock _lock;
-  
+
   /// @brief the default TTL value
   double const _defaultTTL;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

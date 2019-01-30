@@ -83,10 +83,9 @@ std::unique_ptr<Aggregator> Aggregator::fromVPack(transaction::Methods* trx,
 bool Aggregator::isSupported(std::string const& type) {
   return (type == "LENGTH" || type == "COUNT" || type == "MIN" ||
           type == "MAX" || type == "SUM" || type == "AVERAGE" ||
-          type == "AVG" || type == "VARIANCE_POPULATION" ||
-          type == "VARIANCE" || type == "VARIANCE_SAMPLE" ||
-          type == "STDDEV_POPULATION" || type == "STDDEV" ||
-          type == "STDDEV_SAMPLE");
+          type == "AVG" || type == "VARIANCE_POPULATION" || type == "VARIANCE" ||
+          type == "VARIANCE_SAMPLE" || type == "STDDEV_POPULATION" ||
+          type == "STDDEV" || type == "STDDEV_SAMPLE");
 }
 
 bool Aggregator::requiresInput(std::string const& type) {
@@ -101,9 +100,7 @@ bool Aggregator::requiresInput(std::string const& type) {
 
 void AggregatorLength::reset() { count = 0; }
 
-void AggregatorLength::reduce(AqlValue const&) {
-  ++count;
-}
+void AggregatorLength::reduce(AqlValue const&) { ++count; }
 
 AqlValue AggregatorLength::stealValue() {
   uint64_t value = count;
@@ -117,8 +114,7 @@ void AggregatorMin::reset() { value.erase(); }
 
 void AggregatorMin::reduce(AqlValue const& cmpValue) {
   if (value.isEmpty() ||
-      (!cmpValue.isNull(true) &&
-       AqlValue::Compare(trx, value, cmpValue, true) > 0)) {
+      (!cmpValue.isNull(true) && AqlValue::Compare(trx, value, cmpValue, true) > 0)) {
     // the value `null` itself will not be used in MIN() to compare lower than
     // e.g. value `false`
     value.destroy();
@@ -140,8 +136,7 @@ AggregatorMax::~AggregatorMax() { value.destroy(); }
 void AggregatorMax::reset() { value.erase(); }
 
 void AggregatorMax::reduce(AqlValue const& cmpValue) {
-  if (value.isEmpty() ||
-      AqlValue::Compare(trx, value, cmpValue, true) < 0) {
+  if (value.isEmpty() || AqlValue::Compare(trx, value, cmpValue, true) < 0) {
     value.destroy();
     value = cmpValue.clone();
   }
@@ -171,8 +166,7 @@ void AggregatorSum::reduce(AqlValue const& cmpValue) {
     }
     if (cmpValue.isNumber()) {
       double const number = cmpValue.toDouble(trx);
-      if (!std::isnan(number) && number != HUGE_VAL &&
-          number != -HUGE_VAL) {
+      if (!std::isnan(number) && number != HUGE_VAL && number != -HUGE_VAL) {
         sum += number;
         return;
       }
@@ -206,8 +200,7 @@ void AggregatorAverage::reduce(AqlValue const& cmpValue) {
     }
     if (cmpValue.isNumber()) {
       double const number = cmpValue.toDouble(trx);
-      if (!std::isnan(number) && number != HUGE_VAL &&
-          number != -HUGE_VAL) {
+      if (!std::isnan(number) && number != HUGE_VAL && number != -HUGE_VAL) {
         sum += number;
         ++count;
         return;
@@ -219,13 +212,12 @@ void AggregatorAverage::reduce(AqlValue const& cmpValue) {
 }
 
 AqlValue AggregatorAverage::stealValue() {
-  if (invalid || count == 0 || std::isnan(sum) || sum == HUGE_VAL ||
-      sum == -HUGE_VAL) {
+  if (invalid || count == 0 || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
     return AqlValue(AqlValueHintNull());
   }
 
   TRI_ASSERT(count > 0);
-  
+
   double v = sum / count;
   reset();
   return AqlValue(AqlValueHintDouble(v));
@@ -246,8 +238,7 @@ void AggregatorVarianceBase::reduce(AqlValue const& cmpValue) {
     }
     if (cmpValue.isNumber()) {
       double const number = cmpValue.toDouble(trx);
-      if (!std::isnan(number) && number != HUGE_VAL &&
-          number != -HUGE_VAL) {
+      if (!std::isnan(number) && number != HUGE_VAL && number != -HUGE_VAL) {
         double const delta = number - mean;
         ++count;
         mean += delta / count;
@@ -267,16 +258,15 @@ AqlValue AggregatorVariance::stealValue() {
   }
 
   TRI_ASSERT(count > 0);
- 
-  double v; 
+
+  double v;
   if (!population) {
     TRI_ASSERT(count > 1);
     v = sum / (count - 1);
-  }
-  else {
+  } else {
     v = sum / count;
   }
-  
+
   reset();
   return AqlValue(AqlValueHintDouble(v));
 }
@@ -288,13 +278,12 @@ AqlValue AggregatorStddev::stealValue() {
   }
 
   TRI_ASSERT(count > 0);
-  
-  double v;  
+
+  double v;
   if (!population) {
     TRI_ASSERT(count > 1);
     v = sqrt(sum / (count - 1));
-  }
-  else {
+  } else {
     v = sqrt(sum / count);
   }
 

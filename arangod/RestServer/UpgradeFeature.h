@@ -47,6 +47,6 @@ class UpgradeFeature final : public application_features::ApplicationFeature {
   int* _result;
   std::vector<std::string> _nonServerFeatures;
 };
-}
+}  // namespace arangodb
 
 #endif

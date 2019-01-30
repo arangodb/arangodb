@@ -38,8 +38,8 @@ RocksDBVPackComparator::RocksDBVPackComparator() {}
 
 RocksDBVPackComparator::~RocksDBVPackComparator() {}
 
-int RocksDBVPackComparator::compareIndexValues(
-    rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const {
+int RocksDBVPackComparator::compareIndexValues(rocksdb::Slice const& lhs,
+                                               rocksdb::Slice const& rhs) const {
   constexpr size_t objectIDLength = RocksDBKey::objectIdSize();
   int r = memcmp(lhs.data(), rhs.data(), objectIDLength);
   if (r != 0) {

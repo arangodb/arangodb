@@ -43,6 +43,6 @@ struct EventLoop {
   asio_ns::io_context* ioContext;
   rest::Scheduler* scheduler;
 };
-}
+}  // namespace arangodb
 
 #endif

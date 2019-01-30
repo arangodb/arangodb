@@ -44,8 +44,7 @@ class ClientFeature final : public application_features::ApplicationFeature,
   constexpr static double const LONG_TIMEOUT = 86400.0;
 
  public:
-  ClientFeature(application_features::ApplicationServer* server,
-                bool allowJwtSecret,
+  ClientFeature(application_features::ApplicationServer* server, bool allowJwtSecret,
                 double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
                 double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
 
@@ -71,14 +70,11 @@ class ClientFeature final : public application_features::ApplicationFeature,
 
  public:
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection();
-  std::unique_ptr<httpclient::GeneralClientConnection> createConnection(
-      std::string const& definition);
+  std::unique_ptr<httpclient::GeneralClientConnection> createConnection(std::string const& definition);
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient() const;
+  std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(std::string const& definition) const;
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
-      std::string const& definition) const;
-  std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
-      std::string const& definition,
-      httpclient::SimpleHttpClientParams const&) const;
+      std::string const& definition, httpclient::SimpleHttpClientParams const&) const;
   std::vector<std::string> httpEndpoints() override;
 
   void setDatabaseName(std::string const& databaseName) {
@@ -95,9 +91,8 @@ class ClientFeature final : public application_features::ApplicationFeature,
 
   bool getWarnConnect() { return _warnConnect; }
 
-  static int runMain(
-      int argc, char* argv[],
-      std::function<int(int argc, char* argv[])> const& mainFunc);
+  static int runMain(int argc, char* argv[],
+                     std::function<int(int argc, char* argv[])> const& mainFunc);
 
  private:
   void readPassword();

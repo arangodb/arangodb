@@ -30,7 +30,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 /// @brief struct containing a replication apply configuration
 class ReplicationApplierConfiguration {
@@ -47,7 +47,7 @@ class ReplicationApplierConfiguration {
   uint64_t _lockTimeoutRetries;
   uint64_t _chunkSize;
   uint64_t _connectionRetryWaitTime;
-  uint64_t _idleMinWaitTime; 
+  uint64_t _idleMinWaitTime;
   uint64_t _idleMaxWaitTime;
   uint64_t _initialSyncMaxWaitTime;
   uint64_t _autoResyncRetries;
@@ -61,9 +61,9 @@ class ReplicationApplierConfiguration {
   bool _incremental;
   bool _verbose;
   std::string _restrictType;
-  std::unordered_map<std::string, bool> _restrictCollections;
+  std::set<std::string> _restrictCollections;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  bool _force32mode = false; // force client to act like 3.2
+  bool _force32mode = false;  // force client to act like 3.2
 #endif
 
  public:
@@ -72,7 +72,7 @@ class ReplicationApplierConfiguration {
 
   ReplicationApplierConfiguration(ReplicationApplierConfiguration const&) = default;
   ReplicationApplierConfiguration& operator=(ReplicationApplierConfiguration const&) = default;
-  
+
   ReplicationApplierConfiguration(ReplicationApplierConfiguration&&) = default;
   ReplicationApplierConfiguration& operator=(ReplicationApplierConfiguration&&) = default;
 
@@ -85,17 +85,17 @@ class ReplicationApplierConfiguration {
   /// @brief get a VelocyPack representation
   /// expects builder to be in an open Object state
   void toVelocyPack(arangodb::velocypack::Builder&, bool includePassword, bool includeJwt) const;
-  
+
   /// @brief create a configuration object from velocypack
-  static ReplicationApplierConfiguration fromVelocyPack(arangodb::velocypack::Slice slice, 
+  static ReplicationApplierConfiguration fromVelocyPack(arangodb::velocypack::Slice slice,
                                                         std::string const& databaseName);
-  
+
   /// @brief create a configuration object from velocypack, merging it with an existing one
-  static ReplicationApplierConfiguration fromVelocyPack(ReplicationApplierConfiguration const& existing,
-                                                        arangodb::velocypack::Slice slice, 
-                                                        std::string const& databaseName);
+  static ReplicationApplierConfiguration fromVelocyPack(
+      ReplicationApplierConfiguration const& existing,
+      arangodb::velocypack::Slice slice, std::string const& databaseName);
 };
 
-}
+}  // namespace arangodb
 
 #endif

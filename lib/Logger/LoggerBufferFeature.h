@@ -38,6 +38,6 @@ class LoggerBufferFeature final : public application_features::ApplicationFeatur
   // void start() override final;
   // void stop() override final;
 };
-}
+}  // namespace arangodb
 
 #endif

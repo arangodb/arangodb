@@ -30,6 +30,7 @@
 #include "catch.hpp"
 #include <string>
 
+#include "Basics/FileUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
 #include "Basics/json.h"
@@ -307,6 +308,59 @@ SECTION("tst_absolute_paths") {
   TRI_Free(path);
 #endif
 }
+
+SECTION("tst_normalize") {
+  std::string path;
+
+  path = "/foo/bar/baz";
+  FileUtils::normalizePath(path);
+#ifdef _WIN32
+  CHECK(std::string("\\foo\\bar\\baz") == path);
+#else
+  CHECK(std::string("/foo/bar/baz") == path);
+#endif
+
+  path = "\\foo\\bar\\baz";
+  FileUtils::normalizePath(path);
+#ifdef _WIN32
+  CHECK(std::string("\\foo\\bar\\baz") == path);
+#else
+  CHECK(std::string("\\foo\\bar\\baz") == path);
+#endif
+  
+  path = "/foo/bar\\baz";
+  FileUtils::normalizePath(path);
+#ifdef _WIN32
+  CHECK(std::string("\\foo\\bar\\baz") == path);
+#else
+  CHECK(std::string("/foo/bar\\baz") == path);
+#endif
+  
+  path = "/foo/bar/\\baz";
+  FileUtils::normalizePath(path);
+#ifdef _WIN32
+  CHECK(std::string("\\foo\\bar\\baz") == path);
+#else
+  CHECK(std::string("/foo/bar/\\baz") == path);
+#endif
+  
+  path = "//foo\\/bar/\\baz";
+  FileUtils::normalizePath(path);
+#ifdef _WIN32
+  CHECK(std::string("\\\\foo\\bar\\baz") == path);
+#else
+  CHECK(std::string("//foo\\/bar/\\baz") == path);
+#endif
+  
+  path = "\\\\foo\\/bar/\\baz";
+  FileUtils::normalizePath(path);
+#ifdef _WIN32
+  CHECK(std::string("\\\\foo\\bar\\baz") == path);
+#else
+  CHECK(std::string("\\\\foo\\/bar/\\baz") == path);
+#endif
+}
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////

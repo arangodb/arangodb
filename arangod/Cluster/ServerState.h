@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "VocBase/voc-types.h"
 
 #include <iosfwd>
 
@@ -64,7 +65,7 @@ class ServerState {
     REDIRECT = 3,
     /// redirect to lead server if possible
     READ_ONLY = 4,
-    INVALID = 255, // this mode is used to indicate shutdown
+    INVALID = 255,  // this mode is used to indicate shutdown
   };
 
  public:
@@ -110,9 +111,7 @@ class ServerState {
   static Mode serverMode();
 
   /// @brief checks maintenance mode
-  static bool isMaintenance() {
-    return serverMode() == Mode::MAINTENANCE;
-  }
+  static bool isMaintenance() { return serverMode() == Mode::MAINTENANCE; }
 
   /// @brief should not allow DDL operations / transactions
   static bool writeOpsEnabled() {
@@ -126,9 +125,6 @@ class ServerState {
 
   /// @brief whether or not the cluster was properly initialized
   bool initialized() const { return _initialized; }
-
-  /// @brief flush the server state (used for testing)
-  void flush();
 
   bool isSingleServer() { return isSingleServer(loadRole()); }
 
@@ -156,12 +152,11 @@ class ServerState {
 
   /// @brief whether or not the role is a cluster-related role
   static bool isClusterRole(ServerState::RoleEnum role) {
-    return (role == ServerState::ROLE_PRIMARY ||
-            role == ServerState::ROLE_COORDINATOR);
+    return (role == ServerState::ROLE_PRIMARY || role == ServerState::ROLE_COORDINATOR);
   }
 
   /// @brief whether or not the role is a cluster-related role
-  bool isClusterRole() {return (isClusterRole(loadRole()));};
+  bool isClusterRole() { return (isClusterRole(loadRole())); };
 
   /// @brief check whether the server is an agent
   bool isAgent() { return isAgent(loadRole()); }
@@ -218,9 +213,7 @@ class ServerState {
   void findHost(std::string const& fallback);
 
   /// @brief get a string to identify the host we are running on
-  std::string getHost() {
-    return _host;
-  }
+  std::string getHost() { return _host; }
 
   /// @brief get the current state
   StateEnum getState();
@@ -245,7 +238,9 @@ class ServerState {
 
   void setFoxxmasterQueueupdate(bool);
 
-  bool getFoxxmasterQueueupdate();
+  bool getFoxxmasterQueueupdate() const noexcept;
+
+  TRI_voc_tick_t getFoxxmasterSince() const noexcept;
 
   std::string getPersistedId();
   bool hasPersistedId();
@@ -255,7 +250,7 @@ class ServerState {
   /// @brief sets server mode and propagates new mode to agency
   Result propagateClusterServerMode(Mode);
 
-private:
+ private:
   /// @brief atomically fetches the server role
   RoleEnum loadRole() {
     return static_cast<RoleEnum>(_role.load(std::memory_order_consume));
@@ -269,11 +264,11 @@ private:
 
   /// @brief register at agency
   bool registerAtAgency(AgencyComm&, const RoleEnum&, std::string const&);
-  /// @brief register shortname for an id
-  bool registerShortName(std::string const& id, const RoleEnum&);
 
   /// file where the server persists it's UUID
   std::string getUuidFilename();
+
+  void setFoxxmasterSinceNow();
 
   /// @brief the server's id, can be set just once
   std::string _id;
@@ -305,8 +300,11 @@ private:
   std::string _foxxmaster;
 
   bool _foxxmasterQueueupdate;
+
+  // @brief point in time since which this server is the Foxxmaster
+  TRI_voc_tick_t _foxxmasterSince;
 };
-}
+}  // namespace arangodb
 
 std::ostream& operator<<(std::ostream&, arangodb::ServerState::RoleEnum);
 

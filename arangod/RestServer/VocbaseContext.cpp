@@ -30,8 +30,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-double VocbaseContext::ServerSessionTtl =
-    60.0 * 60.0 * 24 * 60;  // 2 month session timeout
+double VocbaseContext::ServerSessionTtl = 60.0 * 60.0 * 24 * 60;  // 2 month session timeout
 
 VocbaseContext* VocbaseContext::create(GeneralRequest* req, TRI_vocbase_t* vocbase) {
   // _vocbase has already been refcounted for us
@@ -52,7 +51,7 @@ VocbaseContext* VocbaseContext::create(GeneralRequest* req, TRI_vocbase_t* vocba
                               /*sysLevel*/ auth::Level::NONE,
                               /*dbLevel*/ auth::Level::NONE);
   }
-  
+
   // superusers will have an empty username. This MUST be invalid
   // for users authenticating with name / password
   if (req->user().empty()) {
@@ -65,13 +64,14 @@ VocbaseContext* VocbaseContext::create(GeneralRequest* req, TRI_vocbase_t* vocba
                               /*sysLevel*/ auth::Level::RW,
                               /*dbLevel*/ auth::Level::RW);
   }
-  
+
   auth::UserManager* um = auth->userManager();
   if (um == nullptr) {
-    LOG_TOPIC(WARN, Logger::AUTHENTICATION) << "users are not supported on this server";
+    LOG_TOPIC(WARN, Logger::AUTHENTICATION)
+        << "users are not supported on this server";
     return nullptr;
   }
-  
+
   auth::Level dbLvl = um->databaseAuthLevel(req->user(), req->databaseName());
   auth::Level sysLvl = dbLvl;
   if (req->databaseName() != TRI_VOC_SYSTEM_DATABASE) {
@@ -83,8 +83,7 @@ VocbaseContext* VocbaseContext::create(GeneralRequest* req, TRI_vocbase_t* vocba
 }
 
 VocbaseContext::VocbaseContext(GeneralRequest* req, TRI_vocbase_t* vocbase,
-                               bool isInternal, auth::Level sys,
-                               auth::Level dbl)
+                               bool isInternal, auth::Level sys, auth::Level dbl)
     : ExecContext(isInternal, req->user(), req->databaseName(), sys, dbl),
       _vocbase(vocbase) {
   TRI_ASSERT(_vocbase != nullptr);

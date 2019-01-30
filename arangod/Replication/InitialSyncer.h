@@ -61,7 +61,7 @@ struct IncrementalSyncStats {
 
 class InitialSyncer : public Syncer {
  public:
-  static constexpr double defaultBatchTimeout = 7200.0; // two hours
+  static constexpr double defaultBatchTimeout = 7200.0;  // two hours
 
  public:
   explicit InitialSyncer(ReplicationApplierConfiguration const&);
@@ -69,9 +69,8 @@ class InitialSyncer : public Syncer {
   ~InitialSyncer();
 
  public:
-  
   virtual Result run(bool incremental) = 0;
-  
+
   /// @brief return the last log tick of the master at start
   TRI_voc_tick_t getLastLogTick() const { return _masterInfo._lastLogTick; }
 
@@ -81,14 +80,15 @@ class InitialSyncer : public Syncer {
   }
 
   std::string progress() const { return _progress; }
-  
+
  protected:
-  
   /// @brief set a progress message
   virtual void setProgress(std::string const& msg) {}
 
   /// @brief send a "start batch" command
-  Result sendStartBatch();
+  /// @param patchCount try to patch count of this collection
+  ///        only effective with the incremental sync
+  Result sendStartBatch(std::string const& patchCount = "");
 
   /// @brief send an "extend batch" command
   Result sendExtendBatch();
@@ -110,9 +110,8 @@ class InitialSyncer : public Syncer {
   double _batchUpdateTime;
 
   /// @brief ttl for batches
-  int _batchTtl;
-
+  double _batchTtl;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -35,7 +35,7 @@ class StringBuffer;
 namespace httpclient {
 class SimpleHttpClient;
 class SimpleHttpResult;
-}
+}  // namespace httpclient
 
 namespace import {
 struct ImportStatistics;
@@ -47,8 +47,7 @@ class SenderThread : public arangodb::Thread {
 
  public:
   explicit SenderThread(std::unique_ptr<httpclient::SimpleHttpClient>&&,
-                        ImportStatistics* stats,
-                        std::function<void()> const& wakeup);
+                        ImportStatistics* stats, std::function<void()> const& wakeup);
 
   ~SenderThread();
 
@@ -86,6 +85,6 @@ class SenderThread : public arangodb::Thread {
   std::string _errorMessage;
   void handleResult(httpclient::SimpleHttpResult* result);
 };
-}
-}
+}  // namespace import
+}  // namespace arangodb
 #endif

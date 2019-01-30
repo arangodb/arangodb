@@ -31,7 +31,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
 
@@ -67,7 +67,7 @@ struct QueryOptions {
   transaction::Options transactionOptions;
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

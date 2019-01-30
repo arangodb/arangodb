@@ -94,8 +94,7 @@ struct SimpleHttpClientParams {
   void setJwt(std::string const& jwt) { _jwt = jwt; }
 
   // sets username and password
-  void setUserNamePassword(char const* prefix,
-                           std::string const& username,
+  void setUserNamePassword(char const* prefix, std::string const& username,
                            std::string const& password) {
     TRI_ASSERT(prefix != nullptr);
     TRI_ASSERT(strcmp(prefix, "/") == 0);
@@ -106,8 +105,7 @@ struct SimpleHttpClientParams {
   /// @brief allows rewriting locations
   //////////////////////////////////////////////////////////////////////////////
 
-  void setLocationRewriter(void* data,
-                           std::string (*func)(void*, std::string const&)) {
+  void setLocationRewriter(void* data, std::string (*func)(void*, std::string const&)) {
     _locationRewriter.data = data;
     _locationRewriter.func = func;
   }
@@ -184,8 +182,7 @@ class SimpleHttpClient {
   };
 
  public:
-  SimpleHttpClient(std::unique_ptr<GeneralClientConnection>&,
-                   SimpleHttpClientParams const&);
+  SimpleHttpClient(std::unique_ptr<GeneralClientConnection>&, SimpleHttpClientParams const&);
   SimpleHttpClient(GeneralClientConnection*, SimpleHttpClientParams const&);
   ~SimpleHttpClient();
 
@@ -225,19 +222,6 @@ class SimpleHttpClient {
   //////////////////////////////////////////////////////////////////////////////
 
   void close();
-  
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief make an http request, creating a new HttpResult object
-  /// the caller has to delete the result object
-  /// this version does not allow specifying custom headers
-  /// if the request fails because of connection problems, the request will be
-  /// retried until it either succeeds (at least no connection problem) or there
-  /// have been _maxRetries retries
-  //////////////////////////////////////////////////////////////////////////////
-
-  SimpleHttpResult* retryRequest(
-      rest::RequestType, std::string const&, char const*, size_t,
-      std::unordered_map<std::string, std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief make an http request, creating a new HttpResult object
@@ -248,8 +232,19 @@ class SimpleHttpClient {
   /// have been _maxRetries retries
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* retryRequest(rest::RequestType, std::string const&,
-                                 char const*, size_t);
+  SimpleHttpResult* retryRequest(rest::RequestType, std::string const&, char const*, size_t,
+                                 std::unordered_map<std::string, std::string> const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief make an http request, creating a new HttpResult object
+  /// the caller has to delete the result object
+  /// this version does not allow specifying custom headers
+  /// if the request fails because of connection problems, the request will be
+  /// retried until it either succeeds (at least no connection problem) or there
+  /// have been _maxRetries retries
+  //////////////////////////////////////////////////////////////////////////////
+
+  SimpleHttpResult* retryRequest(rest::RequestType, std::string const&, char const*, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief make an http request, creating a new HttpResult object
@@ -257,8 +252,7 @@ class SimpleHttpClient {
   /// this version does not allow specifying custom headers
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* request(rest::RequestType, std::string const&, char const*,
-                            size_t);
+  SimpleHttpResult* request(rest::RequestType, std::string const&, char const*, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief make an http request, actual worker function
@@ -266,9 +260,8 @@ class SimpleHttpClient {
   /// this version allows specifying custom headers
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* request(
-      rest::RequestType, std::string const&, char const*, size_t,
-      std::unordered_map<std::string, std::string> const&);
+  SimpleHttpResult* request(rest::RequestType, std::string const&, char const*, size_t,
+                            std::unordered_map<std::string, std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the current error message
@@ -316,12 +309,13 @@ class SimpleHttpClient {
   /// @brief extract an error message from a response
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getHttpErrorMessage(SimpleHttpResult const*,
-                                  int* errorCode = nullptr);
+  std::string getHttpErrorMessage(SimpleHttpResult const*, int* errorCode = nullptr);
 
   SimpleHttpClientParams& params() { return _params; };
-  
-  bool isAborted() const noexcept { return _aborted.load(std::memory_order_acquire); }
+
+  bool isAborted() const noexcept {
+    return _aborted.load(std::memory_order_acquire);
+  }
 
   void setAborted(bool value) noexcept;
 
@@ -332,9 +326,8 @@ class SimpleHttpClient {
   /// this version allows specifying custom headers
   //////////////////////////////////////////////////////////////////////////////
 
-  SimpleHttpResult* doRequest(
-      rest::RequestType, std::string const&, char const*, size_t,
-      std::unordered_map<std::string, std::string> const&);
+  SimpleHttpResult* doRequest(rest::RequestType, std::string const&, char const*, size_t,
+                              std::unordered_map<std::string, std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the connection
@@ -354,8 +347,7 @@ class SimpleHttpClient {
 
   std::string rewriteLocation(std::string const& location) {
     if (_params._locationRewriter.func != nullptr) {
-      return _params._locationRewriter.func(_params._locationRewriter.data,
-                                            location);
+      return _params._locationRewriter.func(_params._locationRewriter.data, location);
     }
 
     return location;
@@ -378,10 +370,9 @@ class SimpleHttpClient {
   /// @param headerFields                   list of header fields
   //////////////////////////////////////////////////////////////////////////////
 
-  void setRequest(
-      rest::RequestType method, std::string const& location, char const* body,
-      size_t bodyLength,
-      std::unordered_map<std::string, std::string> const& headerFields);
+  void setRequest(rest::RequestType method, std::string const& location,
+                  char const* body, size_t bodyLength,
+                  std::unordered_map<std::string, std::string> const& headerFields);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief process (a part of) the http header, the data is
@@ -485,13 +476,13 @@ class SimpleHttpClient {
   rest::RequestType _method;
 
   SimpleHttpResult* _result;
-  
+
   std::atomic<bool> _aborted;
 
   // empty map, used for headers
   static std::unordered_map<std::string, std::string> const NO_HEADERS;
 };
-}
-}
+}  // namespace httpclient
+}  // namespace arangodb
 
 #endif

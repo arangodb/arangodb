@@ -33,13 +33,13 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
-  
+
 struct OperationResult {
-  OperationResult() {} 
-  
+  OperationResult() {}
+
   // create from integer status code
   explicit OperationResult(int code) : result(code) {}
-  
+
   // create from Result
   explicit OperationResult(Result const& other) : result(other) {}
   explicit OperationResult(Result&& other) : result(std::move(other)) {}
@@ -60,19 +60,18 @@ struct OperationResult {
     }
     return *this;
   }
- 
-  // create result with details 
-  OperationResult(Result&& result,
-                  std::shared_ptr<VPackBuffer<uint8_t>> const& buffer,
-                  std::shared_ptr<VPackCustomTypeHandler> const& handler,
-                  bool wasSynchronous,
-                  std::unordered_map<int, size_t> const& countErrorCodes = std::unordered_map<int, size_t>())
+
+  // create result with details
+  OperationResult(Result&& result, std::shared_ptr<VPackBuffer<uint8_t>> const& buffer,
+                  std::shared_ptr<VPackCustomTypeHandler> const& handler, bool wasSynchronous,
+                  std::unordered_map<int, size_t> const& countErrorCodes =
+                      std::unordered_map<int, size_t>())
       : result(std::move(result)),
         buffer(buffer),
         customTypeHandler(handler),
         wasSynchronous(wasSynchronous),
         countErrorCodes(countErrorCodes) {}
-  
+
   ~OperationResult() = default;
 
   // Result-like interface
@@ -84,7 +83,7 @@ struct OperationResult {
   std::string errorMessage() const { return result.errorMessage(); }
 
   inline VPackSlice slice() const {
-    TRI_ASSERT(buffer != nullptr); 
+    TRI_ASSERT(buffer != nullptr);
     return VPackSlice(buffer->data());
   }
 
@@ -100,6 +99,6 @@ struct OperationResult {
   std::unordered_map<int, size_t> countErrorCodes;
 };
 
-}
+}  // namespace arangodb
 
 #endif

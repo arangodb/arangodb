@@ -41,7 +41,6 @@
 //    virtual IndexIterator* iteratorForCondition(...)
 // So a there is a way to create an iterator for the index
 
-
 #ifndef ARANGOD_INDEXES_INDEX_ITERATOR_H
 #define ARANGOD_INDEXES_INDEX_ITERATOR_H 1
 
@@ -63,17 +62,16 @@ class Methods;
 class IndexIterator {
  public:
   typedef std::function<void(LocalDocumentId const& token)> LocalDocumentIdCallback;
-  typedef std::function<void(LocalDocumentId const& token,
-                             velocypack::Slice extra)> DocumentCallback;
-  typedef std::function<void(LocalDocumentId const& token,
-                             velocypack::Slice extra)> ExtraCallback;
+  typedef std::function<void(LocalDocumentId const& token, velocypack::Slice extra)> DocumentCallback;
+  typedef std::function<void(LocalDocumentId const& token, velocypack::Slice extra)> ExtraCallback;
 
  public:
   IndexIterator(IndexIterator const&) = delete;
   IndexIterator& operator=(IndexIterator const&) = delete;
   IndexIterator() = delete;
 
-  IndexIterator(LogicalCollection*, transaction::Methods*, ManagedDocumentResult*, arangodb::Index const*);
+  IndexIterator(LogicalCollection*, transaction::Methods*,
+                ManagedDocumentResult*, arangodb::Index const*);
 
   virtual ~IndexIterator();
 
@@ -86,9 +84,9 @@ class IndexIterator {
     // The default index has no extra information
     return false;
   }
- 
-  /// @brief default implementation for whether or not an index iterator provides
-  /// the "nextCovering" method as a performance optimization
+
+  /// @brief default implementation for whether or not an index iterator
+  /// provides the "nextCovering" method as a performance optimization
   virtual bool hasCovering() const {
     // The default index has no covering method information
     return false;
@@ -117,22 +115,19 @@ class IndexIterator {
 /// @brief Special iterator if the condition cannot have any result
 class EmptyIndexIterator final : public IndexIterator {
  public:
-  EmptyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, ManagedDocumentResult* mmdr, arangodb::Index const* index) 
+  EmptyIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
+                     ManagedDocumentResult* mmdr, arangodb::Index const* index)
       : IndexIterator(collection, trx, mmdr, index) {}
 
   ~EmptyIndexIterator() {}
 
   char const* typeName() const override { return "empty-index-iterator"; }
 
-  bool next(LocalDocumentIdCallback const&, size_t) override {
-    return false;
-  }
+  bool next(LocalDocumentIdCallback const&, size_t) override { return false; }
 
   void reset() override {}
 
-  void skip(uint64_t, uint64_t& skipped) override {
-    skipped = 0;
-  }
+  void skip(uint64_t, uint64_t& skipped) override { skipped = 0; }
 };
 
 /// @brief a wrapper class to iterate over several IndexIterators.
@@ -141,60 +136,58 @@ class EmptyIndexIterator final : public IndexIterator {
 ///        Will always start with the first iterator in the vector. Reverse them
 ///        outside if necessary.
 class MultiIndexIterator final : public IndexIterator {
-
-  public:
-   MultiIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                      ManagedDocumentResult* mmdr,
-                      arangodb::Index const* index,
-                      std::vector<IndexIterator*> const& iterators)
-     : IndexIterator(collection, trx, mmdr, index), 
-       _iterators(iterators), 
-       _currentIdx(0), 
-       _current(nullptr),
-       _hasCovering(true) {
-       if (!_iterators.empty()) {
-         _current = _iterators.at(0);
-         for (auto const& it : _iterators) {
-           // covering index support only present if all index
-           // iterators in this MultiIndexIterator support it
-           _hasCovering &= it->hasCovering();
-         }
-       } else {
-         // no iterators => no covering index support
-         _hasCovering = false;
-       }
-     }
-
-    ~MultiIndexIterator () {
-      // Free all iterators
-      for (auto& it : _iterators) {
-        delete it;
+ public:
+  MultiIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
+                     ManagedDocumentResult* mmdr, arangodb::Index const* index,
+                     std::vector<IndexIterator*> const& iterators)
+      : IndexIterator(collection, trx, mmdr, index),
+        _iterators(iterators),
+        _currentIdx(0),
+        _current(nullptr),
+        _hasCovering(true) {
+    if (!_iterators.empty()) {
+      _current = _iterators.at(0);
+      for (auto const& it : _iterators) {
+        // covering index support only present if all index
+        // iterators in this MultiIndexIterator support it
+        _hasCovering &= it->hasCovering();
       }
+    } else {
+      // no iterators => no covering index support
+      _hasCovering = false;
     }
-    
-    char const* typeName() const override { return "multi-index-iterator"; }
+  }
 
-    /// @brief Get the next elements
-    ///        If one iterator is exhausted, the next one is used.
-    ///        If callback is called less than limit many times
-    ///        all iterators are exhausted
-    bool next(LocalDocumentIdCallback const& callback, size_t limit) override;
+  ~MultiIndexIterator() {
+    // Free all iterators
+    for (auto& it : _iterators) {
+      delete it;
+    }
+  }
 
-    bool nextCovering(DocumentCallback const& callback, size_t limit) override;
+  char const* typeName() const override { return "multi-index-iterator"; }
 
-    /// @brief Reset the cursor
-    ///        This will reset ALL internal iterators and start all over again
-    void reset() override;
-  
-    /// @brief for whether or not the iterators provide the "nextCovering" method 
-    /// as a performance optimization
-    bool hasCovering() const override { return _hasCovering; }
+  /// @brief Get the next elements
+  ///        If one iterator is exhausted, the next one is used.
+  ///        If callback is called less than limit many times
+  ///        all iterators are exhausted
+  bool next(LocalDocumentIdCallback const& callback, size_t limit) override;
 
-  private:
-   std::vector<IndexIterator*> _iterators;
-   size_t _currentIdx;
-   IndexIterator* _current;
-   bool _hasCovering;
+  bool nextCovering(DocumentCallback const& callback, size_t limit) override;
+
+  /// @brief Reset the cursor
+  ///        This will reset ALL internal iterators and start all over again
+  void reset() override;
+
+  /// @brief for whether or not the iterators provide the "nextCovering" method
+  /// as a performance optimization
+  bool hasCovering() const override { return _hasCovering; }
+
+ private:
+  std::vector<IndexIterator*> _iterators;
+  size_t _currentIdx;
+  IndexIterator* _current;
+  bool _hasCovering;
 };
-}
+}  // namespace arangodb
 #endif

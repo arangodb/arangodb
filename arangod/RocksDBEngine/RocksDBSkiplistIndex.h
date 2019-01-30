@@ -43,6 +43,6 @@ class RocksDBSkiplistIndex final : public RocksDBVPackIndex {
 
   bool isSorted() const override { return true; }
 };
-}
+}  // namespace arangodb
 
 #endif

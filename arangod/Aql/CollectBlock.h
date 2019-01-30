@@ -25,12 +25,12 @@
 #ifndef ARANGOD_AQL_COLLECT_BLOCK_H
 #define ARANGOD_AQL_COLLECT_BLOCK_H 1
 
-#include "Basics/Common.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AqlValueGroup.h"
 #include "Aql/CollectNode.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Basics/Common.h"
 
 #include <velocypack/Builder.h>
 
@@ -43,7 +43,7 @@ namespace aql {
 struct Aggregator;
 class AqlItemBlock;
 class ExecutionEngine;
-  
+
 typedef std::vector<std::unique_ptr<Aggregator>> AggregateValuesType;
 
 class SortedCollectBlock final : public ExecutionBlock {
@@ -88,7 +88,7 @@ class SortedCollectBlock final : public ExecutionBlock {
   ~SortedCollectBlock();
 
   int initialize() override final;
-  
+
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
@@ -98,7 +98,7 @@ class SortedCollectBlock final : public ExecutionBlock {
 
   /// @brief writes the current group data into the result
   void emitGroup(AqlItemBlock const* cur, AqlItemBlock* res, size_t row, bool skipping);
-  
+
   /// @brief skips the current group
   void skipGroup();
 
@@ -124,7 +124,7 @@ class SortedCollectBlock final : public ExecutionBlock {
 
   /// @brief list of variables names for the registers
   std::vector<std::string> _variableNames;
-  
+
   /// @brief builder for temporary aggregate values
   arangodb::velocypack::Builder _builder;
 };
@@ -158,7 +158,7 @@ class DistinctCollectBlock : public ExecutionBlock {
   ~DistinctCollectBlock();
 
   int initialize() override final;
-  
+
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
@@ -171,7 +171,7 @@ class DistinctCollectBlock : public ExecutionBlock {
  private:
   /// @brief pairs, consisting of out register and in register
   std::vector<std::pair<RegisterId, RegisterId>> _groupRegisters;
-  
+
   std::unique_ptr<std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual>> _seen;
 };
 
@@ -191,7 +191,7 @@ class CountCollectBlock : public ExecutionBlock {
   size_t _count;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

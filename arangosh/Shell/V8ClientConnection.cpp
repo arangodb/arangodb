@@ -68,20 +68,19 @@ std::string V8ClientConnection::jwtToken(std::string const& secret) {
   }
 
   std::string fullMessage(StringUtils::encodeBase64(headerBuilder.toJson()) +
-                          "." +
-                          StringUtils::encodeBase64(bodyBuilder.toJson()));
+                          "." + StringUtils::encodeBase64(bodyBuilder.toJson()));
 
-  std::string signature = sslHMAC(
-      secret.c_str(), secret.length(), fullMessage.c_str(),
-      fullMessage.length(), rest::SslInterface::Algorithm::ALGORITHM_SHA256);
+  std::string signature = sslHMAC(secret.c_str(), secret.length(),
+                                  fullMessage.c_str(), fullMessage.length(),
+                                  rest::SslInterface::Algorithm::ALGORITHM_SHA256);
 
   return fullMessage + "." + StringUtils::encodeBase64U(signature);
 }
 
-V8ClientConnection::V8ClientConnection(
-    std::unique_ptr<GeneralClientConnection>& connection,
-    std::string const& database, std::string const& username,
-    std::string const& password, double requestTimeout)
+V8ClientConnection::V8ClientConnection(std::unique_ptr<GeneralClientConnection>& connection,
+                                       std::string const& database,
+                                       std::string const& username,
+                                       std::string const& password, double requestTimeout)
     : _requestTimeout(requestTimeout),
       _client(nullptr),
       _lastHttpReturnCode(0),
@@ -94,10 +93,9 @@ V8ClientConnection::V8ClientConnection(
 
 V8ClientConnection::~V8ClientConnection() {}
 
-void V8ClientConnection::init(
-    std::unique_ptr<GeneralClientConnection>& connection,
-    std::string const& username, std::string const& password,
-    std::string const& databaseName) {
+void V8ClientConnection::init(std::unique_ptr<GeneralClientConnection>& connection,
+                              std::string const& username, std::string const& password,
+                              std::string const& databaseName) {
   _username = username;
   _password = password;
   _databaseName = databaseName;
@@ -125,8 +123,7 @@ void V8ClientConnection::init(
   } else {
     _lastHttpReturnCode = result->getHttpReturnCode();
 
-    if (result->getHttpReturnCode() ==
-        static_cast<int>(rest::ResponseCode::OK)) {
+    if (result->getHttpReturnCode() == static_cast<int>(rest::ResponseCode::OK)) {
       try {
         std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
         VPackSlice const body = parsedBody->slice();
@@ -146,8 +143,7 @@ void V8ClientConnection::init(
           }
           std::string const versionString =
               VelocyPackHelper::getStringValue(body, "version", "");
-          std::pair<int, int> version =
-              rest::Version::parseVersionString(versionString);
+          std::pair<int, int> version = rest::Version::parseVersionString(versionString);
           if (version.first < 3) {
             // major version of server is too low
             _client->disconnect();
@@ -173,8 +169,7 @@ void V8ClientConnection::init(
   }
 }
 
-std::string V8ClientConnection::rewriteLocation(void* data,
-                                                std::string const& location) {
+std::string V8ClientConnection::rewriteLocation(void* data, std::string const& location) {
   V8ClientConnection* c = static_cast<V8ClientConnection*>(data);
 
   TRI_ASSERT(c != nullptr);
@@ -211,15 +206,13 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
   try {
     std::unique_ptr<GeneralClientConnection> connection =
         client->createConnection(client->endpoint());
-    init(connection, client->username(), client->password(),
-         client->databaseName());
+    init(connection, client->username(), client->password(), client->databaseName());
   } catch (...) {
     std::string errorMessage = "error in '" + client->endpoint() + "'";
     throw errorMessage;
   }
 
-  if (isConnected() &&
-      _lastHttpReturnCode == static_cast<int>(rest::ResponseCode::OK)) {
+  if (isConnected() && _lastHttpReturnCode == static_cast<int>(rest::ResponseCode::OK)) {
     LOG_TOPIC(INFO, arangodb::Logger::FIXME)
         << "Connected to ArangoDB "
         << "'" << endpointSpecification() << "', "
@@ -302,12 +295,10 @@ static void DestroyV8ClientConnection(V8ClientConnection* v8connection) {
 /// @brief returns a new client connection instance
 ////////////////////////////////////////////////////////////////////////////////
 
-static V8ClientConnection* CreateV8ClientConnection(
-    std::unique_ptr<GeneralClientConnection>& connection,
-    ClientFeature* client) {
-  return new V8ClientConnection(connection, client->databaseName(),
-                                client->username(), client->password(),
-                                client->requestTimeout());
+static V8ClientConnection* CreateV8ClientConnection(std::unique_ptr<GeneralClientConnection>& connection,
+                                                    ClientFeature* client) {
+  return new V8ClientConnection(connection, client->databaseName(), client->username(),
+                                client->password(), client->requestTimeout());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -317,8 +308,7 @@ static V8ClientConnection* CreateV8ClientConnection(
 static void ClientConnection_DestructorCallback(
     const v8::WeakCallbackInfo<v8::Persistent<v8::External>>& data) {
   auto persistent = data.GetParameter();
-  auto myConnection =
-      v8::Local<v8::External>::New(data.GetIsolate(), *persistent);
+  auto myConnection = v8::Local<v8::External>::New(data.GetIsolate(), *persistent);
   auto v8connection = static_cast<V8ClientConnection*>(myConnection->Value());
 
   DestroyV8ClientConnection(v8connection);
@@ -328,20 +318,17 @@ static void ClientConnection_DestructorCallback(
 /// @brief wrap V8ClientConnection in a v8::Object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> WrapV8ClientConnection(
-    v8::Isolate* isolate, V8ClientConnection* v8connection) {
+static v8::Handle<v8::Value> WrapV8ClientConnection(v8::Isolate* isolate,
+                                                    V8ClientConnection* v8connection) {
   v8::EscapableHandleScope scope(isolate);
-  auto localConnectionTempl =
-      v8::Local<v8::ObjectTemplate>::New(isolate, ConnectionTempl);
+  auto localConnectionTempl = v8::Local<v8::ObjectTemplate>::New(isolate, ConnectionTempl);
   v8::Local<v8::Object> result = localConnectionTempl->NewInstance();
 
   auto myConnection = v8::External::New(isolate, v8connection);
-  result->SetInternalField(SLOT_CLASS_TYPE,
-                           v8::Integer::New(isolate, WRAP_TYPE_CONNECTION));
+  result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRAP_TYPE_CONNECTION));
   result->SetInternalField(SLOT_CLASS, myConnection);
   Connections[v8connection].Reset(isolate, myConnection);
-  Connections[v8connection].SetWeak(&Connections[v8connection],
-                                    ClientConnection_DestructorCallback,
+  Connections[v8connection].SetWeak(&Connections[v8connection], ClientConnection_DestructorCallback,
                                     v8::WeakCallbackType::kFinalizer);
   return scope.Escape<v8::Value>(result);
 }
@@ -350,8 +337,7 @@ static v8::Handle<v8::Value> WrapV8ClientConnection(
 /// @brief ClientConnection constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_ConstructorCallback(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_ConstructorCallback(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -379,8 +365,7 @@ static void ClientConnection_ConstructorCallback(
     LOG_TOPIC(INFO, arangodb::Logger::FIXME)
         << "Connected to ArangoDB "
         << "'" << v8connection->endpointSpecification() << "', "
-        << "version " << v8connection->version() << " [" << v8connection->mode()
-        << "], "
+        << "version " << v8connection->version() << " [" << v8connection->mode() << "], "
         << "database '" << v8connection->databaseName() << "', "
         << "username: '" << v8connection->username() << "'";
 
@@ -400,8 +385,7 @@ static void ClientConnection_ConstructorCallback(
 /// @brief ClientConnection method "reconnect"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_reconnect(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_reconnect(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -483,8 +467,7 @@ static void ClientConnection_reconnect(
 /// @brief ClientConnection method "connectedUser"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_connectedUser(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_connectedUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -503,8 +486,8 @@ static void ClientConnection_connectedUser(
 /// @brief ClientConnection method "GET" helper
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpGetAny(
-    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
+static void ClientConnection_httpGetAny(v8::FunctionCallbackInfo<v8::Value> const& args,
+                                        bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -537,8 +520,7 @@ static void ClientConnection_httpGetAny(
 /// @brief ClientConnection method "GET"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpGet(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpGet(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpGetAny(args, false);
 }
 
@@ -546,8 +528,7 @@ static void ClientConnection_httpGet(
 /// @brief ClientConnection method "GET_RAW"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpGetRaw(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpGetRaw(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpGetAny(args, true);
 }
 
@@ -555,8 +536,8 @@ static void ClientConnection_httpGetRaw(
 /// @brief ClientConnection method "HEAD" helper
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpHeadAny(
-    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
+static void ClientConnection_httpHeadAny(v8::FunctionCallbackInfo<v8::Value> const& args,
+                                         bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -590,8 +571,7 @@ static void ClientConnection_httpHeadAny(
 /// @brief ClientConnection method "HEAD"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpHead(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpHead(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpHeadAny(args, false);
 }
 
@@ -599,8 +579,7 @@ static void ClientConnection_httpHead(
 /// @brief ClientConnection method "HEAD_RAW"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpHeadRaw(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpHeadRaw(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpHeadAny(args, true);
 }
 
@@ -608,8 +587,8 @@ static void ClientConnection_httpHeadRaw(
 /// @brief ClientConnection method "DELETE" helper
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpDeleteAny(
-    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
+static void ClientConnection_httpDeleteAny(v8::FunctionCallbackInfo<v8::Value> const& args,
+                                           bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -638,12 +617,10 @@ static void ClientConnection_httpDeleteAny(
   if (args.Length() > 2) {
     TRI_Utf8ValueNFC bodyUtf(args[2]);
     std::string body = *bodyUtf;
-    TRI_V8_RETURN(
-        v8connection->deleteData(isolate, *url, headerFields, raw, body));
+    TRI_V8_RETURN(v8connection->deleteData(isolate, *url, headerFields, raw, body));
   }
 
-  TRI_V8_RETURN(v8connection->deleteData(isolate, *url, headerFields, raw,
-                                         std::string()));
+  TRI_V8_RETURN(v8connection->deleteData(isolate, *url, headerFields, raw, std::string()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -651,8 +628,7 @@ static void ClientConnection_httpDeleteAny(
 /// @brief ClientConnection method "DELETE"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpDelete(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpDelete(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpDeleteAny(args, false);
 }
 
@@ -660,8 +636,7 @@ static void ClientConnection_httpDelete(
 /// @brief ClientConnection method "DELETE_RAW"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpDeleteRaw(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpDeleteRaw(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpDeleteAny(args, true);
 }
 
@@ -669,8 +644,8 @@ static void ClientConnection_httpDeleteRaw(
 /// @brief ClientConnection method "OPTIONS" helper
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpOptionsAny(
-    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
+static void ClientConnection_httpOptionsAny(v8::FunctionCallbackInfo<v8::Value> const& args,
+                                            bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -698,8 +673,7 @@ static void ClientConnection_httpOptionsAny(
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(
-      v8connection->optionsData(isolate, *url, *body, headerFields, raw));
+  TRI_V8_RETURN(v8connection->optionsData(isolate, *url, *body, headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -707,8 +681,7 @@ static void ClientConnection_httpOptionsAny(
 /// @brief ClientConnection method "OPTIONS"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpOptions(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpOptions(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpOptionsAny(args, false);
 }
 
@@ -716,8 +689,7 @@ static void ClientConnection_httpOptions(
 /// @brief ClientConnection method "OPTIONS_RAW"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpOptionsRaw(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpOptionsRaw(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpOptionsAny(args, true);
 }
 
@@ -725,8 +697,8 @@ static void ClientConnection_httpOptionsRaw(
 /// @brief ClientConnection method "POST" helper
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpPostAny(
-    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
+static void ClientConnection_httpPostAny(v8::FunctionCallbackInfo<v8::Value> const& args,
+                                         bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -754,8 +726,7 @@ static void ClientConnection_httpPostAny(
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(
-      v8connection->postData(isolate, *url, *body, headerFields, raw));
+  TRI_V8_RETURN(v8connection->postData(isolate, *url, *body, headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -763,8 +734,7 @@ static void ClientConnection_httpPostAny(
 /// @brief ClientConnection method "POST"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpPost(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpPost(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpPostAny(args, false);
 }
 
@@ -772,8 +742,7 @@ static void ClientConnection_httpPost(
 /// @brief ClientConnection method "POST_RAW"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpPostRaw(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpPostRaw(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpPostAny(args, true);
 }
 
@@ -781,8 +750,8 @@ static void ClientConnection_httpPostRaw(
 /// @brief ClientConnection method "PUT" helper
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpPutAny(
-    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
+static void ClientConnection_httpPutAny(v8::FunctionCallbackInfo<v8::Value> const& args,
+                                        bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -818,8 +787,7 @@ static void ClientConnection_httpPutAny(
 /// @brief ClientConnection method "PUT"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpPut(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpPut(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpPutAny(args, false);
 }
 
@@ -827,8 +795,7 @@ static void ClientConnection_httpPut(
 /// @brief ClientConnection method "PUT_RAW"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpPutRaw(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpPutRaw(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpPutAny(args, true);
 }
 
@@ -836,8 +803,8 @@ static void ClientConnection_httpPutRaw(
 /// @brief ClientConnection method "PATCH" helper
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpPatchAny(
-    v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
+static void ClientConnection_httpPatchAny(v8::FunctionCallbackInfo<v8::Value> const& args,
+                                          bool raw) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -865,8 +832,7 @@ static void ClientConnection_httpPatchAny(
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(
-      v8connection->patchData(isolate, *url, *body, headerFields, raw));
+  TRI_V8_RETURN(v8connection->patchData(isolate, *url, *body, headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -874,8 +840,7 @@ static void ClientConnection_httpPatchAny(
 /// @brief ClientConnection method "PATCH"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpPatch(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpPatch(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpPatchAny(args, false);
 }
 
@@ -883,8 +848,7 @@ static void ClientConnection_httpPatch(
 /// @brief ClientConnection method "PATCH_RAW"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpPatchRaw(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpPatchRaw(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ClientConnection_httpPatchAny(args, true);
 }
 
@@ -892,8 +856,7 @@ static void ClientConnection_httpPatchRaw(
 /// @brief ClientConnection send file helper
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_httpSendFile(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_httpSendFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -931,8 +894,7 @@ static void ClientConnection_httpSendFile(
   // check header fields
   std::unordered_map<std::string, std::string> headerFields;
 
-  v8::Local<v8::Value> result =
-      v8connection->postData(isolate, *url, body, headerFields);
+  v8::Local<v8::Value> result = v8connection->postData(isolate, *url, body, headerFields);
 
   if (tryCatch.HasCaught()) {
     isolate->ThrowException(tryCatch.Exception());
@@ -947,8 +909,7 @@ static void ClientConnection_httpSendFile(
 /// @brief ClientConnection method "getEndpoint"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_getEndpoint(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_getEndpoint(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
@@ -978,8 +939,7 @@ static void ClientConnection_getEndpoint(
 
 static uint64_t DefaultChunkSize = 1024 * 1024 * 4;
 
-static void ClientConnection_importCsv(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_importCsv(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1081,8 +1041,7 @@ static void ClientConnection_importCsv(
 /// @brief imports a JSON file
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_importJson(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_importJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1150,8 +1109,7 @@ static void ClientConnection_importJson(
 /// @brief ClientConnection method "lastError"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_lastHttpReturnCode(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_lastHttpReturnCode(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1176,8 +1134,7 @@ static void ClientConnection_lastHttpReturnCode(
 /// @brief ClientConnection method "lastErrorMessage"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_lastErrorMessage(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_lastErrorMessage(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1202,8 +1159,7 @@ static void ClientConnection_lastErrorMessage(
 /// @brief ClientConnection method "isConnected"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_isConnected(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_isConnected(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1230,8 +1186,7 @@ static void ClientConnection_isConnected(
 /// @brief ClientConnection method "isConnected"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_toString(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_toString(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1264,8 +1219,7 @@ static void ClientConnection_toString(
 /// @brief ClientConnection method "getVersion"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_getVersion(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_getVersion(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1289,8 +1243,7 @@ static void ClientConnection_getVersion(
 /// @brief ClientConnection method "getMode"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_getMode(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_getMode(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1314,8 +1267,7 @@ static void ClientConnection_getMode(
 /// @brief ClientConnection method "getDatabaseName"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_getDatabaseName(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_getDatabaseName(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1339,8 +1291,7 @@ static void ClientConnection_getDatabaseName(
 /// @brief ClientConnection method "setDatabaseName"
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClientConnection_setDatabaseName(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ClientConnection_setDatabaseName(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -1369,26 +1320,20 @@ static void ClientConnection_setDatabaseName(
 
 v8::Handle<v8::Value> V8ClientConnection::getData(
     v8::Isolate* isolate, std::string const& location,
-    std::unordered_map<std::string, std::string> const& headerFields,
-    bool raw) {
+    std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::GET, location, "",
-                          headerFields);
+    return requestDataRaw(isolate, rest::RequestType::GET, location, "", headerFields);
   }
-  return requestData(isolate, rest::RequestType::GET, location, "",
-                     headerFields);
+  return requestData(isolate, rest::RequestType::GET, location, "", headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::headData(
     v8::Isolate* isolate, std::string const& location,
-    std::unordered_map<std::string, std::string> const& headerFields,
-    bool raw) {
+    std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::HEAD, location, "",
-                          headerFields);
+    return requestDataRaw(isolate, rest::RequestType::HEAD, location, "", headerFields);
   }
-  return requestData(isolate, rest::RequestType::HEAD, location, "",
-                     headerFields);
+  return requestData(isolate, rest::RequestType::HEAD, location, "", headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::deleteData(
@@ -1396,59 +1341,45 @@ v8::Handle<v8::Value> V8ClientConnection::deleteData(
     std::unordered_map<std::string, std::string> const& headerFields, bool raw,
     std::string const& body) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::DELETE_REQ, location,
-                          body, headerFields);
+    return requestDataRaw(isolate, rest::RequestType::DELETE_REQ, location, body, headerFields);
   }
-  return requestData(isolate, rest::RequestType::DELETE_REQ, location, body,
-                     headerFields);
+  return requestData(isolate, rest::RequestType::DELETE_REQ, location, body, headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::optionsData(
     v8::Isolate* isolate, std::string const& location, std::string const& body,
-    std::unordered_map<std::string, std::string> const& headerFields,
-    bool raw) {
+    std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::OPTIONS, location, body,
-                          headerFields);
+    return requestDataRaw(isolate, rest::RequestType::OPTIONS, location, body, headerFields);
   }
-  return requestData(isolate, rest::RequestType::OPTIONS, location, body,
-                     headerFields);
+  return requestData(isolate, rest::RequestType::OPTIONS, location, body, headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::postData(
     v8::Isolate* isolate, std::string const& location, std::string const& body,
-    std::unordered_map<std::string, std::string> const& headerFields,
-    bool raw) {
+    std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::POST, location, body,
-                          headerFields);
+    return requestDataRaw(isolate, rest::RequestType::POST, location, body, headerFields);
   }
-  return requestData(isolate, rest::RequestType::POST, location, body,
-                     headerFields);
+  return requestData(isolate, rest::RequestType::POST, location, body, headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::putData(
     v8::Isolate* isolate, std::string const& location, std::string const& body,
-    std::unordered_map<std::string, std::string> const& headerFields,
-    bool raw) {
+    std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::PUT, location, body,
-                          headerFields);
+    return requestDataRaw(isolate, rest::RequestType::PUT, location, body, headerFields);
   }
-  return requestData(isolate, rest::RequestType::PUT, location, body,
-                     headerFields);
+  return requestData(isolate, rest::RequestType::PUT, location, body, headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::patchData(
     v8::Isolate* isolate, std::string const& location, std::string const& body,
-    std::unordered_map<std::string, std::string> const& headerFields,
-    bool raw) {
+    std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, rest::RequestType::PATCH, location, body,
-                          headerFields);
+    return requestDataRaw(isolate, rest::RequestType::PATCH, location, body, headerFields);
   }
-  return requestData(isolate, rest::RequestType::PATCH, location, body,
-                     headerFields);
+  return requestData(isolate, rest::RequestType::PATCH, location, body, headerFields);
 }
 
 v8::Handle<v8::Value> V8ClientConnection::requestData(
@@ -1459,8 +1390,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestData(
   _lastHttpReturnCode = 0;
 
   if (body.empty()) {
-    _httpResult.reset(
-        _client->request(method, location, nullptr, 0, headerFields));
+    _httpResult.reset(_client->request(method, location, nullptr, 0, headerFields));
   } else {
     _httpResult.reset(_client->request(method, location, body.c_str(),
                                        body.length(), headerFields));
@@ -1477,11 +1407,9 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
   _lastHttpReturnCode = 0;
 
   if (body.empty()) {
-    _httpResult.reset(
-        _client->request(method, location, nullptr, 0, headerFields));
+    _httpResult.reset(_client->request(method, location, nullptr, 0, headerFields));
   } else {
-    _httpResult.reset(_client->request(method, location, body.c_str(),
-                                       body.size(), headerFields));
+    _httpResult.reset(_client->request(method, location, body.c_str(), body.size(), headerFields));
   }
 
   if (_httpResult == nullptr) {
@@ -1505,10 +1433,8 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
 
     _lastHttpReturnCode = static_cast<int>(rest::ResponseCode::SERVER_ERROR);
 
-    result->ForceSet(
-        TRI_V8_ASCII_STRING(isolate, "code"),
-        v8::Integer::New(isolate,
-                         static_cast<int>(rest::ResponseCode::SERVER_ERROR)));
+    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "code"),
+                     v8::Integer::New(isolate, static_cast<int>(rest::ResponseCode::SERVER_ERROR)));
 
     int errorNumber = 0;
 
@@ -1605,10 +1531,8 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
     v8::Local<v8::Object> result = v8::Object::New(isolate);
     result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
                      v8::Boolean::New(isolate, true));
-    result->ForceSet(
-        TRI_V8_ASCII_STRING(isolate, "code"),
-        v8::Integer::New(isolate,
-                         static_cast<int>(rest::ResponseCode::SERVER_ERROR)));
+    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "code"),
+                     v8::Integer::New(isolate, static_cast<int>(rest::ResponseCode::SERVER_ERROR)));
 
     int errorNumber = 0;
 
@@ -1680,137 +1604,105 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
   return result;
 }
 
-void V8ClientConnection::initServer(v8::Isolate* isolate,
-                                    v8::Handle<v8::Context> context,
+void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                     ClientFeature* client) {
   v8::Local<v8::Value> v8client = v8::External::New(isolate, client);
 
-  v8::Local<v8::FunctionTemplate> connection_templ =
-      v8::FunctionTemplate::New(isolate);
+  v8::Local<v8::FunctionTemplate> connection_templ = v8::FunctionTemplate::New(isolate);
 
   connection_templ->SetClassName(
       TRI_V8_ASCII_STRING(isolate, "ArangoConnection"));
 
-  v8::Local<v8::ObjectTemplate> connection_proto =
-      connection_templ->PrototypeTemplate();
+  v8::Local<v8::ObjectTemplate> connection_proto = connection_templ->PrototypeTemplate();
 
-  connection_proto->Set(
-      isolate, "DELETE",
-      v8::FunctionTemplate::New(isolate, ClientConnection_httpDelete));
+  connection_proto->Set(isolate, "DELETE",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_httpDelete));
 
-  connection_proto->Set(
-      isolate, "DELETE_RAW",
-      v8::FunctionTemplate::New(isolate, ClientConnection_httpDeleteRaw));
+  connection_proto->Set(isolate, "DELETE_RAW",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_httpDeleteRaw));
 
-  connection_proto->Set(
-      isolate, "GET",
-      v8::FunctionTemplate::New(isolate, ClientConnection_httpGet));
+  connection_proto->Set(isolate, "GET",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_httpGet));
 
-  connection_proto->Set(
-      isolate, "GET_RAW",
-      v8::FunctionTemplate::New(isolate, ClientConnection_httpGetRaw));
+  connection_proto->Set(isolate, "GET_RAW",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_httpGetRaw));
 
-  connection_proto->Set(
-      isolate, "HEAD",
-      v8::FunctionTemplate::New(isolate, ClientConnection_httpHead));
+  connection_proto->Set(isolate, "HEAD",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_httpHead));
 
-  connection_proto->Set(
-      isolate, "HEAD_RAW",
-      v8::FunctionTemplate::New(isolate, ClientConnection_httpHeadRaw));
+  connection_proto->Set(isolate, "HEAD_RAW",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_httpHeadRaw));
 
-  connection_proto->Set(
-      isolate, "OPTIONS",
-      v8::FunctionTemplate::New(isolate, ClientConnection_httpOptions));
+  connection_proto->Set(isolate, "OPTIONS",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_httpOptions));
 
-  connection_proto->Set(
-      isolate, "OPTIONS_RAW",
-      v8::FunctionTemplate::New(isolate, ClientConnection_httpOptionsRaw));
+  connection_proto->Set(isolate, "OPTIONS_RAW",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_httpOptionsRaw));
 
-  connection_proto->Set(
-      isolate, "PATCH",
-      v8::FunctionTemplate::New(isolate, ClientConnection_httpPatch));
+  connection_proto->Set(isolate, "PATCH",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_httpPatch));
 
-  connection_proto->Set(
-      isolate, "PATCH_RAW",
-      v8::FunctionTemplate::New(isolate, ClientConnection_httpPatchRaw));
+  connection_proto->Set(isolate, "PATCH_RAW",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_httpPatchRaw));
 
-  connection_proto->Set(
-      isolate, "POST",
-      v8::FunctionTemplate::New(isolate, ClientConnection_httpPost));
+  connection_proto->Set(isolate, "POST",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_httpPost));
 
-  connection_proto->Set(
-      isolate, "POST_RAW",
-      v8::FunctionTemplate::New(isolate, ClientConnection_httpPostRaw));
+  connection_proto->Set(isolate, "POST_RAW",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_httpPostRaw));
 
-  connection_proto->Set(
-      isolate, "PUT",
-      v8::FunctionTemplate::New(isolate, ClientConnection_httpPut));
-  connection_proto->Set(
-      isolate, "PUT_RAW",
-      v8::FunctionTemplate::New(isolate, ClientConnection_httpPutRaw));
+  connection_proto->Set(isolate, "PUT",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_httpPut));
+  connection_proto->Set(isolate, "PUT_RAW",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_httpPutRaw));
 
-  connection_proto->Set(
-      isolate, "SEND_FILE",
-      v8::FunctionTemplate::New(isolate, ClientConnection_httpSendFile));
+  connection_proto->Set(isolate, "SEND_FILE",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_httpSendFile));
 
   connection_proto->Set(isolate, "getEndpoint",
-                        v8::FunctionTemplate::New(
-                            isolate, ClientConnection_getEndpoint, v8client));
+                        v8::FunctionTemplate::New(isolate, ClientConnection_getEndpoint, v8client));
 
-  connection_proto->Set(
-      isolate, "lastHttpReturnCode",
-      v8::FunctionTemplate::New(isolate, ClientConnection_lastHttpReturnCode));
+  connection_proto->Set(isolate, "lastHttpReturnCode",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_lastHttpReturnCode));
 
-  connection_proto->Set(
-      isolate, "lastErrorMessage",
-      v8::FunctionTemplate::New(isolate, ClientConnection_lastErrorMessage));
+  connection_proto->Set(isolate, "lastErrorMessage",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_lastErrorMessage));
 
-  connection_proto->Set(
-      isolate, "isConnected",
-      v8::FunctionTemplate::New(isolate, ClientConnection_isConnected));
+  connection_proto->Set(isolate, "isConnected",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_isConnected));
 
-  connection_proto->Set(
-      isolate, "reconnect",
-      v8::FunctionTemplate::New(isolate, ClientConnection_reconnect, v8client));
+  connection_proto->Set(isolate, "reconnect",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_reconnect, v8client));
 
   connection_proto->Set(isolate, "connectedUser",
-                        v8::FunctionTemplate::New(
-                            isolate, ClientConnection_connectedUser, v8client));
+                        v8::FunctionTemplate::New(isolate, ClientConnection_connectedUser,
+                                                  v8client));
 
-  connection_proto->Set(
-      isolate, "toString",
-      v8::FunctionTemplate::New(isolate, ClientConnection_toString));
+  connection_proto->Set(isolate, "toString",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_toString));
 
-  connection_proto->Set(
-      isolate, "getVersion",
-      v8::FunctionTemplate::New(isolate, ClientConnection_getVersion));
+  connection_proto->Set(isolate, "getVersion",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_getVersion));
 
-  connection_proto->Set(
-      isolate, "getMode",
-      v8::FunctionTemplate::New(isolate, ClientConnection_getMode));
+  connection_proto->Set(isolate, "getMode",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_getMode));
 
-  connection_proto->Set(
-      isolate, "getDatabaseName",
-      v8::FunctionTemplate::New(isolate, ClientConnection_getDatabaseName));
+  connection_proto->Set(isolate, "getDatabaseName",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_getDatabaseName));
 
-  connection_proto->Set(
-      isolate, "setDatabaseName",
-      v8::FunctionTemplate::New(isolate, ClientConnection_setDatabaseName,
-                                v8client));
+  connection_proto->Set(isolate, "setDatabaseName",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_setDatabaseName,
+                                                  v8client));
 
-  connection_proto->Set(
-      isolate, "importCsv",
-      v8::FunctionTemplate::New(isolate, ClientConnection_importCsv, v8client));
+  connection_proto->Set(isolate, "importCsv",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_importCsv, v8client));
 
   connection_proto->Set(isolate, "importJson",
-                        v8::FunctionTemplate::New(
-                            isolate, ClientConnection_importJson, v8client));
+                        v8::FunctionTemplate::New(isolate, ClientConnection_importJson, v8client));
 
-  connection_proto->SetCallAsFunctionHandler(
-      ClientConnection_ConstructorCallback, v8client);
+  connection_proto->SetCallAsFunctionHandler(ClientConnection_ConstructorCallback, v8client);
 
-  v8::Local<v8::ObjectTemplate> connection_inst =
-      connection_templ->InstanceTemplate();
+  v8::Local<v8::ObjectTemplate> connection_inst = connection_templ->InstanceTemplate();
 
   connection_inst->SetInternalFieldCount(2);
 

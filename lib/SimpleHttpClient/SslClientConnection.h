@@ -30,8 +30,8 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 
 #include "openssl/bio.h"
-#include "openssl/ssl.h"
 #include "openssl/err.h"
+#include "openssl/ssl.h"
 
 namespace arangodb {
 namespace httpclient {
@@ -52,8 +52,7 @@ class SslClientConnection final : public GeneralClientConnection {
 
   SslClientConnection(Endpoint* endpoint, double, double, size_t, uint64_t);
 
-  SslClientConnection(std::unique_ptr<Endpoint>& endpoint, double, double,
-                      size_t, uint64_t);
+  SslClientConnection(std::unique_ptr<Endpoint>& endpoint, double, double, size_t, uint64_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys a client connection
@@ -62,7 +61,6 @@ class SslClientConnection final : public GeneralClientConnection {
   ~SslClientConnection();
 
  protected:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal initialization method, called from ctor
   //////////////////////////////////////////////////////////////////////////////
@@ -80,7 +78,7 @@ class SslClientConnection final : public GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   void disconnectSocket() override;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief write data to the connection
   //////////////////////////////////////////////////////////////////////////////
@@ -91,8 +89,7 @@ class SslClientConnection final : public GeneralClientConnection {
   /// @brief read data from the connection
   //////////////////////////////////////////////////////////////////////////////
 
-  bool readClientConnection(arangodb::basics::StringBuffer&,
-                            bool& connectionClosed) override;
+  bool readClientConnection(arangodb::basics::StringBuffer&, bool& connectionClosed) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return whether the connection is readable
@@ -119,7 +116,7 @@ class SslClientConnection final : public GeneralClientConnection {
 
   uint64_t _sslProtocol;
 };
-}
-}
+}  // namespace httpclient
+}  // namespace arangodb
 
 #endif

@@ -84,7 +84,7 @@ class ArgumentParser {
 
         size_t dashes = 0;
 
-        if (! optionsDone) {
+        if (!optionsDone) {
           if (option.substr(0, 2) == "--") {
             dashes = 2;
           } else if (option.substr(0, 1) == "-") {
@@ -116,11 +116,10 @@ class ArgumentParser {
             if (i + 1 < argc) {
               // we have a next option. check if its true or false
               std::string const next(argv[i + 1]);
-              if (next == "true" || next == "false" || 
-                  next == "on" || next == "off" || 
-                  next == "1" || next == "0") {
+              if (next == "true" || next == "false" || next == "on" ||
+                  next == "off" || next == "1" || next == "0") {
                 nextValue = next;
-                ++i; // skip next argument when continuing the parsing
+                ++i;  // skip next argument when continuing the parsing
               }
             }
             if (!_options->setValue(option, nextValue)) {
@@ -161,7 +160,7 @@ class ArgumentParser {
  private:
   ProgramOptions* _options;
 };
-}
-}
+}  // namespace options
+}  // namespace arangodb
 
 #endif

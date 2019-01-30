@@ -31,29 +31,25 @@ namespace arangodb {
 
 // String to number conversions:
 
-template<class T> struct sto;
+template <class T>
+struct sto;
 
-template<> struct sto<uint64_t> {
-  static uint64_t convert(std::string const& s) {
-    return std::stoull(s);
-  }
+template <>
+struct sto<uint64_t> {
+  static uint64_t convert(std::string const& s) { return std::stoull(s); }
 };
-template<> struct sto<int64_t> {
-  static uint64_t convert(std::string const& s) {
-    return std::stoll(s);
-  }
+template <>
+struct sto<int64_t> {
+  static uint64_t convert(std::string const& s) { return std::stoll(s); }
 };
-template<> struct sto<int32_t> {
-   static long convert(std::string const& s) {
-     return std::stol(s);
-   }
+template <>
+struct sto<int32_t> {
+  static long convert(std::string const& s) { return std::stol(s); }
 };
-template<> struct sto<uint32_t> {
-  static uint64_t convert(std::string const& s) {
-    return std::stoul(s);
-  }
+template <>
+struct sto<uint32_t> {
+  static uint64_t convert(std::string const& s) { return std::stoul(s); }
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief REST handler for private agency communication
@@ -77,16 +73,14 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
     std::string const& val_str = _request->value(name, found);
 
     if (!found) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << "Mandatory query string " << name
-                                      << " missing.";
+      LOG_TOPIC(WARN, Logger::AGENCY) << "Mandatory query string " << name << " missing.";
       return false;
     } else {
       try {
         val = sto<T>::convert(val_str);
       } catch (std::invalid_argument const&) {
-        LOG_TOPIC(WARN, Logger::AGENCY)
-            << "Value for query string " << name
-            << " cannot be converted to integral type";
+        LOG_TOPIC(WARN, Logger::AGENCY) << "Value for query string "
+                                        << name << " cannot be converted to integral type";
         return false;
       } catch (std::out_of_range const&) {
         LOG_TOPIC(WARN, Logger::AGENCY)
@@ -111,17 +105,15 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
 };
 
 template <>
-inline bool RestAgencyPrivHandler::readValue(char const* name,
-                                             std::string& val) const {
+inline bool RestAgencyPrivHandler::readValue(char const* name, std::string& val) const {
   bool found = true;
   val = _request->value(name, found);
   if (!found) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << "Mandatory query string " << name
-                                    << " missing.";
+    LOG_TOPIC(WARN, Logger::AGENCY) << "Mandatory query string " << name << " missing.";
     return false;
   }
   return true;
 }
-}
+}  // namespace arangodb
 
 #endif

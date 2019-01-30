@@ -39,8 +39,9 @@ class Result;
 class LoggerView final : public ViewImplementation {
  public:
   static std::string type;
-  static std::unique_ptr<ViewImplementation> creator(
-      LogicalView*, arangodb::velocypack::Slice const& info, bool isNew);
+  static std::unique_ptr<ViewImplementation> creator(LogicalView*,
+                                                     arangodb::velocypack::Slice const& info,
+                                                     bool isNew);
 
  private:
   // private struct that does not do anything

@@ -273,6 +273,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
 
   switch (code) {
     case TRI_ERROR_BAD_PARAMETER:
+    case TRI_ERROR_HTTP_CORRUPTED_JSON:
     case TRI_ERROR_ARANGO_DATABASE_NAME_INVALID:
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD:
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED:
@@ -383,9 +384,9 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_GRAPH_NO_GRAPH_COLLECTION:
     case TRI_ERROR_QUEUE_UNKNOWN:
       return ResponseCode::NOT_FOUND;
-    
+
     case TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION:
-    case TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION: 
+    case TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION:
       return ResponseCode::NOT_ACCEPTABLE;
 
     case TRI_ERROR_REQUEST_CANCELED:

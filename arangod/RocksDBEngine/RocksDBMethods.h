@@ -67,41 +67,38 @@ class RocksDBMethods {
 
   /// @brief current sequence number
   rocksdb::SequenceNumber sequenceNumber();
-  
+
   /// @brief read options for use with iterators
   rocksdb::ReadOptions iteratorReadOptions();
 
   // the default implementation is to do nothing
   virtual void DisableIndexing() {}
-  
+
   // the default implementation is to do nothing
   virtual void EnableIndexing() {}
 
   virtual bool Exists(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) = 0;
-  virtual arangodb::Result Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
-                               std::string*) = 0;
-  virtual arangodb::Result Put(
-      rocksdb::ColumnFamilyHandle*, RocksDBKey const&, rocksdb::Slice const&,
-      rocksutils::StatusHint hint = rocksutils::StatusHint::none) = 0;
-  
-  virtual arangodb::Result Delete(rocksdb::ColumnFamilyHandle*,
-                                  RocksDBKey const&) = 0;
+  virtual arangodb::Result Get(rocksdb::ColumnFamilyHandle*,
+                               rocksdb::Slice const&, std::string*) = 0;
+  virtual arangodb::Result Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const&,
+                               rocksdb::Slice const&,
+                               rocksutils::StatusHint hint = rocksutils::StatusHint::none) = 0;
 
-  virtual std::unique_ptr<rocksdb::Iterator> NewIterator(
-      rocksdb::ReadOptions const&, rocksdb::ColumnFamilyHandle*) = 0;
+  virtual arangodb::Result Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) = 0;
+
+  virtual std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
+                                                         rocksdb::ColumnFamilyHandle*) = 0;
 
   virtual void SetSavePoint() = 0;
   virtual arangodb::Result RollbackToSavePoint() = 0;
-  
-  // convenience and compatibility method
-  arangodb::Result Get(rocksdb::ColumnFamilyHandle*, RocksDBKey const&,
-                       std::string*);
 
+  // convenience and compatibility method
+  arangodb::Result Get(rocksdb::ColumnFamilyHandle*, RocksDBKey const&, std::string*);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::size_t countInBounds(RocksDBKeyBounds const& bounds, bool isElementInRange = false);
 #endif
-  
+
  protected:
   RocksDBTransactionState* _state;
 };
@@ -114,15 +111,13 @@ class RocksDBReadOnlyMethods final : public RocksDBMethods {
   bool Exists(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
   arangodb::Result Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
                        std::string* val) override;
-  arangodb::Result Put(
-      rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
-      rocksdb::Slice const& val,
-      rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
-  arangodb::Result Delete(rocksdb::ColumnFamilyHandle*,
-                          RocksDBKey const& key) override;
+  arangodb::Result Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+                       rocksdb::Slice const& val,
+                       rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
+  arangodb::Result Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
 
-  std::unique_ptr<rocksdb::Iterator> NewIterator(
-      rocksdb::ReadOptions const&, rocksdb::ColumnFamilyHandle*) override;
+  std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
+                                                 rocksdb::ColumnFamilyHandle*) override;
 
   void SetSavePoint() override {}
   arangodb::Result RollbackToSavePoint() override { return arangodb::Result(); }
@@ -135,24 +130,22 @@ class RocksDBReadOnlyMethods final : public RocksDBMethods {
 class RocksDBTrxMethods : public RocksDBMethods {
  public:
   explicit RocksDBTrxMethods(RocksDBTransactionState* state);
-  
+
   void DisableIndexing() override;
-  
+
   void EnableIndexing() override;
 
   bool Exists(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
   arangodb::Result Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
                        std::string* val) override;
 
-  arangodb::Result Put(
-      rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
-      rocksdb::Slice const& val,
-      rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
-  arangodb::Result Delete(rocksdb::ColumnFamilyHandle*,
-                          RocksDBKey const& key) override;
+  arangodb::Result Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+                       rocksdb::Slice const& val,
+                       rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
+  arangodb::Result Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
 
-  std::unique_ptr<rocksdb::Iterator> NewIterator(
-      rocksdb::ReadOptions const&, rocksdb::ColumnFamilyHandle*) override;
+  std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
+                                                 rocksdb::ColumnFamilyHandle*) override;
 
   void SetSavePoint() override;
   arangodb::Result RollbackToSavePoint() override;
@@ -162,32 +155,27 @@ class RocksDBTrxMethods : public RocksDBMethods {
 class RocksDBTrxUntrackedMethods final : public RocksDBTrxMethods {
  public:
   explicit RocksDBTrxUntrackedMethods(RocksDBTransactionState* state);
-  
-  arangodb::Result Put(
-      rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
-      rocksdb::Slice const& val,
-      rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
-  arangodb::Result Delete(rocksdb::ColumnFamilyHandle*,
-                          RocksDBKey const& key) override;
+
+  arangodb::Result Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+                       rocksdb::Slice const& val,
+                       rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
+  arangodb::Result Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
 };
 
 /// wraps a writebatch - non transactional
 class RocksDBBatchedMethods final : public RocksDBMethods {
  public:
-  RocksDBBatchedMethods(RocksDBTransactionState*,
-                        rocksdb::WriteBatchWithIndex*);
+  RocksDBBatchedMethods(RocksDBTransactionState*, rocksdb::WriteBatchWithIndex*);
 
   bool Exists(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
   arangodb::Result Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
                        std::string* val) override;
-  arangodb::Result Put(
-      rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
-      rocksdb::Slice const& val,
-      rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
-  arangodb::Result Delete(rocksdb::ColumnFamilyHandle*,
-                          RocksDBKey const& key) override;
-  std::unique_ptr<rocksdb::Iterator> NewIterator(
-      rocksdb::ReadOptions const&, rocksdb::ColumnFamilyHandle*) override;
+  arangodb::Result Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+                       rocksdb::Slice const& val,
+                       rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
+  arangodb::Result Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
+  std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
+                                                 rocksdb::ColumnFamilyHandle*) override;
 
   void SetSavePoint() override {}
   arangodb::Result RollbackToSavePoint() override { return arangodb::Result(); }

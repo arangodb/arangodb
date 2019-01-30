@@ -51,15 +51,17 @@ DatabaseReplicationApplier::DatabaseReplicationApplier(TRI_vocbase_t* vocbase)
 /// @brief replication applier for a single database, with configuration
 DatabaseReplicationApplier::DatabaseReplicationApplier(ReplicationApplierConfiguration const& configuration,
                                                        TRI_vocbase_t* vocbase)
-    : ReplicationApplier(configuration, std::string("database '") + vocbase->name() + "'"), 
+    : ReplicationApplier(configuration,
+                         std::string("database '") + vocbase->name() + "'"),
       _vocbase(vocbase) {}
 
 DatabaseReplicationApplier::~DatabaseReplicationApplier() {
   try {
     stop();
-  } catch (...) {}
+  } catch (...) {
+  }
 }
-  
+
 /// @brief execute the check condition
 bool DatabaseReplicationApplier::applies() const {
   return (_vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
@@ -69,10 +71,11 @@ bool DatabaseReplicationApplier::applies() const {
 void DatabaseReplicationApplier::reconfigure(ReplicationApplierConfiguration const& configuration) {
   if (configuration._database.empty()) {
     // no database
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no database configured");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
+                                   "no database configured");
   }
-  
-  ReplicationApplier::reconfigure(configuration); 
+
+  ReplicationApplier::reconfigure(configuration);
 }
 
 /// @brief stop the applier and "forget" everything
@@ -97,7 +100,8 @@ DatabaseReplicationApplier* DatabaseReplicationApplier::create(TRI_vocbase_t* vo
   std::unique_ptr<DatabaseReplicationApplier> applier;
 
   if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL) {
-    applier = std::make_unique<DatabaseReplicationApplier>(DatabaseReplicationApplier::loadConfiguration(vocbase), vocbase);
+    applier = std::make_unique<DatabaseReplicationApplier>(
+        DatabaseReplicationApplier::loadConfiguration(vocbase), vocbase);
     applier->loadState();
   } else {
     applier = std::make_unique<DatabaseReplicationApplier>(vocbase);
@@ -108,7 +112,7 @@ DatabaseReplicationApplier* DatabaseReplicationApplier::create(TRI_vocbase_t* vo
 
 /// @brief load a persisted configuration for the applier
 ReplicationApplierConfiguration DatabaseReplicationApplier::loadConfiguration(TRI_vocbase_t* vocbase) {
-  // TODO: move to ReplicationApplier 
+  // TODO: move to ReplicationApplier
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   int res = TRI_ERROR_INTERNAL;
   VPackBuilder builder = engine->getReplicationApplierConfiguration(vocbase, res);
@@ -121,7 +125,8 @@ ReplicationApplierConfiguration DatabaseReplicationApplier::loadConfiguration(TR
 
   TRI_ASSERT(!builder.isEmpty());
 
-  return ReplicationApplierConfiguration::fromVelocyPack(builder.slice(), vocbase->name());
+  return ReplicationApplierConfiguration::fromVelocyPack(builder.slice(),
+                                                         vocbase->name());
 }
 
 /// @brief store the configuration for the applier
@@ -129,17 +134,19 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
   if (!applies()) {
     return;
   }
-  
+
   VPackBuilder builder;
   builder.openObject();
   _configuration.toVelocyPack(builder, true, true);
   builder.close();
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "storing applier configuration " << builder.slice().toJson() << " for " << _databaseName;
+  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+      << "storing applier configuration " << builder.slice().toJson() << " for "
+      << _databaseName;
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   int res = engine->saveReplicationApplierConfiguration(_vocbase, builder.slice(), doSync);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -149,13 +156,14 @@ std::unique_ptr<InitialSyncer> DatabaseReplicationApplier::buildInitialSyncer() 
   return std::make_unique<arangodb::DatabaseInitialSyncer>(_vocbase, _configuration);
 }
 
-std::unique_ptr<TailingSyncer> DatabaseReplicationApplier::buildTailingSyncer(TRI_voc_tick_t initialTick,
-                                                                              bool useTick, TRI_voc_tick_t barrierId) const {
+std::unique_ptr<TailingSyncer> DatabaseReplicationApplier::buildTailingSyncer(
+    TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) const {
   return std::make_unique<arangodb::DatabaseTailingSyncer>(_vocbase, _configuration,
                                                            initialTick, useTick, barrierId);
 }
-  
+
 std::string DatabaseReplicationApplier::getStateFilename() const {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  return arangodb::basics::FileUtils::buildFilename(engine->databasePath(_vocbase), "REPLICATION-APPLIER-STATE");
+  return arangodb::basics::FileUtils::buildFilename(
+      engine->databasePath(_vocbase), "REPLICATION-APPLIER-STATE");
 }

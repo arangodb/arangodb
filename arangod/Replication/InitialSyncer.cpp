@@ -61,8 +61,9 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
-InitialSyncer::InitialSyncer(
-    ReplicationApplierConfiguration const& configuration)
+/*static*/ constexpr double InitialSyncer::defaultBatchTimeout;
+
+InitialSyncer::InitialSyncer(ReplicationApplierConfiguration const& configuration)
     : Syncer(configuration),
       _progress("not started"),
       _processedCollections(),
@@ -73,27 +74,38 @@ InitialSyncer::InitialSyncer(
 InitialSyncer::~InitialSyncer() {
   try {
     sendFinishBatch();
-  } catch (...) {}
+  } catch (...) {
+  }
 }
 
 /// @brief send a "start batch" command
-Result InitialSyncer::sendStartBatch() {
+/// @param patchCount try to patch count of this collection
+///        only effective with the incremental sync
+Result InitialSyncer::sendStartBatch(std::string const& patchCount) {
   if (_isChildSyncer) {
     return Result();
   }
-  
+
   double const now = TRI_microtime();
   _batchId = 0;
-  std::string const url =
-      ReplicationUrl + "/batch" + "?serverId=" + _localServerIdString;
-  std::string const body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
+  // SimpleHttpClient automatically adds database prefix
+  std::string const url = ReplicationUrl + "/batch" + "?serverId=" + _localServerIdString;
+  VPackBuilder b;
+  {
+    VPackObjectBuilder guard(&b, true);
+    guard->add("ttl", VPackValue(_batchTtl));
+    if (!patchCount.empty()) {
+      guard->add("patchCount", VPackValue(patchCount));
+    }
+  }
+  std::string const body = b.toJson();
 
   // send request
   std::string const progress = "sending batch start command to url " + url;
   setProgress(progress);
 
-  std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-      rest::RequestType::POST, url, body.c_str(), body.size()));
+  std::unique_ptr<SimpleHttpResult> response(
+      _client->retryRequest(rest::RequestType::POST, url, body.c_str(), body.size()));
 
   if (hasFailed(response.get())) {
     return buildHttpError(response.get(), url);
@@ -108,12 +120,14 @@ Result InitialSyncer::sendStartBatch() {
 
   VPackSlice const slice = builder.slice();
   if (!slice.isObject()) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "start batch response is not an object");
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  "start batch response is not an object");
   }
 
   std::string const id = VelocyPackHelper::getStringValue(slice, "id", "");
   if (id.empty()) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "start batch id is missing in response");
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  "start batch id is missing in response");
   }
 
   _batchId = StringUtils::uint64(id);
@@ -137,7 +151,7 @@ Result InitialSyncer::sendExtendBatch() {
 
   std::string const url = ReplicationUrl + "/batch/" + StringUtils::itoa(_batchId) +
                           "?serverId=" + _localServerIdString;
-  std::string const body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
+  std::string const body = "{\"ttl\":" + std::to_string(_batchTtl) + "}";
 
   // send request
   std::string const progress = "sending batch extend command to url " + url;
@@ -145,11 +159,11 @@ Result InitialSyncer::sendExtendBatch() {
 
   std::unique_ptr<SimpleHttpResult> response(
       _client->request(rest::RequestType::PUT, url, body.c_str(), body.size()));
-  
+
   if (hasFailed(response.get())) {
     return buildHttpError(response.get(), url);
   }
-  
+
   _batchUpdateTime = now;
 
   return Result();
@@ -175,7 +189,7 @@ Result InitialSyncer::sendFinishBatch() {
     if (hasFailed(response.get())) {
       return buildHttpError(response.get(), url);
     }
-    
+
     _batchId = 0;
     _batchUpdateTime = 0;
     return Result();

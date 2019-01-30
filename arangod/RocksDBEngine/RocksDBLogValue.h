@@ -45,19 +45,14 @@ class RocksDBLogValue {
 
   static RocksDBLogValue DatabaseCreate(TRI_voc_tick_t id);
   static RocksDBLogValue DatabaseDrop(TRI_voc_tick_t id);
-  static RocksDBLogValue CollectionCreate(TRI_voc_tick_t vocbaseId,
-                                          TRI_voc_cid_t cid);
+  static RocksDBLogValue CollectionCreate(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid);
   static RocksDBLogValue CollectionDrop(TRI_voc_tick_t vocbaseId,
-                                        TRI_voc_cid_t cid,
-                                        StringRef const& uuid);
-  static RocksDBLogValue CollectionRename(TRI_voc_tick_t vocbaseId,
-                                          TRI_voc_cid_t cid,
+                                        TRI_voc_cid_t cid, StringRef const& uuid);
+  static RocksDBLogValue CollectionRename(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid,
                                           StringRef const& oldName);
-  static RocksDBLogValue CollectionChange(TRI_voc_tick_t vocbaseId,
-                                          TRI_voc_cid_t cid);
+  static RocksDBLogValue CollectionChange(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid);
 
-  static RocksDBLogValue IndexCreate(TRI_voc_tick_t vocbaseId,
-                                     TRI_voc_cid_t cid,
+  static RocksDBLogValue IndexCreate(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid,
                                      VPackSlice const& indexInfo);
   static RocksDBLogValue IndexDrop(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid,
                                    TRI_idx_iid_t indexId);
@@ -65,8 +60,7 @@ class RocksDBLogValue {
   static RocksDBLogValue ViewCreate(TRI_voc_cid_t, TRI_idx_iid_t);
   static RocksDBLogValue ViewDrop(TRI_voc_cid_t, TRI_idx_iid_t);
 
-  static RocksDBLogValue BeginTransaction(TRI_voc_tick_t vocbaseId,
-                                          TRI_voc_tid_t trxId);
+  static RocksDBLogValue BeginTransaction(TRI_voc_tick_t vocbaseId, TRI_voc_tid_t trxId);
   static RocksDBLogValue DocumentOpsPrologue(TRI_voc_cid_t cid);
   static RocksDBLogValue DocumentRemove(arangodb::StringRef const&);
   static RocksDBLogValue DocumentRemoveAsPartOfUpdate(arangodb::StringRef const&);
@@ -94,7 +88,7 @@ class RocksDBLogValue {
 
   static bool containsDatabaseId(RocksDBLogType type);
   static bool containsCollectionId(RocksDBLogType type);
-  
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a reference to the underlying string buffer.

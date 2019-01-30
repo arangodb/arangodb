@@ -98,8 +98,7 @@ class LogicalView {
 
   /// @brief Create implementation object using factory method
   void spawnImplementation(ViewCreator creator,
-                           arangodb::velocypack::Slice const& parameters,
-                           bool isNew);
+                           arangodb::velocypack::Slice const& parameters, bool isNew);
 
   static bool IsAllowedName(velocypack::Slice parameters);
   static bool IsAllowedName(std::string const& name);

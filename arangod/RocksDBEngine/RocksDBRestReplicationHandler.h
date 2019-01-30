@@ -38,13 +38,11 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
   ~RocksDBRestReplicationHandler() {}
 
  public:
-
   char const* name() const override final {
     return "RocksDBRestReplicationHandler";
   }
 
  private:
-
   /// @brief handle a follow command for the replication log
   void handleCommandLoggerFollow() override;
 
@@ -54,7 +52,7 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
 
   /// @brief handle a batch command
   void handleCommandBatch() override;
-  
+
   /// @brief add or remove a WAL logfile barrier
   void handleCommandBarrier() override;
 
@@ -77,11 +75,10 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
   void handleCommandDump() override;
 
  private:
-
   /// Manage RocksDBReplicationContext containing the dump state for the initial
   /// sync and incremental sync
   RocksDBReplicationManager* _manager;
 };
-}
+}  // namespace arangodb
 
 #endif

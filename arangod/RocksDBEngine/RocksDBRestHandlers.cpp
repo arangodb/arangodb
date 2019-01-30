@@ -30,16 +30,13 @@
 
 using namespace arangodb;
 
-void RocksDBRestHandlers::registerResources(
-    rest::RestHandlerFactory* handlerFactory) {
-  handlerFactory->addPrefixHandler(
-      "/_api/export",
-      RestHandlerCreator<RocksDBRestExportHandler>::createNoData);
+void RocksDBRestHandlers::registerResources(rest::RestHandlerFactory* handlerFactory) {
+  handlerFactory->addPrefixHandler("/_api/export",
+                                   RestHandlerCreator<RocksDBRestExportHandler>::createNoData);
 
-  handlerFactory->addPrefixHandler(
-      "/_api/replication",
-      RestHandlerCreator<RocksDBRestReplicationHandler>::createNoData);
+  handlerFactory->addPrefixHandler("/_api/replication",
+                                   RestHandlerCreator<RocksDBRestReplicationHandler>::createNoData);
 
-  handlerFactory->addPrefixHandler(
-      "/_admin/wal", RestHandlerCreator<RocksDBRestWalHandler>::createNoData);
+  handlerFactory->addPrefixHandler("/_admin/wal",
+                                   RestHandlerCreator<RocksDBRestWalHandler>::createNoData);
 }

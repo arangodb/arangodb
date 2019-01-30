@@ -35,11 +35,7 @@ struct Section {
 
   Section(std::string const& name, std::string const& description,
           std::string const& alias, bool hidden, bool obsolete)
-      : name(name),
-        description(description),
-        alias(alias),
-        hidden(hidden),
-        obsolete(obsolete) {}
+      : name(name), description(description), alias(alias), hidden(hidden), obsolete(obsolete) {}
 
   // adds a program option to the section
   void addOption(Option const& option);
@@ -66,7 +62,7 @@ struct Section {
   // program options of the section
   std::map<std::string, Option> options;
 };
-}
-}
+}  // namespace options
+}  // namespace arangodb
 
 #endif

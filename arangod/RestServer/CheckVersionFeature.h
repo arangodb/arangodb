@@ -31,9 +31,8 @@ namespace arangodb {
 
 class StorageEngine;
 
-class CheckVersionFeature final
-    : public application_features::ApplicationFeature {
- private: 
+class CheckVersionFeature final : public application_features::ApplicationFeature {
+ private:
   enum CheckVersionResult : int {
     NO_SERVER_VERSION = -5,
     NO_VERSION_FILE = -4,
@@ -46,9 +45,8 @@ class CheckVersionFeature final
   };
 
  public:
-  explicit CheckVersionFeature(
-      application_features::ApplicationServer* server, int* result,
-      std::vector<std::string> const& nonServerFeatures);
+  explicit CheckVersionFeature(application_features::ApplicationServer* server, int* result,
+                               std::vector<std::string> const& nonServerFeatures);
 
  private:
   bool _checkVersion;
@@ -61,14 +59,13 @@ class CheckVersionFeature final
  private:
   void checkVersion();
 
-  CheckVersionResult checkVersionFileForDB(TRI_vocbase_t* vocbase,
-                                           StorageEngine* engine,
+  CheckVersionResult checkVersionFileForDB(TRI_vocbase_t* vocbase, StorageEngine* engine,
                                            uint32_t currentVersion) const;
 
  private:
   int* _result;
   std::vector<std::string> _nonServerFeatures;
 };
-}
+}  // namespace arangodb
 
 #endif

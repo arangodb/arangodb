@@ -49,18 +49,15 @@ ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, uint64_t depth,
   transaction::BuilderLeaser leased(trx);
 
   transaction::BuilderLeaser b(trx);
-  b->add(VPackValuePair(vertexId.data(), vertexId.length(),
-                        VPackValueType::String));
+  b->add(VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
 
-  fetchEdgesFromEngines(trx->databaseName(), _cache->engines(), b->slice(),
-                        depth, _cache->cache(), _edgeList, _cache->datalake(),
-                        *(leased.get()), _cache->filteredDocuments(),
-                        _cache->insertedDocuments());
+  fetchEdgesFromEngines(trx->databaseName(), _cache->engines(), b->slice(), depth,
+                        _cache->cache(), _edgeList, _cache->datalake(), *(leased.get()),
+                        _cache->filteredDocuments(), _cache->insertedDocuments());
 }
 
 // ShortestPath variant
-ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, bool backward,
-                                     graph::BaseOptions* opts)
+ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, bool backward, graph::BaseOptions* opts)
     : _position(0),
       _resolver(opts->trx()->resolver()),
       _opts(opts),
@@ -70,16 +67,13 @@ ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, bool backward,
   transaction::BuilderLeaser leased(trx);
 
   transaction::BuilderLeaser b(trx);
-  b->add(VPackValuePair(vertexId.data(), vertexId.length(),
-                        VPackValueType::String));
+  b->add(VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
   fetchEdgesFromEngines(trx->databaseName(), _cache->engines(), b->slice(),
-                        backward, _cache->cache(), _edgeList,
-                        _cache->datalake(), *(leased.get()),
-                        _cache->insertedDocuments());
+                        backward, _cache->cache(), _edgeList, _cache->datalake(),
+                        *(leased.get()), _cache->insertedDocuments());
 }
 
-bool ClusterEdgeCursor::next(
-    std::function<void(EdgeDocumentToken&&, VPackSlice, size_t)> callback) {
+bool ClusterEdgeCursor::next(std::function<void(EdgeDocumentToken&&, VPackSlice, size_t)> callback) {
   if (_position < _edgeList.size()) {
     VPackSlice edge = _edgeList[_position];
     callback(EdgeDocumentToken(edge), edge, _position);
@@ -89,8 +83,7 @@ bool ClusterEdgeCursor::next(
   return false;
 }
 
-void ClusterEdgeCursor::readAll(
-    std::function<void(EdgeDocumentToken&&, VPackSlice, size_t)> callback) {
+void ClusterEdgeCursor::readAll(std::function<void(EdgeDocumentToken&&, VPackSlice, size_t)> callback) {
   for (VPackSlice const& edge : _edgeList) {
     callback(EdgeDocumentToken(edge), edge, _position);
   }

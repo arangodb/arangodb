@@ -47,8 +47,9 @@ void MMFilesFulltextIndex::extractWords(std::set<std::string>& words,
     std::string text = value.copyString();
 
     // parse the document text
-    arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(
-        words, text, _minWordLength, TRI_FULLTEXT_MAX_WORD_LENGTH, true);
+    arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, text, _minWordLength,
+                                                             TRI_FULLTEXT_MAX_WORD_LENGTH,
+                                                             true);
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed
   } else if (value.isArray() && level == 0) {
@@ -62,9 +63,9 @@ void MMFilesFulltextIndex::extractWords(std::set<std::string>& words,
   }
 }
 
-MMFilesFulltextIndex::MMFilesFulltextIndex(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
-    VPackSlice const& info)
+MMFilesFulltextIndex::MMFilesFulltextIndex(TRI_idx_iid_t iid,
+                                           arangodb::LogicalCollection* collection,
+                                           VPackSlice const& info)
     : MMFilesIndex(iid, collection, info),
       _fulltextIndex(nullptr),
       _minWordLength(TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT) {
@@ -173,12 +174,12 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   if (n != _fields.size()) {
     return false;
   }
-  if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "unique", false)) {
+  if (_unique !=
+      arangodb::basics::VelocyPackHelper::getBooleanValue(info, "unique", false)) {
     return false;
   }
-  if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "sparse", true)) {
+  if (_sparse !=
+      arangodb::basics::VelocyPackHelper::getBooleanValue(info, "sparse", true)) {
     return false;
   }
 
@@ -193,36 +194,31 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
     }
     arangodb::StringRef in(f);
     TRI_ParseAttributeString(in, translate, true);
-    if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate,
-                                                      false)) {
+    if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate, false)) {
       return false;
     }
   }
   return true;
 }
 
-Result MMFilesFulltextIndex::insert(transaction::Methods*,
-                                    LocalDocumentId const& documentId,
+Result MMFilesFulltextIndex::insert(transaction::Methods*, LocalDocumentId const& documentId,
                                     VPackSlice const& doc, OperationMode mode) {
   int res = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
 
   if (!words.empty()) {
-    res =
-        TRI_InsertWordsMMFilesFulltextIndex(_fulltextIndex, documentId, words);
+    res = TRI_InsertWordsMMFilesFulltextIndex(_fulltextIndex, documentId, words);
   }
   return IndexResult(res, this);
 }
 
-Result MMFilesFulltextIndex::remove(transaction::Methods*,
-                                    LocalDocumentId const& documentId,
+Result MMFilesFulltextIndex::remove(transaction::Methods*, LocalDocumentId const& documentId,
                                     VPackSlice const& doc, OperationMode mode) {
   int res = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
 
   if (!words.empty()) {
-    res =
-        TRI_RemoveWordsMMFilesFulltextIndex(_fulltextIndex, documentId, words);
+    res = TRI_RemoveWordsMMFilesFulltextIndex(_fulltextIndex, documentId, words);
   }
   return IndexResult(res, this);
 }
@@ -266,10 +262,8 @@ IndexIterator* MMFilesFulltextIndex::iteratorForCondition(
   }
 
   // note: the following call will free "ft"!
-  std::set<TRI_voc_rid_t> results =
-      TRI_QueryMMFilesFulltextIndex(_fulltextIndex, ft);
-  return new MMFilesFulltextIndexIterator(_collection, trx, mdr, this,
-                                          std::move(results));
+  std::set<TRI_voc_rid_t> results = TRI_QueryMMFilesFulltextIndex(_fulltextIndex, ft);
+  return new MMFilesFulltextIndexIterator(_collection, trx, mdr, this, std::move(results));
 }
 
 /// @brief callback function called by the fulltext index to determine the

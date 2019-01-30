@@ -35,7 +35,7 @@ namespace basics {
 template <typename T>
 class DeadlockDetector {
  public:
-  explicit DeadlockDetector(bool enabled) : _enabled(enabled) {};
+  explicit DeadlockDetector(bool enabled) : _enabled(enabled){};
   ~DeadlockDetector() = default;
 
   DeadlockDetector(DeadlockDetector const&) = delete;
@@ -106,51 +106,51 @@ class DeadlockDetector {
     };
 
     std::unordered_set<TRI_tid_t> visited;
-    std::vector<StackValue> stack{ StackValue(value, tid, isWrite) };
+    std::vector<StackValue> stack{StackValue(value, tid, isWrite)};
 
     while (!stack.empty()) {
       StackValue top = stack.back();  // intentionally copy StackValue
       stack.pop_back();
-        
+
       auto it = _active.find(top.value);
-        
+
       if (it != _active.end()) {
-	if (!top.isWrite) {
-	  // we are a reader
-	  bool other = (*it).second.second;
+        if (!top.isWrite) {
+          // we are a reader
+          bool other = (*it).second.second;
 
-	  if (other) {
-	    // other is a writer
-	    TRI_tid_t otherTid = *((*it).second.first.begin());
+          if (other) {
+            // other is a writer
+            TRI_tid_t otherTid = *((*it).second.first.begin());
 
-	    if (visited.find(otherTid) != visited.end()) {
-	      return TRI_ERROR_DEADLOCK;
-	    }
+            if (visited.find(otherTid) != visited.end()) {
+              return TRI_ERROR_DEADLOCK;
+            }
 
-	    auto it2 = _blocked.find(otherTid);
+            auto it2 = _blocked.find(otherTid);
 
-	    if (it2 != _blocked.end()) {
-	      // writer thread is blocking...
-	      stack.emplace_back((*it2).second.first, otherTid, other);
-	    }
-	  }
-	} else {
-	  // we are a writer
+            if (it2 != _blocked.end()) {
+              // writer thread is blocking...
+              stack.emplace_back((*it2).second.first, otherTid, other);
+            }
+          }
+        } else {
+          // we are a writer
 
-	  // other is either a reader or a writer
-	  for (auto const& otherTid : (*it).second.first) {
-	    if (visited.find(otherTid) != visited.end()) {
-	      return TRI_ERROR_DEADLOCK;
-	    }
+          // other is either a reader or a writer
+          for (auto const& otherTid : (*it).second.first) {
+            if (visited.find(otherTid) != visited.end()) {
+              return TRI_ERROR_DEADLOCK;
+            }
 
-	    auto it2 = _blocked.find(otherTid);
+            auto it2 = _blocked.find(otherTid);
 
-	    if (it2 != _blocked.end()) {
-	      // writer thread is blocking...
-	      stack.emplace_back((*it2).second.first, otherTid, (*it).second.second);
-	    }
-	  }
-	}
+            if (it2 != _blocked.end()) {
+              // writer thread is blocking...
+              stack.emplace_back((*it2).second.first, otherTid, (*it).second.second);
+            }
+          }
+        }
       }
 
       visited.emplace(top.tid);
@@ -174,7 +174,7 @@ class DeadlockDetector {
 
     if (!inserted) {
       // we're already blocking. should never happen
-       return TRI_ERROR_DEADLOCK;
+      return TRI_ERROR_DEADLOCK;
     }
 
     try {
@@ -213,7 +213,7 @@ class DeadlockDetector {
   void unsetActive(T const* value, bool isWrite) {
     auto tid = Thread::currentThreadId();
 
-    MUTEX_LOCKER(mutexLocker, _lock); // note: this lock is expensive when many threads compete
+    MUTEX_LOCKER(mutexLocker, _lock);  // note: this lock is expensive when many threads compete
 
     if (!_enabled) {
       return;
@@ -254,7 +254,7 @@ class DeadlockDetector {
         TRI_ASSERT((*it).second.first.find(tid) == (*it).second.first.end());
       }
       // still the write bit shouldn't be set
-      TRI_ASSERT(! (*it).second.second);
+      TRI_ASSERT(!(*it).second.second);
       // and there should be at least one entry now:
       // if we were last, it will remain there and the cleanup will happen below
       // if we were not last, we have removed ourselves from the list, but there
@@ -274,7 +274,7 @@ class DeadlockDetector {
   void addActive(T const* value, bool isWrite, bool wasBlockedBefore) {
     auto tid = Thread::currentThreadId();
 
-    MUTEX_LOCKER(mutexLocker, _lock); // note: this lock is expensive when many threads compete
+    MUTEX_LOCKER(mutexLocker, _lock);  // note: this lock is expensive when many threads compete
 
     if (!_enabled) {
       return;
@@ -284,8 +284,7 @@ class DeadlockDetector {
 
     if (it == _active.end()) {
       // no one else there. simply register us
-      _active.emplace(
-          value, std::make_pair(std::unordered_set<TRI_tid_t>({tid}), isWrite));
+      _active.emplace(value, std::make_pair(std::unordered_set<TRI_tid_t>({tid}), isWrite));
     } else {
       // someone else is already there
       // we're expecting one or many readers
@@ -314,14 +313,13 @@ class DeadlockDetector {
   std::unordered_map<TRI_tid_t, std::pair<T const*, bool>> _blocked;
 
   /// @brief threads currently holding locks
-  std::unordered_map<T const*, std::pair<std::unordered_set<TRI_tid_t>, bool>>
-      _active;
+  std::unordered_map<T const*, std::pair<std::unordered_set<TRI_tid_t>, bool>> _active;
 
   /// @brief whether or not the detector is enabled
   bool _enabled;
 };
 
-}  // namespace arangodb::basics
+}  // namespace basics
 }  // namespace arangodb
 
 #endif

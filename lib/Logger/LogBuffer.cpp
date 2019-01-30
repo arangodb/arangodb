@@ -51,8 +51,7 @@ static void logEntry(LogMessage* message) {
   ptr->_topicId = message->_topicId;
 }
 
-std::vector<LogBuffer> LogBuffer::entries(LogLevel level, uint64_t start,
-                                          bool upToLevel) {
+std::vector<LogBuffer> LogBuffer::entries(LogLevel level, uint64_t start, bool upToLevel) {
   std::vector<LogBuffer> result;
 
   MUTEX_LOCKER(guard, LogBuffer::_ringBufferLock);

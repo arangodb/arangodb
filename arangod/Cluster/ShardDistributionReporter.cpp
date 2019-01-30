@@ -49,8 +49,7 @@ struct SyncCountInfo {
 /// @brief the pointer to the singleton instance
 //////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<ShardDistributionReporter>
-    arangodb::cluster::ShardDistributionReporter::_theInstance;
+std::shared_ptr<ShardDistributionReporter> arangodb::cluster::ShardDistributionReporter::_theInstance;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Static helper functions
@@ -60,9 +59,8 @@ std::shared_ptr<ShardDistributionReporter>
 /// @brief Test if one shard is in sync by comparing plan and current
 //////////////////////////////////////////////////////////////////////////////
 
-static inline bool TestIsShardInSync(
-    std::vector<ServerID> plannedServers,
-    std::vector<ServerID> realServers) {
+static inline bool TestIsShardInSync(std::vector<ServerID> plannedServers,
+                                     std::vector<ServerID> realServers) {
   // The leader at [0] must be the same, while the order of the followers must
   // be ignored.
   TRI_ASSERT(!plannedServers.empty());
@@ -78,10 +76,10 @@ static inline bool TestIsShardInSync(
 /// @brief Report a single shard without progress
 //////////////////////////////////////////////////////////////////////////////
 
-static void ReportShardNoProgress(
-    std::string const& shardId, std::vector<ServerID> const& respServers,
-    std::unordered_map<ServerID, std::string> const& aliases,
-    VPackBuilder& result) {
+static void ReportShardNoProgress(std::string const& shardId,
+                                  std::vector<ServerID> const& respServers,
+                                  std::unordered_map<ServerID, std::string> const& aliases,
+                                  VPackBuilder& result) {
   TRI_ASSERT(result.isOpenObject());
   result.add(VPackValue(shardId));
   result.openObject();
@@ -116,10 +114,10 @@ static void ReportShardNoProgress(
 /// @brief Report a single shard with progress
 //////////////////////////////////////////////////////////////////////////////
 
-static void ReportShardProgress(
-    std::string const& shardId, std::vector<ServerID> const& respServers,
-    std::unordered_map<ServerID, std::string> const& aliases, uint64_t total,
-    uint64_t current, VPackBuilder& result) {
+static void ReportShardProgress(std::string const& shardId,
+                                std::vector<ServerID> const& respServers,
+                                std::unordered_map<ServerID, std::string> const& aliases,
+                                uint64_t total, uint64_t current, VPackBuilder& result) {
   TRI_ASSERT(result.isOpenObject());
   result.add(VPackValue(shardId));
   result.openObject();
@@ -166,10 +164,9 @@ static void ReportShardProgress(
 /// @brief Report a list of leader and follower based on shardMap
 //////////////////////////////////////////////////////////////////////////////
 
-static void ReportPartialNoProgress(
-    ShardMap const* shardIds,
-    std::unordered_map<ServerID, std::string> const& aliases,
-    VPackBuilder& result) {
+static void ReportPartialNoProgress(ShardMap const* shardIds,
+                                    std::unordered_map<ServerID, std::string> const& aliases,
+                                    VPackBuilder& result) {
   TRI_ASSERT(result.isOpenObject());
   for (auto const& s : *shardIds) {
     ReportShardNoProgress(s.first, s.second, aliases, result);
@@ -180,10 +177,9 @@ static void ReportPartialNoProgress(
 /// @brief Report a complete collection an the insync format
 //////////////////////////////////////////////////////////////////////////////
 
-static void ReportInSync(
-    LogicalCollection const* col, ShardMap const* shardIds,
-    std::unordered_map<ServerID, std::string> const& aliases,
-    VPackBuilder& result) {
+static void ReportInSync(LogicalCollection const* col, ShardMap const* shardIds,
+                         std::unordered_map<ServerID, std::string> const& aliases,
+                         VPackBuilder& result) {
   TRI_ASSERT(result.isOpenObject());
 
   result.add(VPackValue(col->name()));
@@ -213,12 +209,10 @@ static void ReportInSync(
 /// known counts
 //////////////////////////////////////////////////////////////////////////////
 
-static void ReportOffSync(
-    LogicalCollection const* col, ShardMap const* shardIds,
-    std::unordered_map<ShardID, SyncCountInfo>& counters,
-    std::unordered_map<ServerID, std::string> const& aliases,
-    VPackBuilder& result,
-    bool progress) {
+static void ReportOffSync(LogicalCollection const* col, ShardMap const* shardIds,
+                          std::unordered_map<ShardID, SyncCountInfo>& counters,
+                          std::unordered_map<ServerID, std::string> const& aliases,
+                          VPackBuilder& result, bool progress) {
   TRI_ASSERT(result.isOpenObject());
 
   result.add(VPackValue(col->name()));
@@ -237,8 +231,7 @@ static void ReportOffSync(
         ReportShardNoProgress(s.first, s.second, aliases, result);
       } else {
         if (progress) {
-          ReportShardProgress(s.first, s.second, aliases, c.total,
-                                c.current, result);
+          ReportShardProgress(s.first, s.second, aliases, c.total, c.current, result);
         } else {
           ReportShardNoProgress(s.first, s.second, aliases, result);
         }
@@ -265,8 +258,8 @@ static void ReportOffSync(
   result.close();
 }
 
-ShardDistributionReporter::ShardDistributionReporter(
-    std::shared_ptr<ClusterComm> cc, ClusterInfo* ci)
+ShardDistributionReporter::ShardDistributionReporter(std::shared_ptr<ClusterComm> cc,
+                                                     ClusterInfo* ci)
     : _cc(cc), _ci(ci) {
   TRI_ASSERT(_cc != nullptr);
   TRI_ASSERT(_ci != nullptr);
@@ -274,23 +267,19 @@ ShardDistributionReporter::ShardDistributionReporter(
 
 ShardDistributionReporter::~ShardDistributionReporter() {}
 
-std::shared_ptr<ShardDistributionReporter>
-ShardDistributionReporter::instance() {
+std::shared_ptr<ShardDistributionReporter> ShardDistributionReporter::instance() {
   if (_theInstance == nullptr) {
-    _theInstance = std::make_shared<ShardDistributionReporter>(
-        ClusterComm::instance(), ClusterInfo::instance());
+    _theInstance =
+        std::make_shared<ShardDistributionReporter>(ClusterComm::instance(),
+                                                    ClusterInfo::instance());
   }
   return _theInstance;
 }
 
 void ShardDistributionReporter::helperDistributionForDatabase(
-    std::string const& dbName,
-    VPackBuilder& result,
-    std::queue<std::shared_ptr<LogicalCollection>>& todoSyncStateCheck,
-    double endtime,
-    std::unordered_map<std::string, std::string>& aliases,
-    bool progress) {
-
+    std::string const& dbName, VPackBuilder& result,
+    std::queue<std::shared_ptr<LogicalCollection>>& todoSyncStateCheck, double endtime,
+    std::unordered_map<std::string, std::string>& aliases, bool progress) {
   if (!todoSyncStateCheck.empty()) {
     CoordTransactionID coordId = TRI_NewTickServer();
     std::unordered_map<ShardID, SyncCountInfo> counters;
@@ -316,18 +305,20 @@ void ShardDistributionReporter::helperDistributionForDatabase(
           entry.insync = true;
         } else {
           entry.followers = curServers;
-          if (timeleft > 0.0)  {
-            std::string path = "/_db/" + basics::StringUtils::urlEncode(dbName) + 
-                               "/_api/collection/" + basics::StringUtils::urlEncode(s.first) + "/count";
+          if (timeleft > 0.0) {
+            std::string path = "/_db/" + basics::StringUtils::urlEncode(dbName) +
+                               "/_api/collection/" +
+                               basics::StringUtils::urlEncode(s.first) +
+                               "/count";
             auto body = std::make_shared<std::string const>();
 
             {
               // First Ask the leader
-              auto headers = std::make_unique<
-                  std::unordered_map<std::string, std::string>>();
-              leaderOpId = _cc->asyncRequest(
-                  "", coordId, "server:" + s.second.at(0), rest::RequestType::GET,
-                  path, body, headers, nullptr, timeleft);
+              auto headers =
+                  std::make_unique<std::unordered_map<std::string, std::string>>();
+              leaderOpId = _cc->asyncRequest("", coordId, "server:" + s.second.at(0),
+                                             rest::RequestType::GET, path, body,
+                                             headers, nullptr, timeleft);
             }
 
             // Now figure out which servers need to be asked
@@ -346,11 +337,10 @@ void ShardDistributionReporter::helperDistributionForDatabase(
 
             // Ask them
             for (auto const& server : serversToAsk) {
-              auto headers = std::make_unique<
-                  std::unordered_map<std::string, std::string>>();
-              _cc->asyncRequest("", coordId, "server:" + server,
-                                rest::RequestType::GET, path, body, headers,
-                                nullptr, timeleft);
+              auto headers =
+                  std::make_unique<std::unordered_map<std::string, std::string>>();
+              _cc->asyncRequest("", coordId, "server:" + server, rest::RequestType::GET,
+                                path, body, headers, nullptr, timeleft);
               requestsInFlight++;
             }
 
@@ -369,20 +359,21 @@ void ShardDistributionReporter::helperDistributionForDatabase(
               VPackSlice response = body->slice();
               if (!response.isObject()) {
                 LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-                    << "Received invalid response for count. Shard distribution "
+                    << "Received invalid response for count. Shard "
+                       "distribution "
                        "inaccurate";
                 continue;
               }
               response = response.get("count");
               if (!response.isNumber()) {
                 LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-                    << "Received invalid response for count. Shard distribution "
+                    << "Received invalid response for count. Shard "
+                       "distribution "
                        "inaccurate";
                 continue;
               }
               entry.total = response.getNumber<uint64_t>();
-              entry.current =
-                  entry.total;  // << We use this to flip around min/max test
+              entry.current = entry.total;  // << We use this to flip around min/max test
             }
 
             // Now wait for others
@@ -391,8 +382,8 @@ void ShardDistributionReporter::helperDistributionForDatabase(
               requestsInFlight--;
               if (result.status != CL_COMM_RECEIVED) {
                 // We do not care for errors of any kind.
-                // We can continue here because all other requests will be handled
-                // by the accumulated timeout
+                // We can continue here because all other requests will be
+                // handled by the accumulated timeout
                 continue;
               } else {
                 auto body = result.result->getBodyVelocyPack();
@@ -437,8 +428,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
 
 void ShardDistributionReporter::getCollectionDistributionForDatabase(
     std::string const& dbName, std::string const& colName, VPackBuilder& result) {
-
-  double endtime = TRI_microtime() + 2.0; // We add two seconds
+  double endtime = TRI_microtime() + 2.0;  // We add two seconds
 
   result.openObject();
 
@@ -459,10 +449,9 @@ void ShardDistributionReporter::getCollectionDistributionForDatabase(
   result.close();
 }
 
-void ShardDistributionReporter::getDistributionForDatabase(
-    std::string const& dbName, VPackBuilder& result) {
-
-  double endtime = TRI_microtime() + 2.0; // We add two seconds
+void ShardDistributionReporter::getDistributionForDatabase(std::string const& dbName,
+                                                           VPackBuilder& result) {
+  double endtime = TRI_microtime() + 2.0;  // We add two seconds
 
   result.openObject();
 
@@ -485,18 +474,16 @@ void ShardDistributionReporter::getDistributionForDatabase(
   result.close();
 }
 
-bool ShardDistributionReporter::testAllShardsInSync(
-    std::string const& dbName, LogicalCollection const* col,
-    ShardMap const* shardIds) {
+bool ShardDistributionReporter::testAllShardsInSync(std::string const& dbName,
+                                                    LogicalCollection const* col,
+                                                    ShardMap const* shardIds) {
   TRI_ASSERT(col != nullptr);
   TRI_ASSERT(shardIds != nullptr);
 
   auto cic = _ci->getCollectionCurrent(dbName, col->cid_as_string());
   for (auto const& s : *shardIds) {
     auto curServers = cic->servers(s.first);
-    if (s.second.empty() ||
-        curServers.empty() ||
-        !TestIsShardInSync(s.second, curServers)) {
+    if (s.second.empty() || curServers.empty() || !TestIsShardInSync(s.second, curServers)) {
       return false;
     }
   }

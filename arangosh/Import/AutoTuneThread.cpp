@@ -49,16 +49,13 @@ using namespace arangodb::import;
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-AutoTuneThread::AutoTuneThread(ImportHelper & importHelper)
+AutoTuneThread::AutoTuneThread(ImportHelper& importHelper)
     : Thread("AutoTuneThread"),
       _importHelper(importHelper),
       _nextSend(std::chrono::steady_clock::now()),
-      _pace(std::chrono::microseconds(1000000 / importHelper.getThreadCount()))
-{}
+      _pace(std::chrono::microseconds(1000000 / importHelper.getThreadCount())) {}
 
-AutoTuneThread::~AutoTuneThread() {
-  shutdown();
-}
+AutoTuneThread::~AutoTuneThread() { shutdown(); }
 
 void AutoTuneThread::beginShutdown() {
   Thread::beginShutdown();
@@ -67,7 +64,6 @@ void AutoTuneThread::beginShutdown() {
   CONDITION_LOCKER(guard, _condition);
   guard.broadcast();
 }
-
 
 void AutoTuneThread::run() {
   while (!isStopping()) {
@@ -85,14 +81,14 @@ void AutoTuneThread::run() {
       // is current_max way too big
       if (ten_second_actual < current_max && 10 < ten_second_actual) {
         new_max = ten_second_actual / 10;
-      } else if ( ten_second_actual <= 10 ) {
+      } else if (ten_second_actual <= 10) {
         new_max = current_max / 10;
       } else {
         new_max = (current_max + ten_second_actual / 10) / 2;
       }
 
       // grow number slowly if possible (20%)
-      new_max += new_max/5;
+      new_max += new_max / 5;
 
       // make "per thread"
       new_max /= _importHelper.getThreadCount();
@@ -103,16 +99,13 @@ void AutoTuneThread::run() {
       }
 
       LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
-        << "Current: " << current_max
-        << ", ten_sec: " << ten_second_actual
-        << ", new_max: " << new_max;
+          << "Current: " << current_max << ", ten_sec: " << ten_second_actual
+          << ", new_max: " << new_max;
 
       _importHelper.setMaxUploadSize(new_max);
     }
   }
 }
-
-
 
 void AutoTuneThread::paceSends() {
   auto now = std::chrono::steady_clock::now();
@@ -120,7 +113,7 @@ void AutoTuneThread::paceSends() {
 
   // has _nextSend time_point already passed?
   //  if so, move to next increment of _pace to force wait
-  while(_nextSend <= now) {
+  while (_nextSend <= now) {
     _nextSend += _pace;
     next_reset = true;
   }
@@ -130,9 +123,9 @@ void AutoTuneThread::paceSends() {
   // if the previous send thread thread was found really quickly,
   //  assume arangodb is absorbing data faster than current rate.
   //  try doubling rate by halfing pace time for subsequent send.
-  if (!next_reset && _pace/2 < _nextSend - now )
-    _nextSend = _nextSend + _pace/2;
+  if (!next_reset && _pace / 2 < _nextSend - now)
+    _nextSend = _nextSend + _pace / 2;
   else
     _nextSend = _nextSend + _pace;
 
-} // AutoTuneThread::paceSends
+}  // AutoTuneThread::paceSends

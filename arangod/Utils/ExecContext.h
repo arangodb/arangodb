@@ -23,9 +23,9 @@
 #ifndef ARANGOD_UTILS_EXECCONTEXT_H
 #define ARANGOD_UTILS_EXECCONTEXT_H 1
 
+#include "Auth/Common.h"
 #include "Basics/Common.h"
 #include "Rest/RequestContext.h"
-#include "Auth/Common.h"
 
 namespace arangodb {
 namespace transaction {
@@ -39,9 +39,8 @@ class Methods;
 /// context for convencience
 class ExecContext : public RequestContext {
  protected:
-  ExecContext(bool isInternal, std::string const& user,
-              std::string const& database, auth::Level systemLevel,
-              auth::Level dbLevel)
+  ExecContext(bool isInternal, std::string const& user, std::string const& database,
+              auth::Level systemLevel, auth::Level dbLevel)
       : _internal(isInternal),
         _canceled(false),
         _user(user),
@@ -57,44 +56,38 @@ class ExecContext : public RequestContext {
 
   /// shortcut helper to check the AuthenticationFeature
   static bool isAuthEnabled();
-  
+
   /// @brief an internal superuser context, is
   ///        a singleton instance, deleting is an error
   static ExecContext const* superuser();
-  
+
   /// @brief create user context, caller is responsible for deleting
   static ExecContext* create(std::string const& user, std::string const& db);
-  
+
   /// @brief an internal user is none / ro / rw for all collections / dbs
-  bool isInternal() const {
-    return _internal;
-  }
-  
+  bool isInternal() const { return _internal; }
+
   /// @brief any internal operation is a superuser.
-  bool isSuperuser() const { return _internal &&
-    _systemDbAuthLevel == auth::Level::RW &&
-    _databaseAuthLevel == auth::Level::RW;
+  bool isSuperuser() const {
+    return _internal && _systemDbAuthLevel == auth::Level::RW &&
+           _databaseAuthLevel == auth::Level::RW;
   }
-  
+
   /// @brief is this an internal read-only user
   bool isReadOnly() const {
     return _internal && _systemDbAuthLevel == auth::Level::RO;
   }
-  
+
   /// @brief is allowed to manage users, create databases, ...
   bool isAdminUser() const {
     // conflicts with read-only: TRI_ASSERT(!_internal || _systemDbAuthLevel == AuthLevel::RW);
     return _systemDbAuthLevel == auth::Level::RW;
   }
-  
+
   /// @brief should immediately cance this operation
-  bool isCanceled() const {
-    return _canceled;
-  }
-  
-  void cancel() {
-    _canceled = true;
-  }
+  bool isCanceled() const { return _canceled; }
+
+  void cancel() { _canceled = true; }
 
   /// @brief current user, may be empty for internal users
   std::string const& user() const { return _user; }
@@ -122,12 +115,10 @@ class ExecContext : public RequestContext {
   bool canUseDatabase(std::string const& db, auth::Level requested) const;
 
   /// @brief returns auth level for user
-  auth::Level collectionAuthLevel(std::string const& dbname,
-                                std::string const& collection) const;
+  auth::Level collectionAuthLevel(std::string const& dbname, std::string const& collection) const;
 
   /// @brief returns true if auth levels is above or equal `requested`
-  bool canUseCollection(std::string const& collection,
-                        auth::Level requested) const {
+  bool canUseCollection(std::string const& collection, auth::Level requested) const {
     return canUseCollection(_database, collection, requested);
   }
   /// @brief returns true if auth level is above or equal `requested`
@@ -137,12 +128,10 @@ class ExecContext : public RequestContext {
   }
 
  public:
-  
   /// Should always contain a reference to current user context
   static thread_local ExecContext const* CURRENT;
 
  protected:
-  
   /// Internal superuser or read-only user
   bool _internal;
   /// should be used to indicate a canceled request / thread
@@ -171,6 +160,6 @@ struct ExecContextScope {
  private:
   ExecContext const* _old;
 };
-}
+}  // namespace arangodb
 
 #endif

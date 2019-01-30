@@ -59,15 +59,12 @@ class Methods;
 class ChecksumResult : public Result {
  public:
   explicit ChecksumResult(Result&& result) : Result(std::move(result)) {}
-  explicit ChecksumResult(velocypack::Builder&& builder): Result(TRI_ERROR_NO_ERROR), _builder(std::move(builder)) {}
+  explicit ChecksumResult(velocypack::Builder&& builder)
+      : Result(TRI_ERROR_NO_ERROR), _builder(std::move(builder)) {}
 
-  velocypack::Builder builder() {
-    return _builder;
-  }
+  velocypack::Builder builder() { return _builder; }
 
-  velocypack::Slice slice() {
-    return _builder.slice();
-  }
+  velocypack::Slice slice() { return _builder.slice(); }
 
  private:
   velocypack::Builder _builder;
@@ -184,14 +181,12 @@ class LogicalCollection {
   PhysicalCollection* getPhysical() const { return _physical.get(); }
 
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
-                                                ManagedDocumentResult* mdr,
-                                                bool reverse);
+                                                ManagedDocumentResult* mdr, bool reverse);
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx,
                                                 ManagedDocumentResult* mdr);
 
-  void invokeOnAllElements(
-      transaction::Methods* trx,
-      std::function<bool(LocalDocumentId const&)> callback);
+  void invokeOnAllElements(transaction::Methods* trx,
+                           std::function<bool(LocalDocumentId const&)> callback);
 
   //// SECTION: Indexes
 
@@ -199,20 +194,16 @@ class LogicalCollection {
   std::unordered_map<std::string, double> clusterIndexEstimates(bool doNotUpdate = false);
   void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
 
-  double clusterIndexEstimatesTTL() const {
-    return _clusterEstimateTTL;
-  }
+  double clusterIndexEstimatesTTL() const { return _clusterEstimateTTL; }
 
-  void clusterIndexEstimatesTTL(double ttl) {
-    _clusterEstimateTTL = ttl;
-  }
+  void clusterIndexEstimatesTTL(double ttl) { _clusterEstimateTTL = ttl; }
   // End - Estimates
 
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
   void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence,
                        std::function<bool(arangodb::Index const*)> const& filter =
-                         [](arangodb::Index const*) -> bool { return true; }) const;
+                           [](arangodb::Index const*) -> bool { return true; }) const;
 
   // SECTION: Replication
   int replicationFactor() const;
@@ -229,14 +220,12 @@ class LogicalCollection {
   virtual std::shared_ptr<ShardMap> shardIds() const;
 
   // return a filtered list of the collection's shards
-  std::shared_ptr<ShardMap> shardIds(
-      std::unordered_set<std::string> const& includedShards) const;
+  std::shared_ptr<ShardMap> shardIds(std::unordered_set<std::string> const& includedShards) const;
   void setShardMap(std::shared_ptr<ShardMap>& map);
 
   /// @brief a method to skip certain documents in AQL write operations,
   /// this is only used in the enterprise edition for smart graphs
-  virtual bool skipForAqlWrite(velocypack::Slice document,
-                               std::string const& key) const;
+  virtual bool skipForAqlWrite(velocypack::Slice document, std::string const& key) const;
 
   // SECTION: Modification Functions
   int rename(std::string const&);
@@ -247,21 +236,17 @@ class LogicalCollection {
   virtual void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialisation
-  void toVelocyPack(velocypack::Builder&, bool translateCids,
-                    bool forPersistence = false) const;
+  void toVelocyPack(velocypack::Builder&, bool translateCids, bool forPersistence = false) const;
 
   void toVelocyPackIgnore(velocypack::Builder& result,
-      std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
-      bool forPersistence) const;
+                          std::unordered_set<std::string> const& ignoreKeys,
+                          bool translateCids, bool forPersistence) const;
 
-  velocypack::Builder toVelocyPackIgnore(
-      std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
-      bool forPersistence) const;
+  velocypack::Builder toVelocyPackIgnore(std::unordered_set<std::string> const& ignoreKeys,
+                                         bool translateCids, bool forPersistence) const;
 
-  virtual void toVelocyPackForClusterInventory(velocypack::Builder&,
-                                               bool useSystem,
-                                               bool isReady,
-                                               bool allInSync) const;
+  virtual void toVelocyPackForClusterInventory(velocypack::Builder&, bool useSystem,
+                                               bool isReady, bool allInSync) const;
 
   inline TRI_vocbase_t* vocbase() const { return _vocbase; }
 
@@ -307,23 +292,19 @@ class LogicalCollection {
                 ManagedDocumentResult& result, OperationOptions&,
                 TRI_voc_tick_t&, bool, TRI_voc_tick_t& revisionId);
   Result update(transaction::Methods*, velocypack::Slice const,
-                ManagedDocumentResult& result, OperationOptions&,
-                TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
-                ManagedDocumentResult& previous);
+                ManagedDocumentResult& result, OperationOptions&, TRI_voc_tick_t&,
+                bool, TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
   Result replace(transaction::Methods*, velocypack::Slice const,
-                 ManagedDocumentResult& result, OperationOptions&,
-                 TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
-                 ManagedDocumentResult& previous);
+                 ManagedDocumentResult& result, OperationOptions&, TRI_voc_tick_t&,
+                 bool, TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
   Result remove(transaction::Methods*, velocypack::Slice const,
                 OperationOptions&, TRI_voc_tick_t&, bool,
                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
 
-  bool readDocument(transaction::Methods* trx,
-                    LocalDocumentId const& token,
+  bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                     ManagedDocumentResult& result) const;
 
-  bool readDocumentWithCallback(transaction::Methods* trx,
-                                LocalDocumentId const& token,
+  bool readDocumentWithCallback(transaction::Methods* trx, LocalDocumentId const& token,
                                 IndexIterator::DocumentCallback const& cb) const;
 
   /// @brief Persist the connected physical collection.
@@ -337,8 +318,7 @@ class LogicalCollection {
   ///        can be dropped. The callback is supposed to drop
   ///        the collection and it is guaranteed that no one is using
   ///        it at that moment.
-  void deferDropCollection(
-      std::function<bool(arangodb::LogicalCollection*)> callback);
+  void deferDropCollection(std::function<bool(arangodb::LogicalCollection*)> callback);
 
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;
@@ -351,12 +331,9 @@ class LogicalCollection {
 
   // Set and get _planVersion, this is only used if the object is used in
   // ClusterInfo to represent a cluster wide collection in the agency.
-  void setPlanVersion(uint64_t v) {
-    _planVersion = v;
-  }
-  uint64_t getPlanVersion() const {
-    return _planVersion;
-  }
+  void setPlanVersion(uint64_t v) { _planVersion = v; }
+  uint64_t getPlanVersion() const { return _planVersion; }
+
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 
@@ -434,8 +411,7 @@ class LogicalCollection {
   TRI_vocbase_t* _vocbase;
   // SECTION: Key Options
   // TODO Really VPack?
-  std::shared_ptr<velocypack::Buffer<uint8_t> const>
-      _keyOptions;  // options for key creation
+  std::shared_ptr<velocypack::Buffer<uint8_t> const> _keyOptions;  // options for key creation
   std::unique_ptr<KeyGenerator> _keyGenerator;
 
   /// @brief globally unique collection id. assigned by the
@@ -449,14 +425,14 @@ class LogicalCollection {
   mutable basics::ReadWriteLock _infoLock;  // lock protecting the info
 
   std::unordered_map<std::string, double> _clusterEstimates;
-  double _clusterEstimateTTL; //only valid if above vector is not empty
+  double _clusterEstimateTTL;  // only valid if above vector is not empty
   basics::ReadWriteLock _clusterEstimatesLock;
 
-  uint64_t _planVersion;   // Only set if setPlanVersion was called. This only
-                           // happens in ClusterInfo when this object is used
-                           // to represent a cluster wide collection. This is
-                           // then the version in the agency Plan that underpins
-                           // the information in this object. Otherwise 0.
+  uint64_t _planVersion;  // Only set if setPlanVersion was called. This only
+                          // happens in ClusterInfo when this object is used
+                          // to represent a cluster wide collection. This is
+                          // then the version in the agency Plan that underpins
+                          // the information in this object. Otherwise 0.
 };
 
 }  // namespace arangodb

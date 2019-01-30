@@ -97,9 +97,7 @@ class Thread {
   static TRI_tid_t currentThreadId();
 
   // checks if work has been canceled
-  static bool isCanceled() {
-    return false;
-  }
+  static bool isCanceled() { return false; }
 
  public:
   Thread(std::string const& name, bool deleteOnExit = false);
@@ -190,7 +188,6 @@ class Thread {
   /// @brief optional notification call when thread gets unplanned exception
   virtual void crashNotification(std::exception const&) {}
 
-
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the thread program
@@ -229,6 +226,6 @@ class Thread {
   // processor affinity
   int _affinity;
 };
-}
+}  // namespace arangodb
 
 #endif

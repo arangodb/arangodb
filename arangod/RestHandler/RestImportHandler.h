@@ -39,12 +39,7 @@ class SingleCollectionTransaction;
 struct RestImportResult {
  public:
   RestImportResult()
-      : _numErrors(0),
-        _numEmpty(0),
-        _numCreated(0),
-        _numIgnored(0),
-        _numUpdated(0),
-        _errors() {}
+      : _numErrors(0), _numEmpty(0), _numCreated(0), _numIgnored(0), _numUpdated(0), _errors() {}
 
   ~RestImportResult() {}
 
@@ -92,10 +87,8 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   /// @brief process a single VelocyPack document
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleSingleDocument(SingleCollectionTransaction& trx,
-                           VPackBuilder& lineBuilder,
-                           RestImportResult& result,
-                           arangodb::velocypack::Builder& babies,
+  int handleSingleDocument(SingleCollectionTransaction& trx, VPackBuilder& lineBuilder,
+                           RestImportResult& result, arangodb::velocypack::Builder& babies,
                            arangodb::velocypack::Slice slice,
                            bool isEdgeCollection, size_t);
 
@@ -119,18 +112,15 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool createFromKeyValueList();
-  bool createFromKeyValueListVPack() {
-    return false;
-  }
+  bool createFromKeyValueListVPack() { return false; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief perform the actual import (insert/update/replace) operations
   //////////////////////////////////////////////////////////////////////////////
 
   Result performImport(SingleCollectionTransaction& trx, RestImportResult& result,
-                       std::string const& collectionName,
-                       VPackBuilder const& babies, bool complete,
-                       OperationOptions const& opOptions);
+                       std::string const& collectionName, VPackBuilder const& babies,
+                       bool complete, OperationOptions const& opOptions);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates the result
@@ -148,9 +138,8 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   /// @brief builds a VPackBuilder object from a key and value list
   //////////////////////////////////////////////////////////////////////////////
 
-  void createVelocyPackObject(VPackBuilder&,
-      arangodb::velocypack::Slice const&, arangodb::velocypack::Slice const&,
-      std::string&, size_t);
+  void createVelocyPackObject(VPackBuilder&, arangodb::velocypack::Slice const&,
+                              arangodb::velocypack::Slice const&, std::string&, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks the keys, returns true if all values in the list are
@@ -189,6 +178,6 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   /// @brief whether or not we will tolerate missing values for the CSV import
   bool _ignoreMissing;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -373,7 +373,7 @@ function ahuacatlMultiModifySuite () {
       var nodes = AQL_EXPLAIN(q, { "@cn1": cn1, "@cn2": cn2 }).plan.nodes, found = false;
       nodes.forEach(function(node) {
         if (node.type === 'RemoveNode') {
-          assertTrue(node.modificationFlags.readCompleteInput);
+          assertEqual(db._engine().name === 'mmfiles', node.modificationFlags.readCompleteInput);
           found = true;
         }
       });

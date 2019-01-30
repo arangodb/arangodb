@@ -36,10 +36,10 @@
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBValue.h"
 
-#include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/iterator.h>
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
+#include <rocksdb/utilities/transaction_db.h>
 
 #undef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
 #ifdef TRI_UNALIGNED_ACCESS
@@ -54,38 +54,35 @@ class DB;
 struct ReadOptions;
 class Comparator;
 class ColumnFamilyHandle;
-}
+}  // namespace rocksdb
 
 namespace arangodb {
 
 class RocksDBOperationResult : public Result {
-public:
-  RocksDBOperationResult() 
-      : Result(), _keySize(0) {}
-  
-  RocksDBOperationResult(Result const& other) 
-      : Result(other), _keySize(0) {}
-  
-  RocksDBOperationResult(Result&& other) noexcept 
+ public:
+  RocksDBOperationResult() : Result(), _keySize(0) {}
+
+  RocksDBOperationResult(Result const& other) : Result(other), _keySize(0) {}
+
+  RocksDBOperationResult(Result&& other) noexcept
       : Result(std::move(other)), _keySize(0) {}
-  
+
   uint64_t keySize() const { return _keySize; }
   void keySize(uint64_t s) { _keySize = s; }
-  
-protected:
+
+ protected:
   uint64_t _keySize;
 };
 
 class RocksDBMethods;
 class RocksDBKeyBounds;
 class RocksDBEngine;
-  
+
 namespace rocksutils {
 
 //// to persistent
 template <typename T>
-typename std::enable_if<std::is_integral<T>::value, void>::type toPersistent(
-    T in, char*& out) {
+typename std::enable_if<std::is_integral<T>::value, void>::type toPersistent(T in, char*& out) {
   in = basics::hostToLittle(in);
   using TT = typename std::decay<T>::type;
   std::memcpy(out, &in, sizeof(TT));
@@ -93,10 +90,7 @@ typename std::enable_if<std::is_integral<T>::value, void>::type toPersistent(
 }
 
 //// from persistent
-template <typename T,
-          typename std::enable_if<
-              std::is_integral<typename std::remove_reference<T>::type>::value,
-              int>::type = 0>
+template <typename T, typename std::enable_if<std::is_integral<typename std::remove_reference<T>::type>::value, int>::type = 0>
 typename std::decay<T>::type fromPersistent(char const*& in) {
   using TT = typename std::decay<T>::type;
   TT out;
@@ -106,10 +100,7 @@ typename std::decay<T>::type fromPersistent(char const*& in) {
 }
 
 // we need this overload or the template will match
-template <typename T,
-          typename std::enable_if<
-              std::is_integral<typename std::remove_reference<T>::type>::value,
-              int>::type = 1>
+template <typename T, typename std::enable_if<std::is_integral<typename std::remove_reference<T>::type>::value, int>::type = 1>
 typename std::decay<T>::type fromPersistent(char*& in) {
   using TT = typename std::decay<T>::type;
   TT out;
@@ -119,9 +110,7 @@ typename std::decay<T>::type fromPersistent(char*& in) {
 }
 
 template <typename T, typename StringLike,
-          typename std::enable_if<
-              std::is_integral<typename std::remove_reference<T>::type>::value,
-              int>::type = 2>
+          typename std::enable_if<std::is_integral<typename std::remove_reference<T>::type>::value, int>::type = 2>
 typename std::decay<T>::type fromPersistent(StringLike& in) {
   using TT = typename std::decay<T>::type;
   TT out;
@@ -141,7 +130,7 @@ inline double intToDouble(uint64_t i) {
   return d;
 }
 
-template<typename T> 
+template <typename T>
 inline T uintFromPersistent(char const* p) {
 #ifdef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
   return *reinterpret_cast<T const*>(p);
@@ -155,22 +144,22 @@ inline T uintFromPersistent(char const* p) {
     x += 8;
   } while (ptr < end);
   return value;
-#endif 
+#endif
 }
 
-inline uint64_t uint64FromPersistent(char const* p) { 
+inline uint64_t uint64FromPersistent(char const* p) {
   return uintFromPersistent<uint64_t>(p);
 }
 
 inline uint32_t uint32FromPersistent(char const* p) {
-  return uintFromPersistent<uint32_t>(p); 
+  return uintFromPersistent<uint32_t>(p);
 }
 
 inline uint16_t uint16FromPersistent(char const* p) {
-  return uintFromPersistent<uint16_t>(p); 
+  return uintFromPersistent<uint16_t>(p);
 }
 
-template<typename T>
+template <typename T>
 inline void uintToPersistent(char* p, T value) {
 #ifdef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
   *reinterpret_cast<T*>(p) = value;
@@ -195,7 +184,7 @@ inline void uint16ToPersistent(char* p, uint16_t value) {
   return uintToPersistent<uint16_t>(p, value);
 }
 
-template<typename T>
+template <typename T>
 inline void uintToPersistent(std::string& p, T value) {
   size_t len = 0;
   do {
@@ -216,18 +205,15 @@ inline void uint16ToPersistent(std::string& out, uint16_t value) {
   return uintToPersistent<uint16_t>(out, value);
 }
 
-
 rocksdb::TransactionDB* globalRocksDB();
 RocksDBEngine* globalRocksEngine();
-arangodb::Result globalRocksDBPut(
-    rocksdb::ColumnFamilyHandle *cf,
-    rocksdb::Slice const& key, rocksdb::Slice const& value,
-    rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
+arangodb::Result globalRocksDBPut(rocksdb::ColumnFamilyHandle* cf,
+                                  rocksdb::Slice const& key, rocksdb::Slice const& value,
+                                  rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
 
-arangodb::Result globalRocksDBRemove(
-    rocksdb::ColumnFamilyHandle *cf,
-    rocksdb::Slice const& key,
-    rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
+arangodb::Result globalRocksDBRemove(rocksdb::ColumnFamilyHandle* cf,
+                                     rocksdb::Slice const& key,
+                                     rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
 
 uint64_t latestSequenceNumber();
 
@@ -238,19 +224,15 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t);
 std::size_t countKeys(rocksdb::DB*, rocksdb::ColumnFamilyHandle* cf);
 
 /// @brief iterate over all keys in range and count them
-std::size_t countKeyRange(rocksdb::DB*, RocksDBKeyBounds const&, 
-                          bool prefix_same_as_start);
+std::size_t countKeyRange(rocksdb::DB*, RocksDBKeyBounds const&, bool prefix_same_as_start);
 
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
-Result removeLargeRange(rocksdb::TransactionDB* db,
-                        RocksDBKeyBounds const& bounds,
+Result removeLargeRange(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds,
                         bool prefix_same_as_start);
 
-std::vector<std::pair<RocksDBKey, RocksDBValue>> collectionKVPairs(
-    TRI_voc_tick_t databaseId);
-std::vector<std::pair<RocksDBKey, RocksDBValue>> viewKVPairs(
-    TRI_voc_tick_t databaseId);
+std::vector<std::pair<RocksDBKey, RocksDBValue>> collectionKVPairs(TRI_voc_tick_t databaseId);
+std::vector<std::pair<RocksDBKey, RocksDBValue>> viewKVPairs(TRI_voc_tick_t databaseId);
 
 // optional switch to std::function to reduce amount of includes and
 // to avoid template
@@ -263,8 +245,7 @@ void iterateBounds(RocksDBKeyBounds const& bounds, T callback,
   options.iterate_upper_bound = &end;  // save to use on rocksb::DB directly
   options.prefix_same_as_start = true;
   options.verify_checksums = false;
-  std::unique_ptr<rocksdb::Iterator> it(
-      globalRocksDB()->NewIterator(options, handle));
+  std::unique_ptr<rocksdb::Iterator> it(globalRocksDB()->NewIterator(options, handle));
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     callback(it.get());
   }

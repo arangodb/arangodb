@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_QUERY_LIST_H
 #define ARANGOD_AQL_QUERY_LIST_H 1
 
-#include "Basics/Common.h"
 #include "Aql/QueryExecutionState.h"
+#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"
 
@@ -43,12 +43,9 @@ namespace aql {
 class Query;
 
 struct QueryEntryCopy {
-  QueryEntryCopy (TRI_voc_tick_t id,
-                  std::string&& queryString,
-                  std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
-                  double started,
-                  double runTime,
-                  QueryExecutionState::ValueType state);
+  QueryEntryCopy(TRI_voc_tick_t id, std::string&& queryString,
+                 std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
+                 double started, double runTime, QueryExecutionState::ValueType state);
 
   TRI_voc_tick_t const id;
   std::string const queryString;
@@ -81,13 +78,13 @@ class QueryList {
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
   inline bool trackSlowQueries() const { return _trackSlowQueries; }
-  
+
   /// @brief toggle slow query tracking
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
   inline void trackSlowQueries(bool value) { _trackSlowQueries = value; }
-  
-  /// @brief whether or not bind vars are tracked with queries 
+
+  /// @brief whether or not bind vars are tracked with queries
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
   inline bool trackBindVars() const { return _trackBindVars; }
@@ -156,7 +153,7 @@ class QueryList {
 
   /// @brief kills a query
   int kill(TRI_voc_tick_t);
-  
+
   /// @brief kills all currently running queries
   uint64_t killAll(bool silent);
 
@@ -196,8 +193,8 @@ class QueryList {
 
   /// @brief whether or not slow queries are tracked
   bool _trackSlowQueries;
-  
-  /// @brief whether or not bind vars are also tracked with queries 
+
+  /// @brief whether or not bind vars are also tracked with queries
   bool _trackBindVars;
 
   /// @brief threshold for slow queries (in seconds)
@@ -209,7 +206,7 @@ class QueryList {
   /// @brief max length of query strings to return
   size_t _maxQueryStringLength;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

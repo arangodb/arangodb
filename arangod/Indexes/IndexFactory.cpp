@@ -31,9 +31,8 @@
 
 using namespace arangodb;
 
-TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info, 
-                                          bool generateKey, 
-                                          bool isClusterConstructor) {
+TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info,
+                                          bool generateKey, bool isClusterConstructor) {
   if (!info.isObject()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
@@ -43,8 +42,7 @@ TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info,
   if (value.isString()) {
     iid = basics::StringUtils::uint64(value.copyString());
   } else if (value.isNumber()) {
-    iid =
-        basics::VelocyPackHelper::getNumericValue<TRI_idx_iid_t>(info, "id", 0);
+    iid = basics::VelocyPackHelper::getNumericValue<TRI_idx_iid_t>(info, "id", 0);
   } else if (!generateKey) {
     // In the restore case it is forbidden to NOT have id
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -53,8 +51,13 @@ TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info,
 
   if (iid == 0 && !isClusterConstructor) {
     // Restore is not allowed to generate an id
-    TRI_ASSERT(generateKey);
-    iid = arangodb::Index::generateId();
+    VPackSlice type = info.get("type");
+    // dont generate ids for indexes of type "primary"
+    // id 0 is expected for primary indexes
+    if (!type.isString() || !type.isEqualString("primary")) {
+      TRI_ASSERT(generateKey);
+      iid = arangodb::Index::generateId();
+    }
   }
 
   return iid;

@@ -74,8 +74,7 @@ struct Option {
   // split an option name at the ".", if it exists
   static std::pair<std::string, std::string> splitName(std::string name);
 
-  static std::vector<std::string> wordwrap(std::string const& value,
-                                           size_t size);
+  static std::vector<std::string> wordwrap(std::string const& value, size_t size);
 
   // right-pad a string
   static std::string pad(std::string const& value, size_t length);
@@ -90,7 +89,7 @@ struct Option {
   bool hidden;
   bool obsolete;
 };
-}
-}
+}  // namespace options
+}  // namespace arangodb
 
 #endif

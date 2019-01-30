@@ -42,19 +42,18 @@ Parser::Parser(Query* query)
       _stack(),
       _isModificationQuery(false) {
   _stack.reserve(4);
-    
+
   QueryString const& qs = queryString();
-  _queryStringStart = qs.data(); 
-  _buffer = qs.data(); 
-  _remainingLength = qs.size(); 
+  _queryStringStart = qs.data();
+  _buffer = qs.data();
+  _remainingLength = qs.size();
 }
 
 /// @brief destroy the parser
 Parser::~Parser() {}
 
 /// @brief set data for write queries
-bool Parser::configureWriteQuery(AstNode const* collectionNode,
-                                 AstNode* optionNode) {
+bool Parser::configureWriteQuery(AstNode const* collectionNode, AstNode* optionNode) {
   // now track which collection is going to be modified
   _ast->addWriteCollection(collectionNode);
 
@@ -135,8 +134,7 @@ void Parser::registerParseError(int errorCode, char const* format,
 }
 
 /// @brief register a parse error, position is specified as line / column
-void Parser::registerParseError(int errorCode, char const* data, int line,
-                                int column) {
+void Parser::registerParseError(int errorCode, char const* data, int line, int column) {
   TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
   TRI_ASSERT(data != nullptr);
 
@@ -172,8 +170,7 @@ void Parser::registerError(int errorCode, char const* data) {
 }
 
 /// @brief register a warning
-void Parser::registerWarning(int errorCode, char const* data, int line,
-                             int column) {
+void Parser::registerWarning(int errorCode, char const* data, int line, int column) {
   // ignore line and column for now
   _query->registerWarning(errorCode, data);
 }
@@ -186,8 +183,7 @@ void Parser::pushArrayElement(AstNode* node) {
 }
 
 /// @brief push an AstNode into the object element on top of the stack
-void Parser::pushObjectElement(char const* attributeName, size_t nameLength,
-                               AstNode* node) {
+void Parser::pushObjectElement(char const* attributeName, size_t nameLength, AstNode* node) {
   auto object = static_cast<AstNode*>(peekStack());
   TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
   auto element = _ast->createNodeObjectElement(attributeName, nameLength, node);

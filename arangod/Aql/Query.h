@@ -50,7 +50,7 @@ namespace arangodb {
 namespace transaction {
 class Context;
 class Methods;
-}
+}  // namespace transaction
 
 namespace velocypack {
 class Builder;
@@ -93,32 +93,33 @@ class Query {
   Query* clone(QueryPart, bool);
 
  public:
-
   QueryString const& queryString() const { return _queryString; }
 
   /// @brief Inject a transaction from outside. Use with care!
-  void injectTransaction (transaction::Methods* trx) {
+  void injectTransaction(transaction::Methods* trx) {
     _trx = trx;
     init();
   }
-  
-  QueryProfile* profile() const {
-    return _profile.get();
-  }
+
+  QueryProfile* profile() const { return _profile.get(); }
 
   QueryOptions const& queryOptions() const { return _queryOptions; }
 
-  void increaseMemoryUsage(size_t value) { _resourceMonitor.increaseMemoryUsage(value); }
-  void decreaseMemoryUsage(size_t value) { _resourceMonitor.decreaseMemoryUsage(value); }
-  
+  void increaseMemoryUsage(size_t value) {
+    _resourceMonitor.increaseMemoryUsage(value);
+  }
+  void decreaseMemoryUsage(size_t value) {
+    _resourceMonitor.decreaseMemoryUsage(value);
+  }
+
   ResourceMonitor* resourceMonitor() { return &_resourceMonitor; }
 
   /// @brief return the start timestamp of the query
   double startTime() const { return _startTime; }
-  
+
   /// @brief return the current runtime of the query
   double runTime(double now) const { return now - _startTime; }
-  
+
   /// @brief return the current runtime of the query
   double runTime() const { return runTime(TRI_microtime()); }
 
@@ -146,27 +147,29 @@ class Query {
   TRI_voc_tick_t id() const { return _id; }
 
   /// @brief getter for _ast
-  Ast* ast() const { 
-    return _ast.get(); 
-  }
+  Ast* ast() const { return _ast.get(); }
 
   /// @brief add a node to the list of nodes
   void addNode(AstNode* node) { _resources.addNode(node); }
 
   /// @brief register a string
   /// the string is freed when the query is destroyed
-  char* registerString(char const* p, size_t length) { return _resources.registerString(p, length); }
+  char* registerString(char const* p, size_t length) {
+    return _resources.registerString(p, length);
+  }
 
   /// @brief register a string
   /// the string is freed when the query is destroyed
-  char* registerString(std::string const& value) { return _resources.registerString(value); }
+  char* registerString(std::string const& value) {
+    return _resources.registerString(value);
+  }
 
   /// @brief register a potentially UTF-8-escaped string
   /// the string is freed when the query is destroyed
-  char* registerEscapedString(char const* p, size_t length, size_t& outLength) { 
-    return _resources.registerEscapedString(p, length, outLength); 
+  char* registerEscapedString(char const* p, size_t length, size_t& outLength) {
+    return _resources.registerEscapedString(p, length, outLength);
   }
-  
+
   /// @brief register an error, with an optional parameter inserted into printf
   /// this also makes the query abort
   void registerError(int, char const* = nullptr);
@@ -177,7 +180,7 @@ class Query {
 
   /// @brief register a warning
   virtual void registerWarning(int, char const* = nullptr);
-  
+
   void prepare(QueryRegistry*, uint64_t queryHash);
 
   /// @brief execute an AQL query
@@ -195,7 +198,7 @@ class Query {
 
   /// @brief get v8 executor
   V8Executor* v8Executor();
-  
+
   /// @brief cache for regular expressions constructed by the query
   RegexCache* regexCache() { return &_regexCache; }
 
@@ -204,7 +207,7 @@ class Query {
 
   /// @brief inject the engine
   void setEngine(ExecutionEngine* engine);
-  
+
   void releaseEngine();
 
   /// @brief return the transaction, if prepared
@@ -230,7 +233,7 @@ class Query {
   /// @brief transform the list of warnings to VelocyPack.
   ///        NOTE: returns nullptr if there are no warnings.
   std::shared_ptr<arangodb::velocypack::Builder> warningsToVelocyPack() const;
-  
+
   /// @brief get a description of the query's current state
   std::string getStateString() const;
 
@@ -238,20 +241,20 @@ class Query {
   Graph const* lookupGraphByName(std::string const& name);
 
   /// @brief return the bind parameters as passed by the user
-  std::shared_ptr<arangodb::velocypack::Builder> bindParameters() const { 
-    return _bindParameters.builder(); 
+  std::shared_ptr<arangodb::velocypack::Builder> bindParameters() const {
+    return _bindParameters.builder();
   }
- 
+
   QueryExecutionState::ValueType state() const { return _state; }
 
  private:
   /// @brief initializes the query
   void init();
-  
+
   /// @brief prepare an AQL query, this is a preparation for execute, but
   /// execute calls it internally. The purpose of this separate method is
-  /// to be able to only prepare a query from VelocyPack and then store it in the
-  /// QueryRegistry.
+  /// to be able to only prepare a query from VelocyPack and then store it in
+  /// the QueryRegistry.
   ExecutionPlan* prepare();
 
   void setExecutionTime();
@@ -284,10 +287,10 @@ class Query {
  private:
   /// @brief query id
   TRI_voc_tick_t _id;
-  
+
   /// @brief current resources and limits used by query
   ResourceMonitor _resourceMonitor;
-  
+
   /// @brief resources used by query
   QueryResources _resources;
 
@@ -302,7 +305,7 @@ class Query {
 
   /// @brief graphs used in query, identified by name
   std::unordered_map<std::string, Graph*> _graphs;
-  
+
   /// @brief the actual query string
   QueryString _queryString;
 
@@ -320,7 +323,7 @@ class Query {
 
   /// @brief collections used in the query
   Collections _collections;
-  
+
   /// @brief _ast, we need an ast to manage the memory for AstNodes, even
   /// if we do not have a parser, because AstNodes occur in plans and engines
   std::unique_ptr<Ast> _ast;
@@ -348,7 +351,7 @@ class Query {
 
   /// @brief cache for regular expressions constructed by the query
   RegexCache _regexCache;
- 
+
   /// @brief query start time
   double _startTime;
 
@@ -364,7 +367,7 @@ class Query {
   /// @brief whether or not the query is a data modification query
   bool _isModificationQuery;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

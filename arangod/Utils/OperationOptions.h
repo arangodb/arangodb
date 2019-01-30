@@ -31,9 +31,16 @@ namespace arangodb {
 // a struct for keeping document modification operations in transactions
 struct OperationOptions {
   OperationOptions()
-      : recoveryData(nullptr), waitForSync(false), keepNull(true),
-        mergeObjects(true), silent(false), ignoreRevs(true),
-        returnOld(false), returnNew(false), isRestore(false),
+      : recoveryData(nullptr),
+        waitForSync(false),
+        keepNull(true),
+        mergeObjects(true),
+        silent(false),
+        ignoreRevs(true),
+        returnOld(false),
+        returnNew(false),
+        isRestore(false),
+        overwrite(false),
         indexOperationMode(Index::OperationMode::normal) {}
 
   // original marker, set by an engine's recovery procedure only!
@@ -64,6 +71,11 @@ struct OperationOptions {
   // this option is there to ensure _key values once set can be restored by replicated and arangorestore
   bool isRestore;
 
+  // for insert operations: do not fail if _key exists but replace the document
+  // in 3.3 this is only supported for restoring data, but not advertised publicly
+  // in 3.4 this option is usable offically, and from a lot more places, e.g. AQL
+  bool overwrite;
+
   // for synchronous replication operations, we have to mark them such that
   // we can deny them if we are a (new) leader, and that we can deny other
   // operation if we are merely a follower. Finally, we must deny replications
@@ -73,6 +85,6 @@ struct OperationOptions {
   Index::OperationMode indexOperationMode;
 };
 
-}
+}  // namespace arangodb
 
 #endif

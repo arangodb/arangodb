@@ -30,9 +30,9 @@
 // Activate for additional debugging:
 // #define TRI_CHECK_MULTI_POINTER_HASH 1
 
+#include "Basics/AssocHelpers.h"
 #include "Basics/AssocMultiHelpers.h"
 #include "Basics/Common.h"
-#include "Basics/AssocHelpers.h"
 #include "Basics/IndexBucket.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/Mutex.h"
@@ -94,8 +94,7 @@ namespace basics {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-template <class Key, class Element, class IndexType,
-          bool useHashCache, class AssocMultiHelper>
+template <class Key, class Element, class IndexType, bool useHashCache, class AssocMultiHelper>
 class AssocMulti {
  private:
   typedef void UserData;
@@ -131,10 +130,10 @@ class AssocMulti {
   IndexType _initialSize;
 
  public:
-  AssocMulti(AssocMultiHelper&& helper,
-             size_t numberBuckets = 1, IndexType initialSize = 64,
-             std::function<std::string()> contextCallback =
-                 []() -> std::string { return ""; })
+  AssocMulti(AssocMultiHelper&& helper, size_t numberBuckets = 1, IndexType initialSize = 64,
+             std::function<std::string()> contextCallback = []() -> std::string {
+               return "";
+             })
       : _helper(std::move(helper)),
 #ifdef TRI_INTERNAL_STATS
         _nrFinds(0),
@@ -240,12 +239,11 @@ class AssocMulti {
   /// @brief adds a key/element to the array
   //////////////////////////////////////////////////////////////////////////////
 
-  Element insert(UserData* userData, Element const& element, bool overwrite,
-                 bool checkEquality) {
-// if the checkEquality flag is not set, we do not check for element
-// equality we use this flag to speed up initial insertion into the
-// index, i.e. when the index is built for a collection and we know
-// for sure no duplicate elements will be inserted
+  Element insert(UserData* userData, Element const& element, bool overwrite, bool checkEquality) {
+    // if the checkEquality flag is not set, we do not check for element
+    // equality we use this flag to speed up initial insertion into the
+    // index, i.e. when the index is built for a collection and we know
+    // for sure no duplicate elements will be inserted
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
     check(userData, true, true);
@@ -255,8 +253,7 @@ class AssocMulti {
     uint64_t hashByKey = _helper.HashElement(userData, element, true);
     Bucket& b = _buckets[hashByKey & _bucketsMask];
 
-    auto result =
-        doInsert(userData, element, hashByKey, b, overwrite, checkEquality);
+    auto result = doInsert(userData, element, hashByKey, b, overwrite, checkEquality);
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
     check(userData, true, true);
@@ -308,23 +305,20 @@ class AssocMulti {
     inserters->reserve(_buckets.size());
 
     std::shared_ptr<std::vector<std::vector<DocumentsPerBucket>>> allBuckets;
-    allBuckets.reset(
-        new std::vector<std::vector<DocumentsPerBucket>>(_buckets.size()));
+    allBuckets.reset(new std::vector<std::vector<DocumentsPerBucket>>(_buckets.size()));
 
-    auto doInsertBinding = [&](
-        UserData* userData, Element const& element, uint64_t hashByKey,
-        Bucket& b, bool const overwrite, bool const checkEquality) -> Element {
-      return doInsert(userData, element, hashByKey, b, overwrite,
-                      checkEquality);
+    auto doInsertBinding = [&](UserData* userData, Element const& element,
+                               uint64_t hashByKey, Bucket& b, bool const overwrite,
+                               bool const checkEquality) -> Element {
+      return doInsert(userData, element, hashByKey, b, overwrite, checkEquality);
     };
 
     try {
       // create inserter tasks to be dispatched later by partitioners
       for (size_t i = 0; i < allBuckets->size(); i++) {
         std::shared_ptr<Inserter> worker;
-        worker.reset(new Inserter(queue, contextDestroyer, &_buckets,
-                                  doInsertBinding, i, contextCreator(),
-                                  allBuckets));
+        worker.reset(new Inserter(queue, contextDestroyer, &_buckets, doInsertBinding,
+                                  i, contextCreator(), allBuckets));
         inserters->emplace_back(worker);
       }
       // enqueue partitioner tasks
@@ -341,9 +335,8 @@ class AssocMulti {
 
         std::shared_ptr<Partitioner> worker;
         worker.reset(new Partitioner(queue, AssocMultiHelper::HashElement, contextDestroyer,
-                                     data, lower, upper, contextCreator(),
-                                     bucketFlags, bucketMapLocker, allBuckets,
-                                     inserters));
+                                     data, lower, upper, contextCreator(), bucketFlags,
+                                     bucketMapLocker, allBuckets, inserters));
         queue->enqueue(worker);
       }
     } catch (...) {
@@ -406,9 +399,8 @@ class AssocMulti {
   /// @brief adds a key/element to the array
   //////////////////////////////////////////////////////////////////////////////
 
-  Element doInsert(UserData* userData, Element const& element,
-                   uint64_t hashByKey, Bucket& b, bool const overwrite,
-                   bool const checkEquality) {
+  Element doInsert(UserData* userData, Element const& element, uint64_t hashByKey,
+                   Bucket& b, bool const overwrite, bool const checkEquality) {
     // if the checkEquality flag is not set, we do not check for element
     // equality we use this flag to speed up initial insertion into the
     // index, i.e. when the index is built for a collection and we know
@@ -442,11 +434,10 @@ class AssocMulti {
 
     // Now find the first slot with an entry with the same key
     // that is the start of a linked list, or a free slot:
-    while (
-        b._table[i].value &&
-        (b._table[i].prev != INVALID_INDEX ||
-         (useHashCache && b._table[i].readHashCache() != hashByKey) ||
-         !_helper.IsEqualElementElementByKey(userData, element, b._table[i].value))) {
+    while (b._table[i].value &&
+           (b._table[i].prev != INVALID_INDEX ||
+            (useHashCache && b._table[i].readHashCache() != hashByKey) ||
+            !_helper.IsEqualElementElementByKey(userData, element, b._table[i].value))) {
       i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
       // update statistics
@@ -482,8 +473,7 @@ class AssocMulti {
 
     // Now find a new home for element in this linked list:
     uint64_t hashByElm;
-    IndexType j =
-        findElementPlace(userData, b, element, checkEquality, hashByElm);
+    IndexType j = findElementPlace(userData, b, element, checkEquality, hashByElm);
 
     Element old = b._table[j].value;
 
@@ -585,8 +575,7 @@ class AssocMulti {
   //////////////////////////////////////////////////////////////////////////////
 
   void insertFurther(UserData* userData, Bucket& b, Element const& element,
-                     uint64_t hashByKey, uint64_t hashByElm,
-                     IndexType firstPosition) {
+                     uint64_t hashByKey, uint64_t hashByElm, IndexType firstPosition) {
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
     check(userData, true, true);
 #endif
@@ -711,8 +700,7 @@ class AssocMulti {
   /// @brief looks up all elements with the same key as a given element
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<Element>* lookupWithElementByKey(UserData* userData,
-                                               Element const& element,
+  std::vector<Element>* lookupWithElementByKey(UserData* userData, Element const& element,
                                                size_t limit = 0) const {
     auto result = std::make_unique<std::vector<Element>>();
     lookupWithElementByKey(userData, element, *result, limit);
@@ -729,8 +717,7 @@ class AssocMulti {
   //////////////////////////////////////////////////////////////////////////////
 
   void lookupWithElementByKey(UserData* userData, Element const& element,
-                              std::vector<Element>& result,
-                              size_t limit = 0) const {
+                              std::vector<Element>& result, size_t limit = 0) const {
     if (limit > 0 && result.size() >= limit) {
       // The vector is full, nothing to do.
       return;
@@ -748,11 +735,10 @@ class AssocMulti {
 #endif
 
     // search the table
-    while (
-        b._table[i].value &&
-        (b._table[i].prev != INVALID_INDEX ||
-         (useHashCache && b._table[i].readHashCache() != hashByKey) ||
-         !_helper.IsEqualElementElementByKey(userData, element, b._table[i].value))) {
+    while (b._table[i].value &&
+           (b._table[i].prev != INVALID_INDEX ||
+            (useHashCache && b._table[i].readHashCache() != hashByKey) ||
+            !_helper.IsEqualElementElementByKey(userData, element, b._table[i].value))) {
       i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
       _nrProbesF++;
@@ -793,10 +779,8 @@ class AssocMulti {
   ///        have been in the result before.
   //////////////////////////////////////////////////////////////////////////////
 
-  void lookupWithElementByKeyContinue(UserData* userData,
-                                      Element const& element,
-                                      std::vector<Element>& result,
-                                      size_t limit = 0) const {
+  void lookupWithElementByKeyContinue(UserData* userData, Element const& element,
+                                      std::vector<Element>& result, size_t limit = 0) const {
     if (limit > 0 && result.size() >= limit) {
       // The vector is full, nothing to do.
       return;
@@ -818,8 +802,7 @@ class AssocMulti {
       while (b._table[i].value &&
              (b._table[i].prev != INVALID_INDEX ||
               (useHashCache && b._table[i].readHashCache() != hashByKey) ||
-              !_helper.IsEqualElementElementByKey(userData, element,
-                                           b._table[i].value))) {
+              !_helper.IsEqualElementElementByKey(userData, element, b._table[i].value))) {
         i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
         _nrProbes++;
@@ -850,8 +833,7 @@ class AssocMulti {
   /// continuation
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<Element>* lookupByKeyContinue(UserData* userData,
-                                            Element const& element,
+  std::vector<Element>* lookupByKeyContinue(UserData* userData, Element const& element,
                                             size_t limit = 0) const {
     return lookupWithElementByKeyContinue(userData, element, limit);
   }
@@ -867,8 +849,7 @@ class AssocMulti {
   //////////////////////////////////////////////////////////////////////////////
 
   void lookupByKeyContinue(UserData* userData, Element const& element,
-                           std::vector<Element>& result,
-                           size_t limit = 0) const {
+                           std::vector<Element>& result, size_t limit = 0) const {
     lookupWithElementByKeyContinue(userData, element, result, limit);
   }
 
@@ -914,8 +895,7 @@ class AssocMulti {
         moveEntry(*b, j, i);
         if (useHashCache) {
           // We need to exchange the hashCache value by that of the key:
-          b->_table[i].writeHashCache(
-              _helper.HashElement(userData, b->_table[i].value, true));
+          b->_table[i].writeHashCache(_helper.HashElement(userData, b->_table[i].value, true));
         }
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
         check(userData, false, false);
@@ -982,8 +962,7 @@ class AssocMulti {
       nrCollisions += b._nrCollisions;
     }
     return nrUsed > 0
-               ? static_cast<double>(nrUsed - nrCollisions) /
-                     static_cast<double>(nrUsed)
+               ? static_cast<double>(nrUsed - nrCollisions) / static_cast<double>(nrUsed)
                : 1.0;
   }
 
@@ -1020,8 +999,9 @@ class AssocMulti {
     std::string const cb(_contextCallback());
 
     targetSize = TRI_NearPrime(targetSize);
-    
-    PerformanceLogScope logScope(std::string("multi hash-resize ") + cb + ", target size: " + std::to_string(targetSize));
+
+    PerformanceLogScope logScope(std::string("multi hash-resize ") + cb +
+                                 ", target size: " + std::to_string(targetSize));
 
     Bucket copy;
     copy.allocate(targetSize);
@@ -1126,8 +1106,7 @@ class AssocMulti {
             IndexType hashIndex;
             if (b._table[i].prev == INVALID_INDEX) {
               // We are the first in a linked list.
-              uint64_t hashByKey =
-                  _helper.HashElement(userData, b._table[i].value, true);
+              uint64_t hashByKey = _helper.HashElement(userData, b._table[i].value, true);
               hashIndex = hashToIndex(hashByKey);
               j = hashIndex % b._nrAlloc;
               if (useHashCache && b._table[i].readHashCache() != hashByKey) {
@@ -1137,7 +1116,7 @@ class AssocMulti {
                 if (!b._table[k].value ||
                     (b._table[k].prev == INVALID_INDEX &&
                      _helper.IsEqualElementElementByKey(userData, b._table[i].value,
-                                                 b._table[k].value))) {
+                                                        b._table[k].value))) {
                   ok = false;
                   std::cout << "Alarm pos bykey: " << i << std::endl;
                 }
@@ -1145,8 +1124,7 @@ class AssocMulti {
               }
             } else {
               // We are not the first in a linked list.
-              uint64_t hashByElm =
-                  _helper.HashElement(userData, b._table[i].value, false);
+              uint64_t hashByElm = _helper.HashElement(userData, b._table[i].value, false);
               hashIndex = hashToIndex(hashByElm);
               j = hashIndex % b._nrAlloc;
               if (useHashCache && b._table[i].readHashCache() != hashByElm) {
@@ -1155,7 +1133,7 @@ class AssocMulti {
               for (k = j; k != i;) {
                 if (!b._table[k].value ||
                     _helper.IsEqualElementElement(userData, b._table[i].value,
-                                           b._table[k].value)) {
+                                                  b._table[k].value)) {
                   ok = false;
                   std::cout << "Alarm unique: " << k << ", " << i << std::endl;
                 }
@@ -1194,8 +1172,7 @@ class AssocMulti {
     IndexType i = hashindex % b._nrAlloc;
 
     while (b._table[i].value &&
-           (!checkEquality ||
-            (useHashCache && b._table[i].readHashCache() != hashByElm) ||
+           (!checkEquality || (useHashCache && b._table[i].readHashCache() != hashByElm) ||
             !_helper.IsEqualElementElement(userData, element, b._table[i].value))) {
       i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
@@ -1209,8 +1186,7 @@ class AssocMulti {
   /// @brief find an element or its place by key or element identity
   //////////////////////////////////////////////////////////////////////////////
 
-  IndexType lookupByElement(UserData* userData, Element const& element,
-                            Bucket*& buck) const {
+  IndexType lookupByElement(UserData* userData, Element const& element, Bucket*& buck) const {
     // This performs a complete lookup for an element. It returns a slot
     // number. This slot is either empty or contains an element that
     // compares equal to element.
@@ -1222,11 +1198,10 @@ class AssocMulti {
 
     // Now find the first slot with an entry with the same key
     // that is the start of a linked list, or a free slot:
-    while (
-        b._table[i].value &&
-        (b._table[i].prev != INVALID_INDEX ||
-         (useHashCache && b._table[i].readHashCache() != hashByKey) ||
-         !_helper.IsEqualElementElementByKey(userData, element, b._table[i].value))) {
+    while (b._table[i].value &&
+           (b._table[i].prev != INVALID_INDEX ||
+            (useHashCache && b._table[i].readHashCache() != hashByKey) ||
+            !_helper.IsEqualElementElementByKey(userData, element, b._table[i].value))) {
       i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
       _nrProbes++;
@@ -1307,7 +1282,7 @@ class AssocMulti {
       // If it is the start of one of the linked lists, we need to hash
       // by key, otherwise, we hash by the full identity of the element:
       uint64_t hash = _helper.HashElement(userData, b._table[j].value,
-                                   b._table[j].prev == INVALID_INDEX);
+                                          b._table[j].prev == INVALID_INDEX);
       IndexType hashIndex = hashToIndex(hash);
       IndexType k = hashIndex % b._nrAlloc;
       if (!isBetween(i, k, j)) {
@@ -1332,7 +1307,7 @@ class AssocMulti {
   }
 };
 
-}  // namespace arangodb::basics
+}  // namespace basics
 }  // namespace arangodb
 
 #endif

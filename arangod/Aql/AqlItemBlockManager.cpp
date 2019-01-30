@@ -27,15 +27,14 @@
 using namespace arangodb::aql;
 
 /// @brief create the manager
-AqlItemBlockManager::AqlItemBlockManager(ResourceMonitor* resourceMonitor) 
+AqlItemBlockManager::AqlItemBlockManager(ResourceMonitor* resourceMonitor)
     : _resourceMonitor(resourceMonitor) {}
 
 /// @brief destroy the manager
-AqlItemBlockManager::~AqlItemBlockManager() { }
+AqlItemBlockManager::~AqlItemBlockManager() {}
 
 /// @brief request a block with the specified size
-AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems,
-                                                RegisterId nrRegs) {
+AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrRegs) {
   // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "requesting AqlItemBlock of " << nrItems << " x " << nrRegs;
   size_t const targetSize = nrItems * nrRegs;
 
@@ -63,9 +62,9 @@ AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems,
     block = new AqlItemBlock(_resourceMonitor, nrItems, nrRegs);
     // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "created AqlItemBlock with dimensions " << block->size() << " x " << block->getNrRegs();
   }
- 
+
   TRI_ASSERT(block != nullptr);
-  TRI_ASSERT(block->size() == nrItems);   
+  TRI_ASSERT(block->size() == nrItems);
   TRI_ASSERT(block->getNrRegs() == nrRegs);
   TRI_ASSERT(block->capacity() >= targetSize);
   return block;
@@ -76,7 +75,7 @@ void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) {
   TRI_ASSERT(block != nullptr);
 
   // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "returning AqlItemBlock of dimensions " << block->size() << " x " << block->getNrRegs();
-  
+
   size_t const targetSize = block->size() * block->getNrRegs();
   size_t const i = Bucket::getId(targetSize);
   TRI_ASSERT(i < NumBuckets);

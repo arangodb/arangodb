@@ -41,7 +41,7 @@ class GossipCallback : public arangodb::ClusterCommCallback {
   Agent* _agent;
   size_t _version;
 };
-}
-}  // namespace
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

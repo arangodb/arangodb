@@ -39,8 +39,7 @@ using namespace arangodb::rest;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVersionHandler::RestVersionHandler(GeneralRequest* request,
-                                       GeneralResponse* response)
+RestVersionHandler::RestVersionHandler(GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
 bool RestVersionHandler::isDirect() const { return true; }
@@ -51,11 +50,11 @@ RestStatus RestVersionHandler::execute() {
   result.add("server", VPackValue("arango"));
   result.add("version", VPackValue(ARANGODB_VERSION));
 
-  #ifdef USE_ENTERPRISE
-    result.add("license", VPackValue("enterprise"));
-  #else
-    result.add("license", VPackValue("community"));
-  #endif
+#ifdef USE_ENTERPRISE
+  result.add("license", VPackValue("enterprise"));
+#else
+  result.add("license", VPackValue("community"));
+#endif
 
   bool found;
   std::string const& detailsStr = _request->value("details", found);
@@ -66,8 +65,8 @@ RestStatus RestVersionHandler::execute() {
     Version::getVPack(result);
 
     if (application_features::ApplicationServer::server != nullptr) {
-      auto server = application_features::ApplicationServer::server
-                        ->getFeature<ServerFeature>("Server");
+      auto server = application_features::ApplicationServer::server->getFeature<ServerFeature>(
+          "Server");
       result.add("mode", VPackValue(server->operationModeString()));
     }
 

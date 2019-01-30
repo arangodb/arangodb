@@ -53,7 +53,7 @@ struct RocksDBDocumentOperation;
 namespace transaction {
 class Methods;
 struct Options;
-}
+}  // namespace transaction
 class TransactionCollection;
 class RocksDBMethods;
 
@@ -96,28 +96,18 @@ class RocksDBTransactionState final : public TransactionState {
   }
 
   void prepareOperation(TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
-                        StringRef const& key,
-                        TRI_voc_document_operation_e operationType);
+                        StringRef const& key, TRI_voc_document_operation_e operationType);
 
   /// @brief add an operation for a transaction collection
-  RocksDBOperationResult addOperation(
-      TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
-      TRI_voc_document_operation_e operationType, uint64_t operationSize,
-      uint64_t keySize);
-  
+  RocksDBOperationResult addOperation(TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
+                                      TRI_voc_document_operation_e operationType,
+                                      uint64_t operationSize, uint64_t keySize);
+
   /// @brief add an internal operation for a transaction
-  RocksDBOperationResult addInternalOperation(
-      uint64_t operationSize, uint64_t keySize);
+  RocksDBOperationResult addInternalOperation(uint64_t operationSize, uint64_t keySize);
 
   RocksDBMethods* rocksdbMethods();
 
-  /// @brief insert a snapshot into a (not yet started) transaction.
-  ///        Only ever valid on a trx in CREATED state
-  void donateSnapshot(rocksdb::Snapshot const* snap);
-  /// @brief steal snapshot of this transaction.
-  /// Does not work on a single operation
-  rocksdb::Snapshot const* stealReadSnapshot();
-  
   /// @brief Rocksdb sequence number of snapshot. Works while trx
   ///        has either a snapshot or a transaction
   rocksdb::SequenceNumber sequenceNumber() const;
@@ -212,7 +202,8 @@ class RocksDBKeyLeaser {
   inline RocksDBKey* builder() const { return _key; }
   inline RocksDBKey* operator->() const { return _key; }
   inline RocksDBKey* get() const { return _key; }
-  inline RocksDBKey& ref() const {return *_key; }
+  inline RocksDBKey& ref() const { return *_key; }
+
  private:
   RocksDBTransactionState* _rtrx;
   bool _parallel;

@@ -27,7 +27,7 @@
 
 using namespace arangodb;
 using namespace arangodb::options;
-  
+
 double ReplicationTimeoutFeature::timeoutFactor = 1.0;
 double ReplicationTimeoutFeature::timeoutPer4k = 0.1;
 double ReplicationTimeoutFeature::lowerLimit = 0.5;
@@ -43,17 +43,19 @@ ReplicationTimeoutFeature::ReplicationTimeoutFeature(application_features::Appli
 void ReplicationTimeoutFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("cluster", "Configure the cluster");
 
-  options->addOption("--cluster.synchronous-replication-timeout-factor",
-                     "all synchronous replication timeouts are multiplied by this factor",
-                     new DoubleParameter(&timeoutFactor));
+  options->addOption(
+      "--cluster.synchronous-replication-timeout-factor",
+      "all synchronous replication timeouts are multiplied by this factor",
+      new DoubleParameter(&timeoutFactor));
 
   options->addHiddenOption("--cluster.synchronous-replication-timeout-per-4k",
-                     "all synchronous replication timeouts are increased by this amount per 4096 bytes (in seconds)",
-                     new DoubleParameter(&timeoutPer4k));
+                           "all synchronous replication timeouts are increased "
+                           "by this amount per 4096 bytes (in seconds)",
+                           new DoubleParameter(&timeoutPer4k));
 }
 
 void ReplicationTimeoutFeature::prepare() {
-  // set minimum timeout. this depends on the selected storage engine 
+  // set minimum timeout. this depends on the selected storage engine
   TRI_ASSERT(EngineSelectorFeature::ENGINE != nullptr);
   lowerLimit = EngineSelectorFeature::ENGINE->minimumSyncReplicationTimeout();
 }

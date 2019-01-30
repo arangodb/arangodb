@@ -52,8 +52,6 @@ SslFeature::SslFeature(application_features::ApplicationServer* server)
   startsAfter("Greetings");
 }
 
-void SslFeature::prepare() {
-}
+void SslFeature::prepare() {}
 
-void SslFeature::unprepare() {
-}
+void SslFeature::unprepare() {}

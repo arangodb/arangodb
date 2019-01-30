@@ -46,19 +46,15 @@ class SocketUnixDomain final : public Socket {
 
   void setNonBlocking(bool v) override { _socket.non_blocking(v); }
 
-  size_t writeSome(basics::StringBuffer* buffer,
-                   asio_ns::error_code& ec) override;
+  size_t writeSome(basics::StringBuffer* buffer, asio_ns::error_code& ec) override;
 
-  void asyncWrite(asio_ns::mutable_buffers_1 const& buffer,
-                  AsyncHandler const& handler) override;
+  void asyncWrite(asio_ns::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override;
 
-  size_t readSome(asio_ns::mutable_buffers_1 const& buffer,
-                  asio_ns::error_code& ec) override;
+  size_t readSome(asio_ns::mutable_buffers_1 const& buffer, asio_ns::error_code& ec) override;
 
   std::size_t available(asio_ns::error_code& ec) override;
 
-  void asyncRead(asio_ns::mutable_buffers_1 const& buffer,
-                 AsyncHandler const& handler) override;
+  void asyncRead(asio_ns::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override;
 
  protected:
   bool sslHandshake() override { return false; }
@@ -70,6 +66,6 @@ class SocketUnixDomain final : public Socket {
   asio_ns::local::stream_protocol::socket _socket;
   asio_ns::local::stream_protocol::acceptor::endpoint_type _peerEndpoint;
 };
-}
+}  // namespace arangodb
 
 #endif

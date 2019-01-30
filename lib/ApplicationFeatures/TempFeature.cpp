@@ -23,8 +23,8 @@
 #include "ApplicationFeatures/TempFeature.h"
 
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/files.h"
 #include "Basics/FileUtils.h"
+#include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"

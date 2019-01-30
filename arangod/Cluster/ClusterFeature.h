@@ -45,14 +45,10 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void start() override final;
   void beginShutdown() override final;
   void unprepare() override final;
-  
-  std::vector<std::string> agencyEndpoints() const {
-    return _agencyEndpoints;
-  }
 
-  std::string agencyPrefix() const {
-    return _agencyPrefix;
-  }
+  std::vector<std::string> agencyEndpoints() const { return _agencyEndpoints; }
+
+  std::string agencyPrefix() const { return _agencyPrefix; }
 
  private:
   std::vector<std::string> _agencyEndpoints;
@@ -74,13 +70,13 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string const agencyCallbacksPath() const {
     return "/_api/agency/agency-callbacks";
   };
-  
-  std::string const clusterRestPath() const {
-    return "/_api/cluster";
-  };
+
+  std::string const clusterRestPath() const { return "/_api/cluster"; };
 
   void setUnregisterOnShutdown(bool);
-  bool createWaitsForSyncReplication() const { return _createWaitsForSyncReplication; };
+  bool createWaitsForSyncReplication() const {
+    return _createWaitsForSyncReplication;
+  };
   double indexCreationTimeout() const { return _indexCreationTimeout; }
 
   void stop() override final;
@@ -96,6 +92,6 @@ class ClusterFeature : public application_features::ApplicationFeature {
   // FIXME: remove in > 3.3
   std::string _myLocalInfo;
 };
-}
+}  // namespace arangodb
 
 #endif

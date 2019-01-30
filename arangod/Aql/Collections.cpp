@@ -47,8 +47,7 @@ Collection* Collections::get(std::string const& name) const {
   return nullptr;
 }
 
-Collection* Collections::add(std::string const& name,
-                             AccessMode::Type accessType) {
+Collection* Collections::add(std::string const& name, AccessMode::Type accessType) {
   // check if collection already is in our map
   TRI_ASSERT(!name.empty());
   auto it = _collections.find(name);

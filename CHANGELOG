@@ -1,31 +1,185 @@
-v3.3.20 (XXXX-XX-XX)
+v3.3.22 (2019-01-25)
 --------------------
+
+* fix broken validation of tick range in arangodump
+
+* upgraded arangodb starter version to 0.14.0
+
+* upgraded arangosync version to 0.6.2
+
+* fixed an issue where a crashed coordinator can lead to some Foxx queue jobs
+  erroneously either left hanging or being restarted
+
+* fix issue #7900: Bind values of `null` are not replaced by
+  empty string anymore, when toggling between json and table
+  view in the web-ui.
+
+* Use base64url to encode and decode JWT parts.
+
+* added AQL function `CHECK_DOCUMENT` for document validity checks
+
+* added arangorestore option `--cleanup-duplicate-attributes` to clean up input documents
+  with redundant attribute names
+
+  Importing such documents without the option set will make arangorestore fail with an
+  error, and setting the option will make the restore process clean up the input by using
+  just the first specified value for each redundant attribute.
+
+* the arangorestore options `--default-number-of-shards` and `--default-replication-factor`
+  are now deprecated in favor of the much more powerful options `--number-of-shards`
+  and `--replication-factor`
+
+  The new options `--number-of-shards` and `--replication-factor` allow specifying
+  default values for the number of shards and the replication factor, resp. for all
+  restored collections. If specified, these default values will be used regardless
+  of whether the number of shards or the replication factor values are already present
+  in the metadata of the dumped collections.
+
+  It is also possible to override the values on a per-collection level by specifying
+  the options multiple times, e.g.
+
+      --number-of-shards 2 --number-of-shards mycollection=3 --number-of-shards test=4
+
+  The above will create all collections with 2 shards, except the collection "mycollection"
+  (3 shards) and "test" (4 shards).
+
+  By omitting the default value, it is also possible to use the number of shards/replication
+  factor values from the dump for all collections but the explicitly specified ones, e.g.
+
+      --number-of-shards mycollection=3 --number-of-shards test=4
+
+  This will use the number of shards as specified in the dump, except for the collections
+  "mycollection" and "test".
+
+  The `--replication-factor` option works similarly.
+
+* Added `--server.jwt-secret-keyfile` option.
+
+* validate uniqueness of attribute names in AQL in cases in which it was not
+  done before. When constructing AQL objects via object literals, there was
+  no validation about object attribute names being unique. For example, it was
+  possible to create objects with duplicate attribute names as follows:
+
+      INSERT { a: 1, a: 2 } INTO collection
+
+  This resulted in a document having two "a" attributes, which is obviously
+  undesired. Now, when an attribute value is used multiple times, only the first
+  assigned value will be used for that attribute in AQL. It is not possible to
+  specify the same attribute multiple times and overwrite the attribute's value
+  with by that. That means in the above example, the value of "a" will be 1,
+  and not 2.
+  This changes the behavior for overriding attribute values in AQL compared to
+  previous versions of ArangoDB, as previous versions in some cases allowed
+  duplicate attribute names in objects/documents (which is undesired) and in
+  other cases used the _last_ value assigned to an attribute instead of the _first_
+  value. In order to explicitly override a value in an existing object, use the
+  AQL MERGE function.
+
+  To avoid all these issues, users are encouraged to use unambiguous attribute
+  names in objects/documents in AQL. Outside of AQL, specifying the same attribute
+  multiple times may even result in a parse error, e.g. when sending such data
+  to ArangoDB's HTTP REST API.
+
+* when detecting parse errors in the JSON input sent to the restore API, now
+  abort with a proper error containing the problem description instead of aborting
+  but hiding there was a problem.
+
+* remove Swagger map files from the build to reduce package sizes
+
+* do not respond with an internal error in case of JSON parse errors detected
+  in incoming HTTP requests
+
+* fixed issue #7834: AQL Query crashes instance
+
+
+v3.3.21 (2018-12-13)
+--------------------
+
+* fix thread shutdown in _WIN32 builds
+
+  Previous versions used a wrong comparison logic to determine the current
+  thread id when shutting down a thread, leading to threads hanging in their
+  destructors on thread shutdown
+
+* fixed TypeError being thrown instead of validation errors when Foxx manifest
+  validation fails
+
+* fixed issue #7586: a running query within the user interface was not shown
+  if the active view was `Running Queries` or `Slow Query History`.
+
+* improve Windows installer error messages, fix Windows installer backup routine
+  and exit code handling
+
+* make AQL REMOVE operations use less memory with the RocksDB storage engine
+
+  the previous implementation of batch removals read everything to remove into
+  memory first before carrying out the first remove operation. The new version
+  will only read in about 1000 documents each time and then remove these. Queries
+  such as
+
+      FOR doc IN collection FILTER ... REMOVE doc IN collection
+
+  will benefit from this change in terms of memory usage.
+
+
+v3.3.20 (2018-11-28)
+--------------------
+
+* upgraded arangodb starter version to 0.13.9
+
+* Added RocksDB option `--rocksdb.total-write-buffer-size` to limit total memory
+  usage across all RocksDB in-memory write buffers
+
+  The total amount of data to build up in all in-memory buffers (backed by log
+  files). This option, together with the block cache size configuration option,
+  can be used to limit memory usage. If set to 0, the memory usage is not limited.
+  This is the default setting in 3.3. The default setting may be adjusted in
+  future versions of ArangoDB.
+
+  If set to a value greater than 0, this will cap the memory usage for write buffers,
+  but may have an effect on write performance.
+
+* Added RocksDB configuration option `--rocksdb.enforce-block-cache-size-limit`
+
+  Whether or not the maximum size of the RocksDB block cache is strictly enforced.
+  This option can be set to limit the memory usage of the block cache to at most the
+  specified size. If then inserting a data block into the cache would exceed the
+  cache's capacity, the data block will not be inserted. If the flag is not set,
+  a data block may still get inserted into the cache. It is evicted later, but the
+  cache may temporarily grow beyond its capacity limit.
+
+* Export version and storage engine in cluster health
+
+* Potential fix for issue #7407: arangorestore very slow converting from
+  mmfiles to rocksdb
+
+* Updated joi library (Web UI), improved foxx mount path validation
 
 * fix internal issue #2786: improved confirmation dialog when clicking the
   Truncate button in the Web UI
 
 * fix for supervision, which started failing servers using old transient store
- 
+
 * fixed Foxx queues not retrying jobs with infinite `maxFailures`
 
 * Fixed a race condition in a coordinator, it could happen in rare cases and
   only with the maintainer mode enabled if the creation of a collection is in
-	progress and at the same time a deletion is forced.
+  progress and at the same time a deletion is forced.
 
 * disable startup warning for Linux kernel variable `vm.overcommit_memory` settings
   values of 0 or 1.
   Effectively `overcommit_memory` settings value of 0 or 1 fix two memory-allocation
-  related issues with the default memory allocator used in ArangoDB release builds on 
-  64bit Linux. 
+  related issues with the default memory allocator used in ArangoDB release builds on
+  64bit Linux.
   The issues will remain when running with an `overcommit_memory` settings value of 2,
   so this is now discouraged.
   Setting `overcommit_memory` to 0 or 1 (0 is the Linux kernel's default) fixes issues
   with increasing numbers of memory mappings for the arangod process (which may lead
   to an out-of-memory situation if the kernel's maximum number of mappings threshold
   is hit) and an increasing amount of memory that the kernel counts as "committed".
-  With an `overcommit_memory` setting of 0 or 1, an arangod process may either be 
+  With an `overcommit_memory` setting of 0 or 1, an arangod process may either be
   killed by the kernel's OOM killer or will die with a segfault when accessing memory
-  it has allocated before but the kernel could not provide later on. This is still 
+  it has allocated before but the kernel could not provide later on. This is still
   more acceptable than the kernel not providing any more memory to the process when
   there is still physical memory left, which may have occurred with an `overcommit_memory`
   setting of 2 after the arangod process had done lots of allocations.
@@ -45,9 +199,6 @@ v3.3.20 (XXXX-XX-XX)
 * fixes some graph data parsing issues in the ui, e.g. cleaning up duplicate
   edges inside the graph viewer.
 
-* added option `--rocksdb.total-write-buffer-size` to limit total memory usage
-  across all RocksDB in-memory write buffers
-
 * in a cluster environment, the arangod process now exits if wrong credentials
   are used during the startup process.
 
@@ -62,6 +213,14 @@ v3.3.20 (XXXX-XX-XX)
   could have been used elsewhere in the query, e.g. as a return value. The fix
   will create a copy of the array and sort the copy, leaving the original array
   untouched.
+
+* fixed a bug when cluster indexes were usable for queries, while
+  still being built on db servers
+
+* fix move leader shard: wait until all but the old leader are in sync.
+  This fixes some unstable tests.
+
+* cluster health features more elaborate agent records
 
 
 v3.3.19 (2018-10-20)
@@ -200,7 +359,6 @@ v3.3.17 (2018-10-04)
   or "Tag mismatch" and connections being closed
 
 * agency endpoint updates now go through RAFT
-
 
 v3.3.16 (2018-09-19)
 --------------------

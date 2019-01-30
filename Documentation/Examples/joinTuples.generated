@@ -20,14 +20,10 @@
   },
   {
     <span class="hljs-string">"user"</span>: <span class="hljs-string">"Abigail"</span>,
-    <span class="hljs-string">"friendId"</span>: <span class="hljs-number">4</span>
-  },
-  {
-    <span class="hljs-string">"user"</span>: <span class="hljs-string">"Abigail"</span>,
     <span class="hljs-string">"friendId"</span>: <span class="hljs-number">2</span>
   },
   {
-    <span class="hljs-string">"user"</span>: <span class="hljs-string">"Mary"</span>,
+    <span class="hljs-string">"user"</span>: <span class="hljs-string">"Abigail"</span>,
     <span class="hljs-string">"friendId"</span>: <span class="hljs-number">4</span>
   },
   {
@@ -35,19 +31,23 @@
     <span class="hljs-string">"friendId"</span>: <span class="hljs-number">1</span>
   },
   {
+    <span class="hljs-string">"user"</span>: <span class="hljs-string">"Mary"</span>,
+    <span class="hljs-string">"friendId"</span>: <span class="hljs-number">4</span>
+  },
+  {
+    <span class="hljs-string">"user"</span>: <span class="hljs-string">"Mariah"</span>,
+    <span class="hljs-string">"friendId"</span>: <span class="hljs-number">2</span>
+  },
+  {
     <span class="hljs-string">"user"</span>: <span class="hljs-string">"Mariah"</span>,
     <span class="hljs-string">"friendId"</span>: <span class="hljs-number">1</span>
   },
   {
-    <span class="hljs-string">"user"</span>: <span class="hljs-string">"Mariah"</span>,
+    <span class="hljs-string">"user"</span>: <span class="hljs-string">"Fred"</span>,
     <span class="hljs-string">"friendId"</span>: <span class="hljs-number">2</span>
   },
   {
     <span class="hljs-string">"user"</span>: <span class="hljs-string">"Fred"</span>,
     <span class="hljs-string">"friendId"</span>: <span class="hljs-number">5</span>
-  },
-  {
-    <span class="hljs-string">"user"</span>: <span class="hljs-string">"Fred"</span>,
-    <span class="hljs-string">"friendId"</span>: <span class="hljs-number">2</span>
   }
 ]

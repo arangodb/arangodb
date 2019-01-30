@@ -283,7 +283,7 @@ Returns the job id.
 
     See *script.maxFailures*.
 
-  * **repeatTimes**: `number | Function` (Default: `0`)
+  * **repeatTimes**: `number` (Default: `0`)
 
     If set to a positive number, the job will be repeated this many times (not counting recovery when using *maxFailures*). If set to a negative number or `Infinity`, the job will be repeated indefinitely. If set to `0` the job will not be repeated.
 
