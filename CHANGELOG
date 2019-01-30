@@ -9,6 +9,8 @@ v3.4.3 (XXXX-XX-XX)
   usage of the executed query. In a cluster, the value contains the peak memory
   usage across all shards, but it is not summed up across shards.
 
+* fixes in data masking: better documentation, default phone number
+
 
 v3.4.2 (2019-01-24)
 -------------------
