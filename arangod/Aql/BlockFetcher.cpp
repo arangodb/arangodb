@@ -30,6 +30,9 @@ ExecutionState BlockFetcher<passBlocksThrough>::prefetchBlock(size_t atMost) {
   ExecutionState state;
   std::unique_ptr<AqlItemBlock> block;
   std::tie(state, block) = upstreamBlock().getSome(atMost);
+    TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
 
   if (state == ExecutionState::WAITING) {
     TRI_ASSERT(block == nullptr);
