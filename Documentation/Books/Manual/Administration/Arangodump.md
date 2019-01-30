@@ -359,7 +359,7 @@ are not contained in an attribute value of which the attribute name is
 
 If you specify a path and the attribute value is an array then the
 masking decision is applied to each element of the array as if this
-was the value of the attribute.
+was the value of the attribute. This applies to arrays inside the array too.
 
 If the attribute value is an object, then it is ignored and the attribute
 does not get masked. To mask nested fields, specify the full path for each
@@ -397,7 +397,10 @@ because `email` is a leaf attribute. The document:
 {
   "email" : [
     "address one",
-    "address two"
+    "address two",
+    [
+      "address three"
+    ]
   ]
 }
 ```
@@ -408,13 +411,16 @@ because `email` is a leaf attribute. The document:
 {
   "email" : [
     "xxxxxss xne",
-    "xxxxxss xwo"
+    "xxxxxss xwo",
+    [
+      "xxxxxss xxxee"
+    ]
   ]
 }
 ```
 
 … because the masking is applied to each array element individually
-(the array is "unfolded"). The document:
+including the elements of the sub-array. The document:
 
 ```json
 {
@@ -722,8 +728,8 @@ Masking settings:
 
 - `path` (string): which field to mask
 - `type` (string): masking function name `"integer"`
-- `lower` (number, _default: `-1`_): smallest integer value to return
-- `upper` (number, _default: `1`_): largest integer value to return
+- `lower` (number, _default: `-100`_): smallest integer value to return
+- `upper` (number, _default: `100`_): largest integer value to return
 
 **Example**
 
