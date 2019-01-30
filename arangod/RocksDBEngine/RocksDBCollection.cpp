@@ -401,11 +401,12 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
       _indexes.emplace_back(buildIdx);
       res = buildIdx->fillIndexBackground(locker);
     } else {
-      res = buildIdx->fillIndexForeground();  // will lock again internally
+      res = buildIdx->fillIndexForeground();
     }
   }
-  locker.lock(); // always lock to avoid inconsistencies
-
+  TRI_ASSERT(res.fail() || locker.isLocked());  // always lock to avoid inconsistencies
+  locker.lock();
+  
   // Step 5. cleanup
   if (res.ok()) {
     {
