@@ -44,7 +44,6 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/V8Context.h"
 #include "V8/v8-buffer.h"
