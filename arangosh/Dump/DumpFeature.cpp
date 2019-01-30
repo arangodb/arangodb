@@ -910,6 +910,13 @@ Result DumpFeature::storeDumpJson(VPackSlice const& body, std::string const& dbN
   }
   LOG_TOPIC(INFO, Logger::DUMP) << "Last tick provided by server is: " << tickString;
 
+  // set the local max tick value
+  uint64_t maxTick = basics::StringUtils::uint64(tickString);
+  // check if the user specified a max tick value
+  if (_options.tickEnd > 0 && maxTick > _options.tickEnd) {
+    maxTick = _options.tickEnd;
+  }
+
   try {
     VPackBuilder meta;
     meta.openObject();
