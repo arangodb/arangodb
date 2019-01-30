@@ -148,7 +148,8 @@ SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine, CollectNode cons
       _lastBlock(nullptr),
       _expressionRegister(ExecutionNode::MaxRegisterId),
       _collectRegister(ExecutionNode::MaxRegisterId),
-      _variableNames() {
+      _variableNames(),
+      _registersInherited(false) {
   for (auto const& p : en->_groupVariables) {
     // We know that planRegisters() has been run, so
     // getPlanNode()->_registerPlan is set up
@@ -257,6 +258,10 @@ std::pair<ExecutionState, arangodb::Result> SortedCollectBlock::initializeCursor
   _currentGroup.reset();
   _pos = 0;
   _lastBlock = nullptr;
+  if (_result != nullptr) {
+    auto r = _result.release();
+    returnBlock(r);
+  }
 
   return res;
 }
@@ -354,6 +359,8 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     // group.
     size_t maxBlockSize = _groupRegisters.empty() ? 1 : atMost;
     _result.reset(requestBlock(maxBlockSize, nrOutRegs));
+    // We got a new block, we need to inherit registers for it
+    _registersInherited = false;
 
     TRI_ASSERT(nrInRegs <= _result->getNrRegs());
   }
@@ -386,6 +393,11 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     AqlItemBlock* cur = _buffer.front();
     TRI_ASSERT(cur != nullptr);
 
+    if (!skipping && !_registersInherited) {
+      inheritRegisters(cur, _result.get(), 0);
+      _registersInherited = true;
+    }
+
     // if the current block changed, move the last block's infos into the
     // current group; then delete it.
     if (_lastBlock != nullptr && _lastBlock != cur) {
@@ -401,13 +413,6 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     // returns true iff a group was emitted (so false when called on the first
     // empty current group, while still initializing it)
     bool emittedGroup = updateCurrentGroup(cur, _pos, _result.get());
-
-    if (!skipping && emittedGroup && _skipped == 0) {
-      // clone registers from input block when the first row of every block is
-      // written. Note that the input variables that are still available after
-      // the block can only be constant over all input rows.
-      inheritRegisters(cur, _result.get(), 0);
-    }
 
     AqlItemBlock* removedBlock = advanceCursor(1, emittedGroup ? 1 : 0);
     TRI_ASSERT(removedBlock == nullptr || removedBlock == _lastBlock);
@@ -484,7 +489,7 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
     // re-use already copied AqlValues
     TRI_ASSERT(cur != nullptr);
     for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
-      res->setValue(row, i, res->getValueReference(0, i));
+      res->emplaceValue(row, i, res->getValueReference(0, i));
       // Note: if this throws, then all values will be deleted
       // properly since the first one is.
     }
