@@ -26,6 +26,11 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/encoding.h"
 #include "Cluster/ClusterFeature.h"
+
+#if USE_ENTERPRISE
+  #include "Enterprise/Ldap/LdapFeature.h"
+#endif
+
 #include "GeneralServer/AuthenticationFeature.h"
 #include "MMFiles/MMFilesWalRecoverState.h"
 #include "RestServer/DatabaseFeature.h"
@@ -65,6 +70,10 @@ struct FlushFeatureSetup {
     features.emplace_back(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(server), false); // required for MMFilesWalRecoverState constructor
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required for TRI_vocbase_t
     features.emplace_back(new arangodb::V8DealerFeature(server), false); // required for DatabaseFeature::createDatabase(...)
+
+    #if USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+    #endif
 
     for (auto& f: features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
