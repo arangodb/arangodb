@@ -1056,7 +1056,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
 
   ::appendAsString(trx, adapter, invokeFN);
 
-  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  icu::UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   unicodeStr.toUpper(nullptr);
   unicodeStr.toUTF8String(ucInvokeFN);
 
@@ -1468,12 +1468,12 @@ AqlValue Functions::FindFirst(ExpressionContext* expressionContext,
   transaction::StringBufferLeaser buf1(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buf1->stringBuffer());
   ::appendAsString(trx, adapter, value);
-  UnicodeString uBuf(buf1->c_str(), static_cast<int32_t>(buf1->length()));
+  icu::UnicodeString uBuf(buf1->c_str(), static_cast<int32_t>(buf1->length()));
 
   transaction::StringBufferLeaser buf2(trx);
   arangodb::basics::VPackStringBufferAdapter adapter2(buf2->stringBuffer());
   ::appendAsString(trx, adapter2, searchValue);
-  UnicodeString uSearchBuf(buf2->c_str(), static_cast<int32_t>(buf2->length()));
+  icu::UnicodeString uSearchBuf(buf2->c_str(), static_cast<int32_t>(buf2->length()));
   auto searchLen = uSearchBuf.length();
 
   int64_t startOffset = 0;
@@ -1507,7 +1507,7 @@ AqlValue Functions::FindFirst(ExpressionContext* expressionContext,
 
   auto locale = LanguageFeature::instance()->getLocale();
   UErrorCode status = U_ZERO_ERROR;
-  StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
+  icu::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
 
   for (int pos = search.first(status); U_SUCCESS(status) && pos != USEARCH_DONE;
        pos = search.next(status)) {
@@ -1534,12 +1534,12 @@ AqlValue Functions::FindLast(ExpressionContext* expressionContext, transaction::
   transaction::StringBufferLeaser buf1(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buf1->stringBuffer());
   ::appendAsString(trx, adapter, value);
-  UnicodeString uBuf(buf1->c_str(), static_cast<int32_t>(buf1->length()));
+  icu::UnicodeString uBuf(buf1->c_str(), static_cast<int32_t>(buf1->length()));
 
   transaction::StringBufferLeaser buf2(trx);
   arangodb::basics::VPackStringBufferAdapter adapter2(buf2->stringBuffer());
   ::appendAsString(trx, adapter2, searchValue);
-  UnicodeString uSearchBuf(buf2->c_str(), static_cast<int32_t>(buf2->length()));
+  icu::UnicodeString uSearchBuf(buf2->c_str(), static_cast<int32_t>(buf2->length()));
   auto searchLen = uSearchBuf.length();
 
   int64_t startOffset = 0;
@@ -1575,7 +1575,7 @@ AqlValue Functions::FindLast(ExpressionContext* expressionContext, transaction::
 
   auto locale = LanguageFeature::instance()->getLocale();
   UErrorCode status = U_ZERO_ERROR;
-  StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
+  icu::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
 
   int foundPos = -1;
   for (int pos = search.first(status); U_SUCCESS(status) && pos != USEARCH_DONE;
@@ -1620,14 +1620,14 @@ AqlValue Functions::Reverse(ExpressionContext* expressionContext, transaction::M
     transaction::StringBufferLeaser buf1(trx);
     arangodb::basics::VPackStringBufferAdapter adapter(buf1->stringBuffer());
     ::appendAsString(trx, adapter, value);
-    UnicodeString uBuf(buf1->c_str(), static_cast<int32_t>(buf1->length()));
+    icu::UnicodeString uBuf(buf1->c_str(), static_cast<int32_t>(buf1->length()));
     // reserve the result buffer, but need to set empty afterwards:
-    UnicodeString result;
+    icu::UnicodeString result;
     result.getBuffer(uBuf.length());
     result = "";
-    StringCharacterIterator iter(uBuf, uBuf.length());
+    icu::StringCharacterIterator iter(uBuf, uBuf.length());
     UChar c = iter.previous();
-    while (c != CharacterIterator::DONE) {
+    while (c != icu::CharacterIterator::DONE) {
       result.append(c);
       c = iter.previous();
     }
@@ -1933,7 +1933,7 @@ AqlValue Functions::Lower(ExpressionContext*, transaction::Methods* trx,
 
   ::appendAsString(trx, adapter, value);
 
-  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  icu::UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   unicodeStr.toLower(nullptr);
   unicodeStr.toUTF8String(utf8);
 
@@ -1951,7 +1951,7 @@ AqlValue Functions::Upper(ExpressionContext*, transaction::Methods* trx,
 
   ::appendAsString(trx, adapter, value);
 
-  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  icu::UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   unicodeStr.toUpper(nullptr);
   unicodeStr.toUTF8String(utf8);
 
@@ -1969,7 +1969,7 @@ AqlValue Functions::Substring(ExpressionContext*, transaction::Methods* trx,
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
   ::appendAsString(trx, adapter, value);
-  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  icu::UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
 
   int32_t offset =
       static_cast<int32_t>(extractFunctionParameterValue(parameters, 1).toInt64(trx));
@@ -2002,8 +2002,8 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
   AqlValue const& search = extractFunctionParameterValue(parameters, 1);
   int64_t limit = -1;
   AqlValueMaterializer materializer(trx);
-  std::vector<UnicodeString> matchPatterns;
-  std::vector<UnicodeString> replacePatterns;
+  std::vector<icu::UnicodeString> matchPatterns;
+  std::vector<icu::UnicodeString> replacePatterns;
   bool replaceWasPlainString = false;
 
   if (search.isObject()) {
@@ -2020,13 +2020,13 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
     for (auto const& it : VPackObjectIterator(slice)) {
       arangodb::velocypack::ValueLength length;
       char const* str = it.key.getString(length);
-      matchPatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
+      matchPatterns.push_back(icu::UnicodeString(str, static_cast<int32_t>(length)));
       if (!it.value.isString()) {
         ::registerInvalidArgumentWarning(expressionContext, AFN);
         return AqlValue(AqlValueHintNull());
       }
       str = it.value.getStringUnchecked(length);
-      replacePatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
+      replacePatterns.push_back(icu::UnicodeString(str, static_cast<int32_t>(length)));
     }
   } else {
     if (parameters.size() < 2) {
@@ -2046,7 +2046,7 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
         }
         arangodb::velocypack::ValueLength length;
         char const* str = it.getStringUnchecked(length);
-        matchPatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
+        matchPatterns.push_back(icu::UnicodeString(str, static_cast<int32_t>(length)));
       }
     } else {
       if (!search.isString()) {
@@ -2055,7 +2055,7 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
       }
       arangodb::velocypack::ValueLength length;
       char const* str = slice.getString(length);
-      matchPatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
+      matchPatterns.push_back(icu::UnicodeString(str, static_cast<int32_t>(length)));
     }
     if (parameters.size() > 2) {
       AqlValue const& replace = extractFunctionParameterValue(parameters, 2);
@@ -2069,7 +2069,7 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
           }
           arangodb::velocypack::ValueLength length;
           char const* str = it.getString(length);
-          replacePatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
+          replacePatterns.push_back(icu::UnicodeString(str, static_cast<int32_t>(length)));
         }
       } else if (replace.isString()) {
         // If we have a string as replacement,
@@ -2077,7 +2077,7 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
         replaceWasPlainString = true;
         arangodb::velocypack::ValueLength length;
         char const* str = rslice.getString(length);
-        replacePatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
+        replacePatterns.push_back(icu::UnicodeString(str, static_cast<int32_t>(length)));
       } else {
         ::registerInvalidArgumentWarning(expressionContext, AFN);
         return AqlValue(AqlValueHintNull());
@@ -2096,16 +2096,16 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
   ::appendAsString(trx, adapter, value);
-  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  icu::UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
 
   auto locale = LanguageFeature::instance()->getLocale();
   // we can't copy the search instances, thus use pointers:
-  std::vector<std::unique_ptr<StringSearch>> searchVec;
+  std::vector<std::unique_ptr<icu::StringSearch>> searchVec;
   searchVec.reserve(matchPatterns.size());
   UErrorCode status = U_ZERO_ERROR;
   for (auto const& searchStr : matchPatterns) {
     // create a vector of string searches
-    searchVec.push_back(std::make_unique<StringSearch>(searchStr, unicodeStr,
+    searchVec.push_back(std::make_unique<icu::StringSearch>(searchStr, unicodeStr,
                                                        locale, nullptr, status));
     if (U_FAILURE(status)) {
       ::registerICUWarning(expressionContext, AFN, status);
@@ -2131,7 +2131,7 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
     srchResultPtrs.push_back(std::make_pair(pos, len));
   }
 
-  UnicodeString result;
+  icu::UnicodeString result;
   int32_t lastStart = 0;
   int64_t count = 0;
   while (true) {
@@ -2246,8 +2246,8 @@ AqlValue Functions::Left(ExpressionContext*, transaction::Methods* trx,
 
   ::appendAsString(trx, adapter, value);
 
-  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
-  UnicodeString left = unicodeStr.tempSubString(0, unicodeStr.moveIndex32(0, length));
+  icu::UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  icu::UnicodeString left = unicodeStr.tempSubString(0, unicodeStr.moveIndex32(0, length));
 
   left.toUTF8String(utf8);
   return AqlValue(utf8);
@@ -2266,8 +2266,8 @@ AqlValue Functions::Right(ExpressionContext*, transaction::Methods* trx,
 
   ::appendAsString(trx, adapter, value);
 
-  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
-  UnicodeString right = unicodeStr.tempSubString(
+  icu::UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  icu::UnicodeString right = unicodeStr.tempSubString(
       unicodeStr.moveIndex32(unicodeStr.length(), -static_cast<int32_t>(length)));
 
   right.toUTF8String(utf8);
@@ -2275,7 +2275,7 @@ AqlValue Functions::Right(ExpressionContext*, transaction::Methods* trx,
 }
 
 namespace {
-void ltrimInternal(uint32_t& startOffset, uint32_t& endOffset, UnicodeString& unicodeStr,
+void ltrimInternal(uint32_t& startOffset, uint32_t& endOffset, icu::UnicodeString& unicodeStr,
                    uint32_t numWhitespaces, UChar32* spaceChars) {
   for (; startOffset < endOffset; startOffset = unicodeStr.moveIndex32(startOffset, 1)) {
     bool found = false;
@@ -2292,7 +2292,7 @@ void ltrimInternal(uint32_t& startOffset, uint32_t& endOffset, UnicodeString& un
     }
   }  // for
 }
-void rtrimInternal(uint32_t& startOffset, uint32_t& endOffset, UnicodeString& unicodeStr,
+void rtrimInternal(uint32_t& startOffset, uint32_t& endOffset, icu::UnicodeString& unicodeStr,
                    uint32_t numWhitespaces, UChar32* spaceChars) {
   for (uint32_t codeUnitPos = unicodeStr.moveIndex32(unicodeStr.length(), -1);
        startOffset < codeUnitPos;
@@ -2323,10 +2323,10 @@ AqlValue Functions::Trim(ExpressionContext* expressionContext, transaction::Meth
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
   ::appendAsString(trx, adapter, value);
-  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  icu::UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
 
   int64_t howToTrim = 0;
-  UnicodeString whitespace("\r\n\t ");
+  icu::UnicodeString whitespace("\r\n\t ");
 
   if (parameters.size() == 2) {
     AqlValue const& optional = extractFunctionParameterValue(parameters, 1);
@@ -2341,7 +2341,7 @@ AqlValue Functions::Trim(ExpressionContext* expressionContext, transaction::Meth
       buffer->clear();
       ::appendAsString(trx, adapter, optional);
       whitespace =
-          UnicodeString(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+          icu::UnicodeString(buffer->c_str(), static_cast<int32_t>(buffer->length()));
     }
   }
 
@@ -2365,7 +2365,7 @@ AqlValue Functions::Trim(ExpressionContext* expressionContext, transaction::Meth
     rtrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
   }
 
-  UnicodeString result = unicodeStr.tempSubString(startOffset, endOffset - startOffset);
+  icu::UnicodeString result = unicodeStr.tempSubString(startOffset, endOffset - startOffset);
   std::string utf8;
   result.toUTF8String(utf8);
   return AqlValue(utf8);
@@ -2380,14 +2380,14 @@ AqlValue Functions::LTrim(ExpressionContext* expressionContext, transaction::Met
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
   ::appendAsString(trx, adapter, value);
-  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
-  UnicodeString whitespace("\r\n\t ");
+  icu::UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  icu::UnicodeString whitespace("\r\n\t ");
 
   if (parameters.size() == 2) {
     AqlValue const& pWhitespace = extractFunctionParameterValue(parameters, 1);
     buffer->clear();
     ::appendAsString(trx, adapter, pWhitespace);
-    whitespace = UnicodeString(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+    whitespace = icu::UnicodeString(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   }
 
   uint32_t numWhitespaces = whitespace.countChar32();
@@ -2404,7 +2404,7 @@ AqlValue Functions::LTrim(ExpressionContext* expressionContext, transaction::Met
 
   ltrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
 
-  UnicodeString result = unicodeStr.tempSubString(startOffset, endOffset - startOffset);
+  icu::UnicodeString result = unicodeStr.tempSubString(startOffset, endOffset - startOffset);
   std::string utf8;
   result.toUTF8String(utf8);
   return AqlValue(utf8);
@@ -2419,14 +2419,14 @@ AqlValue Functions::RTrim(ExpressionContext* expressionContext, transaction::Met
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
   ::appendAsString(trx, adapter, value);
-  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
-  UnicodeString whitespace("\r\n\t ");
+  icu::UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  icu::UnicodeString whitespace("\r\n\t ");
 
   if (parameters.size() == 2) {
     AqlValue const& pWhitespace = extractFunctionParameterValue(parameters, 1);
     buffer->clear();
     ::appendAsString(trx, adapter, pWhitespace);
-    whitespace = UnicodeString(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+    whitespace = icu::UnicodeString(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   }
 
   uint32_t numWhitespaces = whitespace.countChar32();
@@ -2443,7 +2443,7 @@ AqlValue Functions::RTrim(ExpressionContext* expressionContext, transaction::Met
 
   rtrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
 
-  UnicodeString result = unicodeStr.tempSubString(startOffset, endOffset - startOffset);
+  icu::UnicodeString result = unicodeStr.tempSubString(startOffset, endOffset - startOffset);
   std::string utf8;
   result.toUTF8String(utf8);
   return AqlValue(utf8);
@@ -2463,7 +2463,7 @@ AqlValue Functions::Like(ExpressionContext* expressionContext, transaction::Meth
   ::appendAsString(trx, adapter, regex);
 
   // the matcher is owned by the context!
-  ::RegexMatcher* matcher =
+  icu::RegexMatcher* matcher =
       expressionContext->buildLikeMatcher(buffer->c_str(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
@@ -2540,10 +2540,10 @@ AqlValue Functions::Split(ExpressionContext* expressionContext, transaction::Met
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
   Stringify(trx, adapter, aqlValueToSplit.slice());
-  UnicodeString valueToSplit(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  icu::UnicodeString valueToSplit(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   bool isEmptyExpression = false;
   // the matcher is owned by the context!
-  ::RegexMatcher* matcher =
+  icu::RegexMatcher* matcher =
       expressionContext->buildSplitMatcher(aqlSeparatorExpression, trx, isEmptyExpression);
 
   if (matcher == nullptr) {
@@ -2564,7 +2564,7 @@ AqlValue Functions::Split(ExpressionContext* expressionContext, transaction::Met
 
   std::string utf8;
   static const uint16_t nrResults = 16;
-  UnicodeString uResults[nrResults];
+  icu::UnicodeString uResults[nrResults];
   int64_t totalCount = 0;
   while (true) {
     UErrorCode errorCode = U_ZERO_ERROR;
@@ -2648,7 +2648,7 @@ AqlValue Functions::RegexMatches(ExpressionContext* expressionContext,
   bool isEmptyExpression = (buffer->length() == 0);
 
   // the matcher is owned by the context!
-  ::RegexMatcher* matcher =
+  icu::RegexMatcher* matcher =
       expressionContext->buildRegexMatcher(buffer->c_str(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
@@ -2659,7 +2659,7 @@ AqlValue Functions::RegexMatches(ExpressionContext* expressionContext,
   buffer->clear();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   ::appendAsString(trx, adapter, value);
-  UnicodeString valueToMatch(buffer->c_str(), static_cast<uint32_t>(buffer->length()));
+  icu::UnicodeString valueToMatch(buffer->c_str(), static_cast<uint32_t>(buffer->length()));
 
   VPackBuilder result;
   result.openArray();
@@ -2681,7 +2681,7 @@ AqlValue Functions::RegexMatches(ExpressionContext* expressionContext,
   }
 
   for (int i = 0; i <= matcher->groupCount(); i++) {
-    UnicodeString match = matcher->group(i, status);
+    icu::UnicodeString match = matcher->group(i, status);
     if (U_FAILURE(status)) {
       ::registerICUWarning(expressionContext, AFN, status);
       return AqlValue(AqlValueHintNull());
@@ -2742,7 +2742,7 @@ AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
   bool isEmptyExpression = (buffer->length() == 0);
 
   // the matcher is owned by the context!
-  ::RegexMatcher* matcher =
+  icu::RegexMatcher* matcher =
       expressionContext->buildRegexMatcher(buffer->c_str(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
@@ -2753,7 +2753,7 @@ AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
   buffer->clear();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   ::appendAsString(trx, adapter, value);
-  UnicodeString valueToSplit(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  icu::UnicodeString valueToSplit(buffer->c_str(), static_cast<int32_t>(buffer->length()));
 
   VPackBuilder result;
   result.openArray();
@@ -2767,7 +2767,7 @@ AqlValue Functions::RegexSplit(ExpressionContext* expressionContext,
 
   std::string utf8;
   static const uint16_t nrResults = 16;
-  UnicodeString uResults[nrResults];
+  icu::UnicodeString uResults[nrResults];
   int64_t totalCount = 0;
   while (true) {
     UErrorCode errorCode = U_ZERO_ERROR;
@@ -2839,7 +2839,7 @@ AqlValue Functions::RegexTest(ExpressionContext* expressionContext,
   ::appendAsString(trx, adapter, regex);
 
   // the matcher is owned by the context!
-  ::RegexMatcher* matcher =
+  icu::RegexMatcher* matcher =
       expressionContext->buildRegexMatcher(buffer->c_str(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
@@ -2881,7 +2881,7 @@ AqlValue Functions::RegexReplace(ExpressionContext* expressionContext,
   ::appendAsString(trx, adapter, regex);
 
   // the matcher is owned by the context!
-  ::RegexMatcher* matcher =
+  icu::RegexMatcher* matcher =
       expressionContext->buildRegexMatcher(buffer->c_str(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {

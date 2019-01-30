@@ -35,7 +35,7 @@ configure_file(
 )
 
 set(IResearch_INCLUDE_DIR 
-  "${PROJECT_SOURCE_DIR}/core" 
+  "${PROJECT_SOURCE_DIR}/core;${CMAKE_CURRENT_BINARY_DIR}/" 
   CACHE INTERNAL
   ""
 )
@@ -398,133 +398,102 @@ if(MSVC)
     ${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
  )
 endif()
-
-target_include_directories(${IResearch_TARGET_NAME}-shared
-  PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-  PRIVATE ${ICU_INCLUDE_DIR}
-)
-
-target_include_directories(${IResearch_TARGET_NAME}-static
-  PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-  PRIVATE ${ICU_INCLUDE_DIR}
-)
-
-# setup CRT
-if(MSVC)
-  target_include_directories(${IResearch_TARGET_NAME}-shared-scrt
+if (NOT FORCE_ICU)
+  target_include_directories(${IResearch_TARGET_NAME}-shared
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
     PRIVATE ${ICU_INCLUDE_DIR}
-  )
+    )
 
-  target_include_directories(${IResearch_TARGET_NAME}-static-scrt
+  target_include_directories(${IResearch_TARGET_NAME}-static
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
     PRIVATE ${ICU_INCLUDE_DIR}
-  )
-endif()
+    )
 
-# setup MSVC specific compiler flags
-if(MSVC)
-  target_compile_options(${IResearch_TARGET_NAME}-shared
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-    PRIVATE "/EHa"
-  )
+  # setup CRT
+  if(MSVC)
+    target_include_directories(${IResearch_TARGET_NAME}-shared-scrt
+      PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+      PRIVATE ${ICU_INCLUDE_DIR}
+      )
 
-  target_compile_options(${IResearch_TARGET_NAME}-static
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-    PRIVATE "/EHa"
-  )
+    target_include_directories(${IResearch_TARGET_NAME}-static-scrt
+      PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+      PRIVATE ${ICU_INCLUDE_DIR}
+      )
+  endif()
 
-  target_compile_options(${IResearch_TARGET_NAME}-shared-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-    PRIVATE "/EHa"
-  )
+  # setup MSVC specific compiler flags
+  if(MSVC)
+    target_compile_options(${IResearch_TARGET_NAME}-shared
+      PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+      PRIVATE "/EHa"
+      )
 
-  target_compile_options(${IResearch_TARGET_NAME}-static-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
-    PRIVATE "/EHa"
-  )
-endif()
+    target_compile_options(${IResearch_TARGET_NAME}-static
+      PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+      PRIVATE "/EHa"
+      )
 
-set_target_properties(${IResearch_TARGET_NAME}-shared
-  PROPERTIES
-  PREFIX lib
-  IMPORT_PREFIX lib
-  OUTPUT_NAME iresearch
-  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;BOOST_ALL_DYN_LINK;$<$<CONFIG:Debug>:YYDEBUG=1>"
-  CXX_VISIBILITY_PRESET hidden
-)
+    target_compile_options(${IResearch_TARGET_NAME}-shared-scrt
+      PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
+      PRIVATE "/EHa"
+      )
 
-set_target_properties(${IResearch_TARGET_NAME}-static
-  PROPERTIES
-  PREFIX lib
-  IMPORT_PREFIX lib
-  OUTPUT_NAME iresearch-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-)
+    target_compile_options(${IResearch_TARGET_NAME}-static-scrt
+      PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
+      PRIVATE "/EHa"
+      )
+  endif()
 
-# setup CRT
-if(MSVC)
-  set_target_properties(${IResearch_TARGET_NAME}-shared-scrt
+  set_target_properties(${IResearch_TARGET_NAME}-shared
     PROPERTIES
     PREFIX lib
     IMPORT_PREFIX lib
-    OUTPUT_NAME iresearch-scrt
-    COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;BOOST_ALL_DYN_LINK"
+    OUTPUT_NAME iresearch
+    COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;BOOST_ALL_DYN_LINK;$<$<CONFIG:Debug>:YYDEBUG=1>"
     CXX_VISIBILITY_PRESET hidden
-  )
+    )
 
-  set_target_properties(${IResearch_TARGET_NAME}-static-scrt
+  set_target_properties(${IResearch_TARGET_NAME}-static
     PROPERTIES
     PREFIX lib
     IMPORT_PREFIX lib
-    OUTPUT_NAME iresearch-scrt-s
+    OUTPUT_NAME iresearch-s
     COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
- )
-endif()
+    )
 
-if (MSVC)
-  set(MSVC_ONLY_LIBRARIES "Dbghelp.lib")
-else()
-  set(MSVC_ONLY_LIBRARIES "")
-endif()
+  # setup CRT
+  if(MSVC)
+    set_target_properties(${IResearch_TARGET_NAME}-shared-scrt
+      PROPERTIES
+      PREFIX lib
+      IMPORT_PREFIX lib
+      OUTPUT_NAME iresearch-scrt
+      COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;BOOST_ALL_DYN_LINK"
+      CXX_VISIBILITY_PRESET hidden
+      )
 
-if (USE_SIMDCOMP)
-  set(SIMD_LIBRARY_SHARED "simdcomp-shared")
-  set(SIMD_LIBRARY_STATIC "simdcomp-static")
-endif()
+    set_target_properties(${IResearch_TARGET_NAME}-static-scrt
+      PROPERTIES
+      PREFIX lib
+      IMPORT_PREFIX lib
+      OUTPUT_NAME iresearch-scrt-s
+      COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+      )
+  endif()
 
-target_link_libraries(${IResearch_TARGET_NAME}-shared
-  ${GCOV_LIBRARY}
-  ${BFD_SHARED_LIBS}
-  ${Boost_SHARED_sharedRT_LIBRARIES}
-  ${Lz4_SHARED_LIB}
-  $<TARGET_PROPERTY:icu-shared,IMPORTED_LOCATION> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
-  $<TARGET_PROPERTY:icu-shared,INTERFACE_LINK_LIBRARIES> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
-  ${Unwind_SHARED_LIBS}
-  ${DL_LIBRARY}
-  ${MSVC_ONLY_LIBRARIES}
-  ${SIMD_LIBRARY_SHARED}
-)
+  if (MSVC)
+    set(MSVC_ONLY_LIBRARIES "Dbghelp.lib")
+  else()
+    set(MSVC_ONLY_LIBRARIES "")
+  endif()
 
-target_link_libraries(${IResearch_TARGET_NAME}-static
-  ${IResearch_TARGET_NAME}-analyzer-delimited-static
-  ${IResearch_TARGET_NAME}-analyzer-text-static
-  ${IResearch_TARGET_NAME}-format-1_0-static
-  ${IResearch_TARGET_NAME}-scorer-bm25-static
-  ${IResearch_TARGET_NAME}-scorer-tfidf-static
-  ${GCOV_LIBRARY}
-  ${BFD_STATIC_LIBS}
-  ${Lz4_STATIC_LIB}
-  icu-static
-  ${Unwind_STATIC_LIBS}
-  ${DL_LIBRARY}
-  ${MSVC_ONLY_LIBRARIES}
-  ${SIMD_LIBRARY_STATIC}
-)
+  if (USE_SIMDCOMP)
+    set(SIMD_LIBRARY_SHARED "simdcomp-shared")
+    set(SIMD_LIBRARY_STATIC "simdcomp-static")
+  endif()
 
-# setup CRT
-if(MSVC)
-  target_link_libraries(${IResearch_TARGET_NAME}-shared-scrt
+  target_link_libraries(${IResearch_TARGET_NAME}-shared
     ${GCOV_LIBRARY}
     ${BFD_SHARED_LIBS}
     ${Boost_SHARED_sharedRT_LIBRARIES}
@@ -534,14 +503,15 @@ if(MSVC)
     ${Unwind_SHARED_LIBS}
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
-  )
+    ${SIMD_LIBRARY_SHARED}
+    )
 
-  target_link_libraries(${IResearch_TARGET_NAME}-static-scrt
-    ${IResearch_TARGET_NAME}-analyzer-delimited-static-scrt
-    ${IResearch_TARGET_NAME}-analyzer-text-static-scrt
-    ${IResearch_TARGET_NAME}-format-1_0-static-scrt
-    ${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
-    ${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
+  target_link_libraries(${IResearch_TARGET_NAME}-static
+    ${IResearch_TARGET_NAME}-analyzer-delimited-static
+    ${IResearch_TARGET_NAME}-analyzer-text-static
+    ${IResearch_TARGET_NAME}-format-1_0-static
+    ${IResearch_TARGET_NAME}-scorer-bm25-static
+    ${IResearch_TARGET_NAME}-scorer-tfidf-static
     ${GCOV_LIBRARY}
     ${BFD_STATIC_LIBS}
     ${Lz4_STATIC_LIB}
@@ -549,237 +519,639 @@ if(MSVC)
     ${Unwind_STATIC_LIBS}
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
-  )
-endif()
+    ${SIMD_LIBRARY_STATIC}
+    )
 
-if (MSVC)
-  unset(IResearch_STATIC_LIBRARIES)
+  # setup CRT
+  if(MSVC)
+    target_link_libraries(${IResearch_TARGET_NAME}-shared-scrt
+      ${GCOV_LIBRARY}
+      ${BFD_SHARED_LIBS}
+      ${Boost_SHARED_sharedRT_LIBRARIES}
+      ${Lz4_SHARED_LIB}
+      $<TARGET_PROPERTY:icu-shared,IMPORTED_LOCATION> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
+      $<TARGET_PROPERTY:icu-shared,INTERFACE_LINK_LIBRARIES> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
+      ${Unwind_SHARED_LIBS}
+      ${DL_LIBRARY}
+      ${MSVC_ONLY_LIBRARIES}
+      )
 
-  foreach(ELEMENT
-    ${BFD_STATIC_LIBS}
-    "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_RELEASE}>"
-    "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_RELEASE}>"
-    ${Unwind_STATIC_LIBS}
-    "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
-    "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
-    "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
-    "$<TARGET_FILE:lz4_static>"
-    "$<TARGET_FILE:stemmer-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
-  )
-    set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} \"${ELEMENT}\"")
-  endforeach()
+    target_link_libraries(${IResearch_TARGET_NAME}-static-scrt
+      ${IResearch_TARGET_NAME}-analyzer-delimited-static-scrt
+      ${IResearch_TARGET_NAME}-analyzer-text-static-scrt
+      ${IResearch_TARGET_NAME}-format-1_0-static-scrt
+      ${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
+      ${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
+      ${GCOV_LIBRARY}
+      ${BFD_STATIC_LIBS}
+      ${Lz4_STATIC_LIB}
+      icu-static
+      ${Unwind_STATIC_LIBS}
+      ${DL_LIBRARY}
+      ${MSVC_ONLY_LIBRARIES}
+      )
+  endif()
 
-  set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
-  set(IResearch_STATIC_LIBRARIES_CMD "lib.exe \"/OUT:${IResearch_STATIC_LIBRARIES_OUT}\" \"$<TARGET_FILE:${IResearch_TARGET_NAME}-static>\" ${IResearch_STATIC_LIBRARIES}")
-  string(REPLACE " " ";" IResearch_STATIC_LIBRARIES_CMD "${IResearch_STATIC_LIBRARIES_CMD}") # COMMAND requires ';' instead of ' ' (this is required for MSVC, cannot use VERBATIM)
-  add_custom_command(
-    OUTPUT "${IResearch_STATIC_LIBRARIES_OUT}"
-    DEPENDS ${IResearch_TARGET_NAME}-static
-    COMMAND ${IResearch_STATIC_LIBRARIES_CMD}
-    #VERBATIM - this causes error: "The input line is too long."
-  )
+  if (MSVC)
+    unset(IResearch_STATIC_LIBRARIES)
 
-  add_library(${IResearch_TARGET_NAME}-static-allinone
-    STATIC IMPORTED GLOBAL
-  )
+    foreach(ELEMENT
+        ${BFD_STATIC_LIBS}
+        "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_RELEASE}>"
+        "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_RELEASE}>"
+        ${Unwind_STATIC_LIBS}
+        "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
+        "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
+        "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
+        "$<TARGET_FILE:lz4_static>"
+        "$<TARGET_FILE:stemmer-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
+        )
+      set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} \"${ELEMENT}\"")
+    endforeach()
 
-  add_custom_target(${IResearch_TARGET_NAME}-static-allinone-build
-    DEPENDS "${IResearch_STATIC_LIBRARIES_OUT}"
-  )
+    set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    set(IResearch_STATIC_LIBRARIES_CMD "lib.exe \"/OUT:${IResearch_STATIC_LIBRARIES_OUT}\" \"$<TARGET_FILE:${IResearch_TARGET_NAME}-static>\" ${IResearch_STATIC_LIBRARIES}")
+    add_custom_command(
+      OUTPUT "${IResearch_STATIC_LIBRARIES_OUT}"
+      DEPENDS ${IResearch_TARGET_NAME}-static
+      COMMAND ${IResearch_STATIC_LIBRARIES_CMD}
+      VERBATIM
+      )
 
-  set_target_properties(${IResearch_TARGET_NAME}-static-allinone
-    PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static,INTERFACE_INCLUDE_DIRECTORIES>"
-    IMPORTED_LOCATION "${IResearch_STATIC_LIBRARIES_OUT}"
-  )
+    add_library(${IResearch_TARGET_NAME}-static-allinone
+      STATIC IMPORTED GLOBAL
+      )
 
-  set_property(TARGET ${IResearch_TARGET_NAME}-static-allinone
-    PROPERTY
-    INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
-    ${ATOMIC_LIBRARY} # non-static library
-    ${DL_LIBRARY} # non-static library
-    ${MSVC_ONLY_LIBRARIES} # non-static library
-  )
+    add_custom_target(${IResearch_TARGET_NAME}-static-allinone-build
+      DEPENDS "${IResearch_STATIC_LIBRARIES_OUT}"
+      )
 
-  add_dependencies(${IResearch_TARGET_NAME}-static-allinone
-    ${IResearch_TARGET_NAME}-static-allinone-build
-  )
+    set_target_properties(${IResearch_TARGET_NAME}-static-allinone
+      PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static,INTERFACE_INCLUDE_DIRECTORIES>"
+      IMPORTED_LOCATION "${IResearch_STATIC_LIBRARIES_OUT}"
+      )
 
-  unset(IResearch_STATIC_SCRT_LIBRARIES)
+    set_property(TARGET ${IResearch_TARGET_NAME}-static-allinone
+      PROPERTY
+      INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
+      ${ATOMIC_LIBRARY} # non-static library
+      ${DL_LIBRARY} # non-static library
+      ${MSVC_ONLY_LIBRARIES} # non-static library
+      )
 
-  foreach(ELEMENT
-    ${BFD_STATIC_LIBS}
-    "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_RELEASE}>"
-    "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_RELEASE}>"
-    ${Unwind_STATIC_LIBS}
-    "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
-    "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
-    "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
-    "$<TARGET_FILE:lz4_static>"
-    "$<TARGET_FILE:stemmer-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static-scrt>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static-scrt>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static-scrt>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static-scrt>"
-  )
-    set(IResearch_STATIC_SCRT_LIBRARIES "${IResearch_STATIC_SCRT_LIBRARIES} \"${ELEMENT}\"")
-  endforeach()
+    add_dependencies(${IResearch_TARGET_NAME}-static-allinone
+      ${IResearch_TARGET_NAME}-static-allinone-build
+      )
 
-  set(IResearch_STATIC_SCRT_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-srct-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
-  set(IResearch_STATIC_SCRT_LIBRARIES_CMD "lib.exe \"/OUT:${IResearch_STATIC_SCRT_LIBRARIES_OUT}\" \"$<TARGET_FILE:${IResearch_TARGET_NAME}-static-scrt>\" ${IResearch_STATIC_SCRT_LIBRARIES}")
-  string(REPLACE " " ";" IResearch_STATIC_SCRT_LIBRARIES_CMD "${IResearch_STATIC_SCRT_LIBRARIES_CMD}") # COMMAND requires ';' instead of ' ' (this is required for MSVC, cannot use VERBATIM)
-  add_custom_command(
-    OUTPUT "${IResearch_STATIC_SCRT_LIBRARIES_OUT}"
-    DEPENDS ${IResearch_TARGET_NAME}-static-scrt
-    COMMAND ${IResearch_STATIC_SCRT_LIBRARIES_CMD}
-    #VERBATIM - this causes error: "The input line is too long."
-  )
+    unset(IResearch_STATIC_SCRT_LIBRARIES)
 
-  add_library(${IResearch_TARGET_NAME}-static-scrt-allinone
-    STATIC IMPORTED GLOBAL
-  )
+    foreach(ELEMENT
+        ${BFD_STATIC_LIBS}
+        "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_RELEASE}>"
+        "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_RELEASE}>"
+        ${Unwind_STATIC_LIBS}
+        "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
+        "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
+        "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
+        "$<TARGET_FILE:lz4_static>"
+        "$<TARGET_FILE:stemmer-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static-scrt>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static-scrt>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static-scrt>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static-scrt>"
+        )
+      set(IResearch_STATIC_SCRT_LIBRARIES "${IResearch_STATIC_SCRT_LIBRARIES} \"${ELEMENT}\"")
+    endforeach()
 
-  add_custom_target(${IResearch_TARGET_NAME}-static-scrt-allinone-build
-    DEPENDS "${IResearch_STATIC_SCRT_LIBRARIES_OUT}"
-  )
+    set(IResearch_STATIC_SCRT_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-srct-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    set(IResearch_STATIC_SCRT_LIBRARIES_CMD "lib.exe \"/OUT:${IResearch_STATIC_SCRT_LIBRARIES_OUT}\" \"$<TARGET_FILE:${IResearch_TARGET_NAME}-static-scrt>\" ${IResearch_STATIC_SCRT_LIBRARIES}")
+    add_custom_command(
+      OUTPUT "${IResearch_STATIC_SCRT_LIBRARIES_OUT}"
+      DEPENDS ${IResearch_TARGET_NAME}-static-scrt
+      COMMAND ${IResearch_STATIC_SCRT_LIBRARIES_CMD}
+      VERBATIM
+      )
 
-  set_target_properties(${IResearch_TARGET_NAME}-static-scrt-allinone
-    PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static-srct,INTERFACE_INCLUDE_DIRECTORIES>"
-    IMPORTED_LOCATION "${IResearch_STATIC_SCRT_LIBRARIES_OUT}"
-  )
+    add_library(${IResearch_TARGET_NAME}-static-scrt-allinone
+      STATIC IMPORTED GLOBAL
+      )
 
-  set_property(TARGET ${IResearch_TARGET_NAME}-static-scrt-allinone
-    PROPERTY
-    INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
-    ${ATOMIC_LIBRARY} # non-static library
-    ${DL_LIBRARY} # non-static library
-    ${MSVC_ONLY_LIBRARIES} # non-static library
-  )
+    add_custom_target(${IResearch_TARGET_NAME}-static-scrt-allinone-build
+      DEPENDS "${IResearch_STATIC_SCRT_LIBRARIES_OUT}"
+      )
 
-  add_dependencies(${IResearch_TARGET_NAME}-static-scrt-allinone
-    ${IResearch_TARGET_NAME}-static-scrt-allinone-build
-  )
-elseif (APPLE)
-  unset(IResearch_STATIC_LIBRARIES)
+    set_target_properties(${IResearch_TARGET_NAME}-static-scrt-allinone
+      PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static-srct,INTERFACE_INCLUDE_DIRECTORIES>"
+      IMPORTED_LOCATION "${IResearch_STATIC_SCRT_LIBRARIES_OUT}"
+      )
 
-  foreach(ELEMENT
-    ${BFD_STATIC_LIBS}
-    ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
-    ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
-    ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
-    ${Unwind_STATIC_LIBS}
-    "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
-    "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
-    "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
-    "$<TARGET_FILE:lz4_static>"
-    "$<TARGET_FILE:stemmer-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
-  )
-    set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} '${ELEMENT}'")
-  endforeach ()
+    set_property(TARGET ${IResearch_TARGET_NAME}-static-scrt-allinone
+      PROPERTY
+      INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
+      ${ATOMIC_LIBRARY} # non-static library
+      ${DL_LIBRARY} # non-static library
+      ${MSVC_ONLY_LIBRARIES} # non-static library
+      )
 
-  set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
-  set(IResearch_STATIC_LIBRARIES_CMD "libtool -static -o '${IResearch_STATIC_LIBRARIES_OUT}' -a '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' ${IResearch_STATIC_LIBRARIES}")
-  add_custom_command(
-    OUTPUT "${IResearch_STATIC_LIBRARIES_OUT}"
-    DEPENDS ${IResearch_TARGET_NAME}-static
-    COMMAND sh -c ${IResearch_STATIC_LIBRARIES_CMD}
-    VERBATIM
-  )
+    add_dependencies(${IResearch_TARGET_NAME}-static-scrt-allinone
+      ${IResearch_TARGET_NAME}-static-scrt-allinone-build
+      )
+  elseif (APPLE)
+    unset(IResearch_STATIC_LIBRARIES)
 
-  add_library(${IResearch_TARGET_NAME}-static-allinone
-    STATIC IMPORTED GLOBAL
-  )
+    foreach(ELEMENT
+        ${BFD_STATIC_LIBS}
+        ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
+        ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
+        ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
+        ${Unwind_STATIC_LIBS}
+        "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
+        "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
+        "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
+        "$<TARGET_FILE:lz4_static>"
+        "$<TARGET_FILE:stemmer-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
+        )
+      set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} '${ELEMENT}'")
+    endforeach ()
 
-  add_custom_target(${IResearch_TARGET_NAME}-static-allinone-build
-    DEPENDS "${IResearch_STATIC_LIBRARIES_OUT}"
-  )
+    set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    set(IResearch_STATIC_LIBRARIES_CMD "libtool -static -o '${IResearch_STATIC_LIBRARIES_OUT}' -a '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' ${IResearch_STATIC_LIBRARIES}")
+    add_custom_command(
+      OUTPUT "${IResearch_STATIC_LIBRARIES_OUT}"
+      DEPENDS ${IResearch_TARGET_NAME}-static
+      COMMAND sh -c ${IResearch_STATIC_LIBRARIES_CMD}
+      VERBATIM
+      )
 
-  set_target_properties(${IResearch_TARGET_NAME}-static-allinone
-    PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static,INTERFACE_INCLUDE_DIRECTORIES>"
-    IMPORTED_LOCATION "${IResearch_STATIC_LIBRARIES_OUT}"
-  )
+    add_library(${IResearch_TARGET_NAME}-static-allinone
+      STATIC IMPORTED GLOBAL
+      )
 
-  set_property(TARGET ${IResearch_TARGET_NAME}-static-allinone
-    PROPERTY
-    INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
-    ${ATOMIC_LIBRARY} # non-static library
-    ${DL_LIBRARY} # non-static library
-    ${MSVC_ONLY_LIBRARIES} # non-static library
-  )
+    add_custom_target(${IResearch_TARGET_NAME}-static-allinone-build
+      DEPENDS "${IResearch_STATIC_LIBRARIES_OUT}"
+      )
 
-  add_dependencies(${IResearch_TARGET_NAME}-static-allinone
-    ${IResearch_TARGET_NAME}-static-allinone-build
-  )
+    set_target_properties(${IResearch_TARGET_NAME}-static-allinone
+      PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static,INTERFACE_INCLUDE_DIRECTORIES>"
+      IMPORTED_LOCATION "${IResearch_STATIC_LIBRARIES_OUT}"
+      )
+
+    set_property(TARGET ${IResearch_TARGET_NAME}-static-allinone
+      PROPERTY
+      INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
+      ${ATOMIC_LIBRARY} # non-static library
+      ${DL_LIBRARY} # non-static library
+      ${MSVC_ONLY_LIBRARIES} # non-static library
+      )
+
+    add_dependencies(${IResearch_TARGET_NAME}-static-allinone
+      ${IResearch_TARGET_NAME}-static-allinone-build
+      )
+  else()
+    unset(IResearch_STATIC_LIBRARIES)
+
+    foreach(ELEMENT
+        ${BFD_STATIC_LIBS}
+        ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
+        ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
+        ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
+        ${Unwind_STATIC_LIBS}
+        "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
+        "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
+        "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
+        "$<TARGET_FILE:lz4_static>"
+        "$<TARGET_FILE:stemmer-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
+        )
+      set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} addlib '${ELEMENT}'\\n")
+    endforeach ()
+
+    set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    set(IResearch_STATIC_LIBRARIES_CMD "`which echo` -e \"create '${IResearch_STATIC_LIBRARIES_OUT}'\\n addlib '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'\\n ${IResearch_STATIC_LIBRARIES} save\\n end\" | ar -M")
+    add_custom_command(
+      OUTPUT "${IResearch_STATIC_LIBRARIES_OUT}"
+      DEPENDS ${IResearch_TARGET_NAME}-static
+      COMMAND sh -c ${IResearch_STATIC_LIBRARIES_CMD}
+      VERBATIM
+      )
+
+    add_library(${IResearch_TARGET_NAME}-static-allinone
+      STATIC IMPORTED GLOBAL
+      )
+
+    add_custom_target(${IResearch_TARGET_NAME}-static-allinone-build
+      DEPENDS "${IResearch_STATIC_LIBRARIES_OUT}"
+      )
+
+    set_target_properties(${IResearch_TARGET_NAME}-static-allinone
+      PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static,INTERFACE_INCLUDE_DIRECTORIES>"
+      IMPORTED_LOCATION "${IResearch_STATIC_LIBRARIES_OUT}"
+      )
+
+    set_property(TARGET ${IResearch_TARGET_NAME}-static-allinone
+      PROPERTY
+      INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
+      ${ATOMIC_LIBRARY} # non-static library
+      ${DL_LIBRARY} # non-static library
+      ${MSVC_ONLY_LIBRARIES} # non-static library
+      )
+
+    add_dependencies(${IResearch_TARGET_NAME}-static-allinone
+      ${IResearch_TARGET_NAME}-static-allinone-build
+      )
+  endif()
+
+
+
+
+
+
+
+
 else()
-  unset(IResearch_STATIC_LIBRARIES)
 
-  foreach(ELEMENT
-    ${BFD_STATIC_LIBS}
-    ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
-    ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
-    ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
-    ${Unwind_STATIC_LIBS}
-    "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
-    "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
-    "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
-    "$<TARGET_FILE:lz4_static>"
-    "$<TARGET_FILE:stemmer-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
-  )
-    set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} addlib '${ELEMENT}'\\n")
-  endforeach ()
+  
+  #target_include_directories(${IResearch_TARGET_NAME}-shared
+  #  PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  #  PRIVATE ${ICU_INCLUDE_DIR}
+  #  )
+  #
+  #target_include_directories(${IResearch_TARGET_NAME}-static
+  #  PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  #  PRIVATE ${ICU_INCLUDE_DIR}
+  #  )
+  #
+  ## setup CRT
+  #if(MSVC)
+  #  target_include_directories(${IResearch_TARGET_NAME}-shared-scrt
+  #    PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  #    PRIVATE ${ICU_INCLUDE_DIR}
+  #    )
+  #
+  #  target_include_directories(${IResearch_TARGET_NAME}-static-scrt
+  #    PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  #    PRIVATE ${ICU_INCLUDE_DIR}
+  #    )
+  #endif()
+  #
+  ## setup MSVC specific compiler flags
+  #if(MSVC)
+  #  target_compile_options(${IResearch_TARGET_NAME}-shared
+  #    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+  #    PRIVATE "/EHa"
+  #    )
+  #
+  #  target_compile_options(${IResearch_TARGET_NAME}-static
+  #    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+  #    PRIVATE "/EHa"
+  #    )
+  #
+  #  target_compile_options(${IResearch_TARGET_NAME}-shared-scrt
+  #    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
+  #    PRIVATE "/EHa"
+  #    )
+  #
+  #  target_compile_options(${IResearch_TARGET_NAME}-static-scrt
+  #    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
+  #    PRIVATE "/EHa"
+  #    )
+  #endif()
 
-  set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
-  set(IResearch_STATIC_LIBRARIES_CMD "`which echo` -e \"create '${IResearch_STATIC_LIBRARIES_OUT}'\\n addlib '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'\\n ${IResearch_STATIC_LIBRARIES} save\\n end\" | ar -M")
-  add_custom_command(
-    OUTPUT "${IResearch_STATIC_LIBRARIES_OUT}"
-    DEPENDS ${IResearch_TARGET_NAME}-static
-    COMMAND sh -c ${IResearch_STATIC_LIBRARIES_CMD}
-    VERBATIM
-  )
-
-  add_library(${IResearch_TARGET_NAME}-static-allinone
-    STATIC IMPORTED GLOBAL
-  )
-
-  add_custom_target(${IResearch_TARGET_NAME}-static-allinone-build
-    DEPENDS "${IResearch_STATIC_LIBRARIES_OUT}"
-  )
-
-  set_target_properties(${IResearch_TARGET_NAME}-static-allinone
+  set_target_properties(${IResearch_TARGET_NAME}-shared
     PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static,INTERFACE_INCLUDE_DIRECTORIES>"
-    IMPORTED_LOCATION "${IResearch_STATIC_LIBRARIES_OUT}"
-  )
+    PREFIX lib
+    IMPORT_PREFIX lib
+    OUTPUT_NAME iresearch
+    COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;BOOST_ALL_DYN_LINK;$<$<CONFIG:Debug>:YYDEBUG=1>"
+    CXX_VISIBILITY_PRESET hidden
+    )
 
-  set_property(TARGET ${IResearch_TARGET_NAME}-static-allinone
-    PROPERTY
-    INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
-    ${ATOMIC_LIBRARY} # non-static library
-    ${DL_LIBRARY} # non-static library
-    ${MSVC_ONLY_LIBRARIES} # non-static library
-  )
+  set_target_properties(${IResearch_TARGET_NAME}-static
+    PROPERTIES
+    PREFIX lib
+    IMPORT_PREFIX lib
+    OUTPUT_NAME iresearch-s
+    COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+    )
 
-  add_dependencies(${IResearch_TARGET_NAME}-static-allinone
-    ${IResearch_TARGET_NAME}-static-allinone-build
-  )
+  # setup CRT
+  if(MSVC)
+    set_target_properties(${IResearch_TARGET_NAME}-shared-scrt
+      PROPERTIES
+      PREFIX lib
+      IMPORT_PREFIX lib
+      OUTPUT_NAME iresearch-scrt
+      COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;BOOST_ALL_DYN_LINK"
+      CXX_VISIBILITY_PRESET hidden
+      )
+
+    set_target_properties(${IResearch_TARGET_NAME}-static-scrt
+      PROPERTIES
+      PREFIX lib
+      IMPORT_PREFIX lib
+      OUTPUT_NAME iresearch-scrt-s
+      COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+      )
+  endif()
+
+  if (MSVC)
+    set(MSVC_ONLY_LIBRARIES "Dbghelp.lib")
+  else()
+    set(MSVC_ONLY_LIBRARIES "")
+  endif()
+
+  if (USE_SIMDCOMP)
+    set(SIMD_LIBRARY_SHARED "simdcomp-shared")
+    set(SIMD_LIBRARY_STATIC "simdcomp-static")
+  endif()
+
+  target_link_libraries(${IResearch_TARGET_NAME}-shared
+    ${GCOV_LIBRARY}
+    ${BFD_SHARED_LIBS}
+    ${Boost_SHARED_sharedRT_LIBRARIES}
+    ${Lz4_SHARED_LIB}
+    ${Unwind_SHARED_LIBS}
+    ${DL_LIBRARY}
+    ${MSVC_ONLY_LIBRARIES}
+    ${SIMD_LIBRARY_SHARED}
+    )
+
+  target_link_libraries(${IResearch_TARGET_NAME}-static
+    ${IResearch_TARGET_NAME}-analyzer-delimited-static
+    ${IResearch_TARGET_NAME}-analyzer-text-static
+    ${IResearch_TARGET_NAME}-format-1_0-static
+    ${IResearch_TARGET_NAME}-scorer-bm25-static
+    ${IResearch_TARGET_NAME}-scorer-tfidf-static
+    ${GCOV_LIBRARY}
+    ${BFD_STATIC_LIBS}
+    ${Lz4_STATIC_LIB}
+    ${Unwind_STATIC_LIBS}
+    ${DL_LIBRARY}
+    ${MSVC_ONLY_LIBRARIES}
+    ${SIMD_LIBRARY_STATIC}
+    )
+
+  # setup CRT
+  if(MSVC)
+    target_link_libraries(${IResearch_TARGET_NAME}-shared-scrt
+      ${GCOV_LIBRARY}
+      ${BFD_SHARED_LIBS}
+      ${Boost_SHARED_sharedRT_LIBRARIES}
+      ${Lz4_SHARED_LIB}
+      ${Unwind_SHARED_LIBS}
+      ${DL_LIBRARY}
+      ${MSVC_ONLY_LIBRARIES}
+      )
+
+    target_link_libraries(${IResearch_TARGET_NAME}-static-scrt
+      ${IResearch_TARGET_NAME}-analyzer-delimited-static-scrt
+      ${IResearch_TARGET_NAME}-analyzer-text-static-scrt
+      ${IResearch_TARGET_NAME}-format-1_0-static-scrt
+      ${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
+      ${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
+      ${GCOV_LIBRARY}
+      ${BFD_STATIC_LIBS}
+      ${Lz4_STATIC_LIB}
+      ${Unwind_STATIC_LIBS}
+      ${DL_LIBRARY}
+      ${MSVC_ONLY_LIBRARIES}
+      )
+  endif()
+
+  if (MSVC)
+    unset(IResearch_STATIC_LIBRARIES)
+
+    foreach(ELEMENT
+        ${BFD_STATIC_LIBS}
+        "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_RELEASE}>"
+        "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_RELEASE}>"
+        ${Unwind_STATIC_LIBS}
+        "$<TARGET_FILE:lz4_static>"
+        "$<TARGET_FILE:stemmer-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
+        )
+      set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} \"${ELEMENT}\"")
+    endforeach()
+
+    set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    set(IResearch_STATIC_LIBRARIES_CMD "lib.exe \"/OUT:${IResearch_STATIC_LIBRARIES_OUT}\" \"$<TARGET_FILE:${IResearch_TARGET_NAME}-static>\" ${IResearch_STATIC_LIBRARIES}")
+    add_custom_command(
+      OUTPUT "${IResearch_STATIC_LIBRARIES_OUT}"
+      DEPENDS ${IResearch_TARGET_NAME}-static
+      COMMAND ${IResearch_STATIC_LIBRARIES_CMD}
+      VERBATIM
+      )
+
+    add_library(${IResearch_TARGET_NAME}-static-allinone
+      STATIC IMPORTED GLOBAL
+      )
+
+    add_custom_target(${IResearch_TARGET_NAME}-static-allinone-build
+      DEPENDS "${IResearch_STATIC_LIBRARIES_OUT}"
+      )
+
+    set_target_properties(${IResearch_TARGET_NAME}-static-allinone
+      PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static,INTERFACE_INCLUDE_DIRECTORIES>"
+      IMPORTED_LOCATION "${IResearch_STATIC_LIBRARIES_OUT}"
+      )
+
+    set_property(TARGET ${IResearch_TARGET_NAME}-static-allinone
+      PROPERTY
+      INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
+      ${ATOMIC_LIBRARY} # non-static library
+      ${DL_LIBRARY} # non-static library
+      ${MSVC_ONLY_LIBRARIES} # non-static library
+      )
+
+    add_dependencies(${IResearch_TARGET_NAME}-static-allinone
+      ${IResearch_TARGET_NAME}-static-allinone-build
+      )
+
+    unset(IResearch_STATIC_SCRT_LIBRARIES)
+
+    foreach(ELEMENT
+        ${BFD_STATIC_LIBS}
+        "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_RELEASE}>"
+        "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_RELEASE}>"
+        ${Unwind_STATIC_LIBS}
+        "$<TARGET_FILE:lz4_static>"
+        "$<TARGET_FILE:stemmer-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static-scrt>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static-scrt>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static-scrt>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static-scrt>"
+        )
+      set(IResearch_STATIC_SCRT_LIBRARIES "${IResearch_STATIC_SCRT_LIBRARIES} \"${ELEMENT}\"")
+    endforeach()
+
+    set(IResearch_STATIC_SCRT_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-srct-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    set(IResearch_STATIC_SCRT_LIBRARIES_CMD "lib.exe \"/OUT:${IResearch_STATIC_SCRT_LIBRARIES_OUT}\" \"$<TARGET_FILE:${IResearch_TARGET_NAME}-static-scrt>\" ${IResearch_STATIC_SCRT_LIBRARIES}")
+    add_custom_command(
+      OUTPUT "${IResearch_STATIC_SCRT_LIBRARIES_OUT}"
+      DEPENDS ${IResearch_TARGET_NAME}-static-scrt
+      COMMAND ${IResearch_STATIC_SCRT_LIBRARIES_CMD}
+      VERBATIM
+      )
+
+    add_library(${IResearch_TARGET_NAME}-static-scrt-allinone
+      STATIC IMPORTED GLOBAL
+      )
+
+    add_custom_target(${IResearch_TARGET_NAME}-static-scrt-allinone-build
+      DEPENDS "${IResearch_STATIC_SCRT_LIBRARIES_OUT}"
+      )
+
+    set_target_properties(${IResearch_TARGET_NAME}-static-scrt-allinone
+      PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static-srct,INTERFACE_INCLUDE_DIRECTORIES>"
+      IMPORTED_LOCATION "${IResearch_STATIC_SCRT_LIBRARIES_OUT}"
+      )
+
+    set_property(TARGET ${IResearch_TARGET_NAME}-static-scrt-allinone
+      PROPERTY
+      INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
+      ${ATOMIC_LIBRARY} # non-static library
+      ${DL_LIBRARY} # non-static library
+      ${MSVC_ONLY_LIBRARIES} # non-static library
+      )
+
+    add_dependencies(${IResearch_TARGET_NAME}-static-scrt-allinone
+      ${IResearch_TARGET_NAME}-static-scrt-allinone-build
+      )
+  elseif (APPLE)
+    unset(IResearch_STATIC_LIBRARIES)
+
+    foreach(ELEMENT
+        ${BFD_STATIC_LIBS}
+        ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
+        ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
+        ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
+        ${Unwind_STATIC_LIBS}
+        "$<TARGET_FILE:lz4_static>"
+        "$<TARGET_FILE:stemmer-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
+        )
+      set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} '${ELEMENT}'")
+    endforeach ()
+
+    set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    set(IResearch_STATIC_LIBRARIES_CMD "libtool -static -o '${IResearch_STATIC_LIBRARIES_OUT}' -a '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' ${IResearch_STATIC_LIBRARIES}")
+    add_custom_command(
+      OUTPUT "${IResearch_STATIC_LIBRARIES_OUT}"
+      DEPENDS ${IResearch_TARGET_NAME}-static
+      COMMAND sh -c ${IResearch_STATIC_LIBRARIES_CMD}
+      VERBATIM
+      )
+
+    add_library(${IResearch_TARGET_NAME}-static-allinone
+      STATIC IMPORTED GLOBAL
+      )
+
+    add_custom_target(${IResearch_TARGET_NAME}-static-allinone-build
+      DEPENDS "${IResearch_STATIC_LIBRARIES_OUT}"
+      )
+
+    set_target_properties(${IResearch_TARGET_NAME}-static-allinone
+      PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static,INTERFACE_INCLUDE_DIRECTORIES>"
+      IMPORTED_LOCATION "${IResearch_STATIC_LIBRARIES_OUT}"
+      )
+
+    set_property(TARGET ${IResearch_TARGET_NAME}-static-allinone
+      PROPERTY
+      INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
+      ${ATOMIC_LIBRARY} # non-static library
+      ${DL_LIBRARY} # non-static library
+      ${MSVC_ONLY_LIBRARIES} # non-static library
+      )
+
+    add_dependencies(${IResearch_TARGET_NAME}-static-allinone
+      ${IResearch_TARGET_NAME}-static-allinone-build
+      )
+  else()
+    unset(IResearch_STATIC_LIBRARIES)
+
+    foreach(ELEMENT
+        ${BFD_STATIC_LIBS}
+        ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
+        ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
+        ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
+        ${Unwind_STATIC_LIBS}
+        "$<TARGET_FILE:lz4_static>"
+        "$<TARGET_FILE:stemmer-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimited-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
+        "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
+        )
+      set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} addlib '${ELEMENT}'\\n")
+    endforeach ()
+
+    set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    set(IResearch_STATIC_LIBRARIES_CMD "`which echo` -e \"create '${IResearch_STATIC_LIBRARIES_OUT}'\\n addlib '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'\\n ${IResearch_STATIC_LIBRARIES} save\\n end\" | ar -M")
+    add_custom_command(
+      OUTPUT "${IResearch_STATIC_LIBRARIES_OUT}"
+      DEPENDS ${IResearch_TARGET_NAME}-static
+      COMMAND sh -c ${IResearch_STATIC_LIBRARIES_CMD}
+      VERBATIM
+      )
+
+    add_library(${IResearch_TARGET_NAME}-static-allinone
+      STATIC IMPORTED GLOBAL
+      )
+
+    add_custom_target(${IResearch_TARGET_NAME}-static-allinone-build
+      DEPENDS "${IResearch_STATIC_LIBRARIES_OUT}"
+      )
+
+    set_target_properties(${IResearch_TARGET_NAME}-static-allinone
+      PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static,INTERFACE_INCLUDE_DIRECTORIES>"
+      IMPORTED_LOCATION "${IResearch_STATIC_LIBRARIES_OUT}"
+      )
+
+    set_property(TARGET ${IResearch_TARGET_NAME}-static-allinone
+      PROPERTY
+      INTERFACE_LINK_LIBRARIES # additional IMPORTED_LOCATION value list (non-static libraries)
+      ${ATOMIC_LIBRARY} # non-static library
+      ${DL_LIBRARY} # non-static library
+      ${MSVC_ONLY_LIBRARIES} # non-static library
+      )
+
+    add_dependencies(${IResearch_TARGET_NAME}-static-allinone
+      ${IResearch_TARGET_NAME}-static-allinone-build
+      )
+  endif()
 endif()
 
 ################################################################################

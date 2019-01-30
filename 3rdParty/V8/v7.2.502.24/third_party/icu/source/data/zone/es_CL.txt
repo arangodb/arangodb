@@ -1,0 +1,13 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+es_CL{
+    %%Parent{"es_419"}
+    Version{"2.1.38.39"}
+    zoneStrings{
+        "meta:Chile"{
+            sd{"CLST"}
+            sg{"CLT"}
+            ss{"CLT"}
+        }
+    }
+}

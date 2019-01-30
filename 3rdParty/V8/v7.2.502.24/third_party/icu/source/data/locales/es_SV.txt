@@ -1,0 +1,48 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+es_SV{
+    %%Parent{"es_419"}
+    Version{"2.1.38.39"}
+    calendar{
+        gregorian{
+            AmPmMarkers{
+                "a. m.",
+                "p. m.",
+            }
+            AmPmMarkersAbbr{
+                "a. m.",
+                "p. m.",
+            }
+            dayPeriod{
+                stand-alone{
+                    abbreviated{
+                        am{"a. m."}
+                        pm{"p. m."}
+                    }
+                    narrow{
+                        am{"a. m."}
+                        pm{"p. m."}
+                    }
+                    wide{
+                        am{"a. m."}
+                        pm{"p. m."}
+                    }
+                }
+            }
+        }
+    }
+    fields{
+        day{
+            relative{
+                "-1"{"ayer"}
+                "-2"{"antier"}
+                "0"{"hoy"}
+                "1"{"mañana"}
+                "2"{"pasado mañana"}
+            }
+        }
+        dayperiod{
+            dn{"a. m./p. m."}
+        }
+    }
+}

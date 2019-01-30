@@ -1,0 +1,75 @@
+diff --git a/source/data/brkitr/brklocal.mk b/source/data/brkitr/brklocal.mk
+index d9664b37..0855139b 100644
+--- a/source/data/brkitr/brklocal.mk
++++ b/source/data/brkitr/brklocal.mk
+@@ -34,14 +34,14 @@ BRK_RES_ALIAS_SOURCE = $(BRK_RES_SYNTHETIC_ALIAS)
+ 
+ 
+ # List of dictionary files (dict).
+-BRK_DICT_SOURCE = burmesedict.txt cjdict.txt khmerdict.txt laodict.txt\
++BRK_DICT_SOURCE = burmesedict.txt khmerdict.txt laodict.txt\
+  thaidict.txt
+ 
+ 
+ # List of break iterator files (brk).
+ BRK_SOURCE = char.txt line.txt line_loose.txt line_loose_cj.txt\
+  line_normal.txt line_normal_cj.txt sent.txt sent_el.txt title.txt\
+- word.txt
++ word.txt word_ja.txt
+ 
+ 
+ # Ordinary resources
+diff --git a/source/data/brkitr/ja.txt b/source/data/brkitr/ja.txt
+index 0048b118..c422c425 100644
+--- a/source/data/brkitr/ja.txt
++++ b/source/data/brkitr/ja.txt
+@@ -7,5 +7,6 @@ ja{
+         line_loose:process(dependency){"line_loose_cj.brk"}
+         line_normal:process(dependency){"line_normal_cj.brk"}
+         line_strict:process(dependency){"line.brk"}
++        word:process(dependency){"word_ja.brk"}
+     }
+ }
+diff --git a/source/data/brkitr/root.txt b/source/data/brkitr/root.txt
+index cb87c7ff..ef60ab6f 100644
+--- a/source/data/brkitr/root.txt
++++ b/source/data/brkitr/root.txt
+@@ -13,9 +13,6 @@ root{
+         word:process(dependency){"word.brk"}
+     }
+     dictionaries{
+-        Hani:process(dependency){"cjdict.dict"}
+-        Hira:process(dependency){"cjdict.dict"}
+-        Kana:process(dependency){"cjdict.dict"}
+         Khmr:process(dependency){"khmerdict.dict"}
+         Laoo:process(dependency){"laodict.dict"}
+         Mymr:process(dependency){"burmesedict.dict"}
+diff --git a/source/data/brkitr/rules/word.txt b/source/data/brkitr/rules/word.txt
+index 86977021..41a03ca0 100644
+--- a/source/data/brkitr/rules/word.txt
++++ b/source/data/brkitr/rules/word.txt
+@@ -68,11 +68,9 @@ $Control        = [\p{Grapheme_Cluster_Break = Control}];
+ $HangulSyllable = [\uac00-\ud7a3];
+ $ComplexContext = [:LineBreak = Complex_Context:];
+ $KanaKanji      = [$Han $Hiragana $Katakana];
+-$dictionaryCJK  = [$KanaKanji $HangulSyllable];
+-$dictionary     = [$ComplexContext $dictionaryCJK];
++$dictionary     = [$ComplexContext];
+ 
+-# leave CJK scripts out of ALetterPlus
+-$ALetterPlus  = [$ALetter-$dictionaryCJK [$ComplexContext-$Extend-$Control]];
++$ALetterPlus  = [$ALetter [$ComplexContext-$Extend-$Control]];
+ 
+ 
+ #
+@@ -184,10 +182,6 @@ $ExtendNumLetEx  $KatakanaEx     {400};    #  (13b)
+ #
+ ^$Regional_IndicatorEx $Regional_IndicatorEx;
+ 
+-# special handling for CJK characters: chain for later dictionary segmentation
+-$HangulSyllable $HangulSyllable {200};
+-$KanaKanji $KanaKanji {400}; # different rule status if both kana and kanji found 
+-
+ # Rule 999
+ #     Match a single code point if no other rule applies.
+ .;

@@ -1,0 +1,11 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ro_MD{
+    Currencies{
+        MDL{
+            "L",
+            "leu moldovenesc",
+        }
+    }
+    Version{"2.1.38.39"}
+}

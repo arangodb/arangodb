@@ -1,0 +1,16 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+es_DO{
+    %%Parent{"es_419"}
+    Currencies{
+        DOP{
+            "RD$",
+            "peso dominicano",
+        }
+        USD{
+            "US$",
+            "dólar estadounidense",
+        }
+    }
+    Version{"2.1.38.39"}
+}

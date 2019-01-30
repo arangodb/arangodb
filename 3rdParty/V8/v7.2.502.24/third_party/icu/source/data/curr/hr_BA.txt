@@ -1,0 +1,11 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+hr_BA{
+    Currencies{
+        BAM{
+            "KM",
+            "konvertibilna marka",
+        }
+    }
+    Version{"2.1.38.39"}
+}

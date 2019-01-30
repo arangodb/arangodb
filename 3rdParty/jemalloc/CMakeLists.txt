@@ -31,6 +31,10 @@ if (LINUX OR DARWIN)
     set(JEMALLOC_CONFIG "background_thread:true")
   endif ()
 
+  set(JEMALLOC_LIB "libjemalloc.a")
+  list(APPEND LINK_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}/lib/")
+
+
   ExternalProject_Add(
     jemalloc
     SOURCE_DIR
@@ -57,8 +61,9 @@ if (LINUX OR DARWIN)
       make install_include
            && mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/lib
            && cp -a ${JEMALLOC_BINARY_DIR}/lib/libjemalloc.a ${CMAKE_CURRENT_BINARY_DIR}/lib
+    STEP_TARGETS ${JEMALLOC_LIB} jemalloc "3rdParty/jemalloc/lib/${JEMALLOC_LIB}" "${CMAKE_CURRENT_BINARY_DIR}/lib/${JEMALLOC_LIB}"
   )
 
   set(JEMALLOC_HOME "${CMAKE_CURRENT_BINARY_DIR}" PARENT_SCOPE)
-  set(JEMALLOC_LIB "${CMAKE_CURRENT_BINARY_DIR}/lib/libjemalloc.a" PARENT_SCOPE)
+  set(JEMALLOC_LIB "${JEMALLOC_LIB}" PARENT_SCOPE)
 endif ()

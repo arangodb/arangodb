@@ -1,0 +1,37 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+fr_SN{
+    Version{"2.1.38.39"}
+    calendar{
+        gregorian{
+            dayPeriod{
+                format{
+                    abbreviated{
+                        afternoon1{"ap.m."}
+                        evening1{"soir"}
+                        midnight{"min."}
+                        morning1{"mat."}
+                        night1{"nuit"}
+                        noon{"midi"}
+                    }
+                    narrow{
+                        afternoon1{"ap.m."}
+                        evening1{"soir"}
+                        midnight{"min."}
+                        morning1{"mat."}
+                        night1{"nuit"}
+                        noon{"midi"}
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        midnight{"min."}
+                    }
+                    narrow{
+                        midnight{"min."}
+                    }
+                }
+            }
+        }
+    }
+}

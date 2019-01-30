@@ -1,0 +1,50 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+es_EC{
+    %%Parent{"es_419"}
+    NumberElements{
+        latn{
+            patterns{
+                currencyFormat{"¤#,##0.00;¤-#,##0.00"}
+            }
+            symbols{
+                decimal{","}
+                group{"."}
+            }
+        }
+    }
+    Version{"2.1.38.39"}
+    calendar{
+        gregorian{
+            AmPmMarkers{
+                "a. m.",
+                "p. m.",
+            }
+            AmPmMarkersAbbr{
+                "a. m.",
+                "p. m.",
+            }
+            dayPeriod{
+                stand-alone{
+                    abbreviated{
+                        am{"a. m."}
+                        pm{"p. m."}
+                    }
+                    narrow{
+                        am{"a. m."}
+                        pm{"p. m."}
+                    }
+                    wide{
+                        am{"a. m."}
+                        pm{"p. m."}
+                    }
+                }
+            }
+        }
+    }
+    fields{
+        dayperiod{
+            dn{"a. m./p. m."}
+        }
+    }
+}

@@ -1,0 +1,78 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+jv{
+    Languages{
+        af{"af"}
+        ar{"Arab"}
+        ar_001{"Arab Standar Anyar"}
+        ban{"ban"}
+        be{"be"}
+        bn{"Bengali"}
+        bs{"bs"}
+        co{"Korsika"}
+        de{"Jérman"}
+        en{"Inggris"}
+        es{"Spanyol"}
+        es_419{"Spanyol (Amerika Latin)"}
+        es_ES{"Spanyol (Eropah)"}
+        es_MX{"Spanyol (Meksiko)"}
+        fr{"Prancis"}
+        hi{"India"}
+        id{"Indonesia"}
+        it{"Italia"}
+        ja{"Jepang"}
+        jv{"Jawa"}
+        ko{"Korea"}
+        nl{"Walanda"}
+        nl_BE{"Flemis"}
+        pl{"Polandia"}
+        pt{"Portugis"}
+        ru{"Rusia"}
+        th{"Thailand"}
+        tr{"Turki"}
+        und{"Basa Ora Dikenali"}
+        zh{"Tyonghwa"}
+        zh_Hant{"Tyonghwa (Tradisional)"}
+    }
+    Languages%short{
+        en_GB{"Inggris (Britania)"}
+        en_US{"Inggris (AS)"}
+    }
+    Scripts{
+        Arab{"Arab"}
+        Cyrl{"Sirilik"}
+        Hani{"Han"}
+        Hant{"Tradhisional"}
+        Jpan{"Jepang"}
+        Kore{"Korea"}
+        Latn{"Latin"}
+        Zxxx{"Ora Ketulis"}
+        Zzzz{"Skrip Ora Dikenali"}
+    }
+    Scripts%stand-alone{
+        Hant{"Han Tradhisional"}
+    }
+    Types{
+        calendar{
+            gregorian{"Tanggalan Gregorian"}
+            iso8601{"Tanggalan ISO-8601"}
+        }
+        collation{
+            standard{"Standar Ngurutke Urutan"}
+        }
+        numbers{
+            latn{"Digit Latin"}
+        }
+    }
+    Version{"2.1.44.15"}
+    codePatterns{
+        language{"Basa: {0}"}
+        script{"Skrip: {0}"}
+        territory{"Daerah: {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
+    }
+}

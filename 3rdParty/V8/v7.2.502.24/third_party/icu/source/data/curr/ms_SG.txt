@@ -1,0 +1,11 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ms_SG{
+    Currencies{
+        SGD{
+            "$",
+            "Dolar Singapura",
+        }
+    }
+    Version{"2.1.38.39"}
+}

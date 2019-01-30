@@ -1,0 +1,12 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+en_SL{
+    %%Parent{"en_001"}
+    Currencies{
+        SLL{
+            "Le",
+            "Sierra Leonean Leone",
+        }
+    }
+    Version{"2.1.38.69"}
+}

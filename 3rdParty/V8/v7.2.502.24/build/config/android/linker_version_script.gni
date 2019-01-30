@@ -1,0 +1,37 @@
+# Copyright 2018 The Chromium Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/config/python.gni")
+
+# Generate a custom linker version script that can later be used with
+# "-Wl,--version-script=<path>" ldflags.
+#
+# Variables:
+#    export_java_symbols: Optional. If true, also export all Java_* symbols
+#      exported for JNI.
+#    export_symbol_whitelist_file: Optional. Path to an input file containing
+#      a whitelist of exported symbols.
+#    linker_script: Path to output linker version script.
+#
+template("generate_linker_version_script") {
+  action_with_pydeps(target_name) {
+    script = "//build/android/gyp/generate_linker_version_script.py"
+    outputs = [
+      invoker.linker_script,
+    ]
+    inputs = []
+    args = [ "--output=" + rebase_path(invoker.linker_script, root_build_dir) ]
+
+    if (defined(invoker.export_java_symbols) && invoker.export_java_symbols) {
+      args += [ "--export-java-symbols" ]
+    }
+
+    if (defined(invoker.export_symbol_whitelist_file)) {
+      inputs += [ invoker.export_symbol_whitelist_file ]
+      args +=
+          [ "--export-symbol-whitelist-file=" +
+            rebase_path(invoker.export_symbol_whitelist_file, root_build_dir) ]
+    }
+  }
+}

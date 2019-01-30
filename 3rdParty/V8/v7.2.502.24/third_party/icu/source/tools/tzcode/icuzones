@@ -1,0 +1,177 @@
+# Copyright (C) 2016 and later: Unicode, Inc. and others.
+# License & terms of use: http://www.unicode.org/copyright.html
+######################################################################
+# Copyright (C) 2007-2014, International Business Machines
+# Corporation and others.  All Rights Reserved.
+######################################################################
+# This is an ICU-specific file with the same format as regular
+# tzdata time zone files, for consistent parsing by the tools that
+# turn "Olson" tzdata into ICU's zoneinfo.txt.
+# The purpose of this file is to give ICU a superset of the time zones
+# that are in CLDR and also include legacy ICU time zones originally
+# in tz.alias for rataining backward compatibility.
+
+# Add Etc/Unknown, defined by CLDR. Give it Etc/GMT behavior.
+
+# Zone	NAME		GMTOFF	RULES	FORMAT
+Zone	Etc/Unknown	0	-	Unknown
+
+# SystemV time zones.
+# The Olson systemv file has these commented out.
+
+# Zone	NAME		GMTOFF	RULES/SAVE	FORMAT	[UNTIL]
+Zone	SystemV/AST4ADT	-4:00	SystemV		A%sT
+Zone	SystemV/EST5EDT	-5:00	SystemV		E%sT
+Zone	SystemV/CST6CDT	-6:00	SystemV		C%sT
+Zone	SystemV/MST7MDT	-7:00	SystemV		M%sT
+Zone	SystemV/PST8PDT	-8:00	SystemV		P%sT
+Zone	SystemV/YST9YDT	-9:00	SystemV		Y%sT
+Zone	SystemV/AST4	-4:00	-		AST
+Zone	SystemV/EST5	-5:00	-		EST
+Zone	SystemV/CST6	-6:00	-		CST
+Zone	SystemV/MST7	-7:00	-		MST
+Zone	SystemV/PST8	-8:00	-		PST
+Zone	SystemV/YST9	-9:00	-		YST
+Zone	SystemV/HST10	-10:00	-		HST
+
+
+# The list below is for supporting legacy ICU zone aliases.
+# These definitions were originally defined in tz.alias.
+
+#### Aliases that conflict with Olson compatibility Zone definition
+
+Link Australia/Darwin ACT
+Link Australia/Sydney AET
+Link America/Argentina/Buenos_Aires AGT
+Link Africa/Cairo ART
+Link America/Anchorage AST
+Link America/Sao_Paulo BET
+Link Asia/Dhaka BST
+Link Africa/Maputo CAT
+Link America/St_Johns CNT
+Link America/Chicago CST
+Link Asia/Shanghai CTT
+Link Africa/Addis_Ababa EAT
+Link Europe/Paris ECT
+#Link Europe/Istanbul EET # EET is a standard UNIX zone
+####Link EST America/New_York EST # Defined as -05:00
+####Link Pacific/Honolulu HST # Defined as -10:00
+Link America/Indiana/Indianapolis IET
+Link Asia/Kolkata IST
+Link Asia/Tokyo JST
+#Link Asia/Tehran MET # MET is a standard UNIX zone
+Link Pacific/Apia MIT
+####Link America/Denver MST # Defined as -07:00
+Link Asia/Yerevan NET
+Link Pacific/Auckland NST
+Link Asia/Karachi PLT
+Link America/Phoenix PNT
+Link America/Puerto_Rico PRT
+Link America/Los_Angeles PST
+Link Pacific/Guadalcanal SST
+#Link Etc/UTC UTC # Olson LINK
+Link Asia/Ho_Chi_Minh VST
+
+#
+# Aliases already dropped from the TZ database.
+# ICU may also remove these aliases.
+#
+Link America/Regina Canada/East-Saskatchewan # removed from backward in 2017c
+
+
+# Note:
+#   Following section was added for tz database 2018a and 2018b.
+# ICU has a bug handling negative DST, and we also don't want to
+# flip sumer time name and winter time name for Dublin at least for
+# now. Because the change had major impacts to tz database external
+# consumers, the tz database maintainer once reverted the Europe/Dublin
+# rules (same as 2017c or older) in 2018c. The tz database maintainer
+# thinks the changes in 2018a should be brought back when external
+# tz database consumers are ready to adopt the change. We don't know
+# what CLDR TC want to do with this for now. But if tz database brings
+# back the change, and CLDR TC (and ICU TC) want to keep the display name
+# unchanged, then we can uncomment the block below to restore ICU
+# custom override. (Yoshito 2018-01-23)
+
+#
+# tzdata2018a changed Europe/Dublin to use IST (UTC+1) as the standard time
+# of the region, and GMT (UTC) as the daylight saving time with negative
+# offset (-1 hour) in winter. ICU SimpleTimeZone rejects a zone with negative
+# daylight saving time offset. We could remove the restriction in newer version
+# of ICU, but such data does not work well with older ICU runtime without
+# fixing the issue. For now, we define our own Europe/Dubin in ICU, replacing
+# Europe/Dublin data from the tz database.
+#
+
+#
+# tzdata2018e suggests to use alternative zone definitions for use GB-Eire
+# and EU rule after Oct 27, 1968. (Yoshito 2018-05-04)
+#
+
+# Zone	NAME		GMTOFF	RULES	FORMAT	[UNTIL]
+Zone	Europe/Dublin--ICU	-0:25:00 -	LMT	1880 Aug  2
+			-0:25:21 -	DMT	1916 May 21  2:00s
+			-0:25:21 1:00	IST	1916 Oct  1  2:00s
+			 0:00	GB-Eire	%s	1921 Dec  6 # independence
+			 0:00	GB-Eire	GMT/IST	1940 Feb 25  2:00s
+			 0:00	1:00	IST	1946 Oct  6  2:00s
+			 0:00	-	GMT	1947 Mar 16  2:00s
+			 0:00	1:00	IST	1947 Nov  2  2:00s
+			 0:00	-	GMT	1948 Apr 18  2:00s
+			 0:00	GB-Eire	GMT/IST	1968 Oct 27
+# The next line is for when negative SAVE values are used.
+#			 1:00	Eire	IST/GMT
+# These three lines are for when SAVE values are always nonnegative.
+			 1:00	-	IST	1971 Oct 31  2:00u
+			 0:00	GB-Eire	GMT/IST	1996
+			 0:00	EU	GMT/IST
+
+Link Europe/Dublin--ICU Eire--ICU
+
+
+#
+# tzdata2018e also added another instance of negative DST to
+# Europe/Prague and Africa/Windhoek
+#
+# Zone	NAME		GMTOFF	RULES	FORMAT	[UNTIL]
+Zone	Europe/Prague--ICU	0:57:44 -	LMT	1850
+			0:57:44	-	PMT	1891 Oct    # Prague Mean Time
+			1:00	C-Eur	CE%sT	1945 May  9
+			1:00	Czech	CE%sT	1946 Dec  1  3:00
+# Vanguard section, for zic and other parsers that support negative DST.
+#			1:00	-1:00	GMT	1947 Feb 23  2:00
+# Rearguard section, for parsers that do not support negative DST.
+			0:00	-	GMT	1947 Feb 23  2:00
+# End of rearguard section.
+			1:00	Czech	CE%sT	1979
+			1:00	EU	CE%sT
+
+# Slovakia
+Link Europe/Prague--ICU Europe/Bratislava--ICU
+
+# RULE	NAME	FROM	TO	TYPE	IN	ON	AT	SAVE	LETTER/S
+# Vanguard section, for zic and other parsers that support negative DST.
+#Rule	Namibia	1994	only	-	Mar	21	0:00	-1:00	WAT
+#Rule	Namibia	1994	2017	-	Sep	Sun>=1	2:00	0	CAT
+#Rule	Namibia	1995	2017	-	Apr	Sun>=1	2:00	-1:00	WAT
+# Rearguard section, for parsers that do not support negative DST.
+Rule	Namibia--ICU	1994	only	-	Mar	21	0:00	0	WAT
+Rule	Namibia--ICU	1994	2017	-	Sep	Sun>=1	2:00	1:00	CAT
+Rule	Namibia--ICU	1995	2017	-	Apr	Sun>=1	2:00	0	WAT
+
+# Zone	NAME		GMTOFF	RULES	FORMAT	[UNTIL]
+Zone	Africa/Windhoek--ICU	1:08:24 -	LMT	1892 Feb 8
+			1:30	-	+0130	1903 Mar
+			2:00	-	SAST	1942 Sep 20  2:00
+			2:00	1:00	SAST	1943 Mar 21  2:00
+			2:00	-	SAST	1990 Mar 21 # independence
+# Vanguard section, for zic and other parsers that support negative DST.
+#			2:00	Namibia	%s
+# Rearguard section, for parsers that do not support negative DST.
+			2:00	-	CAT	1994 Mar 21  0:00
+# From Paul Eggert (2017-04-07):
+# The official date of the 2017 rule change was 2017-10-24.  See:
+# http://www.lac.org.na/laws/annoSTAT/Namibian%20Time%20Act%209%20of%202017.pdf
+			1:00	Namibia--ICU	%s	2017 Oct 24
+			2:00	-	CAT
+# End of rearguard section.

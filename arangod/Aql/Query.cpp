@@ -1177,12 +1177,14 @@ void Query::prepareV8Context() {
 
   {
     v8::HandleScope scope(isolate);
+    v8::ScriptOrigin scriptOrigin(TRI_V8_ASCII_STRING(isolate, "--script--"));
     v8::Handle<v8::Script> compiled =
-        v8::Script::Compile(TRI_V8_STD_STRING(isolate, body),
-                            TRI_V8_ASCII_STRING(isolate, "--script--"));
+      v8::Script::Compile(TRI_IGETC,
+                          TRI_V8_STD_STRING(isolate, body),
+                          &scriptOrigin).FromMaybe(v8::Local<v8::Script>());
 
     if (!compiled.IsEmpty()) {
-      compiled->Run();
+      compiled->Run(TRI_IGETC).FromMaybe(v8::Local<v8::Value>());// TODO: Result?
       _preparedV8Context = true;
     }
   }

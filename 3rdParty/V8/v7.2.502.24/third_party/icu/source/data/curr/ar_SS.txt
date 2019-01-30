@@ -1,0 +1,15 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ar_SS{
+    Currencies{
+        GBP{
+            "GB£",
+            "جنيه إسترليني",
+        }
+        SSP{
+            "£",
+            "جنيه جنوب السودان",
+        }
+    }
+    Version{"2.1.38.80"}
+}

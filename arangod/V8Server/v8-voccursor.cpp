@@ -41,6 +41,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Logger/Logger.h"
+#include<stdio.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -75,7 +76,7 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   uint32_t batchSize = 1000;
 
   if (args.Length() >= 2) {
-    int64_t maxValue = TRI_ObjectToInt64(args[1]);
+    int64_t maxValue = TRI_ObjectToInt64(isolate, args[1]);
     if (maxValue > 0 && maxValue < (int64_t)UINT32_MAX) {
       batchSize = static_cast<uint32_t>(maxValue);
     }
@@ -83,7 +84,7 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   double ttl = 0.0;
   if (args.Length() >= 3) {
-    ttl = TRI_ObjectToDouble(args[2]);
+    ttl = TRI_ObjectToDouble(isolate, args[2]);
   }
 
   if (ttl <= 0.0) {
@@ -131,7 +132,7 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("JSON_CURSOR(<id>)");
   }
 
-  std::string const id = TRI_ObjectToString(args[0]);
+  std::string const id = TRI_ObjectToString(isolate, args[0]);
   auto cursorId =
       static_cast<arangodb::CursorId>(arangodb::basics::StringUtils::uint64(id));
 
@@ -188,7 +189,7 @@ struct V8Cursor final {
     _handle.SetWrapperClassId(CID);
 
     // and make it weak, so that we can garbage collect
-    _handle.SetWeak(&_handle, weakCallback, v8::WeakCallbackType::kFinalizer);
+    _handle.SetWeak(this, weakCallback, v8::WeakCallbackType::kParameter);
     _options.customTypeHandler = _cte.get();
   }
 
@@ -197,8 +198,7 @@ struct V8Cursor final {
       TRI_ASSERT(_handle.IsNearDeath());
 
       _handle.ClearWeak();
-      v8::Local<v8::Object> data = v8::Local<v8::Object>::New(_isolate, _handle);
-      data->SetInternalField(0, v8::Undefined(_isolate));
+
       _handle.Reset();
     }
     if (_isolate) {
@@ -300,7 +300,7 @@ struct V8Cursor final {
     if (!args[0]->IsString()) {
       TRI_V8_THROW_TYPE_ERROR("expecting string for <queryString>");
     }
-    std::string const queryString(TRI_ObjectToString(args[0]));
+    std::string const queryString(TRI_ObjectToString(isolate, args[0]));
 
     // bind parameters
     std::shared_ptr<VPackBuilder> bindVars;
@@ -509,17 +509,8 @@ struct V8Cursor final {
 
  private:
   /// called when GC deletes the value
-  static void weakCallback(const v8::WeakCallbackInfo<v8::Persistent<v8::Object>>& data) {
-    auto isolate = data.GetIsolate();
-    auto persistent = data.GetParameter();
-    auto myPointer = v8::Local<v8::Object>::New(isolate, *persistent);
-
-    TRI_ASSERT(myPointer->InternalFieldCount() > 0);
-    V8Cursor* obj = V8Cursor::unwrap(myPointer);
-    TRI_ASSERT(obj);
-
-    TRI_ASSERT(persistent == &obj->_handle);
-    TRI_ASSERT(persistent->IsNearDeath());
+  static void weakCallback(const v8::WeakCallbackInfo<V8Cursor>& data) {
+    auto obj = data.GetParameter();
     delete obj;
   }
 

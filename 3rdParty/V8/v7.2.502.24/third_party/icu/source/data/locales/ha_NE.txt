@@ -1,0 +1,17 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ha_NE{
+    AuxExemplarCharacters{"[á à â é è ê í ì î ó ò ô p q {r\u0303} ú ù û v x {ʼy}]"}
+    ExemplarCharacters{"[a b ɓ c d ɗ e f g h i j k ƙ l m n o r s {sh} t {ts} u w y ƴ z ʼ]"}
+    ExemplarCharactersIndex{"[A B Ɓ C D Ɗ E F G H I J K Ƙ L M N O P Q R S T U V W X Y Ƴ Z]"}
+    Version{"2.1.44.53"}
+    fields{
+        day{
+            relative{
+                "-1"{"Jiya"}
+                "0"{"Yau"}
+                "1"{"Gobe"}
+            }
+        }
+    }
+}

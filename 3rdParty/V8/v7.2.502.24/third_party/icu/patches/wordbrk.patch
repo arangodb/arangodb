@@ -1,0 +1,24 @@
+diff --git a/source/data/brkitr/rules/word.txt b/source/data/brkitr/rules/word.txt
+index 3066922b..86977021 100644
+--- a/source/data/brkitr/rules/word.txt
++++ b/source/data/brkitr/rules/word.txt
+@@ -41,10 +41,16 @@ $Hebrew_Letter      = [\p{Word_Break = Hebrew_Letter}];
+ $ALetter            = [\p{Word_Break = ALetter}];
+ $Single_Quote       = [\p{Word_Break = Single_Quote}];
+ $Double_Quote       = [\p{Word_Break = Double_Quote}];
+-$MidNumLet          = [\p{Word_Break = MidNumLet}];
++# Remove two full stop characters from $MidNumLet and add them to $MidNum
++# to break a hostname into its components at the cost of breaking
++# 'e.g.' and 'i.e.' as well.
++# $MidNumLet is used in rules 6/7 (rules of our interest) and rules 11/12.
++# Because it's OR'd with $MidNum in rules 11/12, rules 11/12 are not affected
++# while rules 6/7 are reverted to the old behavior we want.
++$MidNumLet    = [[\p{Word_Break = MidNumLet}] - [\u002E \uFF0E]];
+ $MidLetter          = [\p{Word_Break = MidLetter}];
+-$MidNum             = [\p{Word_Break = MidNum}];
+-$Numeric            = [\p{Word_Break = Numeric}];
++$MidNum       = [\p{Word_Break = MidNum}[\u002E \uFF0E]];
++$Numeric      = [\p{Word_Break = Numeric}[\uff10-\uff19]]; #includes fullwidth digits
+ $ExtendNumLet       = [\p{Word_Break = ExtendNumLet}];
+ $WSegSpace          = [\p{Word_Break = WSegSpace}];
+ $Extended_Pict      = [:ExtPict:];

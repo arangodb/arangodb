@@ -1,0 +1,20 @@
+diff --git a/source/common/locmap.cpp b/source/common/locmap.cpp
+index dd44c08a..545521fe 100644
+--- a/source/common/locmap.cpp
++++ b/source/common/locmap.cpp
+@@ -32,6 +32,7 @@
+ #include "cmemory.h"
+ #include "unicode/uloc.h"
+ 
++#if 0
+ #if U_PLATFORM == U_PF_WINDOWS && defined(_MSC_VER) && (_MSC_VER >= 1500)
+ /*
+  * TODO: It seems like we should widen this to
+@@ -45,6 +46,7 @@
+ #include <windows.h>
+ #include <winnls.h>
+ #endif
++#endif
+ 
+ /*
+  * Note:

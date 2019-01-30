@@ -1,0 +1,16 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ar_SA{
+    Countries{
+        AC{"جزيرة أسينشين"}
+        BS{"جزر البهاما"}
+        EA{"سبتة ومليلية"}
+        MO{"ماكاو"}
+        MS{"مونتيسيرات"}
+        UY{"أوروغواي"}
+    }
+    Countries%variant{
+        CZ{"التشيك"}
+    }
+    Version{"2.1.43.65"}
+}

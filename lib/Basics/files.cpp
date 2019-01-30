@@ -323,8 +323,8 @@ bool TRI_ExistsFile(char const* path) {
 int TRI_ChMod(char const* path, long mode, std::string& err) {
   int res;
 #ifdef _WIN32
-  UnicodeString wpath(path);
-  res = _wchmod(wpath.getTerminatedBuffer(), static_cast<int>(mode));
+  icu::UnicodeString wpath(path);
+  res = _wchmod((wchar_t*)wpath.getTerminatedBuffer(), static_cast<int>(mode));
 #else
   res = chmod(path, mode);
 #endif
@@ -653,16 +653,16 @@ std::vector<std::string> TRI_FilesDirectory(char const* path) {
 
   struct _wfinddata_t fd;
 
-  UnicodeString wfilter(filter.c_str());
+  icu::UnicodeString wfilter(filter.c_str());
 
-  intptr_t handle = _wfindfirst(wfilter.getTerminatedBuffer(), &fd);
+  intptr_t handle = _wfindfirst((wchar_t*)wfilter.getTerminatedBuffer(), &fd);
 
   if (handle == -1) {
     return result;
   }
 
   std::string ufn;
-  UnicodeString fn;
+  icu::UnicodeString fn;
   do {
     if (wcscmp(fd.name, L".") != 0 && wcscmp(fd.name, L"..") != 0) {
       ufn.clear();
@@ -729,10 +729,10 @@ int TRI_RenameFile(char const* old, char const* filename, long* systemError,
 #ifdef _WIN32
   BOOL moveResult = 0;
 
-  UnicodeString oldf(old);
-  UnicodeString newf(filename);
+  icu::UnicodeString oldf(old);
+  icu::UnicodeString newf(filename);
 
-  moveResult = MoveFileExW(oldf.getTerminatedBuffer(), newf.getTerminatedBuffer(),
+  moveResult = MoveFileExW((wchar_t*)oldf.getTerminatedBuffer(), (wchar_t*)newf.getTerminatedBuffer(),
                            MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING);
 
   if (!moveResult) {
@@ -965,8 +965,8 @@ int TRI_CreateLockFile(char const* filename) {
     }
   }
 
-  UnicodeString fn(filename);
-  HANDLE fd = CreateFileW(fn.getTerminatedBuffer(), GENERIC_WRITE, 0, NULL,
+  icu::UnicodeString fn(filename);
+  HANDLE fd = CreateFileW((wchar_t*)fn.getTerminatedBuffer(), GENERIC_WRITE, 0, NULL,
                           CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
   if (fd == INVALID_HANDLE_VALUE) {
@@ -1491,7 +1491,7 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
 
     size_t len = q - buff;
 
-    UnicodeString fn(buff, static_cast<int32_t>(len));
+    icu::UnicodeString fn(buff, static_cast<int32_t>(len));
     std::string ufn;
     fn.toUTF8String<std::string>(ufn);
 
@@ -1667,10 +1667,10 @@ bool TRI_CopyFile(std::string const& src, std::string const& dst, std::string& e
 #ifdef _WIN32
   TRI_ERRORBUF;
 
-  UnicodeString s(src.c_str());
-  UnicodeString d(dst.c_str());
+  icu::UnicodeString s(src.c_str());
+  icu::UnicodeString d(dst.c_str());
 
-  bool rc = CopyFileW(s.getTerminatedBuffer(), d.getTerminatedBuffer(), true) != 0;
+  bool rc = CopyFileW((wchar_t*)s.getTerminatedBuffer(), (wchar_t*)d.getTerminatedBuffer(), true) != 0;
   if (!rc) {
     TRI_SYSTEM_ERROR();
     error = "failed to copy " + src + " to " + dst + ": " + TRI_GET_ERRORBUF;
@@ -1933,7 +1933,7 @@ static std::string getTempPath() {
         << ":dwReturnValue=" << dwReturnValue;
   }
 
-  UnicodeString tmpPathW(tempPathName, dwReturnValue);
+  icu::UnicodeString tmpPathW(tempPathName, dwReturnValue);
   std::string result;
   tmpPathW.toUTF8String<std::string>(result);
   // ...........................................................................
@@ -1957,7 +1957,7 @@ static std::string getTempPath() {
 
 static int mkDTemp(char* s, size_t bufferSize) {
   std::string out;
-  UnicodeString sw(s);
+  icu::UnicodeString sw(s);
   // this will overwrite the _XXX part of the string:
   auto rc = _wmktemp_s((wchar_t*)sw.getTerminatedBuffer(), bufferSize);
   if (rc == 0) {
@@ -2347,8 +2347,8 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
 
 bool TRI_PathIsAbsolute(std::string const& path) {
 #if _WIN32
-  UnicodeString upath(path.c_str(), (uint16_t)path.length());
-  return !PathIsRelativeW(upath.getTerminatedBuffer());
+  icu::UnicodeString upath(path.c_str(), (uint16_t)path.length());
+  return !PathIsRelativeW((wchar_t*)upath.getTerminatedBuffer());
 #else
   return (!path.empty()) && path.c_str()[0] == '/';
 #endif
@@ -2371,14 +2371,14 @@ void TRI_ShutdownFiles() {}
 
 bool TRI_GETENV(char const* which, std::string& value) {
 #ifdef _WIN32
-  UnicodeString uwhich(which);
-  wchar_t const* v = _wgetenv(uwhich.getTerminatedBuffer());
+  icu::UnicodeString uwhich(which);
+  wchar_t const* v = _wgetenv((wchar_t*)uwhich.getTerminatedBuffer());
 
   if (v == nullptr) {
     return false;
   }
   value.clear();
-  UnicodeString vu(v);
+  icu::UnicodeString vu(v);
   vu.toUTF8String<std::string>(value);
   return true;
 #else

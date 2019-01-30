@@ -54,27 +54,27 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (args.Length() > 0) {
     if (args[0]->IsObject()) {
-      v8::Handle<v8::Object> obj = args[0]->ToObject();
-      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "waitForSync"))) {
-        waitForSync = TRI_ObjectToBoolean(
+      v8::Handle<v8::Object> obj = args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      if (TRI_OBJECT_HAS_PROPERTY(obj, "waitForSync")) {
+        waitForSync = TRI_ObjectToBoolean(isolate, 
             obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSync")));
       }
-      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "waitForCollector"))) {
-        waitForCollector = TRI_ObjectToBoolean(
+      if (TRI_OBJECT_HAS_PROPERTY(obj, "waitForCollector")) {
+        waitForCollector = TRI_ObjectToBoolean(isolate, 
             obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForCollector")));
       }
-      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile"))) {
-        writeShutdownFile = TRI_ObjectToBoolean(
+      if (TRI_OBJECT_HAS_PROPERTY(obj, "writeShutdownFile")) {
+        writeShutdownFile = TRI_ObjectToBoolean(isolate, 
             obj->Get(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile")));
       }
     } else {
-      waitForSync = TRI_ObjectToBoolean(args[0]);
+      waitForSync = TRI_ObjectToBoolean(isolate, args[0]);
 
       if (args.Length() > 1) {
-        waitForCollector = TRI_ObjectToBoolean(args[1]);
+        waitForCollector = TRI_ObjectToBoolean(isolate, args[1]);
 
         if (args.Length() > 2) {
-          writeShutdownFile = TRI_ObjectToBoolean(args[2]);
+          writeShutdownFile = TRI_ObjectToBoolean(isolate, args[2]);
         }
       }
     }
@@ -131,7 +131,7 @@ static void JS_RecalculateCounts(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -156,7 +156,7 @@ static void JS_CompactCollection(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -173,7 +173,7 @@ static void JS_EstimateCollectionSize(v8::FunctionCallbackInfo<v8::Value> const&
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");

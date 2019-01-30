@@ -1,0 +1,29 @@
+diff --git a/source/i18n/fmtable.cpp b/source/i18n/fmtable.cpp
+index 45c7024f..8601d95f 100644
+--- a/source/i18n/fmtable.cpp
++++ b/source/i18n/fmtable.cpp
+@@ -734,7 +734,7 @@ CharString *Formattable::internalGetCharString(UErrorCode &status) {
+       // not print scientific notation for magnitudes greater than -5 and smaller than some amount (+5?).
+       if (fDecimalQuantity->isZero()) {
+         fDecimalStr->append("0", -1, status);
+-      } else if (std::abs(fDecimalQuantity->getMagnitude()) < 5) {
++      } else if (fDecimalQuantity->getMagnitude() != INT32_MIN && std::abs(fDecimalQuantity->getMagnitude()) < 5) {
+         fDecimalStr->appendInvariantChars(fDecimalQuantity->toPlainString(), status);
+       } else {
+         fDecimalStr->appendInvariantChars(fDecimalQuantity->toScientificString(), status);
+diff --git a/source/i18n/number_decimalquantity.cpp b/source/i18n/number_decimalquantity.cpp
+index 2c4182b1..f6f2b20f 100644
+--- a/source/i18n/number_decimalquantity.cpp
++++ b/source/i18n/number_decimalquantity.cpp
+@@ -820,7 +820,10 @@ UnicodeString DecimalQuantity::toScientificString() const {
+     }
+     result.append(u'E');
+     int32_t _scale = upperPos + scale;
+-    if (_scale < 0) {
++    if (_scale == INT32_MIN) {
++        result.append({u"-2147483648", -1});
++        return result;
++    } else if (_scale < 0) {
+         _scale *= -1;
+         result.append(u'-');
+     } else {

@@ -1,0 +1,11 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ru_KZ{
+    Currencies{
+        KZT{
+            "₸",
+            "казахский тенге",
+        }
+    }
+    Version{"2.1.38.39"}
+}

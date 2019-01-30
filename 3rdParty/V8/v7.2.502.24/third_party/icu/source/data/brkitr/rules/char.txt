@@ -1,0 +1,76 @@
+#
+#   Copyright (C) 2016 and later: Unicode, Inc. and others.
+#   License & terms of use: http://www.unicode.org/copyright.html
+#   Copyright (C) 2002-2016, International Business Machines Corporation and others.
+#       All Rights Reserved.
+#
+#   file:  char.txt
+#
+#   ICU Character Break Rules, also known as Grapheme Cluster Boundaries
+#      See Unicode Standard Annex #29.
+#      These rules are based on UAX #29 Revision 29 for Unicode Version 9.0
+#      Plus revisions to rule GB 11 from http://unicode.org/cldr/trac/ticket/10088
+#      Plus additional characters introduces with Emoji 5, http://www.unicode.org/reports/tr51/proposed.html
+
+!!quoted_literals_only;
+
+#
+#  Character Class Definitions.
+#
+$CR          = [\p{Grapheme_Cluster_Break = CR}];
+$LF          = [\p{Grapheme_Cluster_Break = LF}];
+$Control     = [[\p{Grapheme_Cluster_Break = Control}]];
+# TODO: Enable Virama & LinkingConsonant definitions once rule builder allows empty sets.
+#$Virama      = [[\p{Grapheme_Cluster_Break = Virama}]];
+#$LinkingConsonant = [[\p{Grapheme_Cluster_Break = LinkingConsonant}]];
+$Extend      = [[\p{Grapheme_Cluster_Break = Extend}]];
+$ZWJ         = [\p{Grapheme_Cluster_Break = ZWJ}];
+$Regional_Indicator = [\p{Grapheme_Cluster_Break = Regional_Indicator}];
+$Prepend     = [\p{Grapheme_Cluster_Break = Prepend}];
+$SpacingMark = [\p{Grapheme_Cluster_Break = SpacingMark}];
+
+#
+# Korean Syllable Definitions
+#
+$L           = [\p{Grapheme_Cluster_Break = L}];
+$V           = [\p{Grapheme_Cluster_Break = V}];
+$T           = [\p{Grapheme_Cluster_Break = T}];
+
+$LV          = [\p{Grapheme_Cluster_Break = LV}];
+$LVT         = [\p{Grapheme_Cluster_Break = LVT}];
+
+# Emoji defintions
+
+$Extended_Pict = [:ExtPict:];
+
+## -------------------------------------------------
+!!chain;
+!!lookAheadHardBreak;
+
+$CR $LF;
+
+$L ($L | $V | $LV | $LVT);
+($LV | $V) ($V | $T);
+($LVT | $T) $T;
+
+# GB 9
+[^$Control $CR $LF] ($Extend | $ZWJ);
+
+# GB 9a (only for extended grapheme clusters)
+[^$Control $CR $LF] $SpacingMark;
+
+# GB 9b
+$Prepend [^$Control $CR $LF];
+
+# GB 11 Do not break within emoji modifier sequences or emoji zwj sequences.
+$Extended_Pict $Extend* $ZWJ $Extended_Pict;
+
+# GB 12-13. Keep pairs of regional indicators together
+#           Note that hard break '/' rule triggers only if there are three or more initial RIs,
+
+^$Prepend* $Regional_Indicator $Regional_Indicator / $Regional_Indicator;
+^$Prepend* $Regional_Indicator $Regional_Indicator;
+
+# GB 999 Match a single code point if no other rule applies.
+.;
+

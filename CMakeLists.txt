@@ -249,13 +249,7 @@ message(STATUS "SNAP REVISION: ${ARANGODB_SNAP_REVISION}")
 # ------------------------------------------------------------------------------
 # 
 # ------------------------------------------------------------------------------
-
 if (WIN32)
-  # path containing the OpenSSL find-module and libraries
-  set(WIN_FIND_OPENSSL_PATH "C:/OpenSSL-ArangoDB")
-  if (EXISTS "${WIN_FIND_OPENSSL_PATH}")
-	list(APPEND CMAKE_MODULE_PATH ${WIN_FIND_OPENSSL_PATH})
-  endif()
   project(arangodb3 LANGUAGES CXX C VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 else ()
   project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
@@ -410,6 +404,7 @@ if (WIN32)
   set(WINDOWS TRUE)
   set(MSBUILD TRUE)
   add_definitions(-D_USE_MATH_DEFINES -DNOMINMAX -D_WIN32_WINNT=_WIN32_WINNT_VISTA -DINCL_EXTRA_HTON_FUNCTIONS -DPSAPI_VERSION=1)
+  include(InstallRequiredSystemLibraries)
 elseif (UNIX AND NOT APPLE)
   if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
     set(LINUX TRUE)
@@ -427,14 +422,6 @@ elseif (UNIX AND NOT APPLE)
     set(FREEBSD TRUE)
   elseif (CMAKE_SYSTEM_NAME MATCHES "SYSV5.*")
     set(SYSV5 TRUE)
-  elseif ((CMAKE_SYSTEM_NAME MATCHES "Solaris.*") OR (CMAKE_SYSTEM_NAME MATCHES "SunOS.*"))
-    set(SOLARIS TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "HP-UX.*")
-    set(HPUX TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "AIX.*")
-    set(AIX TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "Minix.*")
-    set(MINIX TRUE)
   endif ()
 elseif (APPLE)
   if (CMAKE_SYSTEM_NAME MATCHES ".*Darwin.*")
@@ -468,12 +455,6 @@ endif()
 ## EXTERNAL PROGRAMS
 ################################################################################
 
-if (SOLARIS)
-  set(MAKE gmake)
-else ()
-  set(MAKE make)
-endif ()
-
 find_package(PythonInterp 2 EXACT REQUIRED)
 get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
@@ -502,7 +483,7 @@ endif()
 ## ARCHITECTURE
 ################################################################################
 
-if (SOLARIS OR NOT CMAKE_SIZEOF_VOID_P)
+if (NOT CMAKE_SIZEOF_VOID_P)
   set(CMAKE_SIZEOF_VOID_P 8)
   set(CMAKE_CXX_SIZEOF_DATA_PTR 8)
 endif ()
@@ -523,26 +504,49 @@ endif ()
 if (WINDOWS)
   set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3 /MP"      CACHE STRING "base flags")
   set(BASE_C_FLAGS   ""                         	 CACHE STRING "base C flags")
-  set(BASE_CXX_FLAGS "/GR /EHsc"                	 CACHE STRING "base C++flags")
+  list(APPEND CLANG_ARGS_LIST
+    -Wno-c++98-compat
+    -Wno-c++98-compat-pedantic
+    -Wno-c++11-compat
+    -Wno-undef
+    -Wno-reserved-id-macro
+    -Wno-gnu-include-next
+    -Wno-gcc-compat # For ignoring "'diagnose_if' is a clang extension" warnings
+    -Wno-zero-as-null-pointer-constant # FIXME: Remove this and fix all occurrences.
+    -Wno-deprecated-dynamic-exception-spec # For auto_ptr
+    -Wno-sign-conversion
+    -Wno-old-style-cast
+    -Wno-deprecated # FIXME: Remove this and fix all occurrences.
+    -Wno-shift-sign-overflow # FIXME: Why do we need this with clang-cl but not clang?
+    -Wno-double-promotion # FIXME: remove me
+
+
+    -Wno-disabled-macro-expansion
+    -Wno-documentation
+    -Wno-documentation-deprecated-sync
+    -Wno-inconsistent-missing-destructor-override
+    -Wno-unused-template
+    -Wno-conversion
+    -Wno-global-constructors
+    -Wno-exit-time-destructors
+    -Wno-switch-enum
+    -Wno-extra-semi
+    -Wno-covered-switch-default
+    -Wno-virtual-dtor
+    -Wno-global-constructors
+    -Wno-shadow-field-in-constructor
+    -Wno-implicit-fallthrough
+    -Wno-gnu-zero-variadic-macro-arguments
+    -Wno-nonportable-system-include-path
+    )
+  list(JOIN CLANG_ARGS_LIST " " CLANG_ARGS)
+  set(BASE_CXX_FLAGS "${CLANG_ARGS} /D_ENABLE_EXTENDED_ALIGNED_STORAGE /GR /EHsc"                	 CACHE STRING "base C++flags")
 else ()
   set(BASE_FLAGS     ""                                  CACHE STRING "base flags")
   set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}   $ENV{CFLAGS}"   CACHE STRING "base C flags")
   set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CXXFLAGS}" CACHE STRING "base C++ flags")
   set(BASE_LD_FLAGS                     "$ENV{LDFLAGS}"  CACHE STRING "base linker flags")
   set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
-endif ()
-
-if (SOLARIS)
-  set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
-
-  set(CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES
-    /lib;/lib64;/lib64;/usr/lib;/usr/lib64;/usr/lib64
-  )
-
-  list(APPEND SYSTEM_LIBRARIES nsl socket)
-
-  # force 64bit compile
-  set(BASE_FLAGS "-I /opt/csw/include -D_REENTRANT -m64 ${BASE_FLAGS}")
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
@@ -591,7 +595,7 @@ set(CMAKE_CXX_STANDARD 14)
 # need threads
 find_package(Threads REQUIRED)
 
-if (MSVC)
+if (WIN32)
   configure_file("Installation/Windows/vcproj.user/arangod.vcxproj.user" ${CMAKE_BINARY_DIR})
   add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
   add_definitions("-DFD_SETSIZE=8192")
@@ -703,7 +707,7 @@ option(USE_BACKTRACE
 
 # iresearch uses backtrace anyway, so we need to find and link libexecinfo
 # for the case that we are on libmusl and not on glibc
-if (NOT MSVC)
+if (NOT WIN32)
   find_package(Backtrace)
 endif()
 
@@ -724,11 +728,11 @@ endif ()
 ################################################################################
 
 # Allow to prohibit assembler optimization code explicitly
-if (MSVC)
+if (WIN32)
   SET(ASM_OPTIMIZATIONS_DEFAULT OFF)
-else (MSVC)
+else (WIN32)
   SET(ASM_OPTIMIZATIONS_DEFAULT ON)
-endif (MSVC)
+endif (WIN32)
 
 option(ASM_OPTIMIZATIONS "whether hand-optimized assembler code should be used"
   ${ASM_OPTIMIZATIONS_DEFAULT})
@@ -879,7 +883,7 @@ elseif (CMAKE_COMPILER_IS_CLANG)
   set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -fomit-frame-pointer"       CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -fno-omit-frame-pointer" CACHE INTERNAL "C++ release with debug info flags")
 
-elseif (MSVC)
+elseif (WIN32)
   if (VERBOSE)
     message(STATUS "Compiler type MSVC: ${CMAKE_CXX_COMPILER}")
   endif ()
@@ -890,11 +894,11 @@ elseif (MSVC)
   set(CMAKE_C_FLAGS_RELEASE        "/MT /O2 /Ob2"                      CACHE INTERNAL "C++ release flags")
   set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                  CACHE INTERNAL "C++ release with debug info flags")
 
-  set(CMAKE_CXX_FLAGS                "/MTd"                              CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj" CACHE INTERNAL "C++ debug flags")
-  set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                      CACHE INTERNAL "C++ minimal size flags")
-  set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2"                      CACHE INTERNAL "C++ release flags")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                  CACHE INTERNAL "C++ release with debug info flags")
+  set(CMAKE_CXX_FLAGS                "/MTd /STD:14"                              CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "/STD:14 /D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj" CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_MINSIZEREL     "/STD:14 /MT /O1 /Ob1"                      CACHE INTERNAL "C++ minimal size flags")
+  set(CMAKE_CXX_FLAGS_RELEASE        "/STD:14 /MT /O2 /Ob2"                      CACHE INTERNAL "C++ release flags")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/STD:14 /MT /Zi /O2 /Ob1"                  CACHE INTERNAL "C++ release with debug info flags")
 
 else ()
   # unknown compiler
@@ -960,6 +964,14 @@ endif()
 ## OPENSSL
 ################################################################################
 
+# Locate our own openssl distribution on the wintendo:
+if (WIN32)
+  # path containing the OpenSSL find-module and libraries
+  set(WIN_FIND_OPENSSL_PATH "C:/OpenSSL-ArangoDB")
+  if (EXISTS "${WIN_FIND_OPENSSL_PATH}")
+	list(APPEND CMAKE_MODULE_PATH ${WIN_FIND_OPENSSL_PATH})
+  endif()
+endif()
 # Some special stuff for Mac OSX and homebrew as a preparation for the 
 # generic FindOpenSSL script:
 if (APPLE AND BREW AND NOT OPENSSL_ROOT_DIR)
@@ -1112,7 +1124,7 @@ include_directories(SYSTEM
 ## PATHS, installation, packages, frontend
 ################################################################################
 
-if (MSVC)
+if (WIN32)
   # versioning
   set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/Installation/Windows/version")
   include(generate_product_version)

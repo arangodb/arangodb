@@ -1,0 +1,11 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ta_LK{
+    Currencies{
+        LKR{
+            "Rs.",
+            "இலங்கை ரூபாய்",
+        }
+    }
+    Version{"2.1.38.39"}
+}

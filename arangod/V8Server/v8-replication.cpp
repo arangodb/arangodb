@@ -141,8 +141,8 @@ static void JS_LastLoggerReplication(v8::FunctionCallbackInfo<v8::Value> const& 
         "REPLICATION_LOGGER_LAST(<fromTick>, <toTick>)");
   }
 
-  TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(args[0], true);
-  TRI_voc_tick_t tickEnd = TRI_ObjectToUInt64(args[1], true);
+  TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(isolate, args[0], true);
+  TRI_voc_tick_t tickEnd = TRI_ObjectToUInt64(isolate, args[1], true);
   if (tickEnd <= tickStart) {
     TRI_V8_THROW_EXCEPTION_USAGE("tickStart < tickEnd");
   }
@@ -198,9 +198,9 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
 
   bool keepBarrier = false;
 
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "keepBarrier"))) {
-    keepBarrier = TRI_ObjectToBoolean(
-        object->Get(TRI_V8_ASCII_STRING(isolate, "keepBarrier")));
+  if (TRI_OBJECT_HAS_PROPERTY(object, "keepBarrier")) {
+    keepBarrier = TRI_ObjectToBoolean(isolate, 
+                                      object->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "keepBarrier")).FromMaybe(v8::Local<v8::Value>()));
   }
 
   ReplicationApplierConfiguration configuration =
@@ -214,9 +214,9 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
     // database-specific synchronization
     syncer.reset(new DatabaseInitialSyncer(vocbase, configuration));
 
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "leaderId"))) {
-      syncer->setLeaderId(TRI_ObjectToString(
-          object->Get(TRI_V8_ASCII_STRING(isolate, "leaderId"))));
+    if (TRI_OBJECT_HAS_PROPERTY(object, "leaderId")) {
+      syncer->setLeaderId(TRI_ObjectToString(isolate, 
+          object->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "leaderId")).FromMaybe(v8::Local<v8::Value>())));
     }
   } else if (applierType == APPLIER_GLOBAL) {
     configuration._skipCreateDrop = false;
@@ -317,9 +317,9 @@ static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value
   }
 
   std::string database;
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "database"))) {
-    database = TRI_ObjectToString(
-        object->Get(TRI_V8_ASCII_STRING(isolate, "database")));
+  if (TRI_OBJECT_HAS_PROPERTY(object, "database")) {
+    database = TRI_ObjectToString(isolate, 
+        object->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "database")).FromMaybe(v8::Local<v8::Value>()));
   }
   if (database.empty()) {
     TRI_V8_THROW_EXCEPTION_PARAMETER(
@@ -327,9 +327,9 @@ static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value
   }
 
   std::string collection;
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "collection"))) {
-    collection = TRI_ObjectToString(
-        object->Get(TRI_V8_ASCII_STRING(isolate, "collection")));
+  if (TRI_OBJECT_HAS_PROPERTY(object, "collection")) {
+    collection = TRI_ObjectToString(isolate, 
+        object->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "collection")).FromMaybe(v8::Local<v8::Value>()));
   }
   if (collection.empty()) {
     TRI_V8_THROW_EXCEPTION_PARAMETER(
@@ -337,9 +337,9 @@ static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value
   }
 
   TRI_voc_tick_t fromTick = 0;
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "from"))) {
+  if (TRI_OBJECT_HAS_PROPERTY(object, "from")) {
     fromTick =
-        TRI_ObjectToUInt64(object->Get(TRI_V8_ASCII_STRING(isolate, "from")), true);
+        TRI_ObjectToUInt64(isolate, object->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "from")).FromMaybe(v8::Local<v8::Value>()), true);
   }
   if (fromTick == 0) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("<from> must be a valid start tick");
@@ -354,9 +354,9 @@ static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value
 
   DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, true, 0);
 
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "leaderId"))) {
-    syncer.setLeaderId(TRI_ObjectToString(
-        object->Get(TRI_V8_ASCII_STRING(isolate, "leaderId"))));
+  if (TRI_OBJECT_HAS_PROPERTY(object, "leaderId")) {
+    syncer.setLeaderId(TRI_ObjectToString(isolate, 
+        object->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "leaderId")).FromMaybe(v8::Local<v8::Value>())));
   }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -516,13 +516,13 @@ static void StartApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& a
   bool useTick = false;
 
   if (args.Length() >= 1) {
-    initialTick = TRI_ObjectToUInt64(args[0], true);
+    initialTick = TRI_ObjectToUInt64(isolate, args[0], true);
     useTick = true;
   }
 
   TRI_voc_tick_t barrierId = 0;
   if (args.Length() >= 2) {
-    barrierId = TRI_ObjectToUInt64(args[1], true);
+    barrierId = TRI_ObjectToUInt64(isolate, args[1], true);
   }
 
   ReplicationApplier* applier = getContinuousApplier(isolate, applierType);

@@ -1,0 +1,108 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+so{
+    Languages{
+        ak{"Akan"}
+        am{"Axmaari"}
+        ar{"Carabi"}
+        ar_001{"Carabiga rasmiga ah"}
+        be{"Beleruusiyaan"}
+        bg{"Bulgeeriyaan"}
+        bn{"Bangladesh"}
+        cs{"Jeeg"}
+        de{"Jarmal"}
+        de_CH{"Jarmal (Iswiiserlaand)"}
+        el{"Giriik"}
+        en{"Ingiriisi"}
+        en_AU{"Ingiriis Austaraaliyaan"}
+        en_CA{"Ingiriis Kanadiyaan"}
+        en_GB{"Ingiriis Biritish"}
+        en_US{"Ingiriis Maraykan"}
+        es{"Isbaanish"}
+        es_419{"Isbaanishka Laatiin Ameerika"}
+        es_ES{"Isbaanish (Isbayn)"}
+        fa{"Faarisi"}
+        fr{"Faransiis"}
+        fr_CH{"Faransiis (Iswiiserlaand)"}
+        fy{"Firiisiyan Galbeed"}
+        ha{"Hawsa"}
+        hi{"Hindi"}
+        hu{"Hangariyaan"}
+        id{"Indonesiyaan"}
+        ig{"Igbo"}
+        it{"Talyaani"}
+        ja{"Jabaaniis"}
+        jv{"Jafaaniis"}
+        km{"Kamboodhian"}
+        ko{"Kuuriyaan"}
+        ms{"Malaay"}
+        my{"Burmese"}
+        ne{"Nebaali"}
+        nl{"Holandays"}
+        nl_BE{"Af faleemi"}
+        pa{"Bunjaabi"}
+        pl{"Boolish"}
+        pt{"Boortaqiis"}
+        pt_BR{"Boortaqiiska Baraasiil"}
+        pt_PT{"Boortaqiis (Boortuqaal)"}
+        ro{"Romanka"}
+        ru{"Ruush"}
+        rw{"Rwanda"}
+        so{"Soomaali"}
+        sv{"Swiidhis"}
+        ta{"Tamiil"}
+        th{"Taaylandays"}
+        tr{"Turkish"}
+        uk{"Yukreeniyaan"}
+        und{"Af aan la aqoon ama aan sax ahayn"}
+        ur{"Urduu"}
+        vi{"Fiitnaamays"}
+        yo{"Yoruuba"}
+        zh{"Jayniis Mandarin"}
+        zh_Hans{"Jayniis rasmiga ah"}
+        zh_Hant{"Jayniiskii hore"}
+        zu{"Zuulu"}
+    }
+    Languages%short{
+        en_GB{"Ingiriiska Boqortooyada Midooday"}
+        en_US{"Ingiriisi (US)"}
+    }
+    Scripts{
+        Arab{"Carabi"}
+        Cyrl{"Siriylik"}
+        Hans{"La fududeeyay"}
+        Hant{"Hore"}
+        Jpan{"Jabaaniis"}
+        Kore{"Kuuriyaan"}
+        Latn{"Laatiin"}
+        Zxxx{"Aan la qorin"}
+        Zzzz{"Far aan la aqoon amase aan saxnayn"}
+    }
+    Scripts%stand-alone{
+        Hans{"Haan La fududeeyay"}
+        Hant{"Haanti hore"}
+    }
+    Types{
+        calendar{
+            gregorian{"Geregoriyaan"}
+            iso8601{"iso8601"}
+        }
+        collation{
+            standard{"Istaandar"}
+        }
+        numbers{
+            latn{"Laatiin"}
+        }
+    }
+    Version{"2.1.43.94"}
+    codePatterns{
+        language{"Luuqad : {0}"}
+        script{"Qoraal: {0}"}
+        territory{"Gobol : {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
+    }
+}

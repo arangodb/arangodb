@@ -1,0 +1,12 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+en_ER{
+    %%Parent{"en_001"}
+    Currencies{
+        ERN{
+            "Nfk",
+            "Eritrean Nakfa",
+        }
+    }
+    Version{"2.1.38.69"}
+}

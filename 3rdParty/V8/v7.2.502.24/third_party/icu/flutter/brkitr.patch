@@ -1,0 +1,50 @@
+diff --git a/source/data/brkitr/brklocal.mk b/source/data/brkitr/brklocal.mk
+index 0855139b..716a03cc 100644
+--- a/source/data/brkitr/brklocal.mk
++++ b/source/data/brkitr/brklocal.mk
+@@ -39,13 +39,9 @@ BRK_DICT_SOURCE = burmesedict.txt khmerdict.txt laodict.txt\
+ 
+ 
+ # List of break iterator files (brk).
+-BRK_SOURCE = char.txt line.txt line_loose.txt line_loose_cj.txt\
+- line_normal.txt line_normal_cj.txt sent.txt sent_el.txt title.txt\
++BRK_SOURCE = char.txt line_normal.txt line_normal_cj.txt\
+  word.txt word_ja.txt
+ 
+ 
+ # Ordinary resources
+-BRK_RES_SOURCE = de.txt el.txt en.txt en_US.txt\
+- es.txt fr.txt it.txt ja.txt\
+- pt.txt ru.txt zh.txt zh_Hant.txt
+-
++BRK_RES_SOURCE = ja.txt
+diff --git a/source/data/brkitr/ja.txt b/source/data/brkitr/ja.txt
+index 52d49942..9c3df43e 100644
+--- a/source/data/brkitr/ja.txt
++++ b/source/data/brkitr/ja.txt
+@@ -4,9 +4,6 @@ ja{
+     Version{"2.1.44.56"}
+     boundaries{
+         line:process(dependency){"line_normal_cj.brk"}
+-        line_loose:process(dependency){"line_loose_cj.brk"}
+-        line_normal:process(dependency){"line_normal_cj.brk"}
+-        line_strict:process(dependency){"line.brk"}
+         word:process(dependency){"word_ja.brk"}
+     }
+ }
+diff --git a/source/data/brkitr/root.txt b/source/data/brkitr/root.txt
+index ef60ab6f..91697a40 100644
+--- a/source/data/brkitr/root.txt
++++ b/source/data/brkitr/root.txt
+@@ -5,11 +5,6 @@ root{
+     boundaries{
+         grapheme:process(dependency){"char.brk"}
+         line:process(dependency){"line_normal.brk"}
+-        line_loose:process(dependency){"line_loose.brk"}
+-        line_normal:process(dependency){"line_normal.brk"}
+-        line_strict:process(dependency){"line.brk"}
+-        sentence:process(dependency){"sent.brk"}
+-        title:process(dependency){"title.brk"}
+         word:process(dependency){"word.brk"}
+     }
+     dictionaries{

@@ -1,0 +1,21 @@
+diff --git a/source/data/makedata.mak b/source/data/makedata.mak
+index 6a54d0ac..a6dd5602 100644
+--- a/source/data/makedata.mak
++++ b/source/data/makedata.mak
+@@ -568,7 +568,7 @@ COMMON_ICUDATA_ARGUMENTS=$(COMMON_ICUDATA_ARGUMENTS) -a
+ #				Building the common dll in $(ICUBLD_PKG) unconditionally copies it to $(DLL_OUTPUT) too.
+ #
+ #############################################################################
+-ALL : GODATA "$(ICU_LIB_TARGET)" "$(TESTDATAOUT)\testdata.dat"
++ALL : GODATA "$(ICU_LIB_TARGET)"
+ 	@echo All targets are up to date
+ 
+ !IF "$(UWP)" == "UWP"
+@@ -692,6 +692,7 @@ icu4j-data-install :
+ 	cd "$(ICUBLD_PKG)"
+ 	"$(ICUPBIN)\icupkg" -x * --list "$(ICUDATA_SOURCE_ARCHIVE)" > "$(ICUTMP)\icudata.lst"
+ 	"$(ICUPBIN)\pkgdata" $(COMMON_ICUDATA_ARGUMENTS) "$(ICUTMP)\icudata.lst"
++	editbin /NXCOMPAT /DYNAMICBASE "$(U_ICUDATA_NAME).dll"
+ 	copy "$(U_ICUDATA_NAME).dll" "$(DLL_OUTPUT)"
+ 	-@erase "$(U_ICUDATA_NAME).dll"
+ 	copy "$(ICUTMP)\$(ICUPKG).dat" "$(ICUOUT)\$(U_ICUDATA_NAME)$(U_ICUDATA_ENDIAN_SUFFIX).dat"

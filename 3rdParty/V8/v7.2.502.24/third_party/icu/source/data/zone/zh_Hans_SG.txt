@@ -1,0 +1,16 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+zh_Hans_SG{
+    Version{"2.1.38.39"}
+    zoneStrings{
+        "America:Scoresbysund"{
+            ec{"斯考斯伯松德"}
+        }
+        "meta:Malaysia"{
+            ss{"MYT"}
+        }
+        "meta:Singapore"{
+            ss{"SGT"}
+        }
+    }
+}

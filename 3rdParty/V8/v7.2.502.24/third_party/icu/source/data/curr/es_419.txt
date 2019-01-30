@@ -1,0 +1,115 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+es_419{
+    Currencies{
+        AMD{
+            "AMD",
+            "dram armenio",
+        }
+        CAD{
+            "CAD",
+            "dólar canadiense",
+        }
+        ERN{
+            "ERN",
+            "nafka",
+        }
+        EUR{
+            "EUR",
+            "euro",
+        }
+        MYR{
+            "MYR",
+            "ringgit malayo",
+        }
+        THB{
+            "THB",
+            "baht tailandes",
+        }
+        USD{
+            "USD",
+            "dólar estadounidense",
+        }
+        UZS{
+            "UZS",
+            "som uzbeko",
+        }
+        VEF{
+            "VEF",
+            "bolívar venezolano",
+        }
+        VES{
+            "VES",
+            "VES",
+        }
+        VND{
+            "VND",
+            "dong",
+        }
+        XAF{
+            "XAF",
+            "franco CFA BEAC",
+        }
+        XOF{
+            "XOF",
+            "franco CFA BCEAO",
+        }
+        ZMW{
+            "ZMW",
+            "kuacha zambiano",
+        }
+    }
+    Currencies%narrow{
+        EGP{"E£"}
+        FKP{"FK£"}
+        SSP{"SD£"}
+        SYP{"S£"}
+        VEF{"BsF"}
+    }
+    CurrencyPlurals{
+        BGN{
+            one{"lev búlgaro"}
+            other{"leva búlgaros"}
+        }
+        LVL{
+            one{"lats letón"}
+        }
+        MYR{
+            one{"ringgit malayo"}
+            other{"ringgits malayos"}
+        }
+        THB{
+            one{"baht tailandes"}
+            other{"bahts tailandeses"}
+        }
+        UZS{
+            one{"som uzbeko"}
+            other{"soms uzbekos"}
+        }
+        VEF{
+            one{"bolívar venezolano"}
+            other{"bolívares venezolanos"}
+        }
+        VES{
+            one{"VES"}
+            other{"VES"}
+        }
+        XAF{
+            one{"franco CFA BEAC"}
+            other{"francos CFA BEAC"}
+        }
+        XOF{
+            one{"franco CFA BCEAO"}
+            other{"francos CFA BCEAO"}
+        }
+        XXX{
+            one{"(unidad de moneda desconocida)"}
+            other{"(moneda desconocida)"}
+        }
+        ZMW{
+            one{"kuacha zambiano"}
+            other{"kuachas zambianos"}
+        }
+    }
+    Version{"2.1.43.65"}
+}

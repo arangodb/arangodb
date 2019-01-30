@@ -1,0 +1,11 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+es_GQ{
+    Currencies{
+        XAF{
+            "FCFA",
+            "franco CFA de África Central",
+        }
+    }
+    Version{"2.1.38.39"}
+}
