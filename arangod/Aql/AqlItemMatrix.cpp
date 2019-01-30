@@ -75,7 +75,7 @@ InputAqlItemRow AqlItemMatrix::getRow(size_t index) const {
     ++iterations;
     TRI_ASSERT(iterations < _blocks.size() * 2);
 #endif
-    TRI_ASSERT(minIndex >= 0 && minIndex <= maxIndex);
+    TRI_ASSERT(minIndex <= maxIndex);
     TRI_ASSERT(maxIndex < _blocks.size());
     TRI_ASSERT(mostLikelyIndex <= maxIndex);
     TRI_ASSERT(mostLikelyIndex >= minIndex);

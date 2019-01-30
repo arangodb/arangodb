@@ -27,6 +27,7 @@
 #define ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H 1
 
 #include "Aql/types.h"
+#include "Aql/AqlItemBlock.h"
 #include "Basics/Common.h"
 
 namespace arangodb {
@@ -66,7 +67,31 @@ class InputAqlItemRow {
    *
    * @return Reference to the AqlValue stored in that variable.
    */
-  const AqlValue& getValue(RegisterId registerId) const;
+  inline const AqlValue& getValue(RegisterId registerId) const {
+    TRI_ASSERT(isInitialized());
+    TRI_ASSERT(registerId < getNrRegisters());
+    return block().getValueReference(_baseIndex, registerId);
+  }
+
+  /**
+   * @brief Get a reference to the value of the given Variable Nr
+   *
+   * @param registerId The register ID of the variable to read.
+   *
+   * @return The AqlValue stored in that variable. It is invalidated in source.
+   */
+  inline AqlValue&& stealValue(RegisterId registerId) {
+    TRI_ASSERT(isInitialized());
+    TRI_ASSERT(registerId < getNrRegisters());
+    AqlValue a = block().getValueReference(_baseIndex, registerId);
+    if (!a.isEmpty() && a.requiresDestruction()) {
+      // Now no one is responsible for AqlValue a
+      block().steal(a);
+    }
+    // This cannot fail, caller needs to take immediate owner shops.
+    return std::move(a);
+  }
+
 
   std::size_t getNrRegisters() const;
 

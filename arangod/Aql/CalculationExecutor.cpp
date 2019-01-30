@@ -161,7 +161,7 @@ void executeExpression(CalculationExecutorInfos& info, InputAqlItemRow& input,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  output.setValue(info._outputRegisterId, input, a);
+  output.setValue(info._outputRegisterId, input, std::move(a));
   guard.steal();  // itemblock has taken over now
 
   if (info._query->killed()) {

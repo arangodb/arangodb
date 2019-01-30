@@ -25,7 +25,6 @@
 
 #include "InputAqlItemRow.h"
 
-#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemBlockShell.h"
 #include "Aql/AqlValue.h"
 
@@ -41,12 +40,6 @@ InputAqlItemRow::InputAqlItemRow(
     std::shared_ptr<InputAqlItemBlockShell> blockShell, size_t baseIndex)
     : _blockShell(std::move(blockShell)), _baseIndex(baseIndex) {
   TRI_ASSERT(_blockShell != nullptr);
-}
-
-const AqlValue& InputAqlItemRow::getValue(RegisterId registerId) const {
-  TRI_ASSERT(isInitialized());
-  TRI_ASSERT(registerId < getNrRegisters());
-  return block().getValueReference(_baseIndex, registerId);
 }
 
 bool InputAqlItemRow::operator==(InputAqlItemRow const& other) const noexcept {

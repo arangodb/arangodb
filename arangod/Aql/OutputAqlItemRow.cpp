@@ -60,6 +60,7 @@ void OutputAqlItemRow::setValue(RegisterId registerId,
 void OutputAqlItemRow::setValue(RegisterId registerId,
                                 InputAqlItemRow const& sourceRow,
                                 AqlValue&& value) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (!isOutputRegister(registerId)) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_IN_WRONG_REGISTER);
@@ -74,6 +75,7 @@ void OutputAqlItemRow::setValue(RegisterId registerId,
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_OUTPUT_REGISTER_TWICE);
   }
+#endif
 
   block().setValue(_baseIndex, registerId, value);
   _numValuesWritten++;
@@ -140,6 +142,7 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow, bool ignoreMiss
 }
 
 void OutputAqlItemRow::advanceRow() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(produced());
   if (!allValuesWritten()) {
     TRI_ASSERT(false);
@@ -149,6 +152,7 @@ void OutputAqlItemRow::advanceRow() {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INPUT_REGISTERS_NOT_COPIED);
   }
+#endif
   ++_baseIndex;
   _inputRowCopied = false;
   _numValuesWritten = 0;

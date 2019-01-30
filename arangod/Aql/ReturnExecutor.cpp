@@ -81,11 +81,13 @@ std::pair<ExecutionState, ReturnExecutor::Stats> ReturnExecutor::produceRow(Outp
   if (_infos._returnInheritedResults) {
     output.copyRow(inputRow);
   } else {
-    AqlValue const& val = inputRow.getValue(_infos._inputRegisterId);
+    AqlValue val = inputRow.stealValue(_infos._inputRegisterId);
+    AqlValueGuard guard(val, true);
     TRI_IF_FAILURE("ReturnBlock::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    output.setValue(_infos._outputRegisterId, inputRow, val);
+    output.setValue(_infos._outputRegisterId, inputRow, std::move(val));
+    guard.steal();
   }
 
   if (_infos._doCount) {
