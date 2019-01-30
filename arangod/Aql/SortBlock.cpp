@@ -437,24 +437,23 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
     // install the rearranged values from _buffer into newbuffer
     while (count < total) {
       size_t sizeNext = (std::min)(total - count, ExecutionBlock::DefaultBatchSize());
-      AqlItemBlock* next = _allocate(sizeNext, nrRegs);
+      std::unique_ptr<AqlItemBlock> next(_allocate(sizeNext, nrRegs));
 
-      arangodb::Result res = catchVoidToResult([this, &next]() -> void {
-        TRI_IF_FAILURE("SortBlock::doSortingInner") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        _buffer.emplace_back(next);
-      });
-      if (res.fail()) {
-        delete next;
-        THROW_ARANGO_EXCEPTION(res);
+      TRI_IF_FAILURE("SortBlock::doSortingInner") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
+
+      // hand over ownership for the item block
+      AqlItemBlock* p = next.get();
+      _buffer.emplace_back(p);
+      next.release();
 
       // only copy as much as needed!
       for (size_t i = 0; i < sizeNext; i++) {
-        ::stealRow(cache, nrRegs, _heapBuffer.front(), _rows[count], next, i);
+        ::stealRow(cache, nrRegs, _heapBuffer.front(), _rows[count], p, i);
         count++;
       }
+      
       cache.clear();
     }
 
@@ -517,13 +516,9 @@ class ConstrainedHeapSorter : public arangodb::aql::SortBlock::Sorter {
   void ensureHeapBuffer(arangodb::aql::AqlItemBlock* src) {
     if (_heapBuffer.empty()) {
       arangodb::aql::RegisterId const nrRegs = src->getNrRegs();
-      arangodb::aql::AqlItemBlock* newBlock = _allocate(_limit, nrRegs);
-      arangodb::Result res = arangodb::basics::catchVoidToResult(
-          [this, &newBlock]() -> void { _heapBuffer.emplace_back(newBlock); });
-      if (res.fail()) {
-        delete newBlock;
-        THROW_ARANGO_EXCEPTION(res);
-      }
+      std::unique_ptr<arangodb::aql::AqlItemBlock> newBlock(_allocate(_limit, nrRegs));
+      _heapBuffer.emplace_back(newBlock.get());
+      newBlock.release();
     }
   }
 

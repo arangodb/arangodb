@@ -561,8 +561,8 @@ void arangodb::aql::replaceNearWithinFulltext(Optimizer* opt,
   for (auto const& node : nodes) {
     auto visitor = [&modified, &node, &plan](AstNode* astnode) {
       auto* fun = getFunction(astnode);  // if fun != nullptr -> astnode->type NODE_TYPE_FCALL
-      AstNode* replacement = nullptr;
       if (fun) {
+        AstNode* replacement = nullptr;
         if (fun->name == "NEAR") {
           replacement = replaceNearOrWithin(astnode, node, plan.get(), true /*isNear*/);
           TRI_ASSERT(replacement);
@@ -576,11 +576,13 @@ void arangodb::aql::replaceNearWithinFulltext(Optimizer* opt,
           replacement = replaceFullText(astnode, node, plan.get());
           TRI_ASSERT(replacement);
         }
+      
+        if (replacement) {
+          modified = true;
+          return replacement;
+        }
       }
-      if (replacement) {
-        modified = true;
-        return replacement;
-      }
+
       return astnode;
     };
 
@@ -596,5 +598,4 @@ void arangodb::aql::replaceNearWithinFulltext(Optimizer* opt,
   }
 
   opt->addPlan(std::move(plan), rule, modified);
-
-};  // replaceJSFunctions
+}  // replaceJSFunctions

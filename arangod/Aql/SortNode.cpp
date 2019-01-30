@@ -30,8 +30,8 @@
 #include "SortNode.h"
 
 namespace {
-std::string const ConstrainedHeap = "ConstrainedHeap";
-std::string const Standard = "Standard";
+std::string const ConstrainedHeap = "constrainedHeap";
+std::string const Standard = "standard";
 }  // namespace
 
 using namespace arangodb::basics;
@@ -43,6 +43,8 @@ std::string const& SortNode::sorterTypeName(SorterType type) {
       return ::Standard;
     case SorterType::ConstrainedHeap:
       return ::ConstrainedHeap;
+    default:
+      return ::Standard;
   }
 }
 
