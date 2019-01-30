@@ -460,7 +460,7 @@ arangodb::Result IResearchLink::commit() {
     }
 
     // if WAL 'Flush' recovery is enabled (must be for recoverable DB scenarios)
-    if (_flushCallback) {
+    if (_flushCallback && RecoveryState::DONE == _dataStore._recovery) {
       auto& checkpoint = reader.meta().filename;
       auto checkpointFile = // checkpoint file name
         checkpoint + std::string(IRESEARCH_CHECKPOINT_SUFFIX);
@@ -1026,6 +1026,8 @@ arangodb::Result IResearchLink::initDataStore() {
 
       // FIXME TODO ensure that the last WAL marker matches the current checkpoint reader (before commit) or mo marker and generation == 1
 
+      link->_dataStore._recovery = RecoveryState::DONE; // set before commit() to trigger update of _last_success_reader/_last_success_ref
+
       LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
         << "starting sync for arangosearch link '" << link->id() << "'";
 
@@ -1035,7 +1037,6 @@ arangodb::Result IResearchLink::initDataStore() {
         << "finished sync for arangosearch link '" << link->id() << "'";
 
       link->_inRecovery = false;
-      link->_dataStore._recovery = RecoveryState::DONE;
 
       return res;
     }

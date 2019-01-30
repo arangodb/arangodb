@@ -67,12 +67,13 @@ namespace arangodb {
     std::string const _type;
 
     FlushSubscriptionBase(
-        std::string const& type,
-        TRI_voc_tick_t databaseId,
-        arangodb::StorageEngine const& engine
-    ): _currentTick(engine.currentTick()),
+        std::string const& type, // subscription type
+        TRI_voc_tick_t databaseId, // vocbase id
+        arangodb::StorageEngine const& engine // vocbase engine
+    ): _currentTick(0), // default (smallest) tick for StorageEngine
        _databaseId(databaseId),
-       _engine(engine) {
+       _engine(engine),
+       _type(type) {
     }
   };
 
@@ -240,10 +241,10 @@ class MMFilesFlushSubscription final
     : public arangodb::FlushFeature::FlushSubscriptionBase {
  public:
   MMFilesFlushSubscription(
-    std::string const& type,
-    TRI_voc_tick_t databaseId,
-    arangodb::StorageEngine const& engine,
-    arangodb::MMFilesLogfileManager& wal
+    std::string const& type, // subscription type
+    TRI_voc_tick_t databaseId, // vocbase id
+    arangodb::StorageEngine const& engine, // vocbase engine
+    arangodb::MMFilesLogfileManager& wal // marker write destination
   ): arangodb::FlushFeature::FlushSubscriptionBase(type, databaseId, engine),
      _wal(wal) {
   }
@@ -347,10 +348,10 @@ class RocksDBFlushSubscription final
     : public arangodb::FlushFeature::FlushSubscriptionBase {
  public:
   RocksDBFlushSubscription(
-    std::string const& type,
-    TRI_voc_tick_t databaseId,
-    arangodb::StorageEngine const& engine,
-    rocksdb::DB& wal
+    std::string const& type, // subscription type
+    TRI_voc_tick_t databaseId, // vocbase id
+    arangodb::StorageEngine const& engine, // vocbase engine
+    rocksdb::DB& wal // marker write destination
   ): arangodb::FlushFeature::FlushSubscriptionBase(type, databaseId, engine),
      _wal(wal) {
   }
@@ -489,7 +490,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
   auto* mmfilesEngine = dynamic_cast<MMFilesEngine*>(engine);
 
   if (mmfilesEngine) {
-    auto* logFileManager = MMFilesLogfileManager::instance();
+    auto* logFileManager = MMFilesLogfileManager::instance(true); // true to avoid assertion failure
 
     if (!logFileManager) {
       LOG_TOPIC(ERR, Logger::FLUSH)

@@ -490,11 +490,11 @@ SECTION("test_flush_marker") {
   {
     auto linkJson1 = arangodb::velocypack::Parser::fromJson("{ \"id\": 43, \"includeAllFields\": true, \"type\": \"arangosearch\", \"view\": \"testView\" }");
 
-    // initiall population of link
+    // initial population of link
     {
       std::shared_ptr<arangodb::Index> index1;
       CHECK((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index1, *logicalCollection, linkJson1->slice(), 43, false).ok()));
-      CHECK((false == !link));
+      CHECK((false == !index1));
       auto link1 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index1);
       CHECK((false == !link1));
 
@@ -508,7 +508,10 @@ SECTION("test_flush_marker") {
       CHECK((trx.begin().ok()));
       CHECK((link1->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).ok()));
       CHECK((trx.commit().ok()));
-      CHECK((link1->commit().ok()));
+      auto before = StorageEngineMock::inRecoveryResult;
+      StorageEngineMock::inRecoveryResult = false;
+      auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
+      dbFeature->recoveryDone(); // will commit 'link1' (it will also commit 'link' and set RecoveryState to DONE)
     }
 
     irs::utf8_path path;
