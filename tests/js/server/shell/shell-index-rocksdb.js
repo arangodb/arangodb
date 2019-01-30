@@ -246,7 +246,7 @@ function backgroundIndexSuite() {
         switch (i.type) {
           case 'primary':
             break;
-          case 'hash':
+          case 'skiplist':
             assertEqual(i.selectivityEstimate, 1.0);
             break;
           default:
