@@ -662,42 +662,45 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       dumpData = _maskings->shouldDumpData(name);
     }
 
+    std::string fileName;
+    fileName = _outputDirectory + TRI_DIR_SEPARATOR_STR + name + "_" +
+               hexString + ".data.json";
+
+    // remove an existing file first
+    if (TRI_ExistsFile(fileName.c_str())) {
+      TRI_UnlinkFile(fileName.c_str());
+    }
+
+    int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
+                                     O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                                     S_IRUSR | S_IWUSR);
+
+    if (fd < 0) {
+      errorMsg = "cannot write to file '" + fileName + "'";
+
+      return TRI_ERROR_CANNOT_WRITE_FILE;
+    }
+
+    int res = TRI_ERROR_NO_ERROR;
+
     if (dumpData) {
       // save the actual data
-      std::string fileName;
-      fileName = _outputDirectory + TRI_DIR_SEPARATOR_STR + name + "_" +
-                 hexString + ".data.json";
-
-      // remove an existing file first
-      if (TRI_ExistsFile(fileName.c_str())) {
-        TRI_UnlinkFile(fileName.c_str());
-      }
-
-      int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                                       O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                                       S_IRUSR | S_IWUSR);
-
-      if (fd < 0) {
-        errorMsg = "cannot write to file '" + fileName + "'";
-
-        return TRI_ERROR_CANNOT_WRITE_FILE;
-      }
-
       beginEncryption(fd);
 
       extendBatch("");
-      int res = dumpCollection(fd, std::to_string(cid), name, maxTick, errorMsg);
+      res = dumpCollection(fd, std::to_string(cid), name, maxTick, errorMsg);
 
       endEncryption(fd);
-      TRI_TRACKED_CLOSE_FILE(fd);
+    }
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        if (errorMsg.empty()) {
-          errorMsg = "cannot write to file '" + fileName + "'";
-        }
+    TRI_TRACKED_CLOSE_FILE(fd);
 
-        return res;
+    if (res != TRI_ERROR_NO_ERROR) {
+      if (errorMsg.empty()) {
+        errorMsg = "cannot write to file '" + fileName + "'";
       }
+
+      return res;
     }
   }
 
@@ -1102,7 +1105,8 @@ void DumpFeature::start() {
     maskings::MaskingsResult m = maskings::Maskings::fromFile(_maskingsFile);
 
     if (m.status != maskings::MaskingsResult::VALID) {
-      LOG_TOPIC(FATAL, Logger::CONFIG) << m.message;
+      LOG_TOPIC(FATAL, Logger::CONFIG)
+          << m.message << " in maskings file '" << _maskingsFile << "'";
       FATAL_ERROR_EXIT();
     }
 

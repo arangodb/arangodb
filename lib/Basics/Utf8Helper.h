@@ -154,6 +154,26 @@ class Utf8Helper {
                       char const* replacement, size_t replacementLength,
                       bool partial, bool& error);
 
+  // append an UTF8 to a string. This will append 1 to 4 bytes.
+  static void appendUtf8Character(std::string& result, uint32_t ch) {
+    if (ch <= 0x7f) {
+      result.push_back((uint8_t)ch);
+    } else {
+      if (ch <= 0x7ff) {
+        result.push_back((uint8_t)((ch >> 6) | 0xc0));
+      } else {
+        if (ch <= 0xffff) {
+          result.push_back((uint8_t)((ch >> 12) | 0xe0));
+        } else {
+          result.push_back((uint8_t)((ch >> 18) | 0xf0));
+          result.push_back((uint8_t)(((ch >> 12) & 0x3f) | 0x80));
+        }
+        result.push_back((uint8_t)(((ch >> 6) & 0x3f) | 0x80));
+      }
+      result.push_back((uint8_t)((ch & 0x3f) | 0x80));
+    }
+  }
+
  private:
   Collator* _coll;
 };

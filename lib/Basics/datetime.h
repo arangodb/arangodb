@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,35 +17,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Frank Celler
+/// @author Manuel Baesler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MASKINGS_ATTRIBUTE_XIFY_FRONT_H
-#define ARANGODB_MASKINGS_ATTRIBUTE_XIFY_FRONT_H 1
+#ifndef ARANGODB_BASICS_DATETIME_H
+#define ARANGODB_BASICS_DATETIME_H 1
 
-#include "Maskings/MaskingFunction.h"
+#include "Basics/Common.h"
+
+#include <chrono>
+#include <regex>
 
 namespace arangodb {
-namespace maskings {
-class XifyFront : public MaskingFunction {
- public:
-  XifyFront(Maskings* maskings, int64_t length, bool hash, uint64_t seed)
-      : MaskingFunction(maskings),
-        _length((uint64_t)length),
-        _randomSeed(seed),
-        _hash(hash) {}
 
-  VPackValue mask(bool) const override;
-  VPackValue mask(std::string const&, std::string& buffer) const override;
-  VPackValue mask(int64_t) const override;
-  VPackValue mask(double) const override;
+using tp_sys_clock_ms =
+    std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds>;
 
- private:
-  uint64_t _length;
-  uint64_t _randomSeed;
-  bool _hash;
-};
-}  // namespace maskings
+namespace basics {
+bool parseDateTime(std::string const& dateTime, 
+                   tp_sys_clock_ms& date_tp);
+
+bool regexIsoDuration(std::string const& isoDuration, 
+                      std::smatch& durationParts);
+
+/// @brief formats a date(time) value according to formatString
+std::string formatDate(std::string const& formatString,
+                       tp_sys_clock_ms const& dateValue);
+}  // namespace basics
 }  // namespace arangodb
 
 #endif

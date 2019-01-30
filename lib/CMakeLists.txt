@@ -141,6 +141,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Mutex.cpp
   Basics/Nonce.cpp
   Basics/OpenFilesTracker.cpp
+  Basics/CleanupFunctions.cpp
   Basics/ReadWriteLockCPP11.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
@@ -155,11 +156,12 @@ add_library(${LIB_ARANGO} STATIC
   Basics/VelocyPackDumper.cpp
   Basics/VelocyPackHelper.cpp
   Basics/application-exit.cpp
-  Basics/CleanupFunctions.cpp
   Basics/conversions.cpp
   Basics/csv.cpp
+  Basics/datetime.cpp
   Basics/debugging.cpp
   Basics/error.cpp
+  Basics/exitcodes.cpp
   Basics/fasthash.cpp
   Basics/files.cpp
   Basics/fpconv.cpp
@@ -177,7 +179,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/tri-zip.cpp
   Basics/vector.cpp
   Basics/voc-errors.cpp
-  Basics/exitcodes.cpp
   Basics/voc-mimetypes.cpp
   Basics/xxhash.cpp
   Endpoint/Endpoint.cpp
@@ -200,7 +201,7 @@ add_library(${LIB_ARANGO} STATIC
   Maskings/Collection.cpp
   Maskings/Maskings.cpp
   Maskings/Path.cpp
-  Maskings/XifyFront.cpp
+  Maskings/RandomStringMask.cpp
   ProgramOptions/Option.cpp
   ProgramOptions/ProgramOptions.cpp
   ProgramOptions/Section.cpp
