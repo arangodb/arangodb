@@ -173,34 +173,26 @@ TEST_CASE("SortLimit", "[aql][sort-limit]") {
   std::vector<arangodb::velocypack::Builder> insertedDocs;
 
   auto sorterType = [](TRI_vocbase_t& vocbase, std::string const& queryString) -> std::string {
-    // get the plan
-    auto vpackOptions = arangodb::velocypack::Parser::fromJson("{}");
+    auto options = arangodb::velocypack::Parser::fromJson("{}");
     arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, vpackOptions, arangodb::aql::PART_MAIN);
-    {
-      auto result = query.parse();
-      CHECK(result.code == TRI_ERROR_NO_ERROR);
-    }
+                               nullptr, options, arangodb::aql::PART_MAIN);
+
     auto result = query.explain();
-    CHECK(result.result);
-    VPackSlice plan = result.result->slice();
-    CHECK(plan.isObject());
-    VPackSlice nodes = plan.get("nodes");
+    VPackSlice nodes = result.result->slice().get("nodes");
     CHECK(nodes.isArray());
 
-    // now check for sort type
-    for (auto node : VPackArrayIterator(nodes)) {
-      CHECK(node.isObject());
-      VPackSlice type = node.get("type");
-      CHECK(type.isString());
-      if (type.copyString() == "SortNode") {
-        VPackSlice strategy = node.get("strategy");
-        CHECK(strategy.isString());
-        return strategy.copyString();
+    std::string strategy;
+    for (auto const& it : VPackArrayIterator(nodes)) {
+      if (!it.get("type").isEqualString("SortNode")) {
+        continue;
       }
+
+      CHECK(strategy.empty());
+      strategy = it.get("strategy").copyString();
     }
 
-    return "none";
+    CHECK(!strategy.empty());
+    return strategy;
   };
 
   auto verifyExpectedResults =
@@ -260,7 +252,8 @@ TEST_CASE("SortLimit", "[aql][sort-limit]") {
         "FOR d IN testCollection0 SORT d.valAsc LIMIT 0, 10 RETURN d";
     std::vector<size_t> expected = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     verifyExpectedResults(vocbase, query, expected);
-    CHECK(sorterType(vocbase, query) == "ConstrainedHeap");
+    auto actual = sorterType(vocbase, query);
+    CHECK(actual == "constrainedHeap");
   }
 
   // check limit with offset sorted in insertion order
@@ -269,7 +262,8 @@ TEST_CASE("SortLimit", "[aql][sort-limit]") {
         "FOR d IN testCollection0 SORT d.valAsc LIMIT 10, 10 RETURN d";
     std::vector<size_t> expected = {10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
     verifyExpectedResults(vocbase, query, expected);
-    CHECK(sorterType(vocbase, query) == "ConstrainedHeap");
+    auto actual = sorterType(vocbase, query);
+    CHECK(actual == "constrainedHeap");
   }
 }
 
