@@ -172,20 +172,35 @@ TEST_CASE("SortLimit", "[aql][sort-limit]") {
                         "testVocbase");
   std::vector<arangodb::velocypack::Builder> insertedDocs;
 
-  auto sorterType = [](TRI_vocbase_t& vocbase, std::string const& query) -> std::string {
-    std::unique_ptr<arangodb::aql::ExecutionPlan> plan =
-        arangodb::tests::planFromQuery(vocbase, query);
-    arangodb::aql::QueryOptions options;
-    arangodb::aql::Optimizer optimizer(options.maxNumberOfPlans);
-    optimizer.createPlans(std::move(plan), options, true);
-    plan = optimizer.stealBest();
+  auto sorterType = [](TRI_vocbase_t& vocbase, std::string const& queryString) -> std::string {
+    // get the plan
+    auto vpackOptions = arangodb::velocypack::Parser::fromJson("{}");
+    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
+                               nullptr, vpackOptions, arangodb::aql::PART_MAIN);
+    {
+      auto result = query.parse();
+      CHECK(result.code == TRI_ERROR_NO_ERROR);
+    }
+    auto result = query.explain();
+    CHECK(result.result);
+    VPackSlice plan = result.result->slice();
+    CHECK(plan.isObject());
+    VPackSlice nodes = plan.get("nodes");
+    CHECK(nodes.isArray());
 
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
-    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::NodeType::SORT, true);
-    CHECK(nodes.size() == 1);
-    return arangodb::aql::SortNode::sorterTypeName(
-        static_cast<arangodb::aql::SortNode*>(nodes[0])->sorterType());
+    // now check for sort type
+    for (auto node : VPackArrayIterator(nodes)) {
+      CHECK(node.isObject());
+      VPackSlice type = node.get("type");
+      CHECK(type.isString());
+      if (type.copyString() == "SortNode") {
+        VPackSlice strategy = node.get("strategy");
+        CHECK(strategy.isString());
+        return strategy.copyString();
+      }
+    }
+
+    return "none";
   };
 
   auto verifyExpectedResults =
