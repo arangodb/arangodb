@@ -34,8 +34,8 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-template <bool repositShells>
-class BlockFetcherMock : public ::arangodb::aql::BlockFetcher<repositShells> {
+template <bool passBlocksThrough>
+class BlockFetcherMock : public ::arangodb::aql::BlockFetcher<passBlocksThrough> {
  public:
   explicit BlockFetcherMock(arangodb::aql::ResourceMonitor& monitor,
                             ::arangodb::aql::RegisterId nrRegisters);
@@ -61,9 +61,6 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher<repositShells> {
 
   bool allBlocksFetched() const;
   size_t numFetchBlockCalls() const;
-
- private:
-  static std::function<void(std::shared_ptr<::arangodb::aql::AqlItemBlockShell>)> createRepositBlockCallback();
 
  private:
   std::queue<FetchBlockReturnItem> _itemsToReturn;

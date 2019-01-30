@@ -26,12 +26,15 @@
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionState.h"
 
+#include <Basics/Exceptions.h>
+
 #include <memory>
 
 namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
+class AqlItemBlockShell;
 class InputAqlItemBlockShell;
 template <bool>
 class BlockFetcher;
@@ -69,6 +72,14 @@ class AllRowsFetcher {
    *           If DONE => Row can be a nullptr (nothing received) or valid.
    */
   TEST_VIRTUAL std::pair<ExecutionState, AqlItemMatrix const*> fetchAllRows();
+
+  // AllRowsFetcher cannot pass through. Could be implemented, but currently
+  // there are no executors that could use this and not better use
+  // SingleRowFetcher instead.
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough() {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  };
 
  private:
   BlockFetcher<false>* _blockFetcher;

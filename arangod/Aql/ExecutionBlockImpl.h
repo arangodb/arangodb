@@ -209,13 +209,6 @@ class ExecutionBlockImpl : public ExecutionBlock {
   std::pair<ExecutionState, std::unique_ptr<OutputAqlItemBlockShell>> requestWrappedBlock(
       size_t nrItems, RegisterId nrRegs);
 
-  static std::function<void(std::shared_ptr<AqlItemBlockShell>)> createPassThroughCallback(
-      ExecutionBlockImpl& that);
-
-  void pushPassThroughBlock(std::shared_ptr<AqlItemBlockShell> shell) {
-    _passThroughBlocks.push(shell);
-  }
-
   std::unique_ptr<OutputAqlItemRow> createOutputRow(std::unique_ptr<OutputAqlItemBlockShell>& newBlock) const;
 
  private:
@@ -240,14 +233,6 @@ class ExecutionBlockImpl : public ExecutionBlock {
   Executor _executor;
 
   std::unique_ptr<OutputAqlItemRow> _outputItemRow;
-
-  /**
-   * @brief In case the input blocks can be passed through as output blocks, the
-   *        block fetcher will push fetched input blocks onto this queue for us
-   *        to consume when creating OutputAqlItemBlockShells.
-   *        Otherwise, this will stay empty.
-   */
-  std::queue<std::shared_ptr<AqlItemBlockShell>> _passThroughBlocks;
 };
 
 }  // namespace aql

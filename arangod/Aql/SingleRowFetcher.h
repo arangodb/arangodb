@@ -77,6 +77,9 @@ class SingleRowFetcher {
    */
   TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow();
 
+  // TODO enable_if<passBlocksThrough>
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough();
+
  private:
   BlockFetcher<passBlocksThrough>* _blockFetcher;
 

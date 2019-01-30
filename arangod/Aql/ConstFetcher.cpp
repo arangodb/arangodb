@@ -65,3 +65,9 @@ bool ConstFetcher::isLastRowInBlock() {
   TRI_ASSERT(indexIsValid());
   return _rowIndex + 1 == _currentBlock->block().size();
 }
+
+std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> ConstFetcher::fetchBlockForPassthrough() {
+  // Should only be called once, and then _blockForPassThrough should be initialized:
+  TRI_ASSERT(_blockForPassThrough != nullptr);
+  return {ExecutionState::DONE, std::move(_blockForPassThrough)};
+}

@@ -41,7 +41,7 @@ namespace aql {
  * @brief Thin interface to access the methods of ExecutionBlock that are
  * necessary for the row Fetchers. Makes it easier to test the Fetchers.
  */
-template <bool repositShells>
+template <bool allowBlockPassthrough>
 class BlockFetcher {
  public:
   /**
@@ -69,36 +69,32 @@ class BlockFetcher {
   BlockFetcher(std::vector<ExecutionBlock*> const& dependencies,
                AqlItemBlockManager& itemBlockManager,
                std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters,
-               RegisterId nrInputRegisters,
-               std::function<void(std::shared_ptr<AqlItemBlockShell>)> repositShell)
+               RegisterId nrInputRegisters)
       : _dependencies(dependencies),
         _itemBlockManager(itemBlockManager),
         _inputRegisters(std::move(inputRegisters)),
         _nrInputRegisters(nrInputRegisters),
         _blockShellQueue(),
-        _repositShell(std::move(repositShell)) {
-    // We need a function to reposit shells iff the corresponding template
-    // parameter is true.
-    TRI_ASSERT((_repositShell != nullptr) == repositShells);
-  }
+        _blockShellPassThroughQueue() {}
 
   TEST_VIRTUAL ~BlockFetcher() = default;
 
   TEST_VIRTUAL
   std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>> fetchBlock();
 
+  // TODO enable_if<allowBlockPassthrough>
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough();
+
   TEST_VIRTUAL inline RegisterId getNrInputRegisters() const {
     return _nrInputRegisters;
   }
 
-  // Tries to fetch a block from upstream and push it, wrapped, onto _blockShellQueue.
-  // If it succeeds, it returns HASMORE (the returned state regards the _blockShellQueue).
-  // If it doesn't it's either because
+  // Tries to fetch a block from upstream and push it, wrapped, onto
+  // _blockShellQueue. If it succeeds, it returns HASMORE (the returned state
+  // regards the _blockShellQueue). If it doesn't it's either because
   //  - upstream returned WAITING - then so does prefetchBlock().
   //  - or upstream returned a nullptr with DONE - then so does prefetchBlock().
-  // To clarify, if upstream returned a block with DONE, prefetchBlock() will
-  // return HASMORE (because _blockShellQueue has more blocks).
-  ExecutionState prefetchBlock();
+  ExecutionState prefetchBlock(size_t atMost = ExecutionBlock::DefaultBatchSize());
 
  protected:
   AqlItemBlockManager& itemBlockManager() { return _itemBlockManager; }
@@ -117,7 +113,8 @@ class BlockFetcher {
   std::shared_ptr<const std::unordered_set<RegisterId>> const _inputRegisters;
   RegisterId const _nrInputRegisters;
   std::queue<std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>> _blockShellQueue;
-  std::function<void(std::shared_ptr<AqlItemBlockShell>)> const _repositShell;
+  // only used in case of allowBlockPassthrough:
+  std::queue<std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>> _blockShellPassThroughQueue;
 };
 
 }  // namespace aql

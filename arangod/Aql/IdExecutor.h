@@ -65,9 +65,7 @@ class IdExecutor {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    // TODO We actually want to allow passthrough here, but have to adapt the
-    // ConstFetcher, first.
-    static const bool allowsBlockPassthrough = false;
+    static const bool allowsBlockPassthrough = true;
   };
   using Fetcher = ConstFetcher;
   using Infos = IdExecutorInfos;

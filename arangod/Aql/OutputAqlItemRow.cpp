@@ -98,7 +98,9 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow, bool ignoreMiss
   // This may only be set if the input block is the same as the output block,
   // because it is passed through.
   if (_doNotCopyInputRow) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(sourceRow.internalBlockIs(_blockShell->blockShell()));
+#endif
     _inputRowCopied = true;
     _lastSourceRow = sourceRow;
     return;

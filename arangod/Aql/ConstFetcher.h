@@ -44,7 +44,7 @@ class BlockFetcher;
  *        of fetchRow.
  */
 class ConstFetcher {
-  using BlockFetcher = aql::BlockFetcher<false>;
+  using BlockFetcher = aql::BlockFetcher<true>;
 
  public:
   explicit ConstFetcher(BlockFetcher& executionBlock);
@@ -75,6 +75,9 @@ class ConstFetcher {
   TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow();
   void injectBlock(std::shared_ptr<InputAqlItemBlockShell> block);
 
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
+    fetchBlockForPassthrough();
+
  private:
   /**
    * @brief Input block currently in use. Used for memory management by the
@@ -82,6 +85,8 @@ class ConstFetcher {
    *        are moved into separate classes.
    */
   std::shared_ptr<InputAqlItemBlockShell> _currentBlock;
+
+  std::shared_ptr<AqlItemBlockShell> _blockForPassThrough;
 
   /**
    * @brief Index of the row to be returned next by fetchRow(). This is valid

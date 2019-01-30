@@ -37,6 +37,10 @@ template <bool passBlocksThrough>
 std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::fetchRow() {
   // Fetch a new block iff necessary
   if (!indexIsValid()) {
+    // This returns the AqlItemBlock to the ItemBlockManager before fetching a
+    // new one, so we might reuse it immediately!
+    _currentBlock = nullptr;
+
     ExecutionState state;
     std::shared_ptr<InputAqlItemBlockShell> newBlock;
     std::tie(state, newBlock) = fetchBlock();
@@ -122,6 +126,12 @@ size_t SingleRowFetcher<passBlocksThrough>::getRowIndex() {
 template <bool passBlocksThrough>
 SingleRowFetcher<passBlocksThrough>::SingleRowFetcher()
     : _blockFetcher(nullptr), _currentRow{CreateInvalidInputRowHint{}} {}
+
+template<bool passBlocksThrough>
+std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
+SingleRowFetcher<passBlocksThrough>::fetchBlockForPassthrough() {
+  return _blockFetcher->fetchBlockForPassthrough();
+}
 
 template class ::arangodb::aql::SingleRowFetcher<false>;
 template class ::arangodb::aql::SingleRowFetcher<true>;
