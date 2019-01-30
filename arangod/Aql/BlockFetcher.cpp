@@ -84,11 +84,11 @@ std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>> BlockFetcher<
 
 template <bool allowBlockPassthrough>
 std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
-BlockFetcher<allowBlockPassthrough>::fetchBlockForPassthrough() {
+BlockFetcher<allowBlockPassthrough>::fetchBlockForPassthrough(size_t atMost) {
   TRI_ASSERT(allowBlockPassthrough);  // TODO check this with enable_if in the header already
 
   if (_blockShellPassThroughQueue.empty()) {
-    ExecutionState state = prefetchBlock();
+    ExecutionState state = prefetchBlock(atMost);
     // prefetchBlock returns HASMORE iff it pushed a block onto _blockShellPassThroughQueue.
     // If it didn't, it got either WAITING from upstream, or DONE + nullptr.
     if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {

@@ -76,7 +76,7 @@ class AllRowsFetcher {
   // AllRowsFetcher cannot pass through. Could be implemented, but currently
   // there are no executors that could use this and not better use
   // SingleRowFetcher instead.
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough() {
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   };

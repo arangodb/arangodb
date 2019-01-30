@@ -129,8 +129,8 @@ SingleRowFetcher<passBlocksThrough>::SingleRowFetcher()
 
 template<bool passBlocksThrough>
 std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
-SingleRowFetcher<passBlocksThrough>::fetchBlockForPassthrough() {
-  return _blockFetcher->fetchBlockForPassthrough();
+SingleRowFetcher<passBlocksThrough>::fetchBlockForPassthrough(size_t atMost) {
+  return _blockFetcher->fetchBlockForPassthrough(atMost);
 }
 
 template class ::arangodb::aql::SingleRowFetcher<false>;

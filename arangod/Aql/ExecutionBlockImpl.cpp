@@ -281,7 +281,7 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
     // Instead, we take the input blocks from the fetcher and reuse them.
 
     ExecutionState state;
-    std::tie(state, blockShell) = _rowFetcher.fetchBlockForPassthrough();
+    std::tie(state, blockShell) = _rowFetcher.fetchBlockForPassthrough(nrItems);
 
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(blockShell == nullptr);

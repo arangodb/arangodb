@@ -83,7 +83,7 @@ class BlockFetcher {
   std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>> fetchBlock();
 
   // TODO enable_if<allowBlockPassthrough>
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough();
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t atMost);
 
   TEST_VIRTUAL inline RegisterId getNrInputRegisters() const {
     return _nrInputRegisters;

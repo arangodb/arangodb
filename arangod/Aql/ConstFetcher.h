@@ -75,8 +75,9 @@ class ConstFetcher {
   TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow();
   void injectBlock(std::shared_ptr<InputAqlItemBlockShell> block);
 
+  // Argument will be ignored!
   std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
-    fetchBlockForPassthrough();
+    fetchBlockForPassthrough(size_t);
 
  private:
   /**
