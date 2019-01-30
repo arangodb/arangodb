@@ -3,6 +3,8 @@ Arangodump Data Maskings
 
 *--maskings path-of-config*
 
+<small>Introduced in: v3.3.22, v3.4.2</small>
+
 This feature allows you to define how sensitive data shall be dumped.
 It is possible to exclude collections entirely, limit the dump to the
 structural information of a collection (name, indexes, sharding etc.)
@@ -205,24 +207,23 @@ are not contained in an attribute value of which the attribute name is
 
 If you specify a path and the attribute value is an array then the
 masking decision is applied to each element of the array as if this
-was the value of the attribute.
+was the value of the attribute. This applies to arrays inside the array too.
 
 If the attribute value is an object, then it is ignored and the attribute
 does not get masked. To mask nested fields, specify the full path for each
 leaf attribute.
 
 {% hint 'tip' %}
-If some documents have an attribute `name` with a string as value, but other
+If some documents have an attribute `email` with a string as value, but other
 documents store a nested object under the same attribute name, then make sure
 to set up proper masking for the latter case, in which sub-attributes will not
-get masked if there is only a masking configured for the attribute `name`
+get masked if there is only a masking configured for the attribute `email`
 but not its nested attributes.
 {% endhint %}
 
-**Example**
+**Examples**
 
-Masking `email` will convert:
-
+Masking `email` with the _Xify Front_ function will convert:
 
 ```json
 {
@@ -244,7 +245,10 @@ because `email` is a leaf attribute. The document:
 {
   "email" : [
     "address one",
-    "address two"
+    "address two",
+    [
+      "address three"
+    ]
   ]
 }
 ```
@@ -255,12 +259,16 @@ because `email` is a leaf attribute. The document:
 {
   "email" : [
     "xxxxxss xne",
-    "xxxxxss xwo"
+    "xxxxxss xwo",
+    [
+      "xxxxxss xxxee"
+    ]
   ]
 }
 ```
 
-… because the array is "unfolded". The document:
+… because the masking is applied to each array element individually
+(the array is "unfolded"). The document:
 
 ```json
 {
@@ -271,6 +279,8 @@ because `email` is a leaf attribute. The document:
 ```
 
 … will not be changed because `email` is not a leaf attribute.
+To mask the email address, you could use the paths `email.address`
+or `.address`.
 
 
 Masking Functions
@@ -393,8 +403,8 @@ Masking settings:
 
 - `path` (string): which field to mask
 - `type` (string): masking function name `"xifyFront"`
-- `unmaskedLength` (integer<!--, _default: ???_-->): how many characters to
-  leave as-is on the right-hand side of each word
+- `unmaskedLength` (number, _default: `2`_): how many characters to
+  leave as-is on the right-hand side of each word as integer value
 - `hash` (bool, _default: `false`_): whether to append a hash value to the
   masked string to avoid possible unique constraint violations caused by
   the obfuscation
@@ -462,8 +472,19 @@ a number which must not be `0`.
 
 ### Zip
 
-This masking type replaces a zip code with a random one. If the
-attribute value is not a string then the default value is used.
+This masking type replaces a zip code with a random one.
+It uses the following rules:
+
+- If a character of the original zip code is a digit it will be replaced
+  by a random digit.
+- If a character of the original zip code is a letter it
+  will be replaced by a random letter keeping the case.
+- If the attribute value is not a string then the default value is used.
+
+Note that this will generate random zip codes. Therefore there is a
+chance that the same zip code value is generated multiple times, which can
+cause unique constraint violations if a unique index is or will be
+used on the zip code attribute.
 
 Masking settings:
 
@@ -481,10 +502,8 @@ Masking settings:
 }
 ```
 
-This will replace a real zip code with a random one. It uses the following
-rule: If a character of the original zip code is a digit it will be replaced
-by a random digit. If a character of the original zip code is a letter it
-will be replaced by a random letter keeping the case.
+This replaces real zip codes stored in fields called `code` at any level
+with random ones. `"12345"` is used as fallback value.
 
 ```json
 {
@@ -510,10 +529,8 @@ If the original zip code is:
 
     OW91-JI
 
-Note that this will generate random zip codes. Therefore there is a
-chance that the same zip code value is generated multiple times, which can
-cause unique constraint violations if a unique index is or will be
-used on the zip code attribute.
+If the original zip code is `null`, `true`, `false` or a number, then the
+user-defined default value of `"abcdef"` will be used.
 
 ### Datetime
 
@@ -524,12 +541,16 @@ Masking settings:
 
 - `path` (string): which field to mask
 - `type` (string): masking function name `"datetime"`
-- `begin` (string): earliest point in time to return.
-  Date time string in ISO 8601 format
-- `end` (string): latest point in time to return.
-  Date time string in ISO 8601 format
-- `format` (string<!--, default: ???-->): the formatting string format is
+- `begin` (string, _default: `"1970-01-01T00:00:00.000"`_):
+  earliest point in time to return. Date time string in ISO 8601 format.
+- `end` (string, _default: now_):
+  latest point in time to return. Date time string in ISO 8601 format.
+  In case a partial date time string is provided (e.g. `2010-06` without day
+  and time) the earliest date and time is assumed (`2010-06-01T00:00:00.000`).
+  The default value is the current system date and time.
+- `format` (string, _default: `""`_): the formatting string format is
   described in [DATE_FORMAT()](../../../AQL/Functions/Date.html#dateformat).
+  If no format is specified, then the result will be an empty string.
 
 **Example**
 
@@ -557,8 +578,8 @@ Masking settings:
 
 - `path` (string): which field to mask
 - `type` (string): masking function name `"integer"`
-- `lower` (number): smallest integer value to return
-- `upper` (number): largest integer value to return
+- `lower` (number, _default: `-1`_): smallest integer value to return
+- `upper` (number, _default: `1`_): largest integer value to return
 
 **Example**
 
@@ -584,8 +605,8 @@ Masking settings:
 
 - `path` (string): which field to mask
 - `type` (string): masking function name `"decimal"`
-- `lower` (number): smallest floating point value to return
-- `upper` (number): largest floating point value to return
+- `lower` (number, _default: `-1`_): smallest floating point value to return
+- `upper` (number, _default: `1`_): largest floating point value to return
 - `scale` (number, _default: `2`_): maximal amount of digits in the
   decimal fraction part
 
@@ -621,7 +642,7 @@ The configuration:
 ### Credit Card Number
 
 This masking type replaces the value of the attribute with a random
-credit card number.
+credit card number (as integer number).
 See [Luhn algorithm](https://en.wikipedia.org/wiki/Luhn_algorithm)
 for details.
 
@@ -639,7 +660,8 @@ Masking settings:
 }
 ```
 
-This generates a random credit card number to mask field `ccNumber`.
+This generates a random credit card number to mask field `ccNumber`,
+e.g. `4111111414443302`.
 
 ### Phone Number
 
@@ -688,6 +710,7 @@ phone number in case the input value is not a string.
 This masking type takes an email address, computes a hash value and
 splits it into three equal parts `AAAA`, `BBBB`, and `CCCC`. The
 resulting email address is in the format `AAAA.BBBB@CCCC.invalid`.
+The hash is based on a random secret that is different for each run.
 
 Masking settings:
 
