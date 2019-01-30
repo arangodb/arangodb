@@ -576,8 +576,8 @@ Masking settings:
 
 - `path` (string): which field to mask
 - `type` (string): masking function name `"integer"`
-- `lower` (number, _default: `-1`_): smallest integer value to return
-- `upper` (number, _default: `1`_): largest integer value to return
+- `lower` (number, _default: `-100`_): smallest integer value to return
+- `upper` (number, _default: `100`_): largest integer value to return
 
 **Example**
 
