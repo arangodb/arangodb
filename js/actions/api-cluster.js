@@ -707,7 +707,7 @@ actions.defineHttp({
       return;
     }
     if (req.requestType !== actions.GET &&
-      req.requestType !== actions.PUT || req.database !== '_system') {
+        req.requestType !== actions.PUT) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only GET and PUT methods are allowed');
       return;
