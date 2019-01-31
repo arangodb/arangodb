@@ -63,7 +63,7 @@ void stealRow(std::unordered_map<arangodb::aql::AqlValue, arangodb::aql::AqlValu
               cache.emplace(original, copy);
             } catch (...) {
               copy.destroy();
-              std::rethrow_exception(std::current_exception());
+              throw;
             }
 
             try {
@@ -74,7 +74,7 @@ void stealRow(std::unordered_map<arangodb::aql::AqlValue, arangodb::aql::AqlValu
             } catch (...) {
               cache.erase(copy);
               copy.destroy();
-              std::rethrow_exception(std::current_exception());
+              throw;
             }
 
             // It does not matter whether the following works or not,
@@ -140,7 +140,7 @@ void stealRowNoCache(arangodb::aql::RegisterId const nrRegs,
             dst->setValue(dRow, reg, copy);
           } catch (...) {
             copy.destroy();
-            std::rethrow_exception(std::current_exception());
+            throw;
           }
 
           // It does not matter whether the following works or not,
@@ -299,7 +299,7 @@ class StandardSorter : public arangodb::aql::SortBlock::Sorter {
           newBuffer.emplace_back(next);
         } catch (...) {
           delete next;
-          std::rethrow_exception(std::current_exception());
+          throw;
         }
 
         // only copy as much as needed!
@@ -314,7 +314,7 @@ class StandardSorter : public arangodb::aql::SortBlock::Sorter {
       for (auto& x : newBuffer) {
         delete x;
       }
-      std::rethrow_exception(std::current_exception());
+      throw;
     }
 
     _buffer.swap(newBuffer);  // does not throw since allocators are the same
