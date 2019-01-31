@@ -950,7 +950,12 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
           std::string content =
               response->getHeaderField(StaticStrings::ContentTypeHeader, found);
           if (found && content.find(StaticStrings::MimeTypeVPack) != std::string::npos) {
-            VPackValidator validator;
+            VPackOptions validationOptions = VPackOptions::Defaults;  // intentional copy
+            validationOptions.validateUtf8Strings = true;
+            validationOptions.checkAttributeUniqueness = true;
+            validationOptions.disallowExternals = true;
+            validationOptions.disallowCustom = true;
+            VPackValidator validator(&validationOptions);
             validator.validate(sb.data(), sb.length());  // throws on error
             json.assign(VPackSlice(sb.data()).toJson());
             body = StringRef(json);
@@ -4055,6 +4060,8 @@ static void JS_V8ToVPack(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_VPackToV8(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+    
+  VPackValidator validator;
 
   // extract the argument
   if (args.Length() != 1) {
@@ -4065,7 +4072,6 @@ static void JS_VPackToV8(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // supplied argument is a string
     std::string const value = TRI_ObjectToString(isolate, args[0]);
 
-    VPackValidator validator;
     validator.validate(value.c_str(), value.size(), false);
 
     VPackSlice slice(value.c_str());
@@ -4076,7 +4082,6 @@ static void JS_VPackToV8(v8::FunctionCallbackInfo<v8::Value> const& args) {
     char const* data = V8Buffer::data(args[0].As<v8::Object>());
     size_t size = V8Buffer::length(args[0].As<v8::Object>());
 
-    VPackValidator validator;
     validator.validate(data, size, false);
 
     VPackSlice slice(data);
