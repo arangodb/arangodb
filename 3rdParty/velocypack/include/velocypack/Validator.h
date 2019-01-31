@@ -39,7 +39,7 @@ class Validator {
 
  public:
   explicit Validator(Options const* options = &Options::Defaults)
-      : options(options) {
+      : options(options), _level(0) {
     if (options == nullptr) {
       throw Exception(Exception::InternalError, "Options cannot be a nullptr");
     }
@@ -50,28 +50,31 @@ class Validator {
  public:
   // validates a VelocyPack Slice value starting at ptr, with length bytes length
   // throws if the data is invalid
-  bool validate(char const* ptr, size_t length, bool isSubPart = false) const {
+  bool validate(char const* ptr, size_t length, bool isSubPart = false) {
     return validate(reinterpret_cast<uint8_t const*>(ptr), length, isSubPart);
   }
 
   // validates a VelocyPack Slice value starting at ptr, with length bytes length
   // throws if the data is invalid
-  bool validate(uint8_t const* ptr, size_t length, bool isSubPart = false) const;
+  bool validate(uint8_t const* ptr, size_t length, bool isSubPart = false);
 
  private:
-  void validateArray(uint8_t const* ptr, size_t length) const;
-  void validateCompactArray(uint8_t const* ptr, size_t length) const;
-  void validateUnindexedArray(uint8_t const* ptr, size_t length) const;
-  void validateIndexedArray(uint8_t const* ptr, size_t length) const;
-  void validateObject(uint8_t const* ptr, size_t length) const;
-  void validateCompactObject(uint8_t const* ptr, size_t length) const;
-  void validateIndexedObject(uint8_t const* ptr, size_t length) const;
-  void validateBufferLength(size_t expected, size_t actual, bool isSubPart) const;
-  void validateSliceLength(uint8_t const* ptr, size_t length, bool isSubPart) const;
-  ValueLength readByteSize(uint8_t const*& ptr, uint8_t const* end) const;
+  void validateArray(uint8_t const* ptr, size_t length);
+  void validateCompactArray(uint8_t const* ptr, size_t length);
+  void validateUnindexedArray(uint8_t const* ptr, size_t length);
+  void validateIndexedArray(uint8_t const* ptr, size_t length);
+  void validateObject(uint8_t const* ptr, size_t length);
+  void validateCompactObject(uint8_t const* ptr, size_t length);
+  void validateIndexedObject(uint8_t const* ptr, size_t length);
+  void validateBufferLength(size_t expected, size_t actual, bool isSubPart);
+  void validateSliceLength(uint8_t const* ptr, size_t length, bool isSubPart);
+  ValueLength readByteSize(uint8_t const*& ptr, uint8_t const* end);
 
  public:
   Options const* options;
+
+ private:
+  int _level;
 };
 
 }  // namespace arangodb::velocypack
