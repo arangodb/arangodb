@@ -16,6 +16,11 @@ v3.4.3 (XXXX-XX-XX)
   changed default range to -100 and 100 for integer masking function
 
 
+V3.4.2.1 (2019-02-01)
+---------------------
+
+* update velocypack library
+
 v3.4.2 (2019-01-24)
 -------------------
 
