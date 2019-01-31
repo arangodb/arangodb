@@ -66,6 +66,7 @@ struct Exception : std::exception {
     BuilderExternalsDisallowed = 37,
     BuilderKeyAlreadyWritten = 38,
     BuilderKeyMustBeString = 39,
+    BuilderCustomDisallowed = 40,
 
     ValidatorInvalidLength = 50,
     ValidatorInvalidType = 51,
@@ -140,6 +141,8 @@ struct Exception : std::exception {
         return "The key of the next key/value pair is already written";
       case BuilderKeyMustBeString:
         return "The key of the next key/value pair must be a string";
+      case BuilderCustomDisallowed:
+        return "Custom types are not allowed in this configuration";
     
       case ValidatorInvalidType:
         return "Invalid type found in binary data";
