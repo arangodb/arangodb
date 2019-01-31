@@ -22,10 +22,9 @@
 
 #include "ReturnExecutor.h"
 #include "Aql/AqlValue.h"
-#include "Aql/SingleRowFetcher.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
-
 
 #include <algorithm>
 
@@ -44,25 +43,31 @@ using namespace arangodb::aql;
 //   return it->second.registerId;
 // }
 
-ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId outputRegister,
-                                         RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
+                                         RegisterId nrOutputRegisters,
                                          std::unordered_set<RegisterId> registersToClear,
                                          bool doCount, bool returnInheritedResults)
     : ExecutorInfos(make_shared_unordered_set({inputRegister}),
-                    make_shared_unordered_set({outputRegister}), nrInputRegisters,
+                    returnInheritedResults ? make_shared_unordered_set({})
+                                           : make_shared_unordered_set({0}),
+                    nrInputRegisters,
                     nrOutputRegisters, std::unordered_set<RegisterId>{} /*to clear*/,  // std::move(registersToClear) // use this once register planning is fixed
                     std::unordered_set<RegisterId>{} /*to keep*/
                     ),
       _inputRegisterId(inputRegister),
-      _outputRegisterId(outputRegister),
       _doCount(doCount),
       _returnInheritedResults(returnInheritedResults) {}
 
-ReturnExecutor::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
+template <bool passBlocksThrough>
+ReturnExecutor<passBlocksThrough>::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
     : _infos(infos), _fetcher(fetcher){};
-ReturnExecutor::~ReturnExecutor() = default;
 
-std::pair<ExecutionState, ReturnExecutor::Stats> ReturnExecutor::produceRow(OutputAqlItemRow& output) {
+template <bool passBlocksThrough>
+ReturnExecutor<passBlocksThrough>::~ReturnExecutor() = default;
+
+template <bool passBlocksThrough>
+std::pair<ExecutionState, typename ReturnExecutor<passBlocksThrough>::Stats>
+ReturnExecutor<passBlocksThrough>::produceRow(OutputAqlItemRow& output) {
   ExecutionState state;
   ReturnExecutor::Stats stats;
   InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
@@ -78,20 +83,24 @@ std::pair<ExecutionState, ReturnExecutor::Stats> ReturnExecutor::produceRow(Outp
     return {state, stats};
   }
 
-  if (_infos._returnInheritedResults) {
+  TRI_ASSERT(passBlocksThrough == _infos.returnInheritedResults());
+  if (_infos.returnInheritedResults()) {
     output.copyRow(inputRow);
   } else {
-    AqlValue val = inputRow.stealValue(_infos._inputRegisterId);
+    AqlValue val = inputRow.stealValue(_infos.getInputRegisterId());
     AqlValueGuard guard(val, true);
     TRI_IF_FAILURE("ReturnBlock::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    output.setValue(_infos._outputRegisterId, inputRow, val);
+    output.setValue(_infos.getOutputRegisterId(), inputRow, val);
     guard.steal();
   }
 
-  if (_infos._doCount) {
+  if (_infos.doCount()) {
     stats.incrCounted();
   }
   return {state, stats};
 }
+
+template class ::arangodb::aql::ReturnExecutor<true>;
+template class ::arangodb::aql::ReturnExecutor<false>;

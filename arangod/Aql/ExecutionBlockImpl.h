@@ -93,6 +93,7 @@ template <class Executor>
 class ExecutionBlockImpl : public ExecutionBlock {
   using Fetcher = typename Executor::Fetcher;
   using ExecutorStats = typename Executor::Stats;
+  using Infos = typename Executor::Infos;
   using BlockFetcher =
       typename aql::BlockFetcher<Executor::Properties::allowsBlockPassthrough>;
 
@@ -172,6 +173,8 @@ class ExecutionBlockImpl : public ExecutionBlock {
 
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
+  Infos const& infos() const { return _infos; }
+
  private:
   /**
    * @brief Wrapper for ExecutionBlock::traceGetSomeEnd() that returns its
@@ -212,14 +215,6 @@ class ExecutionBlockImpl : public ExecutionBlock {
   std::unique_ptr<OutputAqlItemRow> createOutputRow(std::shared_ptr<AqlItemBlockShell>& newBlock) const;
 
  private:
-  std::shared_ptr<std::unordered_set<RegisterId> const> const registersToKeep() const {
-    return _infos.registersToKeep();
-  }
-  std::shared_ptr<const std::unordered_set<RegisterId>> const getOutputRegisters() const {
-    return _infos.getOutputRegisters();
-  }
-
- private:
   /**
    * @brief Used to allow the row Fetcher to access selected methods of this
    *        ExecutionBlock object.
@@ -237,7 +232,7 @@ class ExecutionBlockImpl : public ExecutionBlock {
    *        the template class needs to implement the logic
    *        to produce a single row from the upstream information.
    */
-  typename Executor::Infos _infos;
+  Infos _infos;
   Executor _executor;
 
   std::unique_ptr<OutputAqlItemRow> _outputItemRow;

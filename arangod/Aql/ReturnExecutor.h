@@ -44,8 +44,8 @@ struct SortRegister;
 
 class ReturnExecutorInfos : public ExecutorInfos {
  public:
-  ReturnExecutorInfos(RegisterId inputRegister, RegisterId outputRegisters,
-                      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+  ReturnExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
+                      RegisterId nrOutputRegisters,
                       std::unordered_set<RegisterId> registersToClear,
                       bool doCount, bool returnInheritedResults);
 
@@ -54,11 +54,24 @@ class ReturnExecutorInfos : public ExecutorInfos {
   ReturnExecutorInfos(ReturnExecutorInfos const&) = delete;
   ~ReturnExecutorInfos() = default;
 
+  Variable const& inVariable() const { return *_inVariable; }
+
+  RegisterId getInputRegisterId() const { return _inputRegisterId; }
+
+  RegisterId getOutputRegisterId() const {
+    // Should not be used with returnInheritedResults.
+    TRI_ASSERT(!returnInheritedResults());
+    return 0;
+  }
+
+  bool doCount() const { return _doCount; }
+
+  bool returnInheritedResults() const { return _returnInheritedResults; }
+
+ private:
   /// @brief the variable produced by Return
   Variable const* _inVariable;
-  bool _count;
   RegisterId _inputRegisterId;
-  RegisterId _outputRegisterId;
   bool _doCount;
   bool _returnInheritedResults;
 };
@@ -66,11 +79,12 @@ class ReturnExecutorInfos : public ExecutorInfos {
 /**
  * @brief Implementation of Return Node
  */
+template<bool passBlocksThrough>
 class ReturnExecutor {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
+    static const bool allowsBlockPassthrough = passBlocksThrough;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = ReturnExecutorInfos;

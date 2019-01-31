@@ -1941,14 +1941,17 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
   bool const isDBServer = arangodb::ServerState::instance()->isDBServer();
   TRI_ASSERT(!returnInheritedResults || !isDBServer);
 
-  LOG_DEVEL << "creating return block: returnInheritedResults == " << returnInheritedResults;
-
-  ReturnExecutorInfos infos(inputRegister, 0,
+  ReturnExecutorInfos infos(inputRegister,
                             getRegisterPlan()->nrRegs[previousNode->getDepth()],
                             getRegisterPlan()->nrRegs[getDepth()],  // if that is set to 1 - infos will complain that there are less output than input registers
                             getRegsToClear(), _count, returnInheritedResults);
-  return std::make_unique<ExecutionBlockImpl<ReturnExecutor>>(&engine, this,
-                                                              std::move(infos));
+  if (returnInheritedResults) {
+    return std::make_unique<ExecutionBlockImpl<ReturnExecutor<true>>>(&engine, this,
+                                                                      std::move(infos));
+  } else {
+    return std::make_unique<ExecutionBlockImpl<ReturnExecutor<false>>>(&engine, this,
+                                                                       std::move(infos));
+  }
 }
 
 /// @brief clone ExecutionNode recursively
