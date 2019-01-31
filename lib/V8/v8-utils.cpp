@@ -194,7 +194,6 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
     char* contentWrapper = TRI_Concatenate3String(prologue, content + bangOffset, epilogue);
 
     TRI_FreeString(content);
-    content = nullptr;
 
     length += strlen(prologue) + strlen(epilogue);
     content = contentWrapper;
