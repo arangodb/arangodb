@@ -1554,20 +1554,33 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
     expInRegs.emplace_back(infoIter->second.registerId);
   }
 
+  bool const isReference = (expression()->node()->type == NODE_TYPE_REFERENCE);
+  if (isReference) {
+    TRI_ASSERT(expInRegs.size() == 1);
+  }
+  bool const willUseV8 = expression()->willUseV8();
+
+  TRI_ASSERT(engine.getQuery() != nullptr);
+  TRI_ASSERT(expression() != nullptr);
+
   CalculationExecutorInfos infos(
       outputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
-      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear()
-
-                                                 ,
-      engine.getQuery()  // used for v8 contexts and in expression
-      ,
-      this->expression(), std::move(expInVars)  // required by expression.execute
-      ,
-      std::move(expInRegs)  // required by expression.execute
+      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+      *engine.getQuery() /* used for v8 contexts and in expression */,
+      *expression(), std::move(expInVars) /* required by expression.execute */,
+      std::move(expInRegs) /* required by expression.execute */
   );
 
-  return std::make_unique<ExecutionBlockImpl<CalculationExecutor>>(&engine, this,
-                                                                   std::move(infos));
+  if (isReference) {
+    return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>>(
+        &engine, this, std::move(infos));
+  } else if (!willUseV8) {
+    return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>>(
+        &engine, this, std::move(infos));
+  } else {
+    return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>>(
+        &engine, this, std::move(infos));
+  }
 }
 
 ExecutionNode* CalculationNode::clone(ExecutionPlan* plan, bool withDependencies,

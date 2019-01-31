@@ -110,11 +110,7 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(OutputAqlIt
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
-      output.setValue(_infos.getOutputRegister(), _currentRow,
-                      std::move(innerValue));  // NOLINT(performance-move-const-arg)
-      // The output row (respectively the AqlItemBlock underneath) is now
-      // responsible for the memory.
-      guard.steal();
+      output.moveValueInto(_infos.getOutputRegister(), _currentRow, guard);
 
       // set position to +1 for next iteration after new fetchRow
       _inputArrayPosition++;

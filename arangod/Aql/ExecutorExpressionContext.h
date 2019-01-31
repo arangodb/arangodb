@@ -39,7 +39,7 @@ class ExecutorExpressionContext final : public QueryExpressionContext {
                             std::vector<RegisterId> const& regs)
       : QueryExpressionContext(query), _inputRow(inputRow), _vars(vars), _regs(regs) {}
 
-  ~ExecutorExpressionContext() {}
+  ~ExecutorExpressionContext() = default;
 
   size_t numRegisters() const override;
 

@@ -58,7 +58,8 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _rowFetcher(_blockFetcher),
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos),
-      _outputItemRow(nullptr) {}
+      _outputItemRow(nullptr),
+      _query(*engine->getQuery()){}
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
@@ -89,6 +90,10 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
   }
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  if (getQuery().killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 
   if (!_outputItemRow) {
@@ -325,7 +330,9 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
   return {ExecutionState::HASMORE, std::move(blockShell)};
 }
 
-template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;
+template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>;
+template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;

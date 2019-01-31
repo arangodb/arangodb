@@ -334,7 +334,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
         InputAqlItemRow source{inputBlockShell, i};
         for (RegisterId j = 3; j < 5; ++j) {
           AqlValue v{AqlValueHintInt{(int64_t)(j + 5)}};
-          testee.setValue(j, source, v);
+          testee.cloneValueInto(j, source, v);
           if (j == 3) {
             // We are not allowed to declare an incomplete row as produced
             REQUIRE(!testee.produced());

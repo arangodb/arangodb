@@ -214,6 +214,8 @@ class ExecutionBlockImpl : public ExecutionBlock {
 
   std::unique_ptr<OutputAqlItemRow> createOutputRow(std::shared_ptr<AqlItemBlockShell>& newBlock) const;
 
+  Query const& getQuery() const { return _query; }
+
  private:
   /**
    * @brief Used to allow the row Fetcher to access selected methods of this
@@ -236,6 +238,8 @@ class ExecutionBlockImpl : public ExecutionBlock {
   Executor _executor;
 
   std::unique_ptr<OutputAqlItemRow> _outputItemRow;
+
+  Query const& _query;
 };
 
 }  // namespace aql

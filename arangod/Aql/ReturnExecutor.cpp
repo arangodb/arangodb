@@ -92,7 +92,7 @@ ReturnExecutor<passBlocksThrough>::produceRow(OutputAqlItemRow& output) {
     TRI_IF_FAILURE("ReturnBlock::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    output.setValue(_infos.getOutputRegisterId(), inputRow, val);
+    output.cloneValueInto(_infos.getOutputRegisterId(), inputRow, val);
     guard.steal();
   }
 

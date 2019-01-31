@@ -53,15 +53,12 @@ class OutputAqlItemRow {
                             CopyRowBehaviour = CopyRowBehaviour::CopyInputRows);
 
   // Clones the given AqlValue
-  void setValue(RegisterId registerId, InputAqlItemRow const& sourceRow,
-                AqlValue const& value) {
+  void cloneValueInto(RegisterId registerId, InputAqlItemRow const& sourceRow,
+                      AqlValue const& value) {
     bool mustDestroy = true;
     AqlValue clonedValue = value.clone();
     AqlValueGuard guard{clonedValue, mustDestroy};
-    // Use copy-implementation of setValue()
-    // NOLINTNEXTLINE(performance-move-const-arg)
-    setValue(registerId, sourceRow, std::move(clonedValue));
-    guard.steal();
+    moveValueInto(registerId, sourceRow, guard);
   }
 
   // Copies the given AqlValue. If it holds external memory, it will be
@@ -69,7 +66,7 @@ class OutputAqlItemRow {
   // Note that there is no real move happening here, just a trivial copy of
   // the passed AqlValue. However, that means the output block will take
   // responsibility of possibly referenced external memory.
-  void setValue(RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValue&& value) {
+  void moveValueInto(RegisterId registerId, InputAqlItemRow const &sourceRow, AqlValueGuard& guard) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (!isOutputRegister(registerId)) {
       TRI_ASSERT(false);
@@ -87,7 +84,8 @@ class OutputAqlItemRow {
     }
 #endif
 
-    block().setValue(_baseIndex, registerId, value);
+    block().setValue(_baseIndex, registerId, guard.value());
+    guard.steal();
     _numValuesWritten++;
     // allValuesWritten() must be called only *after* _numValuesWritten was
     // increased.
