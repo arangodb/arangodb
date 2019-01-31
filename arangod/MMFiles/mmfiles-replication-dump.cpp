@@ -698,13 +698,13 @@ int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* d
 
   std::unordered_map<TRI_voc_tid_t, TRI_voc_tick_t> transactions;
 
-  // always return the logfiles we have used
-  TRI_DEFER(MMFilesLogfileManager::instance()->returnLogfiles(logfiles));
-
   // ask the logfile manager which datafiles qualify
   bool fromTickIncluded = false;
   std::vector<arangodb::MMFilesWalLogfile*> logfiles =
       MMFilesLogfileManager::instance()->getLogfilesForTickRange(tickMin, tickMax, fromTickIncluded);
+  
+  // always return the logfiles we have used
+  TRI_DEFER(MMFilesLogfileManager::instance()->returnLogfiles(logfiles));
 
   // setup some iteration state
   TRI_voc_tick_t lastFoundTick = 0;
