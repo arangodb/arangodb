@@ -1,6 +1,9 @@
 v3.4.3 (XXXX-XX-XX)
 -------------------
 
+* fix undefined behavior when calling user-defined AQL functions from an AQL
+  query via a streaming cursor
+
 * fix broken validation of tick range in arangodump
 
 * updated bundled curl library to version 7.63.0
