@@ -490,7 +490,10 @@
     "dynamic" : false,
     "enterpriseOnly" : false,
     "hidden" : false,
-    "introducedIn" : null,
+    "introducedIn" : [
+      "v3.3.22",
+      "v3.4.2"
+    ],
     "obsolete" : false,
     "requiresValue" : true,
     "section" : "",
