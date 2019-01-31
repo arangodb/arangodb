@@ -53,6 +53,7 @@
 #include "Aql/SubqueryBlock.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
+#include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 
@@ -1935,12 +1936,17 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
   //}
   // LOG_DEVEL << "registersToClear:  " << ss.rdbuf();
 
+  bool returnInheritedResults = plan()->root() == this;
+
+  bool const isDBServer = arangodb::ServerState::instance()->isDBServer();
+  TRI_ASSERT(!returnInheritedResults || !isDBServer);
+
+  LOG_DEVEL << "creating return block: returnInheritedResults == " << returnInheritedResults;
+
   ReturnExecutorInfos infos(inputRegister, 0,
                             getRegisterPlan()->nrRegs[previousNode->getDepth()],
                             getRegisterPlan()->nrRegs[getDepth()],  // if that is set to 1 - infos will complain that there are less output than input registers
-                            getRegsToClear(),
-                            _count,
-                            false /*return inherited was set on return block*/);
+                            getRegsToClear(), _count, returnInheritedResults);
   return std::make_unique<ExecutionBlockImpl<ReturnExecutor>>(&engine, this,
                                                               std::move(infos));
 }

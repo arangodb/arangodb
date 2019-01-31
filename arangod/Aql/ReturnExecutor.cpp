@@ -70,12 +70,12 @@ std::pair<ExecutionState, ReturnExecutor::Stats> ReturnExecutor::produceRow(Outp
 
   if (state == ExecutionState::WAITING) {
     TRI_ASSERT(!inputRow);
-    return {state, std::move(stats)};
+    return {state, stats};
   }
 
   if (!inputRow) {
     TRI_ASSERT(state == ExecutionState::DONE);
-    return {state, std::move(stats)};
+    return {state, stats};
   }
 
   if (_infos._returnInheritedResults) {
@@ -86,12 +86,12 @@ std::pair<ExecutionState, ReturnExecutor::Stats> ReturnExecutor::produceRow(Outp
     TRI_IF_FAILURE("ReturnBlock::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    output.setValue(_infos._outputRegisterId, inputRow, std::move(val));
+    output.setValue(_infos._outputRegisterId, inputRow, val);
     guard.steal();
   }
 
   if (_infos._doCount) {
     stats.incrCounted();
   }
-  return {state, std::move(stats)};
+  return {state, stats};
 }
