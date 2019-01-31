@@ -66,8 +66,6 @@ class AqlItemBlockDeleter {
  * and probably shrinks ExecutorInfos.
  */
 class AqlItemBlockShell {
-  friend class OutputAqlItemBlockShell;
-
  public:
   using SmartAqlItemBlockPtr = std::unique_ptr<AqlItemBlock, AqlItemBlockDeleter>;
 
@@ -81,62 +79,16 @@ class AqlItemBlockShell {
    */
   bool hasBlock() const noexcept { return _block != nullptr; }
 
- protected:
-  // Steal the block. Used in the OutputAqlItemBlockShell only.
-  SmartAqlItemBlockPtr&& stealBlock() { return std::move(_block); }
+  // Steal the block. Breaks the shell!
+  SmartAqlItemBlockPtr stealBlock() { return std::move(_block); }
+  std::unique_ptr<AqlItemBlock> stealBlockCompat() {
+    return std::unique_ptr<AqlItemBlock>(stealBlock().release());
+  }
 
  private:
   SmartAqlItemBlockPtr _block;
 };
 
-
-class OutputAqlItemBlockShell {
- public:
-  // TODO This constructor would be able to fetch a new block itself from the
-  // manager, which is needed anyway. Maybe, at least additionally, we should
-  // write a constructor that takes the block dimensions instead of the block
-  // itself for convenience.
-  OutputAqlItemBlockShell(std::shared_ptr<AqlItemBlockShell> blockShell,
-                          std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters,
-                          std::shared_ptr<const std::unordered_set<RegisterId>> registersToKeep);
-
- public:
-  std::unordered_set<RegisterId> const& outputRegisters() const {
-    return *_outputRegisters;
-  };
-
-  std::unordered_set<RegisterId> const& registersToKeep() const {
-    return *_registersToKeep;
-  };
-
-  bool isOutputRegister(RegisterId registerId) const {
-    return outputRegisters().find(registerId) != outputRegisters().end();
-  }
-
-  /**
-   * @brief Steals the block, in a backwards-compatible unique_ptr (that is,
-   *        unique_ptr<AqlItemBlock> instead of
-   *        unique_ptr<AqlItemBlock, AqlItemBlockDeleter>). The shell is broken
-   *        after this.
-   */
-  std::unique_ptr<AqlItemBlock> stealBlockCompat() {
-    return std::unique_ptr<AqlItemBlock>(_blockShell->stealBlock().release());
-  }
-
-  AqlItemBlock const& block() const { return _blockShell->block(); };
-  AqlItemBlock& block() { return _blockShell->block(); };
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  std::shared_ptr<AqlItemBlockShell> const& blockShell() const {
-    return _blockShell;
-  }
-#endif
-
- private:
-  std::shared_ptr<AqlItemBlockShell> _blockShell;
-  std::shared_ptr<const std::unordered_set<RegisterId>> _outputRegisters;
-  std::shared_ptr<const std::unordered_set<RegisterId>> _registersToKeep;
-};
 
 }  // namespace aql
 }  // namespace arangodb

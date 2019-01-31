@@ -1,3 +1,5 @@
+#include <utility>
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -34,14 +36,18 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-OutputAqlItemRow::OutputAqlItemRow(std::unique_ptr<OutputAqlItemBlockShell> blockShell,
+OutputAqlItemRow::OutputAqlItemRow(std::shared_ptr<AqlItemBlockShell> blockShell,
+                                   std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
+                                   std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
                                    CopyRowBehaviour copyRowBehaviour)
     : _blockShell(std::move(blockShell)),
       _baseIndex(0),
       _inputRowCopied(false),
       _lastSourceRow{CreateInvalidInputRowHint{}},
       _numValuesWritten(0),
-      _doNotCopyInputRow(copyRowBehaviour == CopyRowBehaviour::DoNotCopyInputRows) {
+      _doNotCopyInputRow(copyRowBehaviour == CopyRowBehaviour::DoNotCopyInputRows),
+      _outputRegisters(std::move(outputRegisters)),
+      _registersToKeep(std::move(registersToKeep)) {
   TRI_ASSERT(_blockShell != nullptr);
 }
 
@@ -101,7 +107,7 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow, bool ignoreMiss
   // because it is passed through.
   if (_doNotCopyInputRow) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(sourceRow.internalBlockIs(_blockShell->blockShell()));
+    TRI_ASSERT(sourceRow.internalBlockIs(blockShell()));
 #endif
     _inputRowCopied = true;
     _lastSourceRow = sourceRow;
@@ -114,7 +120,7 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow, bool ignoreMiss
   bool mustClone = _baseIndex == 0 || _lastSourceRow != sourceRow;
 
   if (mustClone) {
-    for (auto itemId : _blockShell->registersToKeep()) {
+    for (auto itemId : registersToKeep()) {
       if(ignoreMissing && itemId >= sourceRow.getNrRegisters()){
         continue;
       }
@@ -133,7 +139,7 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow, bool ignoreMiss
     }
   } else {
     TRI_ASSERT(_baseIndex > 0);
-    block().copyValuesFromRow(_baseIndex, _blockShell->registersToKeep(),
+    block().copyValuesFromRow(_baseIndex, registersToKeep(),
                               _baseIndex - 1);
   }
 
@@ -159,7 +165,7 @@ void OutputAqlItemRow::advanceRow() {
 }
 
 std::unique_ptr<AqlItemBlock> OutputAqlItemRow::stealBlock() {
-  auto block = _blockShell->stealBlockCompat();
+  auto block = blockShell().stealBlockCompat();
   if (numRowsWritten() == 0) {
     // blocks may not be empty
     block.reset(nullptr);
@@ -170,21 +176,3 @@ std::unique_ptr<AqlItemBlock> OutputAqlItemRow::stealBlock() {
   }
   return block;
 }
-
-size_t OutputAqlItemRow::numRegistersToWrite() const {
-  return _blockShell->outputRegisters().size();
-}
-
-bool OutputAqlItemRow::isOutputRegister(RegisterId regId) {
-  return _blockShell->isOutputRegister(regId);
-}
-
-AqlItemBlock const& OutputAqlItemRow::block() const {
-  return _blockShell->block();
-}
-
-AqlItemBlock& OutputAqlItemRow::block() { return _blockShell->block(); }
-
-bool OutputAqlItemRow::isFull() { return numRowsWritten() >= block().size(); }
-
-std::size_t OutputAqlItemRow::getNrRegisters() const { return block().getNrRegs(); }

@@ -31,24 +31,3 @@ AqlItemBlockShell::AqlItemBlockShell(AqlItemBlockManager& manager,
   // one AqlItemBlock. _block may never be null!
   TRI_ASSERT(_block != nullptr);
 }
-
-InputAqlItemBlockShell::InputAqlItemBlockShell(
-    std::shared_ptr<AqlItemBlockShell> blockShell,
-    std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters)
-    : _blockShell(std::move(blockShell)), _inputRegisters(std::move(inputRegisters)) {
-  if (_inputRegisters == nullptr) {
-    _inputRegisters = std::make_shared<decltype(_inputRegisters)::element_type>();
-  }
-}
-
-OutputAqlItemBlockShell::OutputAqlItemBlockShell(
-    std::shared_ptr<AqlItemBlockShell> blockShell,
-    std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters,
-    std::shared_ptr<const std::unordered_set<RegisterId>> registersToKeep)
-    : _blockShell(std::move(blockShell)),
-      _outputRegisters(std::move(outputRegisters)),
-      _registersToKeep(std::move(registersToKeep)) {
-  if (_outputRegisters == nullptr) {
-    _outputRegisters = std::make_shared<decltype(_outputRegisters)::element_type>();
-  }
-}

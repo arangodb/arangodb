@@ -93,7 +93,7 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
 
   if (!_outputItemRow) {
     ExecutionState state;
-    std::unique_ptr<OutputAqlItemBlockShell> newBlock;
+    std::shared_ptr<AqlItemBlockShell> newBlock;
     std::tie(state, newBlock) =
         requestWrappedBlock(atMost, _infos.numberOfOutputRegisters());
     if (state == ExecutionState::WAITING) {
@@ -162,12 +162,14 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
 
 template <class Executor>
 std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
-    std::unique_ptr<OutputAqlItemBlockShell>& newBlock) const {
+    std::shared_ptr<AqlItemBlockShell>& newBlock) const {
   if /* constexpr */ (Executor::Properties::allowsBlockPassthrough) {
-    return std::make_unique<OutputAqlItemRow>(move(newBlock),
+    return std::make_unique<OutputAqlItemRow>(newBlock, getOutputRegisters(),
+                                              registersToKeep(),
                                               OutputAqlItemRow::CopyRowBehaviour::DoNotCopyInputRows);
   } else {
-    return std::make_unique<OutputAqlItemRow>(move(newBlock));
+    return std::make_unique<OutputAqlItemRow>(newBlock, getOutputRegisters(),
+                                              registersToKeep());
   }
 }
 
@@ -273,7 +275,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor>::initializeCurs
 }  // namespace arangodb
 
 template <class Executor>
-std::pair<ExecutionState, std::unique_ptr<OutputAqlItemBlockShell>>
+std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
 ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrRegs) {
   std::shared_ptr<AqlItemBlockShell> blockShell;
   if /* constexpr */ (Executor::Properties::allowsBlockPassthrough) {
@@ -310,15 +312,15 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
     AqlItemBlock* block = requestBlock(nrItems, nrRegs);
 
     blockShell =
-        std::make_shared<AqlItemBlockShell>(_engine->itemBlockManager(),
+        std::make_unique<AqlItemBlockShell>(_engine->itemBlockManager(),
                                             std::unique_ptr<AqlItemBlock>{block});
   }
 
-  std::unique_ptr<OutputAqlItemBlockShell> outputBlockShell =
-      std::make_unique<OutputAqlItemBlockShell>(blockShell, _infos.getOutputRegisters(),
-                                                _infos.registersToKeep());
+  // std::unique_ptr<OutputAqlItemBlockShell> outputBlockShell =
+  //     std::make_unique<OutputAqlItemBlockShell>(blockShell, _infos.getOutputRegisters(),
+  //                                               _infos.registersToKeep());
 
-  return {ExecutionState::HASMORE, std::move(outputBlockShell)};
+  return {ExecutionState::HASMORE, std::move(blockShell)};
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor>;

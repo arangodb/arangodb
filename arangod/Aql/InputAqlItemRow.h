@@ -115,16 +115,16 @@ class InputAqlItemRow {
   /**
    * @brief Compare the underlying block. Only for assertions.
    */
-  bool internalBlockIs(const std::shared_ptr<AqlItemBlockShell>& other) const;
+  bool internalBlockIs(AqlItemBlockShell const& other) const;
 #endif
 
  private:
-  std::shared_ptr<AqlItemBlockShell> blockShell() { return _blockShell; }
-  std::shared_ptr<AqlItemBlockShell> const blockShell() const {
-    return _blockShell;
+  AqlItemBlockShell& blockShell() { return *_blockShell; }
+  AqlItemBlockShell const& blockShell() const {
+    return *_blockShell;
   }
-  AqlItemBlock& block() { return blockShell()->block(); }
-  AqlItemBlock const& block() const { return blockShell()->block(); }
+  AqlItemBlock& block() { return blockShell().block(); }
+  AqlItemBlock const& block() const { return blockShell().block(); }
 
  private:
   /**

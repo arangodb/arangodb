@@ -206,10 +206,18 @@ class ExecutionBlockImpl : public ExecutionBlock {
    *        nullptr. This Happens only if upstream is WAITING, or respectively,
    *        if it is DONE and did not return a new block.
    */
-  std::pair<ExecutionState, std::unique_ptr<OutputAqlItemBlockShell>> requestWrappedBlock(
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> requestWrappedBlock(
       size_t nrItems, RegisterId nrRegs);
 
-  std::unique_ptr<OutputAqlItemRow> createOutputRow(std::unique_ptr<OutputAqlItemBlockShell>& newBlock) const;
+  std::unique_ptr<OutputAqlItemRow> createOutputRow(std::shared_ptr<AqlItemBlockShell>& newBlock) const;
+
+ private:
+  std::shared_ptr<std::unordered_set<RegisterId> const> const registersToKeep() const {
+    return _infos.registersToKeep();
+  }
+  std::shared_ptr<const std::unordered_set<RegisterId>> const getOutputRegisters() const {
+    return _infos.getOutputRegisters();
+  }
 
  private:
   /**

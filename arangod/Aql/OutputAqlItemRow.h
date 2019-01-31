@@ -33,7 +33,6 @@
 namespace arangodb {
 namespace aql {
 
-class OutputAqlItemBlockShell;
 struct AqlValue;
 
 /**
@@ -48,7 +47,9 @@ class OutputAqlItemRow {
   // TODO Implement this behaviour via a template parameter instead?
   enum class CopyRowBehaviour { CopyInputRows, DoNotCopyInputRows };
 
-  explicit OutputAqlItemRow(std::unique_ptr<OutputAqlItemBlockShell> blockShell,
+  explicit OutputAqlItemRow(std::shared_ptr<AqlItemBlockShell> blockShell,
+                            std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
+                            std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
                             CopyRowBehaviour = CopyRowBehaviour::CopyInputRows);
 
   // Clones the given AqlValue
@@ -64,7 +65,7 @@ class OutputAqlItemRow {
 
   void copyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing = false);
 
-  std::size_t getNrRegisters() const;
+  std::size_t getNrRegisters() const { return block().getNrRegs(); }
 
   /**
    * @brief May only be called after all output values in the current row have
@@ -87,7 +88,7 @@ class OutputAqlItemRow {
    */
   std::unique_ptr<AqlItemBlock> stealBlock();
 
-  bool isFull();
+  bool isFull() { return numRowsWritten() >= block().size(); }
 
   /**
    * @brief Returns the number of rows that were fully written.
@@ -111,10 +112,27 @@ class OutputAqlItemRow {
   }
 
  private:
+  AqlItemBlockShell& blockShell() { return *_blockShell; }
+  AqlItemBlockShell const& blockShell() const { return *_blockShell; }
+
+  std::unordered_set<RegisterId> const& outputRegisters() const {
+    return *_outputRegisters;
+  };
+
+  std::unordered_set<RegisterId> const& registersToKeep() const {
+    return *_registersToKeep;
+  };
+
+  bool isOutputRegister(RegisterId registerId) const {
+    return outputRegisters().find(registerId) != outputRegisters().end();
+  }
+
+
+ private:
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
-  std::unique_ptr<OutputAqlItemBlockShell> _blockShell;
+  std::shared_ptr<AqlItemBlockShell> _blockShell;
 
   /**
    * @brief The offset into the AqlItemBlock. In other words, the row's index.
@@ -144,19 +162,22 @@ class OutputAqlItemRow {
    */
   bool const _doNotCopyInputRow;
 
+  std::shared_ptr<std::unordered_set<RegisterId> const> _outputRegisters;
+  std::shared_ptr<std::unordered_set<RegisterId> const> _registersToKeep;
+
  private:
   size_t nextUnwrittenIndex() const noexcept { return numRowsWritten(); }
 
-  size_t numRegistersToWrite() const;
+  size_t numRegistersToWrite() const {
+    return outputRegisters().size();
+  }
 
   bool allValuesWritten() const {
     return _numValuesWritten == numRegistersToWrite();
   };
 
-  bool isOutputRegister(RegisterId regId);
-
-  AqlItemBlock const& block() const;
-  AqlItemBlock& block();
+  AqlItemBlock const& block() const { return blockShell().block(); }
+  AqlItemBlock& block() { return blockShell().block(); }
 };
 
 }  // namespace aql
