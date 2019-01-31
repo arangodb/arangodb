@@ -282,7 +282,7 @@ SECTION("test_auth") {
       auto result = v8::Function::Cast(*fn_createView)->CallAsFunction(context, fn_createView, static_cast<int>(args.size()), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsObject()));
-      auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(result.ToLocalChecked()->ToObject(), WRP_VOCBASE_VIEW_TYPE);
+      auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()), WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
       CHECK((false == !v8View));
       CHECK((std::string("testView") == v8View->name()));
       CHECK((std::string("testViewType") == v8View->type().name()));
@@ -1044,7 +1044,7 @@ SECTION("test_auth") {
       auto result = v8::Function::Cast(*fn_view)->CallAsFunction(context, fn_view, static_cast<int>(args.size()), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsObject()));
-      auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(result.ToLocalChecked()->ToObject(), WRP_VOCBASE_VIEW_TYPE);
+      auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()), WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
       CHECK((false == !v8View));
       CHECK((std::string("testView") == v8View->name()));
       CHECK((std::string("testViewType") == v8View->type().name()));
@@ -1085,7 +1085,7 @@ SECTION("test_auth") {
       auto result = v8::Function::Cast(*fn_view)->CallAsFunction(context, fn_view, static_cast<int>(args.size()), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsObject()));
-      auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(result.ToLocalChecked()->ToObject(), WRP_VOCBASE_VIEW_TYPE);
+      auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()), WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
       CHECK((false == !v8View));
       CHECK((std::string("testView") == v8View->name()));
       CHECK((std::string("testViewType") == v8View->type().name()));
@@ -1333,7 +1333,7 @@ SECTION("test_auth") {
       CHECK((result.ToLocalChecked()->IsArray()));
       auto* resultArray = v8::Array::Cast(*result.ToLocalChecked());
       CHECK((1U == resultArray->Length()));
-      auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(resultArray->Get(0).As<v8::Object>(), WRP_VOCBASE_VIEW_TYPE);
+      auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(resultArray->Get(0).As<v8::Object>(), WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
       CHECK((false == !v8View));
       CHECK((std::string("testView1") == v8View->name()));
       CHECK((std::string("testViewType") == v8View->type().name()));
@@ -1356,7 +1356,7 @@ SECTION("test_auth") {
       CHECK((result.ToLocalChecked()->IsArray()));
       auto* resultArray = v8::Array::Cast(*result.ToLocalChecked());
       CHECK((1U == resultArray->Length()));
-      auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(resultArray->Get(0).As<v8::Object>(), WRP_VOCBASE_VIEW_TYPE);
+      auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(resultArray->Get(0).As<v8::Object>(), WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
       CHECK((false == !v8View));
       CHECK((std::string("testView1") == v8View->name()));
       CHECK((std::string("testViewType") == v8View->type().name()));
@@ -1399,7 +1399,7 @@ SECTION("test_auth") {
       CHECK((result.ToLocalChecked()->IsArray()));
       auto* resultArray = v8::Array::Cast(*result.ToLocalChecked());
       CHECK((1U == resultArray->Length()));
-      auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(resultArray->Get(0).As<v8::Object>(), WRP_VOCBASE_VIEW_TYPE);
+      auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(resultArray->Get(0).As<v8::Object>(), WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
       CHECK((false == !v8View));
       CHECK((std::string("testView1") == v8View->name()));
       CHECK((std::string("testViewType") == v8View->type().name()));

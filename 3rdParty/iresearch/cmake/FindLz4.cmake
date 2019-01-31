@@ -85,7 +85,7 @@ if (Lz4_INCLUDE_DIR AND Lz4_SRC_DIR_LZ4 AND Lz4_SRC_DIR_CMAKE)
   # for lz4_shared must set LZ4_BUNDLED_MODE=OFF + BUILD_STATIC_LIBS=ON CACHE FORCE
   # for lz4_static must set BUILD_SHARED_LIBS=ON CACHE FORCE
   set(LZ4_BUNDLED_MODE OFF) # enable lz4_shared
-  set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE) # enable lz4_static
+  set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE) # enable lz4_static
   set(BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE) # enable lz4_shared
   set(LZ4_POSITION_INDEPENDENT_LIB ON)
   add_subdirectory(
@@ -95,7 +95,7 @@ if (Lz4_INCLUDE_DIR AND Lz4_SRC_DIR_LZ4 AND Lz4_SRC_DIR_CMAKE)
   )
 
   set(Lz4_LIBRARY_DIR ${LZ4_SEARCH_LIB_PATHS})
-  set(Lz4_SHARED_LIB lz4_shared)
+  # set(Lz4_SHARED_LIB lz4_shared)
   set(Lz4_STATIC_LIB lz4_static)
 
   return()
@@ -117,11 +117,11 @@ endif()
 set_find_library_options("${LZ4_LIBRARY_PREFIX}" "${LZ4_LIBRARY_SUFFIX}")
 
 # find library
-find_library(Lz4_SHARED_LIB
-  NAMES lz4
-  PATHS ${LZ4_SEARCH_LIB_PATHS}
-  NO_DEFAULT_PATH
-)
+#find_library(Lz4_SHARED_LIB
+#  NAMES lz4
+#  PATHS ${LZ4_SEARCH_LIB_PATHS}
+#  NO_DEFAULT_PATH
+#)
 
 # restore initial options
 restore_find_library_options()
@@ -148,19 +148,13 @@ find_library(Lz4_STATIC_LIB
 restore_find_library_options()
 
 
-if (Lz4_INCLUDE_DIR AND Lz4_SHARED_LIB AND Lz4_STATIC_LIB)
+if (Lz4_INCLUDE_DIR AND Lz4_STATIC_LIB)
   set(Lz4_FOUND TRUE)
   set(Lz4_LIBRARY_DIR
     "${LZ4_SEARCH_LIB_PATHS}"
     CACHE PATH
     "Directory containing lz4 libraries"
     FORCE
-  )
-
-  add_library(lz4_shared IMPORTED SHARED)
-  set_target_properties(lz4_shared PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${Lz4_INCLUDE_DIR}"
-    IMPORTED_LOCATION "${Lz4_SHARED_LIB}"
   )
 
   add_library(lz4_static IMPORTED STATIC)
@@ -176,17 +170,14 @@ include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Lz4
   DEFAULT_MSG
   Lz4_INCLUDE_DIR
-  Lz4_SHARED_LIB
   Lz4_STATIC_LIB
 )
 message("Lz4_INCLUDE_DIR: " ${Lz4_INCLUDE_DIR})
 message("Lz4_LIBRARY_DIR: " ${Lz4_LIBRARY_DIR})
-message("Lz4_SHARED_LIB: " ${Lz4_SHARED_LIB})
 message("Lz4_STATIC_LIB: " ${Lz4_STATIC_LIB})
 
 mark_as_advanced(
   Lz4_INCLUDE_DIR
   Lz4_LIBRARY_DIR
-  Lz4_SHARED_LIB
   Lz4_STATIC_LIB
 )

@@ -57,34 +57,34 @@ endif ()
 #set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/lib/native/retail/amd64/snappy.lib)
 
 # For compatibility
-if(SNAPPY)
-  set(WITH_SNAPPY ON)
-endif ()
-
-if (WITH_SNAPPY)
-  message(STATUS "SNAPPY library is enabled")
-
-  if(DEFINED ENV{SNAPPY_INCLUDE})
-    set(SNAPPY_INCLUDE $ENV{SNAPPY_INCLUDE})
-  endif()
-
-  if(DEFINED ENV{SNAPPY_LIB_DEBUG})
-    set(SNAPPY_LIB_DEBUG $ENV{SNAPPY_LIB_DEBUG})
-  endif()
-
-  if(DEFINED ENV{SNAPPY_LIB_RELEASE})
-    set(SNAPPY_LIB_RELEASE $ENV{SNAPPY_LIB_RELEASE})
-  endif()
-
-  set(SNAPPY_CXX_FLAGS -DSNAPPY)
-  set(SNAPPY_LIBS debug ${SNAPPY_LIB_DEBUG} optimized ${SNAPPY_LIB_RELEASE})
-
-  add_definitions(${SNAPPY_CXX_FLAGS})
-  include_directories(${SNAPPY_INCLUDE})
-  set (THIRDPARTY_LIBS ${THIRDPARTY_LIBS} ${SNAPPY_LIBS})
-else ()
-  message(STATUS "SNAPPY library is disabled")
-endif ()
+#if(SNAPPY)
+#  set(WITH_SNAPPY ON)
+#endif ()
+#
+#if (WITH_SNAPPY)
+#  message(STATUS "SNAPPY library is enabled")
+#
+#  if(DEFINED ENV{SNAPPY_INCLUDE})
+#    set(SNAPPY_INCLUDE $ENV{SNAPPY_INCLUDE})
+#  endif()
+#
+#  if(DEFINED ENV{SNAPPY_LIB_DEBUG})
+#    set(SNAPPY_LIB_DEBUG $ENV{SNAPPY_LIB_DEBUG})
+#  endif()
+#
+#  if(DEFINED ENV{SNAPPY_LIB_RELEASE})
+#    set(SNAPPY_LIB_RELEASE $ENV{SNAPPY_LIB_RELEASE})
+#  endif()
+#
+#  set(SNAPPY_CXX_FLAGS -DSNAPPY)
+#  set(SNAPPY_LIBS debug ${SNAPPY_LIB_DEBUG} optimized ${SNAPPY_LIB_RELEASE})
+#
+#  add_definitions(${SNAPPY_CXX_FLAGS})
+#  include_directories(${SNAPPY_INCLUDE})
+#  set (THIRDPARTY_LIBS ${THIRDPARTY_LIBS} ${SNAPPY_LIBS})
+#else ()
+#  message(STATUS "SNAPPY library is disabled")
+#endif ()
 
 # ================================================== LZ4 ==================================================
 #

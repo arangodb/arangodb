@@ -188,15 +188,13 @@ void V8PlatformFeature::unprepare() {
 v8::Isolate* V8PlatformFeature::createIsolate() {
   v8::Isolate::CreateParams createParams;
   createParams.array_buffer_allocator = _allocator.get();
-/// TODO  createParams.oom_error_callback = oomCallback;
-///   createParams.fatal_error_callback = fatalCallback;
 
   if (0 < _v8MaxHeap) {
     createParams.constraints.set_max_old_space_size(static_cast<int>(_v8MaxHeap));
   }
 
   auto isolate = v8::Isolate::New(createParams);
-///   isolate->SetOOMErrorHandler(oomCallback);
+  isolate->SetOOMErrorHandler(oomCallback);
   isolate->SetFatalErrorHandler(fatalCallback);
   isolate->AddGCPrologueCallback(gcPrologueCallback);
   isolate->AddGCEpilogueCallback(gcEpilogueCallback);

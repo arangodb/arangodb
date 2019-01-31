@@ -53,7 +53,7 @@ option(WITH_WINDOWS_UTF8_FILENAMES "use UTF8 as characterset for opening files, 
 if (WITH_WINDOWS_UTF8_FILENAMES)
   add_definitions(-DROCKSDB_WINDOWS_UTF8_FILENAMES)
 endif()
-if(MSVC)
+if(WIN32)
   # Defaults currently different for GFLAGS.
   #  We will address find_package work a little later
   option(WITH_GFLAGS "build with GFlags" OFF)

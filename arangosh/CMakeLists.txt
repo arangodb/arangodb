@@ -8,7 +8,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 ## arangobench
 ################################################################################
 
-if (MSVC AND NOT(SKIP_PACKAGING))
+if (WIN32 AND NOT(SKIP_PACKAGING))
   generate_product_version(ProductVersionFiles_arangobench
     NAME arangobench
     FILE_DESCRIPTION ${ARANGOBENCH_FRIENDLY_STRING}
@@ -56,7 +56,7 @@ endif ()
 ## arangodump
 ################################################################################
 
-if (MSVC AND NOT(SKIP_PACKAGING))
+if (WIN32 AND NOT(SKIP_PACKAGING))
   generate_product_version(ProductVersionFiles_arangodump
     NAME arangodump
     FILE_DESCRIPTION ${ARANGO_DUMP_FRIENDLY_STRING}
@@ -107,7 +107,7 @@ endif ()
 ## arangoexport
 ################################################################################
 
-if (MSVC AND NOT(SKIP_PACKAGING))
+if (WIN32 AND NOT(SKIP_PACKAGING))
   generate_product_version(ProductVersionFiles_arangoexport
     NAME arangoexport
     FILE_DESCRIPTION ${ARANGO_EXPORT_FRIENDLY_STRING}
@@ -156,7 +156,7 @@ endif ()
 ## arangoimport
 ################################################################################
 
-if (MSVC AND NOT(SKIP_PACKAGING))
+if (WIN32 AND NOT(SKIP_PACKAGING))
   generate_product_version(ProductVersionFiles_arangoimport
     NAME arangoimport
     FILE_DESCRIPTION ${ARANGO_IMPORT_FRIENDLY_STRING}
@@ -213,7 +213,7 @@ install_command_alias(${BIN_ARANGOIMPORT}
 ## arangorestore
 ################################################################################
 
-if (MSVC AND NOT(SKIP_PACKAGING))
+if (WIN32 AND NOT(SKIP_PACKAGING))
   generate_product_version(ProductVersionFiles_arangorestore
     NAME arangorestore
     FILE_DESCRIPTION ${ARANGO_RESTORE_FRIENDLY_STRING}
@@ -264,7 +264,7 @@ endif ()
 ## arangosh
 ################################################################################
 
-if (MSVC AND NOT(SKIP_PACKAGING))
+if (WIN32 AND NOT(SKIP_PACKAGING))
   generate_product_version(ProductVersionFiles_arangosh
     NAME arangosh
     FILE_DESCRIPTION ${ARANGOSH_FRIENDLY_STRING}
@@ -321,7 +321,7 @@ endif ()
 ## arangovpack
 ################################################################################
 
-if (MSVC AND NOT(SKIP_PACKAGING))
+if (WIN32 AND NOT(SKIP_PACKAGING))
   generate_product_version(ProductVersionFiles_arangovpack
     NAME arangovpack
     FILE_DESCRIPTION ${ARANGO_VPACK_FRIENDLY_STRING}
