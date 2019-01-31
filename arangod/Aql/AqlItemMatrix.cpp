@@ -121,7 +121,7 @@ InputAqlItemRow AqlItemMatrix::getRow(size_t index) const {
         << iterations << " iterations.";
 #endif
       // Got it
-      return InputAqlItemRow{candidate.second, index - candidate.first};
+      return std::move(InputAqlItemRow{candidate.second, index - candidate.first});
     }
   }
 
