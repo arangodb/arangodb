@@ -28,6 +28,7 @@ public:
       _wait.wait(uint64_t(1000000));
     }
   }
+  ~TestThread() { shutdown(); }
   
   void run() override {
     CONDITION_LOCKER(guard, _wait);

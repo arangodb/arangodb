@@ -395,7 +395,7 @@ AstNode::AstNode(AstNodeType type)
 }
 
 /// @brief create a node, with defining a value
-AstNode::AstNode(AstNodeValue value)
+AstNode::AstNode(AstNodeValue const& value)
     : type(NODE_TYPE_VALUE),
       flags(makeFlags(DETERMINED_CONSTANT, VALUE_CONSTANT, DETERMINED_SIMPLE,
                       VALUE_SIMPLE, DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER)),
@@ -1655,6 +1655,12 @@ bool AstNode::isConstant() const {
       setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
       return true;
     }
+  }
+
+  if (type == NODE_TYPE_PARAMETER) {
+    // bind parameter values will always be constant values later on...
+    setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+    return true;
   }
 
   setFlag(DETERMINED_CONSTANT);

@@ -162,8 +162,7 @@ struct GeoIndexFactory : public DefaultIndexFactory {
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
         !definition.hasKey("objectId")) {
-      normalized.add("objectId",
-                     arangodb::velocypack::Value(std::to_string(TRI_NewTickServer())));
+      normalized.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
     }
 
     return IndexFactory::enhanceJsonIndexGeo(definition, normalized, isCreation, 1, 2);

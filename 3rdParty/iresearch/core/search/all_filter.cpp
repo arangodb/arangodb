@@ -54,8 +54,8 @@ class all_query: public filter::prepared {
   }
 };
 
-DEFINE_FILTER_TYPE(irs::all);
-DEFINE_FACTORY_DEFAULT(irs::all);
+DEFINE_FILTER_TYPE(irs::all)
+DEFINE_FACTORY_DEFAULT(irs::all)
 
 all::all() NOEXCEPT
   : filter(all::type()) {
@@ -69,8 +69,10 @@ filter::prepared::ptr all::prepare(
 ) const {
   attribute_store attrs;
 
-  // skip filed-level/term-level statistics because there are no fields/terms
-  order.prepare_stats().finish(attrs, reader);
+  // skip field-level/term-level statistics because there are no explicit
+  // fields/terms, but still collect index-level statistics
+  // i.e. all fields and terms implicitly match
+  order.prepare_collectors(attrs, reader);
 
   irs::boost::apply(attrs, boost() * filter_boost); // apply boost
 

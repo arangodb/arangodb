@@ -53,6 +53,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchQueryJoin-test.cpp
     IResearch/IResearchQueryAggregate-test.cpp
     IResearch/IResearchQueryTraversal-test.cpp
+    IResearch/IResearchQueryOptions-test.cpp
     IResearch/RestHandlerMock.cpp
     IResearch/StorageEngineMock.cpp
     IResearch/IResearchViewNode-test.cpp
@@ -147,12 +148,13 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/IndexEstimatorTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
+  VocBase/VersionTest.cpp
   ${IRESEARCH_TESTS_SOURCES}
 )
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
-  # this speeds up the compilation with optimizations and newer g++ versions 
+  # this speeds up the compilation with optimizations and newer g++ versions
   # and prevents the "variable tracking size limit exceeded warnings" from
   # occurring
   if (CMAKE_COMPILER_IS_GNUCC)
@@ -168,6 +170,11 @@ add_executable(
   ${ARANGODB_TESTS_SOURCES}
   main.cpp
 )
+
+#required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
+if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
+    target_compile_options(arangodbtests PRIVATE -fno-devirtualize)
+endif()
 
 SET_TARGET_PROPERTIES(arangodbtests PROPERTIES COMPILE_FLAGS "-DCATCH_CONFIG_FAST_COMPILE")
 

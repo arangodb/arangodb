@@ -20,30 +20,27 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MASKINGS_ATTRIBUTE_XIFY_FRONT_H
-#define ARANGODB_MASKINGS_ATTRIBUTE_XIFY_FRONT_H 1
+#ifndef ARANGODB_MASKINGS_ATTRIBUTE_RANDOM_STRING_MASK_H
+#define ARANGODB_MASKINGS_ATTRIBUTE_RANDOM_STRING_MASK_H 1
 
+#include "Maskings/AttributeMasking.h"
 #include "Maskings/MaskingFunction.h"
+#include "Maskings/ParseResult.h"
 
 namespace arangodb {
 namespace maskings {
-class XifyFront : public MaskingFunction {
+class RandomStringMask : public MaskingFunction {
  public:
-  XifyFront(Maskings* maskings, int64_t length, bool hash, uint64_t seed)
-      : MaskingFunction(maskings),
-        _length((uint64_t)length),
-        _randomSeed(seed),
-        _hash(hash) {}
+  static ParseResult<AttributeMasking> create(Path, Maskings*, VPackSlice const& def);
 
-  VPackValue mask(bool) const override;
-  VPackValue mask(std::string const&, std::string& buffer) const override;
-  VPackValue mask(int64_t) const override;
-  VPackValue mask(double) const override;
+ public:
+  VPackValue mask(bool, std::string& buffer) const override;
+  VPackValue mask(std::string const& data, std::string& buffer) const override;
+  VPackValue mask(int64_t, std::string& buffer) const override;
+  VPackValue mask(double, std::string& buffer) const override;
 
  private:
-  uint64_t _length;
-  uint64_t _randomSeed;
-  bool _hash;
+  explicit RandomStringMask(Maskings* maskings) : MaskingFunction(maskings) {}
 };
 }  // namespace maskings
 }  // namespace arangodb

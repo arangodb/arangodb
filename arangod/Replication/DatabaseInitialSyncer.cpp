@@ -144,6 +144,11 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
         << "client: getting master state to dump " << vocbase().name();
     Result r;
+    
+    r = sendFlush();
+    if (r.fail()) {
+      return r;
+    }
 
     if (!_config.isChild()) {
       r = _config.master.getState(_config.connection, _config.isChild());
@@ -168,10 +173,6 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
       }
     }
 
-    r = sendFlush();
-    if (r.fail()) {
-      return r;
-    }
 
     if (!_config.isChild()) {
       // create a WAL logfile barrier that prevents WAL logfile collection
@@ -1231,8 +1232,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
     std::string const& masterColl = !masterUuid.empty() ? masterUuid : itoa(masterCid);
     auto res = incremental && getSize(*col) > 0
-                   ? fetchCollectionSync(col, masterColl, _config.master.lastUncommittedLogTick)
-                   : fetchCollectionDump(col, masterColl, _config.master.lastUncommittedLogTick);
+                   ? fetchCollectionSync(col, masterColl, _config.master.lastLogTick)
+                   : fetchCollectionDump(col, masterColl, _config.master.lastLogTick);
 
     if (!res.ok()) {
       return res;
