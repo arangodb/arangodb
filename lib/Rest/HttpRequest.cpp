@@ -740,9 +740,12 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
   } else /*VPACK*/ {
     VPackOptions validationOptions = *options;  // intentional copy
     validationOptions.validateUtf8Strings = true;
+    validationOptions.checkAttributeUniqueness = true;
+    validationOptions.disallowExternals = true;
+    validationOptions.disallowCustom = true;
     VPackValidator validator(&validationOptions);
-    validator.validate(_body.c_str(), _body.length());
-    return VPackSlice(_body.c_str());
+    validator.validate(_body.data(), _body.size());
+    return VPackSlice(_body.data());
   }
 }
 
