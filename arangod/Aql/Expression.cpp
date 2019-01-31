@@ -194,11 +194,6 @@ void Expression::invalidateAfterReplacements() {
 void Expression::invalidate() {
   // context may change next time, so "prepare for re-preparation"
   _ast->query()->unPrepareV8Context();
-
-  // V8 expressions need a special handling
-  freeInternals();
-  // we do not need to invalidate the other expression type
-  // expression data will be freed in the destructor
 }
 
 /// @brief find a value in an AQL array node

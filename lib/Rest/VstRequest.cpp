@@ -76,6 +76,9 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
       if (!_validatedPayload) {
         VPackOptions validationOptions = *options;  // intentional copy
         validationOptions.validateUtf8Strings = true;
+        validationOptions.checkAttributeUniqueness = true;
+        validationOptions.disallowExternals = true;
+        validationOptions.disallowCustom = true;
         VPackValidator validator(&validationOptions);
         // will throw on error
         _validatedPayload = validator.validate(vpack.data(), vpack.length());
