@@ -385,7 +385,7 @@ class Builder {
       }
     }
     try {
-      checkKeyIsString(Slice(sub).isString());
+      checkKeyIsString(Slice(sub));
       auto oldPos = _pos;
       reserveSpace(1 + sizeof(void*));
       // store pointer. this doesn't need to be portable
@@ -572,6 +572,18 @@ class Builder {
         } else {
           _keyWritten = false;
         }
+      }
+    }
+  }
+
+  inline void checkKeyIsString(Slice const& item) {
+    if (!_stack.empty()) {
+      ValueLength const& tos = _stack.back();
+      if (_start[tos] == 0x0b || _start[tos] == 0x14) {
+        if (!_keyWritten && !item.isString()) {
+          throw Exception(Exception::BuilderKeyMustBeString);
+        }
+        _keyWritten = !_keyWritten;
       }
     }
   }

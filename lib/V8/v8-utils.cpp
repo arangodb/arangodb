@@ -3981,13 +3981,18 @@ static void JS_VPackToV8(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("VPACK_TO_V8(value)");
   }
+    
+  VPackOptions validationOptions = VPackOptions::Defaults;
+  validationOptions.validateUtf8Strings = true;
+  validationOptions.disallowExternals = true;
+  validationOptions.checkAttributeUniqueness = true;
+  VPackValidator validator(&validationOptions);
 
   if (args[0]->IsString() || args[0]->IsStringObject()) {
     // supplied argument is a string
     std::string const value = TRI_ObjectToString(isolate, args[0]);
 
-    VPackValidator validator;
-    validator.validate(value.c_str(), value.size(), false);
+    validator.validate(value.data(), value.size(), false);
 
     VPackSlice slice(value.c_str());
     v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, slice);
@@ -3997,7 +4002,6 @@ static void JS_VPackToV8(v8::FunctionCallbackInfo<v8::Value> const& args) {
     char const* data = V8Buffer::data(args[0].As<v8::Object>());
     size_t size = V8Buffer::length(args[0].As<v8::Object>());
 
-    VPackValidator validator;
     validator.validate(data, size, false);
 
     VPackSlice slice(data);
