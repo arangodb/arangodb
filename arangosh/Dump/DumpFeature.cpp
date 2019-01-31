@@ -590,7 +590,8 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
                      new UInt64Parameter(&_options.tickEnd));
 
   options->addOption("--maskings", "file with maskings definition",
-                     new StringParameter(&_options.maskingsFile));
+                     new StringParameter(&_options.maskingsFile))
+                     .setIntroducedIn(30322).setIntroducedIn(30402);
 }
 
 void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -670,6 +671,12 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client, std::string co
   VPackSlice const body = parsedBody->slice();
   if (!body.isObject()) {
     return ::ErrorMalformedJsonResponse;
+  }
+  
+  // use tick provided by server if user did not specify one
+  if (_options.tickEnd == 0 && !_options.clusterMode) {
+    uint64_t tick = basics::VelocyPackHelper::stringUInt64(body, "tick");
+    _options.tickEnd = tick;
   }
 
   // get the collections list
