@@ -27,6 +27,8 @@
 #include "Basics/Result.h"
 #include "VocBase/voc-types.h"
 
+struct TRI_vocbase_t; // forward declaration
+
 namespace arangodb {
 
 class LogicalCollection;  // forward declaration
