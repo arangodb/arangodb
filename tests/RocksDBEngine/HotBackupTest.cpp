@@ -35,14 +35,17 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 class RocksDBHotBackupTest : public RocksDBHotBackup {
-
 public:
-  virtual std::string getDatabasePath() override {return "/var/db";};
 
-  virtual std::string buildDirectoryPath(const std::string & time, const std::string & userString) override
+  RocksDBHotBackupTest() : RocksDBHotBackup(VPackSlice()) {};
+  RocksDBHotBackupTest(const VPackSlice body) : RocksDBHotBackup(body) {};
+
+  std::string getDatabasePath() override {return "/var/db";};
+
+  std::string buildDirectoryPath(const std::string & time, const std::string & userString) override
     {return RocksDBHotBackup::buildDirectoryPath(time, userString);};
 
-  virtual std::string getPersistedId() override
+  std::string getPersistedId() override
     {return "SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe";};
 
 };// class RocksDBHotBackupTest
@@ -85,9 +88,10 @@ TEST_CASE("RocksDBHotBackup path tests", "[rocksdb][devel]") {
 
 /// @brief test RocksDBHotBackup create operation parameters
 TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
-  RocksDBHotBackupCreate testee;
 
   SECTION("test_defaults") {
+    const VPackSlice slice;
+    RocksDBHotBackupCreate testee(slice);
     CHECK(true == testee.isCreate());
     CHECK(testee.getTimestamp() == "");
     CHECK(10000 == testee.getTimeoutMS());
@@ -102,7 +106,8 @@ TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
       opBuilder.add("userString", VPackValue("first day"));
     }
 
-    testee.parseParameters(rest::RequestType::DELETE_REQ, opBuilder.slice());
+    RocksDBHotBackupCreate testee(opBuilder.slice());
+    testee.parseParameters(rest::RequestType::DELETE_REQ);
     CHECK(testee.valid());
     CHECK(false == testee.isCreate());
     CHECK(12345 == testee.getTimeoutMS());
@@ -118,7 +123,8 @@ TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
       opBuilder.add("userString", VPackValue("makes timeoutMS throw")); //  to happen
     }
 
-    testee.parseParameters(rest::RequestType::DELETE_REQ, opBuilder.slice());
+    RocksDBHotBackupCreate testee(opBuilder.slice());
+    testee.parseParameters(rest::RequestType::DELETE_REQ);
     CHECK(!testee.valid());
     CHECK((testee.resultSlice().isObject() && testee.resultSlice().hasKey("timeoutMS")));
   }

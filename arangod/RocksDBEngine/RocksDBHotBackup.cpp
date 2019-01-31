@@ -26,10 +26,14 @@
 
 #include "Agency/TimeString.h"
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
+#include "Basics/FileUtils.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/TransactionManagerFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "StorageEngine/TransactionManager.h"
 
 #include <rocksdb/utilities/checkpoint.h>
 
@@ -42,7 +46,7 @@ namespace arangodb {
 std::shared_ptr<RocksDBHotBackup> RocksDBHotBackup::operationFactory(
   rest::RequestType const type,
   std::vector<std::string> const & suffixes,
-  VPackSlice & body)
+  const VPackSlice body)
 {
   std::shared_ptr<RocksDBHotBackup> operation;
   bool isCoord(ServerState::instance()->isCoordinator());
@@ -51,17 +55,17 @@ std::shared_ptr<RocksDBHotBackup> RocksDBHotBackup::operationFactory(
   if (1 == suffixes.size()) {
     if (0 == suffixes[0].compare("create"))
     {
-      operation.reset((isCoord ? (RocksDBHotBackup *)new RocksDBHotBackupCreateCoord
-                       : (RocksDBHotBackup *)new RocksDBHotBackupCreate));
+      operation.reset((isCoord ? (RocksDBHotBackup *)new RocksDBHotBackupCreateCoord(body)
+                       : (RocksDBHotBackup *)new RocksDBHotBackupCreate(body)));
     } // if
   }
 
   // check the parameter once operation selected
   if (operation) {
-    operation->parseParameters(type, body);
+    operation->parseParameters(type);
   } else {
     // if no operation selected, give base class which defaults to "bad"
-    operation.reset(new RocksDBHotBackup);
+    operation.reset(new RocksDBHotBackup(body));
   } // if
 
   return operation;
@@ -72,8 +76,8 @@ std::shared_ptr<RocksDBHotBackup> RocksDBHotBackup::operationFactory(
 //
 // @brief Setup the base object, default is "bad parameters"
 //
-RocksDBHotBackup::RocksDBHotBackup()
-  : _valid(false), _success(false), _respCode(rest::ResponseCode::BAD),
+RocksDBHotBackup::RocksDBHotBackup(const VPackSlice body)
+  : _body(body), _valid(false), _success(false), _respCode(rest::ResponseCode::BAD),
     _respError(TRI_ERROR_HTTP_BAD_PARAMETER)
 {
   return;
@@ -121,6 +125,84 @@ std::string RocksDBHotBackup::buildDirectoryPath(const std::string & timestamp, 
 
 } // RocksDBHotBackup::buildDirectoryPath
 
+//
+// @brief Common routine for retrieving parameter from request body.
+//        Assumes caller has maintain state of _body and _valid
+//
+void RocksDBHotBackup::getParamValue(const char * key, std::string & value, bool required) {
+  VPackSlice tempSlice;
+
+  try {
+    if (_body.isObject() && _body.hasKey(key)) {
+      tempSlice = _body.get(key);
+      value = tempSlice.copyString();
+    } else if (required) {
+      if (_valid) {
+        _result.add(VPackValue(VPackValueType::Object));
+        _valid = false;
+      }
+      _result.add(key, VPackValue("parameter required"));
+    } // else if
+  } catch(VPackException const &vexcept) {
+    if (_valid) {
+      _result.add(VPackValue(VPackValueType::Object));
+      _valid = false;
+    }
+    _result.add(key, VPackValue(vexcept.what()));
+  };
+
+} // RocksDBHotBackup::getParamValue (std::string)
+
+
+void RocksDBHotBackup::getParamValue(const char * key, bool & value, bool required) {
+  VPackSlice tempSlice;
+
+  try {
+    if (_body.isObject() && _body.hasKey(key)) {
+      tempSlice = _body.get(key);
+      value = tempSlice.getBool();
+    } else if (required) {
+      if (_valid) {
+        _result.add(VPackValue(VPackValueType::Object));
+        _valid = false;
+      }
+      _result.add(key, VPackValue("parameter required"));
+    } // else if
+  } catch(VPackException const &vexcept) {
+    if (_valid) {
+      _result.add(VPackValue(VPackValueType::Object));
+      _valid = false;
+    }
+    _result.add(key, VPackValue(vexcept.what()));
+  };
+
+} // RocksDBHotBackup::getParamValue (bool)
+
+
+void RocksDBHotBackup::getParamValue(const char * key, unsigned & value, bool required) {
+  VPackSlice tempSlice;
+
+  try {
+    if (_body.isObject() && _body.hasKey(key)) {
+      tempSlice = _body.get(key);
+      value = tempSlice.getUInt();
+    } else if (required) {
+      if (_valid) {
+        _result.add(VPackValue(VPackValueType::Object));
+        _valid = false;
+      }
+      _result.add(key, VPackValue("parameter required"));
+    } // else if
+  } catch(VPackException const &vexcept) {
+    if (_valid) {
+      _result.add(VPackValue(VPackValueType::Object));
+      _valid = false;
+    }
+    _result.add(key, VPackValue(vexcept.what()));
+  };
+
+} // RocksDBHotBackup::getParamValue (unsigned)
+
 
 //
 // @brief Wrapper for ServerState::instance()->getPersistedId() to simplify
@@ -158,8 +240,8 @@ std::string RocksDBHotBackup::getDatabasePath() {
 ///        POST:  Initiate rocksdb checkpoint on local server
 ///        DELETE:  Remove an existing rocksdb checkpoint from local server
 ////////////////////////////////////////////////////////////////////////////////
-RocksDBHotBackupCreate::RocksDBHotBackupCreate()
-  : _isCreate(true), _timeoutMS(10000)
+RocksDBHotBackupCreate::RocksDBHotBackupCreate(const VPackSlice body)
+  : RocksDBHotBackup(body), _isCreate(true), _forceBackup(false), _timeoutMS(10000)
 {
 }
 
@@ -168,52 +250,39 @@ RocksDBHotBackupCreate::~RocksDBHotBackupCreate() {
 }
 
 
-void RocksDBHotBackupCreate::parseParameters(rest::RequestType const type, const VPackSlice & body) {
+void RocksDBHotBackupCreate::parseParameters(rest::RequestType const type) {
   bool isSingle(ServerState::instance()->isSingleServer());
-  VPackSlice tempSlice;
-  std::string param;
 
   _isCreate = (rest::RequestType::POST == type);
   _valid = _isCreate || (rest::RequestType::DELETE_REQ == type);
 
-  try {
-    // single server create, we generate the timestamp
-    if (isSingle && _isCreate) {
-      _timestamp = timepointToString(std::chrono::system_clock::now());
-    } else {
-      param = "timestamp";
-      _valid = _valid && body.isObject() && body.hasKey(param);
-      if (_valid) {
-        tempSlice = body.get(param);
-        _timestamp = tempSlice.copyString();
-        _valid = (20 == _timestamp.length());
-      } // if
-    } // else
-
-    // timeout is optional
-    param = "timeoutMS";
-    if (_valid && body.isObject() && body.hasKey(param)) {
-      tempSlice = body.get(param);
-      _timeoutMS = tempSlice.getInt();
-    } // if
-
-    // user string is optional
-    param = "userString";
-    if (_valid && body.isObject() && body.hasKey(param)) {
-      tempSlice = body.get(param);
-      _userString = tempSlice.copyString();
-    } // if
-
-/// param for don't wait, continue if timeout fails
-
-  } catch(VPackException const &vexcept) {
-    _valid = false;
+  if (!_valid) {
     _result.add(VPackValue(VPackValueType::Object));
-    _result.add(param, VPackValue(vexcept.what()));
-    _result.close();
-  };
+    _result.add("httpMethod", VPackValue("only POST and DELETE allowed"));
+  } // if
+
+  // single server create, we generate the timestamp
+  if (isSingle && _isCreate) {
+    _timestamp = timepointToString(std::chrono::system_clock::now());
+  } else {
+    getParamValue("timestamp", _timestamp, true);
+  } // else
+
+  // remaining params are optional
+  getParamValue("timeoutMS", _timeoutMS, false);
+  getParamValue("userString", _userString, false);
+  getParamValue("forceBackup", _forceBackup, false);
+
+  //
+  // extra validation
+  //
+  if (_valid) {
+    // is timestamp exactly 20 characters?
+  } // if
+
 
   if (!_valid) {
+    _result.close();
     _respCode = rest::ResponseCode::BAD;
     _respError = TRI_ERROR_HTTP_BAD_PARAMETER;
   } // if
@@ -223,6 +292,7 @@ void RocksDBHotBackupCreate::parseParameters(rest::RequestType const type, const
 } // RocksDBHotBackupCreate::parseParameters
 
 
+// @brief route to independent functions for "create" and "delete"
 void RocksDBHotBackupCreate::execute() {
 
   if (_isCreate) {
@@ -233,7 +303,7 @@ void RocksDBHotBackupCreate::execute() {
 
   return;
 
-} // RocksDBHotBackupCreate
+} // RocksDBHotBackupCreate::execute
 
 
 void RocksDBHotBackupCreate::executeCreate() {
@@ -243,37 +313,138 @@ void RocksDBHotBackupCreate::executeCreate() {
   // attempt iResearch flush
   // time remaining, or flag to continue anyway
 
-  rocksdb::Checkpoint * ptr;
+  rocksdb::Checkpoint * ptr(nullptr);
   rocksdb::Status stat;
   std::string dirPath;
+  bool gotLock(false);
 
   stat = rocksdb::Checkpoint::Create(rocksutils::globalRocksDB(), &ptr);
 
   if (stat.ok()) {
     dirPath = buildDirectoryPath(_timestamp, _userString);
-    stat = ptr->CreateCheckpoint(dirPath);
-    delete ptr;
-  }
 
+    // make sure the transaction hold is released
+    {
+      auto guardHold = scopeGuard([&gotLock]()
+                                  { if (gotLock) TransactionManagerFeature::manager()->releaseTransactions(); });
+      // convert timeout from milliseconds to microseconds
+      gotLock = TransactionManagerFeature::manager()->holdTransactions(_timeoutMS * 1000);
+
+      if (gotLock || _forceBackup) {
+        stat = ptr->CreateCheckpoint(dirPath);
+        _success = stat.ok();
+      } // if
+    } // guardHold released
+
+    delete ptr;
+    ptr = nullptr;
+  } // if
 
   // set response codes
-  if (stat.ok()) {
+  if (_success) {
     _respCode = rest::ResponseCode::OK;
     _respError = TRI_ERROR_NO_ERROR;
-    _success = true;
 
     // velocypack loves to throw. wrap it.
     try {
       _result.add(VPackValue(VPackValueType::Object));
       _result.add("directory", VPackValue(dirPath));
+      _result.add("forced", VPackValue(!gotLock));
       _result.close();
     } catch (...) {
     }
   } else {
+    // stat.ok() means CreateCheckpoint() never called ... so lock issue
+    _respCode = stat.ok() ? rest::ResponseCode::REQUEST_TIMEOUT : rest::ResponseCode::EXPECTATION_FAILED;
+    _respError = stat.ok() ? TRI_ERROR_LOCK_TIMEOUT : TRI_ERROR_FAILED;
   } //else
 
   return;
 
-} // RocksDBHotBackupCreate
+} // RocksDBHotBackupCreate::executeCreate
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief RocksDBHotBackupRestore
+///        POST:  Initiate restore of rocksdb snapshot in place of working directory
+////////////////////////////////////////////////////////////////////////////////
+RocksDBHotBackupRestore::RocksDBHotBackupRestore(const VPackSlice body)
+  : RocksDBHotBackup(body), _saveCurrent(true), _forceBackup(true), _timeoutMS(10000)
+{
+}
+
+
+RocksDBHotBackupRestore::~RocksDBHotBackupRestore() {
+}
+
+
+void RocksDBHotBackupRestore::parseParameters(rest::RequestType const type) {
+
+  _valid = (rest::RequestType::POST == type);
+
+  if (!_valid) {
+    _result.add(VPackValue(VPackValueType::Object));
+    _result.add("httpMethod", VPackValue("only POST allowed"));
+  } // if
+
+  // timestamp used for snapshot created of existing database
+  //  (in case of rollback or _saveCurrent flag)
+  _timestampCurrent = timepointToString(std::chrono::system_clock::now());
+
+  // full directory name of database image to restore (required)
+  getParamValue("directory", _directoryRestore, true);
+
+  // remaining params are optional
+  getParamValue("saveCurrent", _saveCurrent, false);
+  getParamValue("timeoutMS", _timeoutMS, false);
+  getParamValue("forceBackup", _forceBackup, false);
+
+  //
+  // extra validation
+  //
+  if (_valid) {
+    // does directory exist?
+  } // if
+
+
+  if (!_valid) {
+    _result.close();
+    _respCode = rest::ResponseCode::BAD;
+    _respError = TRI_ERROR_HTTP_BAD_PARAMETER;
+  } // if
+
+  return;
+
+} // RocksDBHotBackupRestore::parseParameters
+
+
+void RocksDBHotBackupRestore::execute() {
+
+  // remove "restoring" directory if it exists
+  std::string restoringDir = buildDirectoryPath("restoring","");
+  if (basics::FileUtils::exists(restoringDir)) {
+    if (basics::FileUtils::isDirectory(restoringDir)) {
+      // code to remove directory
+    } else {
+      // currently ignoring error
+      basics::FileUtils::remove(restoringDir);
+    } // else
+    // test if still there and error out?
+  } // if
+
+  // copy restore contents to new "restoring" directory (hard links)
+  // transaction hold
+  // rocksdb stop
+  // move active directory to new snapshot directory name
+  // rename "restoring" to active name
+  // rocksdb start
+  // release transaction hold
+  // optionally delete new snapshot directory
+
+  return;
+
+} // RocksDBHotBackupRestore::execute
+
+
 
 }  // namespace arangodb

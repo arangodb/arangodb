@@ -36,9 +36,10 @@ class RocksDBHotBackup {
 public:
   static std::shared_ptr<RocksDBHotBackup> operationFactory(arangodb::rest::RequestType const type,
                                                             std::vector<std::string> const & suffixes,
-                                                            VPackSlice & body);
+                                                            const VPackSlice body);
 
-  RocksDBHotBackup();
+  RocksDBHotBackup() = delete;
+  RocksDBHotBackup(const VPackSlice body);
   virtual ~RocksDBHotBackup();
 
   bool valid() const {return _valid;};
@@ -48,7 +49,7 @@ public:
   int restResponseError() const {return _respError;};
 
   // @brief Validate and extract parameters appropriate to the operation type
-  virtual void parseParameters(rest::RequestType const, VPackSlice &) {};
+  virtual void parseParameters(rest::RequestType const) {};
 
   // @brief Execute the operation
   virtual void execute() {};
@@ -58,6 +59,12 @@ public:
 protected:
   virtual std::string buildDirectoryPath(const std::string & timestamp, const std::string & userString);
 
+  // retrieve configuration values from request's body
+  void getParamValue(const char * key, std::string & value, bool required);
+  void getParamValue(const char * key, bool &value, bool required);
+  void getParamValue(const char * key, unsigned & value, bool required);
+
+  const VPackSlice _body;   // request's configuration
   bool _valid;          // are parameters valid
   bool _success;        // did operation finish successfully
 
@@ -81,19 +88,20 @@ protected:
 class RocksDBHotBackupCreate : public RocksDBHotBackup {
 public:
 
-  RocksDBHotBackupCreate();
+  RocksDBHotBackupCreate() = delete;
+  RocksDBHotBackupCreate(const VPackSlice body);
   ~RocksDBHotBackupCreate();
 
   // @brief Validate and extract parameters appropriate to the operation type
-  virtual void parseParameters(rest::RequestType const, const VPackSlice &);
+  void parseParameters(rest::RequestType const) override;
 
   // @brief Execute an operation
-  virtual void execute();
+  void execute() override;
 
   // @brief accessors to the parameters
   bool isCreate() const {return _isCreate;}
   const std::string & getTimestamp() const {return _timestamp;}
-  int getTimeoutMS() const {return _timeoutMS;}
+  unsigned getTimeoutMS() const {return _timeoutMS;}
   const std::string & getUserString() const {return _userString;}
 
 protected:
@@ -103,13 +111,11 @@ protected:
   // @brief Execute the delete operation
   void executeDelete() {};
 
-
   bool _isCreate;
+  bool _forceBackup;
+  unsigned _timeoutMS;
   std::string _timestamp;
-  int _timeoutMS;
   std::string _userString;
-
-  /// option to continue after timeout fails
 
 };// class RocksDBHotBackupCreate
 
@@ -117,7 +123,28 @@ protected:
 class RocksDBHotBackupRestore : public RocksDBHotBackup {
 public:
 
-  virtual void execute() {};
+  RocksDBHotBackupRestore() = delete;
+  RocksDBHotBackupRestore(const VPackSlice body);
+  ~RocksDBHotBackupRestore();
+
+  // @brief Validate and extract parameters appropriate to the operation type
+  void parseParameters(rest::RequestType const) override;
+
+  // @brief Execute an operation
+  void execute() override;
+
+  // @brief accessors to the parameters
+  const std::string & getTimestampCurrent() const {return _timestampCurrent;}
+  unsigned getTimeoutMS() const {return _timeoutMS;}
+  const std::string & getDirectoryRestore() const {return _directoryRestore;}
+
+protected:
+
+  bool _saveCurrent;
+  bool _forceBackup;
+  unsigned _timeoutMS;
+  std::string _timestampCurrent;
+  std::string _directoryRestore;
 
 };// class RocksDBHotBackupRestore
 
@@ -125,7 +152,7 @@ public:
 class RocksDBHotBackupList : public RocksDBHotBackup {
 public:
 
-  virtual void execute() {};
+  void execute() override {};
 
 };// class RocksDBHotBackupList
 
@@ -133,7 +160,7 @@ public:
 class RocksDBHotBackupPolicy : public RocksDBHotBackup {
 public:
 
-  virtual void execute() {};
+  void execute() override {};
 
 };// class RocksDBHotBackupPolicy
 

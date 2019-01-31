@@ -30,7 +30,11 @@ namespace arangodb {
 class RocksDBHotBackupCreateCoord : public RocksDBHotBackup {
 public:
 
-  virtual void execute() {};
+  RocksDBHotBackupCreateCoord() = delete;
+  RocksDBHotBackupCreateCoord(const VPackSlice body)
+    : RocksDBHotBackup(body) {};
+
+  void execute() override {};
 
 };// class RocksDBHotBackupCreate
 
@@ -38,7 +42,7 @@ public:
 class RocksDBHotBackupRestoreCoord : public RocksDBHotBackup {
 public:
 
-  virtual void execute() {};
+  void execute() override {};
 
 };// class RocksDBHotBackupRestore
 
@@ -46,7 +50,7 @@ public:
 class RocksDBHotBackupListCoord : public RocksDBHotBackup {
 public:
 
-  virtual void execute() {};
+  void execute() override {};
 
 };// class RocksDBHotBackupList
 
@@ -54,7 +58,7 @@ public:
 class RocksDBHotBackupPolicyCoord : public RocksDBHotBackup {
 public:
 
-  virtual void execute() {};
+  void execute() override {};
 
 };// class RocksDBHotBackupPolicy
 
