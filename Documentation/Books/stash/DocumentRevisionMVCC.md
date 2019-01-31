@@ -14,7 +14,9 @@ actually writes the document and have millisecond accuracy.
 A [_Hybrid Logical Clock_](http://www.cse.buffalo.edu/tech-reports/2014-04.pdf)
 is used.
 
-Within one shard it is guaranteed that two different document revisions
+In a single server setup, `_rev` values are unique across all documents
+and all collections. In a cluster setup,
+within one shard it is guaranteed that two different document revisions
 have a different `_rev` string, even if they are written in the same
 millisecond, and that these stamps are ascending.
 
