@@ -73,7 +73,7 @@ class ConstFetcher {
    *           If DONE => Row can be a nullptr (nothing received) or valid.
    */
   TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow();
-  void injectBlock(std::shared_ptr<InputAqlItemBlockShell> block);
+  void injectBlock(std::shared_ptr<AqlItemBlockShell> block);
 
   // Argument will be ignored!
   std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
@@ -85,7 +85,7 @@ class ConstFetcher {
    *        ConstFetcher. May be moved if the Fetcher implementations
    *        are moved into separate classes.
    */
-  std::shared_ptr<InputAqlItemBlockShell> _currentBlock;
+  std::shared_ptr<AqlItemBlockShell> _currentBlock;
 
   std::shared_ptr<AqlItemBlockShell> _blockForPassThrough;
 

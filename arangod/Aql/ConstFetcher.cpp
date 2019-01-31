@@ -35,9 +35,9 @@ ConstFetcher::ConstFetcher() : _currentBlock{nullptr}, _rowIndex(0) {}
 ConstFetcher::ConstFetcher(BlockFetcher& executionBlock)
     : _currentBlock{nullptr}, _rowIndex(0) {}
 
-void ConstFetcher::injectBlock(std::shared_ptr<InputAqlItemBlockShell> block) {
-  _currentBlock = std::move(block);
-  _blockForPassThrough = _currentBlock->blockShell();
+void ConstFetcher::injectBlock(std::shared_ptr<AqlItemBlockShell> block) {
+  _currentBlock = block;
+  _blockForPassThrough = std::move(block);
   _rowIndex = 0;
 }
 

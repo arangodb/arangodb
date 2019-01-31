@@ -33,38 +33,8 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-InputAqlItemRow::InputAqlItemRow(CreateInvalidInputRowHint)
-    : _blockShell(nullptr), _baseIndex(0) {}
-
-InputAqlItemRow::InputAqlItemRow(
-    std::shared_ptr<InputAqlItemBlockShell> blockShell, size_t baseIndex)
-    : _blockShell(std::move(blockShell)), _baseIndex(baseIndex) {
-  TRI_ASSERT(_blockShell != nullptr);
-}
-
-bool InputAqlItemRow::operator==(InputAqlItemRow const& other) const noexcept {
-  TRI_ASSERT(isInitialized());
-  return this->_blockShell == other._blockShell &&
-         this->_baseIndex == other._baseIndex;
-}
-
-bool InputAqlItemRow::operator!=(InputAqlItemRow const& other) const noexcept {
-  TRI_ASSERT(isInitialized());
-  return !(*this == other);
-}
-
-AqlItemBlock& InputAqlItemRow::block() { return _blockShell->block(); }
-
-AqlItemBlock const& InputAqlItemRow::block() const {
-  return _blockShell->block();
-}
-
-std::size_t InputAqlItemRow::getNrRegisters() const {
-  return block().getNrRegs();
-}
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 bool InputAqlItemRow::internalBlockIs(const std::shared_ptr<AqlItemBlockShell> &other) const {
-  return _blockShell->blockShell() == other;
+  return blockShell() == other;
 }
 #endif

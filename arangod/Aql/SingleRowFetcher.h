@@ -97,7 +97,7 @@ class SingleRowFetcher {
    *        SingleRowFetcher. May be moved if the Fetcher implementations
    *        are moved into separate classes.
    */
-  std::shared_ptr<InputAqlItemBlockShell> _currentBlock;
+  std::shared_ptr<AqlItemBlockShell> _currentBlock;
 
   /**
    * @brief Index of the row to be returned next by fetchRow(). This is valid
@@ -117,7 +117,7 @@ class SingleRowFetcher {
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
-  std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
   fetchBlock();
 
   /**

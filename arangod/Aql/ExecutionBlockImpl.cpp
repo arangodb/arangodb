@@ -260,8 +260,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor>::initializeCurs
   }
   auto shell = std::make_shared<AqlItemBlockShell>(_engine->itemBlockManager(),
                                                    std::move(block));
-  InputAqlItemBlockShell inputShell(shell, _infos.getInputRegisters());
-  _rowFetcher.injectBlock(std::make_shared<InputAqlItemBlockShell>(std::move(inputShell)));
+  // InputAqlItemBlockShell inputShell(shell, _infos.getInputRegisters());
+  _rowFetcher.injectBlock(shell);
 
   // destroy and re-create the Executor
   _executor.~IdExecutor();

@@ -26,15 +26,14 @@
 #ifndef ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H
 #define ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H 1
 
-#include "Aql/types.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemBlockShell.h"
+#include "Aql/types.h"
 #include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
 
-class InputAqlItemBlockShell;
-class AqlItemBlockShell;
 class AqlItemBlock;
 struct AqlValue;
 
@@ -56,9 +55,13 @@ struct CreateInvalidInputRowHint {
 class InputAqlItemRow {
  public:
   // The default constructor contains an invalid item row
-  explicit InputAqlItemRow(CreateInvalidInputRowHint);
+  explicit InputAqlItemRow(CreateInvalidInputRowHint)
+      : _blockShell(nullptr), _baseIndex(0) {}
 
-  InputAqlItemRow(std::shared_ptr<InputAqlItemBlockShell> blockShell, size_t baseIndex);
+  InputAqlItemRow(std::shared_ptr<AqlItemBlockShell> blockShell, size_t baseIndex)
+      : _blockShell(std::move(blockShell)), _baseIndex(baseIndex) {
+    TRI_ASSERT(_blockShell != nullptr);
+  }
 
   /**
    * @brief Get a reference to the value of the given Variable Nr
@@ -92,11 +95,17 @@ class InputAqlItemRow {
     return std::move(a);
   }
 
+  std::size_t getNrRegisters() const { return block().getNrRegs(); }
 
-  std::size_t getNrRegisters() const;
+  bool operator==(InputAqlItemRow const& other) const noexcept {
+    TRI_ASSERT(isInitialized());
+    return this->_blockShell == other._blockShell && this->_baseIndex == other._baseIndex;
+  }
 
-  bool operator==(InputAqlItemRow const& other) const noexcept;
-  bool operator!=(InputAqlItemRow const& other) const noexcept;
+  bool operator!=(InputAqlItemRow const& other) const noexcept {
+    TRI_ASSERT(isInitialized());
+    return !(*this == other);
+  }
 
   bool isInitialized() const noexcept { return _blockShell != nullptr; }
 
@@ -110,14 +119,18 @@ class InputAqlItemRow {
 #endif
 
  private:
-  AqlItemBlock& block();
-  AqlItemBlock const& block() const;
+  std::shared_ptr<AqlItemBlockShell> blockShell() { return _blockShell; }
+  std::shared_ptr<AqlItemBlockShell> const blockShell() const {
+    return _blockShell;
+  }
+  AqlItemBlock& block() { return blockShell()->block(); }
+  AqlItemBlock const& block() const { return blockShell()->block(); }
 
  private:
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
-  std::shared_ptr<InputAqlItemBlockShell> _blockShell;
+  std::shared_ptr<AqlItemBlockShell> _blockShell;
 
   /**
    * @brief The offset into the AqlItemBlock. In other words, the row's index.

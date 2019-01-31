@@ -35,7 +35,6 @@ namespace aql {
 
 class AqlItemBlock;
 class AqlItemBlockShell;
-class InputAqlItemBlockShell;
 template <bool>
 class BlockFetcher;
 
@@ -97,7 +96,7 @@ class AllRowsFetcher {
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
-  std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>> fetchBlock();
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock();
 };
 
 }  // namespace aql

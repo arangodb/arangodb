@@ -42,7 +42,7 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::
     _currentBlock = nullptr;
 
     ExecutionState state;
-    std::shared_ptr<InputAqlItemBlockShell> newBlock;
+    std::shared_ptr<AqlItemBlockShell> newBlock;
     std::tie(state, newBlock) = fetchBlock();
     if (state == ExecutionState::WAITING) {
       return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
@@ -80,7 +80,7 @@ SingleRowFetcher<passBlocksThrough>::SingleRowFetcher(BlockFetcher<passBlocksThr
     : _blockFetcher(&executionBlock), _currentRow{CreateInvalidInputRowHint{}} {}
 
 template <bool passBlocksThrough>
-std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>> SingleRowFetcher<passBlocksThrough>::fetchBlock() {
+std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> SingleRowFetcher<passBlocksThrough>::fetchBlock() {
   auto res = _blockFetcher->fetchBlock();
 
   _upstreamState = res.first;

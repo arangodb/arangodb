@@ -80,7 +80,7 @@ class BlockFetcher {
   TEST_VIRTUAL ~BlockFetcher() = default;
 
   TEST_VIRTUAL
-  std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>> fetchBlock();
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock();
 
   // TODO enable_if<allowBlockPassthrough>
   std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t atMost);

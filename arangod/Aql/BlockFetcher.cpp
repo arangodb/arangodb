@@ -61,7 +61,7 @@ ExecutionState BlockFetcher<passBlocksThrough>::prefetchBlock(size_t atMost) {
 }
 
 template <bool passBlocksThrough>
-std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>> BlockFetcher<passBlocksThrough>::fetchBlock() {
+std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> BlockFetcher<passBlocksThrough>::fetchBlock() {
   if (_blockShellQueue.empty()) {
     ExecutionState state = prefetchBlock();
     // prefetchBlock returns HASMORE iff it pushed a block onto _blockShellQueue.
@@ -77,9 +77,9 @@ std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>> BlockFetcher<
   std::tie(state, blockShell) = _blockShellQueue.front();
   _blockShellQueue.pop();
 
-  auto inputBlockShell =
-      std::make_shared<InputAqlItemBlockShell>(blockShell, _inputRegisters);
-  return {state, inputBlockShell};
+  //auto inputBlockShell =
+  //    std::make_shared<InputAqlItemBlockShell>(blockShell, _inputRegisters);
+  return {state, blockShell};
 }
 
 template <bool allowBlockPassthrough>

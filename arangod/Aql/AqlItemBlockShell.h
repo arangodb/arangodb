@@ -89,46 +89,6 @@ class AqlItemBlockShell {
   SmartAqlItemBlockPtr _block;
 };
 
-class InputAqlItemBlockShell {
- public:
-  InputAqlItemBlockShell(std::shared_ptr<AqlItemBlockShell> blockShell,
-                         std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters);
-
- public:
-  std::unordered_set<RegisterId> const& inputRegisters() const {
-    return *_inputRegisters;
-  };
-
-  bool isInputRegister(RegisterId registerId) const {
-    return inputRegisters().find(registerId) != inputRegisters().end();
-  }
-
-  /**
-   * @brief Compares blocks by pointer.
-   */
-  bool operator==(InputAqlItemBlockShell const& other) const {
-    // There must be only one AqlItemBlockShell instance per AqlItemBlock
-    TRI_ASSERT((this == &other) == (&block() == &other.block()));
-    return &block() == &other.block();
-  }
-
-  AqlItemBlock const& block() const { return _blockShell->block(); };
-  AqlItemBlock& block() { return _blockShell->block(); };
-
-  bool hasBlock() const noexcept {
-    return _blockShell != nullptr && _blockShell->hasBlock();
-  }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  std::shared_ptr<AqlItemBlockShell> const& blockShell() const {
-    return _blockShell;
-  }
-#endif
-
- private:
-  std::shared_ptr<AqlItemBlockShell> _blockShell;
-  std::shared_ptr<const std::unordered_set<RegisterId>> _inputRegisters;
-};
 
 class OutputAqlItemBlockShell {
  public:
