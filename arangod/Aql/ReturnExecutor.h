@@ -45,9 +45,8 @@ struct SortRegister;
 class ReturnExecutorInfos : public ExecutorInfos {
  public:
   ReturnExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
-                      RegisterId nrOutputRegisters,
-                      std::unordered_set<RegisterId> registersToClear,
-                      bool doCount, bool returnInheritedResults);
+                      RegisterId nrOutputRegisters, bool doCount,
+                      bool returnInheritedResults);
 
   ReturnExecutorInfos() = delete;
   ReturnExecutorInfos(ReturnExecutorInfos&&) = default;

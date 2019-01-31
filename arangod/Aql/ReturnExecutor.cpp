@@ -45,7 +45,6 @@ using namespace arangodb::aql;
 
 ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
                                          RegisterId nrOutputRegisters,
-                                         std::unordered_set<RegisterId> registersToClear,
                                          bool doCount, bool returnInheritedResults)
     : ExecutorInfos(make_shared_unordered_set({inputRegister}),
                     returnInheritedResults ? make_shared_unordered_set({})

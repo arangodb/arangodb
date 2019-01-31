@@ -1956,8 +1956,8 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
 
   ReturnExecutorInfos infos(inputRegister,
                             getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                            getRegisterPlan()->nrRegs[getDepth()],  // if that is set to 1 - infos will complain that there are less output than input registers
-                            getRegsToClear(), _count, returnInheritedResults);
+                            getRegisterPlan()->nrRegs[getDepth()], _count,
+                            returnInheritedResults);
   if (returnInheritedResults) {
     return std::make_unique<ExecutionBlockImpl<ReturnExecutor<true>>>(&engine, this,
                                                                       std::move(infos));

@@ -64,6 +64,8 @@ class SingleRowFetcherHelper : public ::arangodb::aql::SingleRowFetcher<passBloc
   std::pair<::arangodb::aql::ExecutionState, ::arangodb::aql::InputAqlItemRow> fetchRow() override;
   uint64_t nrCalled(){ return _nrCalled; }
 
+  std::shared_ptr<arangodb::aql::AqlItemBlockShell> getItemBlockShell() { return _itemBlock; }
+
  private:
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _vPackBuffer;
   arangodb::velocypack::Slice _data;
