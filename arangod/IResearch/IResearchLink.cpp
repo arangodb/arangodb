@@ -617,15 +617,23 @@ arangodb::Result IResearchLink::consolidate(IResearchViewMeta::ConsolidationPoli
 }
 
 arangodb::Result IResearchLink::drop() {
-  // the lookup is valid for single-server only (that is the only scenario where links are persisted)
+  // the lookup and unlink is valid for single-server only (that is the only scenario where links are persisted)
   // on coordinator and db-server the IResearchView is immutable and lives in ClusterInfo
   // therefore on coordinator and db-server a new plan will already have an IResearchView without the link
   // this avoids deadlocks with ClusterInfo::loadPlan() during lookup in ClusterInfo
-  auto view = std::dynamic_pointer_cast<IResearchView>( // IResearchView pointer
-    _collection.vocbase().lookupView(_viewGuid) // args
-  );
+  if (ServerState::instance()->isSingleServer()) {
+    auto logicalView = _collection.vocbase().lookupView(_viewGuid);
+    auto* view = arangodb::LogicalView::cast<IResearchView>( // IResearchView pointer
+      logicalView.get() // args
+    );
 
-  if (view) {
+    if (!view) {
+      return arangodb::Result( // result
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, // code
+        std::string("unable to find view '") + _viewGuid + "' while dropping arangosearch link '" + std::to_string(_id) + "'"
+      );
+    }
+
     view->unlink(_collection.id()); // unlink before reset() to release lock in view (if any)
   }
 
