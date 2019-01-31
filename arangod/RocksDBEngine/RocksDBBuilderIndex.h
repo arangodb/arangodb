@@ -80,7 +80,7 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   Result remove(transaction::Methods& trx, RocksDBMethods*, LocalDocumentId const& documentId,
                 arangodb::velocypack::Slice const&, OperationMode mode) override;
 
-  RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex> const&);
+  explicit RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex> const&);
 
   /// @brief get index estimator, optional
   RocksDBCuckooIndexEstimator<uint64_t>* estimator() override {
@@ -95,7 +95,7 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   Result fillIndexForeground();
   
   struct Locker {
-    Locker(RocksDBCollection* c) : _collection(c), _locked(false) {}
+    explicit Locker(RocksDBCollection* c) : _collection(c), _locked(false) {}
     ~Locker() { unlock(); }
     bool lock();
     void unlock();
