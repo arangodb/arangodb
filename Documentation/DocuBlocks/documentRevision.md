@@ -2,14 +2,19 @@
 
 Every document in ArangoDB has a revision, stored in the system attribute
 `_rev`. It is fully managed by the server and read-only for the user.
+
 Its value should be treated as opaque, no guarantees regarding its format
 and properties are given except that it will be different after a
-document update.
+document update. More specifically, `_rev` values are unique across all
+documents and all collections in a single server setup. In a cluster setup,
+within one shard it is guaranteed that two different document revisions
+have a different `_rev` string, even if they are written in the same
+millisecond.
 
-It acts as a pre-condition for queries if specified, to avoid _lost update_
-situations. That is, if a client fetches a document from the server, modifies
-it locally (but with the `_rev` attribute untouched) and sends it back to the
-server to update the document, but meanwhile the document was changed by
+The `_rev` attribute can be used as a pre-condition for queries, to avoid
+_lost update_ situations. That is, if a client fetches a document from the server,
+modifies it locally (but with the `_rev` attribute untouched) and sends it back
+to the server to update the document, but meanwhile the document was changed by
 another operation, then the revisions do not match anymore and the operation
 is cancelled by the server. Without this mechanism, the client would
 accidentally overwrite changes made to the document without knowing about it.
