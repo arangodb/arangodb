@@ -8,14 +8,14 @@ arangosh&gt; c.getExtra();
     <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00008797645568847656</span> 
+    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00008535385131835938</span> 
   }, 
   <span class="hljs-string">"profile"</span> : { 
-    <span class="hljs-string">"initializing"</span> : <span class="hljs-number">0.000001430511474609375</span>, 
-    <span class="hljs-string">"parsing"</span> : <span class="hljs-number">0.000017881393432617188</span>, 
-    <span class="hljs-string">"optimizing ast"</span> : <span class="hljs-number">0.0000021457672119140625</span>, 
-    <span class="hljs-string">"loading collections"</span> : <span class="hljs-number">0.0000021457672119140625</span>, 
-    <span class="hljs-string">"instantiating plan"</span> : <span class="hljs-number">0.000010251998901367188</span>, 
+    <span class="hljs-string">"initializing"</span> : <span class="hljs-number">9.5367431640625e-7</span>, 
+    <span class="hljs-string">"parsing"</span> : <span class="hljs-number">0.000016927719116210938</span>, 
+    <span class="hljs-string">"optimizing ast"</span> : <span class="hljs-number">0.000002384185791015625</span>, 
+    <span class="hljs-string">"loading collections"</span> : <span class="hljs-number">0.0000016689300537109375</span>, 
+    <span class="hljs-string">"instantiating plan"</span> : <span class="hljs-number">0.000009059906005859375</span>, 
     <span class="hljs-string">"optimizing plan"</span> : <span class="hljs-number">0.000022172927856445312</span>, 
     <span class="hljs-string">"executing"</span> : <span class="hljs-number">0.000018358230590820312</span>, 
     <span class="hljs-string">"finalizing"</span> : <span class="hljs-number">0.000008106231689453125</span> 
