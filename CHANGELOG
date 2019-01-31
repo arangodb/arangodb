@@ -16,6 +16,8 @@ v3.4.3 (XXXX-XX-XX)
 v3.4.2 (2019-01-24)
 -------------------
 
+* upgraded to OpenSSL 1.1.0j
+
 * a bug affecting stream cursor was fixed (internal issue #3169)
 
 * fixed an issue with AQL query IN index lookup conditions being converted into
