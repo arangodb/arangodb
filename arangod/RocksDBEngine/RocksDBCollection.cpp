@@ -311,7 +311,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   // Step 0. Lock all the things
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
   TRI_vocbase_col_status_e status;
-  res = vocbase.useCollection(&_logicalCollection, status);
+  Result res = vocbase.useCollection(&_logicalCollection, status);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
