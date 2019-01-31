@@ -54,16 +54,72 @@ class OutputAqlItemRow {
 
   // Clones the given AqlValue
   void setValue(RegisterId registerId, InputAqlItemRow const& sourceRow,
-                AqlValue const& value);
+                AqlValue const& value) {
+    bool mustDestroy = true;
+    AqlValue clonedValue = value.clone();
+    AqlValueGuard guard{clonedValue, mustDestroy};
+    // Use copy-implementation of setValue()
+    // NOLINTNEXTLINE(performance-move-const-arg)
+    setValue(registerId, sourceRow, std::move(clonedValue));
+    guard.steal();
+  }
 
   // Copies the given AqlValue. If it holds external memory, it will be
   // destroyed when the block is destroyed.
   // Note that there is no real move happening here, just a trivial copy of
   // the passed AqlValue. However, that means the output block will take
   // responsibility of possibly referenced external memory.
-  void setValue(RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValue&& value);
+  void setValue(RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValue&& value) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    if (!isOutputRegister(registerId)) {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_IN_WRONG_REGISTER);
+    }
+    // This is already implicitly asserted by isOutputRegister:
+    TRI_ASSERT(registerId < getNrRegisters());
+    if (_numValuesWritten >= numRegistersToWrite()) {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS);
+    }
+    if (!block().getValueReference(_baseIndex, registerId).isNone()) {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_OUTPUT_REGISTER_TWICE);
+    }
+#endif
 
-  void copyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing = false);
+    block().setValue(_baseIndex, registerId, value);
+    _numValuesWritten++;
+    // allValuesWritten() must be called only *after* _numValuesWritten was
+    // increased.
+    if (allValuesWritten()) {
+      copyRow(sourceRow);
+    }
+  }
+
+  void copyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing = false) {
+    TRI_ASSERT(sourceRow.isInitialized());
+    // While violating the following asserted states would do no harm, the
+    // implementation as planned should only copy a row after all values have been
+    // set, and copyRow should only be called once.
+    TRI_ASSERT(!_inputRowCopied);
+    TRI_ASSERT(allValuesWritten());
+    if (_inputRowCopied) {
+      return;
+    }
+
+    // This may only be set if the input block is the same as the output block,
+    // because it is passed through.
+    if (_doNotCopyInputRow) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      TRI_ASSERT(sourceRow.internalBlockIs(blockShell()));
+#endif
+      _inputRowCopied = true;
+      _lastSourceRow = sourceRow;
+      return;
+    }
+
+    doCopyRow(sourceRow, ignoreMissing);
+  }
 
   std::size_t getNrRegisters() const { return block().getNrRegs(); }
 
@@ -72,7 +128,22 @@ class OutputAqlItemRow {
    * been set, or in case there are zero output registers, after copyRow has
    * been called.
    */
-  void advanceRow();
+  void advanceRow() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(produced());
+    if (!allValuesWritten()) {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS);
+    }
+    if (!_inputRowCopied) {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INPUT_REGISTERS_NOT_COPIED);
+    }
+#endif
+    ++_baseIndex;
+    _inputRowCopied = false;
+    _numValuesWritten = 0;
+  }
 
   // returns true if row was produced
   bool produced() const { return allValuesWritten() && _inputRowCopied; }
@@ -178,6 +249,8 @@ class OutputAqlItemRow {
 
   AqlItemBlock const& block() const { return blockShell().block(); }
   AqlItemBlock& block() { return blockShell().block(); }
+
+  void doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing);
 };
 
 }  // namespace aql
