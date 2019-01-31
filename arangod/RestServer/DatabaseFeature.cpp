@@ -62,10 +62,16 @@
 
 #include <velocypack/velocypack-aliases.h>
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
+
+namespace arangodb {
+
+struct DatabaseFeature::DatabasesLists {
+  std::unordered_map<std::string, std::shared_ptr<TRI_vocbase_t>> _databases;
+  std::unordered_set<std::shared_ptr<TRI_vocbase_t>> _droppedDatabases;
+};
 
 DatabaseFeature* DatabaseFeature::DATABASE = nullptr;
 
@@ -87,13 +93,13 @@ void DatabaseManagerThread::run() {
   while (true) {
     try {
       // check if we have to drop some database
-      TRI_vocbase_t* database = nullptr;
+      std::shared_ptr<TRI_vocbase_t> database;
 
       {
         auto unuser(databaseFeature->_databasesProtector.use());
         auto theLists = databaseFeature->_databasesLists.load();
 
-        for (TRI_vocbase_t* vocbase : theLists->_droppedDatabases) {
+        for (auto& vocbase : theLists->_droppedDatabases) {
           if (!vocbase->isDangling()) {
             continue;
           }
@@ -112,11 +118,13 @@ void DatabaseManagerThread::run() {
           // Build the new value:
           auto oldLists = databaseFeature->_databasesLists.load();
           decltype(oldLists) newLists = nullptr;
+
           try {
-            newLists = new DatabasesLists();
+            newLists = new DatabaseFeature::DatabasesLists();
             newLists->_databases = oldLists->_databases;
-            for (TRI_vocbase_t* vocbase : oldLists->_droppedDatabases) {
-              if (vocbase != database) {
+
+            for (auto& vocbase : oldLists->_droppedDatabases) {
+              if (vocbase.get() != database.get()) {
                 newLists->_droppedDatabases.insert(vocbase);
               }
             }
@@ -171,8 +179,6 @@ void DatabaseManagerThread::run() {
           }
         }
 
-        delete database;
-
         // directly start next iteration
       } else {  // if (database != nullptr)
         // perfom some cleanup tasks
@@ -200,21 +206,22 @@ void DatabaseManagerThread::run() {
 
           auto unuser(databaseFeature->_databasesProtector.use());
           auto theLists = databaseFeature->_databasesLists.load();
-
           bool force = isStopping();
+
           for (auto& p : theLists->_databases) {
-            TRI_vocbase_t* vocbase = p.second;
+            auto& vocbase = p.second;
+
             TRI_ASSERT(vocbase != nullptr);
 
             try {
               vocbase->cursorRepository()->garbageCollect(force);
             } catch (...) {
             }
+
             vocbase->garbageCollectReplicationClients(TRI_microtime());
           }
         }
       }
-
     } catch (...) {
     }
 
@@ -377,7 +384,8 @@ void DatabaseFeature::beginShutdown() {
   auto theLists = _databasesLists.load();
 
   for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
+    auto& vocbase = p.second;
+
     // iterate over all databases
     TRI_ASSERT(vocbase != nullptr);
 
@@ -393,9 +401,11 @@ void DatabaseFeature::stop() {
   auto theLists = _databasesLists.load();
 
   for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
+    auto& vocbase = p.second;
+
     // iterate over all databases
     TRI_ASSERT(vocbase != nullptr);
+
     if (vocbase->type() != TRI_VOCBASE_TYPE_NORMAL) {
       continue;
     }
@@ -469,9 +479,11 @@ void DatabaseFeature::recoveryDone() {
   auto theLists = _databasesLists.load();
 
   for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
+    auto& vocbase = p.second;
+
     // iterate over all databases
     TRI_ASSERT(vocbase != nullptr);
+
     if (vocbase->type() != TRI_VOCBASE_TYPE_NORMAL) {
       continue;
     }
@@ -484,7 +496,7 @@ void DatabaseFeature::recoveryDone() {
           ApplicationServer::lookupFeature("Replication"));
 
       if (replicationFeature != nullptr) {
-        replicationFeature->startApplier(vocbase);
+        replicationFeature->startApplier(vocbase.get());
       }
     }
   }
@@ -518,7 +530,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     id = TRI_NewTickServer();
   }
 
-  std::unique_ptr<TRI_vocbase_t> vocbase;
+  std::shared_ptr<TRI_vocbase_t> vocbase;
   VPackBuilder builder;
 
   // create database in storage engine
@@ -607,14 +619,16 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
       MUTEX_LOCKER(mutexLocker, _databasesMutex);
       auto oldLists = _databasesLists.load();
       decltype(oldLists) newLists = nullptr;
+
       try {
         newLists = new DatabasesLists(*oldLists);
-        newLists->_databases.insert(std::make_pair(name, vocbase.get()));
+        newLists->_databases.emplace(vocbase->name(), vocbase);
       } catch (...) {
         LOG_TOPIC(ERR, arangodb::Logger::FIXME)
             << "Out of memory for putting new database into list!";
         // This is bad, but at least we do not crash!
       }
+
       if (newLists != nullptr) {
         _databasesLists = newLists;
         _databasesProtector.scan();
@@ -630,7 +644,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     res = engine->writeCreateDatabaseMarker(id, builder.slice());
   }
 
-  result = vocbase.release();
+  result = vocbase.get();
   events::CreateDatabase(name, res);
 
   if (DatabaseFeature::DATABASE != nullptr &&
@@ -654,10 +668,10 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
   int res = TRI_ERROR_NO_ERROR;
   {
     MUTEX_LOCKER(mutexLocker, _databasesMutex);
-
     auto oldLists = _databasesLists.load();
     decltype(oldLists) newLists = nullptr;
-    TRI_vocbase_t* vocbase = nullptr;
+    std::shared_ptr<TRI_vocbase_t> vocbase;
+
     try {
       newLists = new DatabasesLists(*oldLists);
 
@@ -725,10 +739,10 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
 
     // invalidate all entries for the database
 #if USE_PLAN_CACHE
-    arangodb::aql::PlanCache::instance()->invalidate(vocbase);
+      arangodb::aql::PlanCache::instance()->invalidate(vocbase.get());
 #endif
-    arangodb::aql::QueryCache::instance()->invalidate(vocbase);
 
+    arangodb::aql::QueryCache::instance()->invalidate(vocbase.get());
     engine->prepareDropDatabase(*vocbase, !engine->inRecovery(), res);
   }
   // must not use the database after here, as it may now be
@@ -759,10 +773,11 @@ int DatabaseFeature::dropDatabase(TRI_voc_tick_t id, bool waitForDeletion,
     auto theLists = _databasesLists.load();
 
     for (auto& p : theLists->_databases) {
-      TRI_vocbase_t* vocbase = p.second;
+      auto& vocbase = p.second;
 
       if (vocbase->id() == id) {
         name = vocbase->name();
+
         break;
       }
     }
@@ -783,11 +798,14 @@ std::vector<TRI_voc_tick_t> DatabaseFeature::getDatabaseIds(bool includeSystem) 
     auto theLists = _databasesLists.load();
 
     for (auto& p : theLists->_databases) {
-      TRI_vocbase_t* vocbase = p.second;
+      auto& vocbase = p.second;
+
       TRI_ASSERT(vocbase != nullptr);
+
       if (vocbase->isDropped()) {
         continue;
       }
+
       if (includeSystem || vocbase->name() != TRI_VOC_SYSTEM_DATABASE) {
         ids.emplace_back(vocbase->id());
       }
@@ -806,11 +824,14 @@ std::vector<std::string> DatabaseFeature::getDatabaseNames() {
     auto theLists = _databasesLists.load();
 
     for (auto& p : theLists->_databases) {
-      TRI_vocbase_t* vocbase = p.second;
+      auto& vocbase = p.second;
+
       TRI_ASSERT(vocbase != nullptr);
+
       if (vocbase->isDropped()) {
         continue;
       }
+
       names.emplace_back(vocbase->name());
     }
   }
@@ -832,14 +853,17 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(std::string co
     auto theLists = _databasesLists.load();
 
     for (auto& p : theLists->_databases) {
-      TRI_vocbase_t* vocbase = p.second;
+      auto& vocbase = p.second;
+
       TRI_ASSERT(vocbase != nullptr);
+
       if (vocbase->isDropped()) {
         continue;
       }
 
       if (af->isActive() && af->userManager() != nullptr) {
         auto level = af->userManager()->databaseAuthLevel(username, vocbase->name());
+
         if (level == auth::Level::NONE) {  // hide dbs without access
           continue;
         }
@@ -865,8 +889,10 @@ void DatabaseFeature::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
     auto theLists = _databasesLists.load();
 
     for (auto& p : theLists->_databases) {
-      TRI_vocbase_t* vocbase = p.second;
+      auto& vocbase = p.second;
+
       TRI_ASSERT(vocbase != nullptr);
+
       if (vocbase->isDropped()) {
         continue;
       }
@@ -888,9 +914,10 @@ TRI_vocbase_t* DatabaseFeature::useDatabase(std::string const& name) {
   auto it = theLists->_databases.find(name);
 
   if (it != theLists->_databases.end()) {
-    TRI_vocbase_t* vocbase = it->second;
+    auto& vocbase = it->second;
+
     if (vocbase->use()) {
-      return vocbase;
+      return vocbase.get();
     }
   }
 
@@ -902,12 +929,13 @@ TRI_vocbase_t* DatabaseFeature::useDatabase(TRI_voc_tick_t id) {
   auto theLists = _databasesLists.load();
 
   for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
+    auto& vocbase = p.second;
 
     if (vocbase->id() == id) {
       if (vocbase->use()) {
-        return vocbase;
+        return vocbase.get();
       }
+
       break;
     }
   }
@@ -928,17 +956,20 @@ TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) {
   if (name[0] >= '0' && name[0] <= '9') {
     TRI_voc_tick_t id =
         NumberUtils::atoi_zero<TRI_voc_tick_t>(name.data(), name.data() + name.size());
+
     for (auto& p : theLists->_databases) {
-      TRI_vocbase_t* vocbase = p.second;
+      auto& vocbase = p.second;
+
       if (vocbase->id() == id) {
-        return vocbase;
+        return vocbase.get();
       }
     }
   } else {
     for (auto& p : theLists->_databases) {
-      TRI_vocbase_t* vocbase = p.second;
+      auto& vocbase = p.second;
+
       if (name == vocbase->name()) {
-        return vocbase;
+        return vocbase.get();
       }
     }
   }
@@ -956,7 +987,8 @@ std::string DatabaseFeature::translateCollectionName(std::string const& dbName,
     return std::string();
   }
 
-  auto* vocbase = itr->second;
+  auto& vocbase = itr->second;
+
   TRI_ASSERT(vocbase != nullptr);
 
   if (ServerState::instance()->isCoordinator()) {
@@ -978,7 +1010,8 @@ void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t& vocba
   auto theLists = _databasesLists.load();
 
   for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
+    auto& vocbase = p.second;
+
     // iterate over all databases
     TRI_ASSERT(vocbase != nullptr);
     func(*vocbase);
@@ -1027,10 +1060,12 @@ void DatabaseFeature::stopAppliers() {
   // No need for the thread protector here, because we have the mutex
 
   for (auto& p : _databasesLists.load()->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
+    auto& vocbase = p.second;
+
     TRI_ASSERT(vocbase != nullptr);
+
     if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL) {
-      replicationFeature->stopApplier(vocbase);
+      replicationFeature->stopApplier(vocbase.get());
     }
   }
 }
@@ -1061,11 +1096,10 @@ void DatabaseFeature::closeOpenDatabases() {
 
   // Now it is safe to destroy the old databases and the old lists struct:
   for (auto& p : oldList->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
+    auto& vocbase = p.second;
+
     TRI_ASSERT(vocbase != nullptr);
     vocbase->shutdown();
-
-    delete vocbase;
   }
 
   delete oldList;  // Note that this does not delete the TRI_vocbase_t pointers!
@@ -1177,7 +1211,8 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       // open the database and scan collections in it
 
       // try to open this database
-      auto* database = engine->openDatabase(it, _upgrade).release();
+       auto database = // opened database
+         std::shared_ptr<TRI_vocbase_t>(engine->openDatabase(it, _upgrade));
 
       if (!ServerState::isCoordinator(role) && !ServerState::isAgent(role)) {
         try {
@@ -1190,7 +1225,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
         }
       }
 
-      newLists->_databases.insert(std::make_pair(database->name(), database));
+      newLists->_databases.emplace(database->name(), database);
     }
   } catch (std::exception const& ex) {
     delete newLists;
@@ -1238,14 +1273,13 @@ void DatabaseFeature::closeDroppedDatabases() {
 
   // Now it is safe to destroy the old dropped databases and the old lists
   // struct:
-  for (TRI_vocbase_t* vocbase : oldList->_droppedDatabases) {
+  for (auto& vocbase: oldList->_droppedDatabases) {
     TRI_ASSERT(vocbase != nullptr);
 
     if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL) {
       vocbase->shutdown();
-      delete vocbase;
     } else if (vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
-      delete vocbase;
+      // NOOP
     } else {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
           << "unknown database type " << vocbase->type() << " "
@@ -1294,9 +1328,15 @@ void DatabaseFeature::enableDeadlockDetection() {
   auto theLists = _databasesLists.load();
 
   for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
-    TRI_ASSERT(vocbase != nullptr);
+    auto& vocbase = p.second;
 
+    TRI_ASSERT(vocbase != nullptr);
     vocbase->_deadlockDetector.enabled(true);
   }
 }
+
+} // arangodb
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

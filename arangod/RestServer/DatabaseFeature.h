@@ -30,17 +30,24 @@
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
 class LogicalCollection;
 
-namespace aql {
-class QueryRegistry;
 }
+
+namespace arangodb {
+namespace velocypack {
+
+  class Builder; // forward declaration
+  class Slice; // forward declaration
+
+} // velocypack
+} //arangodb
+
+namespace arangodb {
 
 class DatabaseManagerThread final : public Thread {
  public:
@@ -162,6 +169,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
 
+  struct DatabasesLists; // forward declaration
   std::atomic<DatabasesLists*> _databasesLists;
   // TODO: Make this again a template once everybody has gcc >= 4.9.2
   // arangodb::basics::DataProtector<64>

@@ -103,12 +103,4 @@ struct hash<std::vector<arangodb::velocypack::Slice>> {
 
 }  // namespace std
 
-/// @brief databases list structure
-struct TRI_vocbase_t;
-
-struct DatabasesLists {
-  std::unordered_map<std::string, TRI_vocbase_t*> _databases;
-  std::unordered_set<TRI_vocbase_t*> _droppedDatabases;
-};
-
 #endif
