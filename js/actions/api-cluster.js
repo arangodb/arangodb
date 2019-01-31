@@ -1230,6 +1230,12 @@ actions.defineHttp({
     }
 
     // simon: RO is sufficient to rebalance shards for current db
+    if (req.database !== '_system'/* || !req.isAdminUser*/) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only allowed for admins on the _system database');
+      return;
+    }
+
     // Now get to work:
     var body = actions.getJsonBody(req, res);
     if (body === undefined) {
