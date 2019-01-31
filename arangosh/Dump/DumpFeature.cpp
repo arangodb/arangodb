@@ -671,6 +671,12 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client, std::string co
   if (!body.isObject()) {
     return ::ErrorMalformedJsonResponse;
   }
+  
+  // use tick provided by server if user did not specify one
+  if (_options.tickEnd == 0 && !_options.clusterMode) {
+    uint64_t tick = basics::VelocyPackHelper::stringUInt64(body, "tick");
+    _options.tickEnd = tick;
+  }
 
   // get the collections list
   VPackSlice const collections = body.get("collections");
