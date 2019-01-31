@@ -38,6 +38,12 @@ UniformCharacter::UniformCharacter(std::string const& characters)
 UniformCharacter::UniformCharacter(size_t length, std::string const& characters)
     : _length(length), _characters(characters) {}
 
+char UniformCharacter::randomChar() const {
+  size_t r = RandomGenerator::interval((uint32_t)(_characters.size() - 1));
+
+  return _characters[r];
+}
+
 std::string UniformCharacter::random() { return random(_length); }
 
 std::string UniformCharacter::random(size_t length) {

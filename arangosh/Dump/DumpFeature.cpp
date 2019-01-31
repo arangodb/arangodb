@@ -36,6 +36,7 @@
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
 #include "Endpoint/Endpoint.h"
+#include "Maskings/Maskings.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
@@ -131,6 +132,9 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
 
   options->addOption("--tick-end", "last tick to be included in data dump",
                      new UInt64Parameter(&_tickEnd));
+
+  options->addOption("--maskings", "file with maskings definition",
+                     new StringParameter(&_maskingsFile));
 }
 
 void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -373,7 +377,7 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid, std::string cons
 
     if (res == TRI_ERROR_NO_ERROR) {
       StringBuffer const& body = response->getBody();
-      bool result = writeData(fd, body.c_str(), body.length());
+      bool result = toDisk(fd, name, body, _maskings.get());
 
       if (!result) {
         res = TRI_ERROR_CANNOT_WRITE_FILE;
@@ -599,6 +603,10 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       continue;
     }
 
+    if (_maskings.get() != nullptr && !_maskings->shouldDumpStructure(name)) {
+      continue;
+    }
+
     std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
 
     // found a collection!
@@ -648,51 +656,73 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       TRI_TRACKED_CLOSE_FILE(fd);
     }
 
-    if (_dumpData) {
+    bool dumpData = _dumpData;
+
+    if (dumpData && _maskings.get() != nullptr) {
+      dumpData = _maskings->shouldDumpData(name);
+    }
+
+    std::string fileName;
+    fileName = _outputDirectory + TRI_DIR_SEPARATOR_STR + name + "_" +
+               hexString + ".data.json";
+
+    // remove an existing file first
+    if (TRI_ExistsFile(fileName.c_str())) {
+      TRI_UnlinkFile(fileName.c_str());
+    }
+
+    int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
+                                     O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+                                     S_IRUSR | S_IWUSR);
+
+    if (fd < 0) {
+      errorMsg = "cannot write to file '" + fileName + "'";
+
+      return TRI_ERROR_CANNOT_WRITE_FILE;
+    }
+
+    int res = TRI_ERROR_NO_ERROR;
+
+    if (dumpData) {
       // save the actual data
-      std::string fileName;
-      fileName = _outputDirectory + TRI_DIR_SEPARATOR_STR + name + "_" +
-                 hexString + ".data.json";
-
-      // remove an existing file first
-      if (TRI_ExistsFile(fileName.c_str())) {
-        TRI_UnlinkFile(fileName.c_str());
-      }
-
-      int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(),
-                                       O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                                       S_IRUSR | S_IWUSR);
-
-      if (fd < 0) {
-        errorMsg = "cannot write to file '" + fileName + "'";
-
-        return TRI_ERROR_CANNOT_WRITE_FILE;
-      }
-
       beginEncryption(fd);
 
       extendBatch("");
-      int res = dumpCollection(fd, std::to_string(cid), name, maxTick, errorMsg);
+      res = dumpCollection(fd, std::to_string(cid), name, maxTick, errorMsg);
 
       endEncryption(fd);
-      TRI_TRACKED_CLOSE_FILE(fd);
+    }
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        if (errorMsg.empty()) {
-          errorMsg = "cannot write to file '" + fileName + "'";
-        }
+    TRI_TRACKED_CLOSE_FILE(fd);
 
-        return res;
+    if (res != TRI_ERROR_NO_ERROR) {
+      if (errorMsg.empty()) {
+        errorMsg = "cannot write to file '" + fileName + "'";
       }
+
+      return res;
     }
   }
 
   return TRI_ERROR_NO_ERROR;
 }
 
+bool DumpFeature::toDisk(int fd, std::string const& name, StringBuffer const& body, maskings::Maskings* maskings) {
+  arangodb::basics::StringBuffer masked(1, false);
+  arangodb::basics::StringBuffer const* result = &body;
+
+  if (maskings != nullptr) {
+    maskings->mask(name, body, masked);
+    result = &masked;
+  }
+
+  return writeData(fd, result->c_str(), result->length());
+}
+
 /// @brief dump a single shard, that is a collection on a DBserver
 int DumpFeature::dumpShard(int fd, std::string const& DBserver,
-                           std::string const& name, std::string& errorMsg) {
+                           std::string const& name, std::string& errorMsg,
+                           std::string const& collectionName) {
   uint64_t chunkSize = _chunkSize;
 
   std::string const baseUrl = "/_api/replication/dump?DBserver=" + DBserver +
@@ -766,7 +796,7 @@ int DumpFeature::dumpShard(int fd, std::string const& DBserver,
 
     if (res == TRI_ERROR_NO_ERROR) {
       StringBuffer const& body = response->getBody();
-      bool result = writeData(fd, body.c_str(), body.length());
+      bool result = toDisk(fd, collectionName, body, _maskings.get());
 
       if (!result) {
         res = TRI_ERROR_CANNOT_WRITE_FILE;
@@ -898,6 +928,10 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
       continue;
     }
 
+    if (_maskings.get() != nullptr && !_maskings->shouldDumpStructure(name)) {
+      continue;
+    }
+
     if (!_ignoreDistributeShardsLikeErrors) {
       std::string prototypeCollection = arangodb::basics::VelocyPackHelper::getStringValue(
           parameters, "distributeShardsLike", "");
@@ -976,7 +1010,13 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
       TRI_TRACKED_CLOSE_FILE(fd);
     }
 
-    if (_dumpData) {
+    bool dumpData = _dumpData;
+
+    if (dumpData && _maskings.get() != nullptr) {
+      dumpData = _maskings->shouldDumpData(name);
+    }
+
+    if (dumpData) {
       // save the actual data
 
       // Now set up the output file:
@@ -1033,7 +1073,7 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
           return res;
         }
 
-        res = dumpShard(fd, DBserver, shardName, errorMsg);
+        res = dumpShard(fd, DBserver, shardName, errorMsg, name);
 
         if (res != TRI_ERROR_NO_ERROR) {
           endEncryption(fd);
@@ -1061,6 +1101,19 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
 }
 
 void DumpFeature::start() {
+  if (!_maskingsFile.empty()) {
+    maskings::MaskingsResult m = maskings::Maskings::fromFile(_maskingsFile);
+
+    if (m.status != maskings::MaskingsResult::VALID) {
+      LOG_TOPIC(FATAL, Logger::CONFIG)
+          << m.message << " in maskings file '" << _maskingsFile << "'";
+      FATAL_ERROR_EXIT();
+    }
+
+    _maskings = std::move(m.maskings);
+  }
+
+
 #ifdef USE_ENTERPRISE
   _encryption = application_features::ApplicationServer::getFeature<EncryptionFeature>(
       "Encryption");

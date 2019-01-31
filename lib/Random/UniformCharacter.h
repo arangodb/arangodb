@@ -40,6 +40,7 @@ class UniformCharacter {
  public:
   std::string random();
   std::string random(size_t length);
+  char randomChar() const;
 
  private:
   size_t _length;

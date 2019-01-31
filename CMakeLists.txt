@@ -863,6 +863,8 @@ add_subdirectory(3rdParty)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/boost)
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
+
 # ------------------------------------------------------------------------------
 # RocksDB
 # ------------------------------------------------------------------------------
