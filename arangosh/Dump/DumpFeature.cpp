@@ -590,7 +590,8 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
                      new UInt64Parameter(&_options.tickEnd));
 
   options->addOption("--maskings", "file with maskings definition",
-                     new StringParameter(&_options.maskingsFile));
+                     new StringParameter(&_options.maskingsFile))
+                     .setIntroducedIn(30322).setIntroducedIn(30402);
 }
 
 void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
