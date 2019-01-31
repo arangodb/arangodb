@@ -1,5 +1,9 @@
-v3.4.2 (2019-01-24)
+v3.4.2 (2019-02-01)
 -------------------
+
+* upgraded to OpenSSL 1.1.0j
+
+* upgrade to new velocypack version
 
 * fixed an issue with AQL query IN index lookup conditions being converted into
   empty arrays when they were shared between multiple nodes of a lookup condition
