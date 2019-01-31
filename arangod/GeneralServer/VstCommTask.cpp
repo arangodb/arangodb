@@ -39,20 +39,25 @@
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Utils/Events.h"
 #include "VocBase/ticks.h"
 
-#include <iostream>
-#include <limits>
 #include <stdexcept>
+
+#include <velocypack/Options.h>
+#include <velocypack/Validator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 inline std::size_t validateAndCount(char const* vpStart, char const* vpEnd) {
+  // intentional copy
   VPackOptions validationOptions = VPackOptions::Defaults;
   validationOptions.validateUtf8Strings = true;
+  validationOptions.disallowExternals = true;
+  validationOptions.disallowCustom = true;
+  validationOptions.checkAttributeUniqueness = true;
   VPackValidator validator(&validationOptions);
 
   try {
