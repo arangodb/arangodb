@@ -1,5 +1,5 @@
-As ArangoDB supports MVCC (Multiple Version Concurrency Control),
-documents can internally exist in more than one revision.
+As ArangoDB uses MVCC (Multiple Version Concurrency Control)
+internally, documents can exist in more than one revision.
 The document revision is the MVCC token used to specify
 a particular revision of a document (identified by its `_id`).
 
