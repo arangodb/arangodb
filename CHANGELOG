@@ -1,13 +1,12 @@
-v3.3.23 (XXXX-XX-XX)
+v3.3.22 (2019-02-01)
 --------------------
 
 * data masking: better documentation, fixed default phone number,
   changed default range to -100 and 100 for integer masking function
 
-v3.3.22 (2019-01-25)
---------------------
-
 * backported data maskings
+
+* updated velocypack library
 
 * fix broken validation of tick range in arangodump
 
