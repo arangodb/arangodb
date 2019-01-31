@@ -30,6 +30,8 @@
 
 enum TRI_col_type_e : uint32_t;
 
+struct TRI_vocbase_t; // forward declaration
+
 namespace arangodb {
 
 class LogicalCollection;
