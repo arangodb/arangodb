@@ -47,7 +47,7 @@ using namespace arangodb::tests::aql;
 using namespace arangodb::aql;
 
 namespace {
-static void VPackToAqlItemBlock(VPackSlice data, uint64_t nrRegs, AqlItemBlock& block) {
+void VPackToAqlItemBlock(VPackSlice data, uint64_t nrRegs, AqlItemBlock& block) {
   // coordinates in the matrix rowNr, entryNr
   size_t rowIndex = 0;
   RegisterId entry = 0;
@@ -100,9 +100,7 @@ SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
         inputRegisters->emplace(i);
       }
       auto block = std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs);
-      auto blockShell =
-          std::make_shared<AqlItemBlockShell>(_itemBlockManager, std::move(block));
-      _itemBlock = std::make_shared<InputAqlItemBlockShell>(blockShell, inputRegisters);
+      _itemBlock = std::make_shared<AqlItemBlockShell>(_itemBlockManager, std::move(block));
       // std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs);
       VPackToAqlItemBlock(_data, nrRegs, _itemBlock->block());
     }
@@ -180,10 +178,8 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>>
     }
     auto blockShell =
         std::make_shared<AqlItemBlockShell>(_itemBlockManager, std::move(itemBlock));
-    auto inputBlockShell =
-        std::make_shared<InputAqlItemBlockShell>(blockShell, inputRegisters);
     _matrix = std::make_unique<AqlItemMatrix>(_nrRegs);
-    _matrix->addBlock(std::move(inputBlockShell));
+    _matrix->addBlock(std::move(blockShell));
   }
   if (_matrix == nullptr) {
     _matrix = std::make_unique<AqlItemMatrix>(_nrRegs);
@@ -240,9 +236,8 @@ ConstFetcherHelper::ConstFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>> vPa
       auto block = std::make_unique<AqlItemBlock>(&_resourceMonitor, nrItems, nrRegs);
       auto shell =
           std::make_shared<AqlItemBlockShell>(_itemBlockManager, std::move(block));
-      auto inputShell = std::make_shared<InputAqlItemBlockShell>(shell, inputRegisters);
-      VPackToAqlItemBlock(_data, nrRegs, inputShell->block());
-      this->injectBlock(inputShell);
+      VPackToAqlItemBlock(_data, nrRegs, shell->block());
+      this->injectBlock(shell);
     }
   }
 };

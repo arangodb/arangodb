@@ -114,6 +114,10 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
+// TODO Add tests for both
+// CalculationExecutor<CalculationType::V8Condition> and
+// CalculationExecutor<CalculationType::Reference>!
+
 SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
   ExecutionState state;
 
@@ -161,7 +165,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
   CalculationExecutorInfos infos(outRegID /*out reg*/, RegisterId(1) /*in width*/,
                                  RegisterId(2) /*out width*/,
                                  std::unordered_set<RegisterId>{} /*to clear*/,
-                                 &query /*query*/, &expr /*expression*/,
+                                 query /*query*/, expr /*expression*/,
                                  std::vector<Variable const*>{&var} /*expression in variables*/,
                                  std::vector<RegisterId>{inRegID} /*expression in registers*/
   );
@@ -170,21 +174,19 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
     auto blockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
-    auto outputBlockShell =
-        std::make_unique<OutputAqlItemBlockShell>(blockShell, infos.getOutputRegisters(),
-                                                  infos.registersToKeep());
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
       SingleRowFetcherHelper<true> fetcher(input.steal(), false);
-      CalculationExecutor testee(fetcher, infos);
+      CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
       // Use this instead of std::ignore, so the tests will be noticed and
       // updated when someone changes the stats type in the return value of
       // EnumerateListExecutor::produceRow().
       NoStats stats{};
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result(std::move(outputBlockShell));
+        OutputAqlItemRow result{std::move(blockShell), infos.getOutputRegisters(),
+                                infos.registersToKeep()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -193,14 +195,15 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
 
     WHEN("the producer waits") {
       SingleRowFetcherHelper<true> fetcher(input.steal(), true);
-      CalculationExecutor testee(fetcher, infos);
+      CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
       // Use this instead of std::ignore, so the tests will be noticed and
       // updated when someone changes the stats type in the return value of
       // EnumerateListExecutor::produceRow().
       NoStats stats{};
 
       THEN("the executor should first return WAIT with nullptr") {
-        OutputAqlItemRow result(std::move(outputBlockShell));
+        OutputAqlItemRow result{std::move(blockShell), infos.getOutputRegisters(),
+                                infos.registersToKeep()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -219,19 +222,17 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
     auto blockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
-    auto outputBlockShell =
-        std::make_unique<OutputAqlItemBlockShell>(blockShell, infos.getOutputRegisters(),
-                                                  infos.registersToKeep());
 
     auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
 
     WHEN("the producer does not wait") {
       SingleRowFetcherHelper<true> fetcher(input->steal(), false);
-      CalculationExecutor testee(fetcher, infos);
+      CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
       NoStats stats{};
 
       THEN("the executor should return the rows") {
-        OutputAqlItemRow row(std::move(outputBlockShell));
+        OutputAqlItemRow row{std::move(blockShell), infos.getOutputRegisters(),
+                             infos.registersToKeep()};
 
         // 1
         std::tie(state, stats) = testee.produceRow(row);
@@ -271,11 +272,12 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
 
     WHEN("the producer waits") {
       SingleRowFetcherHelper<true> fetcher(input->steal(), true);
-      CalculationExecutor testee(fetcher, infos);
+      CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
       NoStats stats{};
 
       THEN("the executor should return the rows") {
-        OutputAqlItemRow row(std::move(outputBlockShell));
+        OutputAqlItemRow row{std::move(blockShell), infos.getOutputRegisters(),
+                             infos.registersToKeep()};
 
         // waiting
         std::tie(state, stats) = testee.produceRow(row);

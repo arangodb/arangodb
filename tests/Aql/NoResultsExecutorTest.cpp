@@ -52,13 +52,11 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
   auto registersToKeep = make_shared_unordered_set();
   auto blockShell =
       std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
-  auto outputBlockShell =
-      std::make_unique<OutputAqlItemBlockShell>(blockShell, outputRegisters, registersToKeep);
 
   RegisterId inputRegister(0);
   ExecutorInfos infos(make_shared_unordered_set({inputRegister}), outputRegisters,
                       1 /*nr in*/, 1 /*nr out*/, std::unordered_set<RegisterId>{});
-  OutputAqlItemRow result(std::move(outputBlockShell));
+  OutputAqlItemRow result{std::move(blockShell), outputRegisters, registersToKeep};
 
   GIVEN("there are no rows upstream") {
     VPackBuilder input;

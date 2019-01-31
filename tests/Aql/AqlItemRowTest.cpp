@@ -87,14 +87,10 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
     ExecutorInfos executorInfos{{}, {}, 3, 3, {}};
     auto blockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
-    auto outputBlockShell =
-        std::make_unique<OutputAqlItemBlockShell>(blockShell,
-                                                  executorInfos.getOutputRegisters(),
-                                                  executorInfos.registersToKeep());
-    std::unordered_set<RegisterId> const& regsToKeep =
-        outputBlockShell->registersToKeep();
+    auto outputRegisters = executorInfos.getOutputRegisters();
+    auto registersToKeep = executorInfos.registersToKeep();
 
-    OutputAqlItemRow testee(std::move(outputBlockShell));
+    OutputAqlItemRow testee(std::move(blockShell), outputRegisters, registersToKeep);
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
@@ -106,21 +102,18 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
         auto blockShell =
             std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(inputBlock));
-        auto inputBlockShell =
-            std::make_shared<InputAqlItemBlockShell>(blockShell,
-                                                     executorInfos.getInputRegisters());
 
-        InputAqlItemRow source{inputBlockShell, 0};
+        InputAqlItemRow source{blockShell, 0};
 
         testee.copyRow(source);
         REQUIRE(testee.produced());
 
-        source = {inputBlockShell, 1};
+        source = {blockShell, 1};
         testee.advanceRow();
         testee.copyRow(source);
         REQUIRE(testee.produced());
 
-        source = {inputBlockShell, 2};
+        source = {blockShell, 2};
         testee.advanceRow();
         testee.copyRow(source);
         REQUIRE(testee.produced());
@@ -128,7 +121,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
       auto expected =
           VPackParser::fromJson("[[1,2,3],[4,5,6],[\"a\",\"b\",\"c\"]]");
       outputBlock = testee.stealBlock();
-      AssertResultMatrix(outputBlock.get(), expected->slice(), regsToKeep);
+      AssertResultMatrix(outputBlock.get(), expected->slice(), *registersToKeep);
     }
 
     THEN("the data should stay valid for large input values") {
@@ -143,21 +136,18 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
         auto blockShell =
             std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(inputBlock));
-        auto inputBlockShell =
-            std::make_shared<InputAqlItemBlockShell>(blockShell,
-                                                     executorInfos.getInputRegisters());
 
-        InputAqlItemRow source{inputBlockShell, 0};
+        InputAqlItemRow source{blockShell, 0};
 
         testee.copyRow(source);
         REQUIRE(testee.produced());
 
-        source = {inputBlockShell, 1};
+        source = {blockShell, 1};
         testee.advanceRow();
         testee.copyRow(source);
         REQUIRE(testee.produced());
 
-        source = {inputBlockShell, 2};
+        source = {blockShell, 2};
         testee.advanceRow();
         testee.copyRow(source);
         REQUIRE(testee.produced());
@@ -172,7 +162,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
           "\"iiiiiiiiiiiiiiiiiiii\"]"
           "]");
       outputBlock = testee.stealBlock();
-      AssertResultMatrix(outputBlock.get(), expected->slice(), regsToKeep, true);
+      AssertResultMatrix(outputBlock.get(), expected->slice(), *registersToKeep, true);
     }
   }
 
@@ -181,14 +171,10 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
     ExecutorInfos executorInfos{{}, {}, 3, 3, {}};
     auto blockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
-    auto outputBlockShell =
-        std::make_unique<OutputAqlItemBlockShell>(blockShell,
-                                                  executorInfos.getOutputRegisters(),
-                                                  executorInfos.registersToKeep());
-    std::unordered_set<RegisterId> const& regsToKeep =
-        outputBlockShell->registersToKeep();
+    auto outputRegisters = executorInfos.getOutputRegisters();
+    auto registersToKeep = executorInfos.registersToKeep();
 
-    OutputAqlItemRow testee(std::move(outputBlockShell));
+    OutputAqlItemRow testee(std::move(blockShell), outputRegisters, registersToKeep);
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
@@ -200,13 +186,10 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
         auto blockShell =
             std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(inputBlock));
-        auto inputBlockShell =
-            std::make_shared<InputAqlItemBlockShell>(blockShell,
-                                                     executorInfos.getInputRegisters());
 
         for (size_t i = 0; i < 3; ++i) {
           // Iterate over source rows
-          InputAqlItemRow source{inputBlockShell, i};
+          InputAqlItemRow source{blockShell, i};
           for (size_t j = 0; j < 3; ++j) {
             testee.copyRow(source);
             REQUIRE(testee.produced());
@@ -230,7 +213,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
           "[\"a\",\"b\",\"c\"]"
           "]");
       outputBlock = testee.stealBlock();
-      AssertResultMatrix(outputBlock.get(), expected->slice(), regsToKeep);
+      AssertResultMatrix(outputBlock.get(), expected->slice(), *registersToKeep);
     }
   }
 
@@ -239,14 +222,10 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
     ExecutorInfos executorInfos{{}, {}, 3, 3, {1}};
     auto blockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
-    auto outputBlockShell =
-        std::make_unique<OutputAqlItemBlockShell>(blockShell,
-                                                  executorInfos.getOutputRegisters(),
-                                                  executorInfos.registersToKeep());
-    std::unordered_set<RegisterId> const& regsToKeep =
-        outputBlockShell->registersToKeep();
+    auto outputRegisters = executorInfos.getOutputRegisters();
+    auto registersToKeep = executorInfos.registersToKeep();
 
-    OutputAqlItemRow testee(std::move(outputBlockShell));
+    OutputAqlItemRow testee(std::move(blockShell), outputRegisters, registersToKeep);
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
@@ -258,13 +237,10 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
         auto blockShell =
             std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(inputBlock));
-        auto inputBlockShell =
-            std::make_shared<InputAqlItemBlockShell>(blockShell,
-                                                     executorInfos.getInputRegisters());
 
         for (size_t i = 0; i < 3; ++i) {
           // Iterate over source rows
-          InputAqlItemRow source{inputBlockShell, i};
+          InputAqlItemRow source{blockShell, i};
           testee.copyRow(source);
           REQUIRE(testee.produced());
           if (i < 2) {
@@ -280,7 +256,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
           "[\"a\",\"b\",\"c\"]"
           "]");
       outputBlock = testee.stealBlock();
-      AssertResultMatrix(outputBlock.get(), expected->slice(), regsToKeep);
+      AssertResultMatrix(outputBlock.get(), expected->slice(), *registersToKeep);
     }
   }
 
@@ -310,13 +286,10 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
                                 nrOutputRegisters, registersToClear};
     auto blockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
-    auto outputBlockShell =
-        std::make_unique<OutputAqlItemBlockShell>(blockShell,
-                                                  executorInfos.getOutputRegisters(),
-                                                  executorInfos.registersToKeep());
-    std::unordered_set<RegisterId> regsToKeep = outputBlockShell->registersToKeep();
+    auto registersToKeep = executorInfos.registersToKeep();
+    std::unordered_set<RegisterId> regsToKeep = *registersToKeep;
 
-    OutputAqlItemRow testee(std::move(outputBlockShell));
+    OutputAqlItemRow testee(std::move(blockShell), outputRegisters, registersToKeep);
     {
       // Make sure this data is cleared before the assertions
       auto inputBlock = buildBlock<3>(&monitor, {{{{1}, {2}, {3}}},
@@ -325,13 +298,10 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
       auto blockShell =
           std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(inputBlock));
-      auto inputBlockShell =
-          std::make_shared<InputAqlItemBlockShell>(blockShell,
-                                                   executorInfos.getInputRegisters());
 
       for (size_t i = 0; i < 3; ++i) {
         // Iterate over source rows
-        InputAqlItemRow source{inputBlockShell, i};
+        InputAqlItemRow source{blockShell, i};
         for (RegisterId j = 3; j < 5; ++j) {
           AqlValue v{AqlValueHintInt{(int64_t)(j + 5)}};
           testee.cloneValueInto(j, source, v);

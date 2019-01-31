@@ -54,10 +54,8 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
   auto registersToKeep = make_shared_unordered_set({0});  // this must be set correctly
   auto blockShell =
       std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
-  auto outputBlockShell =
-      std::make_unique<OutputAqlItemBlockShell>(blockShell, outputRegisters, registersToKeep);
 
-  OutputAqlItemRow row(std::move(outputBlockShell));
+  OutputAqlItemRow row{std::move(blockShell), outputRegisters, registersToKeep};
   IdExecutorInfos infos(1 /*nrRegs*/, *registersToKeep /*toKeep*/, {} /*toClear*/);
 
   GIVEN("there are no rows upstream") {

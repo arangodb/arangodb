@@ -51,9 +51,6 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
   auto registersToKeep = std::make_shared<const std::unordered_set<RegisterId>>(std::initializer_list<RegisterId>{0});
   auto blockShell =
       std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
-  auto outputBlockShell =
-      std::make_unique<OutputAqlItemBlockShell>(std::move(blockShell),
-                                                outputRegisters, registersToKeep);
 
   // Special parameters:
   // 4th offset
@@ -71,7 +68,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       LimitStats stats{};
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result(std::move(outputBlockShell));
+        OutputAqlItemRow result{std::move(blockShell), outputRegisters, registersToKeep};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -85,7 +82,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       LimitStats stats{};
 
       THEN("the executor should first return WAIT") {
-        OutputAqlItemRow result(std::move(outputBlockShell));
+        OutputAqlItemRow result{std::move(blockShell), outputRegisters, registersToKeep};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -112,7 +109,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       LimitStats stats{};
 
       THEN("the executor should return one row") {
-        OutputAqlItemRow row(std::move(outputBlockShell));
+        OutputAqlItemRow row{std::move(blockShell), outputRegisters, registersToKeep};
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(row.produced());
@@ -135,7 +132,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       LimitStats stats{};
 
       THEN("the executor should return one row") {
-        OutputAqlItemRow row(std::move(outputBlockShell));
+        OutputAqlItemRow row{std::move(blockShell), outputRegisters, registersToKeep};
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
@@ -166,7 +163,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       LimitStats stats{};
 
       THEN("the executor should return one row") {
-        OutputAqlItemRow row(std::move(outputBlockShell));
+        OutputAqlItemRow row{std::move(blockShell), outputRegisters, registersToKeep};
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
@@ -197,7 +194,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       LimitStats stats{};
 
       THEN("the executor should return one row") {
-        OutputAqlItemRow row(std::move(outputBlockShell));
+        OutputAqlItemRow row{std::move(blockShell), outputRegisters, registersToKeep};
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
@@ -231,7 +228,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       LimitStats stats{};
 
       THEN("the executor should return one row") {
-        OutputAqlItemRow row(std::move(outputBlockShell));
+        OutputAqlItemRow row{std::move(blockShell), outputRegisters, registersToKeep};
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
