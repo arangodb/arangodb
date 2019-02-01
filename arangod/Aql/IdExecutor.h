@@ -58,10 +58,11 @@ class IdExecutorInfos : public ExecutorInfos {
 };
 
 class IdExecutor {
-  template <typename T>
-  friend class ExecutionBlockImpl;
-
  public:
+  struct Properties {
+    static const bool preservesOrder = true;
+    static const bool allowsBlockPassthrough = true;
+  };
   using Fetcher = ConstFetcher;
   using Infos = IdExecutorInfos;
   using Stats = NoStats;

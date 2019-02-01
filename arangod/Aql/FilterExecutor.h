@@ -28,8 +28,8 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/Stats.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Stats.h"
 #include "Aql/types.h"
 
 #include <memory>
@@ -39,6 +39,7 @@ namespace aql {
 
 class InputAqlItemRow;
 class ExecutorInfos;
+template <bool>
 class SingleRowFetcher;
 
 class FilterExecutorInfos : public ExecutorInfos {
@@ -48,7 +49,7 @@ class FilterExecutorInfos : public ExecutorInfos {
                       std::unordered_set<RegisterId> registersToClear);
 
   FilterExecutorInfos() = delete;
-  FilterExecutorInfos(FilterExecutorInfos &&) = default;
+  FilterExecutorInfos(FilterExecutorInfos&&) = default;
   FilterExecutorInfos(FilterExecutorInfos const&) = delete;
   ~FilterExecutorInfos() = default;
 
@@ -65,7 +66,11 @@ class FilterExecutorInfos : public ExecutorInfos {
  */
 class FilterExecutor {
  public:
-  using Fetcher = SingleRowFetcher;
+  struct Properties {
+    static const bool preservesOrder = true;
+    static const bool allowsBlockPassthrough = false;
+  };
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = FilterExecutorInfos;
   using Stats = FilterStats;
 

@@ -49,9 +49,8 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
   auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(std::initializer_list<RegisterId>{});
   auto registersToKeep = std::make_shared<const std::unordered_set<RegisterId>>(std::initializer_list<RegisterId>{0});
-  auto outputBlockShell =
-      std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),
-                                                outputRegisters, registersToKeep);
+  auto blockShell =
+      std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
 
   // Special parameters:
   // 4th offset
@@ -64,12 +63,12 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
-      SingleRowFetcherHelper fetcher(input.steal(), false);
+      SingleRowFetcherHelper<false> fetcher(input.steal(), false);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result(std::move(outputBlockShell));
+        OutputAqlItemRow result{std::move(blockShell), outputRegisters, registersToKeep};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -78,12 +77,12 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
     }
 
     WHEN("the producer waits") {
-      SingleRowFetcherHelper fetcher(input.steal(), true);
+      SingleRowFetcherHelper<false> fetcher(input.steal(), true);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 
       THEN("the executor should first return WAIT") {
-        OutputAqlItemRow result(std::move(outputBlockShell));
+        OutputAqlItemRow result{std::move(blockShell), outputRegisters, registersToKeep};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -105,12 +104,12 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       auto input = VPackParser::fromJson(
               "[ [1], [2], [3], [4] ]");
       LimitExecutorInfos infos(1, 1, {}, 0, 1, false, 0);
-      SingleRowFetcherHelper fetcher(input->steal(), false);
+      SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 
       THEN("the executor should return one row") {
-        OutputAqlItemRow row(std::move(outputBlockShell));
+        OutputAqlItemRow row{std::move(blockShell), outputRegisters, registersToKeep};
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(row.produced());
@@ -128,12 +127,12 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       auto input = VPackParser::fromJson(
               "[ [1], [2], [3], [4] ]");
       LimitExecutorInfos infos(1, 1, {}, 0, 1, true, 0);
-      SingleRowFetcherHelper fetcher(input->steal(), false);
+      SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 
       THEN("the executor should return one row") {
-        OutputAqlItemRow row(std::move(outputBlockShell));
+        OutputAqlItemRow row{std::move(blockShell), outputRegisters, registersToKeep};
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
@@ -159,12 +158,12 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       auto input = VPackParser::fromJson(
               "[ [1], [2], [3], [4] ]");
       LimitExecutorInfos infos(1, 1, {}, 1, 1, true, 0);
-      SingleRowFetcherHelper fetcher(input->steal(), false);
+      SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 
       THEN("the executor should return one row") {
-        OutputAqlItemRow row(std::move(outputBlockShell));
+        OutputAqlItemRow row{std::move(blockShell), outputRegisters, registersToKeep};
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
@@ -190,12 +189,12 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       auto input = VPackParser::fromJson(
               "[ [1], [2], [3], [4] ]");
       LimitExecutorInfos infos(1, 1, {}, 0, 1, false, 0);
-      SingleRowFetcherHelper fetcher(input->steal(), true);
+      SingleRowFetcherHelper<false> fetcher(input->steal(), true);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 
       THEN("the executor should return one row") {
-        OutputAqlItemRow row(std::move(outputBlockShell));
+        OutputAqlItemRow row{std::move(blockShell), outputRegisters, registersToKeep};
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
@@ -224,12 +223,12 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       auto input = VPackParser::fromJson(
               "[ [1], [2], [3], [4] ]");
       LimitExecutorInfos infos(1, 1, {}, 0, 1, true, 0);
-      SingleRowFetcherHelper fetcher(input->steal(), true);
+      SingleRowFetcherHelper<false> fetcher(input->steal(), true);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 
       THEN("the executor should return one row") {
-        OutputAqlItemRow row(std::move(outputBlockShell));
+        OutputAqlItemRow row{std::move(blockShell), outputRegisters, registersToKeep};
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);

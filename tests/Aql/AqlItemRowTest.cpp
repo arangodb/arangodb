@@ -20,9 +20,8 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-
-#include "catch.hpp"
 #include "AqlItemBlockHelper.h"
+#include "catch.hpp"
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlItemBlockShell.h"
@@ -86,114 +85,111 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
   WHEN("only copying from source to target") {
     auto outputBlock = std::make_unique<AqlItemBlock>(&monitor, 3, 3);
     ExecutorInfos executorInfos{{}, {}, 3, 3, {}};
-    auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
-        itemBlockManager, std::move(outputBlock),
-        executorInfos.getOutputRegisters(), executorInfos.registersToKeep());
-    std::unordered_set<RegisterId> const& regsToKeep =
-      outputBlockShell->registersToKeep();
+    auto blockShell =
+        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
+    auto outputRegisters = executorInfos.getOutputRegisters();
+    auto registersToKeep = executorInfos.registersToKeep();
 
-    OutputAqlItemRow testee(std::move(outputBlockShell));
+    OutputAqlItemRow testee(std::move(blockShell), outputRegisters, registersToKeep);
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
         // Make sure this data is cleared before the assertions
-        auto inputBlock = buildBlock<3>(&monitor, {
-          {{ {1}, {2}, {3} }},
-          {{ {4}, {5}, {6} }},
-          {{ {"\"a\""}, {"\"b\""}, {"\"c\""} }}
-        });
+        auto inputBlock =
+            buildBlock<3>(&monitor, {{{{1}, {2}, {3}}},
+                                     {{{4}, {5}, {6}}},
+                                     {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
 
-        auto inputBlockShell = std::make_shared<InputAqlItemBlockShell>(
-            itemBlockManager, std::move(inputBlock),
-            executorInfos.getInputRegisters());
+        auto blockShell =
+            std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(inputBlock));
 
-        InputAqlItemRow source{inputBlockShell, 0};
+        InputAqlItemRow source{blockShell, 0};
 
         testee.copyRow(source);
         REQUIRE(testee.produced());
 
-        source = {inputBlockShell, 1};
+        source = {blockShell, 1};
         testee.advanceRow();
         testee.copyRow(source);
         REQUIRE(testee.produced());
 
-        source = {inputBlockShell, 2};
+        source = {blockShell, 2};
         testee.advanceRow();
         testee.copyRow(source);
         REQUIRE(testee.produced());
       }
-      auto expected = VPackParser::fromJson("[[1,2,3],[4,5,6],[\"a\",\"b\",\"c\"]]");
+      auto expected =
+          VPackParser::fromJson("[[1,2,3],[4,5,6],[\"a\",\"b\",\"c\"]]");
       outputBlock = testee.stealBlock();
-      AssertResultMatrix(outputBlock.get(), expected->slice(), regsToKeep);
+      AssertResultMatrix(outputBlock.get(), expected->slice(), *registersToKeep);
     }
 
     THEN("the data should stay valid for large input values") {
       {
         // Make sure this data is cleared before the assertions
-        // Every of these entries has a size > 16 uint_8 
-        auto inputBlock = buildBlock<3>(&monitor, {
-          {{ {"\"aaaaaaaaaaaaaaaaaaaa\""}, {"\"bbbbbbbbbbbbbbbbbbbb\""}, {"\"cccccccccccccccccccc\""} }},
-          {{ {"\"dddddddddddddddddddd\""}, {"\"eeeeeeeeeeeeeeeeeeee\""}, {"\"ffffffffffffffffffff\""} }},
-          {{ {"\"gggggggggggggggggggg\""}, {"\"hhhhhhhhhhhhhhhhhhhh\""}, {"\"iiiiiiiiiiiiiiiiiiii\""} }}
-        });
+        // Every of these entries has a size > 16 uint_8
+        auto inputBlock = buildBlock<3>(
+            &monitor,
+            {{{{"\"aaaaaaaaaaaaaaaaaaaa\""}, {"\"bbbbbbbbbbbbbbbbbbbb\""}, {"\"cccccccccccccccccccc\""}}},
+             {{{"\"dddddddddddddddddddd\""}, {"\"eeeeeeeeeeeeeeeeeeee\""}, {"\"ffffffffffffffffffff\""}}},
+             {{{"\"gggggggggggggggggggg\""}, {"\"hhhhhhhhhhhhhhhhhhhh\""}, {"\"iiiiiiiiiiiiiiiiiiii\""}}}});
 
-        auto inputBlockShell = std::make_shared<InputAqlItemBlockShell>(
-          itemBlockManager, std::move(inputBlock),
-          executorInfos.getInputRegisters());
+        auto blockShell =
+            std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(inputBlock));
 
-        InputAqlItemRow source{inputBlockShell, 0};
+        InputAqlItemRow source{blockShell, 0};
 
         testee.copyRow(source);
         REQUIRE(testee.produced());
 
-        source = {inputBlockShell, 1};
+        source = {blockShell, 1};
         testee.advanceRow();
         testee.copyRow(source);
         REQUIRE(testee.produced());
 
-        source = {inputBlockShell, 2};
+        source = {blockShell, 2};
         testee.advanceRow();
         testee.copyRow(source);
         REQUIRE(testee.produced());
       }
-      auto expected = VPackParser::fromJson("["
-        "[\"aaaaaaaaaaaaaaaaaaaa\", \"bbbbbbbbbbbbbbbbbbbb\", \"cccccccccccccccccccc\"],"
-        "[\"dddddddddddddddddddd\", \"eeeeeeeeeeeeeeeeeeee\", \"ffffffffffffffffffff\"],"
-        "[\"gggggggggggggggggggg\", \"hhhhhhhhhhhhhhhhhhhh\", \"iiiiiiiiiiiiiiiiiiii\"]"
-      "]");
+      auto expected = VPackParser::fromJson(
+          "["
+          "[\"aaaaaaaaaaaaaaaaaaaa\", \"bbbbbbbbbbbbbbbbbbbb\", "
+          "\"cccccccccccccccccccc\"],"
+          "[\"dddddddddddddddddddd\", \"eeeeeeeeeeeeeeeeeeee\", "
+          "\"ffffffffffffffffffff\"],"
+          "[\"gggggggggggggggggggg\", \"hhhhhhhhhhhhhhhhhhhh\", "
+          "\"iiiiiiiiiiiiiiiiiiii\"]"
+          "]");
       outputBlock = testee.stealBlock();
-      AssertResultMatrix(outputBlock.get(), expected->slice(), regsToKeep, true);
+      AssertResultMatrix(outputBlock.get(), expected->slice(), *registersToKeep, true);
     }
-
   }
 
   WHEN("only copying from source to target but multiplying rows") {
     auto outputBlock = std::make_unique<AqlItemBlock>(&monitor, 9, 3);
     ExecutorInfos executorInfos{{}, {}, 3, 3, {}};
-    auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
-      itemBlockManager, std::move(outputBlock),
-      executorInfos.getOutputRegisters(), executorInfos.registersToKeep());
-    std::unordered_set<RegisterId> const& regsToKeep =
-      outputBlockShell->registersToKeep();
+    auto blockShell =
+        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
+    auto outputRegisters = executorInfos.getOutputRegisters();
+    auto registersToKeep = executorInfos.registersToKeep();
 
-    OutputAqlItemRow testee(std::move(outputBlockShell));
+    OutputAqlItemRow testee(std::move(blockShell), outputRegisters, registersToKeep);
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
         // Make sure this data is cleared before the assertions
-        auto inputBlock = buildBlock<3>(&monitor, {
-          {{ {1}, {2}, {3} }},
-          {{ {4}, {5}, {6} }},
-          {{ {"\"a\""}, {"\"b\""}, {"\"c\""} }}
-        });
+        auto inputBlock =
+            buildBlock<3>(&monitor, {{{{1}, {2}, {3}}},
+                                     {{{4}, {5}, {6}}},
+                                     {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
 
-        auto inputBlockShell = std::make_shared<InputAqlItemBlockShell>(
-          itemBlockManager, std::move(inputBlock),
-          executorInfos.getInputRegisters());
+        auto blockShell =
+            std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(inputBlock));
 
         for (size_t i = 0; i < 3; ++i) {
           // Iterate over source rows
-          InputAqlItemRow source{inputBlockShell, i};
+          InputAqlItemRow source{blockShell, i};
           for (size_t j = 0; j < 3; ++j) {
             testee.copyRow(source);
             REQUIRE(testee.produced());
@@ -204,49 +200,47 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
           }
         }
       }
-      auto expected = VPackParser::fromJson("["
-        "[1,2,3],"
-        "[1,2,3],"
-        "[1,2,3],"
-        "[4,5,6],"
-        "[4,5,6],"
-        "[4,5,6],"
-        "[\"a\",\"b\",\"c\"],"
-        "[\"a\",\"b\",\"c\"],"
-        "[\"a\",\"b\",\"c\"]"
-      "]");
+      auto expected = VPackParser::fromJson(
+          "["
+          "[1,2,3],"
+          "[1,2,3],"
+          "[1,2,3],"
+          "[4,5,6],"
+          "[4,5,6],"
+          "[4,5,6],"
+          "[\"a\",\"b\",\"c\"],"
+          "[\"a\",\"b\",\"c\"],"
+          "[\"a\",\"b\",\"c\"]"
+          "]");
       outputBlock = testee.stealBlock();
-      AssertResultMatrix(outputBlock.get(), expected->slice(), regsToKeep);
+      AssertResultMatrix(outputBlock.get(), expected->slice(), *registersToKeep);
     }
   }
 
   WHEN("dropping a register from source while writing to target") {
     auto outputBlock = std::make_unique<AqlItemBlock>(&monitor, 3, 3);
     ExecutorInfos executorInfos{{}, {}, 3, 3, {1}};
-    auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
-      itemBlockManager, std::move(outputBlock),
-      executorInfos.getOutputRegisters(), executorInfos.registersToKeep());
-    std::unordered_set<RegisterId> const& regsToKeep =
-      outputBlockShell->registersToKeep();
+    auto blockShell =
+        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
+    auto outputRegisters = executorInfos.getOutputRegisters();
+    auto registersToKeep = executorInfos.registersToKeep();
 
-    OutputAqlItemRow testee(std::move(outputBlockShell));
+    OutputAqlItemRow testee(std::move(blockShell), outputRegisters, registersToKeep);
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
         // Make sure this data is cleared before the assertions
-        auto inputBlock = buildBlock<3>(&monitor, {
-          {{ {1}, {2}, {3} }},
-          {{ {4}, {5}, {6} }},
-          {{ {"\"a\""}, {"\"b\""}, {"\"c\""} }}
-        });
+        auto inputBlock =
+            buildBlock<3>(&monitor, {{{{1}, {2}, {3}}},
+                                     {{{4}, {5}, {6}}},
+                                     {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
 
-        auto inputBlockShell = std::make_shared<InputAqlItemBlockShell>(
-          itemBlockManager, std::move(inputBlock),
-          executorInfos.getInputRegisters());
+        auto blockShell =
+            std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(inputBlock));
 
         for (size_t i = 0; i < 3; ++i) {
           // Iterate over source rows
-          InputAqlItemRow source{inputBlockShell, i};
+          InputAqlItemRow source{blockShell, i};
           testee.copyRow(source);
           REQUIRE(testee.produced());
           if (i < 2) {
@@ -255,13 +249,14 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
           }
         }
       }
-      auto expected = VPackParser::fromJson("["
-        "[1,2,3],"
-        "[4,5,6],"
-        "[\"a\",\"b\",\"c\"]"
-      "]");
+      auto expected = VPackParser::fromJson(
+          "["
+          "[1,2,3],"
+          "[4,5,6],"
+          "[\"a\",\"b\",\"c\"]"
+          "]");
       outputBlock = testee.stealBlock();
-      AssertResultMatrix(outputBlock.get(), expected->slice(), regsToKeep);
+      AssertResultMatrix(outputBlock.get(), expected->slice(), *registersToKeep);
     }
   }
 
@@ -287,34 +282,29 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
       nrOutputRegisters = 5;
     }
     auto outputBlock = std::make_unique<AqlItemBlock>(&monitor, 3, 5);
-    ExecutorInfos executorInfos{inputRegisters, outputRegisters,
-                                nrInputRegisters, nrOutputRegisters,
-                                registersToClear};
-    auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
-      itemBlockManager, std::move(outputBlock),
-      executorInfos.getOutputRegisters(), executorInfos.registersToKeep());
-    std::unordered_set<RegisterId> regsToKeep =
-      outputBlockShell->registersToKeep();
+    ExecutorInfos executorInfos{inputRegisters, outputRegisters, nrInputRegisters,
+                                nrOutputRegisters, registersToClear};
+    auto blockShell =
+        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
+    auto registersToKeep = executorInfos.registersToKeep();
+    std::unordered_set<RegisterId> regsToKeep = *registersToKeep;
 
-    OutputAqlItemRow testee(std::move(outputBlockShell));
+    OutputAqlItemRow testee(std::move(blockShell), outputRegisters, registersToKeep);
     {
       // Make sure this data is cleared before the assertions
-      auto inputBlock = buildBlock<3>(&monitor, {
-        {{ {1}, {2}, {3} }},
-        {{ {4}, {5}, {6} }},
-        {{ {"\"a\""}, {"\"b\""}, {"\"c\""} }}
-      });
+      auto inputBlock = buildBlock<3>(&monitor, {{{{1}, {2}, {3}}},
+                                                 {{{4}, {5}, {6}}},
+                                                 {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
 
-      auto inputBlockShell = std::make_shared<InputAqlItemBlockShell>(
-        itemBlockManager, std::move(inputBlock),
-        executorInfos.getInputRegisters());
+      auto blockShell =
+          std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(inputBlock));
 
       for (size_t i = 0; i < 3; ++i) {
         // Iterate over source rows
-        InputAqlItemRow source{inputBlockShell, i};
-        for(RegisterId j = 3; j < 5; ++j) {
-          AqlValue v{ AqlValueHintInt{(int64_t)(j + 5)} };
-          testee.setValue(j, source, v);
+        InputAqlItemRow source{blockShell, i};
+        for (RegisterId j = 3; j < 5; ++j) {
+          AqlValue v{AqlValueHintInt{(int64_t)(j + 5)}};
+          testee.cloneValueInto(j, source, v);
           if (j == 3) {
             // We are not allowed to declare an incomplete row as produced
             REQUIRE(!testee.produced());
@@ -327,18 +317,18 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
         }
       }
     }
-    auto expected = VPackParser::fromJson("["
-      "[1,2,3,8,9],"
-      "[4,5,6,8,9],"
-      "[\"a\",\"b\",\"c\",8,9]"
-    "]");
+    auto expected = VPackParser::fromJson(
+        "["
+        "[1,2,3,8,9],"
+        "[4,5,6,8,9],"
+        "[\"a\",\"b\",\"c\",8,9]"
+        "]");
     // add these two here as they are needed for output validation but not for copy in ItemRows
     regsToKeep.emplace(3);
     regsToKeep.emplace(4);
     outputBlock = testee.stealBlock();
     AssertResultMatrix(outputBlock.get(), expected->slice(), regsToKeep);
   }
-
 }
 
 }  // namespace aql

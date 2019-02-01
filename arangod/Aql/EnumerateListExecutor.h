@@ -45,6 +45,7 @@ namespace aql {
 class ExecutorInfos;
 class InputAqlItemRow;
 class NoStats;
+template <bool>
 class SingleRowFetcher;
 
 class EnumerateListExecutorInfos : public ExecutorInfos {
@@ -77,7 +78,11 @@ class EnumerateListExecutorInfos : public ExecutorInfos {
  */
 class EnumerateListExecutor {
  public:
-  using Fetcher = SingleRowFetcher;
+  struct Properties {
+    static const bool preservesOrder = true;
+    static const bool allowsBlockPassthrough = false;
+  };
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = EnumerateListExecutorInfos;
   using Stats = NoStats;
 

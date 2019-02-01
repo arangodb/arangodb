@@ -31,6 +31,7 @@
 #include "Basics/Exceptions.h"
 
 #include <memory>
+#include <queue>
 #include <utility>
 
 namespace arangodb {
@@ -40,6 +41,7 @@ namespace aql {
  * @brief Thin interface to access the methods of ExecutionBlock that are
  * necessary for the row Fetchers. Makes it easier to test the Fetchers.
  */
+template <bool allowBlockPassthrough>
 class BlockFetcher {
  public:
   /**
@@ -64,25 +66,37 @@ class BlockFetcher {
    * after construction, and to allow derived subclasses for testing (read
    * BlockFetcherMock) to create them *after* the parent class was constructed.
    */
-  BlockFetcher(
-      std::vector<ExecutionBlock*> const& dependencies,
-      AqlItemBlockManager& itemBlockManager,
-      std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters,
-      RegisterId nrInputRegisters)
+  BlockFetcher(std::vector<ExecutionBlock*> const& dependencies,
+               AqlItemBlockManager& itemBlockManager,
+               std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters,
+               RegisterId nrInputRegisters)
       : _dependencies(dependencies),
         _itemBlockManager(itemBlockManager),
         _inputRegisters(std::move(inputRegisters)),
-        _nrInputRegisters(nrInputRegisters) {}
+        _nrInputRegisters(nrInputRegisters),
+        _blockShellQueue(),
+        _blockShellPassThroughQueue() {}
 
   TEST_VIRTUAL ~BlockFetcher() = default;
 
-  TEST_VIRTUAL
-  std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
-  fetchBlock();
+  // This is only TEST_VIRTUAL, so we ignore this lint warning:
+  // NOLINTNEXTLINE google-default-arguments
+  TEST_VIRTUAL std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock(
+      size_t atMost = ExecutionBlock::DefaultBatchSize());
+
+  // TODO enable_if<allowBlockPassthrough>
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t atMost);
 
   TEST_VIRTUAL inline RegisterId getNrInputRegisters() const {
     return _nrInputRegisters;
   }
+
+  // Tries to fetch a block from upstream and push it, wrapped, onto
+  // _blockShellQueue. If it succeeds, it returns HASMORE (the returned state
+  // regards the _blockShellQueue). If it doesn't it's either because
+  //  - upstream returned WAITING - then so does prefetchBlock().
+  //  - or upstream returned a nullptr with DONE - then so does prefetchBlock().
+  ExecutionState prefetchBlock(size_t atMost = ExecutionBlock::DefaultBatchSize());
 
  protected:
   AqlItemBlockManager& itemBlockManager() { return _itemBlockManager; }
@@ -100,6 +114,9 @@ class BlockFetcher {
   AqlItemBlockManager& _itemBlockManager;
   std::shared_ptr<const std::unordered_set<RegisterId>> const _inputRegisters;
   RegisterId const _nrInputRegisters;
+  std::queue<std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>> _blockShellQueue;
+  // only used in case of allowBlockPassthrough:
+  std::queue<std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>> _blockShellPassThroughQueue;
 };
 
 }  // namespace aql

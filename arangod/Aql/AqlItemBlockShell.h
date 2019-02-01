@@ -56,94 +56,39 @@ class AqlItemBlockDeleter {
  * are allowed to be read or written at the current ExecutionBlock, for usage
  * with InputAqlItemRow or OutputAqlItemRow, respectively.
  *
+ * Thirdly, it allows an Input- and OutputAqlItemBlockShell to share a single
+ * AqlItemBlock at the same time. This is used for ExecutionBlocks that do not
+ * change the number of rows, like CalculationBlock, to reuse the input blocks
+ * instead of copying them.
+ *
  * TODO We should do variable-to-register mapping here. This further reduces
  * dependencies of Executors, Fetchers etc. on internal knowledge of ItemBlocks,
  * and probably shrinks ExecutorInfos.
  */
 class AqlItemBlockShell {
  public:
-  using SmartAqlItemBlockPtr =
-      std::unique_ptr<AqlItemBlock, AqlItemBlockDeleter>;
+  using SmartAqlItemBlockPtr = std::unique_ptr<AqlItemBlock, AqlItemBlockDeleter>;
 
   AqlItemBlock const& block() const { return *_block; };
   AqlItemBlock& block() { return *_block; };
 
- protected:
-  // This could be made public, but first, there's currently no use for that.
-  // And second, just creating a
-  // std::unique_ptr<AqlItemBlock, AqlItemBlockDeleter> would accomplish the
-  // same.
-  AqlItemBlockShell(AqlItemBlockManager& manager,
-                    std::unique_ptr<AqlItemBlock> block);
+  AqlItemBlockShell(AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block);
 
- protected:
+  /**
+   * @brief Returns false after the block has been stolen.
+   */
+  bool hasBlock() const noexcept { return _block != nullptr; }
+
+  // Steal the block. Breaks the shell!
+  SmartAqlItemBlockPtr stealBlock() { return std::move(_block); }
+  std::unique_ptr<AqlItemBlock> stealBlockCompat() {
+    return std::unique_ptr<AqlItemBlock>(stealBlock().release());
+  }
+
+ private:
   SmartAqlItemBlockPtr _block;
 };
 
-class InputAqlItemBlockShell : public AqlItemBlockShell {
- public:
-  InputAqlItemBlockShell(
-      AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block,
-      std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters);
-
- public:
-  std::unordered_set<RegisterId> const& inputRegisters() const {
-    return *_inputRegisters;
-  };
-
-  bool isInputRegister(RegisterId registerId) const {
-    return inputRegisters().find(registerId) != inputRegisters().end();
-  }
-
-  /**
-   * @brief Compares blocks by pointer.
-   */
-  bool operator==(InputAqlItemBlockShell const& other) const {
-    // There must be only one AqlItemBlockShell instance per AqlItemBlock
-    TRI_ASSERT((this == &other) == (&block() == &other.block()));
-    return &block() == &other.block();
-  }
-
- private:
-  std::shared_ptr<const std::unordered_set<RegisterId>> _inputRegisters;
-};
-
-class OutputAqlItemBlockShell : public AqlItemBlockShell {
- public:
-  // TODO This constructor would be able to fetch a new block itself from the
-  // manager, which is needed anyway. Maybe, at least additionally, we should
-  // write a constructor that takes the block dimensions instead of the block
-  // itself for convenience.
-  OutputAqlItemBlockShell(
-      AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block,
-      std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters,
-      std::shared_ptr<const std::unordered_set<RegisterId>> registersToKeep);
-
- public:
-  std::unordered_set<RegisterId> const& outputRegisters() const {
-    return *_outputRegisters;
-  };
-
-  std::unordered_set<RegisterId> const& registersToKeep() const {
-    return *_registersToKeep;
-  };
-
-  bool isOutputRegister(RegisterId registerId) const {
-    return outputRegisters().find(registerId) != outputRegisters().end();
-  }
-
-  /**
-   * @brief Steals the block, in a backwards-compatible unique_ptr. The shell
-   *        is broken after this.
-   */
-  std::unique_ptr<AqlItemBlock> stealBlockCompat() {
-    return std::unique_ptr<AqlItemBlock>(_block.release());
-  }
-
- private:
-  std::shared_ptr<const std::unordered_set<RegisterId>> _outputRegisters;
-  std::shared_ptr<const std::unordered_set<RegisterId>> _registersToKeep;
-};
 
 }  // namespace aql
 }  // namespace arangodb
