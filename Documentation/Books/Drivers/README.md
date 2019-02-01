@@ -40,3 +40,12 @@ pyArango | Python | http://www.github.com/tariqdaouda/pyArango
 python-arango | Python | https://github.com/Joowani/python-arango
 Scarango | Scala | https://github.com/outr/scarango
 ArangoRB | Ruby | https://github.com/StefanoMartin/ArangoRB
+
+Community integrations
+-----------------
+
+Please note that this list is not exhaustive.
+
+Name | Language | Repository
+-----|----------|-----------
+Kafka Connect ArangoDB | Java | https://github.com/jaredpetersen/kafka-connect-arangodb
