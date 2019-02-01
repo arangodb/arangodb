@@ -604,6 +604,10 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, 
     args['encryption.keyfile'] = fs.join(rootDir, 'secret-key'); 
   }
 
+  if (options.maskings) {
+    args['maskings'] = fs.join(JS_DIR, options.maskings);
+  }
+
   if (options.extremeVerbosity === true) {
     print(exe);
     print(args);
