@@ -40,6 +40,7 @@ namespace aql {
 
 class InputAqlItemRow;
 class ExecutorInfos;
+template <bool>
 class SingleRowFetcher;
 
 class EnumerateCollectionExecutorInfos : public ExecutorInfos {
@@ -93,7 +94,11 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
  */
 class EnumerateCollectionExecutor {
  public:
-  using Fetcher = SingleRowFetcher;
+  struct Properties {
+    static const bool preservesOrder = true;
+    static const bool allowsBlockPassthrough = false;
+  };
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = EnumerateCollectionExecutorInfos;
   using Stats = EnumerateCollectionStats;
 
@@ -118,10 +123,13 @@ class EnumerateCollectionExecutor {
 
  private:
   bool waitForSatellites(ExecutionEngine* engine, Collection const* collection) const;
+
+ private:
   Infos& _infos;
   Fetcher& _fetcher;
   DocumentProducingFunction _documentProducer;
-  std::pair<ExecutionState, InputAqlItemRow> _input;
+  ExecutionState _state;
+  InputAqlItemRow _input;
   std::unique_ptr<OperationCursor> _cursor;
   bool _cursorHasMore;
 };

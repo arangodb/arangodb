@@ -93,7 +93,7 @@ static DocumentProducingFunction buildCallback(
     documentProducer = [](InputAqlItemRow& input, OutputAqlItemRow& output,
                           VPackSlice, RegisterId registerId) {
       // TODO: optimize this within the register planning mechanism?
-      output.setValue(registerId, input, AqlValue(AqlValueHintNull()));
+      output.cloneValueInto(registerId, input, AqlValue(AqlValueHintNull()));
     };
     return documentProducer;
   }
@@ -149,7 +149,9 @@ static DocumentProducingFunction buildCallback(
 
         b->close();
 
-        output.setValue(registerId, input, AqlValue(b.get()));
+        AqlValue v(b.get());
+        AqlValueGuard guard{v, true};
+        output.moveValueInto(registerId, input, guard);
       };
       return documentProducer;
     }
@@ -164,7 +166,9 @@ static DocumentProducingFunction buildCallback(
       handleProjections(projections, trxPtr, slice, *b.get(), useRawDocumentPointers);
       b->close();
 
-      output.setValue(registerId, input, AqlValue(b.get()));
+      AqlValue v(b.get());
+      AqlValueGuard guard{v, true};
+      output.moveValueInto(registerId, input, guard);
     };
     return documentProducer;
   }
@@ -175,9 +179,13 @@ static DocumentProducingFunction buildCallback(
                                               VPackSlice slice, RegisterId registerId) {
     uint8_t const* vpack = slice.begin();
     if (useRawDocumentPointers) {
-      output.setValue(registerId, input, AqlValue(AqlValueHintDocumentNoCopy(vpack)));
+      // With NoCopy we do not clone anyways
+      output.cloneValueInto(registerId, input, AqlValue(AqlValueHintDocumentNoCopy(vpack)));
     } else {
-      output.setValue(registerId, input, AqlValue(AqlValueHintCopy(vpack)));
+      // Here we do a clone, so clone once, then move into
+      AqlValue v{AqlValueHintCopy{vpack}};
+      AqlValueGuard guard{v, true};
+      output.moveValueInto(registerId, input, guard);
     }
   };
   return documentProducer;

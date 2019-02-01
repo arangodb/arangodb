@@ -66,6 +66,9 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(OutputAqlIt
       // because we finished iterating over existing array
       // element and need to refetch another row
       // _inputArrayPosition = 0;
+      if (_rowState == ExecutionState::DONE) {
+        return {_rowState, NoStats{}};
+      }
       initialize();
       std::tie(_rowState, _currentRow) = _fetcher.fetchRow();
       if (_rowState == ExecutionState::WAITING) {
@@ -110,11 +113,7 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(OutputAqlIt
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
-      output.setValue(_infos.getOutputRegister(), _currentRow,
-                      std::move(innerValue));  // NOLINT(performance-move-const-arg)
-      // The output row (respectively the AqlItemBlock underneath) is now
-      // responsible for the memory.
-      guard.steal();
+      output.moveValueInto(_infos.getOutputRegister(), _currentRow, guard);
 
       // set position to +1 for next iteration after new fetchRow
       _inputArrayPosition++;

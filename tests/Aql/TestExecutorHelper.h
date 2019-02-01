@@ -39,6 +39,7 @@ namespace aql {
 
 class InputAqlItemRow;
 class ExecutorInfos;
+template <bool>
 class SingleRowFetcher;
 
 class TestExecutorHelperInfos : public ExecutorInfos {
@@ -65,7 +66,11 @@ class TestExecutorHelperInfos : public ExecutorInfos {
  */
 class TestExecutorHelper {
  public:
-  using Fetcher = SingleRowFetcher;
+  struct Properties {
+    static const bool preservesOrder = true;
+    static const bool allowsBlockPassthrough = false;
+  };
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = TestExecutorHelperInfos;
   using Stats = FilterStats;
 

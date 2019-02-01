@@ -387,10 +387,13 @@ AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
 }
 
 /// @brief slice/clone, this does a deep copy of all entries
-AqlItemBlock* AqlItemBlock::slice(size_t row, std::unordered_set<RegisterId> const& registers) const {
+AqlItemBlock* AqlItemBlock::slice(size_t row, std::unordered_set<RegisterId> const& registers,
+                                  size_t newNrRegs) const {
+  TRI_ASSERT(_nrRegs <= newNrRegs);
+
   std::unordered_set<AqlValue> cache;
 
-  auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, 1, _nrRegs);
+  auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, 1, newNrRegs);
 
   for (RegisterId col = 0; col < _nrRegs; col++) {
     if (registers.find(col) == registers.end()) {

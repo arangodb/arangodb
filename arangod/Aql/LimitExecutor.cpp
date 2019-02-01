@@ -57,7 +57,6 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
   TRI_IF_FAILURE("LimitExecutor::produceRow") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  ExecutionState state;
   LimitStats stats{};
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
@@ -65,7 +64,8 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
     return {ExecutionState::DONE, stats};
   }
 
-  while (true) {
+  ExecutionState state = ExecutionState::HASMORE;
+  while (state != ExecutionState::DONE) {
     std::tie(state, input) = _fetcher.fetchRow();
 
     if (state == ExecutionState::WAITING) {
@@ -104,10 +104,8 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
     if (_infos.getQueryDepth() == 0) {
       stats.incrFullCount();
     }
-
-    if (state == ExecutionState::DONE) {
-      return {state, stats};
-    }
-    TRI_ASSERT(state == ExecutionState::HASMORE);
   }
+
+  TRI_ASSERT(state == ExecutionState::DONE);
+  return {state, stats};
 }

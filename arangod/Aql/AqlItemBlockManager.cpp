@@ -33,7 +33,7 @@ AqlItemBlockManager::AqlItemBlockManager(ResourceMonitor* resourceMonitor)
 }
 
 /// @brief destroy the manager
-AqlItemBlockManager::~AqlItemBlockManager() {}
+AqlItemBlockManager::~AqlItemBlockManager() = default;
 
 /// @brief request a block with the specified size
 AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrRegs) {

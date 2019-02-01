@@ -35,6 +35,7 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
+template <bool>
 class BlockFetcher;
 
 /**
@@ -45,9 +46,10 @@ class BlockFetcher;
  *        this row stays valid until the next call
  *        of fetchRow.
  */
+template <bool passBlocksThrough>
 class SingleRowFetcher {
  public:
-  explicit SingleRowFetcher(BlockFetcher& executionBlock);
+  explicit SingleRowFetcher(BlockFetcher<passBlocksThrough>& executionBlock);
   TEST_VIRTUAL ~SingleRowFetcher() = default;
 
  protected:
@@ -75,8 +77,11 @@ class SingleRowFetcher {
    */
   TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow();
 
+  // TODO enable_if<passBlocksThrough>
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t atMost);
+
  private:
-  BlockFetcher* _blockFetcher;
+  BlockFetcher<passBlocksThrough>* _blockFetcher;
 
   /**
    * @brief Holds state returned by the last fetchBlock() call.
@@ -92,7 +97,7 @@ class SingleRowFetcher {
    *        SingleRowFetcher. May be moved if the Fetcher implementations
    *        are moved into separate classes.
    */
-  std::shared_ptr<InputAqlItemBlockShell> _currentBlock;
+  std::shared_ptr<AqlItemBlockShell> _currentBlock;
 
   /**
    * @brief Index of the row to be returned next by fetchRow(). This is valid
@@ -112,21 +117,90 @@ class SingleRowFetcher {
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
-  std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
   fetchBlock();
 
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
-  RegisterId getNrInputRegisters() const;
+  RegisterId getNrInputRegisters() const {
+    return _blockFetcher->getNrInputRegisters();
+  }
+
 
   bool indexIsValid();
 
-  bool isLastRowInBlock();
+  bool isLastRowInBlock() {
+    TRI_ASSERT(indexIsValid());
+    return _rowIndex + 1 == _currentBlock->block().size();
+  }
 
-  size_t getRowIndex();
+  size_t getRowIndex() {
+    TRI_ASSERT(indexIsValid());
+    return _rowIndex;
+  }
 
 };
+
+template <bool passBlocksThrough>
+std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::fetchRow() {
+  // Fetch a new block iff necessary
+  if (!indexIsValid()) {
+    // This returns the AqlItemBlock to the ItemBlockManager before fetching a
+    // new one, so we might reuse it immediately!
+    _currentBlock = nullptr;
+
+    ExecutionState state;
+    std::shared_ptr<AqlItemBlockShell> newBlock;
+    std::tie(state, newBlock) = fetchBlock();
+    if (state == ExecutionState::WAITING) {
+      return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
+    }
+
+    _currentBlock = std::move(newBlock);
+    _rowIndex = 0;
+  }
+
+  ExecutionState rowState;
+
+  if (_currentBlock == nullptr) {
+    TRI_ASSERT(_upstreamState == ExecutionState::DONE);
+    _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+    rowState = ExecutionState::DONE;
+  } else {
+    TRI_ASSERT(_currentBlock);
+    _currentRow = InputAqlItemRow{_currentBlock, _rowIndex};
+
+    TRI_ASSERT(_upstreamState != ExecutionState::WAITING);
+    if (isLastRowInBlock() && _upstreamState == ExecutionState::DONE) {
+      rowState = ExecutionState::DONE;
+    } else {
+      rowState = ExecutionState::HASMORE;
+    }
+
+    _rowIndex++;
+  }
+
+  return {rowState, _currentRow};
+}
+
+template <bool passBlocksThrough>
+bool SingleRowFetcher<passBlocksThrough>::indexIsValid() {
+  // TODO Hopefully we can get rid of this distinction later. When there are no
+  // more old blocks, we can replace the old getSome interface easily,
+  // specifically replace std::unique_ptr<AqlItemBlock> with a shared_ptr
+  // with a custom deleter (like AqlItemBlockShell), or a shared_ptr to an
+  // AqlItemBlockShell. Then we will never lose the block.
+  if /* constexpr */ (passBlocksThrough) {
+    return _currentBlock != nullptr && _currentBlock->hasBlock() &&
+           _rowIndex < _currentBlock->block().size();
+  } else {
+    // The current block must never become invalid (i.e. !hasBlock()), unless
+    // it's passed through and therefore the output block steals it.
+    TRI_ASSERT(_currentBlock == nullptr || _currentBlock->hasBlock());
+    return _currentBlock != nullptr && _rowIndex < _currentBlock->block().size();
+  }
+}
 
 }  // namespace aql
 }  // namespace arangodb
