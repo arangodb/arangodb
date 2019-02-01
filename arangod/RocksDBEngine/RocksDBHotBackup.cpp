@@ -35,6 +35,10 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "StorageEngine/TransactionManager.h"
 
+#if USE_ENTERPRISE
+#include "Enterprise/RocksDBEngine/RocksDBHotBackupEE.h"
+#endif
+
 #include <rocksdb/utilities/checkpoint.h>
 
 namespace arangodb {
@@ -59,7 +63,18 @@ std::shared_ptr<RocksDBHotBackup> RocksDBHotBackup::operationFactory(
     } else if (0 == suffixes[0].compare("restore")) {
       operation.reset((isCoord ? (RocksDBHotBackup *)new RocksDBHotBackupRestoreCoord(body)
                        : (RocksDBHotBackup *)new RocksDBHotBackupRestore(body)));
-    } // else if
+    }
+#if USE_ENTEPRISE
+    else if (0 == suffixes[0].compare("upload")) {
+      operation.reset((isCoord ? (RocksDBHotBackup *)new RocksDBHotBackupUploadCoord(body)
+                       : (RocksDBHotBackup *)new RocksDBHotBackupUpload(body)));
+    }
+    else if (0 == suffixes[0].compare("download")) {
+      operation.reset((isCoord ? (RocksDBHotBackup *)new RocksDBHotBackupDownloadCoord(body)
+                       : (RocksDBHotBackup *)new RocksDBHotBackupDownload(body)));
+    }
+#endif   // USE_ENTERPRISE
+
   }
 
   // check the parameter once operation selected
