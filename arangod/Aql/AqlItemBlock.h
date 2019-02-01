@@ -88,19 +88,22 @@ class AqlItemBlock {
  public:
   /// @brief getValue, get the value of a register
   AqlValue getValue(size_t index, RegisterId varNr) const {
-    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
+    TRI_ASSERT(index < _nrItems);
+    TRI_ASSERT(varNr < _nrRegs);
     return _data[index * _nrRegs + varNr];
   }
 
   /// @brief getValue, get the value of a register by reference
   inline AqlValue const& getValueReference(size_t index, RegisterId varNr) const {
-    TRI_ASSERT(_data.size() > index * _nrRegs + varNr);
+    TRI_ASSERT(index < _nrItems);
+    TRI_ASSERT(varNr < _nrRegs);
     return _data[index * _nrRegs + varNr];
   }
 
   /// @brief setValue, set the current value of a register
   void setValue(size_t index, RegisterId varNr, AqlValue const& value) {
-    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
+    TRI_ASSERT(index < _nrItems);
+    TRI_ASSERT(varNr < _nrRegs);
     TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
 
     size_t mem = 0;
@@ -127,10 +130,11 @@ class AqlItemBlock {
   //std::enable_if_t<!(std::is_same<AqlValue,std::decay_t<Args>>::value || ...), void>
   void
   emplaceValue(size_t index, RegisterId varNr, Args&&... args) {
-    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
-    TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
+    TRI_ASSERT(index < _nrItems);
+    TRI_ASSERT(varNr < _nrRegs);
 
-    void* p = &_data[index * _nrRegs + varNr];
+    AqlValue* p = &_data[index * _nrRegs + varNr];
+    TRI_ASSERT(p->isEmpty());
     // construct the AqlValue in place
     AqlValue* value;
     try {
@@ -210,7 +214,8 @@ class AqlItemBlock {
   /// them. this is used if the value is stolen and later released from
   /// elsewhere
   void eraseAll() {
-    for (auto& it : _data) {
+    for (size_t i = 0; i < numEntries(); i++) {
+      auto &it = _data[i];
       if (!it.isEmpty()) {
         it.erase();
       }
@@ -231,7 +236,8 @@ class AqlItemBlock {
       // nothing to do
       return;
     }
-    TRI_ASSERT(_data.size() > currentRow * _nrRegs + curRegs);
+    TRI_ASSERT(currentRow < _nrItems);
+    TRI_ASSERT(curRegs <= _nrRegs);
 
     copyValuesFromRow(currentRow, curRegs, 0);
   }
@@ -295,7 +301,12 @@ class AqlItemBlock {
   /// @brief getter for _nrItems
   inline size_t size() const noexcept { return _nrItems; }
 
-  inline size_t capacity() const { return _data.size(); }
+  inline size_t numEntries() const {
+    TRI_ASSERT(_numEntries == _nrRegs * _nrItems);
+    return _numEntries;
+  }
+
+  inline size_t capacity() const { return _data.capacity(); }
 
   /// @brief shrink the block to the specified number of rows
   /// the superfluous rows are cleaned
@@ -345,6 +356,11 @@ class AqlItemBlock {
   /// @brief _data, the actual data as a single vector of dimensions _nrItems
   /// times _nrRegs
   std::vector<AqlValue> _data;
+
+  /// @brief Number of entries in the matrix. Must thus always be equal to
+  /// _nrItems * _nrRegs. If this is changed, the memory usage must be
+  /// in- or decreased appropriately as well.
+  size_t _numEntries;
 
   /// @brief _valueCount, since we have to allow for identical AqlValues
   /// in an AqlItemBlock, this map keeps track over which AqlValues we

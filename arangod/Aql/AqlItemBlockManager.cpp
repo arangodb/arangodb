@@ -50,7 +50,7 @@ AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrReg
     if (!_buckets[i].empty()) {
       block = _buckets[i].pop();
       TRI_ASSERT(block != nullptr);
-      block->eraseAll();
+      TRI_ASSERT(block->numEntries() == 0);
       block->rescale(nrItems, nrRegs);
       // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "returned cached
       // AqlItemBlock with dimensions " << block->size() << " x " <<
@@ -72,7 +72,7 @@ AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrReg
   TRI_ASSERT(block != nullptr);
   TRI_ASSERT(block->size() == nrItems);
   TRI_ASSERT(block->getNrRegs() == nrRegs);
-  TRI_ASSERT(block->capacity() >= targetSize);
+  TRI_ASSERT(block->numEntries() == targetSize);
   return block;
 }
 
@@ -83,13 +83,14 @@ void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) noexcept {
   // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "returning AqlItemBlock of
   // dimensions " << block->size() << " x " << block->getNrRegs();
 
-  size_t const targetSize = block->size() * block->getNrRegs();
+  size_t const targetSize = block->capacity();
   size_t const i = Bucket::getId(targetSize);
   TRI_ASSERT(i < numBuckets);
 
   if (!_buckets[i].full()) {
     // recycle the block
     block->destroy();
+    TRI_ASSERT(block->numEntries() == 0);
     // store block in bucket (this will not fail)
     _buckets[i].push(block);
   } else {
