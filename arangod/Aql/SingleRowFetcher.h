@@ -65,7 +65,9 @@ class SingleRowFetcher {
    *        until the next call to fetchRow.
    *
    * @param atMost may be passed if a block knows the maximum it might want to
-   *        fetch from upstream (should apply only to the LimitExecutor).
+   *        fetch from upstream (should apply only to the LimitExecutor). Will
+   *        not fetch more than the default batch size, so passing something
+   *        greater than it will not have any effect.
    *
    * @return A pair with the following properties:
    *         ExecutionState:

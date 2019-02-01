@@ -46,8 +46,8 @@ class SingleRowFetcher;
 class LimitExecutorInfos : public ExecutorInfos {
  public:
   LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                     std::unordered_set<RegisterId> registersToClear,
-                     size_t offset, size_t limit, bool fullCount, size_t queryDepth);
+                     std::unordered_set<RegisterId> registersToClear, size_t offset,
+                     size_t limit, bool fullCount, size_t queryDepth);
 
   LimitExecutorInfos() = delete;
   LimitExecutorInfos(LimitExecutorInfos&&) = default;
@@ -55,11 +55,11 @@ class LimitExecutorInfos : public ExecutorInfos {
   ~LimitExecutorInfos() = default;
 
   RegisterId getInputRegister() const noexcept { return _inputRegister; };
-  size_t getLimit() { return _limit; };
-  size_t getRemainingOffset() { return _remainingOffset; };
+  size_t getLimit() const noexcept { return _limit; };
+  size_t getRemainingOffset() const noexcept { return _remainingOffset; };
   void decrRemainingOffset() { _remainingOffset--; };
-  size_t getQueryDepth() { return _queryDepth; };
-  bool isFullCountEnabled() { return _fullCount; };
+  size_t getQueryDepth() const noexcept { return _queryDepth; };
+  bool isFullCountEnabled() const noexcept { return _fullCount; };
 
  private:
   // This is exactly the value in the parent member ExecutorInfo::_inRegs,
@@ -105,6 +105,13 @@ class LimitExecutor {
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+
+ private:
+  Infos const& infos() const noexcept { return _infos; };
+
+  size_t maxRowsLeft() const noexcept {
+    return infos().getRemainingOffset() + infos().getLimit() - _counter;
+  }
 
  private:
   Infos& _infos;

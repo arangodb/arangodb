@@ -66,7 +66,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
 
   ExecutionState state = ExecutionState::HASMORE;
   while (state != ExecutionState::DONE) {
-    std::tie(state, input) = _fetcher.fetchRow();
+    std::tie(state, input) = _fetcher.fetchRow(maxRowsLeft());
 
     if (state == ExecutionState::WAITING) {
       return {state, stats};
