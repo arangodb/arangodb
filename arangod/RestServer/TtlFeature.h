@@ -99,13 +99,16 @@ class TtlFeature final : public application_features::ApplicationFeature {
   // protects _properties and _active
   mutable Mutex _propertiesMutex;
   TtlProperties _properties;
-  bool _active;
-
-  std::shared_ptr<TtlThread> _thread;
-
+  
   // protects _statistics
   mutable Mutex _statisticsMutex; 
   TtlStatistics _statistics;
+  
+  // protects _thread
+  mutable Mutex _threadMutex; 
+  std::unique_ptr<TtlThread> _thread;
+  
+  bool _active;
 };
 
 }  // namespace arangodb

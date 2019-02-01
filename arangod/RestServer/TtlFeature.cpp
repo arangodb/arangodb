@@ -154,7 +154,7 @@ class TtlThread final : public Thread {
     guard.signal();
   }
 
-  bool isWorking() const {
+  bool isCurrentlyWorking() const {
     return _working.load();
   }
 
@@ -446,6 +446,12 @@ void TtlFeature::start() {
     return;
   }
     
+  MUTEX_LOCKER(locker, _threadMutex);
+  if (application_features::ApplicationServer::isStopping()) {
+    // don't create the thread if we are already shutting down
+    return;
+  }
+
   _thread.reset(new TtlThread(this));
 
   if (!_thread->start()) {
@@ -494,7 +500,7 @@ void TtlFeature::deactivate() {
   if (_thread != nullptr) {
     _thread->wakeup();
 
-    while (_thread->isWorking()) {
+    while (_thread->isCurrentlyWorking()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
@@ -534,15 +540,17 @@ Result TtlFeature::propertiesFromVelocyPack(VPackSlice const& slice) {
 }
 
 void TtlFeature::shutdownThread() noexcept {
-  try {
-    if (_thread != nullptr) {
+  MUTEX_LOCKER(locker, _threadMutex);
+
+  if (_thread != nullptr) {
+    try {
       _thread->beginShutdown();
       while (_thread->isRunning()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
+    } catch (...) {
     }
-  } catch (...) {
-  }
 
-  _thread.reset();
+    _thread.reset();
+  }
 }
