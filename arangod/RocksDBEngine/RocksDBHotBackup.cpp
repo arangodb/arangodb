@@ -53,11 +53,13 @@ std::shared_ptr<RocksDBHotBackup> RocksDBHotBackup::operationFactory(
 
   // initial implementation only has single suffix verbs
   if (1 == suffixes.size()) {
-    if (0 == suffixes[0].compare("create"))
-    {
+    if (0 == suffixes[0].compare("create")) {
       operation.reset((isCoord ? (RocksDBHotBackup *)new RocksDBHotBackupCreateCoord(body)
                        : (RocksDBHotBackup *)new RocksDBHotBackupCreate(body)));
-    } // if
+    } else if (0 == suffixes[0].compare("restore")) {
+      operation.reset((isCoord ? (RocksDBHotBackup *)new RocksDBHotBackupRestoreCoord(body)
+                       : (RocksDBHotBackup *)new RocksDBHotBackupRestore(body)));
+    } // else if
   }
 
   // check the parameter once operation selected
@@ -117,13 +119,23 @@ std::string RocksDBHotBackup::buildDirectoryPath(const std::string & timestamp, 
     } // else
   } // for
 
+  ret_string = rebuildPath(suffix);
+
+  return ret_string;
+
+} // RocksDBHotBackup::buildDirectoryPath
+
+
+std::string RocksDBHotBackup::rebuildPath(const std::string & suffix) {
+  std::string ret_string;
+
   ret_string = getDatabasePath();
   ret_string += TRI_DIR_SEPARATOR_CHAR;
   ret_string += suffix;
 
   return ret_string;
 
-} // RocksDBHotBackup::buildDirectoryPath
+} // RocksDBHotBackup::rebuildPath
 
 //
 // @brief Common routine for retrieving parameter from request body.
@@ -418,10 +430,33 @@ void RocksDBHotBackupRestore::parseParameters(rest::RequestType const type) {
 } // RocksDBHotBackupRestore::parseParameters
 
 
+/// @brief local function to identify which files to hard link versus copy
+static basics::FileUtils::TRI_copy_recursive_e copyVersusLink(std::string const & name) {
+  basics::FileUtils::TRI_copy_recursive_e ret_code(basics::FileUtils::TRI_COPY_IGNORE);
+  std::string basename(TRI_Basename(name.c_str()));
+
+  if (name.length() > 4 && 0 == name.substr(name.length()-4, 4).compare(".sst"))
+  {
+    ret_code = basics::FileUtils::TRI_COPY_LINK;
+  } else if (0 == basename.compare("CURRENT")) {
+    ret_code = basics::FileUtils::TRI_COPY_COPY;
+  } else if (0 == basename.substr(0,8).compare("MANIFEST")) {
+    ret_code = basics::FileUtils::TRI_COPY_COPY;
+  } else if (0 == basename.substr(0,7).compare("OPTIONS")) {
+    ret_code = basics::FileUtils::TRI_COPY_COPY;
+  } // else
+
+  return ret_code;
+
+} // copyVersusLink
+
+
+
 void RocksDBHotBackupRestore::execute() {
+  std::string errors;
 
   // remove "restoring" directory if it exists
-  std::string restoringDir = buildDirectoryPath("restoring","");
+  std::string restoringDir = rebuildPath("restoring");
   if (basics::FileUtils::exists(restoringDir)) {
     if (basics::FileUtils::isDirectory(restoringDir)) {
       // code to remove directory
@@ -432,7 +467,16 @@ void RocksDBHotBackupRestore::execute() {
     // test if still there and error out?
   } // if
 
+
+
   // copy restore contents to new "restoring" directory (hard links)
+  //  (both directories must exists)
+  basics::FileUtils::createDirectory(restoringDir, nullptr);
+  std::function<basics::FileUtils::TRI_copy_recursive_e(std::string const&)>  filter=copyVersusLink;
+  std::string fullDirectoryRestore = rebuildPath(_directoryRestore);
+  _success = basics::FileUtils::copyRecursive(fullDirectoryRestore, restoringDir,
+                                              filter, errors);
+
   // transaction hold
   // rocksdb stop
   // move active directory to new snapshot directory name

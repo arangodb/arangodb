@@ -1786,6 +1786,28 @@ bool TRI_CopySymlink(std::string const& srcItem, std::string const& dstItem,
   return true;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a hard link; the link target is not altered.
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CreateHardlink(std::string const& existingFile, std::string const& newFile,
+                     std::string& error) {
+#ifndef _WIN32
+  int rc = link(existingFile.c_str(), newFile.c_str());
+
+  if (rc == -1) {
+    error = std::string("failed to create hard link ") + newFile + ": " + strerror(errno);
+  } // if
+
+  return 0 == rc;
+#else
+  error = "Windows TRI_CreateHardlink not written, yet.";
+  return false;
+
+#endif
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates the home directory
 ///

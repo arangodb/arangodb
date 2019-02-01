@@ -58,6 +58,7 @@ public:
 
 protected:
   virtual std::string buildDirectoryPath(const std::string & timestamp, const std::string & userString);
+  std::string rebuildPath(const std::string & suffix);
 
   // retrieve configuration values from request's body
   void getParamValue(const char * key, std::string & value, bool required);

@@ -75,16 +75,37 @@ bool createDirectory(std::string const& name, int mask, int* errorNumber = nullp
 
 /// @brief copies directories / files recursive
 /// will not copy files/directories for which the filter function
-/// returns true
+/// returns true (now wrapper for version below with TRI_copy_recursive_e filter)
 bool copyRecursive(std::string const& source, std::string const& target,
                    std::function<bool(std::string const&)> const& filter,
                    std::string& error);
 
 /// @brief will not copy files/directories for which the filter function
-/// returns true
+/// returns true (now wrapper for version below with TRI_copy_recursive_e filter)
 bool copyDirectoryRecursive(std::string const& source, std::string const& target,
                             std::function<bool(std::string const&)> const& filter,
                             std::string& error);
+
+typedef enum {
+  TRI_COPY_IGNORE,
+  TRI_COPY_COPY,
+  TRI_COPY_LINK
+} TRI_copy_recursive_e;
+
+
+/// @brief copies directories / files recursive
+/// will not copy files/directories for which the filter function
+/// returns true
+bool copyRecursive(std::string const& source, std::string const& target,
+                   std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
+                   std::string& error);
+
+/// @brief will not copy files/directories for which the filter function
+/// returns true
+bool copyDirectoryRecursive(std::string const& source, std::string const& target,
+                            std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
+                            std::string& error);
+
 
 // returns list of files
 std::vector<std::string> listFiles(std::string const& directory);

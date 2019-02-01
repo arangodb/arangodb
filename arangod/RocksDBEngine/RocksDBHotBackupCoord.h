@@ -42,6 +42,10 @@ public:
 class RocksDBHotBackupRestoreCoord : public RocksDBHotBackup {
 public:
 
+  RocksDBHotBackupRestoreCoord() = delete;
+  RocksDBHotBackupRestoreCoord(const VPackSlice body)
+    : RocksDBHotBackup(body) {};
+
   void execute() override {};
 
 };// class RocksDBHotBackupRestore
