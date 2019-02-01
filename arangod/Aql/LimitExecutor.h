@@ -26,6 +26,7 @@
 #ifndef ARANGOD_AQL_LIMIT_EXECUTOR_H
 #define ARANGOD_AQL_LIMIT_EXECUTOR_H
 
+#include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
@@ -109,8 +110,12 @@ class LimitExecutor {
  private:
   Infos const& infos() const noexcept { return _infos; };
 
-  size_t maxRowsLeft() const noexcept {
-    return infos().getRemainingOffset() + infos().getLimit() - _counter;
+  size_t maxRowsLeftToFetch() const noexcept {
+    if (infos().isFullCountEnabled()) {
+      return ExecutionBlock::DefaultBatchSize();
+    } else {
+      return infos().getRemainingOffset() + infos().getLimit() - _counter;
+    }
   }
 
  private:
