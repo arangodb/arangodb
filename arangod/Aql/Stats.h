@@ -100,6 +100,24 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
   return executionStats;
 }
 
+class IndexStats {
+ public:
+  IndexStats() noexcept : _scannedFull(0) {}
+
+  void incrScanned() noexcept { _scannedFull++; }
+
+  std::size_t getScanned() const noexcept { return _scannedFull; }
+
+ private:
+  std::size_t _scannedFull;
+};
+
+inline ExecutionStats& operator+=(ExecutionStats& executionStats,
+                                  IndexStats const& enumerateCollectionStats) noexcept {
+  executionStats.scannedFull += enumerateCollectionStats.getScanned();
+  return executionStats;
+}
+
 }  // namespace aql
 }  // namespace arangodb
 #endif

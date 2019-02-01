@@ -83,6 +83,7 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
 
   TRI_ASSERT(!_indexes.empty());
 
+  // TODO indexes && condition pro IndexExecutor?
   if (_condition != nullptr) {
     // fix const attribute accesses, e.g. { "a": 1 }.a
     for (size_t i = 0; i < _condition->numMembers(); ++i) {
@@ -176,6 +177,7 @@ void IndexBlock::executeExpressions() {
   // The following are needed to evaluate expressions with local data from
   // the current incoming item:
 
+  // TODO expressions
   AqlItemBlock* cur = _buffer.front();
   auto en = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
   auto ast = en->_plan->getAst();
@@ -588,6 +590,8 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(siz
     return {ExecutionState::DONE, nullptr};
   }
 
+
+  // TODO inflight
   TRI_ASSERT(atMost > 0);
   size_t const nrInRegs = getNrInputRegisters();
   if (_resultInFlight == nullptr) {
@@ -602,6 +606,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(siz
 
   IndexIterator::DocumentCallback callback;
 
+  // TODO _indexes pro IndexExecutor, richtig?
   if (_indexes.size() > 1 || _hasMultipleExpansions) {
     // Activate uniqueness checks
     callback = [this, nrInRegs](LocalDocumentId const& token, VPackSlice slice) {
@@ -620,17 +625,20 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(siz
         }
       }
 
+      // TODO hier wie im EnumerateCollectionExecutor
       _documentProducer(_resultInFlight.get(), slice, nrInRegs, _returned, _copyFromRow);
     };
   } else {
     // No uniqueness checks
     callback = [this, nrInRegs](LocalDocumentId const&, VPackSlice slice) {
       TRI_ASSERT(_resultInFlight != nullptr);
+        // TODO hier wie im EnumerateCollectionExecutor
       _documentProducer(_resultInFlight.get(), slice, nrInRegs, _returned, _copyFromRow);
     };
   }
 
   do {
+    // TODO buffer auch hier komplett ignorieren, richtig?
     if (_buffer.empty()) {
       if (_upstreamState == ExecutionState::DONE) {
         _done = true;

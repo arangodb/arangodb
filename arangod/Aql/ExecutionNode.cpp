@@ -1264,10 +1264,6 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
   RegisterId outputRegister = it->second.registerId;
 
-  // Variable const* outVariable = _outVariable;
-  // outVariable = _plan->getAst()->variables()->createVariable(outVariable);
-  // TRI_ASSERT(outVariable != nullptr);
-
   transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
   bool allowCoveringIndexOptimization = true;
 

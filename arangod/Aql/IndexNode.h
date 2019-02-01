@@ -47,6 +47,15 @@ class ExecutionBlock;
 class ExecutionEngine;
 class ExecutionPlan;
 
+/// @brief struct to hold the member-indexes in the _condition node
+struct NonConstExpression {
+  std::unique_ptr<Expression> expression;
+  std::vector<size_t> const indexPath;
+
+  NonConstExpression(std::unique_ptr<Expression> exp, std::vector<size_t>&& idxPath)
+      : expression(std::move(exp)), indexPath(std::move(idxPath)) {}
+};
+
 /// @brief class IndexNode
 class IndexNode : public ExecutionNode, public DocumentProducingNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
@@ -114,8 +123,21 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   void initIndexCoversProjections();
 
  private:
+  void initializeOnce(bool hasV8Expression,
+                      std::vector<Variable const*>& inVars,
+                      std::vector<RegisterId>& inRegs,
+                      std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions,
+                      transaction::Methods* trxPtr) const;
+
+  /// @brief adds a UNIQUE() to a dynamic IN condition
+  arangodb::aql::AstNode* makeUnique(arangodb::aql::AstNode*, transaction::Methods* trx) const;
+
+ private:
   /// @brief the index
   std::vector<transaction::Methods::IndexHandle> _indexes;
+
+  /// @brief current position in _indexes
+  size_t _currentIndex;
 
   /// @brief the index(es) condition
   std::unique_ptr<Condition> _condition;

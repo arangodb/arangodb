@@ -38,6 +38,7 @@
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/IdExecutor.h"
+#include "Aql/IndexExecutor.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/SortExecutor.h"
@@ -257,6 +258,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor>;
