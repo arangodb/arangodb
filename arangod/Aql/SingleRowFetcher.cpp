@@ -39,12 +39,15 @@ SingleRowFetcher<passBlocksThrough>::SingleRowFetcher(BlockFetcher<passBlocksThr
     : _blockFetcher(&executionBlock), _currentRow{CreateInvalidInputRowHint{}} {}
 
 template <bool passBlocksThrough>
-std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> SingleRowFetcher<passBlocksThrough>::fetchBlock() {
+std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
+SingleRowFetcher<passBlocksThrough>::fetchBlock(size_t atMost) {
+  atMost = (std::min)(atMost, ExecutionBlock::DefaultBatchSize());
+
   // There are still some blocks left that ask their parent even after they got
   // DONE the last time, and I don't currently have time to track them down.
   // Thus the following assert is commented out.
   // TRI_ASSERT(_upstreamState != ExecutionState::DONE);
-  auto res = _blockFetcher->fetchBlock();
+  auto res = _blockFetcher->fetchBlock(atMost);
 
   _upstreamState = res.first;
 

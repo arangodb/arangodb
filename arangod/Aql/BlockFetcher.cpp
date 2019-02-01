@@ -61,9 +61,11 @@ ExecutionState BlockFetcher<passBlocksThrough>::prefetchBlock(size_t atMost) {
 }
 
 template <bool passBlocksThrough>
-std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> BlockFetcher<passBlocksThrough>::fetchBlock() {
+std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
+// NOLINTNEXTLINE google-default-arguments
+BlockFetcher<passBlocksThrough>::fetchBlock(size_t atMost) {
   if (_blockShellQueue.empty()) {
-    ExecutionState state = prefetchBlock();
+    ExecutionState state = prefetchBlock(atMost);
     // prefetchBlock returns HASMORE iff it pushed a block onto _blockShellQueue.
     // If it didn't, it got either WAITING from upstream, or DONE + nullptr.
     if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
