@@ -237,10 +237,14 @@ void AqlItemBlock::destroy() noexcept {
   // the safe side
   try {
     if (_valueCount.empty()) {
+      eraseAll();
+      rescale(0, 0);
+      TRI_ASSERT(numEntries() == 0);
       return;
     }
 
-    for (auto& it : _data) {
+    for (size_t i = 0; i < numEntries(); i++) {
+      auto &it = _data[i];
       if (it.requiresDestruction()) {
         auto it2 = _valueCount.find(it);
         if (it2 != _valueCount.end()) {  // if we know it, we are still responsible
@@ -252,15 +256,18 @@ void AqlItemBlock::destroy() noexcept {
             _valueCount.erase(it2);
           }
         }
-        // Note that if we do not know it the thing it has been stolen from us!
-      } else {
-        it.erase();
       }
+        // Note that if we do not know it the thing it has been stolen from us!
+      it.erase();
     }
-
     _valueCount.clear();
+
+    rescale(0, 0);
   } catch (...) {
+    TRI_ASSERT(false);
   }
+
+  TRI_ASSERT(numEntries() == 0);
 }
 
 /// @brief shrink the block to the specified number of rows
@@ -283,7 +290,6 @@ void AqlItemBlock::shrink(size_t nrItems) {
 
   // adjust the size of the block
   _nrItems = nrItems;
-  _data.resize(_nrItems * _nrRegs);
 }
 
 void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
@@ -292,27 +298,34 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
 
   size_t const targetSize = nrItems * nrRegs;
   size_t const currentSize = _nrItems * _nrRegs;
-  TRI_ASSERT(currentSize <= _data.size());
+  TRI_ASSERT(currentSize == numEntries());
 
+  // TODO Previously, _data.size() was used for the memory usage.
+  // _data.capacity() might have been more accurate. Now, _data.size() stays at
+  // _data.capacity(), or at least, is never reduced.
+  // So I decided for now to report the memory usage based on numEntries() only,
+  // to mimic the previous behaviour. I'm not sure whether it should stay this
+  // way; because currently, we are tracking the memory we need, instead of the
+  // memory we have.
   if (targetSize > _data.size()) {
-    increaseMemoryUsage(sizeof(AqlValue) * (targetSize - currentSize));
-    try {
-      _data.resize(targetSize);
-    } catch (...) {
-      decreaseMemoryUsage(sizeof(AqlValue) * (targetSize - currentSize));
-      throw;
-    }
-  } else if (targetSize < _data.size()) {
-    decreaseMemoryUsage(sizeof(AqlValue) * (currentSize - targetSize));
-    try {
-      _data.resize(targetSize);
-    } catch (...) {
-      increaseMemoryUsage(sizeof(AqlValue) * (currentSize - targetSize));
-      throw;
-    }
+     _data.resize(targetSize);
   }
 
-  TRI_ASSERT(_data.size() >= targetSize);
+  TRI_ASSERT(targetSize <= _data.size());
+
+  if (targetSize > numEntries()) {
+    increaseMemoryUsage(sizeof(AqlValue) * (targetSize - currentSize));
+
+    // Values will not be re-initialized, but are expected to be that way.
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    for(size_t i = currentSize; i < targetSize; i++) {
+      TRI_ASSERT(_data[i].isEmpty());
+    }
+#endif
+  } else if (targetSize < numEntries()) {
+    decreaseMemoryUsage(sizeof(AqlValue) * (currentSize - targetSize));
+  }
+
   _nrItems = nrItems;
   _nrRegs = nrRegs;
 }

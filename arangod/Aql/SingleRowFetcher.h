@@ -26,6 +26,7 @@
 #ifndef ARANGOD_AQL_SINGLE_ROW_FETCHER_H
 #define ARANGOD_AQL_SINGLE_ROW_FETCHER_H
 
+#include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 
@@ -63,6 +64,11 @@ class SingleRowFetcher {
    *        **Guarantee**: the pointer returned is valid only
    *        until the next call to fetchRow.
    *
+   * @param atMost may be passed if a block knows the maximum it might want to
+   *        fetch from upstream (should apply only to the LimitExecutor). Will
+   *        not fetch more than the default batch size, so passing something
+   *        greater than it will not have any effect.
+   *
    * @return A pair with the following properties:
    *         ExecutionState:
    *           WAITING => IO going on, immediatly return to caller.
@@ -75,7 +81,10 @@ class SingleRowFetcher {
    *           If HASMORE => The Row is guaranteed to not be a nullptr.
    *           If DONE => Row can be a nullptr (nothing received) or valid.
    */
-  TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow();
+  // This is only TEST_VIRTUAL, so we ignore this lint warning:
+  // NOLINTNEXTLINE google-default-arguments
+  TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow(
+      size_t atMost = ExecutionBlock::DefaultBatchSize());
 
   // TODO enable_if<passBlocksThrough>
   std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t atMost);
@@ -118,7 +127,7 @@ class SingleRowFetcher {
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
   std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
-  fetchBlock();
+    fetchBlock(size_t atMost);
 
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
@@ -126,16 +135,14 @@ class SingleRowFetcher {
   RegisterId getNrInputRegisters() const {
     return _blockFetcher->getNrInputRegisters();
   }
+  bool indexIsValid() const;
 
-
-  bool indexIsValid();
-
-  bool isLastRowInBlock() {
+  bool isLastRowInBlock() const {
     TRI_ASSERT(indexIsValid());
     return _rowIndex + 1 == _currentBlock->block().size();
   }
 
-  size_t getRowIndex() {
+  size_t getRowIndex() const {
     TRI_ASSERT(indexIsValid());
     return _rowIndex;
   }
@@ -143,7 +150,8 @@ class SingleRowFetcher {
 };
 
 template <bool passBlocksThrough>
-std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::fetchRow() {
+// NOLINTNEXTLINE google-default-arguments
+std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::fetchRow(size_t atMost) {
   // Fetch a new block iff necessary
   if (!indexIsValid()) {
     // This returns the AqlItemBlock to the ItemBlockManager before fetching a
@@ -152,7 +160,7 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::
 
     ExecutionState state;
     std::shared_ptr<AqlItemBlockShell> newBlock;
-    std::tie(state, newBlock) = fetchBlock();
+    std::tie(state, newBlock) = fetchBlock(atMost);
     if (state == ExecutionState::WAITING) {
       return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
     }
@@ -185,7 +193,7 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::
 }
 
 template <bool passBlocksThrough>
-bool SingleRowFetcher<passBlocksThrough>::indexIsValid() {
+bool SingleRowFetcher<passBlocksThrough>::indexIsValid() const {
   // TODO Hopefully we can get rid of this distinction later. When there are no
   // more old blocks, we can replace the old getSome interface easily,
   // specifically replace std::unique_ptr<AqlItemBlock> with a shared_ptr

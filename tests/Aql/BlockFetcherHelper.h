@@ -29,6 +29,7 @@
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/ConstFetcher.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
@@ -61,7 +62,9 @@ class SingleRowFetcherHelper : public ::arangodb::aql::SingleRowFetcher<passBloc
                          bool returnsWaiting);
   virtual ~SingleRowFetcherHelper();
 
-  std::pair<::arangodb::aql::ExecutionState, ::arangodb::aql::InputAqlItemRow> fetchRow() override;
+// NOLINTNEXTLINE google-default-arguments
+  std::pair<::arangodb::aql::ExecutionState, ::arangodb::aql::InputAqlItemRow> fetchRow(
+      size_t atMost = ::arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
   uint64_t nrCalled(){ return _nrCalled; }
 
   std::shared_ptr<arangodb::aql::AqlItemBlockShell> getItemBlockShell() { return _itemBlock; }
