@@ -22,13 +22,14 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
 option(USE_PRECOMPILED_V8 "use a precompiled V8" OFF)
 
 
-set(V8_SUB_DIR "v5.7.492.77")
 set(V8_VERSION
-  "5.7.492.77"
+  "7.1.302.28"
   CACHE INTERNAL
   "${PROJECT_NAME}: Version"
   FORCE
   )
+set(V8_SUB_DIR "v${V8_VERSION}")
+
 set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
 if (USE_PRECOMPILED_V8)
 

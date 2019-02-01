@@ -65,17 +65,18 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch, v8::Handle<v8::Value>& re
       v8::Handle<v8::String> errorMessage =
           TRI_V8_ASCII_STRING(isolate, "errorMessage");
 
-      TRI_Utf8ValueNFC stacktrace(tryCatch.StackTrace());
+      TRI_Utf8ValueNFC stacktrace(isolate, tryCatch.StackTrace(TRI_IGETC).FromMaybe(v8::Local<v8::Value>()));
 
-      if (objValue->HasOwnProperty(errorNum) && objValue->HasOwnProperty(errorMessage)) {
+      if (TRI_OBJECT_HAS_OWN_V8_PROPERTY(objValue, errorNum) &&
+          TRI_OBJECT_HAS_OWN_V8_PROPERTY(objValue, errorMessage)) {
         v8::Handle<v8::Value> errorNumValue = objValue->Get(errorNum);
         v8::Handle<v8::Value> errorMessageValue = objValue->Get(errorMessage);
 
         // found something that looks like an ArangoError
         if ((errorNumValue->IsNumber() || errorNumValue->IsNumberObject()) &&
             (errorMessageValue->IsString() || errorMessageValue->IsStringObject())) {
-          int errorCode = static_cast<int>(TRI_ObjectToInt64(errorNumValue));
-          std::string errorMessage(TRI_ObjectToString(errorMessageValue));
+          int errorCode = static_cast<int>(TRI_ObjectToInt64(isolate, errorNumValue));
+          std::string errorMessage(TRI_ObjectToString(isolate, errorMessageValue));
 
           if (*stacktrace && stacktrace.length() > 0) {
             errorMessage += "\nstacktrace of offending AQL function: ";
@@ -87,7 +88,7 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch, v8::Handle<v8::Value>& re
       }
 
       // exception is no ArangoError
-      std::string details(TRI_ObjectToString(tryCatch.Exception()));
+      std::string details(TRI_ObjectToString(isolate, tryCatch.Exception()));
 
       if (buffer) {
         // std::string script(buffer->c_str(), buffer->length());

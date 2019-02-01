@@ -57,21 +57,22 @@ bool canUse(arangodb::auth::Level level, TRI_vocbase_t const& vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief retrieves a view from a V8 argument
 ////////////////////////////////////////////////////////////////////////////////
-std::shared_ptr<arangodb::LogicalView> GetViewFromArgument(TRI_vocbase_t& vocbase,
+std::shared_ptr<arangodb::LogicalView> GetViewFromArgument(v8::Isolate* isolate,
+                                                           TRI_vocbase_t& vocbase,
                                                            v8::Handle<v8::Value> const val) {
   arangodb::CollectionNameResolver resolver(vocbase);
 
   return (val->IsNumber() || val->IsNumberObject())
-             ? resolver.getView(TRI_ObjectToUInt64(val, true))
-             : resolver.getView(TRI_ObjectToString(val));
+             ? resolver.getView(TRI_ObjectToUInt64(isolate, val, true))
+             : resolver.getView(TRI_ObjectToString(isolate, val));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unwraps a LogicalView wrapped via WrapView(...)
 /// @return collection or nullptr on failure
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::LogicalView* UnwrapView(v8::Local<v8::Object> const& holder) {
-  return TRI_UnwrapClass<arangodb::LogicalView>(holder, WRP_VOCBASE_VIEW_TYPE);
+arangodb::LogicalView* UnwrapView(v8::Isolate* isolate, v8::Local<v8::Object> const& holder) {
+  return TRI_UnwrapClass<arangodb::LogicalView>(holder, WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
 }
 
 }  // namespace
@@ -116,8 +117,9 @@ v8::Handle<v8::Object> WrapView(v8::Isolate* isolate,
 
     TRI_GET_GLOBAL_STRING(_IdKey);
     TRI_GET_GLOBAL_STRING(_DbNameKey);
-    result->ForceSet(_IdKey, TRI_V8UInt64String<TRI_voc_cid_t>(isolate, view->id()),
-                     v8::ReadOnly);
+    result->DefineOwnProperty(
+      TRI_IGETC, _IdKey, TRI_V8UInt64String<TRI_voc_cid_t>(isolate, view->id()),
+      v8::ReadOnly).FromMaybe(false);// Ignore result...
     result->Set(_DbNameKey, TRI_V8_STD_STRING(isolate, view->vocbase().name()));
   }
 
@@ -141,16 +143,16 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
   PREVENT_EMBEDDED_TRANSACTION();
 
   // extract the name
-  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
 
   // extract the type
-  std::string const type = TRI_ObjectToString(args[1]);
+  std::string const type = TRI_ObjectToString(isolate, args[1]);
 
   if (!args[2]->IsObject()) {
     TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
   }
 
-  v8::Handle<v8::Object> obj = args[2]->ToObject();
+  v8::Handle<v8::Object> obj = args[2]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   VPackBuilder properties;
   int res = TRI_V8ToVPack(isolate, properties, obj, false);
 
@@ -234,16 +236,16 @@ static void JS_DropViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
       v8::Handle<v8::Object> optionsObject = args[1].As<v8::Object>();
       TRI_GET_GLOBAL_STRING(IsSystemKey);
 
-      if (optionsObject->Has(IsSystemKey)) {
-        allowDropSystem = TRI_ObjectToBoolean(optionsObject->Get(IsSystemKey));
+      if (TRI_OBJECT_HAS_V8_PROPERTY(optionsObject, IsSystemKey)) {
+        allowDropSystem = TRI_ObjectToBoolean(isolate, optionsObject->Get(TRI_IGETC, IsSystemKey).FromMaybe(v8::Local<v8::Value>()));
       }
     } else {
-      allowDropSystem = TRI_ObjectToBoolean(args[1]);
+      allowDropSystem = TRI_ObjectToBoolean(isolate, args[1]);
     }
   }
 
   // extract the name
-  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
 
   // ...........................................................................
   // end of parameter parsing
@@ -283,7 +285,7 @@ static void JS_DropViewVocbaseObj(v8::FunctionCallbackInfo<v8::Value> const& arg
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* view = UnwrapView(args.Holder());
+  auto* view = UnwrapView(isolate, args.Holder());
 
   if (!view) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");
@@ -300,11 +302,11 @@ static void JS_DropViewVocbaseObj(v8::FunctionCallbackInfo<v8::Value> const& arg
       v8::Handle<v8::Object> optionsObject = args[0].As<v8::Object>();
       TRI_GET_GLOBAL_STRING(IsSystemKey);
 
-      if (optionsObject->Has(IsSystemKey)) {
-        allowDropSystem = TRI_ObjectToBoolean(optionsObject->Get(IsSystemKey));
+      if (TRI_OBJECT_HAS_V8_PROPERTY(optionsObject, IsSystemKey)) {
+        allowDropSystem = TRI_ObjectToBoolean(isolate, optionsObject->Get(TRI_IGETC, IsSystemKey).FromMaybe(v8::Local<v8::Value>()));
       }
     } else {
-      allowDropSystem = TRI_ObjectToBoolean(args[0]);
+      allowDropSystem = TRI_ObjectToBoolean(isolate, args[0]);
     }
   }
 
@@ -352,7 +354,7 @@ static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::Handle<v8::Value> val = args[0];
-  auto view = GetViewFromArgument(vocbase, val);
+  auto view = GetViewFromArgument(isolate, vocbase, val);
 
   if (view == nullptr) {
     TRI_V8_RETURN_NULL();
@@ -483,7 +485,7 @@ static void JS_NameViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* view = UnwrapView(args.Holder());
+  auto* view = UnwrapView(isolate, args.Holder());
 
   if (!view) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");
@@ -517,7 +519,7 @@ static void JS_NameViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
 static void JS_PropertiesViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  auto* viewPtr = UnwrapView(args.Holder());
+  auto* viewPtr = UnwrapView(isolate, args.Holder());
 
   if (!viewPtr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");
@@ -546,7 +548,7 @@ static void JS_PropertiesViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& 
         TRI_V8_THROW_EXCEPTION_PARAMETER("<partialUpdate> must be a boolean");
       }
 
-      partialUpdate = args[1]->ToBoolean()->Value();
+      partialUpdate = TRI_ObjectToBoolean(isolate, args[1]);
     }
 
     // ...........................................................................
@@ -622,7 +624,7 @@ static void JS_PropertiesViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& 
   // return the current parameter set
   // Note: no need to check for auth since view is from the v* context (i.e.
   // authed before)
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice())->ToObject());
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice())->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -638,13 +640,13 @@ static void JS_RenameViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
     TRI_V8_THROW_EXCEPTION_USAGE("rename(<name>)");
   }
 
-  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
 
   if (name.empty()) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("<name> must be non-empty");
   }
 
-  auto* view = UnwrapView(args.Holder());
+  auto* view = UnwrapView(isolate, args.Holder());
 
   if (!view) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");
@@ -695,7 +697,7 @@ static void JS_RenameViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
 static void JS_TypeViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  auto* view = UnwrapView(args.Holder());
+  auto* view = UnwrapView(isolate, args.Holder());
 
   if (!view) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");

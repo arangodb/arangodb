@@ -195,10 +195,10 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* dat
 int TRI_createFile(char const* filename, int openFlags, int modeFlags) {
   HANDLE fileHandle;
   int fileDescriptor;
-  UnicodeString fn(filename);
+  icu::UnicodeString fn(filename);
 
   fileHandle =
-      CreateFileW(fn.getTerminatedBuffer(), GENERIC_READ | GENERIC_WRITE,
+      CreateFileW((wchar_t*)fn.getTerminatedBuffer(), GENERIC_READ | GENERIC_WRITE,
                   FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
                   (openFlags & O_APPEND) ? OPEN_ALWAYS : CREATE_NEW, 0, NULL);
 
@@ -243,8 +243,8 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
       break;
   }
 
-  UnicodeString fn(filename);
-  fileHandle = CreateFileW(fn.getTerminatedBuffer(), mode,
+  icu::UnicodeString fn(filename);
+  fileHandle = CreateFileW((wchar_t*)fn.getTerminatedBuffer(), mode,
                            FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
                            NULL, OPEN_EXISTING, 0, NULL);
 
@@ -258,19 +258,19 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
 }
 
 FILE* TRI_FOPEN(char const* filename, char const* mode) {
-  UnicodeString fn(filename);
-  UnicodeString umod(mode);
-  return _wfopen(fn.getTerminatedBuffer(), umod.getTerminatedBuffer());
+  icu::UnicodeString fn(filename);
+  icu::UnicodeString umod(mode);
+  return _wfopen((wchar_t*)fn.getTerminatedBuffer(), (wchar_t*)umod.getTerminatedBuffer());
 }
 
 int TRI_CHDIR(char const* dirname) {
-  UnicodeString dn(dirname);
-  return ::_wchdir(dn.getTerminatedBuffer());
+  icu::UnicodeString dn(dirname);
+  return ::_wchdir((wchar_t*)dn.getTerminatedBuffer());
 }
 
 int TRI_STAT(char const* path, TRI_stat_t* buffer) {
-  UnicodeString p(path);
-  auto rc = ::_wstat64(p.getTerminatedBuffer(), buffer);
+  icu::UnicodeString p(path);
+  auto rc = ::_wstat64((wchar_t*)p.getTerminatedBuffer(), buffer);
   return rc;
 }
 
@@ -288,7 +288,7 @@ char* TRI_GETCWD(char* buffer, int maxlen) {
   if (rcw != nullptr) {
     std::string rcs;
 
-    UnicodeString d(wbuf, static_cast<int32_t>(wcslen(wbuf)));
+    icu::UnicodeString d(wbuf, static_cast<int32_t>(wcslen(wbuf)));
     d.toUTF8String<std::string>(rcs);
     if (rcs.length() + 1 < maxlen) {
       memcpy(buffer, rcs.c_str(), rcs.length() + 1);
@@ -300,17 +300,17 @@ char* TRI_GETCWD(char* buffer, int maxlen) {
 }
 
 int TRI_MKDIR_WIN32(char const* dirname) {
-  UnicodeString dir(dirname);
-  return ::_wmkdir(dir.getTerminatedBuffer());
+  icu::UnicodeString dir(dirname);
+  return ::_wmkdir((wchar_t*)dir.getTerminatedBuffer());
 }
 
 int TRI_RMDIR(char const* dirname) {
-  UnicodeString dir(dirname);
-  return ::_wrmdir(dir.getTerminatedBuffer());
+  icu::UnicodeString dir(dirname);
+  return ::_wrmdir((wchar_t*)dir.getTerminatedBuffer());
 }
 int TRI_UNLINK(char const* filename) {
-  UnicodeString fn(filename);
-  return ::_wunlink(fn.getTerminatedBuffer());
+  icu::UnicodeString fn(filename);
+  return ::_wunlink((wchar_t*)fn.getTerminatedBuffer());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -511,11 +511,11 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   DWORD len = _snprintf(buf, sizeof(buf) - 1, "%s", message.c_str());
   buf[sizeof(buf) - 1] = '\0';
 
-  UnicodeString ubufs[]{UnicodeString(buf, len), UnicodeString(file),
-                        UnicodeString(func), UnicodeString(linebuf)};
-  LPCWSTR buffers[] = {ubufs[0].getTerminatedBuffer(),
-                       ubufs[1].getTerminatedBuffer(), ubufs[2].getTerminatedBuffer(),
-                       ubufs[3].getTerminatedBuffer(), nullptr};
+  icu::UnicodeString ubufs[]{icu::UnicodeString(buf, len), icu::UnicodeString(file),
+                        icu::UnicodeString(func), icu::UnicodeString(linebuf)};
+  LPCWSTR buffers[] = {(wchar_t*)ubufs[0].getTerminatedBuffer(),
+                       (wchar_t*)ubufs[1].getTerminatedBuffer(), (wchar_t*)ubufs[2].getTerminatedBuffer(),
+                       (wchar_t*)ubufs[3].getTerminatedBuffer(), nullptr};
   // Try to get messages through to windows syslog...
   if (!ReportEventW(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
                     MSG_INVALID_COMMAND, NULL, 4, 0, buffers, NULL)) {
@@ -535,11 +535,11 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   DWORD len = _vsnprintf(buf, sizeof(buf) - 1, fmt, ap);
   buf[sizeof(buf) - 1] = '\0';
 
-  UnicodeString ubufs[]{UnicodeString(buf, len), UnicodeString(file),
-                        UnicodeString(func), UnicodeString(linebuf)};
-  LPCWSTR buffers[] = {ubufs[0].getTerminatedBuffer(),
-                       ubufs[1].getTerminatedBuffer(), ubufs[2].getTerminatedBuffer(),
-                       ubufs[3].getTerminatedBuffer(), nullptr};
+  icu::UnicodeString ubufs[]{icu::UnicodeString(buf, len), icu::UnicodeString(file),
+                        icu::UnicodeString(func), icu::UnicodeString(linebuf)};
+  LPCWSTR buffers[] = {(wchar_t*)ubufs[0].getTerminatedBuffer(),
+                       (wchar_t*)ubufs[1].getTerminatedBuffer(), (wchar_t*)ubufs[2].getTerminatedBuffer(),
+                       (wchar_t*)ubufs[3].getTerminatedBuffer(), nullptr};
   // Try to get messages through to windows syslog...
   if (!ReportEventW(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
                     MSG_INVALID_COMMAND, NULL, 4, 0, buffers, NULL)) {
@@ -732,7 +732,7 @@ void TRI_GET_ARGV_WIN(int& argc, char** argv) {
 
   argVec.reserve(argc);
 
-  UnicodeString buf;
+  icu::UnicodeString buf;
   std::string uBuf;
   for (int i = 0; i < argc; i++) {
     uBuf.clear();

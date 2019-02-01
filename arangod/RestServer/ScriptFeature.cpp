@@ -97,7 +97,7 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
         }
       }
 
-      v8::TryCatch tryCatch;
+      v8::TryCatch tryCatch(isolate);;
       // run the garbage collection for at most 30 seconds
       TRI_RunGarbageCollectionV8(isolate, 30.0);
 
@@ -134,7 +134,7 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
               TRI_ASSERT(!ok);
             }
           } else {
-            ok = TRI_ObjectToDouble(result) == 0;
+            ok = TRI_ObjectToDouble(isolate, result) == 0;
           }
         } catch (arangodb::basics::Exception const& ex) {
           LOG_TOPIC(ERR, arangodb::Logger::FIXME)

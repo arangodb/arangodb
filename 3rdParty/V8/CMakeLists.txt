@@ -115,7 +115,7 @@ set(V8_VERSION
 )
 
 set(V8_INCLUDE_DIR
-  ${V8_DIR}/include;${V8_DIR}
+  "${V8_DIR}/include;${V8_DIR};${V8_TARGET_DIR}/x64.release/obj/gen"
   CACHE INTERNAL
   "${PROJECT_NAME}: include path"
 )
@@ -516,7 +516,7 @@ else ()
     list(APPEND V8_GYP_ARGS -Dv8_enable_backtrace=1)
   endif ()
 
-  set(V8_LIBRARY_DIR "${V8_TARGET_DIR}/${V8_TARGET_ARCH}")
+  set(V8_LIBRARY_DIR "${V8_TARGET_DIR}/${V8_TARGET_ARCH}/")
   set(ICU_LIBRARY_DIR "${V8_LIBRARY_DIR}")
 
   set(GYP_MAIN ${V8_DIR}/tools/gyp/gyp_main.py)
@@ -526,10 +526,10 @@ else ()
   list(APPEND V8_GYP_ARGS -S.${V8_TARGET_ARCH})
 
   if (LINUX)
-    set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.target/src")
+    set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.target/gypfiles")
     set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}/obj.target/third_party/icu")
   elseif (SOLARIS)
-    set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.host/src")
+    set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.host/gypfiles")
     set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}/obj.host/third_party/icu")
   endif ()
 
@@ -542,7 +542,15 @@ else ()
     -Dlinux_use_gold_flags=0
     -Dv8_no_strict_aliasing=1
     -Dwerror=
-    -Dv8_use_snapshot=true )
+    -Dclang=0
+    -Dhost_clang=
+    -Dv8_embed_script=
+    -Dembed_script=
+    -Dwarmup_script=
+    -Dv8_enable_embedded_builtins=0
+    -Dembedded_builtins_snapshot_src=
+    -Dv8_enable_handle_zapping=0
+    -Dv8_use_snapshot=0 )
 
   if (APPLE AND CMAKE_COMPILER_IS_CLANG)
     set(V8_CXXFLAGS "${V8_CXXFLAGS} -stdlib=libc++")
@@ -556,6 +564,7 @@ else ()
   endif ()
 
   set(V8_COMPILE_ARGS
+    all
     -C ${V8_TARGET_DIR}
     -f Makefile.${V8_TARGET_ARCH}
     BUILDTYPE=${V8_BUILDTYPE}
@@ -567,9 +576,9 @@ else ()
     LDFLAGS=${V8_LDFLAGS}
   )
 
-  list(APPEND V8_COMPILE_ARGS icui18n icuuc)
-  list(APPEND V8_COMPILE_ARGS v8)
-
+  list(APPEND V8_COMPILE_ARGS -t icui18n icuuc)
+  list(APPEND V8_COMPILE_ARGS v8_libbase v8_libplatform v8_base v8_libsampler v8_init v8_initializers v8_nosnapshot)
+message(${V8_GYP_ARGS})
   ExternalProject_Add(v8_build
     BUILD_IN_SOURCE
       TRUE
@@ -580,14 +589,14 @@ else ()
     BUILD_COMMAND
       $(MAKE) ${V8_COMPILE_ARGS}
     STEP_TARGETS
-      v8_base v8_libplatform v8_nosnapshot v8_libsampler v8_libbase icui18n icuuc
+      v8_libbase v8_libplatform icui18n icuuc v8_base v8_libsampler v8_init v8_initializers v8_nosnapshot
     INSTALL_COMMAND
       "")
 
   list(APPEND LINK_DIRECTORIES "${V8_LIBRARY_DIR}")
 
   set(V8_LIBS
-    "v8_base;v8_libplatform;v8_nosnapshot;v8_libsampler;v8_libbase"
+        "v8_base;v8_libplatform;v8_libsampler;v8_libbase;v8_init;v8_initializers;v8_nosnapshot"
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
   )

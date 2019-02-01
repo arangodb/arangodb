@@ -2184,7 +2184,7 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
       return v8::Undefined(isolate);
     }
 
-    object->ForceSet(attributeName, sub);
+    object->DefineOwnProperty(TRI_IGETC, attributeName, sub).FromMaybe(false);
 
     c = tri_v8_lex(scanner);
   }

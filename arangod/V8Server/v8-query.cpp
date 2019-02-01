@@ -127,7 +127,7 @@ static void EdgesQuery(TRI_edge_direction_e direction,
                                    "invalid edge index direction");
   };
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -140,12 +140,15 @@ static void EdgesQuery(TRI_edge_direction_e direction,
   auto addOne = [](v8::Isolate* isolate, VPackBuilder* builder,
                    v8::Handle<v8::Value> const val) {
     if (val->IsString() || val->IsStringObject()) {
-      builder->add(VPackValue(TRI_ObjectToString(val)));
+      builder->add(VPackValue(TRI_ObjectToString(isolate, val)));
     } else if (val->IsObject()) {
-      v8::Handle<v8::Object> obj = val->ToObject();
-      if (obj->Has(TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::IdString))) {
-        builder->add(VPackValue(TRI_ObjectToString(
-            obj->Get(TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::IdString)))));
+      v8::Handle<v8::Object> obj = val->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      if (TRI_OBJECT_HAS_PROPERTY(obj, StaticStrings::IdString.c_str())) {
+        builder->add(
+                     VPackValue(
+                                TRI_ObjectToString(
+                                                   isolate, 
+                                                   obj->Get(TRI_IGETC, TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::IdString)).FromMaybe(v8::Local<v8::Value>()))));
       } else {
         builder->add(VPackValue(""));
       }
@@ -201,7 +204,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -280,7 +283,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* col = UnwrapCollection(args.Holder());
+  auto* col = UnwrapCollection(isolate, args.Holder());
 
   if (!col) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -331,7 +334,7 @@ static void JS_ChecksumCollection(v8::FunctionCallbackInfo<v8::Value> const& arg
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* col = UnwrapCollection(args.Holder());
+  auto* col = UnwrapCollection(isolate, args.Holder());
 
   if (!col) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -343,9 +346,9 @@ static void JS_ChecksumCollection(v8::FunctionCallbackInfo<v8::Value> const& arg
   bool withData = false;
 
   if (args.Length() > 0) {
-    withRevisions = TRI_ObjectToBoolean(args[0]);
+    withRevisions = TRI_ObjectToBoolean(isolate, args[0]);
     if (args.Length() > 1) {
-      withData = TRI_ObjectToBoolean(args[1]);
+      withData = TRI_ObjectToBoolean(isolate, args[1]);
     }
   }
 
@@ -400,7 +403,7 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -448,7 +451,7 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
