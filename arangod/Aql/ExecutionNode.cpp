@@ -32,7 +32,7 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
 #include "Aql/Collection.h"
-#include "Aql/EnumerateCollectionBlock.h"
+#include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
@@ -53,6 +53,8 @@
 #include "Aql/SubqueryBlock.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
@@ -1257,7 +1259,27 @@ void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& builder, unsigned
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<EnumerateCollectionBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
+  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+  RegisterId outputRegister = it->second.registerId;
+
+  // Variable const* outVariable = _outVariable;
+  // outVariable = _plan->getAst()->variables()->createVariable(outVariable);
+  // TRI_ASSERT(outVariable != nullptr);
+
+  transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
+  bool allowCoveringIndexOptimization = true;
+
+  EnumerateCollectionExecutorInfos infos(
+      outputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
+      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), &engine, this->_collection,
+      _outVariable, this->isVarUsedLater(_outVariable), this->projections(), trxPtr,
+      this->coveringIndexAttributePositions(), allowCoveringIndexOptimization,
+      EngineSelectorFeature::ENGINE->useRawDocumentPointers(), this->_random);
+  return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(&engine, this,
+                                                                           std::move(infos));
 }
 
 /// @brief clone ExecutionNode recursively

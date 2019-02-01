@@ -88,6 +88,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/CalculationExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
+  Aql/EnumerateCollectionExecutorTest.cpp
   Aql/EnumerateListExecutorTest.cpp
   Aql/ExecutionBlockImplTest.cpp
   Aql/ExecutionBlockImplTestInstances.cpp

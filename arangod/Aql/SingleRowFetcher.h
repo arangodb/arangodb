@@ -135,19 +135,18 @@ class SingleRowFetcher {
   RegisterId getNrInputRegisters() const {
     return _blockFetcher->getNrInputRegisters();
   }
+  bool indexIsValid() const;
 
-
-  bool indexIsValid();
-
-  bool isLastRowInBlock() {
+  bool isLastRowInBlock() const {
     TRI_ASSERT(indexIsValid());
     return _rowIndex + 1 == _currentBlock->block().size();
   }
 
-  size_t getRowIndex() {
+  size_t getRowIndex() const {
     TRI_ASSERT(indexIsValid());
     return _rowIndex;
   }
+
 };
 
 template <bool passBlocksThrough>
@@ -194,7 +193,7 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::
 }
 
 template <bool passBlocksThrough>
-bool SingleRowFetcher<passBlocksThrough>::indexIsValid() {
+bool SingleRowFetcher<passBlocksThrough>::indexIsValid() const {
   // TODO Hopefully we can get rid of this distinction later. When there are no
   // more old blocks, we can replace the old getSome interface easily,
   // specifically replace std::unique_ptr<AqlItemBlock> with a shared_ptr
