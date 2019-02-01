@@ -1,0 +1,19 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ta_SG{
+    Currencies{
+        MYR{
+            "RM",
+            "மலேஷியன் ரிங்கிட்",
+        }
+        SGD{
+            "$",
+            "சிங்கப்பூர் டாலர்",
+        }
+        USD{
+            "US$",
+            "அமெரிக்க டாலர்",
+        }
+    }
+    Version{"2.1.27.40"}
+}

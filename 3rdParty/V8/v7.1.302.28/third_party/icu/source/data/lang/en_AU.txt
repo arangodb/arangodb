@@ -1,0 +1,16 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+en_AU{
+    %%Parent{"en_001"}
+    Languages{
+        en_US{"United States English"}
+        ro_MD{"Moldovan"}
+    }
+    Types{
+        calendar{
+            dangi{"Korean Calendar"}
+            ethiopic{"Ethiopian Calendar"}
+        }
+    }
+    Version{"2.1.30.50"}
+}

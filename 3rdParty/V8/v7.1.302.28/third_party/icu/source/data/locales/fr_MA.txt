@@ -1,0 +1,54 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+fr_MA{
+    NumberElements{
+        latn{
+            symbols{
+                group{"."}
+            }
+        }
+    }
+    Version{"2.1.27.99"}
+    calendar{
+        gregorian{
+            AmPmMarkers{
+                "a.m.",
+                "p.m.",
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "jan.",
+                        "fév.",
+                        "mar.",
+                        "avr.",
+                        "mai",
+                        "jui.",
+                        "juil.",
+                        "août",
+                        "sept.",
+                        "oct.",
+                        "nov.",
+                        "déc.",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "jan.",
+                        "fév.",
+                        "mar.",
+                        "avr.",
+                        "mai",
+                        "jui.",
+                        "juil.",
+                        "août",
+                        "sept.",
+                        "oct.",
+                        "nov.",
+                        "déc.",
+                    }
+                }
+            }
+        }
+    }
+}

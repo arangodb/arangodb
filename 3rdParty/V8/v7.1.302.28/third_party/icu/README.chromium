@@ -1,0 +1,272 @@
+Name: icu
+URL: http://site.icu-project.org/
+Version: 58.1
+License: MIT
+Security Critical: yes
+
+Description:
+This directory contains the source code of ICU 58.1 for C/C++.
+
+A. How to update ICU
+
+1. Run "scripts/update.sh <version>" (e.g. 58-1).
+   This will download ICU from the upstream svn repository.
+   It does preserve Chrome-specific build files (*local.mk) and
+   converter files. (see section C)
+
+2. Update the source file lists for i18n and common
+   in icu.gypi and BUILD.gn. See the comments in the files.
+
+3. Review and apply patches/changes in "D. Local Modifications" if
+   necessary/applicable. Update patch files in patches/.
+
+4. Follow the instructions in section B on building ICU data files
+
+
+B. How to build ICU data files
+
+
+Pre-built data files are generated and checked in with the following steps
+
+1. icu data files for Chrome OS, Linux, Mac and Windows
+
+  a. Make a icu data build directory outside the Chromium source tree
+     and cd to that directory (say, $ICUBUILDIR).
+
+  b. Run
+
+    ${CHROME_ICU_TREE_TOP}/source/runConfigureICU Linux --disable-layout --disable-tests
+
+
+  c. Run make
+     'make' will fail  when pkgdata looks for css3transform.res. This
+     is expected. See http://bugs.icu-project.org/trac/ticket/10570
+
+  d. Run
+       ${CHROME_ICU_TREE_TOP}/scripts/trim_data.sh
+
+    The full locale data for Chrome's UI languages and their select variants
+    and the bare minimum locale data for other locales will be kept.
+
+  e. Run
+       ${CHROME_ICU_TREE_TOP}/scripts/make_data.sh
+
+     This makes icudt${version}l.dat.
+
+  f. Run
+       ${CHROME_ICU_TREE_TOP}/scripts/copy_data.sh
+
+     This copies the ICU data files for non-Android platforms
+     (both Little and Big Endian) to the following locations:
+
+     common/icudtl.dat
+     common/icudtb.dat
+
+  g. Run
+       ${CHROME_ICU_TREE_TOP}/android/patch_locale.sh
+
+    On top of trim_data.sh (step d), further cuts the data entries for Android.
+
+  h. Run
+       ${CHROME_ICU_TREE_TOP}/scripts/make_data.sh
+
+     This makes icudt${version}l.dat for Android.
+
+  i. Run
+       ${CHROME_ICU_TREE_TOP}/scripts/copy_data_android.sh
+
+     This copies the icu data file for Android to the following location:
+
+     android/icudtl.dat
+
+  j. Run
+       ${CHROME_ICU_TREE_TOP}/scripts/clean_up_data_source.sh
+
+     This reverts the result of trim_data.sh and patch_locale.sh and
+     make the tree ready for committing updated ICU data files for
+     non-Android and Android platforms.
+
+  k. Whenever data is updated (e.g timezone update), follow d ~ j as long
+  as the ICU build directory used in a ~ c is kept. Besides, icudt.dll for
+  Windows has to be udpated following the procedure described below.
+
+
+2. icu data dll for Windows (non-default build option)
+
+  Follow these steps to build windows/icudt.dll. By default, we set
+  icu_use_icu_data_flag to 1 and don't use this file.
+
+  a. check out a clean copy of icu58  from the upstream on Windows
+     outside the Chrome tree.
+
+    $ svn export --native-eol LF http://source.icu-project.org/repos/icu/icu/tags/release-58-1 ${SEPARATE_ICU_ROOT}/icu58
+
+  b. copy ${CHROME_ICU_ROOT}/common/icudtl.dat to
+     ${SEPARATE_ICU_ROOT}/source/data/in/icudt58l.dat
+  c. copy ${CHROME_ICU_ROOT}/source/data/makedata.mak to
+     ${SEPARATE_ICU_ROOT}/source/data/makedata.mak
+  c. In Visual Studio, open source/allinone/allinone.sln solution
+     in ${SEPARATE_ICU_ROOT}
+  d. Build 'makedata' target
+  e. icudt58.dll will be generated in ${SEPARATE_ICU_ROOT}/bin
+  f. Copy that icudt58.dll to ${CHROME_ICU_ROOT}/windows/icudt.dll
+     and check that in.
+
+3. Note on the locale data customization
+
+  - scripts/trim_data.sh
+      a. Trim the locale data for Chrome's UI langauges :
+         locales, lang, region, currency, zone
+      b. Trim the locale data for non-UI languages to the bare minimum :
+        ExemplarCharacters, LocaleScript, layout, and the name of the
+        language for a locale in its native language.
+      c. Remove the legacy Chinese character set-based collation
+         (big5han/gb2312han) that don't make any sense and nobdoy uses.
+
+  - android/patch_locale.sh
+      a. Make changes to source/data/{region,lang} to exclude these data
+         except the language and script names of zh_Hans and zh_Hant.
+      b. Remove exemplar cities in timezone data (data/zone).
+      c. Keep only the minimal calendar data in data/locales.
+      d. Include currency display names for a smaller subset of currencies.
+      e. Minimize the locale data for 9 locales to which Chrome on Android
+         is not localized.
+      f. Also apply android/brkitr.patch
+
+  - android/brkitr.patch
+      Do not use the C+J dictionary for Chinese/Japanese segmentation
+      to reduce the data size. Adjust word.txt and a few other files.
+
+C. Chromium-specific data build files and converters
+
+They're preserved in step A.1 above. In general, there's no need to touch
+them when updating ICU.
+
+1. source/data/mappings
+  - convrtrs.txt : Lists encodings and aliases required by the WHATWG
+    Encoding spec plus a few extra (see the file as to why).
+
+  - ucmlocal.txt : to list only converters we need.
+
+  - *html.ucm: Mapping files per WHATWG encoding standards for EUC-JP,
+    Shift_JIS, Big5 (Big5+Big5HKSCS), EUC-KR and all the single byte encodings.
+    They're generated with scripts/{eucjp,sjis,big5,euckr,single_byte}_gen.sh.
+
+  - gb18030.ucm and windows-936.ucm
+    gb_table.patch was applied for the following changes.
+    a. Map \xA3\xA0 to U+3000 instead of U+E5E5 in gb18030 and windows-936 per
+    the encoding spec (one-way mapping in toUnicode direction).
+    b. Map \xA8\xBF to U+01F9 instead of U+E7C8. Add one-way map
+    from U+1E3F to \xA8\xBC (windows-936/GBK).
+       See https://www.w3.org/Bugs/Public/show_bug.cgi?id=28740#c3
+
+2. source/data/*/*local.mk
+  - List locales of interest to Chromium
+   a. Chrome's UI languages
+   b. Variants of UI languages
+   c. Other locales in Accept-Language list : will only have bare minimum
+   locale data
+
+  - brklocal.mk drops all *loose.brk to save space ( ~370kB) for now.
+
+3. source/data/brkitr
+  - khmerdict.txt: Abridged Khmer dictionary. See
+    http://bugs.icu-project.org/trac/ticket/9451
+  - word_ja.txt (used only on Android)
+    Added for Japanese-specific word-breaking without the C+J dictionary.
+
+4. source/data/trnslit/css3transform.txt
+  - Handle Greek case conversion with a transliterator
+
+5. Add {an,ast,ckb,ku,tg,wa}.txt to source/data/{locale,lang}
+   with the minimal locale data necessary for spellchecker and
+   and language menus. Also change the English display name
+   for ckb to 'Kurdish (Arabic)'.
+
+D. Local Modifications
+
+1. Applied locale data patches from Google obtained by diff'ing
+   the upstream copy and Google's internal copy for source/data
+
+  - patches/locale_google.patch:
+    * Google's internal ICU locale changes
+    * Simpler region names for Hong Kong and Macau in all locales
+    * Currency signs in ru and uk locales (do not include 'tr' locale changes)
+    * AM/PM, midnight, noon formatting for a few Indian locales
+    * Timezone name changes in Korean and Chinese locales
+
+  - patches/locale1.patch: Minor fixes for Korean
+
+
+2. Breakiterator patches
+  - patches/linebrk.patch
+    a. Drop *_loose.txt for all locales and use the corresponding normal.txt
+    b. Drop local patches we used to have for the following issues. They'll
+       be dealt with in the upstream (Unicode/CLDR).
+       http://unicode.org/cldr/trac/ticket/6557
+       http://unicode.org/cldr/trac/ticket/4200 (http://crbug.com/39779)
+
+  - patches/wordbrk.patch for word.txt
+    a. Move full stops (U+002E, U+FF0E) from MidNumLet to MidNum so that
+       FQDN labels can be split at '.'
+    b. Move fullwidth digits (U+FF10 - U+FF19) from Ideographic to Numeric.
+       See http://unicode.org/cldr/trac/ticket/6555
+
+  - patches/khmer-dictbe.patch
+    Adjust parameters to use a smaller Khmer dictionary (khmerdict.txt).
+    http://bugs.icu-project.org/trac/ticket/9451
+
+  - Add several common Chinese words that were dropped previously to
+    source/data/cjdict/brkitr/cjdict.txt
+    patch: patches/cjdict.patch
+    upstream bug: http://bugs.icu-project.org/trac/ticket/10888
+
+3. Timezone data update
+  Run scripts/update_tz.sh to grab the latest version of the
+  following timezone data files and put them in source/data/misc
+
+     metaZones.txt
+     timezoneTypes.txt
+     windowsZones.txt
+     zoneinfo64.txt
+
+  As of Dec 7, 2016, the latest version is 2016j and the above files
+  are available at
+  http://source.icu-project.org/repos/icu/data/trunk/tzdata/icunew/2016j/44/
+
+4. Build-related changes
+
+  - patches/wpo.patch (only needed when icudata dll is used).
+    upstream bugs : http://bugs.icu-project.org/trac/ticket/8043
+                    http://bugs.icu-project.org/trac/ticket/5701
+  - patches/vscomp.patch for building with Visual Studio on Windows:
+    do not use WINDOWS_LOCALE_API in locmap.c
+
+  - patches/data.build.patch :
+      Remove unnecessary resources : unames, collator rule source
+  - patches/data.build.win.patch :
+      Windows-only data build patch.
+  - patches/data_symb.patch :
+      Put ICU_DATA_ENTRY_POINT(icudtXX_dat) in common when we use
+      the icu data file or icudt.dll
+
+5. Add back UTF-32 converters temporarily even when
+   UCONFIG_ONLY_HTML_CONVERSION is defined until UTF-32 is
+   removed from Blink. See
+   http://www.icu-project.org/trac/ticket/11296 and
+   http://crbug.com/417850
+
+   - patches/utf32.patch
+
+6. Fix four bugs found in 58.1 that will fixed in 58.1 maintenance release
+
+   upstream bugs:
+     http://www.icu-project.org/trac/ticket/12825 (scriptset)
+     http://www.icu-project.org/trac/ticket/12815 (uspoof)
+     http://www.icu-project.org/trac/ticket/12822 (without std::string on Win)
+     http://www.icu-project.org/trac/ticket/12832 (greek_upper)
+
+   - patches/scriptset.patch
+   - patches/uspoof.patch
+   - patches/digilist.patch
+   - patches/greek_upper.patch

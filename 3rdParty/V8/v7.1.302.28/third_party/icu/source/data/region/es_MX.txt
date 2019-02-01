@@ -1,0 +1,30 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+es_MX{
+    %%Parent{"es_419"}
+    Countries{
+        011{"África Occidental"}
+        014{"África Oriental"}
+        015{"África del Norte"}
+        017{"África Central"}
+        018{"África del Sur"}
+        030{"Asia Oriental"}
+        034{"Asia del Sur"}
+        035{"Sudeste Asiático"}
+        039{"Europa del Sur"}
+        143{"Asia Central"}
+        145{"Asia Occidental"}
+        151{"Europa Oriental"}
+        154{"Europa del Norte"}
+        155{"Europa Occidental"}
+        BA{"Bosnia y Herzegovina"}
+        TA{"Tristán de Acuña"}
+        TL{"Timor-Leste"}
+        UM{"Islas Ultramarinas Menores de Estados Unidos"}
+    }
+    Countries%short{
+        GB{"RU"}
+        US{"EE. UU."}
+    }
+    Version{"2.1.28.76"}
+}

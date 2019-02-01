@@ -1,0 +1,82 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+lrc{
+    Currencies{
+        BRL{
+            "R$",
+            "رئال بئرئزیل",
+        }
+        CNY{
+            "CN¥",
+            "یوان چین",
+        }
+        EUR{
+            "€",
+            "یورو",
+        }
+        GBP{
+            "£",
+            "پوند بئریتانیا",
+        }
+        INR{
+            "₹",
+            "روٙپیه هئن",
+        }
+        JPY{
+            "JP¥",
+            "یئن جاپوٙن",
+        }
+        RUB{
+            "RUB",
+            "روٙبل روٙسیه",
+        }
+        USD{
+            "US$",
+            "USD",
+        }
+        XXX{
+            "XXX",
+            "پیل نادیار",
+        }
+    }
+    Currencies%narrow{
+        BRL{"R$"}
+        CNY{"¥"}
+        EUR{"€"}
+        GBP{"£"}
+        INR{"₹"}
+        JPY{"¥"}
+        RUB{"₽"}
+        USD{"$"}
+    }
+    CurrencyPlurals{
+        BRL{
+            other{"رئال بئرئزیل"}
+        }
+        CNY{
+            other{"یوان چین"}
+        }
+        EUR{
+            other{"یورو"}
+        }
+        GBP{
+            other{"پوند بئریتانیا"}
+        }
+        INR{
+            other{"روٙپیه هئن"}
+        }
+        JPY{
+            other{"یئن جاپوٙن"}
+        }
+        RUB{
+            other{"روٙبل روٙسیه"}
+        }
+        USD{
+            other{"USD"}
+        }
+        XXX{
+            other{"پیل نادیار"}
+        }
+    }
+    Version{"2.1.27.40"}
+}

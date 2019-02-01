@@ -1,0 +1,5 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+sr_Latn_YU{
+    "%%ALIAS"{"sr_Latn_RS"}
+}

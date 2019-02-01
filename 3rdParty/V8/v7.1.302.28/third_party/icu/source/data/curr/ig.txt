@@ -1,0 +1,18 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ig{
+    Currencies{
+        CVE{
+            "CVE",
+            "Escudo Caboverdiano",
+        }
+        NGN{
+            "₦",
+            "Naịra",
+        }
+    }
+    CurrencyUnitPatterns{
+        other{"{0} {1}"}
+    }
+    Version{"2.1.27.84"}
+}

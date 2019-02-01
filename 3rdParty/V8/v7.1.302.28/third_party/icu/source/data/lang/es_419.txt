@@ -1,0 +1,61 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+es_419{
+    Keys{
+        lb{"salto de línea"}
+        ms{"sm"}
+    }
+    Languages{
+        ace{"achenés"}
+        ady{"adigeo"}
+        arp{"arapajó"}
+        eu{"vasco"}
+        grc{"griego clásico"}
+        gu{"gujarati"}
+        hsb{"sorbio alto"}
+        ht{"haitiano"}
+        kea{"Criollo (Cabo Verde)"}
+        lo{"laosiano"}
+        luo{"luo"}
+        prg{"prusiano antiguo"}
+        rm{"retorrománico"}
+        shu{"árabe (Chad)"}
+        sw{"swahili"}
+        sw_CD{"swahili (Congo)"}
+        tzm{"tamazight del Marruecos Central"}
+        vai{"vai"}
+        wal{"walamo"}
+        wuu{"wu"}
+        yi{"yídish"}
+        zun{"zuni"}
+    }
+    Languages%short{
+        en_GB{"inglés (R.U.)"}
+    }
+    Languages%variant{
+        ps{"pashtún"}
+        ug{"uighur"}
+    }
+    Scripts{
+        Hrkt{"katakana o hiragana"}
+        Laoo{"lao"}
+        Latn{"latín"}
+    }
+    Types{
+        lb{
+            loose{"salto de línea flexible"}
+            strict{"salto de línea estricto"}
+        }
+        ms{
+            uksystem{"sistema inglés"}
+        }
+    }
+    Version{"2.1.27.99"}
+    characterLabelPattern{
+        enclosed{"{0} — Adjunto"}
+        extended{"{0} — Extendido"}
+    }
+    codePatterns{
+        script{"Alfabeto: {0}"}
+    }
+}

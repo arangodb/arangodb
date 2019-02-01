@@ -1,0 +1,10 @@
+﻿# © 2016 and later: Unicode, Inc. and others.
+# License & terms of use: http://www.unicode.org/copyright.html#License
+#
+# File: xh_ar.txt
+# Generated from CLDR
+#
+
+::xh-xh_FONIPA;
+::und_FONIPA-ar;
+

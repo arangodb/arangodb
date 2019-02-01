@@ -1,0 +1,12 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+en_BZ{
+    %%Parent{"en_001"}
+    Currencies{
+        BZD{
+            "$",
+            "Belize Dollar",
+        }
+    }
+    Version{"2.1.27.40"}
+}

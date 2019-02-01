@@ -1,0 +1,1305 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+br{
+    AuxExemplarCharacters{"[á à ă â å ä ã ā æ c ç é è ĕ ë ē í ì ĭ î ï ī ó ò ŏ ô ö ø ō œ q ú ŭ û ü ū ÿ]"}
+    Ellipsis{
+        final{"{0}…"}
+        initial{"…{0}"}
+        medial{"{0}…{1}"}
+        word-final{"{0} …"}
+        word-initial{"… {0}"}
+        word-medial{"{0} … {1}"}
+    }
+    ExemplarCharacters{"[a b {ch} {cʼh} d e ê f g h i j k l m n ñ o p r s t u ù v w x y z]"}
+    ExemplarCharactersIndex{"[A B C D E F G H I J K L M N O P R S T U V W X Y Z]"}
+    MoreInformation{"?"}
+    NumberElements{
+        arab{
+            symbols{
+                timeSeparator{":"}
+            }
+        }
+        default{"latn"}
+        latn{
+            miscPatterns{
+                atLeast{"⩾{0}"}
+                range{"{0}–{1}"}
+            }
+            patterns{
+                accountingFormat{"#,##0.00 ¤"}
+                currencyFormat{"#,##0.00 ¤"}
+                decimalFormat{"#,##0.###"}
+                percentFormat{"#,##0 %"}
+                scientificFormat{"#E0"}
+            }
+            symbols{
+                decimal{","}
+                exponential{"E"}
+                group{" "}
+                infinity{"∞"}
+                list{";"}
+                minusSign{"-"}
+                nan{"NaN"}
+                perMille{"‰"}
+                percentSign{"%"}
+                plusSign{"+"}
+                superscriptingExponent{"×"}
+                timeSeparator{":"}
+            }
+        }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
+    }
+    Version{"2.1.28.76"}
+    calendar{
+        generic{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "G y MMMM d, EEEE",
+                "G y MMMM d",
+                "G y MMM d",
+                "GGGGG y-MM-dd",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                E{"ccc"}
+                Ed{"d, E"}
+                Gy{"G y"}
+                GyMMM{"G y MMM"}
+                GyMMMEd{"G y MMM d, E"}
+                GyMMMd{"G y MMM d"}
+                M{"L"}
+                MEd{"MM-dd, E"}
+                MMM{"LLL"}
+                MMMEd{"MMM d, E"}
+                MMMMd{"MMMM d"}
+                MMMd{"MMM d"}
+                Md{"MM-dd"}
+                d{"d"}
+                y{"G y"}
+                yyyy{"G y"}
+                yyyyM{"GGGGG y-MM"}
+                yyyyMEd{"GGGGG y-MM-dd, E"}
+                yyyyMMM{"G y MMM"}
+                yyyyMMMEd{"G y MMM d, E"}
+                yyyyMMMM{"G y MMMM"}
+                yyyyMMMd{"G y MMM d"}
+                yyyyMd{"GGGGG y-MM-dd"}
+                yyyyQQQ{"G y QQQ"}
+                yyyyQQQQ{"G y QQQQ"}
+            }
+            intervalFormats{
+                M{
+                    M{"MM–MM"}
+                }
+                MEd{
+                    M{"MM-dd, E – MM-dd, E"}
+                    d{"MM-dd, E – MM-dd, E"}
+                }
+                MMM{
+                    M{"LLL–LLL"}
+                }
+                MMMEd{
+                    M{"MMM d, E – MMM d, E"}
+                    d{"MMM d, E – MMM d, E"}
+                }
+                MMMd{
+                    M{"MMM d – MMM d"}
+                    d{"MMM d–d"}
+                }
+                Md{
+                    M{"MM-dd – MM-dd"}
+                    d{"MM-dd – MM-dd"}
+                }
+                d{
+                    d{"d–d"}
+                }
+                fallback{"{0} – {1}"}
+                y{
+                    y{"G y–y"}
+                }
+                yM{
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
+                yMEd{
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                yMMM{
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                yMMMEd{
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                yMMMM{
+                    M{"G y MMMM–MMMM"}
+                    y{"G y MMMM – y MMMM"}
+                }
+                yMMMd{
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                yMd{
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
+                }
+            }
+        }
+        gregorian{
+            AmPmMarkers{
+                "A.M.",
+                "G.M.",
+            }
+            AmPmMarkersAbbr{
+                "A.M.",
+                "G.M.",
+            }
+            AmPmMarkersNarrow{
+                "am",
+                "gm",
+            }
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "y MMMM d, EEEE",
+                "y MMMM d",
+                "y MMM d",
+                "y-MM-dd",
+                "{1} {0}",
+                "{1} 'da' {0}",
+                "{1} 'da' {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            appendItems{
+                Timezone{"{0} {1}"}
+            }
+            availableFormats{
+                E{"ccc"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
+                Ed{"E d"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
+                Gy{"G y"}
+                GyMMM{"G y MMM"}
+                GyMMMEd{"G y MMM d, E"}
+                GyMMMd{"G y MMM d"}
+                H{"HH"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                Hmsv{"HH:mm:ss v"}
+                Hmv{"HH:mm v"}
+                M{"MM"}
+                MEd{"E dd/MM"}
+                MMM{"LLL"}
+                MMMEd{"E d MMM"}
+                MMMMW{
+                    few{"'week' W 'of' MMM"}
+                    many{"'week' W 'of' MMM"}
+                    one{"'week' W 'of' MMM"}
+                    other{"'week' W 'of' MMM"}
+                    two{"'week' W 'of' MMM"}
+                }
+                MMMMd{"MMMM d"}
+                MMMd{"d MMM"}
+                Md{"dd/MM"}
+                d{"d"}
+                h{"h a"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
+                hmsv{"h:mm:ss a v"}
+                hmv{"h:mm a v"}
+                ms{"mm:ss"}
+                y{"y"}
+                yM{"MM/y"}
+                yMEd{"E dd/MM/y"}
+                yMMM{"MMM y"}
+                yMMMEd{"E d MMM y"}
+                yMMMM{"y MMMM"}
+                yMMMd{"d MMM y"}
+                yMd{"dd/MM/y"}
+                yQQQ{"QQQ y"}
+                yQQQQ{"QQQQ y"}
+                yw{
+                    few{"'week' w 'of' y"}
+                    many{"'week' w 'of' y"}
+                    one{"'week' w 'of' y"}
+                    other{"'week' w 'of' y"}
+                    two{"'week' w 'of' y"}
+                }
+            }
+            dayNames{
+                format{
+                    abbreviated{
+                        "Sul",
+                        "Lun",
+                        "Meu.",
+                        "Mer.",
+                        "Yaou",
+                        "Gwe.",
+                        "Sad.",
+                    }
+                    narrow{
+                        "Su",
+                        "L",
+                        "Mz",
+                        "Mc",
+                        "Y",
+                        "G",
+                        "Sa",
+                    }
+                    short{
+                        "Sul",
+                        "Lun",
+                        "Meu.",
+                        "Mer.",
+                        "Yaou",
+                        "Gwe.",
+                        "Sad.",
+                    }
+                    wide{
+                        "Sul",
+                        "Lun",
+                        "Meurzh",
+                        "Mercʼher",
+                        "Yaou",
+                        "Gwener",
+                        "Sadorn",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "Sul",
+                        "Lun",
+                        "Meu.",
+                        "Mer.",
+                        "Yaou",
+                        "Gwe.",
+                        "Sad.",
+                    }
+                    narrow{
+                        "Su",
+                        "L",
+                        "Mz",
+                        "Mc",
+                        "Y",
+                        "G",
+                        "Sa",
+                    }
+                    short{
+                        "Sul",
+                        "Lun",
+                        "Meu.",
+                        "Mer.",
+                        "Yaou",
+                        "Gwe.",
+                        "Sad.",
+                    }
+                    wide{
+                        "Sul",
+                        "Lun",
+                        "Meurzh",
+                        "Mercʼher",
+                        "Yaou",
+                        "Gwener",
+                        "Sadorn",
+                    }
+                }
+            }
+            dayPeriod{
+                stand-alone{
+                    abbreviated{
+                        am{"A.M."}
+                        pm{"G.M."}
+                    }
+                    narrow{
+                        am{"A.M."}
+                        pm{"G.M."}
+                    }
+                    wide{
+                        am{"A.M."}
+                        pm{"G.M."}
+                    }
+                }
+            }
+            eras{
+                abbreviated{
+                    "a-raok J.K.",
+                    "goude J.K.",
+                }
+                abbreviated%variant{
+                    "BCE",
+                    "CE",
+                }
+                narrow{
+                    "a-raok J.K.",
+                    "goude J.K.",
+                }
+                wide{
+                    "a-raok Jezuz-Krist",
+                    "goude Jezuz-Krist",
+                }
+                wide%variant{
+                    "BCE",
+                    "CE",
+                }
+            }
+            intervalFormats{
+                H{
+                    H{"HH–HH"}
+                }
+                Hm{
+                    H{"HH:mm–HH:mm"}
+                    m{"HH:mm–HH:mm"}
+                }
+                Hmv{
+                    H{"HH:mm–HH:mm v"}
+                    m{"HH:mm–HH:mm v"}
+                }
+                Hv{
+                    H{"HH–HH v"}
+                }
+                M{
+                    M{"MM–MM"}
+                }
+                MEd{
+                    M{"E dd/MM – E dd/MM"}
+                    d{"E dd/MM – E dd/MM"}
+                }
+                MMM{
+                    M{"LLL–LLL"}
+                }
+                MMMEd{
+                    M{"E d MMM – E d MMM"}
+                    d{"E d MMM – E d MMM"}
+                }
+                MMMd{
+                    M{"d MMM – d MMM"}
+                    d{"d–d MMM"}
+                }
+                Md{
+                    M{"dd/MM – dd/MM"}
+                    d{"dd/MM – dd/MM"}
+                }
+                d{
+                    d{"d–d"}
+                }
+                fallback{"{0} – {1}"}
+                h{
+                    a{"h a – h a"}
+                    h{"h–h a"}
+                }
+                hm{
+                    a{"h:mm a – h:mm a"}
+                    h{"h:mm–h:mm a"}
+                    m{"h:mm–h:mm a"}
+                }
+                hmv{
+                    a{"h:mm a – h:mm a v"}
+                    h{"h:mm–h:mm a v"}
+                    m{"h:mm–h:mm a v"}
+                }
+                hv{
+                    a{"h a – h a v"}
+                    h{"h–h a v"}
+                }
+                y{
+                    y{"y–y"}
+                }
+                yM{
+                    M{"MM/y – MM/y"}
+                    y{"MM/y – MM/y"}
+                }
+                yMEd{
+                    M{"E dd/MM/y – E dd/MM/y"}
+                    d{"E dd/MM/y – E dd/MM/y"}
+                    y{"E dd/MM/y – E dd/MM/y"}
+                }
+                yMMM{
+                    M{"MMM – MMM y"}
+                    y{"MMM y – MMM y"}
+                }
+                yMMMEd{
+                    M{"E d MMM – E d MMM y"}
+                    d{"E d MMM – E d MMM y"}
+                    y{"E d MMM y – E d MMM y"}
+                }
+                yMMMM{
+                    M{"MMMM – MMMM y"}
+                    y{"MMMM y – MMMM y"}
+                }
+                yMMMd{
+                    M{"d MMM – d MMM y"}
+                    d{"d–d MMM y"}
+                    y{"d MMM y – d MMM y"}
+                }
+                yMd{
+                    M{"dd/MM/y – dd/MM/y"}
+                    d{"dd/MM/y – dd/MM/y"}
+                    y{"dd/MM/y – dd/MM/y"}
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "Gen.",
+                        "Cʼhwe.",
+                        "Meur.",
+                        "Ebr.",
+                        "Mae",
+                        "Mezh.",
+                        "Goue.",
+                        "Eost",
+                        "Gwen.",
+                        "Here",
+                        "Du",
+                        "Kzu.",
+                    }
+                    narrow{
+                        "01",
+                        "02",
+                        "03",
+                        "04",
+                        "05",
+                        "06",
+                        "07",
+                        "08",
+                        "09",
+                        "10",
+                        "11",
+                        "12",
+                    }
+                    wide{
+                        "Genver",
+                        "Cʼhwevrer",
+                        "Meurzh",
+                        "Ebrel",
+                        "Mae",
+                        "Mezheven",
+                        "Gouere",
+                        "Eost",
+                        "Gwengolo",
+                        "Here",
+                        "Du",
+                        "Kerzu",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "Gen.",
+                        "Cʼhwe.",
+                        "Meur.",
+                        "Ebr.",
+                        "Mae",
+                        "Mezh.",
+                        "Goue.",
+                        "Eost",
+                        "Gwen.",
+                        "Here",
+                        "Du",
+                        "Ker.",
+                    }
+                    narrow{
+                        "01",
+                        "02",
+                        "03",
+                        "04",
+                        "05",
+                        "06",
+                        "07",
+                        "08",
+                        "09",
+                        "10",
+                        "11",
+                        "12",
+                    }
+                    wide{
+                        "Genver",
+                        "Cʼhwevrer",
+                        "Meurzh",
+                        "Ebrel",
+                        "Mae",
+                        "Mezheven",
+                        "Gouere",
+                        "Eost",
+                        "Gwengolo",
+                        "Here",
+                        "Du",
+                        "Kerzu",
+                    }
+                }
+            }
+            quarters{
+                format{
+                    abbreviated{
+                        "1añ trim.",
+                        "2l trim.",
+                        "3e trim.",
+                        "4e trim.",
+                    }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                    }
+                    wide{
+                        "1añ trimiziad",
+                        "2l trimiziad",
+                        "3e trimiziad",
+                        "4e trimiziad",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "1añ trim.",
+                        "2l trim.",
+                        "3e trim.",
+                        "4e trim.",
+                    }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                    }
+                    wide{
+                        "1añ trimiziad",
+                        "2l trimiziad",
+                        "3e trimiziad",
+                        "4e trimiziad",
+                    }
+                }
+            }
+        }
+        roc{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "G y MMMM d, EEEE",
+                "G y MMMM d",
+                "G y MMM d",
+                "GGGGG y-MM-dd",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            eras{
+                abbreviated{
+                    "a-raok R.S.",
+                    "R.S.",
+                }
+                narrow{
+                    "a-raok R.S.",
+                    "R.S.",
+                }
+                wide{
+                    "a-raok Republik Sina",
+                    "Republik Sina",
+                }
+            }
+            intervalFormats{
+                fallback{"{0} – {1}"}
+            }
+        }
+    }
+    delimiters{
+        alternateQuotationEnd{"”"}
+        alternateQuotationStart{"“"}
+        quotationEnd{"»"}
+        quotationStart{"«"}
+    }
+    fields{
+        day{
+            dn{"deiz"}
+            relative{
+                "-1"{"decʼh"}
+                "-2"{"dercʼhent-decʼh"}
+                "0"{"hiziv"}
+                "1"{"warcʼhoazh"}
+            }
+            relativeTime{
+                future{
+                    few{"a-benn {0} deiz"}
+                    many{"a-benn {0} a zeizioù"}
+                    one{"a-benn {0} deiz"}
+                    other{"a-benn {0} deiz"}
+                    two{"a-benn {0} zeiz"}
+                }
+                past{
+                    few{"{0} deiz zo"}
+                    many{"{0} a zeizioù zo"}
+                    one{"{0} deiz zo"}
+                    other{"{0} deiz zo"}
+                    two{"{0} zeiz zo"}
+                }
+            }
+        }
+        day-narrow{
+            dn{"d"}
+            relative{
+                "-1"{"decʼh"}
+                "-2"{"dercʼhent-decʼh"}
+                "0"{"hiziv"}
+                "1"{"warcʼhoazh"}
+            }
+            relativeTime{
+                future{
+                    few{"+{0} d"}
+                    many{"+{0} d"}
+                    one{"+{0} d"}
+                    other{"+{0} d"}
+                    two{"+{0} d"}
+                }
+                past{
+                    few{"-{0} d"}
+                    many{"-{0} d"}
+                    one{"-{0} d"}
+                    other{"-{0} d"}
+                    two{"-{0} d"}
+                }
+            }
+        }
+        day-short{
+            dn{"d"}
+            relative{
+                "-1"{"decʼh"}
+                "-2"{"dercʼhent-decʼh"}
+                "0"{"hiziv"}
+                "1"{"warcʼhoazh"}
+            }
+            relativeTime{
+                future{
+                    few{"a-benn {0} d"}
+                    many{"a-benn {0} d"}
+                    one{"a-benn {0} d"}
+                    other{"a-benn {0} d"}
+                    two{"a-benn {0} d"}
+                }
+                past{
+                    few{"{0} d zo"}
+                    many{"{0} d zo"}
+                    one{"{0} d zo"}
+                    other{"{0} d zo"}
+                    two{"{0} d zo"}
+                }
+            }
+        }
+        dayperiod{
+            dn{"AM/GM"}
+        }
+        era{
+            dn{"amzervezh"}
+        }
+        fri{
+            relative{
+                "-1"{"Digwener diwezhañ"}
+                "0"{"ar Gwener-mañ"}
+                "1"{"Digwener a zeu"}
+            }
+        }
+        fri-narrow{
+            relative{
+                "-1"{"G diwezhañ"}
+                "0"{"G-mañ"}
+                "1"{"G a zeu"}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"Gwe. diwezhañ"}
+                "0"{"Gwe.-mañ"}
+                "1"{"Gwe. a zeu"}
+            }
+        }
+        hour{
+            dn{"eur"}
+            relativeTime{
+                future{
+                    few{"a-benn {0} eur"}
+                    many{"a-benn {0} a eurioù"}
+                    one{"a-benn {0} eur"}
+                    other{"a-benn {0} eur"}
+                    two{"a-benn {0} eur"}
+                }
+                past{
+                    few{"{0} eur zo"}
+                    many{"{0} a eurioù zo"}
+                    one{"{0} eur zo"}
+                    other{"{0} eur zo"}
+                    two{"{0} eur zo"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"e"}
+            relativeTime{
+                future{
+                    few{"+{0} h"}
+                    many{"+{0} h"}
+                    one{"+{0} h"}
+                    other{"+{0} h"}
+                    two{"+{0} h"}
+                }
+                past{
+                    few{"-{0} h"}
+                    many{"-{0} h"}
+                    one{"-{0} h"}
+                    other{"-{0} h"}
+                    two{"-{0} h"}
+                }
+            }
+        }
+        hour-short{
+            dn{"e"}
+            relativeTime{
+                future{
+                    few{"a-benn {0} e"}
+                    many{"a-benn {0} e"}
+                    one{"a-benn {0} e"}
+                    other{"a-benn {0} e"}
+                    two{"a-benn {0} e"}
+                }
+                past{
+                    few{"{0} e zo"}
+                    many{"{0} e zo"}
+                    one{"{0} e zo"}
+                    other{"{0} e zo"}
+                    two{"{0} e zo"}
+                }
+            }
+        }
+        minute{
+            dn{"munut"}
+            relativeTime{
+                future{
+                    few{"a-benn {0} munut"}
+                    many{"a-benn {0} a vunutoù"}
+                    one{"a-benn {0} munut"}
+                    other{"a-benn {0} munut"}
+                    two{"a-benn {0} vunut"}
+                }
+                past{
+                    few{"{0} munut zo"}
+                    many{"{0} a vunutoù zo"}
+                    one{"{0} munut zo"}
+                    other{"{0} munut zo"}
+                    two{"{0} vunut zo"}
+                }
+            }
+        }
+        minute-narrow{
+            dn{"min"}
+            relativeTime{
+                future{
+                    few{"+{0} min"}
+                    many{"+{0} min"}
+                    one{"+{0} min"}
+                    other{"+{0} min"}
+                    two{"+{0} min"}
+                }
+                past{
+                    few{"-{0} min"}
+                    many{"-{0} min"}
+                    one{"-{0} min"}
+                    other{"-{0} min"}
+                    two{"-{0} min"}
+                }
+            }
+        }
+        minute-short{
+            dn{"min"}
+            relativeTime{
+                future{
+                    few{"a-benn {0} min"}
+                    many{"a-benn {0} min"}
+                    one{"a-benn {0} min"}
+                    other{"a-benn {0} min"}
+                    two{"a-benn {0} min"}
+                }
+                past{
+                    few{"{0} min zo"}
+                    many{"{0} min zo"}
+                    one{"{0} min zo"}
+                    other{"{0} min zo"}
+                    two{"{0} min zo"}
+                }
+            }
+        }
+        mon{
+            relative{
+                "-1"{"Dilun diwezhañ"}
+                "0"{"al Lun-mañ"}
+                "1"{"Dilun a zeu"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"L diwezhañ"}
+                "0"{"L-mañ"}
+                "1"{"L a zeu"}
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"Lun diwezhañ"}
+                "0"{"Lun-mañ"}
+                "1"{"Lun a zeu"}
+            }
+        }
+        month{
+            dn{"miz"}
+            relative{
+                "-1"{"ar miz diaraok"}
+                "0"{"ar miz-mañ"}
+                "1"{"ar miz a zeu"}
+            }
+            relativeTime{
+                future{
+                    few{"a-benn {0} miz"}
+                    many{"a-benn {0} a vizioù"}
+                    one{"a-benn {0} miz"}
+                    other{"a-benn {0} miz"}
+                    two{"a-benn {0} viz"}
+                }
+                past{
+                    few{"{0} miz zo"}
+                    many{"{0} a vizioù zo"}
+                    one{"{0} miz zo"}
+                    other{"{0} miz zo"}
+                    two{"{0} viz zo"}
+                }
+            }
+        }
+        month-narrow{
+            dn{"miz"}
+            relative{
+                "-1"{"ar miz diaraok"}
+                "0"{"ar miz-mañ"}
+                "1"{"ar miz a zeu"}
+            }
+            relativeTime{
+                future{
+                    few{"+{0} miz"}
+                    many{"+{0} miz"}
+                    one{"+{0} miz"}
+                    other{"+{0} miz"}
+                    two{"+{0} miz"}
+                }
+                past{
+                    few{"-{0} miz"}
+                    many{"-{0} miz"}
+                    one{"-{0} miz"}
+                    other{"-{0} miz"}
+                    two{"-{0} miz"}
+                }
+            }
+        }
+        month-short{
+            dn{"miz"}
+            relative{
+                "-1"{"ar miz diaraok"}
+                "0"{"ar miz-mañ"}
+                "1"{"ar miz a zeu"}
+            }
+            relativeTime{
+                future{
+                    few{"a-benn {0} miz"}
+                    many{"a-benn {0} a vizioù"}
+                    one{"a-benn {0} miz"}
+                    other{"a-benn {0} miz"}
+                    two{"a-benn {0} viz"}
+                }
+                past{
+                    few{"{0} miz zo"}
+                    many{"{0} a vizioù zo"}
+                    one{"{0} miz zo"}
+                    other{"{0} miz zo"}
+                    two{"{0} viz zo"}
+                }
+            }
+        }
+        quarter{
+            dn{"trimiziad"}
+            relativeTime{
+                future{
+                    few{"a-benn {0} zrimiziad"}
+                    many{"a-benn {0} a drimiziadoù"}
+                    one{"a-benn {0} trimiziad"}
+                    other{"a-benn {0} trimiziad"}
+                    two{"a-benn {0} drimiziad"}
+                }
+                past{
+                    few{"{0} zrimiziad zo"}
+                    many{"{0} a zrimiziadoù zo"}
+                    one{"{0} trimiziad zo"}
+                    other{"{0} trimiziad zo"}
+                    two{"{0} drimiziad zo"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"trim."}
+            relativeTime{
+                future{
+                    few{"+{0} trim."}
+                    many{"+{0} trim."}
+                    one{"+{0} trim."}
+                    other{"+{0} trim."}
+                    two{"+{0} trim."}
+                }
+                past{
+                    few{"-{0} trim."}
+                    many{"-{0} trim."}
+                    one{"-{0} trim."}
+                    other{"-{0} trim."}
+                    two{"-{0} trim."}
+                }
+            }
+        }
+        quarter-short{
+            dn{"trim."}
+            relativeTime{
+                future{
+                    few{"a-benn {0} trim."}
+                    many{"a-benn {0} trim."}
+                    one{"a-benn {0} trim."}
+                    other{"a-benn {0} trim."}
+                    two{"a-benn {0} trim."}
+                }
+                past{
+                    few{"{0} trim. zo"}
+                    many{"{0} trim. zo"}
+                    one{"{0} trim. zo"}
+                    other{"{0} trim. zo"}
+                    two{"{0} trim. zo"}
+                }
+            }
+        }
+        sat{
+            relative{
+                "-1"{"Disadorn diwezhañ"}
+                "0"{"ar Sadorn-mañ"}
+                "1"{"Disadorn a zeu"}
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"Sa diwezhañ"}
+                "0"{"Sa-mañ"}
+                "1"{"Sa a zeu"}
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"Sad. diwezhañ"}
+                "0"{"Sad.-mañ"}
+                "1"{"Sad. a zeu"}
+            }
+        }
+        second{
+            dn{"eilenn"}
+            relative{
+                "0"{"bremañ"}
+            }
+            relativeTime{
+                future{
+                    few{"a-benn {0} eilenn"}
+                    many{"a-benn {0} a eilennoù"}
+                    one{"a-benn {0} eilenn"}
+                    other{"a-benn {0} eilenn"}
+                    two{"a-benn {0} eilenn"}
+                }
+                past{
+                    few{"{0} eilenn zo"}
+                    many{"{0} eilenn zo"}
+                    one{"{0} eilenn zo"}
+                    other{"{0} eilenn zo"}
+                    two{"{0} eilenn zo"}
+                }
+            }
+        }
+        second-narrow{
+            dn{"s"}
+            relative{
+                "0"{"brem."}
+            }
+            relativeTime{
+                future{
+                    few{"+{0} s"}
+                    many{"+{0} s"}
+                    one{"+{0} s"}
+                    other{"+{0} s"}
+                    two{"+{0} s"}
+                }
+                past{
+                    few{"-{0} s"}
+                    many{"-{0} s"}
+                    one{"-{0} s"}
+                    other{"-{0} s"}
+                    two{"-{0} s"}
+                }
+            }
+        }
+        second-short{
+            dn{"s"}
+            relative{
+                "0"{"brem."}
+            }
+            relativeTime{
+                future{
+                    few{"a-benn {0} s"}
+                    many{"a-benn {0} s"}
+                    one{"a-benn {0} s"}
+                    other{"a-benn {0} s"}
+                    two{"a-benn {0} s"}
+                }
+                past{
+                    few{"{0} s zo"}
+                    many{"{0} s zo"}
+                    one{"{0} s zo"}
+                    other{"{0} s zo"}
+                    two{"{0} s zo"}
+                }
+            }
+        }
+        sun{
+            relative{
+                "-1"{"Disul diwezhañ"}
+                "0"{"ar Sul-mañ"}
+                "1"{"Disul a zeu"}
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"Su diwezhañ"}
+                "0"{"Su-mañ"}
+                "1"{"Su a zeu"}
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"Sul diwezhañ"}
+                "0"{"Sul-mañ"}
+                "1"{"Sul a zeu"}
+            }
+        }
+        thu{
+            relative{
+                "-1"{"Diriaou diwezhañ"}
+                "0"{"ar Yaou-mañ"}
+                "1"{"Diriaou a zeu"}
+            }
+        }
+        thu-narrow{
+            relative{
+                "-1"{"Y diwezhañ"}
+                "0"{"Y-mañ"}
+                "1"{"Yaou a zeu"}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"Yaou diwezhañ"}
+                "0"{"Yaou-mañ"}
+                "1"{"Yaou a zeu"}
+            }
+        }
+        tue{
+            relative{
+                "-1"{"Dimeurzh diwezhañ"}
+                "0"{"ar Meurzh-mañ"}
+                "1"{"Dimeurzh a zeu"}
+            }
+        }
+        tue-narrow{
+            relative{
+                "-1"{"Mz diwezhañ"}
+                "0"{"Mz-mañ"}
+                "1"{"Mz a zeu"}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"Meu. diwezhañ"}
+                "0"{"Meu.-mañ"}
+                "1"{"Meu. a zeu"}
+            }
+        }
+        wed{
+            relative{
+                "-1"{"Dimercʼher diwezhañ"}
+                "0"{"ar Mercʼher-mañ"}
+                "1"{"Dimercʼher a zeu"}
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"Mc diwezhañ"}
+                "0"{"Mc-mañ"}
+                "1"{"Mc a zeu"}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"Mer. diwezhañ"}
+                "0"{"Mer.-mañ"}
+                "1"{"Mer. a zeu"}
+            }
+        }
+        week{
+            dn{"sizhun"}
+            relative{
+                "-1"{"ar sizhun diaraok"}
+                "0"{"ar sizhun-mañ"}
+                "1"{"ar sizhun a zeu"}
+            }
+            relativeTime{
+                future{
+                    few{"a-benn {0} sizhun"}
+                    many{"a-benn {0} a sizhunioù"}
+                    one{"a-benn {0} sizhun"}
+                    other{"a-benn {0} sizhun"}
+                    two{"a-benn {0} sizhun"}
+                }
+                past{
+                    few{"{0} sizhun zo"}
+                    many{"{0} a sizhunioù zo"}
+                    one{"{0} sizhun zo"}
+                    other{"{0} sizhun zo"}
+                    two{"{0} sizhun zo"}
+                }
+            }
+        }
+        weekday{
+            dn{"deiz ar sizhun"}
+        }
+        year{
+            dn{"bloaz"}
+            relative{
+                "-1"{"warlene"}
+                "0"{"hevlene"}
+                "1"{"ar bloaz a zeu"}
+            }
+            relativeTime{
+                future{
+                    few{"a-benn {0} bloaz"}
+                    many{"a-benn {0} a vloazioù"}
+                    one{"a-benn {0} bloaz"}
+                    other{"a-benn {0} vloaz"}
+                    two{"a-benn {0} vloaz"}
+                }
+                past{
+                    few{"{0} bloaz zo"}
+                    many{"{0} a vloazioù zo"}
+                    one{"{0} bloaz zo"}
+                    other{"{0} vloaz zo"}
+                    two{"{0} vloaz zo"}
+                }
+            }
+        }
+        year-narrow{
+            dn{"bl."}
+            relative{
+                "-1"{"warlene"}
+                "0"{"hevlene"}
+                "1"{"ar bl. a zeu"}
+            }
+            relativeTime{
+                future{
+                    few{"+{0} bl."}
+                    many{"+{0} bl."}
+                    one{"+{0} bl."}
+                    other{"+{0} bl."}
+                    two{"+{0} bl."}
+                }
+                past{
+                    few{"-{0} bl."}
+                    many{"-{0} bl."}
+                    one{"-{0} bl."}
+                    other{"-{0} bl."}
+                    two{"-{0} bl."}
+                }
+            }
+        }
+        year-short{
+            dn{"bl."}
+            relative{
+                "-1"{"warlene"}
+                "0"{"hevlene"}
+                "1"{"ar bl. a zeu"}
+            }
+            relativeTime{
+                future{
+                    few{"a-benn {0} bl."}
+                    many{"a-benn {0} bl."}
+                    one{"a-benn {0} bl."}
+                    other{"a-benn {0} bl."}
+                    two{"a-benn {0} bl."}
+                }
+                past{
+                    few{"{0} bl. zo"}
+                    many{"{0} bl. zo"}
+                    one{"{0} bl. zo"}
+                    other{"{0} bl. zo"}
+                    two{"{0} bl. zo"}
+                }
+            }
+        }
+        zone{
+            dn{"takad eur"}
+        }
+    }
+    listPattern{
+        standard{
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit{
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit-narrow{
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit-short{
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+    }
+    measurementSystemNames{
+        UK{"RU"}
+        US{"SU"}
+        metric{"metrek"}
+    }
+}

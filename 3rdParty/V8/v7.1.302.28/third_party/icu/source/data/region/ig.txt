@@ -1,0 +1,15 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ig{
+    Countries{
+        BJ{"Binin"}
+        BM{"Bemuda"}
+        CN{"Chaina"}
+        HT{"Hati"}
+        KM{"Comorosu"}
+        LY{"Libyia"}
+        MV{"Maldivesa"}
+        NG{"Nigeria"}
+    }
+    Version{"2.1.27.84"}
+}

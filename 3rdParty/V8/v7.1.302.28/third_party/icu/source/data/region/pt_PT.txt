@@ -1,0 +1,78 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+pt_PT{
+    Countries{
+        009{"Oceânia"}
+        015{"Norte de África"}
+        018{"África Austral"}
+        029{"Caraíbas"}
+        034{"Ásia do Sul"}
+        039{"Europa do Sul"}
+        154{"Europa do Norte"}
+        AI{"Anguila"}
+        AM{"Arménia"}
+        AX{"Alanda"}
+        BD{"Bangladeche"}
+        BH{"Barém"}
+        BJ{"Benim"}
+        BS{"Baamas"}
+        CC{"Ilhas dos Cocos (Keeling)"}
+        CD{"Congo-Kinshasa"}
+        CG{"Congo-Brazzaville"}
+        CM{"Camarões"}
+        CW{"Curaçau"}
+        CX{"Ilha do Natal"}
+        CZ{"República Checa"}
+        DJ{"Jibuti"}
+        DM{"Domínica"}
+        EE{"Estónia"}
+        FK{"Ilhas Falkland"}
+        FO{"Ilhas Faroé"}
+        GL{"Gronelândia"}
+        GU{"Guame"}
+        IR{"Irão"}
+        KE{"Quénia"}
+        KN{"São Cristóvão e Neves"}
+        KY{"Ilhas Caimão"}
+        LI{"Listenstaine"}
+        LK{"Sri Lanca"}
+        LV{"Letónia"}
+        MC{"Mónaco"}
+        MG{"Madagáscar"}
+        MK{"Macedónia"}
+        MS{"Monserrate"}
+        MU{"Maurícia"}
+        MW{"Maláui"}
+        NC{"Nova Caledónia"}
+        NL{"Países Baixos"}
+        PL{"Polónia"}
+        PM{"São Pedro e Miquelão"}
+        PS{"Territórios palestinianos"}
+        QO{"Oceânia Insular"}
+        RO{"Roménia"}
+        SG{"Singapura"}
+        SI{"Eslovénia"}
+        SM{"São Marinho"}
+        SV{"Salvador"}
+        TC{"Ilhas Turcas e Caicos"}
+        TK{"Toquelau"}
+        TM{"Turquemenistão"}
+        TT{"Trindade e Tobago"}
+        UM{"Ilhas Menores Afastadas dos EUA"}
+        UZ{"Usbequistão"}
+        VN{"Vietname"}
+        YE{"Iémen"}
+        YT{"Maiote"}
+        ZW{"Zimbabué"}
+    }
+    Countries%short{
+        GB{"GB"}
+        UN{"ONU"}
+    }
+    Countries%variant{
+        CG{"República do Congo"}
+        FK{"Ilhas Malvinas"}
+        MK{"Macedónia (ARJM)"}
+    }
+    Version{"2.1.29.54"}
+}

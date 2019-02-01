@@ -1,0 +1,11 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+nl_BQ{
+    Currencies{
+        USD{
+            "$",
+            "Amerikaanse dollar",
+        }
+    }
+    Version{"2.1.27.40"}
+}

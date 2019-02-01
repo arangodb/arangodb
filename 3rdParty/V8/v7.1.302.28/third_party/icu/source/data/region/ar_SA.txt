@@ -1,0 +1,12 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ar_SA{
+    Countries{
+        BS{"جزر البهاما"}
+        EA{"سبتة ومليلية"}
+        MS{"مونتيسيرات"}
+        PM{"سان بيير وميكولون"}
+        UY{"أوروغواي"}
+    }
+    Version{"2.1.27.99"}
+}

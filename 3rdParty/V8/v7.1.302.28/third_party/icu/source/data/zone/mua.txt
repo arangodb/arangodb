@@ -1,0 +1,5 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+mua{
+    Version{"2.1.27.40"}
+}

@@ -1,0 +1,282 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+fr_CA{
+    Version{"2.1.27.99"}
+    durationUnits{
+        hm{"h:mm"}
+        hms{"h:mm:ss"}
+        ms{"m:ss"}
+    }
+    units{
+        acceleration{
+            g-force{
+                dnam{"force G"}
+            }
+        }
+        angle{
+            arc-second{
+                one{"{0} seconde d’angle"}
+                other{"{0} secondes d’angle"}
+            }
+        }
+        area{
+            acre{
+                dnam{"acres"}
+                one{"{0} acre"}
+                other{"{0} acres"}
+            }
+            square-mile{
+                dnam{"milles carrés"}
+                one{"{0} mille carré"}
+                other{"{0} milles carrés"}
+                per{"{0} par mille carré"}
+            }
+            square-yard{
+                dnam{"verges carrées"}
+                one{"{0} verge carrée"}
+                other{"{0} verges carrées"}
+            }
+        }
+        concentr{
+            part-per-million{
+                dnam{"parties par million"}
+                one{"{0} partie par million"}
+                other{"{0} parties par million"}
+            }
+        }
+        consumption{
+            liter-per-100kilometers{
+                dnam{"litres aux 100 kilomètres"}
+            }
+            mile-per-gallon{
+                dnam{"milles au gallon"}
+                one{"{0} mille au gallon"}
+                other{"{0} milles au gallon"}
+            }
+        }
+        duration{
+            second{
+                per{"{0} à la seconde"}
+            }
+        }
+        length{
+            mile{
+                dnam{"mille"}
+                one{"{0} mille"}
+                other{"{0} milles"}
+            }
+            yard{
+                dnam{"verges"}
+                one{"{0} verge"}
+                other{"{0} verges"}
+            }
+        }
+        mass{
+            kilogram{
+                per{"{0} par kilogramme"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                dnam{"kilomètres à l’heure"}
+            }
+            mile-per-hour{
+                dnam{"milles à l’heure"}
+                one{"{0} mille à l’heure"}
+                other{"{0} milles à l’heure"}
+            }
+        }
+        temperature{
+            generic{
+                dnam{"°"}
+                one{"{0}°"}
+                other{"{0}°"}
+            }
+        }
+        volume{
+            cubic-mile{
+                dnam{"milles cubes"}
+                one{"{0} mille cube"}
+                other{"{0} milles cubes"}
+            }
+            cubic-yard{
+                dnam{"verges cubes"}
+                one{"{0} verge cube"}
+                other{"{0} verges cubes"}
+            }
+            gallon-imperial{
+                dnam{"gallon impérial"}
+                one{"{0} gallon impérial"}
+                other{"{0} gallons impériaux"}
+                per{"{0} par gallon impérial"}
+            }
+            pint{
+                dnam{"chopine"}
+                one{"{0} chopine"}
+                other{"{0} chopines"}
+            }
+            quart{
+                dnam{"pintes"}
+                one{"{0} pinte"}
+                other{"{0} pintes"}
+            }
+            teaspoon{
+                dnam{"cuillères à thé"}
+                one{"{0} cuillère à thé"}
+                other{"{0} cuillères à thé"}
+            }
+        }
+    }
+    unitsNarrow{
+        temperature{
+            celsius{
+                one{"{0} °C"}
+                other{"{0} °C"}
+            }
+        }
+        volume{
+            liter{
+                dnam{"L"}
+                one{"{0}L"}
+                other{"{0}L"}
+            }
+        }
+    }
+    unitsShort{
+        area{
+            square-foot{
+                one{"{0} pi²"}
+                other{"{0} pi²"}
+            }
+            square-yard{
+                dnam{"vg²"}
+                one{"{0} vg²"}
+                other{"{0} vg²"}
+            }
+        }
+        concentr{
+            karat{
+                dnam{"carats"}
+            }
+        }
+        consumption{
+            mile-per-gallon-imperial{
+                dnam{"mi/gal Imp"}
+                one{"{0} mi/gal Imp"}
+                other{"{0} mi/gal Imp"}
+            }
+        }
+        digital{
+            gigabit{
+                dnam{"Gb"}
+            }
+            kilobit{
+                dnam{"kb"}
+            }
+            megabit{
+                dnam{"Mb"}
+            }
+        }
+        length{
+            astronomical-unit{
+                one{"{0} ua"}
+                other{"{0} ua"}
+            }
+            foot{
+                one{"{0} pi"}
+                other{"{0} pi"}
+            }
+            nautical-mile{
+                dnam{"NM"}
+                one{"{0} NM"}
+                other{"{0} NM"}
+            }
+            yard{
+                dnam{"vg"}
+                one{"{0} vg"}
+                other{"{0} vg"}
+            }
+        }
+        mass{
+            ton{
+                dnam{"tc"}
+                one{"{0} tc"}
+                other{"{0} tc"}
+            }
+        }
+        pressure{
+            pound-per-square-inch{
+                dnam{"psi"}
+                one{"{0} psi"}
+                other{"{0} psi"}
+            }
+        }
+        volume{
+            centiliter{
+                dnam{"cL"}
+                one{"{0} cL"}
+                other{"{0} cL"}
+            }
+            cubic-foot{
+                one{"{0} pi³"}
+                other{"{0} pi³"}
+            }
+            cubic-yard{
+                dnam{"vg³"}
+                one{"{0} vg³"}
+                other{"{0} vg³"}
+            }
+            deciliter{
+                dnam{"dL"}
+                one{"{0} dL"}
+                other{"{0} dL"}
+            }
+            fluid-ounce{
+                dnam{"oz liq."}
+                one{"{0} oz liq."}
+                other{"{0} oz liq."}
+            }
+            gallon-imperial{
+                dnam{"gal Imp"}
+                one{"{0} gal Imp"}
+                other{"{0} gal Imp"}
+                per{"{0}/gal Imp"}
+            }
+            hectoliter{
+                dnam{"hL"}
+                one{"{0} hL"}
+                other{"{0} hL"}
+            }
+            liter{
+                dnam{"L"}
+                one{"{0} L"}
+                other{"{0} L"}
+            }
+            megaliter{
+                dnam{"ML"}
+                one{"{0} ML"}
+                other{"{0} ML"}
+            }
+            milliliter{
+                dnam{"mL"}
+                one{"{0} mL"}
+                other{"{0} mL"}
+            }
+            pint{
+                dnam{"chop"}
+                one{"{0} chop"}
+                other{"{0} chop"}
+            }
+            quart{
+                dnam{"pte"}
+                one{"{0} pte"}
+                other{"{0} pte"}
+            }
+            teaspoon{
+                dnam{"c. à t."}
+                one{"{0} c. à t."}
+                other{"{0} c. à t."}
+            }
+        }
+    }
+}

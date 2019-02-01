@@ -1,0 +1,19 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+en_US_POSIX{
+    NumberElements{
+        latn{
+            patterns{
+                currencyFormat{"¤ #0.00"}
+                decimalFormat{"#0.######"}
+                percentFormat{"#0%"}
+                scientificFormat{"0.000000E+000"}
+            }
+            symbols{
+                infinity{"INF"}
+                perMille{"0/00"}
+            }
+        }
+    }
+    Version{"2.1.27.40"}
+}

@@ -1,0 +1,19 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+se_FI{
+    Countries{
+        003{"Davvi-Amerihkká ja Gaska-Amerihkká"}
+        005{"Lulli-Amerihkká"}
+        013{"Gaska-Amerihkká"}
+        021{"Davvi-Amerihkká"}
+        419{"Latiinnalaš-Amerihkká"}
+        BA{"Bosnia ja Hercegovina"}
+        KH{"Kamboža"}
+        SD{"Sudan"}
+        TD{"Chad"}
+    }
+    Countries%variant{
+        CI{"Côte d’Ivoire"}
+    }
+    Version{"2.1.27.78"}
+}

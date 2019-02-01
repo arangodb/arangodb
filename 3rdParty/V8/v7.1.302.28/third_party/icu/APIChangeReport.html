@@ -1,0 +1,3203 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><!--
+     Copyright (C) 2016 and later: Unicode, Inc. and others.
+     License & terms of use: http://www.unicode.org/copyright.html
+	-->
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>ICU4C API Comparison: ICU 57 with ICU 58</title>
+<link type="text/css" href="icu4c.css" rel="stylesheet">
+</head>
+<body>
+<a name="#_top"></a>
+<h1>ICU4C API Comparison: ICU 57 with ICU 58</h1>
+<div id="toc">
+<ul>
+<li>
+<a href="#removed">Removed from ICU 57</a>
+</li>
+<li>
+<a href="#deprecated">Deprecated or Obsoleted in ICU 58</a>
+</li>
+<li>
+<a href="#changed">Changed in  ICU 58</a>
+</li>
+<li>
+<a href="#promoted">Promoted to stable in ICU 58</a>
+</li>
+<li>
+<a href="#added">Added in ICU 58</a>
+</li>
+<li>
+<a href="#other">Other existing drafts in ICU 58</a>
+</li>
+<li>
+<a href="#purevirtual">Signature Simplifications</a><sup style="background-color: yellow; font-size: smallest;">(new)</sup>
+</li>
+</ul>
+<hr>
+</div>
+<a name="removed"></a>
+<h2>Removed from ICU 57</h2>
+<table BORDER="1" class="genTable">
+<THEAD>
+<tr>
+<th>File</th><th>API</th><th>ICU 57</th><th>ICU 58</th>
+</tr>
+</THEAD>
+<tr class="row1">
+<td class="file">bytestrie.h</td><td class="proto">const StringPiece&amp; icu::BytesTrie::Iterator::getString()</td><td class="stabchange">Stable<br>ICU 4.8</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">bytestriebuilder.h</td><td class="proto">BytesTrieBuilder&amp; icu::BytesTrieBuilder::add(const StringPiece&amp;, int32_t, UErrorCode&amp;)</td><td class="stabchange">Stable<br>ICU 4.8</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">compactdecimalformat.h</td><td class="proto">UnicodeString&amp; icu::CompactDecimalFormat::format(const StringPiece&amp;, UnicodeString&amp;, FieldPositionIterator*, UErrorCode&amp;)</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">decimfmt.h</td><td class="proto">UnicodeString&amp; icu::DecimalFormat::format(const StringPiece&amp;, UnicodeString&amp;, FieldPositionIterator*, UErrorCode&amp;)</td><td class="stabchange">Stable</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">fmtable.h</td><td class="proto">icu::Formattable::Formattable(const StringPiece&amp;, UErrorCode&amp;)</td><td class="stabchange">Stable<br>ICU 4.4</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">fmtable.h</td><td class="proto">void icu::Formattable::setDecimalNumber(const StringPiece&amp;, UErrorCode&amp;)</td><td class="stabchange">Stable<br>ICU 4.4</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">idna.h</td><td class="proto">void icu::IDNA::labelToASCII_UTF8(const StringPiece&amp;, ByteSink&amp;, IDNAInfo&amp;, UErrorCode&amp;)</td><td class="stabchange">Stable<br>ICU 4.6</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">idna.h</td><td class="proto">void icu::IDNA::labelToUnicodeUTF8(const StringPiece&amp;, ByteSink&amp;, IDNAInfo&amp;, UErrorCode&amp;)</td><td class="stabchange">Stable<br>ICU 4.6</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">idna.h</td><td class="proto">void icu::IDNA::nameToASCII_UTF8(const StringPiece&amp;, ByteSink&amp;, IDNAInfo&amp;, UErrorCode&amp;)</td><td class="stabchange">Stable<br>ICU 4.6</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">idna.h</td><td class="proto">void icu::IDNA::nameToUnicodeUTF8(const StringPiece&amp;, ByteSink&amp;, IDNAInfo&amp;, UErrorCode&amp;)</td><td class="stabchange">Stable<br>ICU 4.6</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LayoutEngine.h</td><td class="proto">UClassID icu::LayoutEngine::getDynamicClassID()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LayoutEngine.h</td><td class="proto">icu::LayoutEngine::~LayoutEngine()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LayoutEngine.h</td><td class="proto">le_int32 icu::LayoutEngine::getGlyphCount()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LayoutEngine.h</td><td class="proto">le_int32 icu::LayoutEngine::layoutChars(const LEUnicode chars[], le_int32, le_int32, le_int32, le_bool, float, float, LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LayoutEngine.h</td><td class="proto"><tt>static</tt> LayoutEngine* icu::LayoutEngine::layoutEngineFactory(const LEFontInstance*, le_int32, le_int32, LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LayoutEngine.h</td><td class="proto"><tt>static</tt> LayoutEngine* icu::LayoutEngine::layoutEngineFactory(const LEFontInstance*, le_int32, le_int32, le_int32, LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LayoutEngine.h</td><td class="proto"><tt>static</tt> UClassID icu::LayoutEngine::getStaticClassID()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LayoutEngine.h</td><td class="proto"><tt>static</tt> const le_int32 icu::LayoutEngine::kTypoFlagKern</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LayoutEngine.h</td><td class="proto"><tt>static</tt> const le_int32 icu::LayoutEngine::kTypoFlagLiga</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LayoutEngine.h</td><td class="proto">void icu::LayoutEngine::getCharIndices(le_int32 charIndices[], LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LayoutEngine.h</td><td class="proto">void icu::LayoutEngine::getCharIndices(le_int32 charIndices[], le_int32, LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LayoutEngine.h</td><td class="proto">void icu::LayoutEngine::getGlyphPosition(le_int32, float&amp;, float&amp;, LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LayoutEngine.h</td><td class="proto">void icu::LayoutEngine::getGlyphPositions(float positions[], LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LayoutEngine.h</td><td class="proto">void icu::LayoutEngine::getGlyphs(LEGlyphID glyphs[], LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LayoutEngine.h</td><td class="proto">void icu::LayoutEngine::getGlyphs(le_uint32 glyphs[], le_uint32, LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LayoutEngine.h</td><td class="proto">void icu::LayoutEngine::reset()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEFontInstance.h</td><td class="proto">LEGlyphID icu::LEFontInstance::mapCharToGlyph(LEUnicode32)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEFontInstance.h</td><td class="proto">LEGlyphID icu::LEFontInstance::mapCharToGlyph(LEUnicode32, const LECharMapper*)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEFontInstance.h</td><td class="proto">LEGlyphID icu::LEFontInstance::mapCharToGlyph(LEUnicode32, const LECharMapper*, le_bool)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEFontInstance.h</td><td class="proto">LEUnicode32 icu::LECharMapper::mapChar(LEUnicode32)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEFontInstance.h</td><td class="proto">UClassID icu::LEFontInstance::getDynamicClassID()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEFontInstance.h</td><td class="proto">const LEFontInstance* icu::LEFontInstance::getSubFont(const LEUnicode chars[], le_int32*, le_int32, le_int32, LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEFontInstance.h</td><td class="proto">const void* icu::LEFontInstance::getFontTable(LETag, size_t&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEFontInstance.h</td><td class="proto">float icu::LEFontInstance::getScaleFactorX()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEFontInstance.h</td><td class="proto">float icu::LEFontInstance::getScaleFactorY()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEFontInstance.h</td><td class="proto">float icu::LEFontInstance::getXPixelsPerEm()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEFontInstance.h</td><td class="proto">float icu::LEFontInstance::getYPixelsPerEm()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEFontInstance.h</td><td class="proto">float icu::LEFontInstance::xPixelsToUnits(float)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEFontInstance.h</td><td class="proto">float icu::LEFontInstance::xUnitsToPoints(float)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEFontInstance.h</td><td class="proto">float icu::LEFontInstance::yPixelsToUnits(float)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEFontInstance.h</td><td class="proto">float icu::LEFontInstance::yUnitsToPoints(float)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEFontInstance.h</td><td class="proto">icu::LECharMapper::~LECharMapper()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEFontInstance.h</td><td class="proto">icu::LEFontInstance::~LEFontInstance()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEFontInstance.h</td><td class="proto">le_bool icu::LEFontInstance::canDisplay(LEUnicode32)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEFontInstance.h</td><td class="proto">le_bool icu::LEFontInstance::getGlyphPoint(LEGlyphID, le_int32, LEPoint&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEFontInstance.h</td><td class="proto">le_int32 icu::LEFontInstance::getAscent()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEFontInstance.h</td><td class="proto">le_int32 icu::LEFontInstance::getDescent()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEFontInstance.h</td><td class="proto">le_int32 icu::LEFontInstance::getLeading()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEFontInstance.h</td><td class="proto">le_int32 icu::LEFontInstance::getLineHeight()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEFontInstance.h</td><td class="proto">le_int32 icu::LEFontInstance::getUnitsPerEM()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEFontInstance.h</td><td class="proto"><tt>static</tt> UClassID icu::LEFontInstance::getStaticClassID()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEFontInstance.h</td><td class="proto"><tt>static</tt> float icu::LEFontInstance::fixedToFloat(le_int32)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEFontInstance.h</td><td class="proto"><tt>static</tt> le_int32 icu::LEFontInstance::floatToFixed(float)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEFontInstance.h</td><td class="proto">void icu::LEFontInstance::getGlyphAdvance(LEGlyphID, LEPoint&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEFontInstance.h</td><td class="proto">void icu::LEFontInstance::mapCharsToGlyphs(const LEUnicode chars[], le_int32, le_int32, le_bool, const LECharMapper*, le_bool, LEGlyphStorage&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEFontInstance.h</td><td class="proto">void icu::LEFontInstance::pixelsToUnits(LEPoint&amp;, LEPoint&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEFontInstance.h</td><td class="proto">void icu::LEFontInstance::transformFunits(float, float, LEPoint&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEFontInstance.h</td><td class="proto">void icu::LEFontInstance::unitsToPoints(LEPoint&amp;, LEPoint&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEGlyphStorage.h</td><td class="proto">LEGlyphID icu::LEGlyphStorage::getGlyphID(le_int32, LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEGlyphStorage.h</td><td class="proto">LEGlyphID&amp; icu::LEGlyphStorage::operator[](le_int32)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEGlyphStorage.h</td><td class="proto">LEGlyphID* icu::LEGlyphStorage::insertGlyphs(le_int32, le_int32)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEGlyphStorage.h</td><td class="proto">LEGlyphID* icu::LEGlyphStorage::insertGlyphs(le_int32, le_int32, LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEGlyphStorage.h</td><td class="proto">UClassID icu::LEGlyphStorage::getDynamicClassID()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEGlyphStorage.h</td><td class="proto">icu::LEGlyphStorage::LEGlyphStorage()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEGlyphStorage.h</td><td class="proto">icu::LEGlyphStorage::~LEGlyphStorage()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEGlyphStorage.h</td><td class="proto">le_int32 icu::LEGlyphStorage::allocateAuxData(LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEGlyphStorage.h</td><td class="proto">le_int32 icu::LEGlyphStorage::allocatePositions(LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEGlyphStorage.h</td><td class="proto">le_int32 icu::LEGlyphStorage::applyInsertions()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEGlyphStorage.h</td><td class="proto">le_int32 icu::LEGlyphStorage::getCharIndex(le_int32, LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEGlyphStorage.h</td><td class="proto">le_int32 icu::LEGlyphStorage::getGlyphCount()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEGlyphStorage.h</td><td class="proto">le_uint32 icu::LEGlyphStorage::getAuxData(le_int32, LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEGlyphStorage.h</td><td class="proto"><tt>static</tt> UClassID icu::LEGlyphStorage::getStaticClassID()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::adjustPosition(le_int32, float, float, LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::adoptAuxDataArray(LEGlyphStorage&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::adoptCharIndicesArray(LEGlyphStorage&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::adoptGlyphArray(LEGlyphStorage&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::adoptGlyphCount(LEGlyphStorage&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::adoptGlyphCount(le_int32)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::adoptPositionArray(LEGlyphStorage&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::allocateGlyphArray(le_int32, le_bool, LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::getAuxData(le_uint32 auxData[], LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::getCharIndices(le_int32 charIndices[], LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::getCharIndices(le_int32 charIndices[], le_int32, LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::getGlyphPosition(le_int32, float&amp;, float&amp;, LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::getGlyphPositions(float positions[], LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::getGlyphs(LEGlyphID glyphs[], LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::getGlyphs(le_uint32 glyphs[], le_uint32, LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::moveGlyph(le_int32, le_int32, le_uint32)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::reset()</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::setAuxData(le_int32, le_uint32, LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::setCharIndex(le_int32, le_int32, LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::setGlyphID(le_int32, LEGlyphID, LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LEGlyphStorage.h</td><td class="proto">void icu::LEGlyphStorage::setPosition(le_int32, float, float, LEErrorCode&amp;)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LESwaps.h</td><td class="proto"><tt>#define</tt> SWAPL</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LESwaps.h</td><td class="proto"><tt>#define</tt> SWAPW</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LESwaps.h</td><td class="proto"><tt>static</tt> le_uint16 icu::LESwaps::swapWord(le_uint16)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LESwaps.h</td><td class="proto"><tt>static</tt> le_uint32 icu::LESwaps::swapLong(le_uint32)</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_AFRC_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_ARRAY_COPY</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_ARRAY_SIZE</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_ASSERT_BAD_FONT</td><td class=""><i>(untagged)</i></td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_CHAR_FILTER_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_CLIENT_MASK</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_CLIENT_SHIFT</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_CLIG_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_CSWH_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_DEBUG_BAD_FONT</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_DEFAULT_FEATURE_FLAG</td><td class=""><i>(untagged)</i></td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_DELETE_ARRAY</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_DLIG_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_FAILURE</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_FRAC_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_GET_CLIENT</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_GET_GLYPH</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_GET_SUB_FONT</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_GLYPH_MASK</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_GLYPH_SHIFT</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_GROW_ARRAY</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_HLIG_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_Kerning_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_LIGA_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_Ligatures_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_MAKE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_NALT_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_NEW_ARRAY</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_RANGE_CHECK</td><td class=""><i>(untagged)</i></td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_RLIG_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_RUBY_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_SALT_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_SET_CLIENT</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_SET_GLYPH</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_SET_SUB_FONT</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_SMCP_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_SS01_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_SS02_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_SS03_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_SS04_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_SS05_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_SS06_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_SS07_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_SUB_FONT_MASK</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_SUB_FONT_SHIFT</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_SUCCESS</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_SWSH_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_UINT32_MAX</td><td class=""><i>(untagged)</i></td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_UINTPTR_MAX</td><td class=""><i>(untagged)</i></td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>#define</tt> LE_ZERO_FEATURE_FLAG</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEErrorCode::LE_FONT_FILE_NOT_FOUND_ERROR</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEErrorCode::LE_ILLEGAL_ARGUMENT_ERROR</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEErrorCode::LE_INDEX_OUT_OF_BOUNDS_ERROR</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEErrorCode::LE_INTERNAL_ERROR</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEErrorCode::LE_MEMORY_ALLOCATION_ERROR</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEErrorCode::LE_MISSING_FONT_TABLE_ERROR</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEErrorCode::LE_NO_ERROR</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEErrorCode::LE_NO_LAYOUT_ERROR</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEErrorCode::LE_NO_SUBFONT_WARNING</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_AFRC_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_CHAR_FILTER_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_CLIG_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_CSWH_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_DLIG_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_FEATURE_ENUM_MAX</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_FRAC_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_HLIG_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_Kerning_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_LIGA_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_Ligatures_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_NALT_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_RLIG_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_RUBY_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_SALT_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_SMCP_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_SS01_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_SS02_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_SS03_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_SS04_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_SS05_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_SS06_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_SS07_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_SWSH_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureENUMs::LE_ZERO_FEATURE_ENUM</td><td class="">Internal</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_AALT_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_ABVF_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_ABVM_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_ABVS_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_AFRC_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_AKHN_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_BLWF_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_BLWM_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_BLWS_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_C2PC_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_C2SC_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_CALT_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_CASE_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_CCMP_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_CJCT_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_CLIG_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_CPSP_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_CSWH_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_CURS_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_DIST_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_DLIG_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_DNOM_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_EXPT_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_FALT_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_FIN2_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_FIN3_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_FINA_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_FRAC_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_FWID_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_HALF_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_HALN_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_HALT_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_HIST_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_HKNA_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_HLIG_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_HNGL_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_HWID_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_INIT_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_ISOL_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_ITAL_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_JALT_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_JP78_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_JP83_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_JP90_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_KERN_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_LFBD_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_LIGA_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_LJMO_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_LNUM_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_LOCL_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_MARK_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_MED2_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_MEDI_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_MGRK_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_MKMK_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_MSET_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_NALT_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_NLCK_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_NUKT_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_NUMR_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_ONUM_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_OPBD_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_ORDN_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_ORNM_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_PALT_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_PCAP_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_PNUM_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_PREF_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_PRES_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_PSTF_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_PSTS_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_PWID_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_QWID_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_RAND_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_RKRF_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_RLIG_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_RPHF_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_RTBD_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_RTLA_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_RUBY_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SALT_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SINF_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SIZE_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SMCP_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SMPL_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SS01_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SS02_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SS03_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SS04_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SS05_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SS06_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SS07_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SS08_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SS09_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SS10_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SS11_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SS12_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SS13_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SS14_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SS15_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SS16_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SS17_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SS18_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SS19_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SS20_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SUBS_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SUPS_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_SWSH_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_TITL_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_TJMO_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_TNAM_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_TNUM_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_TRAD_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_TWID_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_UNIC_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_VALT_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_VATU_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_VERT_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_VHAL_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_VJMO_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_VKNA_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_VKRN_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_VPAL_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_VRT2_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LEFeatureTags::LE_ZERO_FEATURE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_ACNT_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_AVAR_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_BASE_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_BDAT_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_BHED_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_BLOC_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_BSLN_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_CFF__TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_CMAP_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_CVAR_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_CVT__TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_DSIG_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_EBDT_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_EBLC_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_EBSC_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_FDSC_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_FEAT_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_FMTX_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_FPGM_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_FVAR_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_GASP_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_GDEF_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_GLYF_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_GPOS_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_GSUB_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_GVAR_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_HDMX_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_HEAD_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_HHEA_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_HMTX_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_HSTY_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_JSTF_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_JUST_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_KERN_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_LCAR_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_LOCA_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_LTSH_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_MAXP_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_MORT_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_MORX_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_NAME_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_OPBD_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_OS_2_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_PCLT_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_POST_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_PREP_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_PROP_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_TRAK_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_VDMX_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_VHEA_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_VMTX_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_VORG_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">LETypes.h</td><td class="proto"><tt>enum</tt> LETableTags::LE_ZAPF_TABLE_TAG</td><td class="">Deprecated<br>ICU 54</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">numfmt.h</td><td class="proto">UnicodeString&amp; icu::NumberFormat::format(const StringPiece&amp;, UnicodeString&amp;, FieldPositionIterator*, UErrorCode&amp;)</td><td class="stabchange">Stable</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">unistr.h</td><td class="proto"><tt>static</tt> UnicodeString icu::UnicodeString::fromUTF8(const StringPiece&amp;)</td><td class="stabchange">Stable<br>ICU 4.2</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">utypes.h</td><td class="proto"><tt>#define</tt> NULL</td><td class="stabchange">Stable<br>ICU 2.0</td><td>(missing)<br>
+<span class=""><span></span></span></td>
+</tr>
+</table>
+<P></P>
+<a href="#_top">(jump back to top)</a>
+<hr>
+<a name="deprecated"></a>
+<h2>Deprecated or Obsoleted in ICU 58</h2>
+<table BORDER="1" class="genTable">
+<THEAD>
+<tr>
+<th>File</th><th>API</th><th>ICU 57</th><th>ICU 58</th>
+</tr>
+</THEAD>
+<tr class="row1">
+<td class="file">dtfmtsym.h</td><td class="proto"><tt>enum</tt> 
+							icu::DateFormatSymbols::DtContextType::DT_CONTEXT_COUNT</td><td class="stabchange">Stable<br>ICU 3.6</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">dtfmtsym.h</td><td class="proto"><tt>enum</tt> 
+							icu::DateFormatSymbols::DtWidthType::DT_WIDTH_COUNT</td><td class="stabchange">Stable<br>ICU 3.6</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">measfmt.h</td><td class="proto"><tt>enum</tt> UMeasureFormatWidth::UMEASFMT_WIDTH_COUNT</td><td class="stabchange">Stable<br>ICU 53</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">reldatefmt.h</td><td class="proto"><tt>enum</tt> UDateAbsoluteUnit::UDAT_ABSOLUTE_UNIT_COUNT</td><td class="stabchange">Stable<br>ICU 53</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">reldatefmt.h</td><td class="proto"><tt>enum</tt> UDateDirection::UDAT_DIRECTION_COUNT</td><td class="stabchange">Stable<br>ICU 53</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">reldatefmt.h</td><td class="proto"><tt>enum</tt> UDateRelativeUnit::UDAT_RELATIVE_UNIT_COUNT</td><td class="stabchange">Stable<br>ICU 53</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">tmunit.h</td><td class="proto"><tt>enum</tt> 
+							icu::TimeUnit::UTimeUnitFields::UTIMEUNIT_FIELD_COUNT</td><td class="stabchange">Stable<br>ICU 4.2</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">ubidi.h</td><td class="proto"><tt>#define</tt> U_BIDI_CLASS_DEFAULT</td><td class="stabchange">Stable<br>ICU 3.6</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ubidi.h</td><td class="proto"><tt>enum</tt> UBiDiReorderingMode::UBIDI_REORDER_COUNT</td><td class="stabchange">Stable<br>ICU 3.6</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">ubrk.h</td><td class="proto"><tt>enum</tt> UBreakIteratorType::UBRK_COUNT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ucal.h</td><td class="proto"><tt>enum</tt> UCalendarDateFields::UCAL_FIELD_COUNT</td><td class="stabchange">Stable<br>ICU 2.6</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBidiPairedBracketType::U_BPT_COUNT</td><td class="stabchange">Stable<br>ICU 52</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_COUNT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UCharDirection::U_CHAR_DIRECTION_COUNT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UCharNameChoice::U_CHAR_NAME_CHOICE_COUNT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UDecompositionType::U_DT_COUNT</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UEastAsianWidth::U_EA_COUNT</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UGraphemeClusterBreak::U_GCB_COUNT</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UHangulSyllableType::U_HST_COUNT</td><td class="stabchange">Stable<br>ICU 2.6</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UJoiningGroup::U_JG_COUNT</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UJoiningType::U_JT_COUNT</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> ULineBreak::U_LB_COUNT</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UNumericType::U_NT_COUNT</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UProperty::UCHAR_BINARY_LIMIT</td><td class="stabchange">Stable<br>ICU 2.1</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UProperty::UCHAR_DOUBLE_LIMIT</td><td class="stabchange">Stable<br>ICU 2.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UProperty::UCHAR_INT_LIMIT</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UProperty::UCHAR_MASK_LIMIT</td><td class="stabchange">Stable<br>ICU 2.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UProperty::UCHAR_OTHER_PROPERTY_LIMIT</td><td class="stabchange">Stable<br>ICU 4.6</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UProperty::UCHAR_STRING_LIMIT</td><td class="stabchange">Stable<br>ICU 2.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UPropertyNameChoice::U_PROPERTY_NAME_CHOICE_COUNT</td><td class="stabchange">Stable<br>ICU 2.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> USentenceBreak::U_SB_COUNT</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_COUNT</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ucnv.h</td><td class="proto"><tt>enum</tt> UConverterUnicodeSet::UCNV_SET_COUNT</td><td class="stabchange">Stable<br>ICU 2.6</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">ucol.h</td><td class="proto"><tt>enum</tt> UColAttribute::UCOL_ATTRIBUTE_COUNT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ucol.h</td><td class="proto"><tt>enum</tt> UColAttributeValue::UCOL_ATTRIBUTE_VALUE_COUNT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">ucol.h</td><td class="proto"><tt>enum</tt> UColBoundMode::UCOL_BOUND_VALUE_COUNT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ucol.h</td><td class="proto"><tt>enum</tt> UColReorderCode::UCOL_REORDER_CODE_LIMIT</td><td class="stabchange">Stable<br>ICU 4.8</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">ucurr.h</td><td class="proto"><tt>enum</tt> UCurrencyUsage::UCURR_USAGE_COUNT</td><td class="stabchange">Stable<br>ICU 54</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">udat.h</td><td class="proto"><tt>enum</tt> UDateFormatBooleanAttribute::UDAT_BOOLEAN_ATTRIBUTE_COUNT</td><td class="stabchange">Stable<br>ICU 53</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">udat.h</td><td class="proto"><tt>enum</tt> UDateFormatField::UDAT_FIELD_COUNT</td><td class="stabchange">Stable<br>ICU 3.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">udata.h</td><td class="proto"><tt>enum</tt> UDataFileAccess::UDATA_FILE_ACCESS_COUNT</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">udatpg.h</td><td class="proto"><tt>enum</tt> UDateTimePatternConflict::UDATPG_CONFLICT_COUNT</td><td class="stabchange">Stable<br>ICU 3.8</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">udatpg.h</td><td class="proto"><tt>enum</tt> UDateTimePatternField::UDATPG_FIELD_COUNT</td><td class="stabchange">Stable<br>ICU 3.8</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uformattable.h</td><td class="proto"><tt>enum</tt> UFormattableType::UFMT_COUNT</td><td class="stabchange">Stable<br>ICU 52</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uloc.h</td><td class="proto"><tt>enum</tt> ULocDataLocaleType::ULOC_DATA_LOCALE_TYPE_LIMIT</td><td class="stabchange">Stable<br>ICU 2.1</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">ulocdata.h</td><td class="proto"><tt>enum</tt> ULocaleDataDelimiterType::ULOCDATA_DELIMITER_COUNT</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ulocdata.h</td><td class="proto"><tt>enum</tt> ULocaleDataExemplarSetType::ULOCDATA_ES_COUNT</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">ulocdata.h</td><td class="proto"><tt>enum</tt> UMeasurementSystem::UMS_LIMIT</td><td class="stabchange">Stable<br>ICU 2.8</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">unum.h</td><td class="proto"><tt>enum</tt> UCurrencySpacing::UNUM_CURRENCY_SPACING_COUNT</td><td class="stabchange">Stable<br>ICU 4.8</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">unum.h</td><td class="proto"><tt>enum</tt> UNumberFormatFields::UNUM_FIELD_COUNT</td><td class="stabchange">Stable<br>ICU 49</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">unum.h</td><td class="proto"><tt>enum</tt> UNumberFormatStyle::UNUM_FORMAT_STYLE_COUNT</td><td class="stabchange">Stable<br>ICU 4.8</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">unum.h</td><td class="proto"><tt>enum</tt> UNumberFormatSymbol::UNUM_FORMAT_SYMBOL_COUNT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">upluralrules.h</td><td class="proto"><tt>enum</tt> UPluralType::UPLURAL_TYPE_COUNT</td><td class="stabchange">Stable<br>ICU 50</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uregion.h</td><td class="proto"><tt>enum</tt> URegionType::URGN_LIMIT</td><td class="stabchange">Stable<br>ICU 51</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ureldatefmt.h</td><td class="proto"><tt>enum</tt> UDateRelativeDateTimeFormatterStyle::UDAT_STYLE_COUNT</td><td class="stabchange">Stable<br>ICU 54</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">ureldatefmt.h</td><td class="proto"><tt>enum</tt> URelativeDateTimeUnit::UDAT_REL_UNIT_COUNT</td><td class="">Draft<br>ICU 57</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ures.h</td><td class="proto"><tt>enum</tt> UResType::URES_LIMIT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uscript.h</td><td class="proto"><tt>enum</tt> UScriptCode::USCRIPT_CODE_LIMIT</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">usearch.h</td><td class="proto"><tt>enum</tt> USearchAttribute::USEARCH_ATTRIBUTE_COUNT</td><td class="stabchange">Stable<br>ICU 2.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">usearch.h</td><td class="proto"><tt>enum</tt> USearchAttributeValue::USEARCH_ATTRIBUTE_VALUE_COUNT</td><td class="stabchange">Stable<br>ICU 2.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uset.h</td><td class="proto"><tt>enum</tt> USetSpanCondition::USET_SPAN_CONDITION_COUNT</td><td class="stabchange">Stable<br>ICU 3.8</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uspoof.h</td><td class="proto"><tt>enum</tt> USpoofChecks::USPOOF_ANY_CASE</td><td class="stabchange">Stable<br>ICU 4.2</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">utrace.h</td><td class="proto"><tt>enum</tt> UTraceFunctionNumber::UTRACE_COLLATION_LIMIT</td><td class="stabchange">Stable<br>ICU 2.8</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">utrace.h</td><td class="proto"><tt>enum</tt> UTraceFunctionNumber::UTRACE_CONVERSION_LIMIT</td><td class="stabchange">Stable<br>ICU 2.8</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">utrace.h</td><td class="proto"><tt>enum</tt> UTraceFunctionNumber::UTRACE_FUNCTION_LIMIT</td><td class="stabchange">Stable<br>ICU 2.8</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">utypes.h</td><td class="proto"><tt>enum</tt> UErrorCode::U_BRK_ERROR_LIMIT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">utypes.h</td><td class="proto"><tt>enum</tt> UErrorCode::U_ERROR_LIMIT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">utypes.h</td><td class="proto"><tt>enum</tt> UErrorCode::U_ERROR_WARNING_LIMIT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">utypes.h</td><td class="proto"><tt>enum</tt> UErrorCode::U_FMT_PARSE_ERROR_LIMIT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">utypes.h</td><td class="proto"><tt>enum</tt> UErrorCode::U_IDNA_ERROR_LIMIT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">utypes.h</td><td class="proto"><tt>enum</tt> UErrorCode::U_PARSE_ERROR_LIMIT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">utypes.h</td><td class="proto"><tt>enum</tt> UErrorCode::U_PLUGIN_ERROR_LIMIT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">utypes.h</td><td class="proto"><tt>enum</tt> UErrorCode::U_REGEX_ERROR_LIMIT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">utypes.h</td><td class="proto"><tt>enum</tt> UErrorCode::U_STANDARD_ERROR_LIMIT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+</table>
+<P></P>
+<a href="#_top">(jump back to top)</a>
+<hr>
+<a name="changed"></a>
+<h2>Changed in  ICU 58 (old, new)</h2>
+<table BORDER="1" class="genTable">
+<THEAD>
+<tr>
+<th>File</th><th>API</th><th>ICU 57</th><th>ICU 58</th>
+</tr>
+</THEAD>
+<tr class="row1">
+<td class="file">compactdecimalformat.h</td><td class="proto">UnicodeString&amp; icu::CompactDecimalFormat::format(int32_t, UnicodeString&amp;, FieldPosition&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">decimfmt.h</td><td class="proto">UnicodeString&amp; icu::DecimalFormat::format(double, UnicodeString&amp;, FieldPositionIterator*, UErrorCode&amp;)</td><td class="stabchange">Stable</td><td>Stable<br>
+<span class=""><span>ICU 4.4</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">decimfmt.h</td><td class="proto">UnicodeString&amp; icu::DecimalFormat::format(int32_t, UnicodeString&amp;, FieldPositionIterator*, UErrorCode&amp;)</td><td class="stabchange">Stable</td><td>Stable<br>
+<span class=""><span>ICU 4.4</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">decimfmt.h</td><td class="proto">UnicodeString&amp; icu::DecimalFormat::format(int64_t, UnicodeString&amp;, FieldPositionIterator*, UErrorCode&amp;)</td><td class="stabchange">Stable</td><td>Stable<br>
+<span class=""><span>ICU 4.4</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">dtfmtsym.h</td><td class="proto"><tt>enum</tt> 
+							icu::DateFormatSymbols::DtContextType::DT_CONTEXT_COUNT</td><td class="stabchange">Stable<br>ICU 3.6</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">dtfmtsym.h</td><td class="proto"><tt>enum</tt> 
+							icu::DateFormatSymbols::DtWidthType::DT_WIDTH_COUNT</td><td class="stabchange">Stable<br>ICU 3.6</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">dtptngen.h</td><td class="proto"><tt>static</tt> UnicodeString icu::DateTimePatternGenerator::staticGetBaseSkeleton(const UnicodeString&amp;, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">dtptngen.h</td><td class="proto"><tt>static</tt> UnicodeString icu::DateTimePatternGenerator::staticGetSkeleton(const UnicodeString&amp;, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">fieldpos.h</td><td class="proto"><tt>enum</tt> icu::FieldPosition::(anonymous) {}</td><td class=""><i>(untagged)</i></td><td>Stable<br>
+<span class=""><span>ICU 2.0</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">fieldpos.h</td><td class="proto"><tt>enum</tt> icu::FieldPosition::(anonymous)::DONT_CARE</td><td class=""><i>(untagged)</i></td><td>Stable<br>
+<span class=""><span>ICU 2.0</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">filteredbrk.h</td><td class="proto">BreakIterator* icu::FilteredBreakIteratorBuilder::build(BreakIterator*, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">filteredbrk.h</td><td class="proto">UBool icu::FilteredBreakIteratorBuilder::suppressBreakAfter(const UnicodeString&amp;, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">filteredbrk.h</td><td class="proto">UBool icu::FilteredBreakIteratorBuilder::unsuppressBreakAfter(const UnicodeString&amp;, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">filteredbrk.h</td><td class="proto">icu::FilteredBreakIteratorBuilder::~FilteredBreakIteratorBuilder()</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">filteredbrk.h</td><td class="proto"><tt>static</tt> FilteredBreakIteratorBuilder* icu::FilteredBreakIteratorBuilder::createInstance(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">filteredbrk.h</td><td class="proto"><tt>static</tt> FilteredBreakIteratorBuilder* icu::FilteredBreakIteratorBuilder::createInstance(const Locale&amp;, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">localpointer.h</td><td class="proto">icu::LocalArray&lt; T &gt;::LocalArray(T*, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">localpointer.h</td><td class="proto">void icu::LocalArray&lt; T &gt;::adoptInsteadAndCheckErrorCode(T*, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">localpointer.h</td><td class="proto">void icu::LocalArray&lt; T &gt;::swap(LocalArray&lt; T &gt;&amp;) U_NOEXCEPT</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">localpointer.h</td><td class="proto">void icu::LocalPointer&lt; T &gt;::swap(LocalPointer&lt; T &gt;&amp;) U_NOEXCEPT</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">measfmt.h</td><td class="proto"><tt>enum</tt> UMeasureFormatWidth::UMEASFMT_WIDTH_COUNT</td><td class="stabchange">Stable<br>ICU 53</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createCentury(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createCupMetric(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createGenericTemperature(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createKnot(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createLiterPer100Kilometers(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createMileScandinavian(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createPintMetric(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createRevolutionAngle(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">numfmt.h</td><td class="proto">UnicodeString&amp; icu::NumberFormat::format(const Formattable&amp;, UnicodeString&amp;, FieldPositionIterator*, UErrorCode&amp;)</td><td class="stabchange">Stable</td><td>Stable<br>
+<span class=""><span>ICU 4.4</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">numfmt.h</td><td class="proto">UnicodeString&amp; icu::NumberFormat::format(double, UnicodeString&amp;, FieldPositionIterator*, UErrorCode&amp;)</td><td class="stabchange">Stable</td><td>Stable<br>
+<span class=""><span>ICU 4.4</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">numfmt.h</td><td class="proto">UnicodeString&amp; icu::NumberFormat::format(int32_t, UnicodeString&amp;, FieldPositionIterator*, UErrorCode&amp;)</td><td class="stabchange">Stable</td><td>Stable<br>
+<span class=""><span>ICU 4.4</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">numfmt.h</td><td class="proto">UnicodeString&amp; icu::NumberFormat::format(int64_t, UnicodeString&amp;, FieldPositionIterator*, UErrorCode&amp;)</td><td class="stabchange">Stable</td><td>Stable<br>
+<span class=""><span>ICU 4.4</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">reldatefmt.h</td><td class="proto"><tt>enum</tt> UDateAbsoluteUnit::UDAT_ABSOLUTE_UNIT_COUNT</td><td class="stabchange">Stable<br>ICU 53</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">reldatefmt.h</td><td class="proto"><tt>enum</tt> UDateDirection::UDAT_DIRECTION_COUNT</td><td class="stabchange">Stable<br>ICU 53</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">reldatefmt.h</td><td class="proto"><tt>enum</tt> UDateRelativeUnit::UDAT_RELATIVE_UNIT_COUNT</td><td class="stabchange">Stable<br>ICU 53</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">tmunit.h</td><td class="proto"><tt>enum</tt> 
+							icu::TimeUnit::UTimeUnitFields::UTIMEUNIT_FIELD_COUNT</td><td class="stabchange">Stable<br>ICU 4.2</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">ubidi.h</td><td class="proto"><tt>#define</tt> U_BIDI_CLASS_DEFAULT</td><td class="stabchange">Stable<br>ICU 3.6</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ubidi.h</td><td class="proto"><tt>enum</tt> UBiDiReorderingMode::UBIDI_REORDER_COUNT</td><td class="stabchange">Stable<br>ICU 3.6</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">ubrk.h</td><td class="proto"><tt>enum</tt> UBreakIteratorType::UBRK_COUNT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ucal.h</td><td class="proto"><tt>enum</tt> UCalendarDateFields::UCAL_FIELD_COUNT</td><td class="stabchange">Stable<br>ICU 2.6</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBidiPairedBracketType::U_BPT_COUNT</td><td class="stabchange">Stable<br>ICU 52</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_COUNT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UCharDirection::U_CHAR_DIRECTION_COUNT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UCharNameChoice::U_CHAR_NAME_CHOICE_COUNT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UDecompositionType::U_DT_COUNT</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UEastAsianWidth::U_EA_COUNT</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UGraphemeClusterBreak::U_GCB_COUNT</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UGraphemeClusterBreak::U_GCB_PREPEND</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Stable<br>
+<span class="verchange"><span>ICU 4.0</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UGraphemeClusterBreak::U_GCB_REGIONAL_INDICATOR</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Stable<br>
+<span class="verchange"><span>ICU 50</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UGraphemeClusterBreak::U_GCB_SPACING_MARK</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Stable<br>
+<span class="verchange"><span>ICU 4.0</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UHangulSyllableType::U_HST_COUNT</td><td class="stabchange">Stable<br>ICU 2.6</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UJoiningGroup::U_JG_COUNT</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UJoiningType::U_JT_COUNT</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> ULineBreak::U_LB_CLOSE_PARENTHESIS</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Stable<br>
+<span class="verchange"><span>ICU 4.4</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> ULineBreak::U_LB_CONDITIONAL_JAPANESE_STARTER</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Stable<br>
+<span class="verchange"><span>ICU 49</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> ULineBreak::U_LB_COUNT</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> ULineBreak::U_LB_H2</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Stable<br>
+<span class="verchange"><span>ICU 3.4</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> ULineBreak::U_LB_H3</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Stable<br>
+<span class="verchange"><span>ICU 3.4</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> ULineBreak::U_LB_HEBREW_LETTER</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Stable<br>
+<span class="verchange"><span>ICU 49</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> ULineBreak::U_LB_JL</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Stable<br>
+<span class="verchange"><span>ICU 3.4</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> ULineBreak::U_LB_JT</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Stable<br>
+<span class="verchange"><span>ICU 3.4</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> ULineBreak::U_LB_JV</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Stable<br>
+<span class="verchange"><span>ICU 3.4</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> ULineBreak::U_LB_NEXT_LINE</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Stable<br>
+<span class="verchange"><span>ICU 2.6</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> ULineBreak::U_LB_REGIONAL_INDICATOR</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Stable<br>
+<span class="verchange"><span>ICU 50</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> ULineBreak::U_LB_WORD_JOINER</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Stable<br>
+<span class="verchange"><span>ICU 2.6</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UNumericType::U_NT_COUNT</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UProperty::UCHAR_BINARY_LIMIT</td><td class="stabchange">Stable<br>ICU 2.1</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UProperty::UCHAR_DOUBLE_LIMIT</td><td class="stabchange">Stable<br>ICU 2.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UProperty::UCHAR_INT_LIMIT</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UProperty::UCHAR_MASK_LIMIT</td><td class="stabchange">Stable<br>ICU 2.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UProperty::UCHAR_OTHER_PROPERTY_LIMIT</td><td class="stabchange">Stable<br>ICU 4.6</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UProperty::UCHAR_STRING_LIMIT</td><td class="stabchange">Stable<br>ICU 2.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UPropertyNameChoice::U_PROPERTY_NAME_CHOICE_COUNT</td><td class="stabchange">Stable<br>ICU 2.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> USentenceBreak::U_SB_COUNT</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_COUNT</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_CR</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Stable<br>
+<span class="verchange"><span>ICU 4.0</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_DOUBLE_QUOTE</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Stable<br>
+<span class="verchange"><span>ICU 52</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_EXTEND</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Stable<br>
+<span class="verchange"><span>ICU 4.0</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_HEBREW_LETTER</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Stable<br>
+<span class="verchange"><span>ICU 52</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_LF</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Stable<br>
+<span class="verchange"><span>ICU 4.0</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_MIDNUMLET</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Stable<br>
+<span class="verchange"><span>ICU 4.0</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_NEWLINE</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Stable<br>
+<span class="verchange"><span>ICU 4.0</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_REGIONAL_INDICATOR</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Stable<br>
+<span class="verchange"><span>ICU 50</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_SINGLE_QUOTE</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Stable<br>
+<span class="verchange"><span>ICU 52</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row0">
+<td class="file">ucnv.h</td><td class="proto"><tt>enum</tt> UConverterUnicodeSet::UCNV_SET_COUNT</td><td class="stabchange">Stable<br>ICU 2.6</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ucol.h</td><td class="proto"><tt>enum</tt> UColAttribute::UCOL_ATTRIBUTE_COUNT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">ucol.h</td><td class="proto"><tt>enum</tt> UColAttributeValue::UCOL_ATTRIBUTE_VALUE_COUNT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ucol.h</td><td class="proto"><tt>enum</tt> UColBoundMode::UCOL_BOUND_VALUE_COUNT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">ucol.h</td><td class="proto"><tt>enum</tt> UColReorderCode::UCOL_REORDER_CODE_LIMIT</td><td class="stabchange">Stable<br>ICU 4.8</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ucurr.h</td><td class="proto"><tt>enum</tt> UCurrencyUsage::UCURR_USAGE_COUNT</td><td class="stabchange">Stable<br>ICU 54</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">udat.h</td><td class="proto"><tt>enum</tt> UDateFormatBooleanAttribute::UDAT_BOOLEAN_ATTRIBUTE_COUNT</td><td class="stabchange">Stable<br>ICU 53</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">udat.h</td><td class="proto"><tt>enum</tt> UDateFormatBooleanAttribute::UDAT_PARSE_MULTIPLE_PATTERNS_FOR_MATCH</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">udat.h</td><td class="proto"><tt>enum</tt> UDateFormatBooleanAttribute::UDAT_PARSE_PARTIAL_LITERAL_MATCH</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">udat.h</td><td class="proto"><tt>enum</tt> UDateFormatField::UDAT_FIELD_COUNT</td><td class="stabchange">Stable<br>ICU 3.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">udata.h</td><td class="proto"><tt>enum</tt> UDataFileAccess::UDATA_FILE_ACCESS_COUNT</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">udatpg.h</td><td class="proto"><tt>enum</tt> UDateTimePatternConflict::UDATPG_CONFLICT_COUNT</td><td class="stabchange">Stable<br>ICU 3.8</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">udatpg.h</td><td class="proto"><tt>enum</tt> UDateTimePatternField::UDATPG_FIELD_COUNT</td><td class="stabchange">Stable<br>ICU 3.8</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uformattable.h</td><td class="proto"><tt>enum</tt> UFormattableType::UFMT_COUNT</td><td class="stabchange">Stable<br>ICU 52</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uloc.h</td><td class="proto"><tt>enum</tt> ULocDataLocaleType::ULOC_DATA_LOCALE_TYPE_LIMIT</td><td class="stabchange">Stable<br>ICU 2.1</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ulocdata.h</td><td class="proto"><tt>enum</tt> ULocaleDataDelimiterType::ULOCDATA_DELIMITER_COUNT</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">ulocdata.h</td><td class="proto"><tt>enum</tt> ULocaleDataExemplarSetType::ULOCDATA_ES_COUNT</td><td class="stabchange">Stable<br>ICU 3.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ulocdata.h</td><td class="proto"><tt>enum</tt> UMeasurementSystem::UMS_LIMIT</td><td class="stabchange">Stable<br>ICU 2.8</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">unistr.h</td><td class="proto"><tt>#define</tt> UNISTR_OBJECT_SIZE</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">unistr.h</td><td class="proto">void icu::UnicodeString::swap(UnicodeString&amp;) U_NOEXCEPT</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">unum.h</td><td class="proto"><tt>enum</tt> UCurrencySpacing::UNUM_CURRENCY_SPACING_COUNT</td><td class="stabchange">Stable<br>ICU 4.8</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">unum.h</td><td class="proto"><tt>enum</tt> UNumberFormatFields::UNUM_FIELD_COUNT</td><td class="stabchange">Stable<br>ICU 49</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">unum.h</td><td class="proto"><tt>enum</tt> UNumberFormatStyle::UNUM_CURRENCY_STANDARD</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">unum.h</td><td class="proto"><tt>enum</tt> UNumberFormatStyle::UNUM_DECIMAL_COMPACT_LONG</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">unum.h</td><td class="proto"><tt>enum</tt> UNumberFormatStyle::UNUM_DECIMAL_COMPACT_SHORT</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">unum.h</td><td class="proto"><tt>enum</tt> UNumberFormatStyle::UNUM_FORMAT_STYLE_COUNT</td><td class="stabchange">Stable<br>ICU 4.8</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">unum.h</td><td class="proto"><tt>enum</tt> UNumberFormatSymbol::UNUM_FORMAT_SYMBOL_COUNT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">upluralrules.h</td><td class="proto"><tt>enum</tt> UPluralType::UPLURAL_TYPE_COUNT</td><td class="stabchange">Stable<br>ICU 50</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uregion.h</td><td class="proto"><tt>enum</tt> URegionType::URGN_LIMIT</td><td class="stabchange">Stable<br>ICU 51</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ureldatefmt.h</td><td class="proto"><tt>enum</tt> UDateRelativeDateTimeFormatterStyle::UDAT_STYLE_COUNT</td><td class="stabchange">Stable<br>ICU 54</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">ureldatefmt.h</td><td class="proto"><tt>enum</tt> URelativeDateTimeUnit::UDAT_REL_UNIT_COUNT</td><td class="">Draft<br>ICU 57</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ures.h</td><td class="proto"><tt>enum</tt> UResType::URES_LIMIT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uscript.h</td><td class="proto"><tt>enum</tt> UScriptCode::USCRIPT_CODE_LIMIT</td><td class="stabchange">Stable<br>ICU 2.2</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">usearch.h</td><td class="proto"><tt>enum</tt> USearchAttribute::USEARCH_ATTRIBUTE_COUNT</td><td class="stabchange">Stable<br>ICU 2.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">usearch.h</td><td class="proto"><tt>enum</tt> USearchAttributeValue::USEARCH_ATTRIBUTE_VALUE_COUNT</td><td class="stabchange">Stable<br>ICU 2.4</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uset.h</td><td class="proto"><tt>enum</tt> USetSpanCondition::USET_SPAN_CONDITION_COUNT</td><td class="stabchange">Stable<br>ICU 3.8</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uspoof.h</td><td class="proto"><tt>enum</tt> USpoofChecks::USPOOF_ANY_CASE</td><td class="stabchange">Stable<br>ICU 4.2</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uspoof.h</td><td class="proto">int32_t uspoof_checkUTF8(const USpoofChecker*, const char*, int32_t, int32_t*, UErrorCode*)</td><td class="">Deprecated<br>ICU 51</td><td>Stable<br>
+<span class="verchange"><span>ICU 4.2</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uspoof.h</td><td class="proto">int32_t uspoof_checkUnicodeString(const USpoofChecker*, const icu::UnicodeString&amp;, int32_t*, UErrorCode*)</td><td class="">Deprecated<br>ICU 51</td><td>Stable<br>
+<span class="verchange"><span>ICU 4.2</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row1">
+<td class="file">utrace.h</td><td class="proto"><tt>enum</tt> UTraceFunctionNumber::UTRACE_COLLATION_LIMIT</td><td class="stabchange">Stable<br>ICU 2.8</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">utrace.h</td><td class="proto"><tt>enum</tt> UTraceFunctionNumber::UTRACE_CONVERSION_LIMIT</td><td class="stabchange">Stable<br>ICU 2.8</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">utrace.h</td><td class="proto"><tt>enum</tt> UTraceFunctionNumber::UTRACE_FUNCTION_LIMIT</td><td class="stabchange">Stable<br>ICU 2.8</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">utypes.h</td><td class="proto"><tt>#define</tt> NULL</td><td class="">Deprecated<br>ICU 54</td><td>Stable<br>
+<span class="verchange"><span>ICU 2.0</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row1">
+<td class="file">utypes.h</td><td class="proto"><tt>enum</tt> UErrorCode::U_BRK_ERROR_LIMIT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">utypes.h</td><td class="proto"><tt>enum</tt> UErrorCode::U_ERROR_LIMIT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">utypes.h</td><td class="proto"><tt>enum</tt> UErrorCode::U_ERROR_WARNING_LIMIT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">utypes.h</td><td class="proto"><tt>enum</tt> UErrorCode::U_FMT_PARSE_ERROR_LIMIT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">utypes.h</td><td class="proto"><tt>enum</tt> UErrorCode::U_IDNA_ERROR_LIMIT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">utypes.h</td><td class="proto"><tt>enum</tt> UErrorCode::U_PARSE_ERROR_LIMIT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">utypes.h</td><td class="proto"><tt>enum</tt> UErrorCode::U_PLUGIN_ERROR_LIMIT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">utypes.h</td><td class="proto"><tt>enum</tt> UErrorCode::U_REGEX_ERROR_LIMIT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">utypes.h</td><td class="proto"><tt>enum</tt> UErrorCode::U_STANDARD_ERROR_LIMIT</td><td class="stabchange">Stable<br>ICU 2.0</td><td>Deprecated<br>
+<span class="verchange"><span>ICU 58</span></span></td>
+</tr>
+</table>
+<P></P>
+<a href="#_top">(jump back to top)</a>
+<hr>
+<a name="promoted"></a>
+<h2>Promoted to stable in ICU 58</h2>
+<table BORDER="1" class="genTable">
+<THEAD>
+<tr>
+<th>File</th><th>API</th><th>ICU 57</th><th>ICU 58</th>
+</tr>
+</THEAD>
+<tr class="row1">
+<td class="file">bytestrie.h</td><td class="proto">StringPiece icu::BytesTrie::Iterator::getString()</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.8</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">bytestriebuilder.h</td><td class="proto">BytesTrieBuilder&amp; icu::BytesTrieBuilder::add(StringPiece, int32_t, UErrorCode&amp;)</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.8</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">compactdecimalformat.h</td><td class="proto">UnicodeString&amp; icu::CompactDecimalFormat::format(int32_t, UnicodeString&amp;, FieldPosition&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">decimfmt.h</td><td class="proto">UnicodeString&amp; icu::DecimalFormat::format(StringPiece, UnicodeString&amp;, FieldPositionIterator*, UErrorCode&amp;)</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.4</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">dtptngen.h</td><td class="proto"><tt>static</tt> UnicodeString icu::DateTimePatternGenerator::staticGetBaseSkeleton(const UnicodeString&amp;, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">dtptngen.h</td><td class="proto"><tt>static</tt> UnicodeString icu::DateTimePatternGenerator::staticGetSkeleton(const UnicodeString&amp;, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">fieldpos.h</td><td class="proto"><tt>enum</tt> icu::FieldPosition::(anonymous) {}</td><td class=""><i>(untagged)</i></td><td>Stable<br>
+<span class=""><span>ICU 2.0</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">fieldpos.h</td><td class="proto"><tt>enum</tt> icu::FieldPosition::(anonymous)::DONT_CARE</td><td class=""><i>(untagged)</i></td><td>Stable<br>
+<span class=""><span>ICU 2.0</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">filteredbrk.h</td><td class="proto">BreakIterator* icu::FilteredBreakIteratorBuilder::build(BreakIterator*, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">filteredbrk.h</td><td class="proto">UBool icu::FilteredBreakIteratorBuilder::suppressBreakAfter(const UnicodeString&amp;, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">filteredbrk.h</td><td class="proto">UBool icu::FilteredBreakIteratorBuilder::unsuppressBreakAfter(const UnicodeString&amp;, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">filteredbrk.h</td><td class="proto">icu::FilteredBreakIteratorBuilder::~FilteredBreakIteratorBuilder()</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">filteredbrk.h</td><td class="proto"><tt>static</tt> FilteredBreakIteratorBuilder* icu::FilteredBreakIteratorBuilder::createInstance(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">filteredbrk.h</td><td class="proto"><tt>static</tt> FilteredBreakIteratorBuilder* icu::FilteredBreakIteratorBuilder::createInstance(const Locale&amp;, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">fmtable.h</td><td class="proto">icu::Formattable::Formattable(StringPiece, UErrorCode&amp;)</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.4</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">fmtable.h</td><td class="proto">void icu::Formattable::setDecimalNumber(StringPiece, UErrorCode&amp;)</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.4</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">idna.h</td><td class="proto">void icu::IDNA::labelToASCII_UTF8(StringPiece, ByteSink&amp;, IDNAInfo&amp;, UErrorCode&amp;)</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.6</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">idna.h</td><td class="proto">void icu::IDNA::labelToUnicodeUTF8(StringPiece, ByteSink&amp;, IDNAInfo&amp;, UErrorCode&amp;)</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.6</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">idna.h</td><td class="proto">void icu::IDNA::nameToASCII_UTF8(StringPiece, ByteSink&amp;, IDNAInfo&amp;, UErrorCode&amp;)</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.6</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">idna.h</td><td class="proto">void icu::IDNA::nameToUnicodeUTF8(StringPiece, ByteSink&amp;, IDNAInfo&amp;, UErrorCode&amp;)</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.6</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">localpointer.h</td><td class="proto">icu::LocalArray&lt; T &gt;::LocalArray(T*, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">localpointer.h</td><td class="proto">void icu::LocalArray&lt; T &gt;::adoptInsteadAndCheckErrorCode(T*, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">localpointer.h</td><td class="proto">void icu::LocalArray&lt; T &gt;::swap(LocalArray&lt; T &gt;&amp;) U_NOEXCEPT</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">localpointer.h</td><td class="proto">void icu::LocalPointer&lt; T &gt;::swap(LocalPointer&lt; T &gt;&amp;) U_NOEXCEPT</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createCentury(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createCupMetric(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createGenericTemperature(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createKnot(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createLiterPer100Kilometers(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createMileScandinavian(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createPintMetric(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createRevolutionAngle(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">numfmt.h</td><td class="proto">UnicodeString&amp; icu::NumberFormat::format(StringPiece, UnicodeString&amp;, FieldPositionIterator*, UErrorCode&amp;)</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.4</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_ADLAM</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_BHAIKSUKI</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_CYRILLIC_EXTENDED_C</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_GLAGOLITIC_SUPPLEMENT</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_IDEOGRAPHIC_SYMBOLS_AND_PUNCTUATION</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_MARCHEN</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_MONGOLIAN_SUPPLEMENT</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_NEWA</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_OSAGE</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_TANGUT_COMPONENTS</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_TANGUT</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UGraphemeClusterBreak::U_GCB_E_BASE_GAZ</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UGraphemeClusterBreak::U_GCB_E_BASE</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UGraphemeClusterBreak::U_GCB_E_MODIFIER</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UGraphemeClusterBreak::U_GCB_GLUE_AFTER_ZWJ</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UGraphemeClusterBreak::U_GCB_ZWJ</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UJoiningGroup::U_JG_AFRICAN_FEH</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UJoiningGroup::U_JG_AFRICAN_NOON</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UJoiningGroup::U_JG_AFRICAN_QAF</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> ULineBreak::U_LB_E_BASE</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> ULineBreak::U_LB_E_MODIFIER</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> ULineBreak::U_LB_ZWJ</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_E_BASE_GAZ</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_E_BASE</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_E_MODIFIER</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_GLUE_AFTER_ZWJ</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_ZWJ</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">udat.h</td><td class="proto"><tt>enum</tt> UDateFormatBooleanAttribute::UDAT_PARSE_MULTIPLE_PATTERNS_FOR_MATCH</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">udat.h</td><td class="proto"><tt>enum</tt> UDateFormatBooleanAttribute::UDAT_PARSE_PARTIAL_LITERAL_MATCH</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">unistr.h</td><td class="proto"><tt>#define</tt> UNISTR_OBJECT_SIZE</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">unistr.h</td><td class="proto"><tt>static</tt> UnicodeString icu::UnicodeString::fromUTF8(StringPiece)</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.2</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">unistr.h</td><td class="proto">void icu::UnicodeString::swap(UnicodeString&amp;) U_NOEXCEPT</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">unum.h</td><td class="proto"><tt>enum</tt> UNumberFormatStyle::UNUM_CURRENCY_STANDARD</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">unum.h</td><td class="proto"><tt>enum</tt> UNumberFormatStyle::UNUM_DECIMAL_COMPACT_LONG</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">unum.h</td><td class="proto"><tt>enum</tt> UNumberFormatStyle::UNUM_DECIMAL_COMPACT_SHORT</td><td class="" colspan="2" align="center">Draft&rarr;Stable<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">uscript.h</td><td class="proto"><tt>enum</tt> UScriptCode::USCRIPT_ADLAM</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uscript.h</td><td class="proto"><tt>enum</tt> UScriptCode::USCRIPT_BHAIKSUKI</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uscript.h</td><td class="proto"><tt>enum</tt> UScriptCode::USCRIPT_HAN_WITH_BOPOMOFO</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uscript.h</td><td class="proto"><tt>enum</tt> UScriptCode::USCRIPT_JAMO</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uscript.h</td><td class="proto"><tt>enum</tt> UScriptCode::USCRIPT_MARCHEN</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uscript.h</td><td class="proto"><tt>enum</tt> UScriptCode::USCRIPT_NEWA</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uscript.h</td><td class="proto"><tt>enum</tt> UScriptCode::USCRIPT_OSAGE</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uscript.h</td><td class="proto"><tt>enum</tt> UScriptCode::USCRIPT_SYMBOLS_EMOJI</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uspoof.h</td><td class="proto">int32_t uspoof_checkUTF8(const USpoofChecker*, const char*, int32_t, int32_t*, UErrorCode*)</td><td class="">Deprecated<br>ICU 51</td><td>Stable<br>
+<span class="verchange"><span>ICU 4.2</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uspoof.h</td><td class="proto">int32_t uspoof_checkUnicodeString(const USpoofChecker*, const icu::UnicodeString&amp;, int32_t*, UErrorCode*)</td><td class="">Deprecated<br>ICU 51</td><td>Stable<br>
+<span class="verchange"><span>ICU 4.2</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+<tr class="row1">
+<td class="file">utypes.h</td><td class="proto"><tt>#define</tt> NULL</td><td class="">Deprecated<br>ICU 54</td><td>Stable<br>
+<span class="verchange"><span>ICU 2.0</span>
+<br>
+<b class="bigwarn" title="A stable API changed version.">(changed)</b></span></td>
+</tr>
+</table>
+<P></P>
+<a href="#_top">(jump back to top)</a>
+<hr>
+<a name="added"></a>
+<h2>Added in ICU 58</h2>
+<table BORDER="1" class="genTable">
+<THEAD>
+<tr>
+<th>File</th><th>API</th><th>ICU 57</th><th>ICU 58</th>
+</tr>
+</THEAD>
+<tr class="row1">
+<td class="file">bytestrie.h</td><td class="proto">StringPiece icu::BytesTrie::Iterator::getString()</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.8</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">bytestriebuilder.h</td><td class="proto">BytesTrieBuilder&amp; icu::BytesTrieBuilder::add(StringPiece, int32_t, UErrorCode&amp;)</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.8</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">compactdecimalformat.h</td><td class="proto">UnicodeString&amp; icu::CompactDecimalFormat::format(StringPiece, UnicodeString&amp;, FieldPositionIterator*, UErrorCode&amp;)</td><td class="">(missing)</td><td>Internal<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">decimfmt.h</td><td class="proto">UnicodeString&amp; icu::DecimalFormat::format(StringPiece, UnicodeString&amp;, FieldPositionIterator*, UErrorCode&amp;)</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.4</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">fmtable.h</td><td class="proto">icu::Formattable::Formattable(StringPiece, UErrorCode&amp;)</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.4</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">fmtable.h</td><td class="proto">void icu::Formattable::setDecimalNumber(StringPiece, UErrorCode&amp;)</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.4</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">idna.h</td><td class="proto">void icu::IDNA::labelToASCII_UTF8(StringPiece, ByteSink&amp;, IDNAInfo&amp;, UErrorCode&amp;)</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.6</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">idna.h</td><td class="proto">void icu::IDNA::labelToUnicodeUTF8(StringPiece, ByteSink&amp;, IDNAInfo&amp;, UErrorCode&amp;)</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.6</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">idna.h</td><td class="proto">void icu::IDNA::nameToASCII_UTF8(StringPiece, ByteSink&amp;, IDNAInfo&amp;, UErrorCode&amp;)</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.6</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">idna.h</td><td class="proto">void icu::IDNA::nameToUnicodeUTF8(StringPiece, ByteSink&amp;, IDNAInfo&amp;, UErrorCode&amp;)</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.6</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">measfmt.h</td><td class="proto">UnicodeString icu::MeasureFormat::getUnitDisplayName(const MeasureUnit&amp;, UErrorCode&amp;)</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createEast(UErrorCode&amp;)</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createNorth(UErrorCode&amp;)</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createSouth(UErrorCode&amp;)</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createWest(UErrorCode&amp;)</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">numfmt.h</td><td class="proto">UnicodeString&amp; icu::NumberFormat::format(StringPiece, UnicodeString&amp;, FieldPositionIterator*, UErrorCode&amp;)</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.4</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">tznames.h</td><td class="proto">void icu::TimeZoneNames::getDisplayNames(const UnicodeString&amp;, const UTimeZoneNameType types[], int32_t, UDate, UnicodeString dest[], UErrorCode&amp;)</td><td class="">(missing)</td><td>Internal<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">tznames.h</td><td class="proto">void icu::TimeZoneNames::loadAllDisplayNames(UErrorCode&amp;)</td><td class="">(missing)</td><td>Internal<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ubiditransform.h</td><td class="proto">UBiDiTransform* ubiditransform_open(UErrorCode*)</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">ubiditransform.h</td><td class="proto"><tt>enum</tt> UBiDiMirroring::UBIDI_MIRRORING_OFF</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ubiditransform.h</td><td class="proto"><tt>enum</tt> UBiDiMirroring::UBIDI_MIRRORING_ON</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">ubiditransform.h</td><td class="proto"><tt>enum</tt> UBiDiOrder::UBIDI_LOGICAL</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ubiditransform.h</td><td class="proto"><tt>enum</tt> UBiDiOrder::UBIDI_VISUAL</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">ubiditransform.h</td><td class="proto">uint32_t ubiditransform_transform(UBiDiTransform*, const UChar*, int32_t, UChar*, int32_t, UBiDiLevel, UBiDiOrder, UBiDiLevel, UBiDiOrder, UBiDiMirroring, uint32_t, UErrorCode*)</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">ubiditransform.h</td><td class="proto">void ubiditransform_close(UBiDiTransform*)</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_ADLAM</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_BHAIKSUKI</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_CYRILLIC_EXTENDED_C</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_GLAGOLITIC_SUPPLEMENT</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_IDEOGRAPHIC_SYMBOLS_AND_PUNCTUATION</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_MARCHEN</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_MONGOLIAN_SUPPLEMENT</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_NEWA</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_OSAGE</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_TANGUT_COMPONENTS</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UBlockCode::UBLOCK_TANGUT</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UGraphemeClusterBreak::U_GCB_E_BASE_GAZ</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UGraphemeClusterBreak::U_GCB_E_BASE</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UGraphemeClusterBreak::U_GCB_E_MODIFIER</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UGraphemeClusterBreak::U_GCB_GLUE_AFTER_ZWJ</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UGraphemeClusterBreak::U_GCB_ZWJ</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UJoiningGroup::U_JG_AFRICAN_FEH</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UJoiningGroup::U_JG_AFRICAN_NOON</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UJoiningGroup::U_JG_AFRICAN_QAF</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> ULineBreak::U_LB_E_BASE</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> ULineBreak::U_LB_E_MODIFIER</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> ULineBreak::U_LB_ZWJ</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_E_BASE_GAZ</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_E_BASE</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_E_MODIFIER</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_GLUE_AFTER_ZWJ</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UWordBreakValues::U_WB_ZWJ</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">udisplaycontext.h</td><td class="proto"><tt>enum</tt> UDisplayContext::UDISPCTX_NO_SUBSTITUTE</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">udisplaycontext.h</td><td class="proto"><tt>enum</tt> UDisplayContext::UDISPCTX_SUBSTITUTE</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">udisplaycontext.h</td><td class="proto"><tt>enum</tt> UDisplayContextType::UDISPCTX_TYPE_SUBSTITUTE_HANDLING</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">unistr.h</td><td class="proto"><tt>static</tt> UnicodeString icu::UnicodeString::fromUTF8(StringPiece)</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 4.2</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uscript.h</td><td class="proto"><tt>enum</tt> UScriptCode::USCRIPT_ADLAM</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uscript.h</td><td class="proto"><tt>enum</tt> UScriptCode::USCRIPT_BHAIKSUKI</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uscript.h</td><td class="proto"><tt>enum</tt> UScriptCode::USCRIPT_HAN_WITH_BOPOMOFO</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uscript.h</td><td class="proto"><tt>enum</tt> UScriptCode::USCRIPT_JAMO</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uscript.h</td><td class="proto"><tt>enum</tt> UScriptCode::USCRIPT_MARCHEN</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uscript.h</td><td class="proto"><tt>enum</tt> UScriptCode::USCRIPT_NEWA</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uscript.h</td><td class="proto"><tt>enum</tt> UScriptCode::USCRIPT_OSAGE</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row0">
+<td class="file">uscript.h</td><td class="proto"><tt>enum</tt> UScriptCode::USCRIPT_SYMBOLS_EMOJI</td><td class="">(missing)</td><td>Stable<br>
+<span class=""><span>ICU 58</span></span></td><td class="bornstable"><b class="bigwarn" title="A new API was introduced as stable in $rightVer.">(Born Stable)</b></td>
+</tr>
+<tr class="row1">
+<td class="file">uspoof.h</td><td class="proto">URestrictionLevel uspoof_getCheckResultRestrictionLevel(const USpoofCheckResult*, UErrorCode*)</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uspoof.h</td><td class="proto">USpoofCheckResult* uspoof_openCheckResult(UErrorCode*)</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uspoof.h</td><td class="proto">U_DEFINE_LOCAL_OPEN_POINTER(LocalUSpoofCheckResultPointer,,)</td><td class="">(missing)</td><td>
+<br>
+<span class=""><span></span>
+<br>
+<b class="bigwarn" title="A new API was introduced that was not tagged.">(untagged)</b></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uspoof.h</td><td class="proto">U_NAMESPACE_END int32_t uspoof_getCheckResultChecks(const USpoofCheckResult*, UErrorCode*)</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uspoof.h</td><td class="proto">const USet* uspoof_getCheckResultNumerics(const USpoofCheckResult*, UErrorCode*)</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uspoof.h</td><td class="proto"><tt>enum</tt> URestrictionLevel::USPOOF_UNDEFINED_RESTRICTIVE</td><td class="">(missing)</td><td>Internal<br>
+<span class=""><span></span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uspoof.h</td><td class="proto"><tt>enum</tt> USpoofChecks::USPOOF_CONFUSABLE</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uspoof.h</td><td class="proto">int32_t uspoof_check2(const USpoofChecker*, const UChar*, int32_t, USpoofCheckResult*, UErrorCode*)</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uspoof.h</td><td class="proto">int32_t uspoof_check2UTF8(const USpoofChecker*, const char*, int32_t, USpoofCheckResult*, UErrorCode*)</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row0">
+<td class="file">uspoof.h</td><td class="proto">int32_t uspoof_check2UnicodeString(const USpoofChecker*, const icu::UnicodeString&amp;, USpoofCheckResult*, UErrorCode*)</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+<tr class="row1">
+<td class="file">uspoof.h</td><td class="proto">void uspoof_closeCheckResult(USpoofCheckResult*)</td><td class="">(missing)</td><td>Draft<br>
+<span class=""><span>ICU 58</span></span></td>
+</tr>
+</table>
+<P></P>
+<a href="#_top">(jump back to top)</a>
+<hr>
+<a name="other"></a>
+<h2>Other existing drafts in ICU 58</h2>
+<div class="other">
+<table BORDER="1" class="genTable">
+<THEAD>
+<tr>
+<th>File</th><th>API</th><th>ICU 57</th><th>ICU 58</th>
+</tr>
+</THEAD>
+<tr class="row1">
+<td class="file">localpointer.h</td><td class="proto">LocalArray&lt;T&gt;&amp; icu::LocalArray&lt; T &gt;::moveFrom(LocalArray&lt; T &gt;&amp;) U_NOEXCEPT</td><td class="" colspan="2" align="center">Draft<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">localpointer.h</td><td class="proto">LocalPointer&lt;T&gt;&amp; icu::LocalPointer&lt; T &gt;::moveFrom(LocalPointer&lt; T &gt;&amp;) U_NOEXCEPT</td><td class="" colspan="2" align="center">Draft<br>ICU 56</td>
+</tr>
+<tr class="row1">
+<td class="file">measfmt.h</td><td class="proto">void icu::MeasureFormat::parseObject(const UnicodeString&amp;, Formattable&amp;, ParsePosition&amp;)</td><td class="" colspan="2" align="center">Draft<br>ICU 53</td>
+</tr>
+<tr class="row0">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createGallonImperial(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createMilePerGallonImperial(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createMilligramPerDeciliter(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createMillimolePerLiter(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">measunit.h</td><td class="proto"><tt>static</tt> MeasureUnit* icu::MeasureUnit::createPartPerMillion(UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">reldatefmt.h</td><td class="proto">UnicodeString&amp; icu::RelativeDateTimeFormatter::format(double, URelativeDateTimeUnit, UnicodeString&amp;, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">reldatefmt.h</td><td class="proto">UnicodeString&amp; icu::RelativeDateTimeFormatter::formatNumeric(double, URelativeDateTimeUnit, UnicodeString&amp;, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">simpleformatter.h</td><td class="proto">SimpleFormatter&amp; icu::SimpleFormatter::operator=(const SimpleFormatter&amp;)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">simpleformatter.h</td><td class="proto">UBool icu::SimpleFormatter::applyPattern(const UnicodeString&amp;, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">simpleformatter.h</td><td class="proto">UBool icu::SimpleFormatter::applyPatternMinMaxArguments(const UnicodeString&amp;, int32_t, int32_t, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">simpleformatter.h</td><td class="proto">UnicodeString icu::SimpleFormatter::getTextWithNoArguments()</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">simpleformatter.h</td><td class="proto">UnicodeString&amp; icu::SimpleFormatter::format(const UnicodeString&amp;, UnicodeString&amp;, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">simpleformatter.h</td><td class="proto">UnicodeString&amp; icu::SimpleFormatter::format(const UnicodeString&amp;, const UnicodeString&amp;, UnicodeString&amp;, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">simpleformatter.h</td><td class="proto">UnicodeString&amp; icu::SimpleFormatter::format(const UnicodeString&amp;, const UnicodeString&amp;, const UnicodeString&amp;, UnicodeString&amp;, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">simpleformatter.h</td><td class="proto">UnicodeString&amp; icu::SimpleFormatter::formatAndAppend(const UnicodeString* const*, int32_t, UnicodeString&amp;, int32_t*, int32_t, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">simpleformatter.h</td><td class="proto">UnicodeString&amp; icu::SimpleFormatter::formatAndReplace(const UnicodeString* const*, int32_t, UnicodeString&amp;, int32_t*, int32_t, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">simpleformatter.h</td><td class="proto">icu::SimpleFormatter::SimpleFormatter()</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">simpleformatter.h</td><td class="proto">icu::SimpleFormatter::SimpleFormatter(const SimpleFormatter&amp;)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">simpleformatter.h</td><td class="proto">icu::SimpleFormatter::SimpleFormatter(const UnicodeString&amp;, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">simpleformatter.h</td><td class="proto">icu::SimpleFormatter::SimpleFormatter(const UnicodeString&amp;, int32_t, int32_t, UErrorCode&amp;)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">simpleformatter.h</td><td class="proto">icu::SimpleFormatter::~SimpleFormatter()</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">simpleformatter.h</td><td class="proto">int32_t icu::SimpleFormatter::getArgumentLimit()</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UProperty::UCHAR_EMOJI_MODIFIER_BASE</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UProperty::UCHAR_EMOJI_MODIFIER</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UProperty::UCHAR_EMOJI_PRESENTATION</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">uchar.h</td><td class="proto"><tt>enum</tt> UProperty::UCHAR_EMOJI</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">udat.h</td><td class="proto"><tt>enum</tt> UDateFormatField::UDAT_AM_PM_MIDNIGHT_NOON_FIELD</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">unistr.h</td><td class="proto">UnicodeString&amp; icu::UnicodeString::moveFrom(UnicodeString&amp;) U_NOEXCEPT</td><td class="" colspan="2" align="center">Draft<br>ICU 56</td>
+</tr>
+<tr class="row0">
+<td class="file">uregex.h</td><td class="proto"><tt>enum</tt> URegexpFlag::UREGEX_CANON_EQ</td><td class="" colspan="2" align="center">Draft<br>ICU 2.4</td>
+</tr>
+<tr class="row1">
+<td class="file">ureldatefmt.h</td><td class="proto">URelativeDateTimeFormatter* ureldatefmt_open(const char*, UNumberFormat*, UDateRelativeDateTimeFormatterStyle, UDisplayContext, UErrorCode*)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">ureldatefmt.h</td><td class="proto"><tt>enum</tt> URelativeDateTimeUnit::UDAT_REL_UNIT_DAY</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">ureldatefmt.h</td><td class="proto"><tt>enum</tt> URelativeDateTimeUnit::UDAT_REL_UNIT_FRIDAY</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">ureldatefmt.h</td><td class="proto"><tt>enum</tt> URelativeDateTimeUnit::UDAT_REL_UNIT_HOUR</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">ureldatefmt.h</td><td class="proto"><tt>enum</tt> URelativeDateTimeUnit::UDAT_REL_UNIT_MINUTE</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">ureldatefmt.h</td><td class="proto"><tt>enum</tt> URelativeDateTimeUnit::UDAT_REL_UNIT_MONDAY</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">ureldatefmt.h</td><td class="proto"><tt>enum</tt> URelativeDateTimeUnit::UDAT_REL_UNIT_MONTH</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">ureldatefmt.h</td><td class="proto"><tt>enum</tt> URelativeDateTimeUnit::UDAT_REL_UNIT_QUARTER</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">ureldatefmt.h</td><td class="proto"><tt>enum</tt> URelativeDateTimeUnit::UDAT_REL_UNIT_SATURDAY</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">ureldatefmt.h</td><td class="proto"><tt>enum</tt> URelativeDateTimeUnit::UDAT_REL_UNIT_SECOND</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">ureldatefmt.h</td><td class="proto"><tt>enum</tt> URelativeDateTimeUnit::UDAT_REL_UNIT_SUNDAY</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">ureldatefmt.h</td><td class="proto"><tt>enum</tt> URelativeDateTimeUnit::UDAT_REL_UNIT_THURSDAY</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">ureldatefmt.h</td><td class="proto"><tt>enum</tt> URelativeDateTimeUnit::UDAT_REL_UNIT_TUESDAY</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">ureldatefmt.h</td><td class="proto"><tt>enum</tt> URelativeDateTimeUnit::UDAT_REL_UNIT_WEDNESDAY</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">ureldatefmt.h</td><td class="proto"><tt>enum</tt> URelativeDateTimeUnit::UDAT_REL_UNIT_WEEK</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">ureldatefmt.h</td><td class="proto"><tt>enum</tt> URelativeDateTimeUnit::UDAT_REL_UNIT_YEAR</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">ureldatefmt.h</td><td class="proto">int32_t ureldatefmt_combineDateAndTime(const URelativeDateTimeFormatter*, const UChar*, int32_t, const UChar*, int32_t, UChar*, int32_t, UErrorCode*)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">ureldatefmt.h</td><td class="proto">int32_t ureldatefmt_format(const URelativeDateTimeFormatter*, double, URelativeDateTimeUnit, UChar*, int32_t, UErrorCode*)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row1">
+<td class="file">ureldatefmt.h</td><td class="proto">int32_t ureldatefmt_formatNumeric(const URelativeDateTimeFormatter*, double, URelativeDateTimeUnit, UChar*, int32_t, UErrorCode*)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+<tr class="row0">
+<td class="file">ureldatefmt.h</td><td class="proto">void ureldatefmt_close(URelativeDateTimeFormatter*)</td><td class="" colspan="2" align="center">Draft<br>ICU 57</td>
+</tr>
+</table>
+</div>
+<P></P>
+<a href="#_top">(jump back to top)</a>
+<hr>
+<a name="purevirtual"></a>
+<h2>Signature Simplifications</h2>
+<i>This section shows cases where the signature was "simplified" for the sake of comparison. The simplified form is in bold, followed by
+    	all possible variations in "original" form.</i>
+<div class="other">
+<ul></ul>
+</div>
+<P></P>
+<a href="#_top">(jump back to top)</a>
+<hr>
+<p>
+<i><font size="-1">Contents generated by StableAPI tool on Thu Sep 22 11:14:21 PDT 2016<br>Copyright (C) 2016, International Business Machines Corporation, All Rights Reserved.</font></i>
+</p>
+</body>
+</html>

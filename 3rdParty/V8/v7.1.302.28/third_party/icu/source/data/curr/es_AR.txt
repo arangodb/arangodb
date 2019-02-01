@@ -1,0 +1,19 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+es_AR{
+    %%Parent{"es_419"}
+    Currencies{
+        ARS{
+            "$",
+            "peso argentino",
+        }
+        USD{
+            "US$",
+            "dólar estadounidense",
+        }
+    }
+    Currencies%variant{
+        GEL{"GEL"}
+    }
+    Version{"2.1.27.99"}
+}

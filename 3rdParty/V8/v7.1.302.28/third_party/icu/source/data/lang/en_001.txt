@@ -1,0 +1,14 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+en_001{
+    Keys{
+        colNormalization{"Normalised Sorting"}
+    }
+    Types{
+        colNormalization{
+            no{"Sort Without Normalisation"}
+            yes{"Sort Unicode Normalised"}
+        }
+    }
+    Version{"2.1.29.54"}
+}

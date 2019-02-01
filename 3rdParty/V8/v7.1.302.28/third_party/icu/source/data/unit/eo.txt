@@ -1,0 +1,13 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+eo{
+    Version{"2.1.27.40"}
+    unitsShort{
+        duration{
+            month{
+                one{"{0} mon."}
+                other{"{0} mon."}
+            }
+        }
+    }
+}

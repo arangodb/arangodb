@@ -1,0 +1,56 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+so{
+    Languages{
+        ak{"Akan"}
+        am{"Axmaari"}
+        ar{"Carabi"}
+        be{"Beleruusiyaan"}
+        bg{"Bulgeeriyaan"}
+        bn{"Bangaali"}
+        cs{"Jeeg"}
+        de{"Jarmal"}
+        el{"Giriik"}
+        en{"Ingiriisi"}
+        es{"Isbaanish"}
+        fa{"Faarisi"}
+        fr{"Faransiis"}
+        fy{"Firiisiyan Galbeed"}
+        ha{"Hawsa"}
+        hi{"Hindi"}
+        hu{"Hangariyaan"}
+        id{"Indunuusiyaan"}
+        ig{"Igbo"}
+        it{"Talyaani"}
+        ja{"Jabbaaniis"}
+        jv{"Jafaaniis"}
+        km{"Kamboodhian"}
+        ko{"Kuuriyaan"}
+        ms{"Malaay"}
+        my{"Burmese"}
+        ne{"Nebaali"}
+        nl{"Holandays"}
+        pa{"Bunjaabi"}
+        pl{"Boolish"}
+        pt{"Boortaqiis"}
+        ro{"Romanka"}
+        ru{"Ruush"}
+        rw{"Rwanda"}
+        so{"Soomaali"}
+        sv{"Swiidhis"}
+        ta{"Tamiil"}
+        th{"Taaylandays"}
+        tr{"Turkish"}
+        uk{"Yukreeniyaan"}
+        ur{"Urduu"}
+        vi{"Fiitnaamays"}
+        yo{"Yoruuba"}
+        zh{"Jayniis"}
+        zu{"Zuulu"}
+    }
+    Scripts{
+        Zxxx{"Aan la qorin"}
+        Zzzz{"Far aan la aqoon amase aan saxnayn"}
+    }
+    Version{"2.1.27.78"}
+}

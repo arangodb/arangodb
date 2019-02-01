@@ -1,0 +1,170 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+fr_CA{
+    Currencies{
+        ARS{
+            "ARS",
+            "peso argentin",
+        }
+        AUD{
+            "$ AU",
+            "dollar australien",
+        }
+        BMD{
+            "BMD",
+            "dollar bermudien",
+        }
+        BND{
+            "BND",
+            "dollar brunéien",
+        }
+        BSD{
+            "BSD",
+            "dollar bahaméen",
+        }
+        BZD{
+            "BZD",
+            "dollar bélizéen",
+        }
+        CAD{
+            "$",
+            "dollar canadien",
+        }
+        CLP{
+            "CLP",
+            "peso chilien",
+        }
+        CNY{
+            "CN¥",
+            "yuan renminbi chinois",
+        }
+        COP{
+            "COP",
+            "peso colombien",
+        }
+        FJD{
+            "FJD",
+            "dollar fidjien",
+        }
+        FKP{
+            "FKP",
+            "livre des Îles Malouines",
+        }
+        GBP{
+            "£",
+            "livre sterling",
+        }
+        GIP{
+            "GIP",
+            "livre de Gibraltar",
+        }
+        HKD{
+            "$ HK",
+            "dollar de Hong Kong",
+        }
+        ILS{
+            "ILS",
+            "nouveau shekel israélien",
+        }
+        INR{
+            "INR",
+            "roupie indienne",
+        }
+        JPY{
+            "¥",
+            "yen japonais",
+        }
+        KRW{
+            "KRW",
+            "won sud-coréen",
+        }
+        LBP{
+            "LBP",
+            "livre libanaise",
+        }
+        MXN{
+            "MXN",
+            "peso mexicain",
+        }
+        NAD{
+            "NAD",
+            "dollar namibien",
+        }
+        NZD{
+            "$ NZ",
+            "dollar néo-zélandais",
+        }
+        SBD{
+            "SBD",
+            "dollar des îles Salomon",
+        }
+        SGD{
+            "$ SG",
+            "dollar de Singapour",
+        }
+        SRD{
+            "SRD",
+            "dollar surinamais",
+        }
+        TOP{
+            "TOP",
+            "pa’anga",
+        }
+        TTD{
+            "TTD",
+            "dollar de Trinité-et-Tobago",
+        }
+        USD{
+            "$ US",
+            "dollar des États-Unis",
+        }
+        UYU{
+            "UYU",
+            "peso uruguayen",
+        }
+        VND{
+            "VND",
+            "dông vietnamien",
+        }
+        XAF{
+            "XAF",
+            "franc CFA (BEAC)",
+        }
+        XOF{
+            "XOF",
+            "franc CFA (BCEAO)",
+        }
+        XPF{
+            "XPF",
+            "franc CFP",
+        }
+        XXX{
+            "XXX",
+            "Devise inconnue",
+        }
+    }
+    Currencies%narrow{
+        GEL{"GEL"}
+        KMF{"CF"}
+        NIO{"C$"}
+        ZMW{"ZK"}
+    }
+    Currencies%variant{
+        TRY{"TL"}
+    }
+    CurrencyPlurals{
+        FKP{
+            one{"livre des Îles Malouines"}
+            other{"livres des Îles Malouines"}
+        }
+        TOP{
+            one{"pa’anga"}
+            other{"pa’angas"}
+        }
+        XXX{
+            one{"(devise inconnue)"}
+            other{"(devise inconnue)"}
+        }
+    }
+    Version{"2.1.27.99"}
+}

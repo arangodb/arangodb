@@ -1,0 +1,10 @@
+﻿# © 2016 and later: Unicode, Inc. and others.
+# License & terms of use: http://www.unicode.org/copyright.html#License
+#
+# File: am_fa.txt
+# Generated from CLDR
+#
+
+::am-am_FONIPA;
+::und_FONIPA-fa;
+

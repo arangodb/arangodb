@@ -1,0 +1,91 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+es_MX{
+    %%Parent{"es_419"}
+    Keys{
+        calendar{"Calendario"}
+        collation{"Orden"}
+        currency{"Moneda"}
+    }
+    Languages{
+        ace{"acehnés"}
+        arp{"arapaho"}
+        ba{"bashkir"}
+        bas{"basa"}
+        bax{"bamun"}
+        bho{"bhojpuri"}
+        dum{"neerlandés medieval"}
+        enm{"inglés medieval"}
+        eu{"euskera"}
+        frm{"francés medieval"}
+        gan{"gan (China)"}
+        gmh{"alemán de la alta edad media"}
+        grc{"griego antiguo"}
+        hak{"kejia (China)"}
+        hsn{"xiang (China)"}
+        lo{"lao"}
+        mga{"irlandés medieval"}
+        nan{"min nan (Chino)"}
+        nso{"sotho septentrional"}
+        pa{"punyabí"}
+        rn{"kiroundi"}
+        shu{"árabe chadiano"}
+        ss{"siswati"}
+        sw{"suajili"}
+        sw_CD{"suajili del Congo"}
+        wo{"wolof"}
+        zgh{"tamazight marroquí estándar"}
+    }
+    Languages%short{
+        en_GB{"inglés (R. U.)"}
+    }
+    Languages%variant{
+        ug{"uyghur"}
+    }
+    Scripts{
+        Telu{"telugú"}
+    }
+    Types{
+        calendar{
+            gregorian{"Calendario gregoriano"}
+            roc{"calendario minguo"}
+        }
+        collation{
+            ducet{"orden de clasificación de Unicode predeterminado"}
+            standard{"Orden estándar"}
+            traditional{"Orden tradicional"}
+        }
+        lb{
+            normal{"salto de línea normal"}
+        }
+        ms{
+            uksystem{"sistema imperial"}
+        }
+        numbers{
+            arab{"Dígitos en arábigo-índico"}
+            arabext{"Dígitos en árabigo-índico extendido"}
+            armn{"Números en armenio"}
+            armnlow{"Números en armenio en minúscula"}
+            ethi{"Números en etíope"}
+            geor{"Números en georgiano"}
+            grek{"Números en griego"}
+            greklow{"Números en griego en minúscula"}
+            guru{"Dígitos en gurmuji"}
+            hanidec{"Numeros decimales en chino"}
+            hans{"Números en chino simplificado"}
+            hansfin{"Números financieros en chino simplificado"}
+            hant{"Números en chino tradicional"}
+            hantfin{"Números financieros en chino tradicional"}
+            hebr{"Números en hebreo"}
+            jpanfin{"Números financieros en japonés"}
+            knda{"números en kannada"}
+            laoo{"Dígitos en lao"}
+            mlym{"Dígitos en malabar"}
+            taml{"Números en tamil"}
+            tamldec{"Dígitos en tamil"}
+            telu{"Dígitos en telugú"}
+            tibt{"Dígitos en tibetano"}
+        }
+    }
+    Version{"2.1.28.76"}
+}

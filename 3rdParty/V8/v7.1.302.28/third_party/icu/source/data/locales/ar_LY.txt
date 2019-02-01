@@ -1,0 +1,51 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ar_LY{
+    NumberElements{
+        default{"latn"}
+        latn{
+            symbols{
+                decimal{","}
+                group{"."}
+            }
+        }
+    }
+    Version{"2.1.27.99"}
+    calendar{
+        gregorian{
+            dayPeriod{
+                format{
+                    abbreviated{
+                        afternoon1{"ظهرًا"}
+                        afternoon2{"بعد الظهر"}
+                        evening1{"مساءً"}
+                        morning1{"فجرًا"}
+                        morning2{"ص"}
+                        night1{"منتصف الليل"}
+                        night2{"ل"}
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        afternoon1{"ظهرًا"}
+                        afternoon2{"بعد الظهر"}
+                        evening1{"مساءً"}
+                        morning1{"فجرًا"}
+                        morning2{"ص"}
+                        night1{"منتصف الليل"}
+                        night2{"ليلاً"}
+                    }
+                    narrow{
+                        afternoon1{"ظهرًا"}
+                        afternoon2{"بعد الظهر"}
+                        evening1{"مساءً"}
+                        morning1{"فجرًا"}
+                        morning2{"صباحًا"}
+                        night1{"منتصف الليل"}
+                        night2{"ليلاً"}
+                    }
+                }
+            }
+        }
+    }
+}

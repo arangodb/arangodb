@@ -1,0 +1,30 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+nds{
+    Version{"2.1.28.71"}
+    units{
+        duration{
+            day{
+                other{"{0} Daag"}
+            }
+            hour{
+                other{"{0} Stünnen"}
+            }
+            minute{
+                other{"{0} Minuten"}
+            }
+            month{
+                other{"{0} Maanden"}
+            }
+            second{
+                other{"{0} Sekunnen"}
+            }
+            week{
+                other{"{0} Weken"}
+            }
+            year{
+                other{"{0} Johren"}
+            }
+        }
+    }
+}

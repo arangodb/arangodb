@@ -1,0 +1,16 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+or{
+    Version{"2.1.27.78"}
+    zoneStrings{
+        "meta:Christmas"{
+            ls{"ଖ୍ରୀଷ୍ଟମାସ ଆଇଲ୍ୟାଣ୍ଡ ସମୟ"}
+        }
+        "meta:Galapagos"{
+            ls{"ଗାଲାପାଗୋସ୍ ସମୟ"}
+        }
+        "meta:India"{
+            ss{"IST"}
+        }
+    }
+}

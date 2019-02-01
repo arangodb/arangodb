@@ -1,0 +1,17 @@
+// ***************************************************************************
+// *
+// * Copyright (C) 2016 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// *
+// ***************************************************************************
+/**
+ *  Chrome Note: This locale data is the minimum to add 'wa' to the
+ *  Accept-Language menu and is taken from CLDR's seed data for wa.
+ */
+wa{
+    ExemplarCharacters{"[a à â å æ b c ç d e é è ê ë f g h i î ï j k l m n o ô œ
+    p q r s t u ù û ü v w x y ÿ z]"}
+    LocaleScript{
+        "Latn",
+    }
+}

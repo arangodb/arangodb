@@ -1,0 +1,321 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+en_AU{
+    %%Parent{"en_001"}
+    Version{"2.1.30.50"}
+    units{
+        coordinate{
+            east{"{0} east"}
+            north{"{0} north"}
+            south{"{0} south"}
+            west{"{0} west"}
+        }
+        energy{
+            kilowatt-hour{
+                dnam{"kilowatt hours"}
+                one{"{0} kilowatt hour"}
+                other{"{0} kilowatt hours"}
+            }
+        }
+        length{
+            centimeter{
+                per{"{0} centimetre"}
+            }
+            decimeter{
+                one{"decimetre"}
+                other{"{0} decimetres"}
+            }
+            kilometer{
+                dnam{"kilometre"}
+            }
+            micrometer{
+                dnam{"micrometres"}
+            }
+        }
+        mass{
+            metric-ton{
+                dnam{"tonnes"}
+                one{"tonne"}
+                other{"{0} tonnes"}
+            }
+        }
+        temperature{
+            generic{
+                dnam{"degrees"}
+                one{"{0} degree"}
+                other{"{0} degrees"}
+            }
+        }
+    }
+    unitsNarrow{
+        concentr{
+            milligram-per-deciliter{
+                dnam{"mg/dL"}
+                one{"{0}mg/dL"}
+                other{"{0}mg/dL"}
+            }
+            millimole-per-liter{
+                dnam{"mmol/L"}
+                one{"{0}mmol/L"}
+                other{"{0}mmol/L"}
+            }
+        }
+        consumption{
+            liter-per-100kilometers{
+                dnam{"L/100km"}
+                one{"{0}L/100km"}
+                other{"{0}L/100km"}
+            }
+            liter-per-kilometer{
+                dnam{"L/km"}
+                one{"{0}L/km"}
+                other{"{0}L/km"}
+            }
+        }
+        duration{
+            millisecond{
+                dnam{"msec."}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"min."}
+                one{"{0} min."}
+                other{"{0} min."}
+            }
+            second{
+                dnam{"sec."}
+                one{"{0} s."}
+                other{"{0} s."}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                dnam{"km/h"}
+                one{"{0} km/h"}
+                other{"{0} km/h"}
+            }
+            mile-per-hour{
+                dnam{"m.p.h."}
+                one{"{0} m.p.h."}
+                other{"{0} m.p.h."}
+            }
+        }
+        temperature{
+            celsius{
+                one{"{0}°C"}
+                other{"{0}°C"}
+            }
+        }
+        volume{
+            bushel{
+                one{"{0} bus."}
+                other{"{0} bus."}
+            }
+            centiliter{
+                dnam{"cL"}
+                one{"{0}cL"}
+                other{"{0}cL"}
+            }
+            deciliter{
+                dnam{"dL"}
+                one{"{0}dL"}
+                other{"{0}dL"}
+            }
+            hectoliter{
+                dnam{"hL"}
+                one{"{0}hL"}
+                other{"{0}hL"}
+            }
+            liter{
+                one{"{0}L"}
+                other{"{0}L"}
+                per{"{0}/L"}
+            }
+            megaliter{
+                dnam{"ML"}
+                one{"{0}ML"}
+                other{"{0}ML"}
+            }
+            milliliter{
+                dnam{"mL"}
+                one{"{0}mL"}
+                other{"{0}mL"}
+            }
+        }
+    }
+    unitsShort{
+        angle{
+            arc-minute{
+                dnam{"arcmin."}
+                one{"{0} arcmin."}
+                other{"{0} arcmin."}
+            }
+            arc-second{
+                dnam{"arcsec."}
+                one{"{0} arcsec."}
+                other{"{0} arcsec."}
+            }
+            degree{
+                one{"{0} deg."}
+                other{"{0} deg."}
+            }
+        }
+        concentr{
+            milligram-per-deciliter{
+                dnam{"mg/dL"}
+                one{"{0} mg/dL"}
+                other{"{0} mg/dL"}
+            }
+            millimole-per-liter{
+                one{"{0} mmol/L"}
+                other{"{0} mmol/L"}
+            }
+        }
+        consumption{
+            liter-per-100kilometers{
+                dnam{"L/100 km"}
+                one{"{0} L/100 km"}
+                other{"{0} L/100 km"}
+            }
+            liter-per-kilometer{
+                one{"{0} L/km"}
+                other{"{0} L/km"}
+            }
+            mile-per-gallon{
+                dnam{"miles/gal. US"}
+                one{"{0} m.p.g. US"}
+                other{"{0} m.p.g. US"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"miles/gal."}
+                one{"{0} m.p.g."}
+                other{"{0} m.p.g."}
+            }
+        }
+        duration{
+            century{
+                dnam{"C."}
+                one{"{0} C."}
+                other{"{0} C."}
+            }
+            hour{
+                per{"{0} phr"}
+            }
+            microsecond{
+                dnam{"μsec."}
+            }
+            millisecond{
+                dnam{"millisec."}
+            }
+            minute{
+                dnam{"min."}
+                one{"{0} min."}
+                other{"{0} min."}
+                per{"{0}/min."}
+            }
+            month{
+                one{"{0} m."}
+                other{"{0} m."}
+            }
+            nanosecond{
+                dnam{"nanosec."}
+            }
+            second{
+                dnam{"sec."}
+                one{"{0} sec."}
+                other{"{0} sec."}
+                per{"{0} ps."}
+            }
+        }
+        energy{
+            kilowatt-hour{
+                dnam{"kWh"}
+            }
+        }
+        length{
+            astronomical-unit{
+                dnam{"AU"}
+                one{"{0} AU"}
+                other{"{0} AU"}
+            }
+            fathom{
+                one{"{0} fm"}
+                other{"{0} fm"}
+            }
+            light-year{
+                one{"{0} l.y."}
+                other{"{0} l.y."}
+            }
+        }
+        mass{
+            carat{
+                one{"{0} CM"}
+                other{"{0} CM"}
+            }
+        }
+        pressure{
+            millibar{
+                dnam{"mb"}
+                one{"{0} mb"}
+                other{"{0} mb"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                one{"{0} km/h"}
+                other{"{0} km/h"}
+            }
+            meter-per-second{
+                dnam{"metres/sec."}
+                one{"{0} m/s."}
+                other{"{0} m/s."}
+            }
+            mile-per-hour{
+                one{"{0} m.p.h."}
+                other{"{0} m.p.h."}
+            }
+        }
+        temperature{
+            generic{
+                dnam{"deg."}
+            }
+        }
+        volume{
+            bushel{
+                one{"{0} bus."}
+                other{"{0} bus."}
+            }
+            centiliter{
+                dnam{"cL"}
+                one{"{0} cL"}
+                other{"{0} cL"}
+            }
+            deciliter{
+                dnam{"dL"}
+                one{"{0} dL"}
+                other{"{0} dL"}
+            }
+            hectoliter{
+                dnam{"hL"}
+                one{"{0} hL"}
+                other{"{0} hL"}
+            }
+            liter{
+                one{"{0} L"}
+                other{"{0} L"}
+                per{"{0}/L"}
+            }
+            megaliter{
+                dnam{"ML"}
+                one{"{0} ML"}
+                other{"{0} ML"}
+            }
+            milliliter{
+                dnam{"mL"}
+                one{"{0} mL"}
+                other{"{0} mL"}
+            }
+        }
+    }
+}
