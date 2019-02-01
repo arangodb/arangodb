@@ -37,7 +37,7 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the block
 AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, size_t nrItems, RegisterId nrRegs)
-    : _numEntries(nrItems * nrRegs), _nrItems(nrItems), _nrRegs(nrRegs), _resourceMonitor(resourceMonitor) {
+    : _nrItems(nrItems), _nrRegs(nrRegs), _resourceMonitor(resourceMonitor) {
   TRI_ASSERT(resourceMonitor != nullptr);
   TRI_ASSERT(nrItems > 0);  // empty AqlItemBlocks are not allowed!
 
@@ -59,7 +59,7 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, size_t nrItems, Reg
 
 /// @brief create the block from VelocyPack, note that this can throw
 AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const slice)
-    : _numEntries(0), _nrItems(0), _nrRegs(0), _resourceMonitor(resourceMonitor) {
+    : _nrItems(0), _nrRegs(0), _resourceMonitor(resourceMonitor) {
   TRI_ASSERT(resourceMonitor != nullptr);
 
   int64_t nrItems = VelocyPackHelper::getNumericValue<int64_t>(slice, "nrItems", 0);
@@ -69,8 +69,6 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
   _nrItems = static_cast<size_t>(nrItems);
 
   _nrRegs = VelocyPackHelper::getNumericValue<RegisterId>(slice, "nrRegs", 0);
-
-  _numEntries = _nrItems * _nrRegs;
 
   // Initialize the data vector:
   if (_nrRegs > 0) {
@@ -292,7 +290,6 @@ void AqlItemBlock::shrink(size_t nrItems) {
 
   // adjust the size of the block
   _nrItems = nrItems;
-  _numEntries = _nrItems * _nrRegs;
 }
 
 void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
@@ -303,11 +300,13 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
   size_t const currentSize = _nrItems * _nrRegs;
   TRI_ASSERT(currentSize == numEntries());
 
-  // TODO previously, _data.size() was used for the memory usage. _data.capacity()
-  // might have been more accurate. Now, _data.size() stays at _data.capacity(),
-  // or at least, is never reduced.
+  // TODO Previously, _data.size() was used for the memory usage.
+  // _data.capacity() might have been more accurate. Now, _data.size() stays at
+  // _data.capacity(), or at least, is never reduced.
   // So I decided for now to report the memory usage based on numEntries() only,
-  // to mimic the previous behaviour. I'm not sure whether it should stay this way.
+  // to mimic the previous behaviour. I'm not sure whether it should stay this
+  // way; because currently, we are tracking the memory we need, instead of the
+  // memory we have.
   if (targetSize > _data.size()) {
      _data.resize(targetSize);
   }
@@ -327,10 +326,8 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
     decreaseMemoryUsage(sizeof(AqlValue) * (currentSize - targetSize));
   }
 
-  _numEntries = targetSize;
   _nrItems = nrItems;
   _nrRegs = nrRegs;
-  TRI_ASSERT(_nrItems * _nrRegs == _numEntries);
 }
 
 /// @brief clears out some columns (registers), this deletes the values if

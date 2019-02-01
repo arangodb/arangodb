@@ -301,9 +301,13 @@ class AqlItemBlock {
   /// @brief getter for _nrItems
   inline size_t size() const noexcept { return _nrItems; }
 
+
+  /// @brief Number of entries in the matrix. If this changes, the memory usage
+  /// must be / in- or decreased appropriately as well.
+  /// All entries _data[i] for numEntries() <= i < _data.size() always have to
+  /// be erased, i.e. empty / none!
   inline size_t numEntries() const {
-    TRI_ASSERT(_numEntries == _nrRegs * _nrItems);
-    return _numEntries;
+    return _nrRegs * _nrItems;
   }
 
   inline size_t capacity() const { return _data.capacity(); }
@@ -356,11 +360,6 @@ class AqlItemBlock {
   /// @brief _data, the actual data as a single vector of dimensions _nrItems
   /// times _nrRegs
   std::vector<AqlValue> _data;
-
-  /// @brief Number of entries in the matrix. Must thus always be equal to
-  /// _nrItems * _nrRegs. If this is changed, the memory usage must be
-  /// in- or decreased appropriately as well.
-  size_t _numEntries;
 
   /// @brief _valueCount, since we have to allow for identical AqlValues
   /// in an AqlItemBlock, this map keeps track over which AqlValues we
