@@ -285,6 +285,10 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ShortestPathBlock::getS
     }
 
     if (_buffer.empty()) {
+      if (getHasMoreState() == ExecutionState::DONE) {
+        return {ExecutionState::DONE, nullptr};
+      }
+
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
       ExecutionState state;
       bool blockAppended;

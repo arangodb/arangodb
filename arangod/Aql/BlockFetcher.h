@@ -79,8 +79,10 @@ class BlockFetcher {
 
   TEST_VIRTUAL ~BlockFetcher() = default;
 
-  TEST_VIRTUAL
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock();
+  // This is only TEST_VIRTUAL, so we ignore this lint warning:
+  // NOLINTNEXTLINE google-default-arguments
+  TEST_VIRTUAL std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock(
+      size_t atMost = ExecutionBlock::DefaultBatchSize());
 
   // TODO enable_if<allowBlockPassthrough>
   std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t atMost);

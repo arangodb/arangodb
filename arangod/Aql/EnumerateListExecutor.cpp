@@ -66,6 +66,9 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(OutputAqlIt
       // because we finished iterating over existing array
       // element and need to refetch another row
       // _inputArrayPosition = 0;
+      if (_rowState == ExecutionState::DONE) {
+        return {_rowState, NoStats{}};
+      }
       initialize();
       std::tie(_rowState, _currentRow) = _fetcher.fetchRow();
       if (_rowState == ExecutionState::WAITING) {

@@ -52,7 +52,9 @@ BlockFetcherMock<passBlocksThrough>::BlockFetcherMock(arangodb::aql::ResourceMon
       _itemBlockManager(&_monitor) {}
 
 template <bool passBlocksThrough>
-std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> BlockFetcherMock<passBlocksThrough>::fetchBlock() {
+std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
+// NOLINTNEXTLINE google-default-arguments
+BlockFetcherMock<passBlocksThrough>::fetchBlock(size_t) {
   _numFetchBlockCalls++;
 
   if (_itemsToReturn.empty()) {

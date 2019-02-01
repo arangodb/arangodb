@@ -42,7 +42,9 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher<passBlocksThrough>
 
  public:
   // mock methods
-  std::pair<arangodb::aql::ExecutionState, std::shared_ptr<arangodb::aql::AqlItemBlockShell>> fetchBlock() override;
+  // NOLINTNEXTLINE google-default-arguments
+  std::pair<arangodb::aql::ExecutionState, std::shared_ptr<arangodb::aql::AqlItemBlockShell>> fetchBlock(
+      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
 
  private:
   using FetchBlockReturnItem =
