@@ -64,7 +64,7 @@ std::shared_ptr<RocksDBHotBackup> RocksDBHotBackup::operationFactory(
       operation.reset((isCoord ? (RocksDBHotBackup *)new RocksDBHotBackupRestoreCoord(body)
                        : (RocksDBHotBackup *)new RocksDBHotBackupRestore(body)));
     }
-#if USE_ENTEPRISE
+#if USE_ENTERPRISE
     else if (0 == suffixes[0].compare("upload")) {
       operation.reset((isCoord ? (RocksDBHotBackup *)new RocksDBHotBackupUploadCoord(body)
                        : (RocksDBHotBackup *)new RocksDBHotBackupUpload(body)));
