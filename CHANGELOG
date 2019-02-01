@@ -16,17 +16,16 @@ v3.4.3 (XXXX-XX-XX)
   changed default range to -100 and 100 for integer masking function
 
 
-V3.4.2.1 (2019-02-01)
+v3.4.2.1 (2019-02-01)
 ---------------------
 
-* update velocypack library
+* upgrade to new velocypack version
+
 
 v3.4.2 (2019-01-24)
 -------------------
 
 * upgraded to OpenSSL 1.1.0j
-
-* a bug affecting stream cursor was fixed (internal issue #3169)
 
 * fixed an issue with AQL query IN index lookup conditions being converted into
   empty arrays when they were shared between multiple nodes of a lookup condition
@@ -35,8 +34,6 @@ v3.4.2 (2019-01-24)
   This issue affected queries such as the following
 
       FILTER (... && ...) || doc.indexAttribute IN non-empty-array
-
-* added configurable masking of dumped data via `arangodump` tool to obfuscate exported sensible data
 
 * upgraded arangodb starter version to 0.14.0
 
@@ -133,7 +130,6 @@ v3.4.2 (2019-01-24)
 * Improve single threaded performance by scheduler optimization.
 
 * Releveling logging in maintenance
-
 
 v3.4.1 (2018-12-19)
 -------------------
