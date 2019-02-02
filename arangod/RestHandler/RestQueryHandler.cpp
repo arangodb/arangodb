@@ -182,7 +182,7 @@ bool RestQueryHandler::deleteQuery(std::string const& name) {
 
     generateResult(rest::ResponseCode::OK, result.slice());
   } else {
-    generateError(rest::ResponseCode::NOT_FOUND, res,
+    generateError(GeneralResponse::responseCode(res), res,
                   "cannot kill query '" + name + "': " + TRI_errno_string(res));
   }
 
@@ -227,7 +227,8 @@ bool RestQueryHandler::replaceProperties() {
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting a JSON object as body");
-  };
+    return true;
+  }
 
   auto queryList = _vocbase.queryList();
   bool enabled = queryList->enabled();
@@ -304,7 +305,8 @@ bool RestQueryHandler::parseQuery() {
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting a JSON object as body");
-  };
+    return true;
+  }
 
   std::string const queryString =
       VelocyPackHelper::checkAndGetStringValue(body, "query");

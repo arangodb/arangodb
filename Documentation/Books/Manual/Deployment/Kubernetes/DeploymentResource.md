@@ -353,6 +353,14 @@ for `spec.mode: Single` and `2` for `spec.mode: ActiveFailover`).
 For the `syncworkers` group, it is highly recommended to use the same number
 as for the `dbservers` group.
 
+### `spec.<group>.minCount: number`
+
+Specifies a minimum for the count of servers. If set, a specification is invalid if `count < minCount`.
+
+### `spec.<group>.maxCount: number`
+
+Specifies a maximum for the count of servers. If set, a specification is invalid if `count > maxCount`.
+
 ### `spec.<group>.args: []string`
 
 This setting specifies additional commandline arguments passed to all servers of this group.

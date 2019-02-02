@@ -26,7 +26,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ReadWriteLock.h"
 
-class TRI_vocbase_t; // forward declaration
+struct TRI_vocbase_t;  // forward declaration
 
 namespace arangodb {
 
@@ -51,7 +51,7 @@ class FlushFeature final : public application_features::ApplicationFeature {
     virtual ~FlushSubscription() = default;
     virtual Result commit(velocypack::Slice const& data) = 0;
   };
-  struct FlushSubscriptionBase; // forward declaration
+  class FlushSubscriptionBase; // forward declaration
 
   explicit FlushFeature(application_features::ApplicationServer& server);
 
@@ -63,10 +63,8 @@ class FlushFeature final : public application_features::ApplicationFeature {
   /// @param callback the callback to invoke
   /// @return success, false == handler for the specified type already registered
   /// @note not thread-safe on the assumption of static factory registration
-  static bool registerFlushRecoveryCallback(
-    std::string const& type,
-    FlushRecoveryCallback const& callback
-  );
+  static bool registerFlushRecoveryCallback(std::string const& type,
+                                            FlushRecoveryCallback const& callback);
 
   /// @brief register a flush subscription that will ensure replay of all WAL
   ///        entries after the latter of registration or the last successful
@@ -76,10 +74,8 @@ class FlushFeature final : public application_features::ApplicationFeature {
   /// @return a token used for marking flush synchronization
   ///         release of the token will unregister the subscription
   ///         nullptr == error
-  std::shared_ptr<FlushSubscription> registerFlushSubscription(
-      std::string const& type,
-      TRI_vocbase_t const& vocbase
-  );
+  std::shared_ptr<FlushSubscription> registerFlushSubscription(std::string const& type,
+                                                               TRI_vocbase_t const& vocbase);
 
   /// @brief release all ticks not used by the flush subscriptions
   arangodb::Result releaseUnusedTicks();

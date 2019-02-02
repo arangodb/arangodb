@@ -144,13 +144,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
         TRI_ASSERT(_readSnapshot != nullptr);
       }
 
-      // with exlusive locking there is no chance of conflict
-      // with other transactions -> we can use untracked< Put/Delete methods
-      if (isOnlyExclusiveTransaction()) {
-        _rocksMethods.reset(new RocksDBTrxUntrackedMethods(this));
-      } else {
-        _rocksMethods.reset(new RocksDBTrxMethods(this));
-      }
+      _rocksMethods.reset(new RocksDBTrxMethods(this));
 
       if (hasHint(transaction::Hints::Hint::NO_INDEXING)) {
         // do not track our own writes... we can only use this in very

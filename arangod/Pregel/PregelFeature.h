@@ -52,6 +52,7 @@ class PregelFeature final : public application_features::ApplicationFeature {
 
   void start() override final;
   void beginShutdown() override final;
+  void stop() override final;
 
   uint64_t createExecutionNumber();
   void addConductor(std::unique_ptr<Conductor>&&, uint64_t executionNumber);

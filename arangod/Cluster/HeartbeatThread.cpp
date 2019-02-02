@@ -206,10 +206,10 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
 /// @brief destroys a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 HeartbeatThread::~HeartbeatThread() {
+  shutdown();
   if (_maintenanceThread) {
     _maintenanceThread->stop();
   }
-  shutdown();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

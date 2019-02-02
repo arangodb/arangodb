@@ -181,7 +181,8 @@ VPackValue Maskings::maskedItem(Collection& collection, std::vector<std::string>
   static std::string xxxx("xxxx");
 
   if (path.size() == 1) {
-    if (path[0] == "_key" || path[0] == "_id" || path[0] == "_rev") {
+    if (path[0] == "_key" || path[0] == "_id" || path[0] == "_rev" ||
+        path[0] == "_from" || path[0] == "_to") {
       if (data.isString()) {
         velocypack::ValueLength length;
         char const* c = data.getString(length);
@@ -212,15 +213,15 @@ VPackValue Maskings::maskedItem(Collection& collection, std::vector<std::string>
     }
   } else {
     if (data.isBool()) {
-      return func->mask(data.getBool());
+      return func->mask(data.getBool(), buffer);
     } else if (data.isString()) {
       velocypack::ValueLength length;
       char const* c = data.getString(length);
       return func->mask(std::string(c, length), buffer);
     } else if (data.isInteger()) {
-      return func->mask(data.getInt());
+      return func->mask(data.getInt(), buffer);
     } else if (data.isDouble()) {
-      return func->mask(data.getDouble());
+      return func->mask(data.getDouble(), buffer);
     } else {
       return VPackValue(VPackValueType::Null);
     }
