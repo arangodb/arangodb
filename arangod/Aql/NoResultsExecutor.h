@@ -62,10 +62,6 @@ class NoResultsExecutor {
    *         if something was written output.hasValue() == true
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
-
- private:
-  ExecutorInfos& _infos;
-  Fetcher& _fetcher;
 };
 }  // namespace aql
 }  // namespace arangodb

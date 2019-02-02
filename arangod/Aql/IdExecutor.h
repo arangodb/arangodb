@@ -79,9 +79,7 @@ class IdExecutor {
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
  private:
-  Infos& _infos;
   Fetcher& _fetcher;
-  bool _done;
   std::unique_ptr<AqlItemBlock> _inputRegisterValues;
 };
 }  // namespace aql
