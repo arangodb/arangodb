@@ -53,9 +53,9 @@
 #include "Aql/SubqueryBlock.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
+#include "Cluster/ServerState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 
@@ -1198,7 +1198,6 @@ void ExecutionNode::removeDependencies() {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-
   std::unordered_set<RegisterId> toKeep;
   if (isInSubQuery(this)) {
     auto const& varinfo = this->getRegisterPlan()->varInfo;
@@ -1211,7 +1210,8 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     }
   }
 
-  IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()], std::move(toKeep), getRegsToClear());
+  IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
+                        std::move(toKeep), getRegsToClear());
 
   return std::make_unique<ExecutionBlockImpl<IdExecutor>>(&engine, this, std::move(infos));
 }
@@ -1447,8 +1447,8 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
   }
 
   LimitExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                           getRegisterPlan()->nrRegs[getDepth()],
-                           getRegsToClear(), _offset, _limit, _fullCount, queryDepth);
+                           getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                           _offset, _limit, _fullCount, queryDepth);
 
   return std::make_unique<ExecutionBlockImpl<LimitExecutor>>(&engine, this,
                                                              std::move(infos));
@@ -1972,9 +1972,6 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
   // LOG_DEVEL << "registersToClear:  " << ss.rdbuf();
 
   bool returnInheritedResults = plan()->root() == this;
-
-  bool const isDBServer = arangodb::ServerState::instance()->isDBServer();
-  TRI_ASSERT(!returnInheritedResults || !isDBServer);
 
   ReturnExecutorInfos infos(inputRegister,
                             getRegisterPlan()->nrRegs[previousNode->getDepth()],
