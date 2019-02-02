@@ -42,7 +42,7 @@ Scarango | Scala | https://github.com/outr/scarango
 ArangoRB | Ruby | https://github.com/StefanoMartin/ArangoRB
 
 Community integrations
------------------
+----------------------
 
 Please note that this list is not exhaustive.
 
