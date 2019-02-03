@@ -621,27 +621,20 @@ arangodb::Result IResearchLink::drop() {
   // on coordinator and db-server the IResearchView is immutable and lives in ClusterInfo
   // therefore on coordinator and db-server a new plan will already have an IResearchView without the link
   // this avoids deadlocks with ClusterInfo::loadPlan() during lookup in ClusterInfo
-  if (ServerState::instance()->isSingleServer()) {
+  if (_asyncSelf->get() && ServerState::instance()->isSingleServer()) {
     auto logicalView = _collection.vocbase().lookupView(_viewGuid);
     auto* view = arangodb::LogicalView::cast<IResearchView>( // IResearchView pointer
       logicalView.get() // args
     );
 
-    // may occur if the link was already unlinked from the view via another instance
-    // this behaviour was seen user-access-right-drop-view-arangosearch-spec.js
-    // where the collection drop was called through REST,
-    // the link was dropped as a result of the collection drop call
-    // then the view was dropped vvia a separate REST call
-    // then the vocbase was destroyed calling
-    // collection close()-> link unload() -> link drop() due to collection marked as dropped
-    // thus returning an error here will cause ~TRI_vocbase_t() on RocksDB to
-    // receive an exception which is not handled in the destructor
     if (!view) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "unable to find arangosearch view '" << _viewGuid << "' while dropping arangosearch link '" << _id << "'";
-    } else {
-      view->unlink(_collection.id()); // unlink before reset() to release lock in view (if any)
+      return arangodb::Result( // result
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, // code
+        std::string("unable to find view '") + _viewGuid + "' while dropping arangosearch link '" + std::to_string(_id) + "'"
+      );
     }
+
+    view->unlink(_collection.id()); // unlink before reset() to release lock in view (if any)
   }
 
   _flushCallback = IResearchFeature::WalFlushCallback(); // reset together with '_asyncSelf'
