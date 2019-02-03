@@ -44,8 +44,7 @@ std::pair<ExecutionState, Result> ExecutionBlockShutdownableImpl<Executor>::shut
   if (state == ExecutionState::WAITING) {
     return {state, result};
   }
-
-  return ExecutionBlockImpl<Executor>::_executor.shutdown(errorCode);
+  return this->executor().shutdown(errorCode);
 }
 
 template class ::arangodb::aql::ExecutionBlockShutdownableImpl<TraversalExecutor>;

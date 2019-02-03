@@ -99,10 +99,12 @@ struct DocIdScorer: public irs::sort {
 
   struct Prepared: public irs::sort::prepared_base<uint64_t> {
     virtual void add(irs::byte_type* dst, const irs::byte_type* src) const override { score_cast(dst) = score_cast(src); }
+    virtual void collect(irs::attribute_store& filter_attrs, const irs::index_reader& index, const irs::sort::field_collector* field, const irs::sort::term_collector* term) const override {}
     virtual irs::flags const& features() const override { return irs::flags::empty_instance(); }
     virtual bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override { return score_cast(lhs) < score_cast(rhs); }
-    virtual irs::sort::collector::ptr prepare_collector() const override { return nullptr; }
+    virtual irs::sort::field_collector::ptr prepare_field_collector() const override { return nullptr; }
     virtual void prepare_score(irs::byte_type* score) const override { }
+    virtual irs::sort::term_collector::ptr prepare_term_collector() const override { return nullptr; }
     virtual irs::sort::scorer::ptr prepare_scorer(
       irs::sub_reader const& segment,
       irs::term_reader const& field,

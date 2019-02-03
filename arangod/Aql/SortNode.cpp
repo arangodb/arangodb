@@ -35,6 +35,7 @@
 #include "IResearch/IResearchViewNode.h"
 #include "IResearch/IResearchOrderFactory.h"
 
+#if 0
 namespace {
 
 int compareIResearchScores(
@@ -66,8 +67,8 @@ int compareAqlValues(
     arangodb::aql::AqlValue const& rhs) {
   return arangodb::aql::AqlValue::Compare(trx, lhs, rhs, true);
 }
-
 }
+#endif
 #endif
 
 using namespace arangodb::basics;

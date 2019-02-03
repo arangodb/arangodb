@@ -28,7 +28,6 @@
 #define ARANGOD_AQL_SORT_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-
 #include "Aql/ExecutorInfos.h"
 
 #include <memory>
@@ -76,11 +75,15 @@ class SortExecutorInfos : public ExecutorInfos {
  */
 class SortExecutor {
  public:
+  struct Properties {
+    static const bool preservesOrder = false;
+    static const bool allowsBlockPassthrough = false;
+  };
   using Fetcher = AllRowsFetcher;
   using Infos = SortExecutorInfos;
   using Stats = NoStats;
 
-  SortExecutor(Fetcher& fetcher, SortExecutorInfos&);
+  SortExecutor(Fetcher& fetcher, Infos&);
   ~SortExecutor();
 
   /**
@@ -95,7 +98,7 @@ class SortExecutor {
   void doSorting();
 
  private:
-  SortExecutorInfos& _infos;
+  Infos& _infos;
 
   Fetcher& _fetcher;
 

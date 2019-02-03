@@ -40,6 +40,7 @@ class Query;
 class InputAqlItemRow;
 class OutputAqlItemRow;
 class ExecutorInfos;
+template <bool>
 class SingleRowFetcher;
 
 enum OutputName { VERTEX, EDGE, PATH };
@@ -96,7 +97,11 @@ class TraversalExecutorInfos : public ExecutorInfos {
  */
 class TraversalExecutor {
  public:
-  using Fetcher = SingleRowFetcher;
+  struct Properties {
+    static const bool preservesOrder = true;
+    static const bool allowsBlockPassthrough = false;
+  };
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = TraversalExecutorInfos;
   using Stats = TraversalStats;
 

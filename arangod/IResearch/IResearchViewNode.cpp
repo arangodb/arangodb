@@ -23,7 +23,6 @@
 
 #include "IResearchViewNode.h"
 #include "Aql/Ast.h"
-#include "Aql/BasicBlocks.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
@@ -32,6 +31,7 @@
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "AqlHelper.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "IResearchCommon.h"
@@ -45,11 +45,12 @@
 namespace {
 
 using namespace arangodb;
+using namespace arangodb::iresearch;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief surrogate root for all queries without a filter
 ////////////////////////////////////////////////////////////////////////////////
-aql::AstNode const ALL(arangodb::aql::AstNodeValue(true));
+aql::AstNode const ALL(aql::AstNodeValue(true));
 
 inline bool filterConditionIsEmpty(aql::AstNode const* filterCondition) {
   return filterCondition == &ALL;
@@ -60,7 +61,7 @@ inline bool filterConditionIsEmpty(aql::AstNode const* filterCondition) {
 // -----------------------------------------------------------------------------
 
 void toVelocyPack(velocypack::Builder& builder,
-                  std::vector<arangodb::iresearch::Scorer> const& scorers, bool verbose) {
+                  std::vector<Scorer> const& scorers, bool verbose) {
   VPackArrayBuilder arrayScope(&builder);
   for (auto const& scorer : scorers) {
     VPackObjectBuilder objectScope(&builder);
@@ -71,8 +72,7 @@ void toVelocyPack(velocypack::Builder& builder,
   }
 }
 
-std::vector<arangodb::iresearch::Scorer> fromVelocyPack(
-    arangodb::aql::ExecutionPlan& plan, arangodb::velocypack::Slice const& slice) {
+std::vector<Scorer> fromVelocyPack(aql::ExecutionPlan& plan, velocypack::Slice const& slice) {
   if (!slice.isArray()) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "invalid json format detected while building IResearchViewNode "
@@ -85,7 +85,7 @@ std::vector<arangodb::iresearch::Scorer> fromVelocyPack(
   auto const* vars = plan.getAst()->variables();
   TRI_ASSERT(vars);
 
-  std::vector<arangodb::iresearch::Scorer> scorers;
+  std::vector<Scorer> scorers;
 
   size_t i = 0;
   for (auto const sortSlice : velocypack::ArrayIterator(slice)) {
@@ -121,14 +121,26 @@ std::vector<arangodb::iresearch::Scorer> fromVelocyPack(
 // --SECTION--                            helpers for IResearchViewNode::Options
 // -----------------------------------------------------------------------------
 
-void toVelocyPack(velocypack::Builder& builder,
-                  arangodb::iresearch::IResearchViewNode::Options const& options) {
+void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const& options) {
   VPackObjectBuilder objectScope(&builder);
   builder.add("waitForSync", VPackValue(options.forceSync));
+
+  if (!options.restrictSources) {
+    builder.add("collections", VPackValue(VPackValueType::Null));
+  } else {
+    VPackArrayBuilder arrayScope(&builder, "collections");
+    for (auto const cid : options.sources) {
+      builder.add(VPackValue(cid));
+    }
+  }
 }
 
-bool fromVelocyPack(velocypack::Slice optionsSlice,
-                    arangodb::iresearch::IResearchViewNode::Options& options) {
+bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& options) {
+  if (optionsSlice.isNone()) {
+    // no options specified
+    return true;
+  }
+
   if (!optionsSlice.isObject()) {
     return false;
   }
@@ -137,29 +149,142 @@ bool fromVelocyPack(velocypack::Slice optionsSlice,
   {
     auto const optionSlice = optionsSlice.get("waitForSync");
 
-    if (!optionSlice.isBool()) {
-      return false;
-    }
+    if (!optionSlice.isNone()) {
+      // 'waitForSync' is optional
+      if (!optionSlice.isBool()) {
+        return false;
+      }
 
-    options.forceSync = optionSlice.getBool();
+      options.forceSync = optionSlice.getBool();
+    }
+  }
+
+  // collections
+  {
+    auto const optionSlice = optionsSlice.get("collections");
+
+    if (!optionSlice.isNone() && !optionSlice.isNull()) {
+      if (!optionSlice.isArray()) {
+        return false;
+      }
+
+      for (auto idSlice : VPackArrayIterator(optionSlice)) {
+        if (!idSlice.isNumber()) {
+          return false;
+        }
+
+        auto const cid = idSlice.getNumber<TRI_voc_cid_t>();
+
+        if (!cid) {
+          return false;
+        }
+
+        options.sources.insert(cid);
+      }
+
+      options.restrictSources = true;
+    }
   }
 
   return true;
 }
 
-bool parseOptions(aql::AstNode const* optionsNode,
-                  arangodb::iresearch::IResearchViewNode::Options& options,
-                  std::string& error) {
-  typedef bool (*OptionHandler)(aql::AstNode const&,
-                                arangodb::iresearch::IResearchViewNode::Options&,
-                                std::string&);
+bool parseOptions(aql::Query& query, LogicalView const& view, aql::AstNode const* optionsNode,
+                  IResearchViewNode::Options& options, std::string& error) {
+  typedef bool (*OptionHandler)(aql::Query&, LogicalView const& view, aql::AstNode const&,
+                                IResearchViewNode::Options&, std::string&);
 
   static std::map<irs::string_ref, OptionHandler> const Handlers{
-      {"waitForSync", [](aql::AstNode const& value,
-                         arangodb::iresearch::IResearchViewNode::Options& options,
-                         std::string& error) {
+      {"collections",
+       [](aql::Query& query, LogicalView const& view, aql::AstNode const& value,
+          IResearchViewNode::Options& options, std::string& error) {
+         if (value.isNullValue()) {
+           // have nothing to restrict
+           return true;
+         }
+
+         if (!value.isArray()) {
+           error =
+               "null value or array of strings or numbers"
+               " is expected for option 'collections'";
+           return false;
+         }
+
+         auto& resolver = query.resolver();
+         arangodb::HashSet<TRI_voc_cid_t> sources;
+
+         // get list of CIDs for restricted collections
+         for (size_t i = 0, n = value.numMembers(); i < n; ++i) {
+           auto const* sub = value.getMemberUnchecked(i);
+           TRI_ASSERT(sub);
+
+           switch (sub->value.type) {
+             case aql::VALUE_TYPE_INT: {
+               sources.insert(TRI_voc_cid_t(sub->getIntValue(true)));
+               break;
+             }
+
+             case aql::VALUE_TYPE_STRING: {
+               auto name = sub->getString();
+
+               auto collection = resolver.getCollection(name);
+
+               if (!collection) {
+                 // check if TRI_voc_cid_t is passed as string
+                 auto const cid =
+                     NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(),
+                                                           name.data() + name.size());
+
+                 collection = resolver.getCollection(cid);
+
+                 if (!collection) {
+                   error = "invalid data source name '" + name +
+                           "' while parsing option 'collections'";
+                   return false;
+                 }
+               }
+
+               sources.insert(collection->id());
+               break;
+             }
+
+             default: {
+               error =
+                   "null value or array of strings or numbers"
+                   " is expected for option 'collections'";
+               return false;
+             }
+           }
+         }
+
+         // check if CIDs are valid
+         size_t sourcesFound = 0;
+         auto checkCids = [&sources, &sourcesFound](TRI_voc_cid_t cid) {
+           sourcesFound += size_t(sources.contains(cid));
+           return true;
+         };
+         view.visitCollections(checkCids);
+
+         if (sourcesFound != sources.size()) {
+           error = "only " + basics::StringUtils::itoa(sourcesFound) +
+                   " out of " + basics::StringUtils::itoa(sources.size()) +
+                   " provided collection(s) in option 'collections' are "
+                   "registered with the view '" +
+                   view.name() + "'";
+           return false;
+         }
+
+         // parsing is done
+         options.sources = std::move(sources);
+         options.restrictSources = true;
+
+         return true;
+       }},
+      {"waitForSync", [](aql::Query& /*query*/, LogicalView const& /*view*/,
+                         aql::AstNode const& value,
+                         IResearchViewNode::Options& options, std::string& error) {
          if (!value.isValueType(aql::VALUE_TYPE_BOOL)) {
-           error = "boolean value expected for 'waitForSync'";
+           error = "boolean value expected for option 'waitForSync'";
            return false;
          }
 
@@ -200,7 +325,23 @@ bool parseOptions(aql::AstNode const* optionsNode,
 
     auto const* value = attribute->getMemberUnchecked(0);
 
-    if (!value || !value->isConstant() || !handler->second(*value, options, error)) {
+    if (!value) {
+      // can't handle attribute
+      return false;
+    }
+
+    if (!value->isConstant()) {
+      // 'Ast::injectBindParameters` doesn't handle
+      // constness of parent nodes correctly, re-evaluate flags
+      value->removeFlag(aql::DETERMINED_CONSTANT);
+
+      if (!value->isConstant()) {
+        // can't handle non-const values in options
+        return false;
+      }
+    }
+
+    if (!handler->second(query, view, *value, options, error)) {
       // can't handle attribute
       return false;
     }
@@ -260,12 +401,12 @@ bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
 /// negative value - value is dirty
 /// _volatilityMask & 1 == volatile filter
 /// _volatilityMask & 2 == volatile sort
-int evaluateVolatility(arangodb::iresearch::IResearchViewNode const& node) {
+int evaluateVolatility(IResearchViewNode const& node) {
   auto const inInnerLoop = node.isInInnerLoop();
   auto const& plan = *node.plan();
   auto const& outVariable = node.outVariable();
 
-  arangodb::HashSet<arangodb::aql::Variable const*> vars;
+  arangodb::HashSet<aql::Variable const*> vars;
   int mask = 0;
 
   // evaluate filter condition volatility
@@ -294,6 +435,172 @@ std::function<bool(TRI_voc_cid_t)> const viewIsEmpty = [](TRI_voc_cid_t) {
   return false;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief index reader implementation over multiple irs::index_reader
+/// @note it is assumed that ViewState resides in the same
+///       TransactionState as the IResearchView ViewState, therefore a separate
+///       lock is not required to be held
+////////////////////////////////////////////////////////////////////////////////
+class Snapshot : public IResearchView::Snapshot, private irs::util::noncopyable {
+ public:
+  typedef std::vector<std::pair<TRI_voc_cid_t, irs::sub_reader const*>> readers_t;
+
+  Snapshot(readers_t&& readers, uint64_t docs_count, uint64_t live_docs_count) NOEXCEPT
+      : _readers(std::move(readers)),
+        _docs_count(docs_count),
+        _live_docs_count(live_docs_count) {}
+
+  /// @brief constructs snapshot from a given snapshot
+  ///        according to specified set of collections
+  Snapshot(const IResearchView::Snapshot& rhs,
+           arangodb::HashSet<TRI_voc_cid_t> const& collections);
+
+  /// @returns corresponding sub-reader
+  virtual const irs::sub_reader& operator[](size_t i) const NOEXCEPT override {
+    assert(i < readers_.size());
+    return *(_readers[i].second);
+  }
+
+  virtual TRI_voc_cid_t cid(size_t i) const NOEXCEPT override {
+    assert(i < readers_.size());
+    return _readers[i].first;
+  }
+
+  /// @returns number of documents
+  virtual uint64_t docs_count() const NOEXCEPT override { return _docs_count; }
+
+  /// @returns number of live documents
+  virtual uint64_t live_docs_count() const NOEXCEPT override {
+    return _live_docs_count;
+  }
+
+  /// @returns total number of opened writers
+  virtual size_t size() const NOEXCEPT override { return _readers.size(); }
+
+ private:
+  readers_t _readers;
+  uint64_t _docs_count;
+  uint64_t _live_docs_count;
+};  // Snapshot
+
+Snapshot::Snapshot(const IResearchView::Snapshot& rhs,
+                   arangodb::HashSet<TRI_voc_cid_t> const& collections)
+    : _docs_count(0), _live_docs_count(0) {
+  for (size_t i = 0, size = rhs.size(); i < size; ++i) {
+    auto const cid = rhs.cid(i);
+
+    if (!collections.contains(cid)) {
+      continue;
+    }
+
+    auto& segment = rhs[i];
+
+    _docs_count += segment.docs_count();
+    _live_docs_count += segment.live_docs_count();
+    _readers.emplace_back(cid, &segment);
+  }
+}
+
+typedef std::shared_ptr<IResearchView::Snapshot const> SnapshotPtr;
+
+/// @brief Since cluster is not transactional and each distributed
+///        part of a query starts it's own trasaction associated
+///        with global query identifier, there is no single place
+///        to store a snapshot and we do the following:
+///
+///   1. Each query part on DB server gets the list of shards
+///      to be included into a query and starts its own transaction
+///
+///   2. Given the list of shards we take view snapshot according
+///      to the list of restricted data sources specified in options
+///      of corresponding IResearchViewNode
+///
+///   3. If waitForSync is specified, we refresh snapshot
+///      of each shard we need and finally put it to transaction
+///      associated to a part of the distributed query. We use
+///      default snapshot key if there are no restricted sources
+///      specified in options or IResearchViewNode address otherwise
+///
+///      Custom key is needed for the following query
+///      (assume 'view' is lined with 'c1' and 'c2' in the example below):
+/// 		FOR d IN view OPTIONS { collections : [ 'c1' ] }
+/// 		FOR x IN view OPTIONS { collections : [ 'c2' ] }
+/// 		RETURN {d, x}
+///
+SnapshotPtr snapshotDBServer(IResearchViewNode const& node, transaction::Methods& trx) {
+  TRI_ASSERT(ServerState::instance()->isDBServer());
+
+  static IResearchView::SnapshotMode const SNAPSHOT[]{IResearchView::SnapshotMode::FindOrCreate,
+                                                      IResearchView::SnapshotMode::SyncAndReplace};
+
+  auto& view = LogicalView::cast<IResearchView>(*node.view());
+  auto& options = node.options();
+  auto* resolver = trx.resolver();
+  TRI_ASSERT(resolver);
+
+  arangodb::HashSet<TRI_voc_cid_t> collections;
+  for (auto& shard : node.shards()) {
+    auto collection = resolver->getCollection(shard);
+
+    if (!collection) {
+      THROW_ARANGO_EXCEPTION(
+          arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                           std::string("failed to find shard by id '") + shard + "'"));
+    }
+
+    if (options.restrictSources && !options.sources.contains(collection->planId())) {
+      // skip restricted collections if any
+      continue;
+    }
+
+    collections.emplace(collection->id());
+  }
+
+  void const* snapshotKey = nullptr;
+
+  if (options.restrictSources) {
+    // use node address as the snapshot identifier
+    snapshotKey = &node;
+  }
+
+  // use aliasing ctor
+  return {SnapshotPtr(), view.snapshot(trx, SNAPSHOT[size_t(options.forceSync)],
+                                       &collections, snapshotKey)};
+}
+
+/// @brief Since single-server is transactional we do the following:
+///
+///   1. When transaction starts we put index snapshot into it
+///
+///   2. If waitForSync is specified, we refresh snapshot
+///      taken in (1), object itself remains valid
+///
+///   3. If there are no restricted sources in a query, we reuse
+///      snapshot taken in (1),
+///      otherwise we reassemble restricted snapshot based on the
+///      original one taken in (1) and return it
+///
+SnapshotPtr snapshotSingleServer(IResearchViewNode const& node, transaction::Methods& trx) {
+  TRI_ASSERT(ServerState::instance()->isSingleServer());
+
+  static IResearchView::SnapshotMode const SNAPSHOT[]{IResearchView::SnapshotMode::Find,
+                                                      IResearchView::SnapshotMode::SyncAndReplace};
+
+  auto& view = LogicalView::cast<IResearchView>(*node.view());
+  auto& options = node.options();
+
+  // use aliasing ctor
+  auto reader = SnapshotPtr(SnapshotPtr(),
+                            view.snapshot(trx, SNAPSHOT[size_t(options.forceSync)]));
+
+  if (options.restrictSources && reader) {
+    // reassemble reader
+    reader = std::make_shared<Snapshot>(*reader, options.sources);
+  }
+
+  return reader;
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -321,9 +628,12 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, size_t id,
   TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
   TRI_ASSERT(LogicalView::category() == _view->category());
 
+  auto* ast = plan.getAst();
+  TRI_ASSERT(ast && ast->query());
+
   // FIXME any other way to validate options before object creation???
   std::string error;
-  if (!parseOptions(options, _options, error)) {
+  if (!parseOptions(*ast->query(), *_view, options, _options, error)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "invalid ArangoSearch options provided: " + error);
   }
@@ -399,9 +709,14 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
   }
 
   // options
-  if (!::fromVelocyPack(base.get("options"), _options)) {
-    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "failed to parse 'IResearchViewNode' options";
+  TRI_ASSERT(plan.getAst() && plan.getAst()->query());
+
+  auto const options = base.get("options");
+
+  if (!::fromVelocyPack(options, _options)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "failed to parse 'IResearchViewNode' options: " + options.toString());
   }
 
   // volatility mask
@@ -515,7 +830,14 @@ std::vector<std::reference_wrapper<aql::Collection const>> IResearchViewNode::co
     return true;
   };
 
-  _view->visitCollections(visitor);
+  if (_options.restrictSources) {
+    viewCollections.reserve(_options.sources.size());
+    for (auto const cid : _options.sources) {
+      visitor(cid);
+    }
+  } else {
+    _view->visitCollections(visitor);
+  }
 
   return viewCollections;
 }
@@ -583,13 +905,15 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     // coordinator in a cluster: empty view case
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(this->empty());
+    TRI_ASSERT(ServerState::instance()->isCoordinator());
 #endif
 
-  aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(), arangodb::aql::make_shared_unordered_set(), 0, 0, getRegsToClear());
+    aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
+                             arangodb::aql::make_shared_unordered_set(), 0, 0,
+                             getRegsToClear());
 
-  return std::make_unique<aql::ExecutionBlockImpl<aql::NoResultsExecutor>>(&engine, this,
-                                                                 std::move(infos));
+    return std::make_unique<aql::ExecutionBlockImpl<aql::NoResultsExecutor>>(&engine, this,
+                                                                             std::move(infos));
   }
 
   auto* trx = engine.getQuery()->trx();
@@ -604,41 +928,19 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                    "IResearchView ExecutionBlock");
   }
 
-  auto& view = *this->view();
-  IResearchView::Snapshot const* reader;
+  auto& view = LogicalView::cast<IResearchView>(*this->view());
+
+  std::shared_ptr<IResearchView::Snapshot const> reader;
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "Start getting snapshot for view '" << view.name() << "'";
 
+  // we manage snapshot differently in single-server/db server,
+  // see description of functions below to learn how
   if (ServerState::instance()->isDBServer()) {
-    // there are no cluster-wide transactions,
-    // no place to store snapshot
-    static IResearchView::SnapshotMode const SNAPSHOT[]{IResearchView::SnapshotMode::FindOrCreate,
-                                                        IResearchView::SnapshotMode::SyncAndReplace};
-    std::unordered_set<TRI_voc_cid_t> collections;
-    auto& resolver = engine.getQuery()->resolver();
-
-    for (auto& shard : _shards) {
-      auto collection = resolver.getCollection(shard);
-
-      if (!collection) {
-        THROW_ARANGO_EXCEPTION(
-            arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                             std::string("failed to find shard by id '") + shard + "'"));
-      }
-
-      collections.emplace(collection->id());
-    }
-
-    reader = LogicalView::cast<IResearchView>(view).snapshot(
-        *trx, SNAPSHOT[size_t(_options.forceSync)], &collections);
+    reader = snapshotDBServer(*this, *trx);
   } else {
-    static IResearchView::SnapshotMode const SNAPSHOT[]{IResearchView::SnapshotMode::Find,
-                                                        IResearchView::SnapshotMode::SyncAndReplace};
-
-    reader =
-        LogicalView::cast<IResearchView>(view).snapshot(*trx,
-                                                        SNAPSHOT[size_t(_options.forceSync)]);
+    reader = snapshotSingleServer(*this, *trx);
   }
 
   if (!reader) {
@@ -652,16 +954,25 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                    "arangosearch view ExecutionBlock");
   }
 
+  if (0 == reader->size()) {
+    // nothing to query
+    aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
+                             arangodb::aql::make_shared_unordered_set(), 0, 0,
+                             getRegsToClear());
+    return std::make_unique<aql::ExecutionBlockImpl<aql::NoResultsExecutor>>(&engine, this,
+                                                                             std::move(infos));
+  }
+
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "Finish getting snapshot for view '" << view.name() << "'";
 
   if (_scorers.empty()) {
     // unordered case
-    return std::make_unique<IResearchViewUnorderedBlock>(*reader, engine, *this);
+    return std::make_unique<IResearchViewUnorderedBlock>(reader, engine, *this);
   }
 
   // generic case
-  return std::make_unique<IResearchViewBlock>(*reader, engine, *this);
+  return std::make_unique<IResearchViewBlock>(reader, engine, *this);
 }
 
 }  // namespace iresearch

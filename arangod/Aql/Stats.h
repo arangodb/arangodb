@@ -38,7 +38,6 @@ inline ExecutionStats& operator+=(ExecutionStats& stats, NoStats const&) {
   return stats;
 }
 
-
 class CountStats {
  public:
   CountStats() noexcept : _counted(0) {}
@@ -61,7 +60,6 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
   return executionStats;
 }
 
-
 class FilterStats {
  public:
   FilterStats() noexcept : _filtered(0) {}
@@ -79,8 +77,26 @@ class FilterStats {
 };
 
 inline ExecutionStats& operator+=(ExecutionStats& executionStats,
-                           FilterStats const& filterStats) noexcept {
+                                  FilterStats const& filterStats) noexcept {
   executionStats.filtered += filterStats.getFiltered();
+  return executionStats;
+}
+
+class EnumerateCollectionStats {
+ public:
+  EnumerateCollectionStats() noexcept : _scannedFull(0) {}
+
+  void incrScanned() noexcept { _scannedFull++; }
+
+  std::size_t getScanned() const noexcept { return _scannedFull; }
+
+ private:
+  std::size_t _scannedFull;
+};
+
+inline ExecutionStats& operator+=(ExecutionStats& executionStats,
+                                  EnumerateCollectionStats const& enumerateCollectionStats) noexcept {
+  executionStats.scannedFull += enumerateCollectionStats.getScanned();
   return executionStats;
 }
 

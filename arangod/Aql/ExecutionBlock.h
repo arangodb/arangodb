@@ -40,7 +40,6 @@ class Methods;
 
 namespace aql {
 class AqlItemBlock;
-class BlockFetcher;
 class ExecutionEngine;
 
 class ExecutionBlock {

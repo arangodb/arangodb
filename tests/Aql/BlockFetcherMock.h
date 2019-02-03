@@ -28,28 +28,29 @@
 #include "Aql/types.h"
 
 #include <stdint.h>
+#include <queue>
 
 namespace arangodb {
 namespace tests {
 namespace aql {
 
-class BlockFetcherMock : public ::arangodb::aql::BlockFetcher {
+template <bool passBlocksThrough>
+class BlockFetcherMock : public ::arangodb::aql::BlockFetcher<passBlocksThrough> {
  public:
   explicit BlockFetcherMock(arangodb::aql::ResourceMonitor& monitor,
                             ::arangodb::aql::RegisterId nrRegisters);
 
  public:
   // mock methods
-  std::pair<arangodb::aql::ExecutionState,
-            std::shared_ptr<arangodb::aql::InputAqlItemBlockShell>>
-  fetchBlock() override;
+  // NOLINTNEXTLINE google-default-arguments
+  std::pair<arangodb::aql::ExecutionState, std::shared_ptr<arangodb::aql::AqlItemBlockShell>> fetchBlock(
+      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
 
  private:
   using FetchBlockReturnItem =
-      std::pair<arangodb::aql::ExecutionState,
-                std::shared_ptr<arangodb::aql::InputAqlItemBlockShell>>;
- public:
+      std::pair<arangodb::aql::ExecutionState, std::shared_ptr<arangodb::aql::AqlItemBlockShell>>;
 
+ public:
   // additional test methods
   BlockFetcherMock& shouldReturn(arangodb::aql::ExecutionState,
                                  std::unique_ptr<arangodb::aql::AqlItemBlock>);
@@ -64,7 +65,7 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher {
   size_t numFetchBlockCalls() const;
 
  private:
-  std::deque<FetchBlockReturnItem> _itemsToReturn;
+  std::queue<FetchBlockReturnItem> _itemsToReturn;
 
   using AqlItemBlockPtr = uintptr_t;
 

@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
-#include "composite_reader_impl.hpp"
 #include "field_meta.hpp"
 #include "index_reader.hpp"
 #include "segment_reader.hpp"
@@ -87,18 +86,5 @@ const columnstore_reader::column_reader* sub_reader::column_reader(
   const auto* meta = column(field);
   return meta ? column_reader(meta->id) : nullptr;
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                             context specialization for sub_reader
-// -----------------------------------------------------------------------------
-
-template<>
-struct context<sub_reader> {
-  sub_reader::ptr reader;
-  doc_id_t base = 0; // min document id
-  doc_id_t max = 0; // max document id
-
-  operator doc_id_t() const { return max; }
-}; // reader_context
 
 NS_END

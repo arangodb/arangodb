@@ -157,16 +157,18 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
     } else {
       // traverser now has next v, e, p values
       if (_infos.useVertexOutput()) {
-        output.setValue(_infos.vertexRegister(), _input, _traverser.lastVertexToAqlValue());
+        output.cloneValueInto(_infos.vertexRegister(), _input,
+                              _traverser.lastVertexToAqlValue());
       }
       if (_infos.useEdgeOutput()) {
-        output.setValue(_infos.edgeRegister(), _input, _traverser.lastEdgeToAqlValue());
+        output.cloneValueInto(_infos.edgeRegister(), _input,
+                              _traverser.lastEdgeToAqlValue());
       }
       if (_infos.usePathOutput()) {
         transaction::BuilderLeaser tmp(_traverser.trx());
         tmp->clear();
-        output.setValue(_infos.pathRegister(), _input,
-                        _traverser.pathToAqlValue(*tmp.builder()));
+        output.cloneValueInto(_infos.pathRegister(), _input,
+                              _traverser.pathToAqlValue(*tmp.builder()));
       }
       s.addFiltered(_traverser.getAndResetFilteredPaths());
       s.addScannedIndex(_traverser.getAndResetReadDocuments());

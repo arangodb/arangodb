@@ -23,6 +23,8 @@
 #ifndef ARANGODB_BASICS_DATETIME_H
 #define ARANGODB_BASICS_DATETIME_H 1
 
+#include "Basics/Common.h"
+
 #include <chrono>
 #include <regex>
 

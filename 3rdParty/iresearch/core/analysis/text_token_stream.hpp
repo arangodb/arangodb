@@ -34,6 +34,15 @@ NS_BEGIN(analysis)
 
 class text_token_stream : public analyzer, util::noncopyable {
  public:
+  struct options_t {
+    enum case_convert_t { LOWER, NONE, UPPER };
+    case_convert_t case_convert{case_convert_t::LOWER}; // lowercase tokens, mach original implementation
+    std::unordered_set<std::string> ignored_words;
+    std::locale locale;
+    bool no_accent{true}; // remove accents from letters, mach original implementation
+    bool no_stem{false}; // try to stem if possible, mach original implementation
+  };
+
   struct state_t;
 
   class bytes_term : public irs::term_attribute {
@@ -63,10 +72,7 @@ class text_token_stream : public analyzer, util::noncopyable {
   // for use with irs::order::add<T>() and default args (static build)
   DECLARE_FACTORY(const std::locale& locale);
 
-  text_token_stream(
-    const std::locale& locale,
-    const std::unordered_set<std::string>& ignored_words
-  );
+  text_token_stream(const options_t& options);
   virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     return attrs_;
   }
@@ -77,13 +83,6 @@ class text_token_stream : public analyzer, util::noncopyable {
  private:
   irs::attribute_view attrs_;
   std::shared_ptr<state_t> state_;
-  struct {
-    std::string country;
-    std::string encoding;
-    std::string language;
-    bool utf8;
-  } locale_;
-  const std::unordered_set<std::string>& ignored_words_;
   irs::offset offs_;
   irs::increment inc_;
   bytes_term term_;

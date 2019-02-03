@@ -137,7 +137,7 @@ class boolean_query : public filter::prepared {
   typedef ptr_iterator<queries_t::const_iterator> iterator;
 
   DECLARE_SHARED_PTR(boolean_query);
-  DEFINE_FACTORY_INLINE(boolean_query);
+  DEFINE_FACTORY_INLINE(boolean_query)
 
   boolean_query() NOEXCEPT : excl_(0) { }
 
@@ -442,8 +442,8 @@ void boolean_filter::group_filters(
 // --SECTION--                                                              And
 // ----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(And);
-DEFINE_FACTORY_DEFAULT(And);
+DEFINE_FILTER_TYPE(And)
+DEFINE_FACTORY_DEFAULT(And)
 
 And::And() NOEXCEPT
   : boolean_filter(And::type()) {
@@ -497,8 +497,8 @@ filter::prepared::ptr And::prepare(
 // --SECTION--                                                               Or 
 // ----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(Or);
-DEFINE_FACTORY_DEFAULT(Or);
+DEFINE_FILTER_TYPE(Or)
+DEFINE_FACTORY_DEFAULT(Or)
 
 Or::Or() NOEXCEPT
   : boolean_filter(Or::type()),
@@ -531,8 +531,8 @@ filter::prepared::ptr Or::prepare(
 // --SECTION--                                                              Not 
 // ----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(Not);
-DEFINE_FACTORY_DEFAULT(Not);
+DEFINE_FILTER_TYPE(Not)
+DEFINE_FACTORY_DEFAULT(Not)
 
 Not::Not() NOEXCEPT
   : irs::filter(Not::type()) {
