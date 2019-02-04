@@ -12,7 +12,7 @@ const taskInfo = {
   offset: 0,
   command: function () {
     var taskQuery = 'FOR x IN 1..5 LET y = SLEEP(@value) RETURN x';
-    require('internal').db._query(taskQuery, { value: 1 }, {profile: true});
+    require('internal').db._query(taskQuery, { value: 1 }, {profile: true, stream: false});
   }
 };
 
@@ -24,7 +24,7 @@ function sendQuery (count, async) {
   count = count || 1;
   for (let i = 0; i < count; ++i) {
     if (async === false) {
-      internal.db._query(query, { value: 1 });
+      internal.db._query(query, { value: 1 }, { stream: false });
     } else {
       tasks.register(taskInfo);
     }
