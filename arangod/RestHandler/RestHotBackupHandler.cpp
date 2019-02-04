@@ -51,9 +51,13 @@ RestStatus RestHotBackupHandler::execute() {
 
       if (operation->success()) {
         generateResult(rest::ResponseCode::OK, operation->resultSlice());
-      } else {
+      } else if (operation->errorMessage().empty()) {
         generateError(operation->restResponseCode(),
                       operation->restResponseError());
+      } else {
+        generateError(operation->restResponseCode(),
+                      operation->restResponseError(),
+                      operation->errorMessage());
       } // else
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);

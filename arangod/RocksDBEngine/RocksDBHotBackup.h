@@ -47,6 +47,7 @@ public:
 
   rest::ResponseCode restResponseCode() const {return _respCode;};
   int restResponseError() const {return _respError;};
+  std::string const& errorMessage() const {return _errorMessage;};
 
   // @brief Validate and extract parameters appropriate to the operation type
   virtual void parseParameters(rest::RequestType const) {};
@@ -71,6 +72,7 @@ protected:
 
   rest::ResponseCode _respCode;
   int _respError;
+  std::string _errorMessage;
   VPackBuilder _result;
 
   ////////////////////////////////////////////////////////////////////////////////
