@@ -1206,6 +1206,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
+  TRI_ASSERT(key.containsLocalDocumentId(documentId));
   rocksdb::Status s =
       mthds->PutUntracked(RocksDBColumnFamily::documents(), key.ref(),
                           rocksdb::Slice(doc.startAs<char>(),
@@ -1298,6 +1299,7 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
 
   key->constructDocument(_objectId, newDocumentId);
   // simon: we do not need to blacklist the new documentId
+  TRI_ASSERT(key.containsLocalDocumentId(newDocumentId));
   s = mthd->PutUntracked(RocksDBColumnFamily::documents(), key.ref(),
                          rocksdb::Slice(newDoc.startAs<char>(),
                                         static_cast<size_t>(newDoc.byteSize())));
