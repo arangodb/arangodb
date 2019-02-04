@@ -104,15 +104,27 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
     uint64_t onlyLoadedCollections = this->onlyLoadedCollections;
 
     if (slice.hasKey("frequency")) {
+      if (!slice.get("frequency").isNumber()) {
+        return Result(TRI_ERROR_BAD_PARAMETER, "expecting numeric value for frequency");
+      }
       frequency = slice.get("frequency").getNumericValue<uint64_t>();
     }
     if (slice.hasKey("maxTotalRemoves")) {
+      if (!slice.get("maxTotalRemoves").isNumber()) {
+        return Result(TRI_ERROR_BAD_PARAMETER, "expecting numeric value for maxTotalRemoves");
+      }
       maxTotalRemoves = slice.get("maxTotalRemoves").getNumericValue<uint64_t>();
     }
     if (slice.hasKey("maxCollectionRemoves")) {
+      if (!slice.get("maxCollectionRemoves").isNumber()) {
+        return Result(TRI_ERROR_BAD_PARAMETER, "expecting numeric value for maxCollectionRemoves");
+      }
       maxCollectionRemoves = slice.get("maxCollectionRemoves").getNumericValue<uint64_t>();
     }
     if (slice.hasKey("onlyLoadedCollections")) {
+      if (!slice.get("onlyLoadedCollections").isBool()) {
+        return Result(TRI_ERROR_BAD_PARAMETER, "expecting boolean value for onlyLoadedCollections");
+      }
       onlyLoadedCollections = slice.get("onlyLoadedCollections").getBool();
     }
 
@@ -134,7 +146,6 @@ class TtlThread final : public Thread {
   explicit TtlThread(TtlFeature* ttlFeature) 
        : Thread("TTL"), 
          _ttlFeature(ttlFeature),
-         _nextStart(std::chrono::steady_clock::now() + std::chrono::milliseconds(_ttlFeature->properties().frequency)),
          _working(false) {
     TRI_ASSERT(_ttlFeature != nullptr);
   }
@@ -158,16 +169,20 @@ class TtlThread final : public Thread {
     return _working.load();
   }
 
+  /// @brief frequency is specified in milliseconds
+  void setNextStart(uint64_t frequency) {
+    CONDITION_LOCKER(guard, _condition);
+    _nextStart = std::chrono::steady_clock::now() + std::chrono::milliseconds(frequency);
+  }
+
  protected:
   void run() override {
     TtlProperties properties = _ttlFeature->properties();
+    setNextStart(properties.frequency); 
 
     LOG_TOPIC(TRACE, Logger::TTL) << "starting TTL background thread with interval " << properties.frequency << " milliseconds, max removals per run: " << properties.maxTotalRemoves << ", max removals per collection per run " << properties.maxCollectionRemoves;
     
     while (true) {
-      // properties may have changed... update them
-      properties = _ttlFeature->properties();
-    
       auto now = std::chrono::steady_clock::now();
 
       while (now < _nextStart) {
@@ -178,7 +193,7 @@ class TtlThread final : public Thread {
 
         // wait for our start...
         CONDITION_LOCKER(guard, _condition);
-        std::chrono::milliseconds(std::chrono::duration_cast<std::chrono::milliseconds>(_nextStart - now)).count();
+        
         guard.wait(std::chrono::microseconds(std::chrono::duration_cast<std::chrono::microseconds>(_nextStart - now)));
         now = std::chrono::steady_clock::now();
       }
@@ -188,7 +203,9 @@ class TtlThread final : public Thread {
         return;
       }
       
-      _nextStart = now + std::chrono::milliseconds(properties.frequency);
+      // properties may have changed... update them
+      properties = _ttlFeature->properties();
+      setNextStart(properties.frequency); 
 
       try {
         TtlStatistics stats;
@@ -447,6 +464,7 @@ void TtlFeature::start() {
   }
     
   MUTEX_LOCKER(locker, _threadMutex);
+
   if (application_features::ApplicationServer::isStopping()) {
     // don't create the thread if we are already shutting down
     return;
@@ -464,6 +482,8 @@ void TtlFeature::beginShutdown() {
   // this will make the TTL background thread stop as soon as possible
   deactivate();
   
+  MUTEX_LOCKER(locker, _threadMutex);
+
   if (_thread != nullptr) {
     // this will also wake up the thread if it should be sleeping
     _thread->beginShutdown();
@@ -533,10 +553,44 @@ TtlProperties TtlFeature::properties() const {
   return _properties;
 }
 
-Result TtlFeature::propertiesFromVelocyPack(VPackSlice const& slice) {
-  MUTEX_LOCKER(locker, _propertiesMutex);
+Result TtlFeature::propertiesFromVelocyPack(VPackSlice const& slice, VPackBuilder& out) {
+  Result res;
+  uint64_t frequency;
+  bool active;
 
-  return _properties.fromVelocyPack(slice);
+  {
+    MUTEX_LOCKER(locker, _propertiesMutex);
+    
+    bool const hasActiveFlag = slice.isObject() && slice.hasKey("active");
+    if (hasActiveFlag && !slice.get("active").isBool()) {
+      return Result(TRI_ERROR_BAD_PARAMETER, "active flag should be a boolean value");
+    }
+
+    // store properties
+    res = _properties.fromVelocyPack(slice);
+    if (!res.fail() && hasActiveFlag) {
+      // update active flag
+      _active = slice.get("active").getBool();
+    }
+    _properties.toVelocyPack(out, _active);
+    frequency = _properties.frequency;
+    active = _active;
+  }
+ 
+  { 
+    MUTEX_LOCKER(locker, _threadMutex);
+
+    if (_thread != nullptr) {
+      _thread->setNextStart(frequency);
+      _thread->wakeup();
+    
+      while (!active && _thread->isCurrentlyWorking()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      }
+    }
+  }
+
+  return res;
 }
 
 void TtlFeature::shutdownThread() noexcept {
