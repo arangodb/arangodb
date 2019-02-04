@@ -564,7 +564,6 @@ else ()
   endif ()
 
   set(V8_COMPILE_ARGS
-    all
     -C ${V8_TARGET_DIR}
     -f Makefile.${V8_TARGET_ARCH}
     BUILDTYPE=${V8_BUILDTYPE}
@@ -576,8 +575,8 @@ else ()
     LDFLAGS=${V8_LDFLAGS}
   )
 
-  list(APPEND V8_COMPILE_ARGS -t icui18n icuuc)
-  list(APPEND V8_COMPILE_ARGS v8_libbase v8_libplatform v8_base v8_libsampler v8_init v8_initializers v8_nosnapshot)
+  list(APPEND V8_COMPILE_TARGETS icui18n icuuc)
+  list(APPEND V8_COMPILE_TARGETS v8_libbase v8_libplatform v8_base v8_libsampler v8_init v8_initializers v8_nosnapshot)
 message(${V8_GYP_ARGS})
   ExternalProject_Add(v8_build
     BUILD_IN_SOURCE
@@ -587,7 +586,7 @@ message(${V8_GYP_ARGS})
     CONFIGURE_COMMAND
       ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS}
     BUILD_COMMAND
-      $(MAKE) ${V8_COMPILE_ARGS}
+      $(MAKE) ${V8_COMPILE_TARGETS} ${V8_COMPILE_ARGS}
     STEP_TARGETS
       v8_libbase v8_libplatform icui18n icuuc v8_base v8_libsampler v8_init v8_initializers v8_nosnapshot
     INSTALL_COMMAND

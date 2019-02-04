@@ -142,7 +142,7 @@
             }],
           ],
           'action': [
-            'python', '../tools/testrunner/utils/dump_build_config_gyp.py',
+            '<(PYTHON_EXECUTABLE)', '../tools/testrunner/utils/dump_build_config_gyp.py',
             '<@(v8_dump_build_config_args)',
           ],
         },
@@ -2508,7 +2508,7 @@
               ],
               'outputs': ['<@(libraries_bin_file)'],
               'action': [
-                'python',
+                '<(PYTHON_EXECUTABLE)',
                 '../tools/js2c.py',
                 '<(SHARED_INTERMEDIATE_DIR)/libraries.cc',
                 'CORE',
@@ -2525,7 +2525,7 @@
               ],
               'outputs': ['<@(libraries_extras_bin_file)'],
               'action': [
-                'python',
+                '<(PYTHON_EXECUTABLE)',
                 '../tools/js2c.py',
                 '<(SHARED_INTERMEDIATE_DIR)/extras-libraries.cc',
                 'EXTRAS',
@@ -2542,7 +2542,7 @@
               ],
               'outputs': ['<@(libraries_experimental_extras_bin_file)'],
               'action': [
-                'python',
+                '<(PYTHON_EXECUTABLE)',
                 '../tools/js2c.py',
                 '<(SHARED_INTERMEDIATE_DIR)/experimental-extras-libraries.cc',
                 'EXPERIMENTAL_EXTRAS',
@@ -2567,14 +2567,14 @@
                         '<(PRODUCT_DIR)/natives_blob_host.bin',
                       ],
                       'action': [
-                        'python', '<@(_inputs)', '<(PRODUCT_DIR)/natives_blob_host.bin'
+                        '<(PYTHON_EXECUTABLE)', '<@(_inputs)', '<(PRODUCT_DIR)/natives_blob_host.bin'
                       ],
                     }, {
                       'outputs': [
                         '<(PRODUCT_DIR)/natives_blob.bin',
                       ],
                       'action': [
-                        'python', '<@(_inputs)', '<(PRODUCT_DIR)/natives_blob.bin'
+                        '<(PYTHON_EXECUTABLE)', '<@(_inputs)', '<(PRODUCT_DIR)/natives_blob.bin'
                       ],
                     }],
                   ],
@@ -2583,7 +2583,7 @@
                     '<(PRODUCT_DIR)/natives_blob.bin',
                   ],
                   'action': [
-                    'python', '<@(_inputs)', '<(PRODUCT_DIR)/natives_blob.bin'
+                    '<(PYTHON_EXECUTABLE)', '<@(_inputs)', '<(PRODUCT_DIR)/natives_blob.bin'
                   ],
                 }],
               ],
@@ -2628,7 +2628,7 @@
           ],
           'outputs': ['<(SHARED_INTERMEDIATE_DIR)/libraries.cc'],
           'action': [
-            'python',
+            '<(PYTHON_EXECUTABLE)',
             '../tools/js2c.py',
             '<(SHARED_INTERMEDIATE_DIR)/libraries.cc',
             'CORE',
@@ -2643,7 +2643,7 @@
           ],
           'outputs': ['<(SHARED_INTERMEDIATE_DIR)/extras-libraries.cc'],
           'action': [
-            'python',
+            '<(PYTHON_EXECUTABLE)',
             '../tools/js2c.py',
             '<(SHARED_INTERMEDIATE_DIR)/extras-libraries.cc',
             'EXTRAS',
@@ -2660,7 +2660,7 @@
             '<(SHARED_INTERMEDIATE_DIR)/experimental-extras-libraries.cc',
           ],
           'action': [
-            'python',
+            '<(PYTHON_EXECUTABLE)',
             '../tools/js2c.py',
             '<(SHARED_INTERMEDIATE_DIR)/experimental-extras-libraries.cc',
             'EXPERIMENTAL_EXTRAS',
@@ -2790,7 +2790,7 @@
             '<(SHARED_INTERMEDIATE_DIR)/debug-support.cc',
           ],
           'action': [
-            'python',
+            '<(PYTHON_EXECUTABLE)',
             '../tools/gen-postmortem-metadata.py',
             '<@(_outputs)',
             '<@(heapobject_files)'
@@ -2862,7 +2862,7 @@
             '<(generate_bytecode_builtins_list_output)',
           ],
           'action': [
-            'python',
+            '<(PYTHON_EXECUTABLE)',
             '../tools/run.py',
             '<@(_inputs)',
             '<@(_outputs)',

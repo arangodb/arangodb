@@ -101,7 +101,7 @@
         '<@(SHARED_INTERMEDIATE_DIR)/src/js_protocol.stamp',
       ],
       'action': [
-        'python',
+        '<(PYTHON_EXECUTABLE)',
         '<(protocol_path)/CheckProtocolCompatibility.py',
         '--stamp', '<@(_outputs)',
         '<(inspector_path)/js_protocol.json',
@@ -120,7 +120,7 @@
       ],
       'process_outputs_as_sources': 1,
       'action': [
-        'python',
+        '<(PYTHON_EXECUTABLE)',
         '<(protocol_path)/CodeGenerator.py',
         '--jinja_dir', '../third_party',
         '--output_base', '<(SHARED_INTERMEDIATE_DIR)/src/inspector',
@@ -139,7 +139,7 @@
       ],
       'process_outputs_as_sources': 1,
       'action': [
-        'python',
+        '<(PYTHON_EXECUTABLE)',
         '<(inspector_path)/build/xxd.py',
         'InjectedScriptSource_js',
         '<(inspector_path)/injected-script-source.js',
