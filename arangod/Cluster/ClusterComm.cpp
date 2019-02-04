@@ -110,7 +110,7 @@ void ClusterCommResult::setDestination(std::string const& dest, bool logConnecti
     serverID = "";
     endpoint = "";
     status = CL_COMM_BACKEND_UNAVAILABLE;
-    errorMessage = "did not understand destination'" + dest + "'";
+    errorMessage = "did not understand destination '" + dest + "'";
     if (logConnectionErrors) {
       LOG_TOPIC(ERR, Logger::CLUSTER) << "did not understand destination '" << dest << "'";
     } else {

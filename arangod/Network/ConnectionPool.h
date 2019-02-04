@@ -53,6 +53,7 @@ class ConnectionPool {
     uint64_t minOpenConnections = 1;      /// minimum number of open connections
     uint64_t maxOpenConnections = 25;     /// max number of connections
     uint64_t connectionTtlMilli = 60000;  /// unused connection lifetime
+    uint64_t requestTimeoutMilli = 120000; /// request timeout
     bool verifyHosts = false;
     fuerte::ProtocolType protocol = fuerte::ProtocolType::Http;
   };
@@ -79,7 +80,7 @@ class ConnectionPool {
   /// @brief request a connection for a specific endpoint
   /// note: it is the callers responsibility to ensure the endpoint
   /// is always the same, we do not do any post-processing
-  Ref leaseConnection(EndpointSpec);
+  Ref leaseConnection(EndpointSpec const&);
 
   /// @brief event loop service to create a connection seperately
   /// user is responsible for correctly shutting it down

@@ -83,7 +83,7 @@ FutureRes sendRequest(DestinationId const& destination, RestVerb type,
 
   ConnectionPool* pool = NetworkFeature::pool();
   if (!pool) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "connection pool unavailble";
+    LOG_TOPIC(ERR, Logger::FIXME) << "connection pool unavailable";
     return futures::makeFuture(
         Response{destination, errorToInt(ErrorCondition::Canceled), nullptr});
   }
@@ -115,7 +115,7 @@ FutureRes sendRequest(DestinationId const& destination, RestVerb type,
 }
 
 /// Handler class with enough information to keep retrying
-/// a request until an overal timeout is hit (or the request succeeds)
+/// a request until an overall timeout is hit (or the request succeeds)
 template <typename F>
 class RequestsState : public std::enable_shared_from_this<RequestsState<F>> {
  public:
@@ -166,7 +166,7 @@ class RequestsState : public std::enable_shared_from_this<RequestsState<F>> {
 
     ConnectionPool* pool = NetworkFeature::pool();
     if (!pool) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "connection pool unavailble";
+      LOG_TOPIC(ERR, Logger::FIXME) << "connection pool unavailable";
       _cb(Response{_destination, errorToInt(ErrorCondition::Canceled), nullptr});
       return;
     }
@@ -214,8 +214,8 @@ class RequestsState : public std::enable_shared_from_this<RequestsState<F>> {
         auto tryAgainAfter = std::chrono::steady_clock::now() - _startTime;
         if (tryAgainAfter < std::chrono::milliseconds(200)) {
           tryAgainAfter = std::chrono::milliseconds(200);
-        } else if (tryAgainAfter > std::chrono::seconds(10)) {
-          tryAgainAfter = std::chrono::seconds(10);
+        } else if (tryAgainAfter > std::chrono::seconds(3)) {
+          tryAgainAfter = std::chrono::seconds(3);
         }
         auto dueTime = std::chrono::steady_clock::now() + tryAgainAfter;
         if (dueTime >= _endTime) {

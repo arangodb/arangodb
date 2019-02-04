@@ -43,22 +43,22 @@ ConnectionPool::~ConnectionPool() { shutdown(); }
 /// @brief request a connection for a specific endpoint
 /// note: it is the callers responsibility to ensure the endpoint
 /// is always the same, we do not do any post-processing
-ConnectionPool::Ref ConnectionPool::leaseConnection(EndpointSpec str) {
+ConnectionPool::Ref ConnectionPool::leaseConnection(EndpointSpec const& str) {
   fuerte::ConnectionBuilder builder;
   builder.protocolType(_config.protocol);
   builder.endpoint(str);
 
-  str = builder.normalizedEndpoint();
+  std::string endpoint = builder.normalizedEndpoint();
+  
   READ_LOCKER(guard, _lock);
-
-  auto it = _connections.find(str);
+  auto it = _connections.find(endpoint);
   if (it == _connections.end()) {
     guard.unlock();
     WRITE_LOCKER(wguard, _lock);
 
-    it = _connections.find(str);  // check again
+    it = _connections.find(endpoint);  // check again
     if (it == _connections.end()) {
-      auto it2 = _connections.emplace(str, std::make_unique<ConnectionList>());
+      auto it2 = _connections.emplace(endpoint, std::make_unique<ConnectionList>());
       it = it2.first;
     }
     return selectConnection(*(it->second), builder);
@@ -144,7 +144,7 @@ size_t ConnectionPool::numOpenConnections() const {
 }
 
 std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::ConnectionBuilder& builder) {
-  builder.timeout(std::chrono::milliseconds(120000));
+  builder.timeout(std::chrono::milliseconds(_config.requestTimeoutMilli));
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af != nullptr && af->isActive()) {
     std::string const& token = af->tokenCache().jwtToken();

@@ -53,7 +53,7 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
                      "max open network connections",
                      new UInt64Parameter(&_maxOpenConnections));
   options->addOption("--network.connection-ttl",
-                     "default time-to-live of connections",
+                     "default time-to-live of connections (in milliseconds)",
                      new UInt64Parameter(&_connectionTtlMilli));
   options->addOption("--network.verify-hosts", "verify hosts when using TLS",
                      new BooleanParameter(&_verifyHosts));

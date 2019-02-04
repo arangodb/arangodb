@@ -386,7 +386,7 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
   }
   _numQueued.fetch_sub(1, std::memory_order_release);
   
-  std::shared_ptr<http::RequestItem> item(ptr);
+  std::unique_ptr<http::RequestItem> item(ptr);
   setTimeout(item->_request->timeout());
   std::vector<asio_ns::const_buffer> buffers(2);
   buffers.emplace_back(item->_requestHeader.data(),
@@ -399,8 +399,8 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
   
   auto self = shared_from_this();
   asio_ns::async_write(_protocol.socket, buffers,
-                       [this, self, item](asio_ns::error_code const& ec,
-                                          std::size_t transferred) {
+                       [this, self, item = std::move(item)](asio_ns::error_code const& ec,
+                                                            std::size_t transferred) mutable {
     _bytesToSend.fetch_sub(item->_request->payloadSize(), std::memory_order_release);
     asyncWriteCallback(ec, transferred, std::move(item));
   });
@@ -411,7 +411,7 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
 template<SocketType ST>
 void HttpConnection<ST>::asyncWriteCallback(
     asio_ns::error_code const& ec, size_t transferred,
-    std::shared_ptr<RequestItem> item) {
+    std::unique_ptr<RequestItem> item) {
   if (ec) {
     // Send failed
     FUERTE_LOG_CALLBACKS << "asyncWriteCallback (http): error "

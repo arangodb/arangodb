@@ -72,7 +72,7 @@ int resolveDestination(DestinationId const& dest, std::string& endpoint) {
   } else if (dest.find("server:") == 0) {
     serverID = dest.substr(7);
   } else {
-    std::string errorMessage = "did not understand destination'" + dest + "'";
+    std::string errorMessage = "did not understand destination '" + dest + "'";
     LOG_TOPIC(ERR, Logger::COMMUNICATION)
         << "did not understand destination '" << dest << "'";
     return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
@@ -148,7 +148,10 @@ void errorCodesFromHeaders(network::Headers headers,
   if (codes != headers.end()) {
     auto parsedCodes = VPackParser::fromJson(codes->second);
     VPackSlice codesSlice = parsedCodes->slice();
-    TRI_ASSERT(codesSlice.isObject());
+    if (!codesSlice.isObject()) {
+      return;
+    }
+    
     for (auto const& code : VPackObjectIterator(codesSlice)) {
       VPackValueLength codeLength;
       char const* codeString = code.key.getString(codeLength);
