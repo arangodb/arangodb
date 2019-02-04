@@ -123,7 +123,7 @@ function DatabaseSuite () {
       ];
 
       keys.forEach(function(k) {
-        assertMatch(/^\d+(\.\d+)*([\.\-][a-z\-]+(\.?\d*)?)?$/, result[k]);
+        assertMatch(/^\d+(\.\d+)*([\-]([a-z]|\d)+(\.?\d*)?)?$/, result[k]);
       });
     },
 

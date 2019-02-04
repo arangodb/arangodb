@@ -107,6 +107,12 @@ class ConfigBuilder {
       this.config['create-database'] = 'false';
     }
   }
+  setMaskings(dir) {
+    if (this.type !== 'dump') {
+      throw '"maskings" is not supported for binary: ' + this.type;
+    }
+    this.config['maskings'] = fs.join(TOP_DIR, "tests/js/common/test-data/maskings", dir);
+  }
   activateEncryption() { this.config['encription.keyfile'] = fs.join(this.rootDir, 'secret-key'); }
   setRootDir(dir) { this.rootDir = dir; }
   restrictToCollection(collection) {

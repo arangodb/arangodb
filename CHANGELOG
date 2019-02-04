@@ -1,15 +1,31 @@
 v3.4.3 (XXXX-XX-XX)
 -------------------
 
+* fix undefined behavior when calling user-defined AQL functions from an AQL
+  query via a streaming cursor
+
+* fix broken validation of tick range in arangodump
+
 * updated bundled curl library to version 7.63.0
 
 * added "peakMemoryUsage" in query results figures, showing the peak memory
   usage of the executed query. In a cluster, the value contains the peak memory
   usage across all shards, but it is not summed up across shards.
 
+* data masking: better documentation, fixed default phone number,
+  changed default range to -100 and 100 for integer masking function
+
+
+v3.4.2.1 (2019-02-01)
+---------------------
+
+* upgrade to new velocypack version
+
 
 v3.4.2 (2019-01-24)
 -------------------
+
+* upgraded to OpenSSL 1.1.0j
 
 * fixed an issue with AQL query IN index lookup conditions being converted into
   empty arrays when they were shared between multiple nodes of a lookup condition
@@ -114,7 +130,6 @@ v3.4.2 (2019-01-24)
 * Improve single threaded performance by scheduler optimization.
 
 * Releveling logging in maintenance
-
 
 v3.4.1 (2018-12-19)
 -------------------

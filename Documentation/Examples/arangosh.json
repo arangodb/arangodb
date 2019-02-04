@@ -314,6 +314,7 @@
   "javascript.module-directory" : {
     "category" : "option",
     "default" : [
+      "./enterprise/js"
     ],
     "deprecatedIn" : null,
     "description" : "additional paths containing JavaScript modules",
