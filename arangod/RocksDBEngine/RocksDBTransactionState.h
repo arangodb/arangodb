@@ -70,7 +70,6 @@ class RocksDBTransactionState final : public TransactionState {
   friend class RocksDBMethods;
   friend class RocksDBReadOnlyMethods;
   friend class RocksDBTrxMethods;
-  friend class RocksDBTrxUntrackedMethods;
   friend class RocksDBBatchedMethods;
   friend class RocksDBBatchedWithIndexMethods;
 

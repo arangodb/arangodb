@@ -91,7 +91,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
     password: '',
     verbose: true,
     includeSystem: false,
-    keepBarrier: false,
+    keepBarrier: true,
     restrictType: applierConfiguration.restrictType,
     restrictCollections: applierConfiguration.restrictCollections
   });
@@ -111,7 +111,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
   connectToSlave();
 
   replication.globalApplier.properties(applierConfiguration);
-  replication.globalApplier.start(syncResult.lastLogTick);
+  replication.globalApplier.start(syncResult.lastLogTick, syncResult.barrierId);
 
   var printed = false;
   var handled = false;
@@ -501,10 +501,6 @@ function BaseTestConfig () {
 
         function (state) {
           const c = db._collection(cn);
-          let x = 10;
-          while (c.count() > 0 && x-- > 0) {
-            internal.sleep(1);
-          }
           assertEqual(c.count(), 0);
           assertEqual(c.all().toArray().length, 0);
         }

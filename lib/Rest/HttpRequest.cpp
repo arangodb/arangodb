@@ -742,6 +742,9 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
   } else if (_contentType == ContentType::VPACK) {
     VPackOptions validationOptions = *options;  // intentional copy
     validationOptions.validateUtf8Strings = true;
+    validationOptions.checkAttributeUniqueness = true;
+    validationOptions.disallowExternals = true;
+    validationOptions.disallowCustom = true;
     VPackValidator validator(&validationOptions);
     validator.validate(_body.c_str(), _body.length());
     return VPackSlice(_body.c_str());
