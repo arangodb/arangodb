@@ -51,6 +51,10 @@ class SortNode : public ExecutionNode {
   friend class RedundantCalculationsReplacer;
 
  public:
+  enum SorterType { Standard, ConstrainedHeap };
+  static std::string const& sorterTypeName(SorterType);
+
+ public:
   SortNode(ExecutionPlan* plan, size_t id, SortElementVector const& elements, bool stable)
       : ExecutionNode(plan, id),
         _reinsertInCluster(true),
@@ -59,6 +63,9 @@ class SortNode : public ExecutionNode {
 
   SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
            SortElementVector const& elements, bool stable);
+
+  /// @brief if non-zero, limits the number of elements that the node will return
+  void setLimit(size_t limit) { _limit = limit; }
 
   /// @brief return the type of the node
   NodeType getType() const override final { return SORT; }
@@ -110,6 +117,8 @@ class SortNode : public ExecutionNode {
   /// values (e.g. when a FILTER condition exists that guarantees this)
   void removeConditions(size_t count);
 
+  SorterType sorterType() const;
+
   // reinsert node when building gather node - this is used e.g for the
   // geo-index
   bool _reinsertInCluster;
@@ -121,6 +130,9 @@ class SortNode : public ExecutionNode {
 
   /// whether or not the sort is stable
   bool _stable;
+
+  /// the maximum number of items to return if non-zero; if zero, unlimited
+  size_t _limit = 0;
 };
 
 }  // namespace aql

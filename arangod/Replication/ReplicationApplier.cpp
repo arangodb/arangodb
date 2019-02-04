@@ -48,14 +48,7 @@ struct ApplierThread : public Thread {
     TRI_ASSERT(_syncer);
   }
 
-  ~ApplierThread() {
-    shutdown();
-
-    {
-      MUTEX_LOCKER(locker, _syncerMutex);
-      _syncer.reset();
-    }
-  }
+  ~ApplierThread() {} // shutdown is called by derived implementations!
 
   void run() override {
     TRI_ASSERT(_syncer != nullptr);
@@ -109,6 +102,8 @@ struct FullApplierThread final : public ApplierThread {
   FullApplierThread(ReplicationApplier* applier, std::shared_ptr<InitialSyncer>&& syncer)
       : ApplierThread(applier, std::move(syncer)) {}
 
+  ~FullApplierThread() { shutdown(); }
+
   Result runApplier() override {
     TRI_ASSERT(_syncer != nullptr);
     TRI_ASSERT(_applier != nullptr);
@@ -143,7 +138,8 @@ struct TailingApplierThread final : public ApplierThread {
   TailingApplierThread(ReplicationApplier* applier, std::shared_ptr<TailingSyncer>&& syncer)
       : ApplierThread(applier, std::move(syncer)) {}
 
- public:
+  ~TailingApplierThread() { shutdown(); }
+
   Result runApplier() override {
     TRI_ASSERT(dynamic_cast<TailingSyncer*>(_syncer.get()) != nullptr);
     return static_cast<TailingSyncer*>(_syncer.get())->run();

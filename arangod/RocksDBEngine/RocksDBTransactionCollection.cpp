@@ -242,7 +242,7 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId, uint64_t commitS
   // Update the index estimates.
   for (auto& pair : _trackedIndexOperations) {
     auto idx = _collection->lookupIndex(pair.first);
-    if (idx == nullptr) {
+    if (ADB_UNLIKELY(idx == nullptr)) {
       TRI_ASSERT(false);  // Index reported estimates, but does not exist
       continue;
     }
