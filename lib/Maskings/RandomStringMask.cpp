@@ -36,7 +36,7 @@ ParseResult<AttributeMasking> RandomStringMask::create(Path path, Maskings* mask
   return ParseResult<AttributeMasking>(AttributeMasking(path, new RandomStringMask(maskings)));
 }
 
-VPackValue RandomStringMask::mask(bool value) const {
+VPackValue RandomStringMask::mask(bool value, std::string&) const {
   return VPackValue(value);
 }
 
@@ -64,10 +64,10 @@ VPackValue RandomStringMask::mask(std::string const& data, std::string& buffer) 
   return VPackValue(buffer);
 }
 
-VPackValue RandomStringMask::mask(int64_t value) const {
+VPackValue RandomStringMask::mask(int64_t value, std::string&) const {
   return VPackValue(value);
 }
 
-VPackValue RandomStringMask::mask(double value) const {
+VPackValue RandomStringMask::mask(double value, std::string&) const {
   return VPackValue(value);
 }

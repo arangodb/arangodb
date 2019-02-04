@@ -23,10 +23,20 @@
 #ifndef ARANGODB_REST_SERVER_FLUSH_FEATURE_H
 #define ARANGODB_REST_SERVER_FLUSH_FEATURE_H 1
 
+#if !defined(USE_CATCH_TESTS) && !defined(EXPAND_ARANGODB_REST_SERVER_FLUSH_FEATURE_H)
+  #define DO_EXPAND_ARANGODB_REST_SERVER_FLUSH_FEATURE_H(VAL) VAL ## 1
+  #define EXPAND_ARANGODB_REST_SERVER_FLUSH_FEATURE_H(VAL) DO_EXPAND_ARANGODB_REST_SERVER_FLUSH_FEATURE_H(VAL)
+  #if defined(TEST_VIRTUAL) && (EXPAND_ARANGODB_REST_SERVER_FLUSH_FEATURE_H(TEST_VIRTUAL) != 1)
+    #define USE_CATCH_TESTS
+  #endif
+  #undef EXPAND_ARANGODB_REST_SERVER_FLUSH_FEATURE_H
+  #undef DO_EXPAND_ARANGODB_REST_SERVER_FLUSH_FEATURE_H
+#endif
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ReadWriteLock.h"
 
-struct TRI_vocbase_t; // forward declaration
+struct TRI_vocbase_t;  // forward declaration
 
 namespace arangodb {
 
@@ -53,6 +63,12 @@ class FlushFeature final : public application_features::ApplicationFeature {
   };
   class FlushSubscriptionBase; // forward declaration
 
+  // used by catch tests
+  #ifdef USE_CATCH_TESTS
+    typedef std::function<Result(std::string const&, TRI_vocbase_t const&, velocypack::Slice const&)> DefaultFlushSubscription;
+    static DefaultFlushSubscription _defaultFlushSubscription;
+  #endif
+
   explicit FlushFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions> options) override;
@@ -63,10 +79,8 @@ class FlushFeature final : public application_features::ApplicationFeature {
   /// @param callback the callback to invoke
   /// @return success, false == handler for the specified type already registered
   /// @note not thread-safe on the assumption of static factory registration
-  static bool registerFlushRecoveryCallback(
-    std::string const& type,
-    FlushRecoveryCallback const& callback
-  );
+  static bool registerFlushRecoveryCallback(std::string const& type,
+                                            FlushRecoveryCallback const& callback);
 
   /// @brief register a flush subscription that will ensure replay of all WAL
   ///        entries after the latter of registration or the last successful
@@ -76,10 +90,8 @@ class FlushFeature final : public application_features::ApplicationFeature {
   /// @return a token used for marking flush synchronization
   ///         release of the token will unregister the subscription
   ///         nullptr == error
-  std::shared_ptr<FlushSubscription> registerFlushSubscription(
-      std::string const& type,
-      TRI_vocbase_t const& vocbase
-  );
+  std::shared_ptr<FlushSubscription> registerFlushSubscription(std::string const& type,
+                                                               TRI_vocbase_t const& vocbase);
 
   /// @brief release all ticks not used by the flush subscriptions
   arangodb::Result releaseUnusedTicks();

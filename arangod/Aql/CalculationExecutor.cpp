@@ -96,6 +96,7 @@ template <CalculationType calculationType>
 void doEvaluation(CalculationExecutorInfos& info, InputAqlItemRow& input,
                   OutputAqlItemRow& output) {
   static const bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
+  const bool stream = info.getQuery().queryOptions().stream;
 
   switch (calculationType) {
     case CalculationType::Reference: {
@@ -117,7 +118,7 @@ void doEvaluation(CalculationExecutorInfos& info, InputAqlItemRow& input,
     } break;
     case CalculationType::V8Condition: {
       auto cleanup = [&]() {
-        if (isRunningInCluster) {
+        if (isRunningInCluster || stream) {
           // must invalidate the expression now as we might be called from
           // different threads
           info.getExpression().invalidate();

@@ -165,6 +165,11 @@ rocksdb::Status RocksDBReadOnlyMethods::Put(rocksdb::ColumnFamilyHandle* cf,
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }
 
+rocksdb::Status RocksDBReadOnlyMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
+                                            RocksDBKey const&, rocksdb::Slice const&) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
+}
+
 rocksdb::Status RocksDBReadOnlyMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
                                                RocksDBKey const& key) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
@@ -229,6 +234,12 @@ rocksdb::Status RocksDBTrxMethods::Put(rocksdb::ColumnFamilyHandle* cf,
   return _state->_rocksTransaction->Put(cf, key.string(), val);
 }
 
+rocksdb::Status RocksDBTrxMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
+                                       RocksDBKey const& key, rocksdb::Slice const& val) {
+  TRI_ASSERT(cf != nullptr);
+  return _state->_rocksTransaction->PutUntracked(cf, key.string(), val);
+}
+
 rocksdb::Status RocksDBTrxMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
                                           RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
@@ -268,30 +279,6 @@ void RocksDBTrxMethods::PopSavePoint() {
 #endif
 }
 
-// =================== RocksDBTrxUntrackedMethods ====================
-
-RocksDBTrxUntrackedMethods::RocksDBTrxUntrackedMethods(RocksDBTransactionState* state)
-    : RocksDBTrxMethods(state) {}
-
-rocksdb::Status RocksDBTrxUntrackedMethods::Put(rocksdb::ColumnFamilyHandle* cf,
-                                                RocksDBKey const& key,
-                                                rocksdb::Slice const& val) {
-  TRI_ASSERT(cf != nullptr);
-  return _state->_rocksTransaction->PutUntracked(cf, key.string(), val);
-}
-
-rocksdb::Status RocksDBTrxUntrackedMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
-                                                   RocksDBKey const& key) {
-  TRI_ASSERT(cf != nullptr);
-  return _state->_rocksTransaction->DeleteUntracked(cf, key.string());
-}
-
-rocksdb::Status RocksDBTrxUntrackedMethods::SingleDelete(rocksdb::ColumnFamilyHandle* cf,
-                                                         RocksDBKey const& key) {
-  TRI_ASSERT(cf != nullptr);
-  return _state->_rocksTransaction->SingleDeleteUntracked(cf, key.string());
-}
-
 // =================== RocksDBBatchedMethods ====================
 
 RocksDBBatchedMethods::RocksDBBatchedMethods(RocksDBTransactionState* state,
@@ -316,6 +303,12 @@ rocksdb::Status RocksDBBatchedMethods::Put(rocksdb::ColumnFamilyHandle* cf,
                                            rocksdb::Slice const& val) {
   TRI_ASSERT(cf != nullptr);
   return _wb->Put(cf, key.string(), val);
+}
+
+rocksdb::Status RocksDBBatchedMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
+                                                    RocksDBKey const& key,
+                                                    rocksdb::Slice const& val) {
+  return RocksDBBatchedMethods::Put(cf, key, val);
 }
 
 rocksdb::Status RocksDBBatchedMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
@@ -369,6 +362,12 @@ rocksdb::Status RocksDBBatchedWithIndexMethods::Put(rocksdb::ColumnFamilyHandle*
                                                     rocksdb::Slice const& val) {
   TRI_ASSERT(cf != nullptr);
   return _wb->Put(cf, key.string(), val);
+}
+
+rocksdb::Status RocksDBBatchedWithIndexMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
+                                                             RocksDBKey const& key,
+                                                             rocksdb::Slice const& val) {
+  return RocksDBBatchedWithIndexMethods::Put(cf, key, val);
 }
 
 rocksdb::Status RocksDBBatchedWithIndexMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
