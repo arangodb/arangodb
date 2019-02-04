@@ -710,6 +710,38 @@ std::string slurpProgram(std::string const& program) {
 
   return std::string(buffer.data(), buffer.length());
 }
+
+int slurpProgramWithExitcode(std::string const& program, std::string &stdout) {
+#ifdef _WIN32
+  UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
+  FILE* fp = _wpopen(uprog.getTerminatedBuffer(), L"r");
+#else
+  FILE* fp = popen(program.c_str(), "r");
+#endif
+
+  constexpr size_t chunkSize = 8192;
+  StringBuffer buffer(chunkSize, false);
+
+  if (fp) {
+    int c;
+
+    while ((c = getc(fp)) != EOF) {
+      buffer.appendChar((char)c);
+    }
+
+#ifdef _WIN32
+    int res = _pclose(fp);
+#else
+    int res = pclose(fp);
+#endif
+
+    stdout = std::string(buffer.data(), buffer.length());
+    return res;
+  }
+
+  throwProgramError(program);
+}
+
 }  // namespace FileUtils
 }  // namespace basics
 }  // namespace arangodb
