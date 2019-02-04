@@ -1,6 +1,10 @@
 v3.4.3 (XXXX-XX-XX)
 -------------------
 
+* fixed possible segfault when using COLLECT with a LIMIT and an offset
+
+* fixed COLLECT forgetting top-level variables after 1000 rows
+
 * fix undefined behavior when calling user-defined AQL functions from an AQL
   query via a streaming cursor
 
