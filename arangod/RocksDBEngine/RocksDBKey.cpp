@@ -32,6 +32,29 @@ using namespace arangodb;
 using namespace arangodb::rocksutils;
 
 const char RocksDBKey::_stringSeparator = '\0';
+  
+/// @brief verify that a key actually contains the given local document id
+bool RocksDBKey::containsLocalDocumentId(LocalDocumentId const& documentId) const {
+  switch (_type) {
+    case RocksDBEntryType::EdgeIndexValue:
+    case RocksDBEntryType::VPackIndexValue:
+    case RocksDBEntryType::FulltextIndexValue:
+    case RocksDBEntryType::GeoIndexValue: {
+      // create a temporary string containing the stringified local document id
+      std::string buffer;
+      uint64ToPersistent(buffer, documentId.id());
+      // and now check if the key actually contains this local document id
+      return _buffer.find(buffer) != std::string::npos;
+    }
+
+    default: {
+      // we should never never get here
+      TRI_ASSERT(false);
+    }
+  }
+
+  return false;
+}
 
 void RocksDBKey::constructDatabase(TRI_voc_tick_t databaseId) {
   TRI_ASSERT(databaseId != 0);
