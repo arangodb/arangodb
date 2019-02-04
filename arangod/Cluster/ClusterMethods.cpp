@@ -2503,7 +2503,7 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWa
 }
 
 /// @brief get TTL statistics from all DBservers and aggregate them
-Result getTtlStatisticsFromAllDBServers(TtlStatistics& stats) {
+Result getTtlStatisticsFromAllDBServers(TtlStatistics& out) {
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
@@ -2532,7 +2532,7 @@ Result getTtlStatisticsFromAllDBServers(TtlStatistics& stats) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
         std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
         VPackSlice answer = answerBuilder->slice();
-        stats += answer;
+        out += answer;
         nrok++;
       } else {
         // got an error. Now try to find the errorNum value returned (if any)
@@ -2554,6 +2554,132 @@ Result getTtlStatisticsFromAllDBServers(TtlStatistics& stats) {
   if (nrok != (int)DBservers.size()) {
     LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
         << "could not get TTL statistics from all servers. confirmed: " << nrok
+        << ", expected: " << DBservers.size();
+    return Result(globalErrorCode);
+  }
+
+  return Result();
+}
+
+/// @brief get TTL properties from all DBservers
+Result getTtlPropertiesFromAllDBServers(VPackBuilder& out) {
+  ClusterInfo* ci = ClusterInfo::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return Result(TRI_ERROR_SHUTTING_DOWN);
+  }
+  std::vector<ServerID> DBservers = ci->getCurrentDBServers();
+  CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  std::string const url("/_api/ttl/properties");
+
+  auto body = std::make_shared<std::string const>();
+  std::unordered_map<std::string, std::string> headers;
+  for (auto it = DBservers.begin(); it != DBservers.end(); ++it) {
+    // set collection name (shard id)
+    cc->asyncRequest(coordTransactionID, "server:" + *it, arangodb::rest::RequestType::GET,
+                     url, body, headers, nullptr, 120.0);
+  }
+  
+  // Now listen to the results:
+  bool set = false;
+  int count;
+  int nrok = 0;
+  int globalErrorCode = TRI_ERROR_INTERNAL;
+  for (count = (int)DBservers.size(); count > 0; count--) {
+    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
+    if (res.status == CL_COMM_RECEIVED) {
+      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
+        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
+        VPackSlice answer = answerBuilder->slice();
+        if (!set) {
+          out.add(answer);
+          set = true;
+        }
+        nrok++;
+      } else {
+        // got an error. Now try to find the errorNum value returned (if any)
+        TRI_ASSERT(res.answer != nullptr);
+        auto resBody = res.answer->toVelocyPackBuilderPtr();
+        VPackSlice resSlice = resBody->slice();
+        if (resSlice.isObject()) {
+          int code = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+              resSlice, "errorNum", TRI_ERROR_INTERNAL);
+
+          if (code != TRI_ERROR_NO_ERROR) {
+            globalErrorCode = code;
+          }
+        }
+      }
+    }
+  }
+
+  if (nrok != (int)DBservers.size()) {
+    LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+        << "could not get TTL properties from all servers. confirmed: " << nrok
+        << ", expected: " << DBservers.size();
+    return Result(globalErrorCode);
+  }
+
+  return Result();
+}
+
+/// @brief set TTL properties on all DBservers
+Result setTtlPropertiesOnAllDBServers(VPackSlice const& properties, VPackBuilder& out) {
+  ClusterInfo* ci = ClusterInfo::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return Result(TRI_ERROR_SHUTTING_DOWN);
+  }
+  std::vector<ServerID> DBservers = ci->getCurrentDBServers();
+  CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  std::string const url("/_api/ttl/properties");
+
+  auto body = std::make_shared<std::string const>();
+  std::unordered_map<std::string, std::string> headers;
+  for (auto it = DBservers.begin(); it != DBservers.end(); ++it) {
+    // set collection name (shard id)
+    cc->asyncRequest(coordTransactionID, "server:" + *it, arangodb::rest::RequestType::PUT,
+                     url, body, headers, nullptr, 120.0);
+  }
+  
+  // Now listen to the results:
+  bool set = false;
+  int count;
+  int nrok = 0;
+  int globalErrorCode = TRI_ERROR_INTERNAL;
+  for (count = (int)DBservers.size(); count > 0; count--) {
+    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
+    if (res.status == CL_COMM_RECEIVED) {
+      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
+        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
+        VPackSlice answer = answerBuilder->slice();
+        if (!set) {
+          out.add(answer);
+          set = true;
+        }
+        nrok++;
+      } else {
+        // got an error. Now try to find the errorNum value returned (if any)
+        TRI_ASSERT(res.answer != nullptr);
+        auto resBody = res.answer->toVelocyPackBuilderPtr();
+        VPackSlice resSlice = resBody->slice();
+        if (resSlice.isObject()) {
+          int code = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+              resSlice, "errorNum", TRI_ERROR_INTERNAL);
+
+          if (code != TRI_ERROR_NO_ERROR) {
+            globalErrorCode = code;
+          }
+        }
+      }
+    }
+  }
+
+  if (nrok != (int)DBservers.size()) {
+    LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+        << "could not set TTL properties on all servers. confirmed: " << nrok
         << ", expected: " << DBservers.size();
     return Result(globalErrorCode);
   }

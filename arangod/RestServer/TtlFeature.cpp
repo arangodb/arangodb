@@ -533,10 +533,22 @@ TtlProperties TtlFeature::properties() const {
   return _properties;
 }
 
-Result TtlFeature::propertiesFromVelocyPack(VPackSlice const& slice) {
+Result TtlFeature::propertiesFromVelocyPack(VPackSlice const& slice, VPackBuilder& out) {
   MUTEX_LOCKER(locker, _propertiesMutex);
+   
+  bool const hasActiveFlag = slice.isObject() && slice.hasKey("active");
+  if (hasActiveFlag && !slice.get("active").isBool()) {
+    return Result(TRI_ERROR_BAD_PARAMETER, "active flag should be a boolean value");
+  }
 
-  return _properties.fromVelocyPack(slice);
+  // store properties
+  Result res = _properties.fromVelocyPack(slice);
+  if (!res.fail() && hasActiveFlag) {
+    // update active flag
+    _active = slice.get("active").getBool();
+  }
+  propertiesToVelocyPack(out);
+  return res;
 }
 
 void TtlFeature::shutdownThread() noexcept {

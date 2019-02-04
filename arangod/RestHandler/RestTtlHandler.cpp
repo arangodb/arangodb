@@ -72,8 +72,24 @@ RestStatus RestTtlHandler::handleProperties() {
     }
 
     return RestStatus::DONE;
-  } else if (type == rest::RequestType::POST) {
-    // TODO
+  } else if (type == rest::RequestType::PUT) {
+    bool parseSuccess = false;
+    VPackSlice body = this->parseVPackBody(parseSuccess);
+
+    if (!parseSuccess) {
+      // error message generated in parseVelocyPackBody
+      return RestStatus::DONE;
+    }
+    
+    VPackBuilder builder;
+    Result result = methods::Ttl::setProperties(body, builder);
+
+    if (result.fail()) {
+      generateError(result);
+    } else {
+      generateOk(rest::ResponseCode::OK, builder.slice());
+    }
+
     return RestStatus::DONE;
   }
  

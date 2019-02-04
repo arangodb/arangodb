@@ -51,7 +51,7 @@ struct TtlStatistics {
   
   TtlStatistics& operator+=(arangodb::velocypack::Slice const& other);
 
-  void toVelocyPack(arangodb::velocypack::Builder&) const;
+  void toVelocyPack(arangodb::velocypack::Builder& out) const;
 };
   
 struct TtlProperties {
@@ -60,8 +60,8 @@ struct TtlProperties {
   uint64_t maxCollectionRemoves = 1000000;
   bool onlyLoadedCollections = true;
   
-  void toVelocyPack(arangodb::velocypack::Builder&, bool isActive) const;
-  Result fromVelocyPack(arangodb::velocypack::Slice const&);
+  void toVelocyPack(arangodb::velocypack::Builder& out, bool isActive) const;
+  Result fromVelocyPack(arangodb::velocypack::Slice const& properties);
 };
 
 class TtlFeature final : public application_features::ApplicationFeature {
@@ -80,15 +80,16 @@ class TtlFeature final : public application_features::ApplicationFeature {
   /// @brief turn expiring/removing outdated documents off, blocks until
   /// the TTL thread has left the actual document removal routine
   void deactivate();
+
   /// @brief whether or not expiring/removing outdated documents is currently turned on
   bool isActive() const;
 
-  void statsToVelocyPack(arangodb::velocypack::Builder& builder) const;
+  void statsToVelocyPack(arangodb::velocypack::Builder& out) const;
 
   void updateStats(TtlStatistics const& stats);
   
-  void propertiesToVelocyPack(arangodb::velocypack::Builder& builder) const;
-  Result propertiesFromVelocyPack(arangodb::velocypack::Slice const& slice);
+  void propertiesToVelocyPack(arangodb::velocypack::Builder& out) const;
+  Result propertiesFromVelocyPack(arangodb::velocypack::Slice const& slice, arangodb::velocypack::Builder& out);
   
   TtlProperties properties() const;
   
