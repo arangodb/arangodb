@@ -687,7 +687,7 @@ class XcodeSettings(object):
       cflags_cc.append('-std=%s' % clang_cxx_language_standard)
 
     self._Appendf(cflags_cc, 'CLANG_CXX_LIBRARY', '-stdlib=%s')
-
+    cflags_cc.append('-std=c++11')
     if self._Test('GCC_ENABLE_CPP_RTTI', 'NO', default='YES'):
       cflags_cc.append('-fno-rtti')
     if self._Test('GCC_ENABLE_CPP_EXCEPTIONS', 'NO', default='YES'):

@@ -98,7 +98,7 @@ else ()
   set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
   set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
   set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
-  set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_VERSION}/third_party/icu/")
+  set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_SUB_DIR}/third_party/icu/")
 endif ()
 
 ################################################################################
