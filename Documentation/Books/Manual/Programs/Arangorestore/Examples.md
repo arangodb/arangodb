@@ -4,12 +4,14 @@ Arangorestore Examples
 To restore data from a dump previously created with [_Arangodump_](../Arangodump/README.md),
 ArangoDB provides the _arangorestore_ tool.
 
-Please note that in versions older than 3.3, _Arangorestore_
+{% hint 'danger' %}
+In versions older than 3.3, _Arangorestore_
 **must not be used to create several similar database instances in one installation**.
 
 This means that if you have an _Arangodump_ output of database `a`, create a second database `b`
 on the same instance of ArangoDB, and restore the dump of `a` into `b` - data integrity can not
-be guaranteed. This limitation was solved starting from ArangoDB version 3.3
+be guaranteed. This limitation was solved starting from ArangoDB v3.3.0.
+{% endhint %}
 
 Invoking Arangorestore
 ----------------------
@@ -26,21 +28,21 @@ _arangorestore_ will by default connect to the *_system* database using the defa
 endpoint. If you want to connect to a different database or a different endpoint, 
 or use authentication, you can use the following command-line options:
 
-- *--server.database <string>*: name of the database to connect to
-- *--server.endpoint <string>*: endpoint to connect to
-- *--server.username <string>*: username
-- *--server.password <string>*: password to use (omit this and you'll be prompted for the
-  password)
-- *--server.authentication <bool>*: whether or not to use authentication
+- `--server.database <string>`: name of the database to connect to
+- `--server.endpoint <string>`: endpoint to connect to
+- `--server.username <string>`: username
+- `--server.password <string>`: password to use
+  (omit this and you'll be prompted for the password)
+- `--server.authentication <bool>`: whether or not to use authentication
   
-Since version 2.6 _arangorestore_ provides the option *--create-database*. Setting this 
+Since version 2.6 _arangorestore_ provides the option `--create-database`. Setting this 
 option to *true* will create the target database if it does not exist. When creating the
 target database, the username and passwords passed to _arangorestore_ (in options 
-*--server.username* and *--server.password*) will be used to create an initial user for the 
+`--server.username` and `--server.password`) will be used to create an initial user for the 
 new database.
 
 The option `--force-same-database` allows restricting arangorestore operations to a
-database with the same name as in the source dump's "dump.json" file. It can thus be used
+database with the same name as in the source dump's `dump.json` file. It can thus be used
 to prevent restoring data into a "wrong" database by accident.
 
 For example, if a dump was taken from database `a`, and the restore is attempted into 
@@ -71,16 +73,16 @@ will be dropped and re-created with the data found in the input directory.
 
 The following parameters are available to adjust this behavior:
 
-- *--create-collection <bool>*: set to *true* to create collections in the target
+- `--create-collection <bool>`: set to *true* to create collections in the target
   database. If the target database already contains a collection with the same name,
   it will be dropped first and then re-created with the properties found in the input
   directory. Set to *false* to keep existing collections in the target database. If 
   set to *false* and _arangorestore_ encounters a collection that is present in the
   input directory but not in the target database, it will abort. The default value is *true*.
-- *--import-data <bool>*: set to *true* to load document data into the collections in
+- `--import-data <bool>`: set to *true* to load document data into the collections in
   the target database. Set to *false* to not load any document data. The default value 
   is *true*.
-- *--include-system-collections <bool>*: whether or not to include system collections
+- `--include-system-collections <bool>`: whether or not to include system collections
   when re-creating collections or reloading data. The default value is *false*.
   
 For example, to (re-)create all non-system collections and load document data into them, use:
@@ -90,7 +92,7 @@ For example, to (re-)create all non-system collections and load document data in
 This will drop potentially existing collections in the target database that are also present
 in the input directory.
 
-To include system collections too, use *--include-system-collections true*:
+To include system collections too, use `--include-system-collections true`:
     
     arangorestore --create-collection true --import-data true --include-system-collections true --input-directory "dump"
 
@@ -105,7 +107,7 @@ To just load document data into all non-system collections, use:
 
     arangorestore --create-collection false --import-data true --input-directory "dump"
 
-To restrict reloading to just specific collections, there is is the *--collection* option.
+To restrict reloading to just specific collections, there is is the `--collection` option.
 It can be specified multiple times if required:
     
     arangorestore --collection myusers --collection myvalues --input-directory "dump"
@@ -115,9 +117,9 @@ collections being processed before all [edge collection](../../Appendix/Glossary
 data into edge collections will have the document collections linked in edges (*_from* and
 *_to* attributes) loaded.
 
-To restrict reloading to specific views, there is the *--view* option.
-Should you specify the *--collection* parameter views will not be restored _unless_ you explicitly
-specify them via the *--view* option.
+To restrict reloading to specific views, there is the `--view` option.
+Should you specify the `--collection` parameter views will not be restored _unless_ you explicitly
+specify them via the `--view` option.
     
     arangorestore --collection myusers --view myview --input-directory "dump"
     
@@ -142,9 +144,9 @@ you can start with the following command:
 
     arangodump --collection myvalues --server.database mydb --output-directory "dump"
 
-This will create two files, *myvalues.structure.json* and *myvalues.data.json*, in the output 
+This will create two files, `myvalues.structure.json` and `myvalues.data.json`, in the output 
 directory. To load data from the datafile into an existing collection *mycopyvalues* in database 
-*mycopy*, rename the files to *mycopyvalues.structure.json* and *mycopyvalues.data.json*.
+*mycopy*, rename the files to `mycopyvalues.structure.json` and `mycopyvalues.data.json`.
 After that, run the following command:
     
     arangorestore --collection mycopyvalues --server.database mycopy --input-directory "dump"
@@ -163,11 +165,11 @@ provided that the number of DBServers in the cluster dumped from is identical to
 number of DBServers in the to-be-restored-to cluster.
 
 To modify the number of _shards_ or the _replication factor_ for all or just some collections,
-*arangorestore*, starting from v3.3.22 and v3.4.2,  provides the options `--number-of-shards` and `--replication-factor`.
+*arangorestore* provides the options `--number-of-shards` and `--replication-factor` (starting from v3.3.22 and v3.4.2).
 These options can be specified multiple times as well, in order to override the settings
 for dedicated collections, e.g.
 
-    unix> arangorestore --number-of-shards 2 --number-of-shards mycollection=3 --number-of-shards test=4
+    arangorestore --number-of-shards 2 --number-of-shards mycollection=3 --number-of-shards test=4
 
 The above will restore all collections except "mycollection" and "test" with 2 shards. "mycollection"
 will have 3 shards when restored, and "test" will have 4. It is possible to omit the default value
@@ -176,10 +178,16 @@ overridden will be determined by looking into the "numberOfShards" values contai
 
 The `--replication-factor` options works in the same way, e.g.
     
-    unix> arangorestore --replication-factor 2 --replication-factor mycollection=1
+    arangorestore --replication-factor 2 --replication-factor mycollection=1
 
 will set the replication factor to 2 for all collections but "mycollection", which will get a
-replication factor of just 1.    
+replication factor of just 1.
+
+{% hint 'info' %}
+The options `--number-of-shards` and `replication-factor`, as well as the deprecated
+options `--default-number-of-shards` and `--default-replication-factor`, are
+**not applicable to system collections**. They are managed by the server.
+{% endhint %}
 
 If a collection was dumped from a single instance and is then restored into
 a cluster, the sharding will be done by the `_key` attribute by default. One can
