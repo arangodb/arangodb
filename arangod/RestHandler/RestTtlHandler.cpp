@@ -80,7 +80,7 @@ RestStatus RestTtlHandler::handleProperties() {
       // error message generated in parseVelocyPackBody
       return RestStatus::DONE;
     }
-   
+    
     VPackBuilder builder;
     Result result = methods::Ttl::setProperties(body, builder);
 
