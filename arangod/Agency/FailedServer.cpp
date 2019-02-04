@@ -90,8 +90,8 @@ bool FailedServer::start() {
       if (toDoJob.second) {
         toDoJob.first.toBuilder(todo);
       } else {
-        LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
-                                                    " from agency snapshot";
+        LOG_TOPIC(INFO, Logger::SUPERVISION)
+          << "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
         return false;
       }
     } else {
@@ -100,20 +100,81 @@ bool FailedServer::start() {
   }  // Todo entry
 
   // Pending entry
-  Builder pending;
+  auto transactions = std::make_shared<VPackBuilder>();
   {
     VPackArrayBuilder a(&pending);
 
     // Operations -------------->
     {
-      VPackObjectBuilder oper(&pending);
+      VPackObjectBuilder oper(transactions.get());
       // Add pending
-      pending.add(VPackValue(pendingPrefix + _jobId));
+  
+      auto const& databases = _snapshot.hasAsChildren("/Plan/Collections").first;
+      // auto const& current = _snapshot.hasAsChildren("/Current/Collections").first;
+  
+      size_t sub = 0;
+
+      // FIXME: looks OK, but only the non-clone shards are put into the job
+      for (auto const& database : databases) {
+        // dead code   auto cdatabase = current.at(database.first)->children();
+
+        for (auto const& collptr : database.second->children()) {
+          auto const& collection = *(collptr.second);
+
+          auto const& replicationFactorPair =
+            collection.hasAsNode("replicationFactor");
+          if (replicationFactorPair.second) {
+            VPackSlice const replicationFactor = replicationFactorPair.first.slice();
+            
+            if (!replicationFactor.isNumber()) {
+              continue;  // no point to try salvaging unreplicated data
+            }
+            
+            uint64_t number = 1;
+            try {
+              number = replicationFactor.getNumber<uint64_t>();
+            } catch(...) {
+            }
+            if (number == 1) {
+              continue;
+            }
+
+            if (collection.has("distributeShardsLike")) {
+              continue;  // we only deal with the master
+            }
+
+            for (auto const& shard : collection.hasAsChildren("shards").first) {
+              size_t pos = 0;
+
+              for (auto const& it : VPackArrayIterator(shard.second->slice())) {
+                auto dbs = it.copyString();
+
+                if (dbs == _server) {
+                  if (pos == 0) {
+                    FailedLeader(
+                      _snapshot, _agent, _jobId  "-"  std::to_string(sub++),
+                      _jobId, database.first, collptr.first, shard.first, _server)
+                      .create(transactions);
+                  } else {
+                    FailedFollower(
+                      _snapshot, _agent, _jobId  "-"  std::to_string(sub++),
+                      _jobId, database.first, collptr.first, shard.first, _server)
+                      .create(transactions);
+                  }
+                }
+                pos++;
+              }
+            }
+          }
+        }
+      }
+
+      transactions->add(VPackValue(pendingPrefix + _jobId));
       {
-        VPackObjectBuilder ts(&pending);
-        pending.add("timeStarted", VPackValue(timepointToString(system_clock::now())));
+        VPackObjectBuilder ts(transactions.get());
+        transactions->add("timeStarted", VPackValue(timepointToString(system_clock::now())));
         for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
-          pending.add(obj.key.copyString(), obj.value);
+          transactions->add(obj.key.copyString(), obj.value);
         }
       }
       // Delete todo
@@ -123,7 +184,7 @@ bool FailedServer::start() {
 
     // Preconditions ----------->
     {
-      VPackObjectBuilder prec(&pending);
+      VPackObjectBuilder prec(transactions.get());
       // Check that toServer not blocked
       addPreconditionServerNotBlocked(pending, _server);
       // Status should still be FAILED
@@ -132,53 +193,12 @@ bool FailedServer::start() {
   }
 
   // Transact to agency
-  write_ret_t res = singleWriteTransaction(_agent, pending);
+  write_ret_t res = singleWriteTransaction(_agent, *transactions);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Pending job for failed DB Server " << _server;
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "Pending job for failed DB Server " << _server;
 
-    auto const& databases = _snapshot.hasAsChildren("/Plan/Collections").first;
-
-    size_t sub = 0;
-
-    // FIXME: looks OK, but only the non-clone shards are put into the job
-    for (auto const& database : databases) {
-      for (auto const& collptr : database.second->children()) {
-        auto const& collection = *(collptr.second);
-
-        auto const& replicationFactor =
-            collection.hasAsNode("replicationFactor").first;
-
-        if (replicationFactor.slice().getUInt() == 1) {
-          continue;  // no point to try salvaging unreplicated data
-        }
-
-        if (collection.has("distributeShardsLike")) {
-          continue;  // we only deal with the master
-        }
-
-        for (auto const& shard : collection.hasAsChildren("shards").first) {
-          size_t pos = 0;
-
-          for (auto const& it : VPackArrayIterator(shard.second->slice())) {
-            auto dbs = it.copyString();
-
-            if (dbs == _server) {
-              if (pos == 0) {
-                FailedLeader(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                             _jobId, database.first, collptr.first, shard.first, _server)
-                    .run();
-              } else {
-                FailedFollower(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                               _jobId, database.first, collptr.first, shard.first, _server)
-                    .run();
-              }
-            }
-            pos++;
-          }
-        }
-      }
-    }
 
     return true;
   }
