@@ -34,6 +34,7 @@
 #include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "RestServer/FlushFeature.h"
 #include "StorageEngine/TransactionManager.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -172,7 +173,7 @@ class EdgeIndexMock final : public arangodb::Index {
   bool canBeDropped() const override { return false; }
 
   bool isHidden() const override { return false; }
-  
+
   bool isSorted() const override { return false; }
 
   bool hasSelectivityEstimate() const override { return false; }
@@ -534,8 +535,7 @@ int PhysicalCollectionMock::close() {
   return TRI_ERROR_NO_ERROR; // assume close successful
 }
 
-std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::velocypack::Slice const& info,
-                                                                     bool restore, bool& created) {
+std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::velocypack::Slice const& info, bool restore, bool& created) {
   before();
 
   std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> docs;
@@ -1039,6 +1039,7 @@ arangodb::Result PhysicalCollectionMock::updateProperties(arangodb::velocypack::
 }
 
 std::function<void()> StorageEngineMock::before = []()->void {};
+arangodb::Result StorageEngineMock::flushSubscriptionResult;
 bool StorageEngineMock::inRecoveryResult = false;
 /*static*/ std::string StorageEngineMock::versionFilenameResult;
 
@@ -1052,6 +1053,11 @@ StorageEngineMock::StorageEngineMock(
       std::unique_ptr<arangodb::IndexFactory>(new IndexFactoryMock())
     ),
     _releasedTick(0) {
+  arangodb::FlushFeature::_defaultFlushSubscription = [](
+    std::string const&, TRI_vocbase_t const&, arangodb::velocypack::Slice const&
+  )->arangodb::Result {
+    return flushSubscriptionResult;
+  };
 }
 
 arangodb::WalAccess const* StorageEngineMock::walAccess() const {
@@ -1210,7 +1216,6 @@ void StorageEngineMock::getViewProperties(
 }
 
 TRI_voc_tick_t StorageEngineMock::currentTick() const {
-  before();
   return TRI_CurrentTickServer();
 }
 

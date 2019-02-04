@@ -198,17 +198,23 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief iResearch Link index type enum value
   ////////////////////////////////////////////////////////////////////////////////
-  arangodb::Index::IndexType type() const;  // arangodb::Index override
+  arangodb::Index::IndexType type() const; // arangodb::Index override
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief iResearch Link index type string value
   ////////////////////////////////////////////////////////////////////////////////
-  char const* typeName() const;  // arangodb::Index override
+  char const* typeName() const; // arangodb::Index override
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief called with the contents of the WAL 'Flush' marker
+  /// @note used by IResearchFeature when processing WAL Flush markers
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result walFlushMarker(arangodb::velocypack::Slice const& value);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is unloaded from memory
   ////////////////////////////////////////////////////////////////////////////////
-  arangodb::Result unload();  // arangodb::Index override
+  arangodb::Result unload(); // arangodb::Index override
 
  protected:
   ////////////////////////////////////////////////////////////////////////////////
@@ -223,37 +229,42 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   arangodb::Result init(arangodb::velocypack::Slice const& definition);
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @return the associated IResearch view or nullptr if not associated
-  ////////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<IResearchView> view() const;
-
  private:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the current data-store recovery state of the link
+  //////////////////////////////////////////////////////////////////////////////
+  enum class RecoveryState {
+    BEFORE_CHECKPOINT, // in recovery but before the FS checkpoint was seen
+    DURING_CHECKPOINT, // in recovery, FS checkpoint was seen but before the next WAL checkpoint was seen
+    AFTER_CHECKPOINT, // in recovery, FS checkpoint was seen and the next WAL checkpoint was seen
+    DONE, // not in recovery
+  };
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying iresearch data store
   //////////////////////////////////////////////////////////////////////////////
   struct DataStore {
     irs::directory::ptr _directory;
+    irs::directory_reader _last_success_reader; // last successful WAL 'Flush'
+    irs::index_file_refs::ref_t _last_success_ref; // ref at the checkpoint file
     irs::utf8_path _path;
     irs::directory_reader _reader;
+    std::atomic<RecoveryState> _recovery;
     irs::index_writer::ptr _writer;
     operator bool() const noexcept { return _directory && _writer; }
   };
 
-  AsyncLinkPtr _asyncSelf;  // 'this' for the lifetime of the view (for use with
-                            // asynchronous calls)
-  arangodb::LogicalCollection& _collection;  // the linked collection
-  DataStore _dataStore;  // the iresearch data store, protected by _asyncSelf->mutex()
-  TRI_idx_iid_t const _id;        // the index identifier
-  std::atomic<bool> _inRecovery;  // the link is currently in the WAL recovery state
-  IResearchLinkMeta const _meta;  // how this collection should be indexed
-                                  // (read-only, set via init())
-  std::mutex _readerMutex;        // prevents query cache double invalidation
-  std::function<void(arangodb::transaction::Methods& trx,
-                     arangodb::transaction::Status status)>
-      _trxCallback;             // for insert(...)/remove(...)
-  std::string const _viewGuid;  // the identifier of the desired view
-                                // (read-only, set via init())
+  AsyncLinkPtr _asyncSelf; // 'this' for the lifetime of the view (for use with asynchronous calls)
+  arangodb::LogicalCollection& _collection; // the linked collection
+  DataStore _dataStore; // the iresearch data store, protected by _asyncSelf->mutex()
+  std::function<arangodb::Result(arangodb::velocypack::Slice const&)> _flushCallback; // for writing 'Flush' marker during commit (guaranteed valid by init)
+  TRI_idx_iid_t const _id; // the index identifier
+  std::atomic<bool> _inRecovery; // the link is currently in the WAL recovery state
+  IResearchLinkMeta const _meta; // how this collection should be indexed (read-only, set via init())
+  std::mutex _readerMutex; // prevents query cache double invalidation
+  std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxCallback; // for insert(...)/remove(...)
+  std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
