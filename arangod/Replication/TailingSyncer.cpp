@@ -1201,6 +1201,8 @@ retry:
         return rv;
       }
 
+      setAborted(false);
+
       if (!_state.applier._autoResync) {
         LOG_TOPIC(INFO, Logger::REPLICATION)
             << "Auto resync disabled, applier will stop";
