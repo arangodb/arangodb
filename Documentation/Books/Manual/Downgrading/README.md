@@ -74,7 +74,7 @@ If you have upgraded by mistake, and:
   - you do not have a copy of your data directory taken after stopping the old ArangoDB
     process and before the upgrade
 
-one possible option to downgrade could be to export the data from the new ArangoDB version
+...one possible option to downgrade could be to export the data from the new ArangoDB version
 using the tool _arangoexport_ and reimport it using the tool _arangoimport_ in the old
 version (after having installed and started it on a clean data directory). This method will
 require some manual work to recreate the structure of your collections and your indices - but
