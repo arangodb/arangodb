@@ -284,8 +284,8 @@ struct V8Cursor final {
 
   static void New(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_TRY_CATCH_BEGIN(isolate);
-    TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-
+    TRI_GET_GLOBALS();
+    
     if (!args.IsConstructCall()) {  // if not call as a constructor call it
       TRI_V8_THROW_EXCEPTION_USAGE("only instance-able by constructor");
     }
@@ -317,7 +317,7 @@ struct V8Cursor final {
         }
       }
     }
-
+    
     // options
     auto options = std::make_shared<VPackBuilder>();
     if (args.Length() > 2) {
@@ -347,14 +347,16 @@ struct V8Cursor final {
                                          contextOwnedByExterior);
     TRI_DEFER(cc->release());
     // args.Holder() is supposedly better than args.This()
-    auto self = new V8Cursor(isolate, args.Holder(), *vocbase, cc->id());
+    auto self = std::make_unique<V8Cursor>(isolate, args.Holder(), *vocbase, cc->id());
     Result r = self->fetchData(cc);
+    self.release();
     if (r.fail()) {
       TRI_V8_THROW_EXCEPTION(r);
+    } else {
+      // do not delete self, its owned by V8 now
+      TRI_V8_RETURN(args.This());
     }
-    // do not delete self, its owned by V8 now
 
-    TRI_V8_RETURN(args.This());
     TRI_V8_TRY_CATCH_END
   }
 
@@ -364,7 +366,6 @@ struct V8Cursor final {
 
   static void toArray(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_TRY_CATCH_BEGIN(isolate);
-    v8::Isolate* isolate = args.GetIsolate();
     v8::HandleScope scope(isolate);
     
     V8Cursor* self = V8Cursor::unwrap(args.Holder());
@@ -383,6 +384,7 @@ struct V8Cursor final {
       
       if (V8PlatformFeature::isOutOfMemory(isolate)) {
         TRI_V8_SET_EXCEPTION_MEMORY();
+        break;
       }
       
       while (self->_dataIterator->valid()) {
@@ -595,7 +597,6 @@ void TRI_InitV8cursor(v8::Handle<v8::Context> context, TRI_v8_global_t* v8g) {
 
   ft = v8::FunctionTemplate::New(isolate, V8Cursor::New);
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoQueryStreamCursor"));
-
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(1);
 
@@ -619,8 +620,6 @@ void TRI_InitV8cursor(v8::Handle<v8::Context> context, TRI_v8_global_t* v8g) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "error creating v8 stream cursor");
   }
-  // ft->SetClassName(TRI_V8_ASCII_STRING(isolate,
-  // "ArangoStreamQueryCursorCtor"));
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "ArangoQueryStreamCursor"),

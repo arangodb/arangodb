@@ -36,8 +36,8 @@ function AqlQueryCacheSuite () {
   'use strict';
   
   const cn = "UnitTestsQueryCache";
-  const cached = { cache: true };
-  const notCached = { cache: false };
+  const cached = { cache: true, stream: false };
+  const notCached = { cache: false, stream: false };
 
   let assertNotInCache = function(query) {
     let queries = cache.toArray().filter(function(q) {

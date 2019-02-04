@@ -1,7 +1,7 @@
 devel
 -----
 
-* AQL queries started from V8 in arangod (i.e. from a Foxx app) will not by
+* AQL queries started from V8 in arangod (i.e. from a Foxx app) by
   default use the option `stream: true` in the `db._query(..)` call. 
   This does not apply to queries with the `count` or  `fullCount` option set.
 

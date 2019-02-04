@@ -186,7 +186,7 @@ QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t& vocbase, CursorId id,
     int level = _query->trx()->state()->nestingLevel(); // should be level 0 or 1
     // things break if the Query outlives a V8 transaction
     _stateChangeCb = [this, level](transaction::Methods& trx, transaction::Status status) {
-      if (trx.state()->nestingLevel() == level &&
+      if (trx.state()->nestingLevel() <= level &&
           (status == transaction::Status::COMMITTED ||
            status == transaction::Status::ABORTED)) {
         this->setDeleted();

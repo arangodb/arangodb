@@ -76,10 +76,14 @@ ArangoStatement.prototype.execute = function () {
     if (this._cache !== undefined) {
       opts.cache = this._cache;
     }
-    if (!opts.count && !opts.fullCount && (typeof opts.stream === "undefined")) {
-      opts.stream = true;
+    if (opts.count !== true && opts.fullCount !== true && (typeof opts.stream === "undefined")) {
+      const qq = this._query.toUpperCase();
+      const words = ["INSERT", "UPDATE", "REPLACE", "REMOVE", "UPSERT", "INTO"];
+      const isModificationQuery = words.map(w => qq.indexOf(w) !== -1).reduce( (a,b) => a || b, false);
+      opts.stream = !isModificationQuery;
+      print ("Using stream ", opts.stream);
     }
-    if (opts.stream) {
+    if (opts.stream === true) {
       return new ArangoQueryStreamCursor(this._query, this._bindVars, opts);
     }
   }
