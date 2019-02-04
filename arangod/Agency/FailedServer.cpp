@@ -102,7 +102,7 @@ bool FailedServer::start() {
   // Pending entry
   auto transactions = std::make_shared<VPackBuilder>();
   {
-    VPackArrayBuilder a(&pending);
+    VPackArrayBuilder a(transactions.get());
 
     // Operations -------------->
     {
