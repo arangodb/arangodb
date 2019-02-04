@@ -1971,7 +1971,11 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
   //}
   // LOG_DEVEL << "registersToClear:  " << ss.rdbuf();
 
-  bool returnInheritedResults = plan()->root() == this;
+  bool const isRoot = plan()->root() == this;
+
+  bool const isDBServer = arangodb::ServerState::instance()->isDBServer();
+
+  bool const returnInheritedResults = isRoot && !isDBServer;
 
   ReturnExecutorInfos infos(inputRegister,
                             getRegisterPlan()->nrRegs[previousNode->getDepth()],
