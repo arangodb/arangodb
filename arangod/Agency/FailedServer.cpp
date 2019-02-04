@@ -152,12 +152,12 @@ bool FailedServer::start() {
                 if (dbs == _server) {
                   if (pos == 0) {
                     FailedLeader(
-                      _snapshot, _agent, _jobId  "-"  std::to_string(sub++),
+                      _snapshot, _agent, _jobId  + "-"  + std::to_string(sub++),
                       _jobId, database.first, collptr.first, shard.first, _server)
                       .create(transactions);
                   } else {
                     FailedFollower(
-                      _snapshot, _agent, _jobId  "-"  std::to_string(sub++),
+                      _snapshot, _agent, _jobId  + "-" + std::to_string(sub++),
                       _jobId, database.first, collptr.first, shard.first, _server)
                       .create(transactions);
                   }
@@ -178,17 +178,17 @@ bool FailedServer::start() {
         }
       }
       // Delete todo
-      addRemoveJobFromSomewhere(pending, "ToDo", _jobId);
-      addBlockServer(pending, _server, _jobId);
+      addRemoveJobFromSomewhere(*transactions, "ToDo", _jobId);
+      addBlockServer(*transactions, _server, _jobId);
     }  // <------------ Operations
 
     // Preconditions ----------->
     {
       VPackObjectBuilder prec(transactions.get());
       // Check that toServer not blocked
-      addPreconditionServerNotBlocked(pending, _server);
+      addPreconditionServerNotBlocked(*transactions, _server);
       // Status should still be FAILED
-      addPreconditionServerHealth(pending, _server, "FAILED");
+      addPreconditionServerHealth(*transactions, _server, "FAILED");
     }  // <--------- Preconditions
   }
 
