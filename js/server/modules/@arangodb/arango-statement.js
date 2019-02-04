@@ -30,9 +30,10 @@
 
 module.isSystem = true;
 
-var ArangoStatement = require('@arangodb/arango-statement-common').ArangoStatement;
-var GeneralArrayCursor = require('@arangodb/arango-cursor').GeneralArrayCursor;
+const ArangoStatement = require('@arangodb/arango-statement-common').ArangoStatement;
 const ArangoQueryStreamCursor = require('internal').ArangoQueryStreamCursor;
+const GeneralArrayCursor = require('@arangodb/arango-cursor').GeneralArrayCursor;
+const db = require('internal').db;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief parse a query and return the results
@@ -76,7 +77,8 @@ ArangoStatement.prototype.execute = function () {
     if (this._cache !== undefined) {
       opts.cache = this._cache;
     }
-    if (opts.count !== true && opts.fullCount !== true && (typeof opts.stream === "undefined")) {
+    if (opts.count !== true && opts.fullCount !== true && 
+        (typeof opts.stream === "undefined") && db._engine().name !== "mmfiles") {
       const qq = this._query.toUpperCase();
       const words = ["INSERT", "UPDATE", "REPLACE", "REMOVE", "UPSERT", "INTO"];
       const isModificationQuery = words.map(w => qq.indexOf(w) !== -1).reduce( (a,b) => a || b, false);
