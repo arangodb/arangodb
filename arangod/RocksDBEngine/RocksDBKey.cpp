@@ -36,6 +36,7 @@ const char RocksDBKey::_stringSeparator = '\0';
 /// @brief verify that a key actually contains the given local document id
 bool RocksDBKey::containsLocalDocumentId(LocalDocumentId const& documentId) const {
   switch (_type) {
+    case RocksDBEntryType::Document:
     case RocksDBEntryType::EdgeIndexValue:
     case RocksDBEntryType::VPackIndexValue:
     case RocksDBEntryType::FulltextIndexValue:
