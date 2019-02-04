@@ -115,7 +115,7 @@ var compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFina
   masterFunc2(state);
 
   // use lastLogTick as of now
-  state.lastLogTick = replication.logger.state().state.lastLogTick;
+  state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
 
   applierConfiguration = applierConfiguration || {};
   applierConfiguration.endpoint = masterEndpoint;

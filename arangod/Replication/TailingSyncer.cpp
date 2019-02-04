@@ -1898,15 +1898,6 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
     return r;
   }
 
-  {
-    // TODO: this is just for debugging. remove later!
-    READ_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "applyLog finished. "
-        << "lastAppliedContinuousTick: " << _applier->_state._lastAppliedContinuousTick 
-        << ", lastProcessedContinuousTick: " << _applier->_state._lastProcessedContinuousTick;
-  }
-
   if (!worked) {
     if (checkMore) {
       worked = true;
