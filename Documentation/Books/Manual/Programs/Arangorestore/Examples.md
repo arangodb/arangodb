@@ -8,8 +8,8 @@ ArangoDB provides the _arangorestore_ tool.
 In versions older than 3.3, _Arangorestore_
 **must not be used to create several similar database instances in one installation**.
 
-This means that if you have an _Arangodump_ output of database `a`, create a second database `b`
-on the same instance of ArangoDB, and restore the dump of `a` into `b` - data integrity can not
+This means that if you have an _Arangodump_ output of database ***A***, create a second database ***B***
+on the same instance of ArangoDB, and restore the dump of ***A*** into ***B*** - data integrity can not
 be guaranteed. This limitation was solved starting from ArangoDB v3.3.0.
 {% endhint %}
 
@@ -45,8 +45,8 @@ The option `--force-same-database` allows restricting arangorestore operations t
 database with the same name as in the source dump's `dump.json` file. It can thus be used
 to prevent restoring data into a "wrong" database by accident.
 
-For example, if a dump was taken from database `a`, and the restore is attempted into 
-database `b`, then with the `--force-same-database` option set to `true`, arangorestore
+For example, if a dump was taken from database ***A***, and the restore is attempted into 
+database ***B***, then with the `--force-same-database` option set to `true`, arangorestore
 will abort instantly.
 
 The `--force-same-database` option is set to `false` by default to ensure backwards-compatibility.
