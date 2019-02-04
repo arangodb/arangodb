@@ -65,6 +65,7 @@ protected:
   void getParamValue(const char * key, std::string & value, bool required);
   void getParamValue(const char * key, bool &value, bool required);
   void getParamValue(const char * key, unsigned & value, bool required);
+  void getParamValue(const char * key, VPackSlice & value, bool required);
 
   const VPackSlice _body;   // request's configuration
   bool _valid;          // are parameters valid

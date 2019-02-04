@@ -230,6 +230,29 @@ void RocksDBHotBackup::getParamValue(const char * key, unsigned & value, bool re
 
 } // RocksDBHotBackup::getParamValue (unsigned)
 
+void RocksDBHotBackup::getParamValue(const char * key, VPackSlice & value, bool required) {
+  VPackSlice tempSlice;
+
+  try {
+    if (_body.isObject() && _body.hasKey(key)) {
+      value = _body.get(key);
+    } else if (required) {
+      if (_valid) {
+        _result.add(VPackValue(VPackValueType::Object));
+        _valid = false;
+      }
+      _result.add(key, VPackValue("parameter required"));
+    } // else if
+  } catch(VPackException const &vexcept) {
+    if (_valid) {
+      _result.add(VPackValue(VPackValueType::Object));
+      _valid = false;
+    }
+    _result.add(key, VPackValue(vexcept.what()));
+  };
+
+} // RocksDBHotBackup::getParamValue (unsigned)
+
 
 //
 // @brief Wrapper for ServerState::instance()->getPersistedId() to simplify
