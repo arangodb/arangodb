@@ -23,7 +23,6 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ExecutionNode.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
 #include "Aql/BasicBlocks.h"
@@ -45,6 +44,7 @@
 #include "Aql/SubqueryBlock.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
+#include "ExecutionNode.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 

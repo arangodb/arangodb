@@ -1,3 +1,5 @@
+include_directories(.)
+
 foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
   link_directories("${LINK_DIR}")
 endforeach()
@@ -83,6 +85,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/DateFunctionsTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
   Aql/RestAqlHandlerTest.cpp
+  Aql/SortLimit-test.cpp
   Aql/WaitingExecutionBlockMock.cpp
   Auth/UserManagerTest.cpp
   Basics/icu-helper.cpp
@@ -147,12 +150,13 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/IndexEstimatorTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
+  VocBase/VersionTest.cpp
   ${IRESEARCH_TESTS_SOURCES}
 )
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
-  # this speeds up the compilation with optimizations and newer g++ versions 
+  # this speeds up the compilation with optimizations and newer g++ versions
   # and prevents the "variable tracking size limit exceeded warnings" from
   # occurring
   if (CMAKE_COMPILER_IS_GNUCC)
@@ -168,6 +172,11 @@ add_executable(
   ${ARANGODB_TESTS_SOURCES}
   main.cpp
 )
+
+#required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
+if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
+    target_compile_options(arangodbtests PRIVATE -fno-devirtualize)
+endif()
 
 SET_TARGET_PROPERTIES(arangodbtests PROPERTIES COMPILE_FLAGS "-DCATCH_CONFIG_FAST_COMPILE")
 

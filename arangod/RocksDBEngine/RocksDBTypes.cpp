@@ -183,9 +183,13 @@ char const* arangodb::rocksDBLogTypeName(arangodb::RocksDBLogType type) {
       return "SingleRemove";
     case arangodb::RocksDBLogType::SingleRemoveV2:
       return "SingleRemoveV2";
+    case arangodb::RocksDBLogType::FlushSync:
+      return "FlushSync";
+    case RocksDBLogType::TrackedDocumentInsert:
+      return "TrackedDocumentInsert";
+    case RocksDBLogType::TrackedDocumentRemove:
+      return "TrackedDocumentRemove";
     case arangodb::RocksDBLogType::Invalid:
-      return "Invalid";
-    default:
       return "Invalid";
   }
   return "Invalid";
