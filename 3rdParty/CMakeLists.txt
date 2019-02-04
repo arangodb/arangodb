@@ -29,7 +29,6 @@ set(V8_VERSION
   FORCE
   )
 set(V8_SUB_DIR "v${V8_VERSION}")
-
 set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
 if (USE_PRECOMPILED_V8)
 
@@ -99,6 +98,7 @@ else ()
   set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
   set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
   set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
+  set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_VERSION}/third_party/icu/")
 endif ()
 
 ################################################################################
@@ -131,7 +131,6 @@ if (USE_IRESEARCH)
   # IResearch on MacOS requires a complete build of ICU for encoding conversion
   if(APPLE)
     set(ICU_LIBS icu-static CACHE INTERNAL "ICU: Libraries" FORCE) # use complete ICU build
-    set(ICU_ROOT "${V8_SRC_DIR}/third_party/icu/")
   elseif(MSVC)
     add_library(icu-shared STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch shared dependencies
     add_library(icudata-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
