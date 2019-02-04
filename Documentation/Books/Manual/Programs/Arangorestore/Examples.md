@@ -192,7 +192,7 @@ options `--default-number-of-shards` and `--default-replication-factor`, are
 If a collection was dumped from a single instance and is then restored into
 a cluster, the sharding will be done by the `_key` attribute by default. One can
 manually edit the structural description for the shard keys in the dump files if
-required.
+required (`*.structure.json`).
 
 If you restore a collection that was dumped from a cluster into a single
 ArangoDB instance, the number of shards, replication factor and shard keys will silently
