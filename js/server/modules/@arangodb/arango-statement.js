@@ -81,7 +81,6 @@ ArangoStatement.prototype.execute = function () {
       const words = ["INSERT", "UPDATE", "REPLACE", "REMOVE", "UPSERT", "INTO"];
       const isModificationQuery = words.map(w => qq.indexOf(w) !== -1).reduce( (a,b) => a || b, false);
       opts.stream = !isModificationQuery;
-      print ("Using stream ", opts.stream);
     }
     if (opts.stream === true) {
       return new ArangoQueryStreamCursor(this._query, this._bindVars, opts);
