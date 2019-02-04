@@ -6,6 +6,8 @@ v3.4.2.1 (2019-02-01)
 v3.4.2 (2019-01-24)
 -------------------
 
+* added configurable masking of dumped data via `arangodump` tool to obfuscate exported sensible data
+
 * upgraded to OpenSSL 1.1.0j
 
 * fixed an issue with AQL query IN index lookup conditions being converted into
