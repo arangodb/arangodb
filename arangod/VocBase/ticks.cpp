@@ -21,9 +21,9 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ticks.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Cluster/ServerState.h"
+#include "ticks.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -72,6 +72,21 @@ TRI_voc_tick_t TRI_NewServerSpecificTick() {
   static constexpr size_t UpperShift{40};
 
   uint64_t lower = TRI_NewTickServer() & LowerMask;
+  uint64_t upper =
+      (static_cast<uint64_t>(ServerState::instance()->getShortId()) << UpperShift) & UpperMask;
+  uint64_t tick = (upper | lower);
+  return static_cast<TRI_voc_tick_t>(tick);
+}
+
+/// @brief generates a new tick which also encodes this server's id, and is
+/// congruent to 0 modulo 4
+TRI_voc_tick_t TRI_NewServerSpecificTickMod4() {
+  static constexpr uint64_t LowerMask{0x000000FFFFFFFFFC};
+  static constexpr uint64_t UpperMask{0xFFFFFF0000000000};
+  static constexpr size_t LowerShift{2};
+  static constexpr size_t UpperShift{40};
+
+  uint64_t lower = (TRI_NewTickServer() << LowerShift) & LowerMask;
   uint64_t upper =
       (static_cast<uint64_t>(ServerState::instance()->getShortId()) << UpperShift) & UpperMask;
   uint64_t tick = (upper | lower);
