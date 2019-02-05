@@ -56,6 +56,7 @@ public:
   virtual void execute() {};
 
   VPackSlice resultSlice() {return _result.slice();};
+  VPackBuilder const& result() const { return _result;};
 
 protected:
   virtual std::string buildDirectoryPath(const std::string & timestamp, const std::string & userString);

@@ -46,11 +46,12 @@ RestStatus RestHotBackupHandler::execute() {
 
 /// add test for rocksdb engine
 
-    if (operation && operation->valid()) {
-      operation->execute();
-
-      if (operation->success()) {
-        generateResult(rest::ResponseCode::OK, operation->resultSlice());
+    auto reportError = [&]() {
+      if (!operation->result().isEmpty()) {
+        std::string msg = "Error, details: ";
+        msg += operation->resultSlice().toJson();
+        generateError(operation->restResponseCode(),
+                      operation->restResponseError(), msg);
       } else if (operation->errorMessage().empty()) {
         generateError(operation->restResponseCode(),
                       operation->restResponseError());
@@ -58,7 +59,21 @@ RestStatus RestHotBackupHandler::execute() {
         generateError(operation->restResponseCode(),
                       operation->restResponseError(),
                       operation->errorMessage());
-      } // else
+      }
+    };
+
+    if (operation) {
+      if (!operation->valid()) {
+        reportError();
+        return RestStatus::DONE;
+      }
+      operation->execute();
+
+      if (operation->success()) {
+        generateResult(rest::ResponseCode::OK, operation->resultSlice());
+      } else {
+        reportError();
+      }
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     } // else
