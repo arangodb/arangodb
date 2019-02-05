@@ -40,6 +40,7 @@
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <lib/Logger/LogMacros.h>
 
@@ -74,25 +75,31 @@ IndexExecutorInfos::IndexExecutorInfos(
     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
     bool hasV8Expression, AstNode const* condition,
-    std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast)
+    std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
+    IndexIteratorOptions options)
     : ExecutorInfos(make_shared_unordered_set(),
                     make_shared_unordered_set({outputRegister}), nrInputRegisters,
                     nrOutputRegisters, std::move(registersToClear)),
       _indexes(indexes),
       _condition(condition),
+      _allowCoveringIndexOptimization(false),
       _ast(ast),
       _hasMultipleExpansions(false),
       _isLastIndex(false),
+      _options(options),
+      _indexesExhausted(false),
+      _done(false),
       _outputRegisterId(outputRegister),
       _engine(engine),
       _collection(collection),
+      _outVariable(outVariable),
+      _cursor(nullptr),
+      _projections(projections),
+      _cursors(indexes.size()),
+      _trxPtr(trxPtr),
       _expInVars(std::move(expInVars)),
       _expInRegs(std::move(expInRegs)),
-      _outVariable(outVariable),
-      _projections(projections),
-      _trxPtr(trxPtr),
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
-      _allowCoveringIndexOptimization(allowCoveringIndexOptimization),
       _useRawDocumentPointers(useRawDocumentPointers),
       _nonConstExpression(nonConstExpression),
       _produceResult(produceResult),
@@ -102,6 +109,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
       _input(ExecutionState::HASMORE, InputAqlItemRow{CreateInvalidInputRowHint{}}) {
+  _mmdr.reset(new ManagedDocumentResult);
   TRI_ASSERT(!_infos.getIndexes().empty());
 
   if (_infos.getCondition() != nullptr) {
@@ -167,13 +175,216 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
 
 IndexExecutor::~IndexExecutor() = default;
 
-void IndexExecutor::executeExpressions(InputAqlItemRow& input, OutputAqlItemRow& output) {
+/// @brief order a cursor for the index at the specified position
+arangodb::OperationCursor* IndexExecutor::orderCursor(size_t currentIndex) {
+  TRI_ASSERT(_infos.getIndexes().size() > currentIndex);
+
+  // TODO: if we have _nonConstExpressions, we should also reuse the
+  // cursors, but in this case we have to adjust the iterator's search condition
+  // from _condition
+  //if (!_infos.getNonConstExpressions().empty() || _infos.checkCursor(currentIndex)) {
+  if (!_infos.getNonConstExpressions().empty() || _infos.getCursor(currentIndex) == nullptr) {
+    AstNode const* conditionNode = nullptr;
+    if (_infos.getCondition() != nullptr) {
+      TRI_ASSERT(_infos.getIndexes().size() == _infos.getCondition()->numMembers());
+      TRI_ASSERT(_infos.getCondition()->numMembers() > currentIndex);
+
+      conditionNode = _infos.getCondition()->getMember(currentIndex);
+    }
+
+    // yet no cursor for index, so create it
+    // IndexNode const* node = ExecutionNode::castTo<IndexNode const*>(getPlanNode()); // TODO remove me
+    _infos.resetCursor(currentIndex, _infos.getTrxPtr()->indexScanForCondition(
+                                         _infos.getIndexes()[currentIndex],
+                                         conditionNode, _infos.getOutVariable(),
+                                         _mmdr.get(), _infos.getOptions()));
+  } else {
+    // cursor for index already exists, reset and reuse it
+    _infos.resetCursor(currentIndex);
+  }
+
+  return _infos.getCursor(currentIndex);
+}
+
+void IndexExecutor::createCursor() {
+  _infos.setCursor(orderCursor(_infos.getCurrentIndex()));
+}
+
+/// @brief Forwards _iterator to the next available index
+void IndexExecutor::startNextCursor() {
+  if (!_infos.isAscending()) {
+    _infos.decrCurrentIndex();
+    _infos.setLastIndex(_infos.getCurrentIndex() == 0);
+  } else {
+    _infos.incrCurrentIndex();
+    _infos.setLastIndex(_infos.getCurrentIndex() == _infos.getIndexes().size() - 1);
+  }
+  if (_infos.getCurrentIndex() < _infos.getIndexes().size()) {
+    // This check will work as long as _indexes.size() < MAX_SIZE_T
+    createCursor();
+  } else {
+    _infos.setCursor(nullptr);
+  }
+}
+
+// this is called every time we need to fetch data from the indexes
+bool IndexExecutor::readIndex(size_t atMost, IndexIterator::DocumentCallback const& callback) {
+  // this is called every time we want to read the index.
+  // For the primary key index, this only reads the index once, and never
+  // again (although there might be multiple calls to this function).
+  // For the edge, hash or skiplists indexes, initIndexes creates an iterator
+  // and read*Index just reads from the iterator until it is done.
+  // Then initIndexes is read again and so on. This is to avoid reading the
+  // entire index when we only want a small number of documents.
+
+  if (_infos.getCursor() == nullptr || _infos.getIndexesExhausted()) {
+    // All indexes exhausted
+    return false;
+  }
+
+  while (_infos.getCursor() != nullptr) {
+    if (!_infos.getCursor()->hasMore()) {
+      startNextCursor();
+      continue;
+    }
+
+    LOG_DEVEL << "atMost: " << atMost;
+    LOG_DEVEL << "_returned: " << _returned;
+   // TRI_ASSERT(atMost >= _returned);
+
+   /*
+    if (_returned == atMost) {
+      // We have returned enough, do not check if we have more
+      return true;
+    }*/
+
+    TRI_IF_FAILURE("IndexBlock::readIndex") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    //  TRI_ASSERT(atMost >= _returned);
+
+    bool res;
+    if (!_infos.getProduceResult()) {
+      // optimization: iterate over index (e.g. for filtering), but do not fetch
+      // the actual documents
+      res = _infos.getCursor()->next(
+          [&callback](LocalDocumentId const& id) {
+            callback(id, VPackSlice::nullSlice());
+          },
+          atMost);
+    } else {
+      // check if the *current* cursor supports covering index queries or not
+      // if we can optimize or not must be stored in our instance, so the
+      // DocumentProducingBlock can access the flag
+
+      TRI_ASSERT(_infos.getCursor() != nullptr);
+      LOG_DEVEL << _infos.getCursor()->hasCovering();
+      _infos.setAllowCoveringIndexOptimization(_infos.getCursor()->hasCovering());
+
+      if (_infos.getAllowCoveringIndexOptimization() &&
+          !_infos.getCoveringIndexAttributePositions().empty()) {
+        // index covers all projections
+        res = _infos.getCursor()->nextCovering(callback, atMost);
+      } else {
+        // we need the documents later on. fetch entire documents
+        res = _infos.getCursor()->nextDocument(callback, atMost);
+      }
+    }
+
+    if (res) {
+      // We have returned enough.
+      // And this index could return more.
+      // We are good.
+      return true;
+    }
+  }
+  // if we get here the indexes are exhausted.
+  return false;
+}
+
+bool IndexExecutor::initIndexes(InputAqlItemRow& input) {
+  // We start with a different context. Return documents found in the previous
+  // context again.
+  _alreadyReturned.clear();
+  // Find out about the actual values for the bounds in the variable bound case:
+
+  if (!_infos.getNonConstExpressions().empty()) {
+    TRI_ASSERT(_infos.getCondition() != nullptr);
+
+    if (_infos.getV8Expression()) {
+      // must have a V8 context here to protect Expression::execute()
+      auto cleanup = [this]() {
+        if (arangodb::ServerState::instance()->isRunningInCluster()) {
+          // must invalidate the expression now as we might be called from
+          // different threads
+          for (auto const& e : _infos.getNonConstExpressions()) {
+            e->expression->invalidate();
+          }
+
+          _infos.getEngine()->getQuery()->exitContext();
+        }
+      };
+
+      _infos.getEngine()->getQuery()->enterContext();
+      TRI_DEFER(cleanup());
+
+      ISOLATE;
+      v8::HandleScope scope(isolate);  // do not delete this!
+
+      executeExpressions(input);
+      TRI_IF_FAILURE("IndexBlock::executeV8") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    } else {
+      // no V8 context required!
+      executeExpressions(input);
+      TRI_IF_FAILURE("IndexBlock::executeExpression") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    }
+  }
+  if (!_infos.isAscending()) {
+    _infos.setCurrentIndex(_infos.getIndexes().size() - 1);
+  } else {
+    _infos.setCurrentIndex(0);
+  }
+
+  createCursor();
+  if (_infos.getCursor()->fail()) {
+    THROW_ARANGO_EXCEPTION(_infos.getCursor()->code);
+  }
+
+  TRI_ASSERT(_infos.getCursor() != nullptr);
+  while (!_infos.getCursor()->hasMore()) {
+    if (_infos.isAscending()) {
+      _infos.decrCurrentIndex();
+    } else {
+      _infos.incrCurrentIndex();
+    }
+    if (_infos.getCurrentIndex() < _infos.getIndexes().size()) {
+      // This check will work as long as _indexes.size() < MAX_SIZE_T
+      createCursor();
+      if (_infos.getCursor()->fail()) {
+        THROW_ARANGO_EXCEPTION(_infos.getCursor()->code);
+      }
+    } else {
+      _infos.setCursor(nullptr);
+      _infos.setIndexesExhausted(true);
+      // We were not able to initialize any index with this condition
+      return false;
+    }
+  }
+  _infos.setIndexesExhausted(false);
+  return true;
+}
+
+void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
   TRI_ASSERT(_infos.getCondition() != nullptr);
   TRI_ASSERT(!_infos.getNonConstExpressions().empty());
 
   // The following are needed to evaluate expressions with local data from
   // the current incoming item:
-
   auto ast = _infos.getAst();
   AstNode* condition = const_cast<AstNode*>(_infos.getCondition());
 
@@ -182,12 +393,16 @@ void IndexExecutor::executeExpressions(InputAqlItemRow& input, OutputAqlItemRow&
 
   Query* query = _infos.getEngine()->getQuery();
 
-  for (size_t posInExpressions = 0; posInExpressions < _infos.getNonConstExpressions().size(); ++posInExpressions) {
-    NonConstExpression* toReplace = _infos.getNonConstExpressions()[posInExpressions].get();
+  for (size_t posInExpressions = 0;
+       posInExpressions < _infos.getNonConstExpressions().size(); ++posInExpressions) {
+    NonConstExpression* toReplace =
+        _infos.getNonConstExpressions()[posInExpressions].get();
     auto exp = toReplace->expression.get();
 
+    ExecutorExpressionContext ctx(query, input, _infos.getExpInVars(),
+                                  _infos.getExpInRegs());
+
     bool mustDestroy;
-    ExecutorExpressionContext ctx(query, input, _infos.getExpInVars(), _infos.getExpInRegs());
     AqlValue a = exp->execute(_infos.getTrxPtr(), &ctx, mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
 
@@ -222,7 +437,13 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   while (true) {
-    std::tie(state, input) = _input;
+
+    if (_infos.getDone()) {
+      return {ExecutionState::DONE, stats};
+    }
+
+      // std::tie(state, input) = _input;
+    std::tie(state, input) = _fetcher.fetchRow();
 
     if (state == ExecutionState::WAITING) {
       return {state, stats};
@@ -234,39 +455,63 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
     }
     TRI_ASSERT(input.isInitialized());
 
+    //TODO  init indizes, right position?
+    initIndexes(input);
+    if (!initIndexes(input)) {
+      _infos.setDone(true);
+      break;
+    }
+
     // LOGIC HERE
     IndexIterator::DocumentCallback callback;
-    size_t const nrInRegs = _infos.numberOfInputRegisters();
+    // size_t const nrInRegs = _infos.numberOfInputRegisters(); // TODO REMOVE ME
 
     if (_infos.getIndexes().size() > 1 || _infos.hasMultipleExpansions()) {
       // Activate uniqueness checks
       callback = [this, &input, &output](LocalDocumentId const& token, VPackSlice slice) {
-          if (!_infos.isLastIndex()) {
-            // insert & check for duplicates in one go
-            if (!_alreadyReturned.insert(token.id()).second) {
-              // Document already in list. Skip this
-              return;
-            }
-          } else {
-            // only check for duplicates
-            if (_alreadyReturned.find(token.id()) != _alreadyReturned.end()) {
-              // Document found, skip
-              return;
-            }
+        if (!_infos.isLastIndex()) {
+          // insert & check for duplicates in one go
+          if (!_alreadyReturned.insert(token.id()).second) {
+            // Document already in list. Skip this
+            return;
           }
+        } else {
+          // only check for duplicates
+          if (_alreadyReturned.find(token.id()) != _alreadyReturned.end()) {
+            // Document found, skip
+            return;
+          }
+        }
 
-          _documentProducer(input, output, slice, _infos.getOutputRegisterId());
+        _documentProducer(input, output, slice, _infos.getOutputRegisterId());
       };
     } else {
       // No uniqueness checks
       callback = [this, &input, &output](LocalDocumentId const&, VPackSlice slice) {
-          _documentProducer(input, output, slice, _infos.getOutputRegisterId());
+        _documentProducer(input, output, slice, _infos.getOutputRegisterId());
       };
     }
 
+    if (_infos.getIndexesExhausted()) {
+      if (!initIndexes(input)) {
+        _infos.setDone(true);
+        break;
+      }
+      TRI_ASSERT(!_infos.getIndexesExhausted());
+    }
+
+    // We only get here with non-exhausted indexes.
+    // At least one of them is prepared and ready to read.
+    TRI_ASSERT(!_infos.getIndexesExhausted());
+
+    // Read the next elements from the indexes
+    auto saveReturned = _returned;
+    _infos.setIndexesExhausted(!readIndex(1, callback));
+    if (_returned != saveReturned) {
+      // Update statistics
+      stats.incrScanned(_returned - saveReturned);
+    }
 
     return {ExecutionState::HASMORE, stats};
-
-    TRI_ASSERT(state == ExecutionState::HASMORE);
   }
 }

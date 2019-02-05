@@ -105,6 +105,7 @@ class IndexStats {
   IndexStats() noexcept : _scannedFull(0) {}
 
   void incrScanned() noexcept { _scannedFull++; }
+  void incrScanned(size_t value) noexcept { _scannedFull = _scannedFull + value; }
 
   std::size_t getScanned() const noexcept { return _scannedFull; }
 

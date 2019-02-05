@@ -369,7 +369,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
 
   trxPtr->pinData(_collection->id());
 
-  bool hasV8Expression;
+  bool hasV8Expression = false;
   /// @brief _inVars, a vector containing for each expression above
   /// a vector of Variable*, used to execute the expression
   std::vector<Variable const*> inVars;
@@ -384,14 +384,17 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
 
   initializeOnce(hasV8Expression, inVars, inRegs, nonConstExpressions, trxPtr);
 
-  IndexExecutorInfos infos(
-      outputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
-      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), &engine, this->_collection,
-      _outVariable, this->isVarUsedLater(_outVariable), this->projections(), trxPtr,
-      this->coveringIndexAttributePositions(), allowCoveringIndexOptimization,
-      EngineSelectorFeature::ENGINE->useRawDocumentPointers(),
-      std::move(nonConstExpressions), std::move(inVars), std::move(inRegs),
-      hasV8Expression, _condition->root(), this->getIndexes(), _plan->getAst());
+  IndexExecutorInfos infos(outputRegister,
+                           getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                           getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                           &engine, this->_collection, _outVariable,
+                           this->isVarUsedLater(_outVariable), this->projections(),
+                           trxPtr, this->coveringIndexAttributePositions(),
+                           allowCoveringIndexOptimization,
+                           EngineSelectorFeature::ENGINE->useRawDocumentPointers(),
+                           std::move(nonConstExpressions), std::move(inVars),
+                           std::move(inRegs), hasV8Expression, _condition->root(),
+                           this->getIndexes(), _plan->getAst(), this->options());
 
   return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(&engine, this,
                                                              std::move(infos));

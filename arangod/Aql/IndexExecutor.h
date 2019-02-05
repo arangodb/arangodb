@@ -59,14 +59,38 @@ class IndexExecutorInfos : public ExecutorInfos {
       std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
       std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
       bool hasV8Expression, AstNode const* condition,
-      std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast);
+      std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
+      IndexIteratorOptions options);
 
   IndexExecutorInfos() = delete;
   IndexExecutorInfos(IndexExecutorInfos&&) = default;
   IndexExecutorInfos(IndexExecutorInfos const&) = delete;
   ~IndexExecutorInfos() = default;
 
+  // void resetCursor() { _cursor->reset(); };
+  void resetCursor(size_t pos) {
+    LOG_DEVEL << "cursor arr length: " << _cursors.size();
+    LOG_DEVEL << "cursor pos: " << pos;
+    LOG_DEVEL << "HELP";
+    LOG_DEVEL << "HELP";
+    LOG_DEVEL << "HELP";
+    LOG_DEVEL << "HELP";
+    _cursors[pos]->reset();
+  };
+  void resetCursor(size_t pos, OperationCursor* cursor) {
+    LOG_DEVEL << "cursor arr length: " << _cursors.size();
+    LOG_DEVEL << "cursor pos: " << pos;
+    _cursors[pos].reset(cursor);
+  };
+
+  void setIndexesExhausted(bool flag) { _indexesExhausted = flag; };
+  void setDone(bool flag) { _done = flag; };
+  void setLastIndex(bool flag) { _isLastIndex = flag; };
+
   // getter
+  bool getIndexesExhausted() { return _indexesExhausted; };
+  bool getDone() { return _done; };
+
   ExecutionEngine* getEngine() { return _engine; };
   Collection const* getCollection() { return _collection; };
   Variable const* getOutVariable() { return _outVariable; };
@@ -82,7 +106,7 @@ class IndexExecutorInfos : public ExecutorInfos {
     return _allowCoveringIndexOptimization;
   };
   bool getUseRawDocumentPointers() { return _useRawDocumentPointers; };
-  std::vector<transaction::Methods::IndexHandle>& getIndexes() {
+  std::vector<transaction::Methods::IndexHandle> const& getIndexes() {
     return _indexes;
   };
   AstNode const* getCondition() { return _condition; };
@@ -93,13 +117,42 @@ class IndexExecutorInfos : public ExecutorInfos {
   };
   bool hasMultipleExpansions() { return _hasMultipleExpansions; };
   bool isLastIndex() { return _isLastIndex; };
+
+  /// @brief whether or not all indexes are accessed in reverse order
+  IndexIteratorOptions getOptions() const { return _options; }
+  bool isAscending() { return _options.ascending; };
+
   Ast* getAst() { return _ast; };
 
   std::vector<Variable const*> getExpInVars() { return _expInVars; };
   std::vector<RegisterId> getExpInRegs() { return _expInRegs; };
 
+  size_t getCurrentIndex() { return _currentIndex; };
+
+  arangodb::OperationCursor* getCursor() { return _cursor; };
+  arangodb::OperationCursor* getCursor(size_t pos) {
+    return _cursors[pos].get();
+  };
+  std::vector<std::unique_ptr<OperationCursor>>& getCursors() {
+    return _cursors;
+  };
+  bool checkCursor (size_t pos) {
+    if (_cursors[pos] == nullptr) {
+      return false;
+    }
+    return true;
+  };
+
   // setter
-  void setHasMultipleExpansions(bool flag) { _hasMultipleExpansions = flag; };
+void setHasMultipleExpansions(bool flag) { _hasMultipleExpansions = flag; };
+
+  void setCurrentIndex(size_t pos) { _currentIndex = pos; };
+  void decrCurrentIndex() { _currentIndex--; };
+  void incrCurrentIndex() { _currentIndex++; };
+
+  void setAllowCoveringIndexOptimization(bool flag) { _allowCoveringIndexOptimization = flag; };
+
+  void setCursor(arangodb::OperationCursor* cursor) { _cursor = cursor; };
 
  private:
   /// @brief _indexes holds all Indexes used in this block
@@ -111,6 +164,10 @@ class IndexExecutorInfos : public ExecutorInfos {
 
   /// @brief _condition: holds the complete condition this Block can serve for
   AstNode const* _condition;
+
+  /// @brief whether or not we are allowed to use the covering index
+  /// optimization in a callback
+  bool _allowCoveringIndexOptimization;
 
   /// @brief _ast: holds the ast of the _plan
   Ast* _ast;
@@ -127,6 +184,28 @@ class IndexExecutorInfos : public ExecutorInfos {
   ///        Used in uniqueness checks.
   bool _isLastIndex;
 
+  /// @brief the index sort order - this is the same order for all indexes
+  IndexIteratorOptions _options;
+
+  /// @brief current position in _indexes
+  size_t _currentIndex;
+
+  /// @brief _cursor: holds the current index cursor found using
+  /// createCursor (if any) so that it can be read in chunks and not
+  /// necessarily all at once.
+  arangodb::OperationCursor* _cursor;
+
+  /// @brief Flag if all indexes are exhausted to be maintained accross several
+  /// getSome() calls
+  bool _indexesExhausted;
+
+  /// @brief if this is set, we are done, this is reset to false by execute()
+  bool _done;
+
+  /// @brief a vector of cursors for the index block. cursors can be
+  /// reused
+  std::vector<std::unique_ptr<OperationCursor>> _cursors;
+
   RegisterId _outputRegisterId;
   ExecutionEngine* _engine;
   Collection const* _collection;
@@ -137,7 +216,6 @@ class IndexExecutorInfos : public ExecutorInfos {
   std::vector<RegisterId> _expInRegs;       // input registers for expression
 
   std::vector<size_t> const& _coveringIndexAttributePositions;
-  bool _allowCoveringIndexOptimization;
   bool _useRawDocumentPointers;
   std::vector<std::unique_ptr<NonConstExpression>>& _nonConstExpression;
   bool _produceResult;
@@ -173,7 +251,20 @@ class IndexExecutor {
   };
 
  private:
-  void executeExpressions(InputAqlItemRow& input, OutputAqlItemRow& output);
+  void executeExpressions(InputAqlItemRow& input);
+  bool initIndexes(InputAqlItemRow& input);
+
+  /// @brief create an iterator object
+  void createCursor();
+
+  /// @brief Forwards _cursor to the next available index
+  void startNextCursor();
+
+  /// @brief continue fetching of documents
+  bool readIndex(size_t atMost, IndexIterator::DocumentCallback const&);
+
+  /// @brief order a cursor for the index at the specified position
+  OperationCursor* orderCursor(size_t currentIndex);
 
  private:
   Infos& _infos;
@@ -181,8 +272,16 @@ class IndexExecutor {
   DocumentProducingFunction _documentProducer;
   std::pair<ExecutionState, InputAqlItemRow> _input;
 
+  /// @brief Counter how many documents have been returned/skipped
+  ///        during one call. Retained during WAITING situations.
+  ///        Needs to be 0 after we return a result.
+  size_t _returned;
+
   /// @brief set of already returned documents. Used to make the result distinct
   std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
+
+  /// @brief A managed document result to temporary hold one document
+  std::unique_ptr<ManagedDocumentResult> _mmdr;
 };
 
 }  // namespace aql
