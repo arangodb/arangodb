@@ -23,6 +23,16 @@
 #ifndef ARANGODB_REST_SERVER_FLUSH_FEATURE_H
 #define ARANGODB_REST_SERVER_FLUSH_FEATURE_H 1
 
+#if !defined(USE_CATCH_TESTS) && !defined(EXPAND_ARANGODB_REST_SERVER_FLUSH_FEATURE_H)
+  #define DO_EXPAND_ARANGODB_REST_SERVER_FLUSH_FEATURE_H(VAL) VAL ## 1
+  #define EXPAND_ARANGODB_REST_SERVER_FLUSH_FEATURE_H(VAL) DO_EXPAND_ARANGODB_REST_SERVER_FLUSH_FEATURE_H(VAL)
+  #if defined(TEST_VIRTUAL) && (EXPAND_ARANGODB_REST_SERVER_FLUSH_FEATURE_H(TEST_VIRTUAL) != 1)
+    #define USE_CATCH_TESTS
+  #endif
+  #undef EXPAND_ARANGODB_REST_SERVER_FLUSH_FEATURE_H
+  #undef DO_EXPAND_ARANGODB_REST_SERVER_FLUSH_FEATURE_H
+#endif
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ReadWriteLock.h"
 
@@ -52,6 +62,12 @@ class FlushFeature final : public application_features::ApplicationFeature {
     virtual Result commit(velocypack::Slice const& data) = 0;
   };
   class FlushSubscriptionBase; // forward declaration
+
+  // used by catch tests
+  #ifdef USE_CATCH_TESTS
+    typedef std::function<Result(std::string const&, TRI_vocbase_t const&, velocypack::Slice const&)> DefaultFlushSubscription;
+    static DefaultFlushSubscription _defaultFlushSubscription;
+  #endif
 
   explicit FlushFeature(application_features::ApplicationServer& server);
 
