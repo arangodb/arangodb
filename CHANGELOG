@@ -19,6 +19,9 @@ v3.4.3 (XXXX-XX-XX)
 * data masking: better documentation, fixed default phone number,
   changed default range to -100 and 100 for integer masking function
 
+* fix supervision's failed server handling to transactionally create
+  all failed leader/followers along
+
 
 v3.4.2.1 (2019-02-01)
 ---------------------
