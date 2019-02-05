@@ -203,7 +203,9 @@ class RequestsState : public std::enable_shared_from_this<RequestsState<F>> {
           _cb(Response{_destination, errorToInt(ErrorCondition::Canceled), std::move(res)});
           break;
         }
-        [[clang::fallthrough]];  // intentional
+#ifndef _MSC_VER
+        [[fallthrough]];
+#endif
       }
 
       case fuerte::ErrorCondition::CouldNotConnect:

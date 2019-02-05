@@ -28,7 +28,7 @@
 #include "Network/NetworkFeature.h"
 #include "Random/RandomGenerator.h"
 
-#include <fuerte/Connection.h>
+#include <fuerte/connection.h>
 
 namespace arangodb {
 namespace network {
@@ -124,6 +124,19 @@ void ConnectionPool::pruneConnections() {
 
       if (num > 0) {  // continously update lastUsed
         c->lastUsed = now;
+      }
+      it++;
+    }
+    
+    if (list.connections.size() <= _config.maxOpenConnections) {
+      continue; // done
+    }
+    
+    it = list.connections.begin();
+    while (it != list.connections.end()) {
+      auto& c = *it;
+      if (c->numLeased.load() == 0) {
+        it = list.connections.erase(it);
       }
       it++;
     }
