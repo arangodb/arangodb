@@ -163,7 +163,7 @@ function TtlSuite () {
       let stats = internal.ttlStatistics();
       const oldRuns = stats.runs;
       
-      // reenable first
+      // set properties, but keep disabled
       internal.ttlProperties({ active: false, frequency: 1000 });
 
       let tries = 0;
@@ -179,18 +179,72 @@ function TtlSuite () {
       // number of runs must not have changed
       assertEqual(stats.runs, oldRuns);
     },
-
-
-    /*
-    testInvalidKeyGenerator : function () {
+    
+    testCreateIndexWithoutExpireAfter : function () {
+      let c = db._create(cn, { numberOfShards: 2 });
       try {
-        db._create(cn, { keyOptions: { type: "der-fuchs" } });
+        c.ensureIndex({ type: "ttl", fields: ["dateCreated"] });
         fail();
       } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_INVALID_KEY_GENERATOR.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
-*/
+    
+    testCreateIndexWithInvalidExpireAfter : function () {
+      const values = [ 
+        null,
+        false,
+        true,
+        -10,
+        "10",
+        "abc",
+        [],
+        {}
+      ];
+
+      let c = db._create(cn, { numberOfShards: 2 });
+      
+      values.forEach(function(v) {
+        try {
+          c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: v });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+        }
+      });
+    },
+    
+    testRemovalsExpireAfterNotPresent : function () {
+      internal.ttlProperties({ active: false });
+
+      let c = db._create(cn, { numberOfShards: 2 });
+      c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
+
+      for (let i = 0; i < 1000; ++i) {
+        c.insert({ value: i });
+      }
+
+      let stats = internal.ttlStatistics();
+      const oldStats = stats;
+      
+      // reenable
+      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000, maxCollectionRemoves: 100000 });
+
+      let tries = 0;
+      while (tries++ < 10) {
+        internal.wait(1, false);
+      
+        stats = internal.ttlStatistics();
+        if (stats.runs > oldStats.runs) {
+          break;
+        }
+      }
+
+      // number of runs must have changed, number of deletion must not
+      assertNotEqual(stats.runs, oldStats.runs);
+      assertEqual(stats.documentsRemoved, oldStats.documentsRemoved);
+    },
+  
   };
 }
 
