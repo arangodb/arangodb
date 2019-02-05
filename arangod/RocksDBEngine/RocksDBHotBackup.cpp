@@ -146,6 +146,8 @@ std::string RocksDBHotBackup::rebuildPath(const std::string & suffix) {
 
   ret_string = getDatabasePath();
   ret_string += TRI_DIR_SEPARATOR_CHAR;
+  ret_string += "hotbackups";
+  ret_string += TRI_DIR_SEPARATOR_CHAR;
   ret_string += suffix;
 
   return ret_string;
