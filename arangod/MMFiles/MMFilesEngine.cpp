@@ -22,7 +22,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MMFiles/MMFilesEngine.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
@@ -39,6 +38,7 @@
 #include "MMFiles/MMFilesCompactorThread.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesIncrementalSync.h"
 #include "MMFiles/MMFilesIndexFactory.h"
 #include "MMFiles/MMFilesLogfileManager.h"
@@ -286,9 +286,8 @@ std::unique_ptr<transaction::ContextData> MMFilesEngine::createTransactionContex
 }
 
 std::unique_ptr<TransactionState> MMFilesEngine::createTransactionState(
-    TRI_vocbase_t& vocbase, transaction::Options const& options) {
-  return std::unique_ptr<TransactionState>(
-      new MMFilesTransactionState(vocbase, TRI_NewTickServer(), options));
+    TRI_vocbase_t& vocbase, TRI_voc_tick_t tid, transaction::Options const& options) {
+  return std::unique_ptr<TransactionState>(new MMFilesTransactionState(vocbase, tid, options));
 }
 
 std::unique_ptr<TransactionCollection> MMFilesEngine::createTransactionCollection(
@@ -385,9 +384,7 @@ Result MMFilesEngine::persistLocalDocumentIds(TRI_vocbase_t& vocbase) {
   return result;
 }
 
-/*static*/ arangodb::Result MMFilesEngine::registerRecoveryHelper(
-  MMFilesRecoveryHelper const& helper
-) {
+/*static*/ arangodb::Result MMFilesEngine::registerRecoveryHelper(MMFilesRecoveryHelper const& helper) {
   try {
     getRecoveryHelpers().emplace_back(&helper);
   } catch (std::bad_alloc const&) {
@@ -398,14 +395,13 @@ Result MMFilesEngine::persistLocalDocumentIds(TRI_vocbase_t& vocbase) {
 }
 
 /*static*/ bool MMFilesEngine::visitRecoveryHelpers(
-  std::function<bool(MMFilesRecoveryHelper const&)> const& visitor
-) {
+    std::function<bool(MMFilesRecoveryHelper const&)> const& visitor) {
   if (!visitor) {
     return false;
   }
 
-  for (auto& helper: getRecoveryHelpers()) {
-    TRI_ASSERT(helper); // non-nullptr ensured by registerRecoveryHelper(...)
+  for (auto& helper : getRecoveryHelpers()) {
+    TRI_ASSERT(helper);  // non-nullptr ensured by registerRecoveryHelper(...)
 
     if (!visitor(*helper)) {
       return false;
@@ -3186,7 +3182,7 @@ char* MMFilesEngine::nextFreeMarkerPosition(LogicalCollection* collection, TRI_v
     if (ditch == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
- 
+
     try {
       cache->addDitch(ditch);
     } catch (...) {

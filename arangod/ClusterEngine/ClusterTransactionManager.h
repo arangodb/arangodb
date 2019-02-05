@@ -32,42 +32,13 @@ namespace arangodb {
 
 class ClusterTransactionManager final : public TransactionManager {
  public:
-  ClusterTransactionManager() : TransactionManager(), _nrRunning(0) {}
+  ClusterTransactionManager() : TransactionManager() {}
   ~ClusterTransactionManager() {}
 
-  // register a list of failed transactions
-  void registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) override {
+ protected:
+  bool keepTransactionData(TransactionState const&) const override {
+    return false;
   }
-
-  // unregister a list of failed transactions
-  void unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) override {
-  }
-
-  // return the set of failed transactions
-  std::unordered_set<TRI_voc_tid_t> getFailedTransactions() override {
-    return std::unordered_set<TRI_voc_tid_t>();
-  }
-
-  // register a transaction
-  void registerTransaction(TRI_voc_tid_t transactionId,
-                           std::unique_ptr<TransactionData> data) override {
-    TRI_ASSERT(data == nullptr);
-    ++_nrRunning;
-  }
-
-  // unregister a transaction
-  void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed) override {
-    --_nrRunning;
-  }
-
-  // iterate all the active transactions
-  void iterateActiveTransactions(
-      std::function<void(TRI_voc_tid_t, TransactionData const*)> const& callback) override {}
-
-  uint64_t getActiveTransactionCount() override { return _nrRunning; }
-
- private:
-  std::atomic<uint64_t> _nrRunning;
 };
 }  // namespace arangodb
 

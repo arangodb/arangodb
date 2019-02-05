@@ -20,7 +20,6 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClusterEngine.h"
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
@@ -32,6 +31,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/build.h"
+#include "ClusterEngine.h"
 #include "ClusterEngine/ClusterCollection.h"
 #include "ClusterEngine/ClusterIndexFactory.h"
 #include "ClusterEngine/ClusterRestHandlers.h"
@@ -132,8 +132,8 @@ std::unique_ptr<transaction::ContextData> ClusterEngine::createTransactionContex
 }
 
 std::unique_ptr<TransactionState> ClusterEngine::createTransactionState(
-    TRI_vocbase_t& vocbase, transaction::Options const& options) {
-  return std::make_unique<ClusterTransactionState>(vocbase, TRI_NewTickServer(), options);
+    TRI_vocbase_t& vocbase, TRI_voc_tid_t tid, transaction::Options const& options) {
+  return std::make_unique<ClusterTransactionState>(vocbase, tid, options);
 }
 
 std::unique_ptr<TransactionCollection> ClusterEngine::createTransactionCollection(

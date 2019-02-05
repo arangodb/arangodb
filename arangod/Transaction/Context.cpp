@@ -21,12 +21,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Context.h"
 #include "Basics/StringBuffer.h"
-#include "RestServer/TransactionManagerFeature.h"
+#include "Context.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionManager.h"
+#include "StorageEngine/TransactionManagerFeature.h"
 #include "Transaction/ContextData.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"

@@ -20,13 +20,13 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClusterTransactionState.h"
 #include "Basics/Exceptions.h"
+#include "ClusterTransactionState.h"
 #include "Logger/Logger.h"
-#include "RestServer/TransactionManagerFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionManager.h"
+#include "StorageEngine/TransactionManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
@@ -79,7 +79,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   if (_nestingLevel == 0) {
     // register a protector (intentionally empty)
     TransactionManagerFeature::manager()->registerTransaction(
-        _id, std::unique_ptr<ClusterTransactionData>());
+        *this, std::unique_ptr<ClusterTransactionData>());
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }

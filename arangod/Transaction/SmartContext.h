@@ -50,8 +50,20 @@ namespace transaction {
 /// (3) Construcor with TransactionState* is used to manage a global transaction
 class SmartContext final : public Context {
  public:
-  /// @brief create the context, with given TID
+  enum class Type {
+    Standalone = 0,  /// transaction with pre-defined ID
+    Global = 1,      /// global transaction with begin / end semantics
+    Internal = 2
+  };
+
+  /// @brief create the context
   explicit SmartContext(TRI_vocbase_t& vocbase);
+
+  /// @brief create the context, with given TID
+  explicit SmartContext(TRI_vocbase_t& vocbase, TRI_voc_tid_t, Type ctxType);
+
+  /// @brief create the context, will use given TransactionState
+  explicit SmartContext(TRI_vocbase_t& vocbase, TransactionState*);
 
   /// @brief destroy the context
   ~SmartContext() = default;
@@ -77,6 +89,10 @@ class SmartContext final : public Context {
   static std::shared_ptr<Context> Create(TRI_vocbase_t&);
 
  private:
+  /// @brief ID of the transaction to use
+  TRI_voc_tid_t const _tid;
+  /// @brief is this managing a global context
+  SmartContext::Type const _ctxType;
   /// @brief managed TransactionState
   TransactionState* _state;
 };

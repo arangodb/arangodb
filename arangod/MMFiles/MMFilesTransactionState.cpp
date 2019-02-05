@@ -21,7 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MMFilesTransactionState.h"
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/RocksDBUtils.h"
@@ -32,6 +31,7 @@
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesTransactionCollection.h"
+#include "MMFilesTransactionState.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -102,7 +102,7 @@ Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
     _hints = hints;
 
     // register a protector
-    int res = logfileManager->registerTransaction(_id, isReadOnlyTransaction());
+    int res = logfileManager->registerTransaction(*this);
     result.reset(res);
 
     if (!result.ok()) {
@@ -495,7 +495,7 @@ int MMFilesTransactionState::writeCommitMarker() {
       // also sync RocksDB WAL if required
       bool hasPersistentIndex = false;
 
-      allCollections([&hasPersistentIndex](TransactionCollection& collection)->bool {
+      allCollections([&hasPersistentIndex](TransactionCollection& collection) -> bool {
         auto* c = static_cast<MMFilesTransactionCollection*>(&collection);
 
         if (c->canAccess(AccessMode::Type::WRITE) &&

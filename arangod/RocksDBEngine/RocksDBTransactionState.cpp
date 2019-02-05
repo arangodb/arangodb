@@ -21,14 +21,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBTransactionState.h"
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Manager.h"
 #include "Cache/Transaction.h"
 #include "Logger/Logger.h"
-#include "RestServer/TransactionManagerFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -36,10 +34,12 @@
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
+#include "RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionManager.h"
+#include "StorageEngine/TransactionManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
@@ -113,7 +113,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   if (_nestingLevel == 0) {
     // register a protector (intentionally empty)
     TransactionManagerFeature::manager()->registerTransaction(
-        _id, std::unique_ptr<RocksDBTransactionData>());
+        *this, std::unique_ptr<RocksDBTransactionData>());
 
     TRI_ASSERT(_rocksTransaction == nullptr);
     TRI_ASSERT(_cacheTx == nullptr);

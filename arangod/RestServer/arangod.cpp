@@ -89,7 +89,6 @@
 #include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TransactionManagerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -100,6 +99,7 @@
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
+#include "StorageEngine/TransactionManagerFeature.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 

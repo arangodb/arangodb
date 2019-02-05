@@ -126,8 +126,8 @@ class MMFilesEngine final : public StorageEngine {
 
   std::unique_ptr<TransactionManager> createTransactionManager() override;
   std::unique_ptr<transaction::ContextData> createTransactionContextData() override;
-  std::unique_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase,
-                                                           transaction::Options const& options) override;
+  std::unique_ptr<TransactionState> createTransactionState(
+      TRI_vocbase_t& vocbase, TRI_voc_tick_t, transaction::Options const& options) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(
       TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType,
       int nestingLevel) override;
@@ -207,15 +207,11 @@ class MMFilesEngine final : public StorageEngine {
 
   /// @brief regiter a recovery helper
   /// @note not thread-safe on the assumption of static factory registration
-  static arangodb::Result registerRecoveryHelper(
-    MMFilesRecoveryHelper const& helper
-  );
+  static arangodb::Result registerRecoveryHelper(MMFilesRecoveryHelper const& helper);
 
   /// @brief invoke visitor with each registered recovery helper
   /// @return all recovery registered helpers invoked and returned success
-  static bool visitRecoveryHelpers(
-    std::function<bool(MMFilesRecoveryHelper const&)> const& visitor
-  );
+  static bool visitRecoveryHelpers(std::function<bool(MMFilesRecoveryHelper const&)> const& visitor);
 
  private:
   int dropDatabaseMMFiles(TRI_vocbase_t* vocbase);

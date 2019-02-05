@@ -48,9 +48,10 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
-#include "RestServer/TransactionManagerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionManagerFeature.h"
+#include "StorageEngine/TransactionState.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -574,8 +575,7 @@ void MMFilesLogfileManager::unprepare() {
 }
 
 // registers a transaction
-int MMFilesLogfileManager::registerTransaction(TRI_voc_tid_t transactionId,
-                                               bool isReadOnlyTransaction) {
+int MMFilesLogfileManager::registerTransaction(TransactionState& state) {
   auto lastCollectedId = _lastCollectedId.load();
   auto lastSealedId = _lastSealedId.load();
 
@@ -586,7 +586,7 @@ int MMFilesLogfileManager::registerTransaction(TRI_voc_tid_t transactionId,
 
   TRI_ASSERT(lastCollectedId <= lastSealedId);
 
-  if (isReadOnlyTransaction) {
+  if (state.isReadOnlyTransaction()) {
     // in case this is a read-only transaction, we are sure that the transaction
     // can only see committed data (as itself it will not write anything, and
     // write transactions run exclusively). we thus can allow the WAL collector
@@ -598,8 +598,7 @@ int MMFilesLogfileManager::registerTransaction(TRI_voc_tid_t transactionId,
 
   try {
     auto data = std::make_unique<MMFilesTransactionData>(lastCollectedId, lastSealedId);
-    TransactionManagerFeature::manager()->registerTransaction(transactionId,
-                                                              std::move(data));
+    TransactionManagerFeature::manager()->registerTransaction(state, std::move(data));
     return TRI_ERROR_NO_ERROR;
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;

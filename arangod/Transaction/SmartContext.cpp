@@ -24,6 +24,7 @@
 #include "StorageEngine/TransactionManager.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
+#include "VocBase/ticks.h"
 
 struct TRI_vocbase_t;
 
@@ -31,7 +32,27 @@ namespace arangodb {
 
 /// @brief create the context
 transaction::SmartContext::SmartContext(TRI_vocbase_t& vocbase)
-    : Context(vocbase), _state(nullptr) {}
+    : Context(vocbase),
+      _tid(TRI_NewTickServer()),
+      _ctxType(SmartContext::Type::Internal),
+      _state(nullptr) {}
+
+/// @brief create the context
+transaction::SmartContext::SmartContext(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+                                        transaction::SmartContext::Type ctxType)
+    : Context(vocbase), _tid(tid), _ctxType(ctxType), _state(nullptr) {
+  TRI_ASSERT(_tid != 0);
+}
+
+/// @brief create the context, will use given transaction
+transaction::SmartContext::SmartContext(TRI_vocbase_t& vocbase, TransactionState* state)
+    : Context(vocbase),
+      _tid(state->id()),
+      _ctxType(SmartContext::Type::Internal),
+      _state(state) {
+  TRI_ASSERT(_state != nullptr);
+  TRI_ASSERT(_state->isTopLevelTransaction());
+}
 
 /// @brief order a custom type handler for the collection
 std::shared_ptr<arangodb::velocypack::CustomTypeHandler> transaction::SmartContext::orderCustomTypeHandler() {

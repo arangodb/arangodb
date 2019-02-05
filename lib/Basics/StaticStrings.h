@@ -91,11 +91,11 @@ class StaticStrings {
   // Index definition fields
   static std::string const IndexFields;        // index fields
   static std::string const IndexId;            // index id
+  static std::string const IndexIsBuilding;    // index build in-process
+  static std::string const IndexInBackground;  // index in background
   static std::string const IndexSparse;        // index sparsness marker
   static std::string const IndexType;          // index type
   static std::string const IndexUnique;        // index uniqueness marker
-  static std::string const IndexIsBuilding;    // index build in-process
-  static std::string const IndexInBackground;  // index in background
 
   // HTTP headers
   static std::string const Accept;
@@ -137,9 +137,12 @@ class StaticStrings {
   static std::string const NoSniff;
   static std::string const Origin;
   static std::string const PotentialDirtyRead;
+  static std::string const Queue;
   static std::string const RequestForwardedTo;
   static std::string const ResponseCode;
   static std::string const Server;
+  static std::string const StartThread;
+  static std::string const TransactionId;
   static std::string const Unlimited;
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;

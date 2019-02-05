@@ -151,8 +151,12 @@ std::string const StaticStrings::PotentialDirtyRead(
     "x-arango-potential-dirty-read");
 std::string const StaticStrings::RequestForwardedTo(
     "x-arango-request-forwarded-to");
+std::string const StaticStrings::Queue("x-arango-queue");
 std::string const StaticStrings::ResponseCode("x-arango-response-code");
 std::string const StaticStrings::Server("server");
+std::string const StaticStrings::StartThread("x-arango-start-thread");
+std::string const StaticStrings::TransactionId("x-arango-trx");
+
 std::string const StaticStrings::Unlimited = "unlimited";
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
