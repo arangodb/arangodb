@@ -251,7 +251,7 @@ void RocksDBHotBackup::getParamValue(const char * key, VPackSlice & value, bool 
     _result.add(key, VPackValue(vexcept.what()));
   };
 
-} // RocksDBHotBackup::getParamValue (unsigned)
+}
 
 
 //
