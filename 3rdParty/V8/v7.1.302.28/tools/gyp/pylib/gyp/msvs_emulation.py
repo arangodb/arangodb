@@ -823,8 +823,9 @@ class MsvsSettings(object):
   def IsRuleRunUnderCygwin(self, rule):
     """Determine if an action should be run under cygwin. If the variable is
     unset, or set to 1 we use cygwin."""
-    return int(rule.get('msvs_cygwin_shell',
-                        self.spec.get('msvs_cygwin_shell', 1))) != 0
+    return 0
+    # return int(rule.get('msvs_cygwin_shell',
+    #                     self.spec.get('msvs_cygwin_shell', 1))) != 0
 
   def _HasExplicitRuleForExtension(self, spec, extension):
     """Determine if there's an explicit rule for a particular extension."""

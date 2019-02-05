@@ -150,10 +150,19 @@ def RelativePath(path, relative_to, follow_path_symlink=True):
   # On Windows, we can't create a relative path to a different drive, so just
   # use the absolute path.
   if sys.platform == 'win32':
-    if (os.path.splitdrive(path)[0].lower() !=
-        os.path.splitdrive(relative_to)[0].lower()):
+    pathDrive = os.path.splitdrive(path)
+    relPathDrive = os.path.splitdrive(relative_to)
+    pathDriveLen = len(pathDrive)
+    relPathDriveLen = len(relPathDrive)
+    
+    if (pathDrive[0].lower() != relPathDrive[0].lower()):
+      # the path is on another drive - must return absolute path.
       return path
-
+    elif (pathDriveLen != 0 and relPathDriveLen != 0):
+      # the paths are on the same drive, so we can safely remove it:
+      path = path[pathDriveLen:]
+      relative_to = relative_to[relPathDriveLen:]
+      
   # Split the paths into components.
   path_split = path.split(os.path.sep)
   relative_to_split = relative_to.split(os.path.sep)

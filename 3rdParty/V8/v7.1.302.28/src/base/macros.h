@@ -5,6 +5,7 @@
 #ifndef V8_BASE_MACROS_H_
 #define V8_BASE_MACROS_H_
 
+
 #include <limits>
 
 #include "src/base/compiler-specific.h"
@@ -403,15 +404,15 @@ bool is_inbounds(float_t v) {
   static_assert(sizeof(int_t) < sizeof(biggest_int_t),
                 "int_t can't be bounds checked by the compiler");
   constexpr float_t kLowerBound =
-      static_cast<float_t>(std::numeric_limits<int_t>::min()) - 1;
+    static_cast<float_t>((std::numeric_limits<int_t>::min)()) - 1;
   constexpr float_t kUpperBound =
-      static_cast<float_t>(std::numeric_limits<int_t>::max()) + 1;
+    static_cast<float_t>((std::numeric_limits<int_t>::max)()) + 1;
   constexpr bool kLowerBoundIsMin =
       static_cast<biggest_int_t>(kLowerBound) ==
-      static_cast<biggest_int_t>(std::numeric_limits<int_t>::min());
+    static_cast<biggest_int_t>((std::numeric_limits<int_t>::min)());
   constexpr bool kUpperBoundIsMax =
       static_cast<biggest_int_t>(kUpperBound) ==
-      static_cast<biggest_int_t>(std::numeric_limits<int_t>::max());
+    static_cast<biggest_int_t>((std::numeric_limits<int_t>::max)());
   return (kLowerBoundIsMin ? (kLowerBound <= v) : (kLowerBound < v)) &&
          (kUpperBoundIsMax ? (v <= kUpperBound) : (v < kUpperBound));
 }

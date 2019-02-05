@@ -322,8 +322,7 @@ def _ConfigWindowsTargetPlatformVersion(config_data, version):
 
 
 def _BuildCommandLineForRuleRaw(spec, cmd, cygwin_shell, has_input_path,
-                                quote_cmd, do_setup_env):
-
+                                quote_cmd, do_setup_env, attached_to):
   if [x for x in cmd if '$(InputDir)' in x]:
     input_dir_preamble = (
       'set INPUTDIR=$(InputDir)\n'
@@ -384,7 +383,16 @@ def _BuildCommandLineForRuleRaw(spec, cmd, cygwin_shell, has_input_path,
     #              for arguments like "--arg=path" or "/opt:path".
     # If the argument starts with a slash or dash, it's probably a command line
     # switch
-    arguments = [i if (i[:1] in "/-") else _FixPath(i) for i in cmd[1:]]
+    arguments=[]
+    CWD = _NormalizedSource(".")
+    ccwd = _FixPath(".")
+    for i in cmd[1:]:
+      guessfn = os.path.join(CWD, os.path.dirname(attached_to), i)
+      if (i[:1] == "-" or ( "/" not in i and not os.path.exists(guessfn))):
+        arguments.append(i)
+      else:
+        arguments.append(_FixPath(i))
+    
     arguments = [i.replace('$(InputDir)', '%INPUTDIR%') for i in arguments]
     arguments = [MSVSSettings.FixVCMacroSlashes(i) for i in arguments]
     if quote_cmd:
@@ -396,7 +404,7 @@ def _BuildCommandLineForRuleRaw(spec, cmd, cygwin_shell, has_input_path,
     return input_dir_preamble + ' '.join(command + arguments)
 
 
-def _BuildCommandLineForRule(spec, rule, has_input_path, do_setup_env):
+def _BuildCommandLineForRule(spec, rule, has_input_path, do_setup_env, attached_to):
   # Currently this weird argument munging is used to duplicate the way a
   # python script would need to be run as part of the chrome tree.
   # Eventually we should add some sort of rule_default option to set this
@@ -407,8 +415,10 @@ def _BuildCommandLineForRule(spec, rule, has_input_path, do_setup_env):
   elif isinstance(mcs, str):
     mcs = int(mcs)
   quote_cmd = int(rule.get('msvs_quote_cmd', 1))
+  mcs = 0; # force non-cygwin case since its SLLLOOUUWWW
   return _BuildCommandLineForRuleRaw(spec, rule['action'], mcs, has_input_path,
-                                     quote_cmd, do_setup_env=do_setup_env)
+                                     quote_cmd, do_setup_env=do_setup_env,
+				     attached_to=attached_to)
 
 
 def _AddActionStep(actions_dict, inputs, outputs, description, command):
@@ -1677,7 +1687,8 @@ def _AddActions(actions_to_add, spec, relative_path_of_gyp_file):
     attached_to = inputs[0]
     need_setup_env = attached_to not in have_setup_env
     cmd = _BuildCommandLineForRule(spec, a, has_input_path=False,
-                                   do_setup_env=need_setup_env)
+                                   do_setup_env=need_setup_env,
+				   attached_to=relative_path_of_gyp_file)
     have_setup_env.add(attached_to)
     # Add the action.
     _AddActionStep(actions_to_add,
@@ -1727,17 +1738,14 @@ def _GetCopies(spec):
         src_bare = src[:-1]
         base_dir = posixpath.split(src_bare)[0]
         outer_dir = posixpath.split(src_bare)[1]
-        fixed_dst = _FixPath(dst)
-        full_dst = '"%s\\%s\\"' % (fixed_dst, outer_dir)
-        cmd = 'mkdir %s 2>nul & cd "%s" && xcopy /e /f /y "%s" %s' % (
-            full_dst, _FixPath(base_dir), outer_dir, full_dst)
+        cmd = 'cd "%s" && xcopy /e /f /y "%s" "%s\\%s\\"' % (
+            _FixPath(base_dir), outer_dir, _FixPath(dst), outer_dir)
         copies.append(([src], ['dummy_copies', dst], cmd,
-                       'Copying %s to %s' % (src, fixed_dst)))
+                       'Copying %s to %s' % (src, dst)))
       else:
-        fix_dst = _FixPath(cpy['destination'])
         cmd = 'mkdir "%s" 2>nul & set ERRORLEVEL=0 & copy /Y "%s" "%s"' % (
-            fix_dst, _FixPath(src), _FixPath(dst))
-        copies.append(([src], [dst], cmd, 'Copying %s to %s' % (src, fix_dst)))
+            _FixPath(cpy['destination']), _FixPath(src), _FixPath(dst))
+        copies.append(([src], [dst], cmd, 'Copying %s to %s' % (src, dst)))
   return copies
 
 
@@ -1764,7 +1772,9 @@ def _DictsToFolders(base_path, bucket, flat):
         children += folder_children
       else:
         folder_children = MSVSNew.MSVSFolder(os.path.join(base_path, folder),
-                                             name='(' + folder + ')',
+                                             # parentheses not supported by msbuild target parameter /t
+                                             # name='(' + folder + ')',
+                                             name=folder,
                                              entries=folder_children)
         children.append(folder_children)
     else:
@@ -2057,7 +2067,9 @@ def GenerateOutput(target_list, target_dicts, data, params):
     sln_projects += gyp.common.DeepDependencyTargets(target_dicts, sln_projects)
     # Create folder hierarchy.
     root_entries = _GatherSolutionFolders(
-        sln_projects, project_objects, flat=msvs_version.FlatSolution())
+      # ArangoDB V8 build script expects flat solution
+      # sln_projects, project_objects, flat=msvs_version.FlatSolution())
+      sln_projects, project_objects, flat=True)
     # Create solution.
     sln = MSVSNew.MSVSSolution(sln_path,
                                entries=root_entries,
@@ -2278,7 +2290,7 @@ class MSBuildRule(object):
     self.outputs = ';'.join([MSVSSettings.ConvertVCMacrosToMSBuild(i)
                              for i in old_outputs])
     old_command = _BuildCommandLineForRule(spec, rule, has_input_path=True,
-                                           do_setup_env=True)
+                                           do_setup_env=True, attached_to="")
     self.command = MSVSSettings.ConvertVCMacrosToMSBuild(old_command)
 
 
@@ -3437,13 +3449,13 @@ def _GetMSBuildExternalBuilderTargets(spec):
   """
   build_cmd = _BuildCommandLineForRuleRaw(
       spec, spec['msvs_external_builder_build_cmd'],
-      False, False, False, False)
+      False, False, False, False, attached_to="")
   build_target = ['Target', {'Name': 'Build'}]
   build_target.append(['Exec', {'Command': build_cmd}])
 
   clean_cmd = _BuildCommandLineForRuleRaw(
       spec, spec['msvs_external_builder_clean_cmd'],
-      False, False, False, False)
+      False, False, False, False, attached_to="")
   clean_target = ['Target', {'Name': 'Clean'}]
   clean_target.append(['Exec', {'Command': clean_cmd}])
 
@@ -3452,7 +3464,7 @@ def _GetMSBuildExternalBuilderTargets(spec):
   if spec.get('msvs_external_builder_clcompile_cmd'):
     clcompile_cmd = _BuildCommandLineForRuleRaw(
         spec, spec['msvs_external_builder_clcompile_cmd'],
-        False, False, False, False)
+        False, False, False, False, attached_to="")
     clcompile_target = ['Target', {'Name': 'ClCompile'}]
     clcompile_target.append(['Exec', {'Command': clcompile_cmd}])
     targets.append(clcompile_target)
