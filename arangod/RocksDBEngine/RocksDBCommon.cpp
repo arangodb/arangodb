@@ -44,7 +44,7 @@
 namespace arangodb {
 namespace rocksutils {
 
-rocksdb::TransactionDB* globalRocksDB() {
+RocksDBWrapper * globalRocksDB() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   RocksDBEngine* rocks = static_cast<RocksDBEngine*>(engine);

@@ -36,6 +36,7 @@
 #pragma once
 #include "rocksdb/utilities/transaction_db.h"
 
+#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ReadLocker.h"
 
@@ -246,17 +247,9 @@ class RocksDBWrapper : public rocksdb::TransactionDB {
 
   using DB::NewIterator;
   virtual rocksdb::Iterator* NewIterator(const rocksdb::ReadOptions& opts,
-                                rocksdb::ColumnFamilyHandle* column_family) override {
-    READ_LOCKER(lock, _rwlock);
-#if 1
-    return _db->NewIterators(opts, column_family);
+                                         rocksdb::ColumnFamilyHandle* column_family) override;
 
-#else
-    id = _iteratorId;
-    RocksDBWrapperIterator wrap_it = new RocksDBWrapperIterator(_db->NewIterator(opts, column_family));
-#endif
-  }
-
+#if 0
   virtual rocksdb::Status NewIterators(
       const rocksdb::ReadOptions& options,
       const std::vector<rocksdb::ColumnFamilyHandle*>& column_families,
@@ -264,7 +257,7 @@ class RocksDBWrapper : public rocksdb::TransactionDB {
     READ_LOCKER(lock, _rwlock);
     return _db->NewIterators(options, column_families, iterators);
   }
-
+#endif
 
   virtual const rocksdb::Snapshot* GetSnapshot() override {
     READ_LOCKER(lock, _rwlock);
@@ -538,7 +531,18 @@ class RocksDBWrapper : public rocksdb::TransactionDB {
     return _db->DefaultColumnFamily();
   }
 
+
+  /// management routines for iterators and snapshots
+  void registerIterator(RocksDBWrapperIterator *);
+  void releaseIterator(RocksDBWrapperIterator *);
+
  protected:
+  void pauseAllIterators();
+
+
+
+
+
   /// copies of the Open parameters
   const rocksdb::DBOptions _db_options;
   const rocksdb::TransactionDBOptions _txn_db_options;
@@ -549,14 +553,14 @@ class RocksDBWrapper : public rocksdb::TransactionDB {
   mutable basics::ReadWriteLock _rwlock; /// used in several "const" functions, must be mutable
 
   /// iterator management
-  std::atomic<uint64_t> _iteratorId;
-
-
+  Mutex _iterMutex;
+  std::set<RocksDBWrapperIterator *> _iterSet;
 
   /// original stuff
   TransactionDB * _db;
 //  std::shared_ptr<DB> shared_db_ptr_;
 };
+
 
 ////////////////////////////////////////////////////////////////////////////////
 ///
@@ -569,13 +573,19 @@ class RocksDBWrapper : public rocksdb::TransactionDB {
 
 class RocksDBWrapperIterator : public rocksdb::Iterator {
  public:
-RocksDBWrapperIterator(rocksdb::Iterator * rocks_it, RocksDBWrapper & dbWrap) : _isValid(true), _it(rocks_it)
+
+  RocksDBWrapperIterator(rocksdb::Iterator * rocks_it, RocksDBWrapper & dbWrap)
+    : _isValid(true), _it(rocks_it), _dbWrap(dbWrap)
   {
-    // add to iterator list
+    _dbWrap.registerIterator(this);
   }
+
   virtual ~RocksDBWrapperIterator()
-  {delete _it;
-    // remove from iterator list
+  {
+    _isValid = false;
+    delete _it;
+    _it = nullptr;
+    _dbWrap.releaseIterator(this);
   }
 
   virtual bool Valid() const override {
@@ -610,6 +620,7 @@ RocksDBWrapperIterator(rocksdb::Iterator * rocks_it, RocksDBWrapper & dbWrap) : 
 protected:
   bool _isValid;
   rocksdb::Iterator * _it;
+  RocksDBWrapper & _dbWrap;
 
  private:
   RocksDBWrapperIterator();

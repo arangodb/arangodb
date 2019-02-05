@@ -58,7 +58,7 @@ class RocksDBEngine;
 
 namespace rocksutils {
 
-rocksdb::TransactionDB* globalRocksDB();
+RocksDBWrapper * globalRocksDB();
 rocksdb::ColumnFamilyHandle* defaultCF();
 RocksDBEngine* globalRocksEngine();
 arangodb::Result globalRocksDBPut(rocksdb::ColumnFamilyHandle* cf,

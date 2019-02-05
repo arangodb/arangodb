@@ -21,6 +21,8 @@
 
 #include "RocksDBWrapper.h"
 
+#include "Basics/MutexLocker.h"
+
 namespace arangodb {
 
 /// @brief wrapper for TransactionDB::Open
@@ -60,5 +62,47 @@ RocksDBWrapper::RocksDBWrapper(const rocksdb::DBOptions& db_options,
   return;
 
 } // RocksDBWrapper::RocksDBWrapper
+
+rocksdb::Iterator* RocksDBWrapper::NewIterator(const rocksdb::ReadOptions& opts,
+                                               rocksdb::ColumnFamilyHandle* column_family) {
+    READ_LOCKER(lock, _rwlock);
+#if 0
+    return _db->NewIterators(opts, column_family);
+
+#else
+    RocksDBWrapperIterator * wrapIt = new RocksDBWrapperIterator(_db->NewIterator(opts, column_family), *this);
+    return wrapIt;
+#endif
+  }
+
+/// @brief Maintain a list of outstanding iterators so they can be disabled prior to restore
+void RocksDBWrapper::registerIterator(RocksDBWrapperIterator * iter) {
+
+  MUTEX_LOCKER(lock, _iterMutex);
+
+  if (!_iterSet.insert(iter).second) {
+    TRI_ASSERT(false);
+  } // if
+
+  return;
+
+} // RocksDBWrapper::registerIterator
+
+
+/// @brief Maintain a list of outstanding iterators so they can be disabled prior to restore
+void RocksDBWrapper::releaseIterator(RocksDBWrapperIterator * iter) {
+
+  MUTEX_LOCKER(lock, _iterMutex);
+
+  if (0 == _iterSet.erase(iter)) {
+    TRI_ASSERT(false);
+  } // if
+
+  return;
+
+} // RocksDBWrapper::releaseIterator
+
+
+
 
 }  // namespace arangodb
