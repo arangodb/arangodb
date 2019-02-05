@@ -46,7 +46,7 @@ function TtlSuite () {
       // create a unique list of servers
       numServers = Object.values(collection.shards(true)).filter(function(value, index, self) {
         return self.indexOf(value) === index;
-      });
+      }).length;
     } catch (err) {
       // collection.shards() will throw when not running in cluster mode
       numServers = 1;
@@ -205,6 +205,17 @@ function TtlSuite () {
       assertEqual(stats.runs, oldRuns);
     },
     
+    testCreateIndexMultipleTimes : function () {
+      let c = db._create(cn, { numberOfShards: 2 });
+      c.ensureIndex({ type: "ttl", fields: ["test"], expireAfter: 10 });
+      try {
+        c.ensureIndex({ type: "ttl", fields: ["dateCreated", "foobar"], expireAfter: 10 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+    
     testCreateIndexOnMultipleAttributes : function () {
       let c = db._create(cn, { numberOfShards: 2 });
       try {
@@ -280,7 +291,7 @@ function TtlSuite () {
       c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
 
       // dt is one minute in the past
-      const dt = new Date((new Date).getTime() - 1000 * 60).getTime();
+      const dt = new Date((new Date()).getTime() - 1000 * 60).getTime();
       assertTrue(new Date(dt).toISOString() >= "2019-01-");
 
       for (let i = 0; i < 1000; ++i) {
@@ -308,7 +319,7 @@ function TtlSuite () {
       c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
 
       // dt is one minute in the past
-      const dt = new Date((new Date).getTime() - 1000 * 60).getTime();
+      const dt = new Date((new Date()).getTime() - 1000 * 60).getTime();
       assertTrue(new Date(dt).toISOString() >= "2019-01-");
 
       for (let i = 0; i < 1000; ++i) {
@@ -338,7 +349,7 @@ function TtlSuite () {
       c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
 
       // dt is one minute in the past
-      const dt = new Date((new Date).getTime() - 1000 * 60).getTime();
+      const dt = new Date((new Date()).getTime() - 1000 * 60).getTime();
       assertTrue(new Date(dt).toISOString() >= "2019-01-");
 
       for (let i = 0; i < 10000; ++i) {
@@ -366,7 +377,7 @@ function TtlSuite () {
       c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
 
       // dt is one day in the future
-      const dt = new Date((new Date).getTime() + 1000 * 86400).getTime();
+      const dt = new Date((new Date()).getTime() + 1000 * 86400).getTime();
       assertTrue(new Date(dt).toISOString() >= "2019-01-");
 
       for (let i = 0; i < 1000; ++i) {
@@ -394,7 +405,7 @@ function TtlSuite () {
       c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
 
       // dt is one day in the future
-      let dt = new Date((new Date).getTime() + 1000 * 86400).getTime();
+      let dt = new Date((new Date()).getTime() + 1000 * 86400).getTime();
       assertTrue(new Date(dt).toISOString() >= "2019-01-");
 
       for (let i = 0; i < 1000; ++i) {
@@ -402,7 +413,7 @@ function TtlSuite () {
       }
       
       // dt is a minute in the past
-      dt = new Date((new Date).getTime() - 1000 * 60).getTime();
+      dt = new Date((new Date()).getTime() - 1000 * 60).getTime();
       assertTrue(new Date(dt).toISOString() >= "2019-01-");
       
       for (let i = 0; i < 1000; ++i) {
@@ -427,6 +438,84 @@ function TtlSuite () {
       assertEqual(stats.documentsRemoved, oldStats.documentsRemoved + 1000);
       
       assertEqual(1000, db._collection(cn).count());
+    },
+    
+    testRemovalsLimitsHitGlobal : function () {
+      internal.ttlProperties({ active: false });
+
+      let c = db._create(cn, { numberOfShards: 2 });
+      c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
+
+      // dt is one minute in the past
+      const dt = new Date((new Date()).getTime() - 1000 * 60).getTime();
+      assertTrue(new Date(dt).toISOString() >= "2019-01-");
+
+      for (let i = 0; i < 10000; ++i) {
+        c.insert({ dateCreated: dt / 1000, value: i });
+      }
+
+      let oldStats = internal.ttlStatistics();
+      let oldCount = 10000;  
+      
+      // reenable
+      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 10, maxCollectionRemoves: 100000 });
+    
+      let stats = waitForNextRun(c, oldStats, 10);
+
+      // number of runs, deletions and limitReached must have changed
+      assertNotEqual(stats.runs, oldStats.runs);
+      assertTrue(stats.limitReached > oldStats.limitReached);
+      assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
+      assertTrue(db._collection(cn).count() < oldCount);
+      oldCount = db._collection(cn).count();
+     
+      // wait again for next removal 
+      oldStats = stats;
+      stats = waitForNextRun(c, oldStats, 10);
+
+      assertNotEqual(stats.runs, oldStats.runs);
+      assertTrue(stats.limitReached > oldStats.limitReached);
+      assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
+      assertTrue(db._collection(cn).count() < oldCount);
+    },
+    
+    testRemovalsLimitsHitCollection : function () {
+      internal.ttlProperties({ active: false });
+
+      let c = db._create(cn, { numberOfShards: 2 });
+      c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
+
+      // dt is one minute in the past
+      const dt = new Date((new Date()).getTime() - 1000 * 60).getTime();
+      assertTrue(new Date(dt).toISOString() >= "2019-01-");
+
+      for (let i = 0; i < 10000; ++i) {
+        c.insert({ dateCreated: dt / 1000, value: i });
+      }
+
+      let oldStats = internal.ttlStatistics();
+      let oldCount = 10000;  
+      
+      // reenable
+      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 1000, maxCollectionRemoves: 2000 });
+    
+      let stats = waitForNextRun(c, oldStats, 10);
+
+      // number of runs, deletions and limitReached must have changed
+      assertNotEqual(stats.runs, oldStats.runs);
+      assertTrue(stats.limitReached > oldStats.limitReached);
+      assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
+      assertTrue(db._collection(cn).count() < oldCount);
+      oldCount = db._collection(cn).count();
+     
+      // wait again for next removal 
+      oldStats = stats;
+      stats = waitForNextRun(c, oldStats, 10);
+
+      assertNotEqual(stats.runs, oldStats.runs);
+      assertTrue(stats.limitReached > oldStats.limitReached);
+      assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
+      assertTrue(db._collection(cn).count() < oldCount);
     },
   
   };

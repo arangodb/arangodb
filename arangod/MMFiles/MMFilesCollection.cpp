@@ -2199,7 +2199,11 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods& trx,
   TRI_ASSERT(info.isObject());
   std::shared_ptr<Index> idx = PhysicalCollection::lookupIndex(info);
 
-  if (idx != nullptr) {  // We already have this index.
+  if (idx != nullptr) {  
+    // We already have this index.
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "there can only be one ttl index per collection");
+    }
     created = false;
     return idx;
   }
