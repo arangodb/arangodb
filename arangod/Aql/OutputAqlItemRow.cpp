@@ -51,7 +51,7 @@ OutputAqlItemRow::OutputAqlItemRow(std::shared_ptr<AqlItemBlockShell> blockShell
   TRI_ASSERT(_blockShell != nullptr);
 }
 
-void OutputAqlItemRow::doCopyRow(const InputAqlItemRow &sourceRow, bool ignoreMissing) {
+void OutputAqlItemRow::doCopyRow(const InputAqlItemRow& sourceRow, bool ignoreMissing) {
   // Note that _lastSourceRow is invalid right after construction. However, when
   // _baseIndex > 0, then we must have seen one row already.
   TRI_ASSERT(_baseIndex == 0 || _lastSourceRow.isInitialized());
@@ -59,7 +59,7 @@ void OutputAqlItemRow::doCopyRow(const InputAqlItemRow &sourceRow, bool ignoreMi
 
   if (mustClone) {
     for (auto itemId : registersToKeep()) {
-      if(ignoreMissing && itemId >= sourceRow.getNrRegisters()){
+      if (ignoreMissing && itemId >= sourceRow.getNrRegisters()) {
         continue;
       }
       auto const& value = sourceRow.getValue(itemId);
@@ -68,6 +68,9 @@ void OutputAqlItemRow::doCopyRow(const InputAqlItemRow &sourceRow, bool ignoreMi
         AqlValueGuard guard(clonedValue, true);
 
         TRI_IF_FAILURE("OutputAqlItemRow::copyRow") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
