@@ -2026,7 +2026,9 @@ std::unique_ptr<ExecutionBlock> NoResultsNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  ExecutorInfos infos(0, 0, getRegisterPlan()->nrRegs[previousNode->getDepth()],
+  ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
+                      arangodb::aql::make_shared_unordered_set(),
+                      getRegisterPlan()->nrRegs[previousNode->getDepth()],
                       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
   return std::make_unique<ExecutionBlockImpl<NoResultsExecutor>>(&engine, this,
                                                                  std::move(infos));
