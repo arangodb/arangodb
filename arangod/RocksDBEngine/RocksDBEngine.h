@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "RocksDBEngine/RocksDBWrapper.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/AccessMode.h"
 
@@ -321,7 +322,8 @@ class RocksDBEngine final : public StorageEngine {
 
  private:
   /// single rocksdb database used in this storage engine
-  rocksdb::TransactionDB* _db;
+  RocksDBWrapper * _db;
+//  rocksdb::TransactionDB* _db;
   /// default read options
   rocksdb::Options _options;
   /// arangodb comparator - requried because of vpack in keys
