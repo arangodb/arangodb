@@ -8,8 +8,8 @@ have been performed on your production system before you go live:
   See [Installing ArangoDB on Linux](../Installation/Linux.md) for details.
 - OS monitoring is in place
   (most common metrics, e.g. disk, CPU, RAM utilization).
-- Disk space monitoring is in place.
-  (only if you use the RocksDB storage engine)
+- Disk space monitoring is in place
+  (only if you use the RocksDB storage engine).
 - The user _root_ is not used to run any ArangoDB processes
   (if you run ArangoDB on Linux).
 - The _arangod_ (server) process and the _arangodb_ (_Starter_) process
