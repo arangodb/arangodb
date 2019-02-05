@@ -623,9 +623,13 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
         break;
       }
+      
+      s = mthds->Put(_cf, key, value.string());
+    } else {
+      TRI_ASSERT(key.containsLocalDocumentId(documentId));
+      s = mthds->PutUntracked(_cf, key, value.string());
     }
 
-    s = mthds->Put(_cf, key, value.string());
     if (!s.ok()) {
       res = rocksutils::convertStatus(s, rocksutils::index);
       break;
