@@ -38,6 +38,31 @@ const globalProperties = internal.ttlProperties();
 function TtlSuite () {
   'use strict';
   const cn = "UnitTestsTtl";
+      
+  const waitForNextRun = function(collection, oldStats, tries) {
+    const oldRuns = oldStats.runs;
+    let numServers;
+    try {
+      // create a unique list of servers
+      numServers = Object.values(collection.shards(true)).filter(function(value, index, self) {
+        return self.indexOf(value) === index;
+      });
+    } catch (err) {
+      // collection.shards() will throw when not running in cluster mode
+      numServers = 1;
+    }
+
+    let stats;
+    while (tries-- > 0) {
+      internal.wait(1, false);
+    
+      stats = internal.ttlStatistics();
+      if (stats.runs - oldRuns >= numServers) {
+        break;
+      }
+    }
+    return stats;
+  };
 
   return {
 
@@ -180,6 +205,16 @@ function TtlSuite () {
       assertEqual(stats.runs, oldRuns);
     },
     
+    testCreateIndexOnMultipleAttributes : function () {
+      let c = db._create(cn, { numberOfShards: 2 });
+      try {
+        c.ensureIndex({ type: "ttl", fields: ["dateCreated", "foobar"], expireAfter: 10 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+    
     testCreateIndexWithoutExpireAfter : function () {
       let c = db._create(cn, { numberOfShards: 2 });
       try {
@@ -224,25 +259,174 @@ function TtlSuite () {
         c.insert({ value: i });
       }
 
-      let stats = internal.ttlStatistics();
-      const oldStats = stats;
+      const oldStats = internal.ttlStatistics();
       
       // reenable
       internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000, maxCollectionRemoves: 100000 });
 
-      let tries = 0;
-      while (tries++ < 10) {
-        internal.wait(1, false);
-      
-        stats = internal.ttlStatistics();
-        if (stats.runs > oldStats.runs) {
-          break;
-        }
-      }
+      let stats = waitForNextRun(c, oldStats, 10);
 
-      // number of runs must have changed, number of deletion must not
+      // number of runs must have changed, number of deletions must not
       assertNotEqual(stats.runs, oldStats.runs);
       assertEqual(stats.documentsRemoved, oldStats.documentsRemoved);
+      
+      assertEqual(1000, db._collection(cn).count());
+    },
+    
+    testRemovalsAll : function () {
+      internal.ttlProperties({ active: false });
+
+      let c = db._create(cn, { numberOfShards: 2 });
+      c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
+
+      // dt is one minute in the past
+      const dt = new Date((new Date).getTime() - 1000 * 60).getTime();
+      assertTrue(new Date(dt).toISOString() >= "2019-01-");
+
+      for (let i = 0; i < 1000; ++i) {
+        c.insert({ dateCreated: dt / 1000, value: i });
+      }
+
+      const oldStats = internal.ttlStatistics();
+      
+      // reenable
+      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000, maxCollectionRemoves: 100000 });
+      
+      let stats = waitForNextRun(c, oldStats, 10);
+
+      // both number of runs and deletions must have changed
+      assertNotEqual(stats.runs, oldStats.runs);
+      assertEqual(stats.documentsRemoved, oldStats.documentsRemoved + 1000);
+
+      assertEqual(0, db._collection(cn).count());
+    },
+    
+    testRemovalsAllButOne : function () {
+      internal.ttlProperties({ active: false });
+
+      let c = db._create(cn, { numberOfShards: 2 });
+      c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
+
+      // dt is one minute in the past
+      const dt = new Date((new Date).getTime() - 1000 * 60).getTime();
+      assertTrue(new Date(dt).toISOString() >= "2019-01-");
+
+      for (let i = 0; i < 1000; ++i) {
+        c.insert({ dateCreated: dt / 1000, value: i });
+      }
+      c.insert({ dateCreated: dt }); // intentionally not divided by 1000
+
+      const oldStats = internal.ttlStatistics();
+      
+      // reenable
+      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000, maxCollectionRemoves: 100000 });
+
+      let stats = waitForNextRun(c, oldStats, 10);
+
+      // both number of runs and deletions must have changed
+      assertNotEqual(stats.runs, oldStats.runs);
+      assertEqual(stats.documentsRemoved, oldStats.documentsRemoved + 1000);
+
+      assertEqual(1, db._collection(cn).count());
+      assertEqual(dt, db._collection(cn).any().dateCreated);
+    },
+    
+    testRemovalsAllBigger : function () {
+      internal.ttlProperties({ active: false });
+
+      let c = db._create(cn, { numberOfShards: 2 });
+      c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
+
+      // dt is one minute in the past
+      const dt = new Date((new Date).getTime() - 1000 * 60).getTime();
+      assertTrue(new Date(dt).toISOString() >= "2019-01-");
+
+      for (let i = 0; i < 10000; ++i) {
+        c.insert({ dateCreated: dt / 1000, value: i });
+      }
+
+      const oldStats = internal.ttlStatistics();
+      
+      // reenable
+      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000, maxCollectionRemoves: 100000 });
+
+      let stats = waitForNextRun(c, oldStats, 10);
+      
+      // both number of runs and deletions must have changed
+      assertNotEqual(stats.runs, oldStats.runs);
+      assertEqual(stats.documentsRemoved, oldStats.documentsRemoved + 10000);
+
+      assertEqual(0, db._collection(cn).count());
+    },
+    
+    testRemovalsExpireAfterInTheFuture : function () {
+      internal.ttlProperties({ active: false });
+
+      let c = db._create(cn, { numberOfShards: 2 });
+      c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
+
+      // dt is one day in the future
+      const dt = new Date((new Date).getTime() + 1000 * 86400).getTime();
+      assertTrue(new Date(dt).toISOString() >= "2019-01-");
+
+      for (let i = 0; i < 1000; ++i) {
+        c.insert({ dateCreated: dt / 1000, value: i });
+      }
+
+      const oldStats = internal.ttlStatistics();
+      
+      // reenable
+      internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000, maxCollectionRemoves: 100000 });
+
+      let stats = waitForNextRun(c, oldStats, 10);
+
+      // number of runs must have changed, number of deletions must not
+      assertNotEqual(stats.runs, oldStats.runs);
+      assertEqual(stats.documentsRemoved, oldStats.documentsRemoved);
+
+      assertEqual(1000, db._collection(cn).count());
+    },
+    
+    testRemovalsExpireAfterSomeInTheFuture : function () {
+      internal.ttlProperties({ active: false });
+
+      let c = db._create(cn, { numberOfShards: 2 });
+      c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
+
+      // dt is one day in the future
+      let dt = new Date((new Date).getTime() + 1000 * 86400).getTime();
+      assertTrue(new Date(dt).toISOString() >= "2019-01-");
+
+      for (let i = 0; i < 1000; ++i) {
+        c.insert({ dateCreated: dt / 1000, value: i });
+      }
+      
+      // dt is a minute in the past
+      dt = new Date((new Date).getTime() - 1000 * 60).getTime();
+      assertTrue(new Date(dt).toISOString() >= "2019-01-");
+      
+      for (let i = 0; i < 1000; ++i) {
+        c.insert({ dateCreated: dt / 1000, value: i });
+      }
+
+      assertEqual(2000, db._collection(cn).count());
+
+      const oldStats = internal.ttlStatistics();
+      
+      // reenable
+      let props = internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 100000, maxCollectionRemoves: 100000 });
+      assertTrue(props.active);
+      assertEqual(1000, props.frequency);
+      assertEqual(100000, props.maxTotalRemoves);
+      assertEqual(100000, props.maxCollectionRemoves);
+
+      let stats = waitForNextRun(c, oldStats, 10);
+
+      // both number of runs and deletions must have changed
+      assertNotEqual(stats.runs, oldStats.runs);
+      assertEqual(stats.documentsRemoved, oldStats.documentsRemoved + 1000);
+      
+      assertEqual(1000, db._collection(cn).count());
     },
   
   };
