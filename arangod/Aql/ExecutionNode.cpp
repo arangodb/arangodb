@@ -1439,16 +1439,12 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  // this is currently required to check weather we're in a subquery
-  // or not. We do not count fullCounts inside a subquery.
-  size_t queryDepth = 0;
-  if (isInSubQuery(this)) {
-    queryDepth = 1;
-  }
+  // Fullcount must only be enabled on the last limit node on the main level
+  TRI_ASSERT(!_fullCount || !isInSubQuery(this));
 
   LimitExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                           getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                           _offset, _limit, _fullCount, queryDepth);
+                           getRegisterPlan()->nrRegs[getDepth()],
+                           getRegsToClear(), _offset, _limit, _fullCount);
 
   return std::make_unique<ExecutionBlockImpl<LimitExecutor>>(&engine, this,
                                                              std::move(infos));
