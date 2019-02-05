@@ -383,7 +383,7 @@ function ahuacatlFailureSuite () {
 
     testExecutionBlock3 : function () {
       internal.debugSetFailAt("ExecutionBlock::getOrSkipSome1");
-      assertFailingQuery("FOR u in " + c.name() + " SORT u.id DESC LIMIT 0,4 RETURN u");
+      assertFailingQuery("FOR u in " + c.name() + " SORT u.id DESC LIMIT 0,4 RETURN u", ['-sort-limit']);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -392,7 +392,7 @@ function ahuacatlFailureSuite () {
 
     testExecutionBlock4 : function () {
       internal.debugSetFailAt("ExecutionBlock::getOrSkipSome2");
-      assertFailingQuery("FOR u in " + c.name() + " SORT u.id DESC LIMIT " + (count - 1) + ",100 RETURN u");
+      assertFailingQuery("FOR u in " + c.name() + " SORT u.id DESC LIMIT " + (count - 1) + ",100 RETURN u", ['-sort-limit']);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

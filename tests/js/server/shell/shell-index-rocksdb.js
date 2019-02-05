@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse */
+/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNotUndefined */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the index
@@ -193,7 +193,7 @@ function backgroundIndexSuite() {
       let c = require("internal").db._collection(cn);
       // first lets add some initial documents
       let x = 0;
-      while(x < 10000) {
+      while(x < 5000) {
         let docs = []; 
         for(let i = 0; i < 1000; i++) {
           docs.push({value: x++});
@@ -201,11 +201,18 @@ function backgroundIndexSuite() {
         c.save(docs);
       }
 
+      const idxDef = {type: 'skiplist', fields: ['value'], unique: true, inBackground: true};
       // lets insert the rest via tasks
       for (let i = 1; i < 5; ++i) {
+        if (i === 2) { // create the index in a task
+          let command = `const c = require("internal").db._collection("${cn}"); 
+          let idx = c.ensureIndex(${JSON.stringify(idxDef)});
+          c.save({_key: 'myindex', index: idx});`;
+          tasks.register({ name: "UnitTestsIndexCreateIDX" + i, command: command });
+        }
         let command = `const c = require("internal").db._collection("${cn}"); 
-                       let x = ${i} * 10000; 
-                       while(x < ${i + 1} * 10000) {
+                       let x = ${i} * 5000; 
+                       while(x < ${i + 1} * 5000) {
                          let docs = []; 
                          for(let i = 0; i < 1000; i++) {
                            docs.push({value: x++})
@@ -215,15 +222,20 @@ function backgroundIndexSuite() {
         tasks.register({ name: "UnitTestsIndexInsert" + i, command: command });
       }
 
-      // create the index on the main thread
-      c.ensureIndex({type: 'hash', fields: ['value'], unique: true, inBackground: true });
-
       // wait for insertion tasks to complete
       waitForTasks();
       
       // sanity checks
-      assertEqual(c.count(), 50000);
-      for (let i = 0; i < 50000; i++) {
+      assertEqual(c.count(), 25001);
+
+      // verify that the index was created
+      let idx = c.document('myindex').index;
+      assertNotUndefined(idx);
+      idxDef.inBackground = false;
+      let cmp = c.ensureIndex(idxDef);
+      assertEqual(cmp.id, idx.id);
+
+      for (let i = 0; i < 25000; i++) {
         const cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
                                {'@coll': cn, 'val': i}, {count:true});
         assertEqual(cursor.count(), 1);
@@ -234,7 +246,7 @@ function backgroundIndexSuite() {
         switch (i.type) {
           case 'primary':
             break;
-          case 'hash':
+          case 'skiplist':
             assertEqual(i.selectivityEstimate, 1.0);
             break;
           default:

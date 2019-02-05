@@ -87,7 +87,7 @@ class AqlItemBlock {
 
  public:
   /// @brief getValue, get the value of a register
-  AqlValue getValue(size_t index, RegisterId varNr) const {
+  inline AqlValue getValue(size_t index, RegisterId varNr) const {
     TRI_ASSERT(index < _nrItems);
     TRI_ASSERT(varNr < _nrRegs);
     return _data[index * _nrRegs + varNr];
@@ -101,27 +101,20 @@ class AqlItemBlock {
   }
 
   /// @brief setValue, set the current value of a register
-  void setValue(size_t index, RegisterId varNr, AqlValue const& value) {
+  inline void setValue(size_t index, RegisterId varNr, AqlValue const& value) {
     TRI_ASSERT(index < _nrItems);
     TRI_ASSERT(varNr < _nrRegs);
     TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
 
-    size_t mem = 0;
-
     // First update the reference count, if this fails, the value is empty
     if (value.requiresDestruction()) {
       if (++_valueCount[value] == 1) {
-        mem = value.memoryUsage();
+        size_t mem = value.memoryUsage();
         increaseMemoryUsage(mem);
       }
     }
 
-    try {
-      _data[index * _nrRegs + varNr] = value;
-    } catch (...) {
-      decreaseMemoryUsage(mem);
-      throw;
-    }
+    _data[index * _nrRegs + varNr] = value;
   }
 
   /// @brief emplaceValue, set the current value of a register, constructing
@@ -175,12 +168,9 @@ class AqlItemBlock {
       if (it != _valueCount.end()) {
         if (--(it->second) == 0) {
           decreaseMemoryUsage(element.memoryUsage());
-          try {
-            _valueCount.erase(it);
-            element.destroy();
-            return;  // no need for an extra element.erase() in this case
-          } catch (...) {
-          }
+          _valueCount.erase(it);
+          element.destroy();
+          return;  // no need for an extra element.erase() in this case
         }
       }
     }

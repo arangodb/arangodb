@@ -1,6 +1,11 @@
 devel
 -----
 
+* added sort-limit optimization in AQL; improves memory usage and execution
+  time for some queries
+
+* upgraded to OpenSSL 1.1.0j
+
 * added configurable masking of dumped data via `arangodump` tool to obfuscate exported sensible data
 
 * fixed arangoimp script for MacOSX CLI Bundle

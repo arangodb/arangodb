@@ -34,10 +34,10 @@ class RandomStringMask : public MaskingFunction {
   static ParseResult<AttributeMasking> create(Path, Maskings*, VPackSlice const& def);
 
  public:
-  VPackValue mask(bool) const override;
+  VPackValue mask(bool, std::string& buffer) const override;
   VPackValue mask(std::string const& data, std::string& buffer) const override;
-  VPackValue mask(int64_t) const override;
-  VPackValue mask(double) const override;
+  VPackValue mask(int64_t, std::string& buffer) const override;
+  VPackValue mask(double, std::string& buffer) const override;
 
  private:
   explicit RandomStringMask(Maskings* maskings) : MaskingFunction(maskings) {}
