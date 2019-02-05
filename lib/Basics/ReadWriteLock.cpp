@@ -61,19 +61,27 @@ bool ReadWriteLock::writeLock(std::chrono::microseconds timeout) {
   _state.fetch_add(QUEUED_WRITER_INC, std::memory_order_relaxed);
 
   std::cv_status status(std::cv_status::no_timeout);
-  std::unique_lock<std::mutex> guard(_writer_mutex);
-  while (std::cv_status::no_timeout == status) {
-    auto state = _state.load(std::memory_order_relaxed);
-    // try to acquire write lock as long as no readers or writers are active,
-    while ((state & ~QUEUED_WRITER_MASK) == 0) {
-      // try to acquire lock and perform queued writer decrement in one step
-      if (_state.compare_exchange_weak(state, (state - QUEUED_WRITER_INC) | WRITE_LOCK,
-                                       std::memory_order_acquire)) {
-        return true;
+  {
+    std::unique_lock<std::mutex> guard(_writer_mutex);
+    while (std::cv_status::no_timeout == status) {
+      auto state = _state.load(std::memory_order_relaxed);
+      // try to acquire write lock as long as no readers or writers are active,
+      while ((state & ~QUEUED_WRITER_MASK) == 0) {
+        // try to acquire lock and perform queued writer decrement in one step
+        if (_state.compare_exchange_weak(state, (state - QUEUED_WRITER_INC) | WRITE_LOCK,
+                                         std::memory_order_acquire)) {
+          return true;
+        }
       }
+      status = _writers_bell.wait_for(guard, timeout);
     }
-    status = _writers_bell.wait_for(guard, timeout);
   }
+
+  // Undo the counting of us as queued writer:
+  _state.fetch_sub(QUEUED_WRITER_INC, std::memory_order_relaxed);
+  std::unique_lock<std::mutex> guard(_reader_mutex);
+  _readers_bell.notify_all();
+
   return false;
 }
 
