@@ -392,7 +392,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                            trxPtr, this->coveringIndexAttributePositions(),
                            allowCoveringIndexOptimization,
                            EngineSelectorFeature::ENGINE->useRawDocumentPointers(),
-                           std::move(nonConstExpressions), std::move(inVars),
+                           nonConstExpressions, std::move(inVars),
                            std::move(inRegs), hasV8Expression, _condition->root(),
                            this->getIndexes(), _plan->getAst(), this->options());
 

@@ -72,7 +72,7 @@ IndexExecutorInfos::IndexExecutorInfos(
     std::vector<std::string> const& projections, transaction::Methods* trxPtr,
     std::vector<size_t> const& coveringIndexAttributePositions,
     bool allowCoveringIndexOptimization, bool useRawDocumentPointers,
-    std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
+    std::vector<std::unique_ptr<NonConstExpression>> nonConstExpression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
     bool hasV8Expression, AstNode const* condition,
     std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
@@ -248,8 +248,6 @@ bool IndexExecutor::readIndex(size_t atMost, IndexIterator::DocumentCallback con
       continue;
     }
 
-    LOG_DEVEL << "atMost: " << atMost;
-    LOG_DEVEL << "_returned: " << _returned;
    // TRI_ASSERT(atMost >= _returned);
 
    /*
@@ -279,7 +277,6 @@ bool IndexExecutor::readIndex(size_t atMost, IndexIterator::DocumentCallback con
       // DocumentProducingBlock can access the flag
 
       TRI_ASSERT(_infos.getCursor() != nullptr);
-      LOG_DEVEL << _infos.getCursor()->hasCovering();
       _infos.setAllowCoveringIndexOptimization(_infos.getCursor()->hasCovering());
 
       if (_infos.getAllowCoveringIndexOptimization() &&
@@ -303,11 +300,13 @@ bool IndexExecutor::readIndex(size_t atMost, IndexIterator::DocumentCallback con
   return false;
 }
 
-bool IndexExecutor::initIndexes(InputAqlItemRow& input) {
+// TODO why copy of input row?
+bool IndexExecutor::initIndexes(InputAqlItemRow input) {
   // We start with a different context. Return documents found in the previous
   // context again.
   _alreadyReturned.clear();
   // Find out about the actual values for the bounds in the variable bound case:
+
 
   if (!_infos.getNonConstExpressions().empty()) {
     TRI_ASSERT(_infos.getCondition() != nullptr);
@@ -379,7 +378,7 @@ bool IndexExecutor::initIndexes(InputAqlItemRow& input) {
   return true;
 }
 
-void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
+void IndexExecutor::executeExpressions(InputAqlItemRow input) {
   TRI_ASSERT(_infos.getCondition() != nullptr);
   TRI_ASSERT(!_infos.getNonConstExpressions().empty());
 
@@ -456,10 +455,14 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
     TRI_ASSERT(input.isInitialized());
 
     //TODO  init indizes, right position?
-    initIndexes(input);
+    //initIndexes(input);
     if (!initIndexes(input)) {
       _infos.setDone(true);
       break;
+    }
+
+    if (_infos.getDone()) {
+      return {state, stats};
     }
 
     // LOGIC HERE
