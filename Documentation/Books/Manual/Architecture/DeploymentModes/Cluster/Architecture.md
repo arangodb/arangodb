@@ -189,9 +189,9 @@ is considered to be done and reported back to the _Coordinator_.
 Internally, read operations are all served by the _DBServer_ holding the _leader_ copy,
 this allows to provide snapshot semantics for complex transactions.
 
-Using synchronous replication alone will guarantee consistency and high availabilty
+Using synchronous replication alone will guarantee consistency and high availability
 at the cost of reduced performance: write requests will have a higher latency
-(due to every write-request having to be executed on the followers) and
+(due to every write-request having to be executed on the _followers_) and
 read requests will not scale out as only the _leader_ is being asked.
 
 In a Cluster, synchronous replication will be managed by the _Coordinators_ for the client. 
@@ -200,19 +200,21 @@ The data will always be stored on the _DBServers_.
 The following example will give you an idea of how synchronous operation
 has been implemented in ArangoDB Cluster:
 
-1. Connect to a coordinator via arangosh
+1. Connect to a _Coordinator_ via [_arangosh_](../../../Programs/Arangosh/README.md)
 2. Create a collection
 
     127.0.0.1:8530@_system> db._create("test", {"replicationFactor": 2})
 
-3. the coordinator will figure out a *leader* and 1 *follower* and create 1 *shard* (as this is the default)
+3. The _Coordinator_ will figure out a *leader* and one *follower* and create
+   one *shard* (as this is the default)
 4. Insert data
 
     127.0.0.1:8530@_system> db.test.insert({"foo": "bar"})
 
-5. The coordinator will write the data to the leader, which in turn will
-replicate it to the follower.
-6. Only when both were successful the result is reported to be successful
+5. The _Coordinator_ will write the data to the _leader_, which in turn will
+replicate it to the _follower_.
+6. Only when both were successful the result is reported to be successful:
+
    ```json
    {
        "_id" : "test/7987",
@@ -255,14 +257,14 @@ two cases can happen:
 
 ### Failure of a leader
 
-If a _DBserver_ that holds a _leader_ copy of a shard fails, then the _leader_
+If a _DBServer_ that holds a _leader_ copy of a shard fails, then the _leader_
 can no longer serve any requests. It will no longer send a heartbeat to
 the _Agency_. Therefore, a _supervision_ process running in the _Raft_ _leader_
 of the Agency, can take the necessary action (after 15 seconds of missing
 heartbeats), namely to promote one of the _DBServers_ that hold in-sync
 replicas of the _shard_ to _leader_ for that _shard_. This involves a
 reconfiguration in the _Agency_ and leads to the fact that _Coordinators_
-now contact a different _DBserver_ for requests to this _shard_. Service
+now contact a different _DBServer_ for requests to this _shard_. Service
 resumes. The other surviving _replicas_ automatically resynchronize their
 data with the new _leader_. 
 
@@ -296,12 +298,18 @@ has been implemented in ArangoDB Cluster:
 
     127.0.0.1:8530@_system> db.test.document("100069")
 
-3. The _Coordinator_ determines which server is responsible for this document and finds _DBServer001_
-4. The _Coordinator_ tries to contact _DBServer001_ and timeouts because it is not reachable.
-5. After a short while the _supervision_ (running in parallel on the _Agency_) will see that _heartbeats_ from _DBServer001_ are not coming in
-6. The _supervision_ promotes one of the _followers_ (say _DBServer002_), that is in sync, to be _leader_ and makes _DBServer001_ a _follower_.
-7. As the _Coordinator_ continues trying to fetch the document it will see that the _leader_ changed to _DBServer002_
-8. The _Coordinator_ tries to contact the new _leader_ (_DBServer002_) and returns the result:
+3. The _Coordinator_ determines which server is responsible for this document
+   and finds _DBServer001_
+4. The _Coordinator_ tries to contact _DBServer001_ and timeouts because it is
+   not reachable.
+5. After a short while the _supervision_ (running in parallel on the _Agency_)
+   will see that _heartbeats_ from _DBServer001_ are not coming in
+6. The _supervision_ promotes one of the _followers_ (say _DBServer002_), that
+   is in sync, to be _leader_ and makes _DBServer001_ a _follower_.
+7. As the _Coordinator_ continues trying to fetch the document it will see that
+   the _leader_ changed to _DBServer002_
+8. The _Coordinator_ tries to contact the new _leader_ (_DBServer002_) and returns
+   the result:
 
     ```json
     {
@@ -318,7 +326,7 @@ has been implemented in ArangoDB Cluster:
 Please note that there may still be timeouts. Depending on when exactly
 the request has been done (in regard to the _supervision_) and depending
 on the time needed to reconfigure the Cluster the _Coordinator_ might fail
-with a timeout error!
+with a timeout error.
 
 Shard movement and resynchronization
 ------------------------------------
