@@ -42,21 +42,6 @@ ExecutorInfos::ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> rea
   if (_outRegs == nullptr) {
     _outRegs = std::make_shared<decltype(_outRegs)::element_type>();
   }
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  for (RegisterId const inReg : *_inRegs) {
-    TRI_ASSERT(inReg < nrInputRegisters);
-  }
-      // Number of output registers this node
-    // writes that are actually not used later
-    // e.g. FOR x IN [] RETURN 1
-    size_t nrThrowAwayRegisters = 0;
-  for (RegisterId const outReg : *_outRegs) {
-    TRI_ASSERT(outReg < nrOutputRegisters);
-          if (_registersToClear.find(outReg) != _registersToClear.end()) {
-        nrThrowAwayRegisters++;
-      }
-  }
-#endif
   TRI_ASSERT(nrInputRegisters <= nrOutputRegisters);
   {
     auto registersToKeep = std::make_shared<std::unordered_set<RegisterId>>();
@@ -68,7 +53,22 @@ ExecutorInfos::ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> rea
     _registersToKeep = std::move(registersToKeep);
   }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  for (RegisterId const inReg : *_inRegs) {
+    TRI_ASSERT(inReg < nrInputRegisters);
+  }
+  // Number of output registers this node
+  // writes that are actually not used later
+  // e.g. FOR x IN [] RETURN 1
+  size_t nrThrowAwayRegisters = 0;
+  for (RegisterId const outReg : *_outRegs) {
+    TRI_ASSERT(outReg < nrOutputRegisters);
+          if (_registersToClear.find(outReg) != _registersToClear.end()) {
+        nrThrowAwayRegisters++;
+      }
+  }
   TRI_ASSERT(_registersToClear.size() + _registersToKeep->size() == nrInputRegisters + nrThrowAwayRegisters);
+#endif
 }
 
 ExecutorInfos::ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
