@@ -34,6 +34,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
+#include "StorageEngine/TransactionManager.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -348,4 +349,25 @@ bool RestQueryHandler::parseQuery() {
 
   generateResult(rest::ResponseCode::OK, result.slice());
   return true;
+}
+
+/// @brief returns the short id of the server which should handle this request
+uint32_t RestQueryHandler::forwardingTarget() {
+  if (!ServerState::instance()->isCoordinator()) {
+    return 0;
+  }
+
+  bool found = false;
+  std::string value = _request->header(StaticStrings::TransactionId, found);
+  if (found) {
+    uint64_t tid = basics::StringUtils::uint64(value);
+    if (!TransactionManager::isCoordinatorTransactionId(tid)) {
+      TRI_ASSERT(TransactionManager::isLegacyTransactionId(tid));
+      return 0;
+    }
+    uint32_t sourceServer = TRI_ExtractServerIdFromTick(tid);
+    return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
+  }
+
+  return 0;
 }
