@@ -1,6 +1,8 @@
 devel
 -----
 
+* added greeting warning about maintainer mode
+
 * fixed possible segfault when using COLLECT with a LIMIT and an offset
 
 * fixed COLLECT forgetting top-level variables after 1000 rows
