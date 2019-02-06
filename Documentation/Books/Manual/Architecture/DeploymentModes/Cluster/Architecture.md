@@ -229,27 +229,69 @@ replicate it to the follower.
 Automatic failover
 ------------------
 
+### Failure of a follower
+
 If a _DBServer_ that holds a _follower_ copy of a _shard_ fails, then the _leader_
 can no longer synchronize its changes to that _follower_. After a short timeout
-(3 seconds), the _leader_ gives up on the _follower_, declares it to be
-out of sync, and continues service without the _follower_. When the server
-with the _follower_ copy comes back, it automatically resynchronizes its
-data with the _leader_ and synchronous replication is restored.
+(3 seconds), the _leader_ gives up on the _follower_ and declares it to be
+out of sync.
+
+One of the following two cases can happen:
+
+a) If another _DBServer_ (that does not hold a _replica_ for this _shard_ already)
+   is available in the Cluster, a new _follower_ will automatically
+   be created on this other _DBServer_ (so the _replication factor_ constraint is
+   satisfied again).
+b) If no other _DBServer_ (that does not hold a _replica_ for this _shard_ already)
+   is available, the service continues with one _follower_ less than the number
+   prescribed by the _replication factor_.
+
+If the old _DBServer_ with the _follower_ copy comes back, one of the following
+two cases can happen:
+
+a) If previously we were in case a), the _DBServer_ recognizes that there is a new
+   _follower_ that was elected in the meantime, so it will no longer be a _follower_
+   for that _shard_.
+b) If previously we were in case b), the _DBServer_ automatically resynchronizes its
+   data with the _leader_. The _replication factor_ constraint is now satisfied again
+   and order is restored.
+
+### Failure of a leader
 
 If a _DBserver_ that holds a _leader_ copy of a shard fails, then the _leader_
 can no longer serve any requests. It will no longer send a heartbeat to
-the _Agency_. Therefore, a _supervision_ process running in the Raft leader
+the _Agency_. Therefore, a _supervision_ process running in the _Raft_ _leader_
 of the Agency, can take the necessary action (after 15 seconds of missing
-heartbeats), namely to promote one of the servers that hold in-sync
-replicas of the shard to leader for that shard. This involves a
-reconfiguration in the _Agency_ and leads to the fact that coordinators
-now contact a different _DBserver_ for requests to this shard. Service
-resumes. The other surviving replicas automatically resynchronize their
-data with the new leader. When the _DBserver_ with the original leader
-copy comes back, it notices that it now holds a follower replica,
-resynchronizes its data with the new leader and order is restored.
+heartbeats), namely to promote one of the _DBServers_ that hold in-sync
+replicas of the _shard_ to _leader_ for that _shard_. This involves a
+reconfiguration in the _Agency_ and leads to the fact that _Coordinators_
+now contact a different _DBserver_ for requests to this _shard_. Service
+resumes. The other surviving _replicas_ automatically resynchronize their
+data with the new _leader_. 
 
-The following example will give you an idea of how failover
+In addition to the above, one of the following two cases cases can happen:
+
+a) If another _DBServer_ (that does not hold a _replica_ for this _shard_ already)
+   is available in the Cluster, a new _follower_ will automatically
+   be created on this other _DBServer_ (so the _replication factor_ constraint is
+   satisfied again).
+b) If no other _DBServer_ (that does not hold a _replica_ for this _shard_ already)
+   is available the service continues with one _follower_ less than the number
+   prescribed by the _replication factor_.
+
+When the _DBServer_ with the original _leader_ copy comes back, it recognizes
+that a new _leader_ was elected in the meantime, and one of the following
+two cases can happen:
+
+a) If previously we were in case a), since also a new _follower_ was created and
+   the _replication factor_ constraint is satisfied, the _DBServer_ will no
+   longer be a _follower_ for that _shard_.
+b) If previously we were in case b), the _DBServer_ notices that it now holds
+   a _follower_ _replica_ of that _shard_ and it resynchronizes its data with the
+   new _leader_. The _replication factor_ constraint is now satisfied again, 
+   and order is restored.
+
+The following example will give you an idea of how _failover_
 has been implemented in ArangoDB Cluster:
 
 1. The _leader_ of a _shard_ (let's name it _DBServer001_) is going down.
