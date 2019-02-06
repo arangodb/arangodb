@@ -220,11 +220,6 @@ replicate it to the follower.
        "_rev" : "7987"
    }
    ```
-   When a follower fails, the leader will give up on it after 3 seconds
-   and proceed with the operation. As soon as the follower (or the network
-   connection to the leader) is back up, the two will resynchronize and
-   synchronous replication is resumed. This happens all transparently
-   to the client.
 
 Automatic failover
 ------------------
