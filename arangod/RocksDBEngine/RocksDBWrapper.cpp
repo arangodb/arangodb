@@ -68,7 +68,9 @@ rocksdb::Iterator* RocksDBWrapper::NewIterator(const rocksdb::ReadOptions& opts,
                                                rocksdb::ColumnFamilyHandle* column_family) {
     READ_LOCKER(lock, _rwlock);
 #if 1
-    RocksDBWrapperIterator * wrapIt = new RocksDBWrapperIterator(_db->NewIterator(opts, column_family), *this);
+    rocksdb::ReadOptions local_options(opts);
+    local_options.snapshot = rewriteSnapshot(opts.snapshot);
+    RocksDBWrapperIterator * wrapIt = new RocksDBWrapperIterator(_db->NewIterator(local_options, column_family), *this);
     return wrapIt;
 #else
     return _db->NewIterator(opts, column_family);

@@ -191,7 +191,9 @@ class RocksDBWrapper : public rocksdb::TransactionDB {
       const std::vector<rocksdb::Slice>& keys,
       std::vector<std::string>* values) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->MultiGet(options, column_family, keys, values);
+    rocksdb::ReadOptions local_options(options);
+    local_options.snapshot = rewriteSnapshot(options.snapshot);
+    return _db->MultiGet(local_options, column_family, keys, values);
   }
 
   using DB::IngestExternalFile;
@@ -214,7 +216,9 @@ class RocksDBWrapper : public rocksdb::TransactionDB {
                            std::string* value,
                            bool* value_found = nullptr) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->KeyMayExist(options, column_family, key, value, value_found);
+    rocksdb::ReadOptions local_options(options);
+    local_options.snapshot = rewriteSnapshot(options.snapshot);
+    return _db->KeyMayExist(local_options, column_family, key, value, value_found);
   }
 
   using DB::Delete;
@@ -258,8 +262,10 @@ class RocksDBWrapper : public rocksdb::TransactionDB {
       std::vector<rocksdb::Iterator*>* iterators) override {
     TRI_ASSERT(false);
     READ_LOCKER(lock, _rwlock);
+    rocksdb::ReadOptions local_options(options);
+    local_options.snapshot = rewriteSnapshot(options.snapshot);
     // lacks code to translate to RocksDBWrapperIterators.
-    return _db->NewIterators(options, column_families, iterators);
+    return _db->NewIterators(local_options, column_families, iterators);
   }
 
   virtual const rocksdb::Snapshot* GetSnapshot() override;
