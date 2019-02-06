@@ -40,14 +40,13 @@ using namespace arangodb::aql;
 
 LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                                        std::unordered_set<RegisterId> registersToClear,
-                                       size_t offset, size_t limit, bool fullCount, size_t queryDepth)
-        : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
-                        std::make_shared<std::unordered_set<RegisterId>>(), nrInputRegisters,
-                        nrOutputRegisters, std::move(registersToClear)),
-          _remainingOffset(offset),
-          _limit(limit),
-          _queryDepth(queryDepth),
-          _fullCount(fullCount) {}
+                                       size_t offset, size_t limit, bool fullCount)
+    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
+                    std::make_shared<std::unordered_set<RegisterId>>(), nrInputRegisters,
+                    nrOutputRegisters, std::move(registersToClear)),
+      _offset(offset),
+      _limit(limit),
+      _fullCount(fullCount) {}
 
 LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos), _fetcher(fetcher){};
@@ -60,12 +59,9 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
   LimitStats stats{};
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
-  if (_counter == _infos.getLimit() && !_infos.isFullCountEnabled()) {
-    return {ExecutionState::DONE, stats};
-  }
-
-  ExecutionState state = ExecutionState::HASMORE;
-  while (state != ExecutionState::DONE) {
+  ExecutionState state;
+  LimitState limitState;
+  while (LimitState::LIMIT_REACHED != (limitState = currentState())) {
     std::tie(state, input) = _fetcher.fetchRow(maxRowsLeftToFetch());
 
     if (state == ExecutionState::WAITING) {
@@ -78,34 +74,33 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRow(OutputAqlItemRow
     }
     TRI_ASSERT(input.isInitialized());
 
-    if (_infos.getRemainingOffset() > 0) {
-      _infos.decrRemainingOffset();
+    // We've got one input row
+    _counter++;
 
-      if (_infos.isFullCountEnabled() && _infos.getQueryDepth() == 0) {
-        stats.incrFullCount();
-      }
-      continue;
-    }
-
-    if (_counter < _infos.getLimit()) {
-      output.copyRow(input);
-      _counter++;
-      if (_infos.getQueryDepth() == 0 && _infos.isFullCountEnabled()) {
-        stats.incrFullCount();
-      }
-
-      if (_counter == _infos.getLimit() && !_infos.isFullCountEnabled()) {
-        return {ExecutionState::DONE, stats};
-      }
-      return {state, stats};
-    }
-    TRI_ASSERT(_infos.isFullCountEnabled());
-
-    if (_infos.getQueryDepth() == 0) {
+    if (infos().isFullCountEnabled()) {
       stats.incrFullCount();
     }
+
+    // Return one row
+    if (limitState == LimitState::RETURNING) {
+      output.copyRow(input);
+      return {state, stats};
+    }
+    if (limitState == LimitState::RETURNING_LAST_ROW) {
+      output.copyRow(input);
+      return {ExecutionState::DONE, stats};
+    }
+
+    // Abort if upstream is done
+    if (state == ExecutionState::DONE) {
+      return {state, stats};
+    }
+
+    TRI_ASSERT(limitState == LimitState::SKIPPING || limitState == LimitState::COUNTING);
   }
 
-  TRI_ASSERT(state == ExecutionState::DONE);
-  return {state, stats};
+  // When fullCount is enabled, the loop may only abort when upstream is done.
+  TRI_ASSERT(!infos().isFullCountEnabled());
+
+  return {ExecutionState::DONE, stats};
 }
