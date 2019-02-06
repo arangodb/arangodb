@@ -401,7 +401,6 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
   asio_ns::async_write(_protocol.socket, buffers,
                        [this, self, ri = std::move(item)](asio_ns::error_code const& ec,
                                                             std::size_t transferred) mutable {
-                         std::cout << "using item " << ri->_request->payloadSize();
     _bytesToSend.fetch_sub(ri->_request->payloadSize(), std::memory_order_release);
     asyncWriteCallback(ec, transferred, std::move(ri));
   });
