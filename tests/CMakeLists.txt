@@ -188,6 +188,7 @@ target_link_libraries(
 
 target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
+  ${V8_INCLUDE_DIR}
 )
 
 # add these includes as system includes because otherwise

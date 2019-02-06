@@ -114,13 +114,6 @@ set(V8_VERSION
   "${PROJECT_NAME}: Version"
 )
 
-set(V8_INCLUDE_DIR
-  "${V8_DIR}/include;${V8_DIR};${V8_TARGET_DIR}/x64.release/obj/gen"
-  CACHE INTERNAL
-  "${PROJECT_NAME}: include path"
-)
-
-
 
 ################################################################################
 ## WINDOWS with msbuild
@@ -316,7 +309,13 @@ if (WIN32)
 
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
-  )
+    )
+  set(V8_INCLUDE_DIR
+    debug "${V8_DIR}/include;${V8_DIR};${V8_LIBRARY_DEBUG}/"
+    optimized "${V8_DIR}/include;${V8_DIR};${V8_LIBRARY_RELEASE}/"
+    CACHE INTERNAL
+    "${PROJECT_NAME}: include path"
+    )
 
 else ()
 
@@ -439,6 +438,11 @@ message(${V8_GYP_ARGS})
   )
 
   set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
+  set(V8_INCLUDE_DIR
+    "${V8_DIR}/include;${V8_DIR};${V8_TARGET_DIR}/x64.release/obj/gen"
+    CACHE INTERNAL
+    "${PROJECT_NAME}: include path"
+    )
 endif()
 
 set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
@@ -470,3 +474,6 @@ if (NOT WIN32)
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../Installation/archive-de-thinner.sh ${V8_REL_TARGET_PATH}
     COMMENT de-thins V8 .a files)
 endif()
+
+
+set(V8_INCLUDE_DIR ${V8_INCLUDE_DIR} PARENT_SCOPE)
