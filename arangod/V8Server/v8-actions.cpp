@@ -362,12 +362,12 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   if (request->authenticated()) {
     if (user.empty() || (ExecContext::CURRENT != nullptr &&
                          ExecContext::CURRENT->isAdminUser())) {
-      req->ForceSet(IsAdminUser, v8::True(isolate));
+      req->Set(IsAdminUser, v8::True(isolate));
     } else {
-      req->ForceSet(IsAdminUser, v8::False(isolate));
+      req->Set(IsAdminUser, v8::False(isolate));
     }
   } else {
-    req->ForceSet(IsAdminUser, ExecContext::isAuthEnabled() ?
+    req->Set(IsAdminUser, ExecContext::isAuthEnabled() ?
                   v8::False(isolate) : v8::True(isolate));
   }
 
