@@ -233,23 +233,25 @@ out of sync.
 
 One of the following two cases can happen:
 
-a) If another _DBServer_ (that does not hold a _replica_ for this _shard_ already)
-   is available in the Cluster, a new _follower_ will automatically
-   be created on this other _DBServer_ (so the _replication factor_ constraint is
-   satisfied again).
-b) If no other _DBServer_ (that does not hold a _replica_ for this _shard_ already)
-   is available, the service continues with one _follower_ less than the number
-   prescribed by the _replication factor_.
+**a)** If another _DBServer_ (that does not hold a _replica_ for this _shard_ already)
+       is available in the Cluster, a new _follower_ will automatically
+       be created on this other _DBServer_ (so the _replication factor_ constraint is
+       satisfied again).
+
+**b)** If no other _DBServer_ (that does not hold a _replica_ for this _shard_ already)
+       is available, the service continues with one _follower_ less than the number
+       prescribed by the _replication factor_.
 
 If the old _DBServer_ with the _follower_ copy comes back, one of the following
 two cases can happen:
 
-a) If previously we were in case a), the _DBServer_ recognizes that there is a new
-   _follower_ that was elected in the meantime, so it will no longer be a _follower_
-   for that _shard_.
-b) If previously we were in case b), the _DBServer_ automatically resynchronizes its
-   data with the _leader_. The _replication factor_ constraint is now satisfied again
-   and order is restored.
+**a)** If previously we were in case a), the _DBServer_ recognizes that there is a new
+      _follower_ that was elected in the meantime, so it will no longer be a _follower_
+       for that _shard_.
+
+**b)** If previously we were in case b), the _DBServer_ automatically resynchronizes its
+       data with the _leader_. The _replication factor_ constraint is now satisfied again
+       and order is restored.
 
 ### Failure of a leader
 
