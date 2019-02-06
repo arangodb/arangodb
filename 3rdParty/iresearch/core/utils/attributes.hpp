@@ -480,7 +480,7 @@ const attribute_map<T, Ref, Args...>::ref<U>::NIL;
 /// @brief storage of shared_ptr to attributes
 //////////////////////////////////////////////////////////////////////////////
 
-MSVC_ONLY(template class IRESEARCH_API irs::attribute_map<stored_attribute, std::shared_ptr>);
+MSVC_ONLY(template class IRESEARCH_API irs::attribute_map<stored_attribute, std::shared_ptr>;)
 
 class IRESEARCH_API attribute_store
     : public attribute_map<stored_attribute, std::shared_ptr> {
@@ -580,7 +580,7 @@ FORCE_INLINE bool operator!=(
 /// @brief storage of data pointers to attributes
 //////////////////////////////////////////////////////////////////////////////
 
-MSVC_ONLY(template class IRESEARCH_API irs::attribute_map<attribute, pointer_wrapper>);
+MSVC_ONLY(template class IRESEARCH_API irs::attribute_map<attribute, pointer_wrapper>;)
 
 class IRESEARCH_API attribute_view
     : public attribute_map<attribute, pointer_wrapper> {

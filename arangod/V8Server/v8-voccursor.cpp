@@ -239,7 +239,7 @@ struct V8Cursor final {
         return false;
       }
     }
-    return true;
+    return true; // still got some data
   }
 
   /// @brief fetch the next batch
@@ -285,7 +285,7 @@ struct V8Cursor final {
 
   static void New(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_TRY_CATCH_BEGIN(isolate);
-    TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
+    TRI_GET_GLOBALS();
 
     if (!args.IsConstructCall()) {  // if not call as a constructor call it
       TRI_V8_THROW_EXCEPTION_USAGE("only instance-able by constructor");
@@ -348,10 +348,13 @@ struct V8Cursor final {
                                          contextOwnedByExterior);
     TRI_DEFER(cc->release());
     // args.Holder() is supposedly better than args.This()
-    auto self = new V8Cursor(isolate, args.Holder(), *vocbase, cc->id());
+    auto self = std::make_unique<V8Cursor>(isolate, args.Holder(), *vocbase, cc->id());
     Result r = self->fetchData(cc);
+    self.release(); // args.Holder() owns the pointer
     if (r.fail()) {
       TRI_V8_THROW_EXCEPTION(r);
+    } else {
+      TRI_V8_RETURN(args.This());
     }
     // do not delete self, its owned by V8 now
 
@@ -367,9 +370,36 @@ struct V8Cursor final {
     TRI_V8_TRY_CATCH_BEGIN(isolate);
     v8::Isolate* isolate = args.GetIsolate();
     v8::HandleScope scope(isolate);
-    TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_NOT_IMPLEMENTED,
-        "toArray() is not supported on ArangoQueryStreamCursor");
+    
+    V8Cursor* self = V8Cursor::unwrap(args.Holder());
+    if (self == nullptr) {
+      TRI_V8_RETURN_UNDEFINED();
+    }
+    
+    v8::Handle<v8::Array> resArray = v8::Array::New(isolate);
+    
+    // iterate over result and return it
+    uint32_t j = 0;
+    while (self->maybeFetchBatch(isolate)) {
+      if (!self->_dataIterator) {
+        break;
+      }
+      
+      if (V8PlatformFeature::isOutOfMemory(isolate)) {
+        TRI_V8_SET_EXCEPTION_MEMORY();
+        break;
+      }
+      
+      while (self->_dataIterator->valid()) {
+        VPackSlice s = self->_dataIterator->value();
+        resArray->Set(j++, TRI_VPackToV8(isolate, s, &self->_options));
+        ++(*self->_dataIterator);
+      }
+      // reset so that the next one can fetch again
+      self->_dataIterator.reset();
+    }
+    TRI_V8_RETURN(resArray);
+    
     TRI_V8_TRY_CATCH_END
   }
 
@@ -421,8 +451,10 @@ struct V8Cursor final {
 
     if (self->_dataIterator != nullptr) {
       TRI_V8_RETURN_TRUE();
+    } else {
+      TRI_V8_RETURN_FALSE();
     }
-    TRI_V8_RETURN_FALSE();
+    
     TRI_V8_TRY_CATCH_END
   }
 

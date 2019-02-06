@@ -101,7 +101,7 @@ filter::prepared::ptr by_prefix::prepare(
 }
 
 DEFINE_FILTER_TYPE(by_prefix)
-DEFINE_FACTORY_DEFAULT(by_prefix);
+DEFINE_FACTORY_DEFAULT(by_prefix)
 
 by_prefix::by_prefix() NOEXCEPT
   : by_term(by_prefix::type()) {

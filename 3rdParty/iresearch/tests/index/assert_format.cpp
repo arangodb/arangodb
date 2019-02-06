@@ -698,7 +698,7 @@ irs::columnstore_reader::ptr format::get_columnstore_reader() const {
   return nullptr;
 }
 
-DEFINE_FORMAT_TYPE_NAMED(tests::format, "iresearch_format_tests");
+DEFINE_FORMAT_TYPE_NAMED(tests::format, "iresearch_format_tests")
 REGISTER_FORMAT(tests::format);
 
 /*static*/ irs::format::ptr format::make() {

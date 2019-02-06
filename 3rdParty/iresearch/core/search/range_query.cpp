@@ -98,9 +98,11 @@ void limited_sample_scorer::score(
   }
 
   struct state_t {
+    order::prepared::collectors collectors;
     attribute_store filter_attrs; // filter attributes for a the current state/term
-    order::prepared::stats stats;
-    state_t(const order::prepared& order): stats(order.prepare_stats()) {}
+    state_t(const order::prepared& order)
+      : collectors(order.prepare_collectors(1)) { // 1 term per attribute_store because a range is treated as a disjunction
+    }
   };
   std::unordered_map<hashed_bytes_ref, state_t> term_stats; // stats for a specific term
   std::unordered_map<scored_term_state_t*, state_t*> state_stats; // stats for a specific state
@@ -109,6 +111,25 @@ void limited_sample_scorer::score(
   for (auto& entry: scored_states_) {
     auto& scored_state = entry.second;
     auto term_itr = scored_state.state.reader->iterator();
+
+    // find the stats for the current term
+    auto res = map_utils::try_emplace(
+      term_stats,
+      make_hashed_ref(bytes_ref(scored_state.term), std::hash<irs::bytes_ref>()),
+      order
+    );
+    auto inserted = res.second;
+    auto& stats_entry = res.first->second;
+    auto& collectors = stats_entry.collectors;
+    auto& field = *scored_state.state.reader;
+    auto& segment = scored_state.sub_reader;
+
+    // once per every 'state_t' collect field statistics over the entire index
+    if (inserted) {
+      for (auto& sr: index) {
+        collectors.collect(sr, field); // collect field statistics once per segment
+      }
+    }
 
     // find term attributes using cached state
     // use bytes_ref::blank here since we just "jump" to cached state,
@@ -119,26 +140,13 @@ void limited_sample_scorer::score(
       continue; // some internal error that caused the term to disapear
     }
 
-    // find the stats for the current term
-    auto& stats_entry = map_utils::try_emplace(
-      term_stats,
-      make_hashed_ref(bytes_ref(scored_state.term), std::hash<irs::bytes_ref>()),
-      order
-    ).first->second;
-
-    auto& stats = stats_entry.stats;
-    auto& field = *scored_state.state.reader;
-    auto& segment = scored_state.sub_reader;
-    auto& term_attrs = term_itr->attributes();
-
-    stats.collect(segment, field, term_attrs); // collect statistics
-
+    collectors.collect(segment, field, 0, term_itr->attributes()); // collect statistics, 0 because only 1 term
     state_stats.emplace(&scored_state, &stats_entry); // associate states to a state
   }
 
   // iterate over all stats and apply/store order stats
   for (auto& entry: term_stats) {
-    entry.second.stats.finish(entry.second.filter_attrs, index);
+    entry.second.collectors.finish(entry.second.filter_attrs, index);
   }
 
   // set filter attributes for each corresponding term

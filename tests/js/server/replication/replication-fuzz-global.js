@@ -85,7 +85,7 @@ function ReplicationSuite() {
     masterFunc(state);
     
     // use lastLogTick as of now
-    state.lastLogTick = replication.logger.state().state.lastLogTick;
+    state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
 
     db._useDatabase("_system");
     connectToSlave();
