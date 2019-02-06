@@ -66,6 +66,7 @@ app-path = @LOCALSTATEDIR@/lib/arangodb3-apps
 [log]
 level = info
 @COMMENT_LOGFILE@file = @LOCALSTATEDIR@/log/arangodb3/arangod.log
+level = threads=debug
 
 [cluster]
 
