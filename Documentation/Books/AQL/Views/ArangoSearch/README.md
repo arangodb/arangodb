@@ -30,6 +30,12 @@ FOR doc IN someView
   SEARCH searchExpression
 ```
 
+ArangoSearch views cannot be used as edge collections in traversals:
+
+```js
+FOR v IN 1..3 ANY startVertex someView /* invalid! */
+```
+
 ### SEARCH
 
 `SEARCH` expressions look a lot like `FILTER` operations, but have some noteable
