@@ -32,10 +32,6 @@
 #include <sstream>
 #include <thread>
 
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
-
 #include "Agency/Agent.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
@@ -1526,3 +1522,49 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   store.dumpToBuilder(*builder);
   return builder;
 }
+
+/// @brief load a compacted snapshot, returns true if successfull and false
+/// otherwise. In case of success store and index are modified. The store
+/// is reset to the state after log index `index` has been applied. Sets
+/// `index` to 0 if there is no compacted snapshot.
+State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
+
+  auto bindVars = std::make_shared<VPackBuilder>();
+  { VPackObjectBuilder b(&bindVars); }
+
+  char buf[100];
+  std::snprintf (
+    buf, "FOR l IN log LIMIT l._key <= %s SORT l._key DESC RETURN l",
+    stringify(lastIndex));
+  std::string aql = buff;
+
+  LOG_DEVEL << aql;
+
+  TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
+  arangodb::aql::Query query(false, *_vocbase, aql::QueryString(aql), bindVars,
+                             nullptr, arangodb::aql::PART_MAIN);
+
+  aql::QueryResult queryResult = query.executeSync(_queryRegistry);
+
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  }
+
+  VPackSlice result = queryResult.result->slice();
+
+  if (result.isArray()) {
+    try {
+      builder.add(resolveExternals(result));
+    } catch (...) {
+      VPackArrayBuilder a(&builder);
+    }
+  } else {
+    // We should never be here! Just die!
+    LOG_TOPIC(FATAL, Logger::AGENCY)
+      << "Error retrieving last persisted compaction. The result was not an Array";
+    FATAL_ERROR_EXIT();
+  }
+
+  return false;
+}
+

@@ -560,20 +560,18 @@ RestStatus RestAgencyHandler::handleConfig() {
 }
 
 RestStatus RestAgencyHandler::handleState() {
-  Builder body;
-  body.add(VPackValue(VPackValueType::Array));
-  for (auto const& i : _agent->state().get()) {
-    body.add(VPackValue(VPackValueType::Object));
-    body.add("index", VPackValue(i.index));
-    body.add("term", VPackValue(i.term));
-    if (i.entry != nullptr) {
-      body.add("query", VPackSlice(i.entry->data()));
-    }
-    body.add("clientId", VPackValue(i.clientId));
-    body.close();
+
+  Node agency;
+  arangodb::consensus::index_t index = _agent->readDB(node);
+  VPackBuilder body;
+  _agent->readDB(body);
+  
+  Builder body = 
+  { VPackObjectBuilder b(&body);
+    
   }
-  body.close();
-  generateResult(rest::ResponseCode::OK, body.slice());
+    
+  generateResult(rest::ResponseCode::OK, _agent->handleState());
   return RestStatus::DONE;
 }
 

@@ -218,6 +218,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Get read store and compaction index
   index_t readDB(Node&) const;
 
+  /// @brief Get read store and compaction index
+  index_t readDB(VPackBuilder&) const;
+
   /// @brief Get read store
   ///  WARNING: this assumes caller holds appropriate
   ///  locks or will use executeLockedRead() or

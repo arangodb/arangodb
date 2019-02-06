@@ -1579,6 +1579,29 @@ arangodb::consensus::index_t Agent::readDB(Node& node) const {
   return _commitIndex;
 }
 
+/// Get readdb
+arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+
+  uint64_t commitIndex = 0;
+   
+  { READ_LOCKER(oLocker, _outputLock);
+
+    commitIndex = _commitIndex;
+    // commit index
+    builder.add("index", commitIndex);
+
+    // key-value store {}
+    builder.add(VPackValue("agency"));
+    _readDB.get().toBuilder(builder, true); }
+  
+  // replicated log []
+  builder.add(VPackValue("log"));
+  _state.toVelocyPack(commitIndex, builder);
+  
+  return commitIndex;
+}
+
 void Agent::executeLockedRead(std::function<void()> const& cb) {
   _tiLock.assertNotLockedByCurrentThread();
   MUTEX_LOCKER(ioLocker, _ioLock);
