@@ -170,9 +170,8 @@ void SupervisedScheduler::shutdown() {
     }
 
     LOG_TOPIC(ERR, Logger::THREADS)
-        << "Schduler received shutdown, but there are still tasks on the "
-           "queue: "
-        << "jobsSubmitted=" << jobsSubmitted << " jobsDone=" << jobsDone;
+        << "Scheduler received shutdown, but there are still tasks on the "
+        << "queue: jobsSubmitted=" << jobsSubmitted << " jobsDone=" << jobsDone;
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
@@ -181,6 +180,12 @@ void SupervisedScheduler::shutdown() {
 
   while (_numWorker > 0) {
     stopOneThread();
+  }
+  
+  while (!cleanupAbandonedThreads()) {
+    LOG_TOPIC(ERR, Logger::THREADS)
+    << "Scheduler received shutdown, but there are still abandoned threads";
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 }
 
@@ -281,7 +286,7 @@ void SupervisedScheduler::runSupervisor() {
   }
 }
 
-void SupervisedScheduler::cleanupAbandonedThreads() {
+bool SupervisedScheduler::cleanupAbandonedThreads() {
   auto i = _abandonedWorkerStates.begin();
 
   while (i != _abandonedWorkerStates.end()) {
@@ -292,6 +297,8 @@ void SupervisedScheduler::cleanupAbandonedThreads() {
       i++;
     }
   }
+  
+  return _abandonedWorkerStates.empty();
 }
 
 void SupervisedScheduler::sortoutLongRunningThreads() {
