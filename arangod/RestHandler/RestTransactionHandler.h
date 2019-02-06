@@ -46,6 +46,9 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   RestStatus execute() override;
   bool cancel() override final;
 
+ protected:
+  virtual uint32_t forwardingTarget() override;
+
  private:
   void executeGetState();
   void executeBegin();

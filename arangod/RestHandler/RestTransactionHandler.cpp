@@ -128,7 +128,7 @@ void RestTransactionHandler::executeBegin() {
                     "Not supported on this server type");
     }
     tid = basics::StringUtils::uint64(value);
-    if (tid == 0) {  // tid % 3 == 0
+    if (tid == 0 || !TransactionManager::isChildTransactionId(tid)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "invalid transaction ID");
     }
@@ -137,8 +137,9 @@ void RestTransactionHandler::executeBegin() {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
                     "Not supported on this server type");
     }
-    tid = ServerState::instance()->isCoordinator() ? ClusterInfo::instance()->uniqid(1)
-                                                   : TRI_NewTickServer();
+    tid = ServerState::instance()->isCoordinator()
+              ? TRI_NewServerSpecificTickMod4()       // coordinator
+              : TRI_NewServerSpecificTickMod4() + 3;  // legacy
   }
   TRI_ASSERT(tid != 0);
 
@@ -407,4 +408,23 @@ bool RestTransactionHandler::cancel() {
     v8::V8::TerminateExecution(isolate);
   }
   return true;
+}
+
+/// @brief returns the short id of the server which should handle this request
+uint32_t RestTransactionHandler::forwardingTarget() {
+  rest::RequestType const type = _request->requestType();
+  if (type != rest::RequestType::GET && type != rest::RequestType::PUT &&
+      type != rest::RequestType::DELETE_REQ) {
+    return 0;
+  }
+
+  std::vector<std::string> const& suffixes = _request->suffixes();
+  if (suffixes.size() < 1) {
+    return 0;
+  }
+
+  uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
+  uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
+
+  return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
 }
