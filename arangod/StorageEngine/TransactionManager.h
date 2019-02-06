@@ -52,9 +52,16 @@ class TransactionManager {
 
  public:
   typedef std::function<void(TRI_voc_tid_t, TransactionData const*)> TrxCallback;
-
   enum class Ownership : bool { Lease = true, Move = false };
 
+ public:
+  static bool isChildTransactionId(TRI_voc_tid_t);
+  static bool isCoordinatorTransactionId(TRI_voc_tid_t);
+  static bool isFollowerTransactionId(TRI_voc_tid_t);
+  static bool isLeaderTransactionId(TRI_voc_tid_t);
+  static bool isLegacyTransactionId(TRI_voc_tid_t);
+
+ public:
   // register a list of failed transactions
   void registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions);
 

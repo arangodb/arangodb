@@ -32,6 +32,26 @@
 
 using namespace arangodb;
 
+bool TransactionManager::isChildTransactionId(TRI_voc_tid_t tid) {
+  return isLeaderTransactionId(tid) || isFollowerTransactionId(tid);
+}
+
+bool TransactionManager::isCoordinatorTransactionId(TRI_voc_tid_t tid) {
+  return (tid % 4) == 0;
+}
+
+bool TransactionManager::isFollowerTransactionId(TRI_voc_tid_t tid) {
+  return (tid % 4) == 2;
+}
+
+bool TransactionManager::isLeaderTransactionId(TRI_voc_tid_t tid) {
+  return (tid % 4) == 1;
+}
+
+bool TransactionManager::isLegacyTransactionId(TRI_voc_tid_t tid) {
+  return (tid % 4) == 3;
+}
+
 // register a list of failed transactions
 void TransactionManager::registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
