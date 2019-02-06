@@ -35,6 +35,17 @@ GreetingsFeature::GreetingsFeature(application_features::ApplicationServer& serv
 void GreetingsFeature::prepare() {
   LOG_TOPIC(INFO, arangodb::Logger::FIXME)
       << "" << rest::Version::getVerboseVersionString();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    << "==========================================================";
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    << "== This is a maintainer version intended for debugging. ==";
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    << "==           DO NOT USE IN PRODUCTION!                  ==";
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    << "==========================================================";
+#endif
 }
 
 void GreetingsFeature::unprepare() {
