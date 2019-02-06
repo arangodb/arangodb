@@ -81,27 +81,33 @@ IndexExecutorInfos::IndexExecutorInfos(
                     make_shared_unordered_set({outputRegister}), nrInputRegisters,
                     nrOutputRegisters, std::move(registersToClear)),
       _indexes(indexes),
+      //_invars,
       _condition(condition),
       _allowCoveringIndexOptimization(false),
       _ast(ast),
+      //in_regs,
       _hasMultipleExpansions(false),
       _isLastIndex(false),
       _options(options),
+      //currentIndex
+      _cursor(nullptr),
+
       _indexesExhausted(false),
       _done(false),
+      _cursors(indexes.size()),
+
       _outputRegisterId(outputRegister),
       _engine(engine),
       _collection(collection),
       _outVariable(outVariable),
-      _cursor(nullptr),
       _projections(projections),
-      _cursors(indexes.size()),
       _trxPtr(trxPtr),
       _expInVars(std::move(expInVars)),
       _expInRegs(std::move(expInRegs)),
+
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
       _useRawDocumentPointers(useRawDocumentPointers),
-      _nonConstExpression(nonConstExpression),
+      _nonConstExpression(std::move(nonConstExpression)),
       _produceResult(produceResult),
       _hasV8Expression(hasV8Expression) {}
 
