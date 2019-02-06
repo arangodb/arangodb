@@ -217,7 +217,7 @@ void setHasMultipleExpansions(bool flag) { _hasMultipleExpansions = flag; };
 
   std::vector<size_t> const& _coveringIndexAttributePositions;
   bool _useRawDocumentPointers;
-  std::vector<std::unique_ptr<NonConstExpression>>& _nonConstExpression;
+  std::vector<std::unique_ptr<NonConstExpression>> _nonConstExpression;
   bool _produceResult;
   bool _hasV8Expression;
 };
