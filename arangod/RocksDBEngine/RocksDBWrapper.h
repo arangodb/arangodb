@@ -179,7 +179,9 @@ class RocksDBWrapper : public rocksdb::TransactionDB {
                      rocksdb::ColumnFamilyHandle* column_family, const rocksdb::Slice& key,
                      rocksdb::PinnableSlice* value) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->Get(options, column_family, key, value);
+    rocksdb::ReadOptions local_options(options);
+    local_options.snapshot = rewriteSnapshot(options.snapshot);
+    return _db->Get(local_options, column_family, key, value);
   }
 
   using DB::MultiGet;
@@ -540,6 +542,7 @@ class RocksDBWrapper : public rocksdb::TransactionDB {
  protected:
   void pauseAllIterators();
   void pauseAllSnapshots();
+  const rocksdb::Snapshot * rewriteSnapshot(const rocksdb::Snapshot * snap);
 
   /// copies of the Open parameters
   const rocksdb::DBOptions _db_options;
@@ -713,6 +716,8 @@ class RocksDBWrapperSnapshot : public rocksdb::Snapshot {
       } // if
     } // if
   }
+
+  const rocksdb::Snapshot * getOriginalSnapshot() const {return _snap;}
 
 protected:
   virtual ~RocksDBWrapperSnapshot() {};  // because it is protected in base class

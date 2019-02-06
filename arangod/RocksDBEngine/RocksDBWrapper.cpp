@@ -67,9 +67,12 @@ RocksDBWrapper::RocksDBWrapper(const rocksdb::DBOptions& db_options,
 rocksdb::Iterator* RocksDBWrapper::NewIterator(const rocksdb::ReadOptions& opts,
                                                rocksdb::ColumnFamilyHandle* column_family) {
     READ_LOCKER(lock, _rwlock);
-
+#if 1
     RocksDBWrapperIterator * wrapIt = new RocksDBWrapperIterator(_db->NewIterator(opts, column_family), *this);
     return wrapIt;
+#else
+    return _db->NewIterator(opts, column_family);
+#endif
 } // RocksDBWrapper::NewIterator
 
 
@@ -103,21 +106,26 @@ void RocksDBWrapper::releaseIterator(RocksDBWrapperIterator * iter) {
 
 const rocksdb::Snapshot* RocksDBWrapper::GetSnapshot() {
     READ_LOCKER(lock, _rwlock);
-
+#if 1
     RocksDBWrapperSnapshot * wrapSnap = new RocksDBWrapperSnapshot(_db->GetSnapshot(), *this);
 
     return wrapSnap;
-
+#else
+    return _db->GetSnapshot();
+#endif
 } // RocksDBWrapper::GetSnapshot
 
 /// @brief Capital R ReleaseSnapshot is a rocksdb routine
 void RocksDBWrapper::ReleaseSnapshot(const rocksdb::Snapshot * snapshot) {
     READ_LOCKER(lock, _rwlock);
+#if 1
     RocksDBWrapperSnapshot * wrapper;
 
     wrapper = (RocksDBWrapperSnapshot *) snapshot;
     wrapper->deleteSnapshot(_db);
-
+#else
+    _db->ReleaseSnapshot(snapshot);
+#endif
 } // RocksDBWrapper::ReleaseSnapshot
 
 /// @brief Maintain a list of outstanding snapshots so they can be disabled prior to restore
@@ -146,5 +154,20 @@ void RocksDBWrapper::releaseSnapshot(RocksDBWrapperSnapshot * snap) {
   return;
 
 } // RocksDBWrapper::releaseSnapshot
+
+const rocksdb::Snapshot * RocksDBWrapper::rewriteSnapshot(const rocksdb::Snapshot * snap) {
+
+  MUTEX_LOCKER(lock, _snapMutex);
+  const rocksdb::Snapshot * retSnap(nullptr);
+
+  auto it = _snapSet.find((RocksDBWrapperSnapshot *)snap);
+  if (_snapSet.end() != it) {
+    retSnap = (*it)->getOriginalSnapshot();
+  } // if
+
+  return retSnap;
+
+} // RocksDBWrapper::releaseSnapshot
+
 
 }  // namespace arangodb
