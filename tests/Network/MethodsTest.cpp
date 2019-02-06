@@ -60,10 +60,10 @@ struct SchedulerTestSetup {
 
     ApplicationServer::setStateUnsafe(ServerState::IN_WAIT);
     auto orderedFeatures = server.getOrderedFeatures();
+    features[2]->validateOptions(nullptr);
     for (auto& f : orderedFeatures) {
       f->prepare();
     }
-
     for (auto& f : orderedFeatures) {
       f->start();
     }
@@ -75,25 +75,26 @@ struct SchedulerTestSetup {
 
     auto orderedFeatures = server.getOrderedFeatures();
     for (auto& f : orderedFeatures) {
-    f->beginShutdown();
+      f->beginShutdown();
     }
     for (auto& f : orderedFeatures) {
-    f->stop();
+      f->stop();
     }
     for (auto& f : orderedFeatures) {
-    f->unprepare();
-  }
+      f->unprepare();
+    }
 
-  arangodb::application_features::ApplicationServer::server = nullptr;
- }
- 
- std::vector<std::unique_ptr<arangodb::application_features::ApplicationFeature*>> features;
+    arangodb::application_features::ApplicationServer::server = nullptr;
+   }
+  
+    std::vector<std::unique_ptr<arangodb::application_features::ApplicationFeature*>> features;
  };
 
 struct DummyConnection final : fuerte::Connection {
   DummyConnection(fuerte::detail::ConnectionConfiguration const& conf) : fuerte::Connection(conf) {}
   fuerte::MessageID sendRequest(std::unique_ptr<fuerte::Request> r,
                         fuerte::RequestCallback cb) override {
+    _sendRequestNum++;
     cb(fuerte::errorToInt(_err), std::move(r), std::move(_response));
     return 0;
   }
@@ -113,6 +114,7 @@ struct DummyConnection final : fuerte::Connection {
   
   fuerte::ErrorCondition _err = fuerte::ErrorCondition::NoError;
   std::unique_ptr<fuerte::Response> _response;
+  int _sendRequestNum = 0;
 };
 
 struct DummyPool : network::ConnectionPool {
@@ -182,12 +184,13 @@ TEST_CASE("network::Methods", "[network]") {
     
     VPackBuffer<uint8_t> buffer;
     auto f = network::sendRequestRetry("tcp://example.org:80", fuerte::RestVerb::Get, "/",
-                                       buffer, network::Timeout(60.0));
+                                       buffer, network::Timeout(5.0));
     
     // the default behaviour should be to retry after 200 ms
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    CHECK(!f.isReady());
-    
+    REQUIRE(!f.isReady());
+    REQUIRE(pool._conn->_sendRequestNum == 1);
+
     // Step 2: Now respond with no error
     pool._conn->_err = fuerte::ErrorCondition::NoError;
     
@@ -224,7 +227,7 @@ TEST_CASE("network::Methods", "[network]") {
     
     VPackBuffer<uint8_t> buffer;
     auto f = network::sendRequestRetry("tcp://example.org:80", fuerte::RestVerb::Get, "/",
-                                       buffer, network::Timeout(60.0), {}, true);
+                                       buffer, network::Timeout(5.0), {}, true);
     
     // the default behaviour should be to retry after 200 ms
     std::this_thread::sleep_for(std::chrono::milliseconds(5));

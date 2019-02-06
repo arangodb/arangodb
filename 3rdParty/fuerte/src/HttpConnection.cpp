@@ -399,10 +399,11 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
   
   auto self = shared_from_this();
   asio_ns::async_write(_protocol.socket, buffers,
-                       [this, self, item = std::move(item)](asio_ns::error_code const& ec,
+                       [this, self, ri = std::move(item)](asio_ns::error_code const& ec,
                                                             std::size_t transferred) mutable {
-    _bytesToSend.fetch_sub(item->_request->payloadSize(), std::memory_order_release);
-    asyncWriteCallback(ec, transferred, std::move(item));
+                         std::cout << "using item " << ri->_request->payloadSize();
+    _bytesToSend.fetch_sub(ri->_request->payloadSize(), std::memory_order_release);
+    asyncWriteCallback(ec, transferred, std::move(ri));
   });
   FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: done, this=" << this << "\n";
 }

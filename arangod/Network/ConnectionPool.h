@@ -128,6 +128,8 @@ class ConnectionPool {
 
   TEST_VIRTUAL std::shared_ptr<fuerte::Connection> createConnection(fuerte::ConnectionBuilder&);
   Ref selectConnection(ConnectionList&, fuerte::ConnectionBuilder& builder);
+  
+  void removeBrokenConnections(ConnectionList&);
 
  private:
   const Config _config;

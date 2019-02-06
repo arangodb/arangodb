@@ -170,12 +170,12 @@ class RequestsState : public std::enable_shared_from_this<RequestsState<F>> {
       _cb(Response{_destination, errorToInt(ErrorCondition::Canceled), nullptr});
       return;
     }
-
-    auto timeout = std::chrono::duration_cast<std::chrono::milliseconds>(_endTime - _startTime);
-    TRI_ASSERT(timeout.count() > 0);
+    
+    auto localTO = std::chrono::duration_cast<std::chrono::milliseconds>(_endTime - now);
+    TRI_ASSERT(localTO.count() > 0);
 
     auto ref = pool->leaseConnection(endpoint);
-    auto req = prepareRequest(_type, _path, _payload, timeout, _headers);
+    auto req = prepareRequest(_type, _path, _payload, localTO, _headers);
     auto self = RequestsState::shared_from_this();
     auto cb = [self, ref, this](fuerte::Error err, std::unique_ptr<fuerte::Request> req,
                                 std::unique_ptr<fuerte::Response> res) {
@@ -190,7 +190,8 @@ class RequestsState : public std::enable_shared_from_this<RequestsState<F>> {
     switch (fuerte::intToError(err)) {
       case fuerte::ErrorCondition::NoError: {
         TRI_ASSERT(res);
-        if (res->statusCode() == fuerte::StatusOK || res->statusCode() == fuerte::StatusCreated ||
+        if (res->statusCode() == fuerte::StatusOK ||
+            res->statusCode() == fuerte::StatusCreated ||
             res->statusCode() == fuerte::StatusAccepted ||
             res->statusCode() == fuerte::StatusNoContent) {
           _cb(Response{_destination, errorToInt(ErrorCondition::NoError), std::move(res)});
@@ -213,22 +214,29 @@ class RequestsState : public std::enable_shared_from_this<RequestsState<F>> {
         // Note that this case includes the refusal of a leader to accept
         // the operation, in which we have to flush ClusterInfo:
 
-        auto tryAgainAfter = std::chrono::steady_clock::now() - _startTime;
+        auto const now = std::chrono::steady_clock::now();
+        auto tryAgainAfter = now - _startTime;
         if (tryAgainAfter < std::chrono::milliseconds(200)) {
           tryAgainAfter = std::chrono::milliseconds(200);
         } else if (tryAgainAfter > std::chrono::seconds(3)) {
           tryAgainAfter = std::chrono::seconds(3);
         }
-        auto dueTime = std::chrono::steady_clock::now() + tryAgainAfter;
-        if (dueTime >= _endTime) {
+        if ((now + tryAgainAfter) >= _endTime) { // cancel out
           _cb(Response{_destination, err, std::move(res)});
           break;
         }
 
         auto* sch = SchedulerFeature::SCHEDULER;
         auto self = RequestsState::shared_from_this();
-        _workItem = sch->queueDelay(RequestLane::CLUSTER_INTERNAL, tryAgainAfter,
-                                    [self, this](bool) { sendRequest(); });
+        auto cb = [self, this](bool canceled) {
+          if (canceled) {
+            _cb(Response{_destination, errorToInt(ErrorCondition::Canceled), nullptr});
+          } else {
+            sendRequest();
+          }
+        };
+        _workItem = sch->queueDelay(RequestLane::CLUSTER_INTERNAL,
+                                    tryAgainAfter, std::move(cb));
         break;
       }
 

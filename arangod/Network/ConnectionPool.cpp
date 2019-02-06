@@ -36,7 +36,9 @@ namespace network {
 using namespace arangodb::fuerte::v1;
 
 ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
-    : _config(config), _loop(config.numIOThreads) {}
+    : _config(config), _loop(config.numIOThreads) {
+      TRI_ASSERT(_config.minOpenConnections <= _config.maxOpenConnections);
+    }
 
 ConnectionPool::~ConnectionPool() { shutdown(); }
 
@@ -78,6 +80,23 @@ void ConnectionPool::shutdown() {
   }
   _connections.clear();
 }
+  
+void ConnectionPool::removeBrokenConnections(ConnectionList& list) {
+  auto const now = std::chrono::steady_clock::now();
+  auto it = list.connections.begin();
+  while (it != list.connections.end()) {
+    auto& c = *it;
+    // lets not keep around diconnected fuerte connection objects
+    auto lastUsed = now - c->lastUsed;
+    if (c->fuerte->state() == fuerte::Connection::State::Failed ||
+        (c->fuerte->state() == fuerte::Connection::State::Disconnected &&
+         (lastUsed > std::chrono::seconds(5)))) {
+          it = list.connections.erase(it);
+        } else {
+          it++;
+        }
+  }
+}
 
 /// remove unsued and broken connections
 void ConnectionPool::pruneConnections() {
@@ -90,26 +109,14 @@ void ConnectionPool::pruneConnections() {
 
     auto now = std::chrono::steady_clock::now();
 
-    auto it = list.connections.begin();
-    while (it != list.connections.end()) {
-      auto& c = *it;
-      // lets not keep around diconnected fuerte connection objects
-      auto lastUsed = now - c->lastUsed;
-      if (c->fuerte->state() == fuerte::Connection::State::Failed ||
-          (c->fuerte->state() == fuerte::Connection::State::Disconnected &&
-           (lastUsed > std::chrono::seconds(5)))) {
-        it = list.connections.erase(it);
-      } else {
-        it++;
-      }
-    }
+    removeBrokenConnections(list);
 
     // do not remove more connections than necessary
     if (list.connections.size() <= _config.minOpenConnections) {
       continue;
     }
 
-    it = list.connections.begin();
+    auto it = list.connections.begin();
     while (it != list.connections.end()) {
       auto& c = *it;
 
@@ -119,6 +126,10 @@ void ConnectionPool::pruneConnections() {
 
       if (num == 0 && lastUsed > ttl) {
         it = list.connections.erase(it);
+        // do not remove more connections than necessary
+        if (list.connections.size() <= _config.minOpenConnections) {
+          break;
+        }
         continue;
       }
 
@@ -128,6 +139,7 @@ void ConnectionPool::pruneConnections() {
       it++;
     }
     
+    // do not remove connections if there are less
     if (list.connections.size() <= _config.maxOpenConnections) {
       continue; // done
     }
@@ -137,6 +149,9 @@ void ConnectionPool::pruneConnections() {
       auto& c = *it;
       if (c->numLeased.load() == 0) {
         it = list.connections.erase(it);
+        if (list.connections.size() <= _config.maxOpenConnections) {
+          break;
+        }
       }
       it++;
     }

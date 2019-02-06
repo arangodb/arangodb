@@ -182,6 +182,7 @@ void SupervisedScheduler::shutdown() {
     stopOneThread();
   }
   
+  cleanupAbandonedThreads(); // cleanup once without logging
   while (!cleanupAbandonedThreads()) {
     LOG_TOPIC(ERR, Logger::THREADS)
     << "Scheduler received shutdown, but there are still abandoned threads";

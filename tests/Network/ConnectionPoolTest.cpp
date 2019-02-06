@@ -108,8 +108,31 @@ TEST_CASE("network::ConnectionPool", "[network]") {
     
     CHECK(pool.numOpenConnections() == 0);
   } // acquire multiple endpoints
-
-
-#warning TODO minOpenConnections, maxOpenConnections
+  
+  SECTION("checking min and max connections") {
+    config.minOpenConnections = 1;
+    config.maxOpenConnections = 2;
+    ConnectionPool pool(config);
+    
+    {
+      auto ref1 = pool.leaseConnection("tcp://example.org:80");
+      CHECK(pool.numOpenConnections() == 1);
+      
+      auto ref2 = pool.leaseConnection("tcp://example.org:80");
+      CHECK(ref1.connection().get() != ref2.connection().get());
+      CHECK(pool.numOpenConnections() == 2);
+      
+      auto ref3 = pool.leaseConnection("tcp://example.org:80");
+      CHECK(ref1.connection().get() != ref3.connection().get());
+      CHECK(pool.numOpenConnections() == 3);
+    }
+    CHECK(pool.numOpenConnections() == 3);
+    
+    // 15ms > 10ms
+    std::this_thread::sleep_for(std::chrono::milliseconds(15));
+    pool.pruneConnections();
+    
+    CHECK(pool.numOpenConnections() == 1);
+  } // acquire multiple endpoints
 }
 
