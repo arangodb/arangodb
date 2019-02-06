@@ -208,7 +208,7 @@ has been implemented in ArangoDB Cluster:
 3. the coordinator will figure out a *leader* and 1 *follower* and create 1 *shard* (as this is the default)
 4. Insert data
 
-    127.0.0.1:8530@_system> db.test.insert({"replication": "😎"})
+    127.0.0.1:8530@_system> db.test.insert({"foo": "bar"})
 
 5. The coordinator will write the data to the leader, which in turn will
 replicate it to the follower.
@@ -311,7 +311,7 @@ has been implemented in ArangoDB Cluster:
         "_key" : "100069",
         "_id" : "test/100069",
         "_rev" : "513",
-        "replication" : "😎"
+        "foo" : "bar"
     }
     ```
 9. After a while the _supervision_ declares _DBServer001_ to be completely dead.
