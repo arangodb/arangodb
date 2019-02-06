@@ -182,11 +182,11 @@ than 2.
 {% endhint %}
 
 At any given time, one of the copies is declared to be the _leader_ and
-all other replicas are _followers_. Write operations for this _shard_
+all other replicas are _followers_. Internally, write operations for this _shard_
 are always sent to the _DBServer_ which happens to hold the _leader_ copy,
 which in turn replicates the changes to all _followers_ before the operation
 is considered to be done and reported back to the _Coordinator_.
-Read operations are all served by the server holding the _leader_ copy,
+Internally, read operations are all served by the _DBServer_ holding the _leader_ copy,
 this allows to provide snapshot semantics for complex transactions.
 
 Using synchronous replication alone will guarantee consistency and high availabilty
@@ -242,17 +242,17 @@ the _Agency_. Therefore, a _supervision_ process running in the Raft leader
 of the Agency, can take the necessary action (after 15 seconds of missing
 heartbeats), namely to promote one of the servers that hold in-sync
 replicas of the shard to leader for that shard. This involves a
-reconfiguration in the Agency and leads to the fact that coordinators
-now contact a different DBserver for requests to this shard. Service
+reconfiguration in the _Agency_ and leads to the fact that coordinators
+now contact a different _DBserver_ for requests to this shard. Service
 resumes. The other surviving replicas automatically resynchronize their
-data with the new leader. When the DBserver with the original leader
+data with the new leader. When the _DBserver_ with the original leader
 copy comes back, it notices that it now holds a follower replica,
 resynchronizes its data with the new leader and order is restored.
 
 The following example will give you an idea of how failover
 has been implemented in ArangoDB Cluster:
 
-1. The _leader_ of a _shard_ (lets name it _DBServer001_) is going down.
+1. The _leader_ of a _shard_ (let's name it _DBServer001_) is going down.
 2. A _Coordinator_ is asked to return a document:
 
     127.0.0.1:8530@_system> db.test.document("100069")
@@ -274,7 +274,7 @@ has been implemented in ArangoDB Cluster:
     ```
 9. After a while the _supervision_ declares _DBServer001_ to be completely dead.
 10. A new _follower_ is determined from the pool of _DBservers_.
-11. The new _follower_ syncs its data from the _leade_r and order is restored.
+11. The new _follower_ syncs its data from the _leader_ and order is restored.
 
 Please note that there may still be timeouts. Depending on when exactly
 the request has been done (in regard to the _supervision_) and depending
