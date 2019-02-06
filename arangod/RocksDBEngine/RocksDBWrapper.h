@@ -534,6 +534,8 @@ class RocksDBWrapper : public rocksdb::TransactionDB {
     return _db->DefaultColumnFamily();
   }
 
+  ///
+  bool pauseRocksDB(std::chrono::milliseconds timeout, bool force);
 
   /// give out readwrite lock so iterators and snapshots can protect their API too
   basics::ReadWriteLock & rwlock() {return _rwlock;}
@@ -546,8 +548,8 @@ class RocksDBWrapper : public rocksdb::TransactionDB {
   void releaseSnapshot(RocksDBWrapperSnapshot *);
 
  protected:
-  void pauseAllIterators();
-  void pauseAllSnapshots();
+  void deactivateAllIterators();
+  void deactivateAllSnapshots();
   const rocksdb::Snapshot * rewriteSnapshot(const rocksdb::Snapshot * snap);
 
   /// copies of the Open parameters

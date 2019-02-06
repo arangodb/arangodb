@@ -64,6 +64,26 @@ RocksDBWrapper::RocksDBWrapper(const rocksdb::DBOptions& db_options,
 } // RocksDBWrapper::RocksDBWrapper
 
 
+/// @brief start a rocksdb pause, then return.  True if pause started within timeout
+bool RocksDBWrapper::pauseRocksDB(std::chrono::milliseconds timeout, bool force) {
+  bool withinTimeout(false);
+
+  // NOTE: this is intentionally without unlock protection
+//  withinTimeout=_rwlock.writeLock(timeout);
+
+  if (withinTimeout || force) {
+    deactivateAllIterators();
+    deactivateAllSnapshots();
+    _db->Close();
+    delete _db;
+    _db = nullptr;
+  } // if
+
+  return withinTimeout;
+
+} // RocksDBWrapper::pauseRocksDB
+
+
 rocksdb::Iterator* RocksDBWrapper::NewIterator(const rocksdb::ReadOptions& opts,
                                                rocksdb::ColumnFamilyHandle* column_family) {
     READ_LOCKER(lock, _rwlock);
@@ -106,7 +126,21 @@ void RocksDBWrapper::releaseIterator(RocksDBWrapperIterator * iter) {
 } // RocksDBWrapper::releaseIterator
 
 
-const rocksdb::Snapshot* RocksDBWrapper::GetSnapshot() {
+/// @brief Walk list of active iterators releasing the underlying object and invalidating state
+void RocksDBWrapper::deactivateAllIterators() {
+
+  // have global write lock on db, iterator lock is redundant but safe
+  MUTEX_LOCKER(lock, _iterMutex);
+  for (auto iter : _iterSet) {
+    iter->arangoRelease();
+  } // for
+
+  return;
+
+} // RockDBWrapper::deactivateAllIterators
+
+
+  const rocksdb::Snapshot* RocksDBWrapper::GetSnapshot() {
     READ_LOCKER(lock, _rwlock);
 #if 1
     RocksDBWrapperSnapshot * wrapSnap = new RocksDBWrapperSnapshot(_db->GetSnapshot(), *this);
@@ -170,6 +204,19 @@ const rocksdb::Snapshot * RocksDBWrapper::rewriteSnapshot(const rocksdb::Snapsho
   return retSnap;
 
 } // RocksDBWrapper::releaseSnapshot
+
+/// @brief Walk list of active snapshots releasing the underlying object and invalidating state
+void RocksDBWrapper::deactivateAllSnapshots() {
+
+  // have global write lock on db, snapshot lock is redundant but safe
+  MUTEX_LOCKER(lock, _snapMutex);
+  for (auto iter : _snapSet) {
+    iter->arangoRelease(_db);
+  } // for
+
+  return;
+
+} // RockDBWrapper::deactivateAllSnapshots
 
 
 }  // namespace arangodb
