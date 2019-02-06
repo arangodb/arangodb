@@ -72,7 +72,7 @@ IndexExecutorInfos::IndexExecutorInfos(
     std::vector<std::string> const& projections, transaction::Methods* trxPtr,
     std::vector<size_t> const& coveringIndexAttributePositions,
     bool allowCoveringIndexOptimization, bool useRawDocumentPointers,
-    std::vector<std::unique_ptr<NonConstExpression>> nonConstExpression,
+    std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
     bool hasV8Expression, AstNode const* condition,
     std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
