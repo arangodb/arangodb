@@ -311,8 +311,8 @@ if (WIN32)
     "${PROJECT_NAME}: Libraries"
     )
   set(V8_INCLUDE_DIR
-    debug "${V8_DIR}/include;${V8_DIR};${V8_LIBRARY_DEBUG}/"
-    optimized "${V8_DIR}/include;${V8_DIR};${V8_LIBRARY_RELEASE}/"
+    debug "${V8_DIR}/include;${V8_DIR};${V8_LIBRARY_DEBUG}/obj/global_intermediate/"
+    optimized "${V8_DIR}/include;${V8_DIR};${V8_LIBRARY_RELEASE}/obj/global_intermediate/"
     CACHE INTERNAL
     "${PROJECT_NAME}: include path"
     )
