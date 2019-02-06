@@ -85,11 +85,11 @@ IndexExecutorInfos::IndexExecutorInfos(
       _condition(condition),
       _allowCoveringIndexOptimization(false),
       _ast(ast),
-      //in_regs,
+      // in_regs,
       _hasMultipleExpansions(false),
       _isLastIndex(false),
       _options(options),
-      //currentIndex
+      // currentIndex
       _cursor(nullptr),
 
       _indexesExhausted(false),
@@ -175,8 +175,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       buildCallback(_documentProducer, _infos.getOutVariable(),
                     _infos.getProduceResult(), _infos.getProjections(),
                     _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
-                    _infos.getAllowCoveringIndexOptimization(),
-                    _infos.getUseRawDocumentPointers()));
+                    true, _infos.getUseRawDocumentPointers()));
 };
 
 IndexExecutor::~IndexExecutor() = default;
@@ -188,7 +187,7 @@ arangodb::OperationCursor* IndexExecutor::orderCursor(size_t currentIndex) {
   // TODO: if we have _nonConstExpressions, we should also reuse the
   // cursors, but in this case we have to adjust the iterator's search condition
   // from _condition
-  //if (!_infos.getNonConstExpressions().empty() || _infos.checkCursor(currentIndex)) {
+  // if (!_infos.getNonConstExpressions().empty() || _infos.checkCursor(currentIndex)) {
   if (!_infos.getNonConstExpressions().empty() || _infos.getCursor(currentIndex) == nullptr) {
     AstNode const* conditionNode = nullptr;
     if (_infos.getCondition() != nullptr) {
@@ -254,13 +253,13 @@ bool IndexExecutor::readIndex(size_t atMost, IndexIterator::DocumentCallback con
       continue;
     }
 
-   // TRI_ASSERT(atMost >= _returned);
+    // TRI_ASSERT(atMost >= _returned);
 
-   /*
-    if (_returned == atMost) {
-      // We have returned enough, do not check if we have more
-      return true;
-    }*/
+    /*
+     if (_returned == atMost) {
+       // We have returned enough, do not check if we have more
+       return true;
+     }*/
 
     TRI_IF_FAILURE("IndexBlock::readIndex") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -312,7 +311,6 @@ bool IndexExecutor::initIndexes(InputAqlItemRow input) {
   // context again.
   _alreadyReturned.clear();
   // Find out about the actual values for the bounds in the variable bound case:
-
 
   if (!_infos.getNonConstExpressions().empty()) {
     TRI_ASSERT(_infos.getCondition() != nullptr);
@@ -442,12 +440,11 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   while (true) {
-
     if (_infos.getDone()) {
       return {ExecutionState::DONE, stats};
     }
 
-      // std::tie(state, input) = _input;
+    // std::tie(state, input) = _input;
     std::tie(state, input) = _fetcher.fetchRow();
 
     if (state == ExecutionState::WAITING) {
@@ -460,8 +457,8 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
     }
     TRI_ASSERT(input.isInitialized());
 
-    //TODO  init indizes, right position?
-    //initIndexes(input);
+    // TODO  init indizes, right position?
+    // initIndexes(input);
     if (!initIndexes(input)) {
       _infos.setDone(true);
       break;
