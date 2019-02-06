@@ -571,6 +571,9 @@ struct TRI_v8_global_t {
 
   /// @brief "id" key name
   v8::Persistent<v8::String> IdKey;
+  
+  /// @brief "isAdminUser" key name
+  v8::Persistent<v8::String> IsAdminUser;
 
   /// @brief "initTimeout" key name
   v8::Persistent<v8::String> InitTimeoutKey;

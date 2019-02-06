@@ -224,7 +224,7 @@ TEST_CASE("ClusterInfoTest", "[cluster]") {
   ClusterInfoSetup s;
   (void)(s);
 
-SECTION("test_drop_databse") {
+SECTION("test_drop_database") {
   auto* database = arangodb::DatabaseFeature::DATABASE;
   REQUIRE(nullptr != database);
   auto* ci = arangodb::ClusterInfo::instance();

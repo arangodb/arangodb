@@ -70,6 +70,7 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
       HeadersKey(),
       HttpOnlyKey(),
       IdKey(),
+      IsAdminUser(),
       InitTimeoutKey(),
       IsRestoreKey(),
       IsSystemKey(),
@@ -159,6 +160,7 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
   HeadersKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "headers"));
   HttpOnlyKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "httpOnly"));
   IdKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "id"));
+  IsAdminUser.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "isAdminUser"));
   InitTimeoutKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "initTimeout"));
   IsRestoreKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "isRestore"));
   IsSynchronousReplicationKey.Reset(
