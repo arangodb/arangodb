@@ -63,17 +63,15 @@ RocksDBWrapper::RocksDBWrapper(const rocksdb::DBOptions& db_options,
 
 } // RocksDBWrapper::RocksDBWrapper
 
+
 rocksdb::Iterator* RocksDBWrapper::NewIterator(const rocksdb::ReadOptions& opts,
                                                rocksdb::ColumnFamilyHandle* column_family) {
     READ_LOCKER(lock, _rwlock);
-#if 0
-    return _db->NewIterators(opts, column_family);
 
-#else
     RocksDBWrapperIterator * wrapIt = new RocksDBWrapperIterator(_db->NewIterator(opts, column_family), *this);
     return wrapIt;
-#endif
-  }
+} // RocksDBWrapper::NewIterator
+
 
 /// @brief Maintain a list of outstanding iterators so they can be disabled prior to restore
 void RocksDBWrapper::registerIterator(RocksDBWrapperIterator * iter) {
@@ -103,6 +101,50 @@ void RocksDBWrapper::releaseIterator(RocksDBWrapperIterator * iter) {
 } // RocksDBWrapper::releaseIterator
 
 
+const rocksdb::Snapshot* RocksDBWrapper::GetSnapshot() {
+    READ_LOCKER(lock, _rwlock);
 
+    RocksDBWrapperSnapshot * wrapSnap = new RocksDBWrapperSnapshot(_db->GetSnapshot(), *this);
+
+    return wrapSnap;
+
+} // RocksDBWrapper::GetSnapshot
+
+/// @brief Capital R ReleaseSnapshot is a rocksdb routine
+void RocksDBWrapper::ReleaseSnapshot(const rocksdb::Snapshot * snapshot) {
+    READ_LOCKER(lock, _rwlock);
+    RocksDBWrapperSnapshot * wrapper;
+
+    wrapper = (RocksDBWrapperSnapshot *) snapshot;
+    wrapper->deleteSnapshot(_db);
+
+} // RocksDBWrapper::ReleaseSnapshot
+
+/// @brief Maintain a list of outstanding snapshots so they can be disabled prior to restore
+void RocksDBWrapper::registerSnapshot(RocksDBWrapperSnapshot * snap) {
+
+  MUTEX_LOCKER(lock, _snapMutex);
+
+  if (!_snapSet.insert(snap).second) {
+    TRI_ASSERT(false);
+  } // if
+
+  return;
+
+} // RocksDBWrapper::registerSnapshot
+
+
+/// @brief lower case r releaseSnapshot removes known snapshot from local tracking
+void RocksDBWrapper::releaseSnapshot(RocksDBWrapperSnapshot * snap) {
+
+  MUTEX_LOCKER(lock, _snapMutex);
+
+  if (0 == _snapSet.erase(snap)) {
+    TRI_ASSERT(false);
+  } // if
+
+  return;
+
+} // RocksDBWrapper::releaseSnapshot
 
 }  // namespace arangodb

@@ -43,6 +43,7 @@
 namespace arangodb {
 
 class RocksDBWrapperIterator;
+class RocksDBWrapperSnapshot;
 
 ////////////////////////////////////////////////////////////////////////////////
 ///
@@ -249,25 +250,19 @@ class RocksDBWrapper : public rocksdb::TransactionDB {
   virtual rocksdb::Iterator* NewIterator(const rocksdb::ReadOptions& opts,
                                          rocksdb::ColumnFamilyHandle* column_family) override;
 
-#if 0
   virtual rocksdb::Status NewIterators(
       const rocksdb::ReadOptions& options,
       const std::vector<rocksdb::ColumnFamilyHandle*>& column_families,
       std::vector<rocksdb::Iterator*>* iterators) override {
+    TRI_ASSERT(false);
     READ_LOCKER(lock, _rwlock);
+    // lacks code to translate to RocksDBWrapperIterators.
     return _db->NewIterators(options, column_families, iterators);
   }
-#endif
 
-  virtual const rocksdb::Snapshot* GetSnapshot() override {
-    READ_LOCKER(lock, _rwlock);
-    return _db->GetSnapshot();
-  }
+  virtual const rocksdb::Snapshot* GetSnapshot() override;
 
-  virtual void ReleaseSnapshot(const rocksdb::Snapshot* snapshot) override {
-    READ_LOCKER(lock, _rwlock);
-    return _db->ReleaseSnapshot(snapshot);
-  }
+  virtual void ReleaseSnapshot(const rocksdb::Snapshot* snapshot) override;
 
   using DB::GetMapProperty;
   using DB::GetProperty;
@@ -532,16 +527,19 @@ class RocksDBWrapper : public rocksdb::TransactionDB {
   }
 
 
+  /// give out readwrite lock so iterators and snapshots can protect their API too
+  basics::ReadWriteLock & rwlock() {return _rwlock;}
+
   /// management routines for iterators and snapshots
   void registerIterator(RocksDBWrapperIterator *);
   void releaseIterator(RocksDBWrapperIterator *);
 
+  void registerSnapshot(RocksDBWrapperSnapshot *);
+  void releaseSnapshot(RocksDBWrapperSnapshot *);
+
  protected:
   void pauseAllIterators();
-
-
-
-
+  void pauseAllSnapshots();
 
   /// copies of the Open parameters
   const rocksdb::DBOptions _db_options;
@@ -555,6 +553,10 @@ class RocksDBWrapper : public rocksdb::TransactionDB {
   /// iterator management
   Mutex _iterMutex;
   std::set<RocksDBWrapperIterator *> _iterSet;
+
+  /// snapshot management
+  Mutex _snapMutex;
+  std::set<RocksDBWrapperSnapshot *> _snapSet;
 
   /// original stuff
   TransactionDB * _db;
@@ -580,45 +582,83 @@ class RocksDBWrapperIterator : public rocksdb::Iterator {
     _dbWrap.registerIterator(this);
   }
 
+/// race condition between iterator delete and dbWrapper making all purge?  manual rwlock usage? atomic flag?
   virtual ~RocksDBWrapperIterator()
   {
-    _isValid = false;
-    delete _it;
-    _it = nullptr;
-    _dbWrap.releaseIterator(this);
+    READ_LOCKER(lock, _dbWrap.rwlock());
+    if (_isValid) {
+      _isValid = false;
+      delete _it;
+      _it = nullptr;
+      _dbWrap.releaseIterator(this);
+    } // if
   }
 
   virtual bool Valid() const override {
     return _isValid ? _it->Valid() : false;
   }
 
-  virtual void SeekToFirst() override {if (_isValid) _it->SeekToFirst();}
+  virtual void SeekToFirst() override {
+    READ_LOCKER(lock, _dbWrap.rwlock());
+    if (_isValid) _it->SeekToFirst();
+  }
 
-  virtual void SeekToLast() override {if (_isValid) _it->SeekToLast();}
+  virtual void SeekToLast() override {
+    READ_LOCKER(lock, _dbWrap.rwlock());
+    if (_isValid) _it->SeekToLast();
+  }
 
-  virtual void Seek(const rocksdb::Slice& target) override {if (_isValid) _it->Seek(target);}
+  virtual void Seek(const rocksdb::Slice& target) override {
+    READ_LOCKER(lock, _dbWrap.rwlock());
+    if (_isValid) _it->Seek(target);
+  }
 
-  virtual void SeekForPrev(const rocksdb::Slice& target) override {if (_isValid) _it->SeekForPrev(target);}
+  virtual void SeekForPrev(const rocksdb::Slice& target) override {
+    READ_LOCKER(lock, _dbWrap.rwlock());
+    if (_isValid) _it->SeekForPrev(target);
+  }
 
-  virtual void Next() override {if (_isValid) _it->Next();}
+  virtual void Next() override {
+    READ_LOCKER(lock, _dbWrap.rwlock());
+    if (_isValid) _it->Next();
+  }
 
-  virtual void Prev() override {if (_isValid) _it->Prev();}
+  virtual void Prev() override {
+    READ_LOCKER(lock, _dbWrap.rwlock());
+    if (_isValid) _it->Prev();
+  }
 
-  virtual rocksdb::Slice key() const override {return _isValid ? _it->key() : rocksdb::Slice();};
+  virtual rocksdb::Slice key() const override {
+    READ_LOCKER(lock, _dbWrap.rwlock());
+    return _isValid ? _it->key() : rocksdb::Slice();
+  };
 
-  virtual rocksdb::Slice value() const override {return _isValid ? _it->value() : rocksdb::Slice();};
+  virtual rocksdb::Slice value() const override {
+    READ_LOCKER(lock, _dbWrap.rwlock());
+    return _isValid ? _it->value() : rocksdb::Slice();
+  };
 
-  virtual rocksdb::Status status() const override {return _isValid ? _it->status() : rocksdb::Status::Aborted();};
+  virtual rocksdb::Status status() const override {
+    READ_LOCKER(lock, _dbWrap.rwlock());
+    return _isValid ? _it->status() : rocksdb::Status::Aborted();
+  };
 
-  virtual rocksdb::Status Refresh() override {return _isValid ? _it->Refresh() : rocksdb::Status::Aborted();};
+  virtual rocksdb::Status Refresh() override {
+    READ_LOCKER(lock, _dbWrap.rwlock());
+    return _isValid ? _it->Refresh() : rocksdb::Status::Aborted();
+  };
 
   virtual rocksdb::Status GetProperty(std::string prop_name, std::string* prop) override
-  {return _isValid ? _it->GetProperty(prop_name, prop) : rocksdb::Status::Aborted();};
+  {
+    READ_LOCKER(lock, _dbWrap.rwlock());
+    return _isValid ? _it->GetProperty(prop_name, prop) : rocksdb::Status::Aborted();
+  };
 
+  /// this is called with write lock already held
   void arangoRelease() {_isValid = false; delete _it; _it = nullptr;};
 
 protected:
-  bool _isValid;
+  std::atomic<bool> _isValid;
   rocksdb::Iterator * _it;
   RocksDBWrapper & _dbWrap;
 
@@ -627,6 +667,65 @@ protected:
   // No copying allowed
   RocksDBWrapperIterator(const RocksDBWrapperIterator&);
   void operator=(const RocksDBWrapperIterator&);
+
+};// class RocksDBWrapperIterator
+
+
+////////////////////////////////////////////////////////////////////////////////
+///
+/// @brief This version of a rocksdb snapshot holds the live snapshot internally
+///  until a hotbackup restore.  At that point, its GetSequenceNumber() returns zero.
+///  It releases the rocksdb snapshot immediately.
+///
+////////////////////////////////////////////////////////////////////////////////
+
+class RocksDBWrapperSnapshot : public rocksdb::Snapshot {
+ public:
+
+  RocksDBWrapperSnapshot(const rocksdb::Snapshot * rocksSnap, RocksDBWrapper & dbWrap)
+    : _isValid(true), _snap(rocksSnap), _dbWrap(dbWrap)
+  {
+    _dbWrap.registerSnapshot(this);
+  }
+
+  void deleteSnapshot(rocksdb::TransactionDB * internalDB)
+  {
+    READ_LOCKER(lock, _dbWrap.rwlock());
+    if (_isValid) {
+      arangoRelease(internalDB);
+      _dbWrap.releaseSnapshot(this);
+    } // if
+    delete this;
+  }
+
+  virtual rocksdb::SequenceNumber GetSequenceNumber() const {
+    READ_LOCKER(lock, _dbWrap.rwlock());
+    return _isValid ? _snap->GetSequenceNumber() : (rocksdb::SequenceNumber) 0 ;
+  }
+
+  /// this is called with write lock already held
+  void arangoRelease(rocksdb::TransactionDB * internalDB) {
+    if (_isValid) {
+      _isValid = false;
+      if (nullptr != _snap) {
+        internalDB->ReleaseSnapshot(_snap);
+        _snap = nullptr;
+      } // if
+    } // if
+  }
+
+protected:
+  virtual ~RocksDBWrapperSnapshot() {};  // because it is protected in base class
+
+  std::atomic<bool> _isValid;
+  const rocksdb::Snapshot * _snap;
+  RocksDBWrapper & _dbWrap;
+
+ private:
+  RocksDBWrapperSnapshot();
+  // No copying allowed
+  RocksDBWrapperSnapshot(const RocksDBWrapperSnapshot&);
+  void operator=(const RocksDBWrapperSnapshot&);
 };
 
 
