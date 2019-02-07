@@ -1,6 +1,15 @@
 v3.4.3 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #8108: AQL variable - not working query since upgrade to 3.4 release
+
+* fixed possible segfault when using COLLECT with a LIMIT and an offset
+
+* fixed COLLECT forgetting top-level variables after 1000 rows
+
+* fix undefined behavior when calling user-defined AQL functions from an AQL
+  query via a streaming cursor
+
 * fix broken validation of tick range in arangodump
 
 * updated bundled curl library to version 7.63.0
@@ -9,11 +18,25 @@ v3.4.3 (XXXX-XX-XX)
   usage of the executed query. In a cluster, the value contains the peak memory
   usage across all shards, but it is not summed up across shards.
 
+* data masking: better documentation, fixed default phone number,
+  changed default range to -100 and 100 for integer masking function
+
+* fix supervision's failed server handling to transactionally create
+  all failed leader/followers along
+
+
+v3.4.2.1 (2019-02-01)
+---------------------
+
+* upgrade to new velocypack version
+
 
 v3.4.2 (2019-01-24)
 -------------------
 
-* a bug affecting stream cursor was fixed (internal issue #3169)
+* added configurable masking of dumped data via `arangodump` tool to obfuscate exported sensible data
+
+* upgraded to OpenSSL 1.1.0j
 
 * fixed an issue with AQL query IN index lookup conditions being converted into
   empty arrays when they were shared between multiple nodes of a lookup condition
@@ -22,8 +45,6 @@ v3.4.2 (2019-01-24)
   This issue affected queries such as the following
 
       FILTER (... && ...) || doc.indexAttribute IN non-empty-array
-
-* added configurable masking of dumped data via `arangodump` tool to obfuscate exported sensible data
 
 * upgraded arangodb starter version to 0.14.0
 
@@ -120,7 +141,6 @@ v3.4.2 (2019-01-24)
 * Improve single threaded performance by scheduler optimization.
 
 * Releveling logging in maintenance
-
 
 v3.4.1 (2018-12-19)
 -------------------

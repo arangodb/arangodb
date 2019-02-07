@@ -395,6 +395,10 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
       response->getHeaderField(StaticStrings::ContentTypeHeader, found);
   if (found && (cType == StaticStrings::MimeTypeVPack)) {
     VPackOptions options;
+    options.validateUtf8Strings = true;
+    options.disallowExternals = true;
+    options.disallowCustom = true;
+    options.checkAttributeUniqueness = true;
     options.unsupportedTypeBehavior = VPackOptions::FailOnUnsupportedType;
     VPackValidator validator(&options);
 
