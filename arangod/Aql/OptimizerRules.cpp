@@ -2386,6 +2386,9 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
         nn->expression()->replaceNode(simplified);
         modified = true;
       }
+      if (modified) {
+        nn->expression()->invalidateAfterReplacements();
+      }
     }
   }
 

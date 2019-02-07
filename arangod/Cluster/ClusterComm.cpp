@@ -32,7 +32,6 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
-#include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/SimpleHttpCommunicatorResult.h"
 #include "Transaction/Methods.h"

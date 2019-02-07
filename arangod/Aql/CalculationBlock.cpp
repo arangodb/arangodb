@@ -156,7 +156,8 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
     executeExpression(result);
   } else {
     auto cleanup = [this]() {
-      if (_isRunningInCluster) {
+      if (_isRunningInCluster || 
+          _engine->getQuery()->queryOptions().stream) {
         // must invalidate the expression now as we might be called from
         // different threads
         _expression->invalidate();

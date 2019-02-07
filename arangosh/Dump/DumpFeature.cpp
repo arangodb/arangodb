@@ -36,7 +36,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/OpenFilesTracker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -481,10 +480,10 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
     // always create the file so that arangorestore does not complain
     auto file = jobData.directory.writableFile(jobData.name + "_" + hexString +
                                                    ".data.json",
-                                               true);
-    if (!::fileOk(file.get())) {
-      return ::fileError(file.get(), true);
-    }
+                                                 true);
+      if (!::fileOk(file.get())) {
+        return ::fileError(file.get(), true);
+      }
 
     if (dumpData) {
       // save the actual data
@@ -591,7 +590,8 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
                      new UInt64Parameter(&_options.tickEnd));
 
   options->addOption("--maskings", "file with maskings definition",
-                     new StringParameter(&_options.maskingsFile));
+                     new StringParameter(&_options.maskingsFile))
+                     .setIntroducedIn(30322).setIntroducedIn(30402);
 }
 
 void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -992,7 +992,8 @@ void DumpFeature::start() {
     maskings::MaskingsResult m = maskings::Maskings::fromFile(_options.maskingsFile);
 
     if (m.status != maskings::MaskingsResult::VALID) {
-      LOG_TOPIC(FATAL, Logger::CONFIG) << m.message;
+      LOG_TOPIC(FATAL, Logger::CONFIG)
+          << m.message << " in maskings file '" << _options.maskingsFile << "'";
       FATAL_ERROR_EXIT();
     }
 
