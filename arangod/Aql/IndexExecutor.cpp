@@ -175,7 +175,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       buildCallback(_documentProducer, _infos.getOutVariable(),
                     _infos.getProduceResult(), _infos.getProjections(),
                     _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
-                    true, _infos.getUseRawDocumentPointers()));
+                    true, _infos.getUseRawDocumentPointers())); // remove true flag later, it is always true in any case (?)
 };
 
 IndexExecutor::~IndexExecutor() = default;
@@ -306,7 +306,7 @@ bool IndexExecutor::readIndex(size_t atMost, IndexIterator::DocumentCallback con
 }
 
 // TODO why copy of input row?
-bool IndexExecutor::initIndexes(InputAqlItemRow input) {
+bool IndexExecutor::initIndexes(InputAqlItemRow& input) {
   // We start with a different context. Return documents found in the previous
   // context again.
   _alreadyReturned.clear();
@@ -382,7 +382,7 @@ bool IndexExecutor::initIndexes(InputAqlItemRow input) {
   return true;
 }
 
-void IndexExecutor::executeExpressions(InputAqlItemRow input) {
+void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
   TRI_ASSERT(_infos.getCondition() != nullptr);
   TRI_ASSERT(!_infos.getNonConstExpressions().empty());
 

@@ -251,8 +251,8 @@ class IndexExecutor {
   };
 
  private:
-  void executeExpressions(InputAqlItemRow input);
-  bool initIndexes(InputAqlItemRow input);
+  void executeExpressions(InputAqlItemRow& input);
+  bool initIndexes(InputAqlItemRow& input);
 
   /// @brief create an iterator object
   void createCursor();
