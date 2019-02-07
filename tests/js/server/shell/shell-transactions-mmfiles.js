@@ -28,11 +28,12 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-var arangodb = require("@arangodb");
-var db = arangodb.db;
-var testHelper = require("@arangodb/test-helper").Helper;
+const jsunity = require("jsunity");
+const internal = require("internal");
+const arangodb = require("@arangodb");
+const db = arangodb.db;
+const testHelper = require("@arangodb/test-helper").Helper;
+const isCluster = require('@arangodb/cluster').isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -1111,6 +1112,9 @@ function transactionServerFailuresSuite () {
 
     testDiskFullWhenCollectingTransaction : function () {
       internal.debugClearFailAt();
+      if (isCluster) {
+        return; // skip
+      }
 
       db._drop(cn);
       c = db._create(cn);
@@ -1274,6 +1278,9 @@ function transactionServerFailuresSuite () {
 
     testNoCommitMarker : function () {
       internal.debugClearFailAt();
+      if (isCluster) {
+        return; // skip
+      }
 
       db._drop(cn);
       c = db._create(cn);
