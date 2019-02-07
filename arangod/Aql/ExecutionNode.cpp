@@ -110,7 +110,12 @@ std::unordered_map<int, std::string const> const typeNames{
 // that shows the subquery depth and if filled
 // during register planning
 bool isInSubQuery(ExecutionNode const* node) {
-  return node->id() != 1;
+  auto current = node;
+  while (current->hasDependency()){
+    current = current->getFirstDependency();
+  }
+  TRI_ASSERT(current->getType() == ExecutionNode::NodeType::SINGLETON);
+  return current->id() != 1;
 }
 
 }  // namespace
@@ -1436,17 +1441,12 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  bool allowFullcount = true;
   // Fullcount must only be enabled on the last limit node on the main level
-  //TRI_ASSERT(!_fullCount || !isInSubQuery(this));
-  if ( _fullCount && isInSubQuery(this)) {
-    LOG_DEVEL << "detected fullcount in subquery limit - disabling";
-    allowFullcount = false;
-  };
+  TRI_ASSERT(!_fullCount || !isInSubQuery(this));
 
   LimitExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
                            getRegisterPlan()->nrRegs[getDepth()],
-                           getRegsToClear(), _offset, _limit, _fullCount && allowFullcount);
+                           getRegsToClear(), _offset, _limit, _fullCount);
 
   return std::make_unique<ExecutionBlockImpl<LimitExecutor>>(&engine, this,
                                                              std::move(infos));
