@@ -771,7 +771,8 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
     // now start our own transaction
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     TRI_vocbase_t& vocbase = _transactionContextPtr->vocbase();
-    _state = engine->createTransactionState(vocbase, TRI_NewTickServer(), options).release();
+    _state =
+        engine->createTransactionState(vocbase, TRI_NewTickServer(), options).release();
     TRI_ASSERT(_state != nullptr);
     TRI_ASSERT(_state->isTopLevelTransaction());
 
@@ -1458,9 +1459,8 @@ OperationResult transaction::Methods::documentCoordinator(std::string const& col
     }
   }
 
-  int res = arangodb::getDocumentOnCoordinator(*this, collectionName,
-                                               value, options, responseCode,
-                                               errorCounter, resultBody);
+  int res = arangodb::getDocumentOnCoordinator(*this, collectionName, value, options,
+                                               responseCode, errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultDocument(responseCode, resultBody, errorCounter);
@@ -1888,8 +1888,8 @@ OperationResult transaction::Methods::updateCoordinator(std::string const& colle
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  int res = arangodb::modifyDocumentOnCoordinator(*this, collectionName,
-                                                  newValue, options,
+  int res = arangodb::modifyDocumentOnCoordinator(vocbase().name(), collectionName,
+                                                  *this, newValue, options,
                                                   true /* isPatch */, headers, responseCode,
                                                   errorCounter, resultBody);
 
@@ -1937,8 +1937,8 @@ OperationResult transaction::Methods::replaceCoordinator(std::string const& coll
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  int res = arangodb::modifyDocumentOnCoordinator(*this, collectionName,
-                                                  newValue, options,
+  int res = arangodb::modifyDocumentOnCoordinator(vocbase().name(), collectionName,
+                                                  *this, newValue, options,
                                                   false /* isPatch */, headers, responseCode,
                                                   errorCounter, resultBody);
 
@@ -2212,8 +2212,8 @@ OperationResult transaction::Methods::removeCoordinator(std::string const& colle
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  int res = arangodb::deleteDocumentOnCoordinator(*this, collectionName,
-                                                  value, options, responseCode,
+  int res = arangodb::deleteDocumentOnCoordinator(*this, collectionName, value,
+                                                  options, responseCode,
                                                   errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
