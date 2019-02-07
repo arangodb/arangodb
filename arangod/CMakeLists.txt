@@ -229,6 +229,7 @@ SET(ARANGOD_SOURCES
   Aql/OptimizerRulesReplaceFunctions.cpp
   Aql/Parser.cpp
   Aql/PlanCache.cpp
+  Aql/PruneExpressionEvaluator.cpp
   Aql/Quantifier.cpp
   Aql/Query.cpp
   Aql/QueryCache.cpp

@@ -25,6 +25,8 @@
 
 #include "QueryExpressionContext.h"
 
+#include "Aql/AqlValue.h"
+
 namespace arangodb {
 namespace aql {
 class AqlItemBlock;
@@ -39,30 +41,59 @@ class Query;
  */
 class InAndOutRowExpressionContext final : public QueryExpressionContext {
  public:
-  InAndOutRowExpressionContext(Query* query, size_t inputRowId, AqlItemBlock const* inputBlock,
-                               size_t outputRowId, AqlItemBlock const* outputBlock,
-                               std::vector<Variable const*> const& vars,
-                               std::vector<RegisterId> const& regs);
+  InAndOutRowExpressionContext(Query* query, std::vector<Variable const*> const& vars,
+                               std::vector<RegisterId> const& regs, size_t vertexVarIdx,
+                               size_t edgeVarIdx, size_t pathVarIdx);
 
   ~InAndOutRowExpressionContext() {}
+
+  void setInputRow(size_t inputRowId, AqlItemBlock const* inputBlock);
 
   size_t numRegisters() const override { return _regs.size(); }
 
   AqlValue const& getRegisterValue(size_t i) const override;
 
-  Variable const* getVariable(size_t i) const override;
+  Variable const* getVariable(size_t i) const override { return _vars[i]; }
 
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;
 
+  bool needsVertexValue() const { return _vertexVarIdx < _regs.size(); }
+  bool needsEdgeValue() const { return _edgeVarIdx < _regs.size(); }
+  bool needsPathValue() const { return _pathVarIdx < _regs.size(); }
+
+  /// @brief inject the result value when asked for the Vertex data
+  /// This will not copy ownership of slice content. caller needs to make sure
+  /// that the buffer stays valid until evaluate is called
+  void setVertexValue(velocypack::Slice v) {
+    _vertexValue = AqlValue(AqlValueHintDocumentNoCopy(v.begin()));
+  }
+
+  /// @brief inject the result value when asked for the Edge data
+  /// This will not copy ownership of slice content. caller needs to make sure
+  /// that the buffer stays valid until evaluate is called
+  void setEdgeValue(velocypack::Slice e) {
+    _edgeValue = AqlValue(AqlValueHintDocumentNoCopy(e.begin()));
+  }
+
+  /// @brief inject the result value when asked for the Path data
+  /// This will not copy ownership of slice content. caller needs to make sure
+  /// that the buffer stays valid until evaluate is called
+  void setPathValue(velocypack::Slice p) {
+    _pathValue = AqlValue(AqlValueHintDocumentNoCopy(p.begin()));
+  }
+
  private:
   size_t _inputRowId;
   AqlItemBlock const* _inputBlock;
-  size_t _outputRowId;
-  AqlItemBlock const* _outputBlock;
-  RegisterId const _endOfInput;
   std::vector<Variable const*> const& _vars;
   std::vector<RegisterId> const& _regs;
+  size_t const _vertexVarIdx;
+  size_t const _edgeVarIdx;
+  size_t const _pathVarIdx;
+  AqlValue _vertexValue;
+  AqlValue _edgeValue;
+  AqlValue _pathValue;
 };
 }  // namespace aql
 }  // namespace arangodb

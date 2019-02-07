@@ -25,6 +25,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/Expression.h"
+#include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
@@ -546,4 +547,13 @@ double TraverserOptions::estimateCost(size_t& nrItems) const {
   }
   nrItems = count;
   return cost;
+}
+
+void TraverserOptions::activatePrune(std::vector<aql::Variable const*> const& vars,
+                                     std::vector<aql::RegisterId> const& regs,
+                                     size_t vertexVarIdx, size_t edgeVarIdx,
+                                     size_t pathVarIdx, aql::Expression* expr) {
+  _pruneExpression =
+      std::make_unique<aql::PruneExpressionEvaluator>(_trx, _query, vars, regs, vertexVarIdx,
+                                                      edgeVarIdx, pathVarIdx, expr);
 }

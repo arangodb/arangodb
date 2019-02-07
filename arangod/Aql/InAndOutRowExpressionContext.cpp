@@ -26,70 +26,95 @@
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 
+#include <limits.h>
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
-InAndOutRowExpressionContext::InAndOutRowExpressionContext(Query* query, size_t inputRowId, AqlItemBlock const* inputBlock,
-                               size_t outputRowId, AqlItemBlock const* outputBlock,
-                               std::vector<Variable const*> const& vars,
-                               std::vector<RegisterId> const& regs)
-      : QueryExpressionContext(query),
-        _inputRowId(inputRowId),
-        _inputBlock(inputBlock),
-        _outputRowId(outputRowId),
-        _outputBlock(outputBlock),
-        _endOfInput(_inputBlock->getNrRegs()),
-        _vars(vars),
-        _regs(regs) {
-          TRI_ASSERT(_inputBlock != nullptr);
-          TRI_ASSERT(_outputBlock != nullptr);
-          // The currently implemented RegisterPlanning in AQL guarantees that
-          // new variables are only appended to the end of the registers.
-          // Old variables will stay
-          // If this does not hold true anymore we need to fix _endOfInput
-          // decider variable.
-          TRI_ASSERT(_inputBlock->getNrRegs() <= _outputBlock->getNrRegs());
-        }
+InAndOutRowExpressionContext::InAndOutRowExpressionContext(
+    Query* query, std::vector<Variable const*> const& vars,
+    std::vector<RegisterId> const& regs, size_t vertexVarIdx, size_t edgeVarIdx,
+    size_t pathVarIdx)
+    : QueryExpressionContext(query),
+      _inputRowId(0),
+      _inputBlock(nullptr),
+      _vars(vars),
+      _regs(regs),
+      _vertexVarIdx(vertexVarIdx),
+      _edgeVarIdx(edgeVarIdx),
+      _pathVarIdx(pathVarIdx) {
+  TRI_ASSERT(_vars.size() == _regs.size());
+  TRI_ASSERT(_vertexVarIdx < _vars.size() ||
+             _vertexVarIdx == std::numeric_limits<std::size_t>::max());
+  TRI_ASSERT(_edgeVarIdx < _vars.size() ||
+             _edgeVarIdx == std::numeric_limits<std::size_t>::max());
+  TRI_ASSERT(_pathVarIdx < _vars.size() ||
+             _pathVarIdx == std::numeric_limits<std::size_t>::max());
+}
 
-
-Variable const* InAndOutRowExpressionContext::getVariable(size_t i) const {
-  return _vars[i];
+void InAndOutRowExpressionContext::setInputRow(size_t inputRowId,
+                                               AqlItemBlock const* inputBlock) {
+  _inputRowId = inputRowId;
+  _inputBlock = inputBlock;
 }
 
 AqlValue const& InAndOutRowExpressionContext::getRegisterValue(size_t i) const {
-  TRI_ASSERT(i < _outputBlock->getNrRegs());
+  TRI_ASSERT(_inputBlock != nullptr);
   TRI_ASSERT(i < _regs.size());
-  RegisterId const& regId = _regs[i];
-  if (regId < _endOfInput) {
-    return _inputBlock->getValueReference(_inputRowId, regId);
+  if (i == _vertexVarIdx) {
+    return _vertexValue;
   }
-  return _outputBlock->getValueReference(_outputRowId, regId);
+  if (i == _edgeVarIdx) {
+    return _edgeValue;
+  }
+  if (i == _pathVarIdx) {
+    return _pathValue;
+  }
+  // Search InputRow
+  RegisterId const& regId = _regs[i];
+  TRI_ASSERT(regId < _inputBlock->getNrRegs());
+  return _inputBlock->getValueReference(_inputRowId, regId);
 }
 
 AqlValue InAndOutRowExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
-                                                 bool& mustDestroy) const {
-  size_t i = 0;
-  for (auto const& v : _vars) {
+                                                        bool& mustDestroy) const {
+  TRI_ASSERT(_inputBlock != nullptr);
+  for (size_t i = 0; i < _vars.size(); ++i) {
+    auto const& v = _vars[i];
     if (v->id == variable->id) {
       TRI_ASSERT(i < _regs.size());
-      RegisterId const& regId = _regs[i];
-      if (regId < _endOfInput) {
-        if (doCopy) {
-          mustDestroy = true;  // as we are copying
-          return _inputBlock->getValueReference(_inputRowId, regId).clone();
+      if (doCopy) {
+        mustDestroy = true;
+        if (i == _vertexVarIdx) {
+          return _vertexValue.clone();
         }
-        mustDestroy = false;
-        return _inputBlock->getValueReference(_inputRowId, regId);
+        if (i == _edgeVarIdx) {
+          return _edgeValue.clone();
+        }
+        if (i == _pathVarIdx) {
+          return _pathValue.clone();
+        }
+        // Search InputRow
+        RegisterId const& regId = _regs[i];
+        TRI_ASSERT(regId < _inputBlock->getNrRegs());
+        return _inputBlock->getValueReference(_inputRowId, regId).clone();
       } else {
-        if (doCopy) {
-          mustDestroy = true;  // as we are copying
-          return _outputBlock->getValueReference(_outputRowId, regId).clone();
-        }
         mustDestroy = false;
-        return _outputBlock->getValueReference(_outputRowId, regId);
+        if (i == _vertexVarIdx) {
+          return _vertexValue;
+        }
+        if (i == _edgeVarIdx) {
+          return _edgeValue;
+        }
+        if (i == _pathVarIdx) {
+          return _pathValue;
+        }
+        // Search InputRow
+        RegisterId const& regId = _regs[i];
+        TRI_ASSERT(regId < _inputBlock->getNrRegs());
+        return _inputBlock->getValueReference(_inputRowId, regId);
       }
     }
-    ++i;
   }
 
   std::string msg("variable not found '");
@@ -98,4 +123,3 @@ AqlValue InAndOutRowExpressionContext::getVariableValue(Variable const* variable
   msg.append("' in PRUNE statement");
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
 }
-

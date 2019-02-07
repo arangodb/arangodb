@@ -28,6 +28,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Functions.h"
 #include "Aql/InAndOutRowExpressionContext.h"
+#include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/Query.h"
 #include "Basics/StringRef.h"
 #include "Cluster/ClusterComm.h"
@@ -65,8 +66,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
       _edgeReg(0),
       _pathVar(nullptr),
       _pathReg(0),
-      _engines(nullptr),
-      _pruneExpression(ep->pruneExpression()) {
+      _engines(nullptr) {
   auto const& registerPlan = ep->getRegisterPlan()->varInfo;
   ep->getConditionVariables(_inVars);
   for (auto const& v : _inVars) {
@@ -126,42 +126,52 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
 
   auto varInfo = getPlanNode()->getRegisterPlan()->varInfo;
 
-  // Create List for _pruneVars
-  
-  ep->getPruneVariables(_pruneVars);
-  _pruneRegs.reserve(_pruneVars.size());
-  for (auto const v : _pruneVars) {
-    auto it = registerPlan.find(v->id);
-    TRI_ASSERT(it != registerPlan.end());
-    _pruneRegs.emplace_back(it->second.registerId);
-  }
-
   if (usesVertexOutput()) {
     TRI_ASSERT(_vertexVar != nullptr);
     auto it = varInfo.find(_vertexVar->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     _vertexReg = it->second.registerId;
-    _pruneVars.emplace_back(_vertexVar);
-    _pruneRegs.emplace_back(_vertexReg);
   }
+
   if (usesEdgeOutput()) {
     TRI_ASSERT(_edgeVar != nullptr);
     auto it = varInfo.find(_edgeVar->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     _edgeReg = it->second.registerId;
-    _pruneVars.emplace_back(_edgeVar);
-    _pruneRegs.emplace_back(_edgeReg);
   }
+
   if (usesPathOutput()) {
     TRI_ASSERT(_pathVar != nullptr);
     auto it = varInfo.find(_pathVar->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     _pathReg = it->second.registerId;
-    _pruneVars.emplace_back(_pathVar);
-    _pruneRegs.emplace_back(_pathReg);
+  }
+
+  if (ep->pruneExpression() != nullptr) {
+    // Create List for _pruneVars
+    ep->getPruneVariables(_pruneVars);
+    _pruneRegs.reserve(_pruneVars.size());
+    size_t vertexRegIdx = std::numeric_limits<std::size_t>::max();
+    size_t edgeRegIdx = std::numeric_limits<std::size_t>::max();
+    size_t pathRegIdx = std::numeric_limits<std::size_t>::max();
+    for (auto const v : _pruneVars) {
+      auto it = registerPlan.find(v->id);
+      TRI_ASSERT(it != registerPlan.end());
+      if (v == _vertexVar) {
+        vertexRegIdx = _pruneRegs.size();
+      } else if (v == _edgeVar) {
+        edgeRegIdx = _pruneRegs.size();
+      } else if (v == _pathVar) {
+        pathRegIdx = _pruneRegs.size();
+      }
+      _pruneRegs.emplace_back(it->second.registerId);
+    }
+
+    _opts->activatePrune(_pruneVars, _pruneRegs, vertexRegIdx, edgeRegIdx,
+                         pathRegIdx, ep->pruneExpression());
   }
 }
 
@@ -266,7 +276,10 @@ void TraversalBlock::initializeExpressions(AqlItemBlock const* items, size_t pos
   for (size_t i = 0; i < _inVars.size(); ++i) {
     _opts->setVariableValue(_inVars[i], items->getValueReference(pos, _inRegs[i]));
   }
-  // IF cluster => Transfer condition.
+  if (_opts->usesPrune()) {
+    auto* evaluator = _opts->getPruneEvaluator();
+    evaluator->prepareContext(pos, items);
+  }
 }
 
 /// @brief initialize the list of paths
@@ -312,9 +325,10 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items, size_t pos) {
 }
 
 // First : hasMore, Second: written
-std::pair<bool, bool> TraversalBlock::writePath(size_t sourceRowId, AqlItemBlock const& source,
+std::pair<bool, bool> TraversalBlock::writePath(size_t sourceRowId,
+                                                AqlItemBlock const& source,
                                                 size_t resultRowId, AqlItemBlock& result) {
-  //We have a place reserved for this row.
+  // We have a place reserved for this row.
   TRI_ASSERT(resultRowId < result.size());
 
   if (!_traverser->hasMore() || !_traverser->next()) {
@@ -343,14 +357,19 @@ std::pair<bool, bool> TraversalBlock::writePath(size_t sourceRowId, AqlItemBlock
     result.setValue(resultRowId, _pathReg, _traverser->pathToAqlValue(*tmp.builder()));
   }
 
-  if (_pruneExpression) {
-    bool mustDestroy = false;
-    InAndOutRowExpressionContext ctx(_engine->getQuery(), sourceRowId, &source,
-                                     resultRowId, &result, _pruneVars, _pruneRegs);
-    aql::AqlValue res = _pruneExpression->execute(_trx, &ctx, mustDestroy);
-    arangodb::aql::AqlValueGuard guard(res, mustDestroy);
-    TRI_ASSERT(res.isBoolean());
-    if (res.toBoolean()) {
+  // TODO move this into Traverser
+  if (_opts->usesPrune()) {
+    auto* evaluator = _opts->getPruneEvaluator();
+    if (evaluator->needsVertex()) {
+      evaluator->injectVertex(result.getValueReference(resultRowId, _vertexReg).slice());
+    }
+    if (evaluator->needsEdge()) {
+      evaluator->injectEdge(result.getValueReference(resultRowId, _edgeReg).slice());
+    }
+    if (evaluator->needsPath()) {
+      evaluator->injectPath(result.getValueReference(resultRowId, _pathReg).slice());
+    }
+    if (evaluator->evaluate()) {
       _traverser->prune();
     }
   }
@@ -400,7 +419,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> TraversalBlock::getSome
 
     bool hasMore = true;
     bool hasWritten = false;
-    size_t j = 0; // Needed after the loop
+    size_t j = 0;  // Needed after the loop
     for (j = 0; j < toSend; j++) {
       std::tie(hasMore, hasWritten) = writePath(_pos, *cur, j, *res.get());
       if (!hasWritten) {

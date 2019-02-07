@@ -38,6 +38,7 @@ struct AstNode;
 class ExecutionPlan;
 class Expression;
 class Query;
+
 }  // namespace aql
 
 namespace velocypack {

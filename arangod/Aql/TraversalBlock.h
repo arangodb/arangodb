@@ -151,11 +151,7 @@ class TraversalBlock final : public ExecutionBlock {
 
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
 
-  /// @brief The condition given in PRUNE (might be empty)
-  ///        The Node keeps responsibility
-  Expression* _pruneExpression;
-
-  // @brief _pruneVars, a vector containing all _inVars and all outVars
+ // @brief _pruneVars, a vector containing all _inVars and all outVars
   std::vector<Variable const*> _pruneVars;
 
   // @brief _pruneRegs, a vector containg all _inRegs and outRegs
