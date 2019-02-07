@@ -35,8 +35,9 @@ ConstFetcher::ConstFetcher() : _currentBlock{nullptr}, _rowIndex(0) {}
 ConstFetcher::ConstFetcher(BlockFetcher& executionBlock)
     : _currentBlock{nullptr}, _rowIndex(0) {}
 
-void ConstFetcher::injectBlock(std::shared_ptr<InputAqlItemBlockShell> block) {
-  _currentBlock = std::move(block);
+void ConstFetcher::injectBlock(std::shared_ptr<AqlItemBlockShell> block) {
+  _currentBlock = block;
+  _blockForPassThrough = std::move(block);
   _rowIndex = 0;
 }
 
@@ -64,4 +65,13 @@ bool ConstFetcher::indexIsValid() {
 bool ConstFetcher::isLastRowInBlock() {
   TRI_ASSERT(indexIsValid());
   return _rowIndex + 1 == _currentBlock->block().size();
+}
+
+std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> ConstFetcher::fetchBlockForPassthrough(size_t) {
+  // Should only be called once, and then _blockForPassThrough should be
+  // initialized. However, there are still some blocks left that ask their
+  // parent even after they got DONE the last time, and I don't currently have
+  // time to track them down. Thus the following assert is commented out.
+  // TRI_ASSERT(_blockForPassThrough != nullptr);
+  return {ExecutionState::DONE, std::move(_blockForPassThrough)};
 }

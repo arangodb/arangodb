@@ -891,7 +891,7 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
     irs::memory_directory impl;
     failing_directory dir(impl);
     dir.register_failure(failing_directory::Failure::CREATE, "_1.doc"); // postings list (documents)
-    dir.register_failure(failing_directory::Failure::CREATE, "_2.1.doc_mask"); // deleted docs
+    dir.register_failure(failing_directory::Failure::CREATE, "_2.2.doc_mask"); // deleted docs
     dir.register_failure(failing_directory::Failure::CREATE, "_3.cm"); // column meta
     dir.register_failure(failing_directory::Failure::CREATE, "_4.ti"); // term index
     dir.register_failure(failing_directory::Failure::CREATE, "_5.tm"); // term data
@@ -943,7 +943,7 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
     irs::memory_directory impl;
     failing_directory dir(impl);
     dir.register_failure(failing_directory::Failure::CREATE, "_1.doc"); // postings list (documents)
-    dir.register_failure(failing_directory::Failure::CREATE, "_2.1.doc_mask"); // deleted docs
+    dir.register_failure(failing_directory::Failure::CREATE, "_2.2.doc_mask"); // deleted docs
     dir.register_failure(failing_directory::Failure::CREATE, "_3.cm"); // column meta
     dir.register_failure(failing_directory::Failure::CREATE, "_4.ti"); // term index
     dir.register_failure(failing_directory::Failure::CREATE, "_5.tm"); // term data
@@ -1027,9 +1027,9 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
   {
     irs::memory_directory impl;
     failing_directory dir(impl);
-    dir.register_failure(failing_directory::Failure::SYNC, "_1.1.sm"); // segment meta
+    dir.register_failure(failing_directory::Failure::SYNC, "_1.2.sm"); // segment meta
     dir.register_failure(failing_directory::Failure::SYNC, "_2.doc"); // postings list (documents)
-    dir.register_failure(failing_directory::Failure::SYNC, "_3.1.doc_mask"); // deleted docs
+    dir.register_failure(failing_directory::Failure::SYNC, "_3.2.doc_mask"); // deleted docs
     dir.register_failure(failing_directory::Failure::SYNC, "_4.cm"); // column meta
     dir.register_failure(failing_directory::Failure::SYNC, "_5.cs"); // columnstore
     dir.register_failure(failing_directory::Failure::SYNC, "_6.ti"); // term index
@@ -1080,9 +1080,9 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
 
     irs::memory_directory impl;
     failing_directory dir(impl);
-    dir.register_failure(failing_directory::Failure::SYNC, "_1.1.sm"); // segment meta
+    dir.register_failure(failing_directory::Failure::SYNC, "_1.2.sm"); // segment meta
     dir.register_failure(failing_directory::Failure::SYNC, "_2.doc"); // postings list (documents)
-    dir.register_failure(failing_directory::Failure::SYNC, "_3.1.doc_mask"); // deleted docs
+    dir.register_failure(failing_directory::Failure::SYNC, "_3.2.doc_mask"); // deleted docs
     dir.register_failure(failing_directory::Failure::SYNC, "_4.cm"); // column meta
     dir.register_failure(failing_directory::Failure::SYNC, "_5.cs"); // columnstore
     dir.register_failure(failing_directory::Failure::SYNC, "_6.ti"); // term index
@@ -2675,8 +2675,8 @@ TEST(index_death_test_formats_10, open_reader) {
 
   // register failures
   dir.register_failure(failing_directory::Failure::OPEN, "_1.doc"); // postings list (documents)
-  dir.register_failure(failing_directory::Failure::EXISTS, "_1.1.doc_mask"); // deleted docs
-  dir.register_failure(failing_directory::Failure::OPEN, "_1.1.doc_mask"); // deleted docs
+  dir.register_failure(failing_directory::Failure::EXISTS, "_1.2.doc_mask"); // deleted docs
+  dir.register_failure(failing_directory::Failure::OPEN, "_1.2.doc_mask"); // deleted docs
   dir.register_failure(failing_directory::Failure::EXISTS, "_1.cm"); // column meta
   dir.register_failure(failing_directory::Failure::OPEN, "_1.cm"); // column meta
   dir.register_failure(failing_directory::Failure::EXISTS, "_1.cs"); // columnstore

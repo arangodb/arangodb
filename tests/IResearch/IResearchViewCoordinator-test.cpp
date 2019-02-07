@@ -38,7 +38,6 @@
 #include "ApplicationFeatures/V8Phase.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstNode.h"
-#include "Aql/BasicBlocks.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
@@ -5239,6 +5238,8 @@ TEST_CASE("IResearchViewCoordinatorTest",
                                  arangodb::aql::PART_MAIN);
       query.prepare(arangodb::QueryRegistryFeature::registry());
 
+      arangodb::aql::SingletonNode singleton(query.plan(), 0);
+
       arangodb::aql::Variable const outVariable("variable", 0);
 
       arangodb::iresearch::IResearchViewNode node(*query.plan(),
@@ -5250,9 +5251,15 @@ TEST_CASE("IResearchViewCoordinatorTest",
                                                   nullptr,  // no options
                                                   {}        // no sort condition
       );
+      node.addDependency(&singleton);
 
       arangodb::aql::ExecutionEngine engine(&query);
       std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> cache;
+      singleton.setVarUsageValid();
+      node.setVarUsageValid();
+      singleton.planRegisters(nullptr);
+      node.planRegisters(nullptr);
+      auto singletonBlock = singleton.createBlock(engine, cache);
       auto execBlock = node.createBlock(engine, cache);
       CHECK(nullptr != execBlock);
       CHECK(nullptr != dynamic_cast<arangodb::aql::ExecutionBlockImpl<arangodb::aql::NoResultsExecutor>*>(

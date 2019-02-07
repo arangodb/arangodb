@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
-#include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBKey.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
@@ -70,7 +70,6 @@ class RocksDBTransactionState final : public TransactionState {
   friend class RocksDBMethods;
   friend class RocksDBReadOnlyMethods;
   friend class RocksDBTrxMethods;
-  friend class RocksDBTrxUntrackedMethods;
   friend class RocksDBBatchedMethods;
   friend class RocksDBBatchedWithIndexMethods;
 

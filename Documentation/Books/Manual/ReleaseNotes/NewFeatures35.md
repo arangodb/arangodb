@@ -12,6 +12,8 @@ Customer Relevant
   RocksDB engine is used. This means the primary index can be utilized for
   sorting by `_key` or `_id` attribute as well as for range queries (note that
   the document key is still a string).
+* The optimizer can now make a *SortNode* aware of a following *LimitNode* to
+  enable node-internal optimizations to save memory and execution time.
 
 Internal
 --------

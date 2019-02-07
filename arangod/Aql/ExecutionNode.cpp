@@ -28,7 +28,6 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
-#include "Aql/BasicBlocks.h"
 #include "Aql/CalculationExecutor.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
@@ -42,6 +41,7 @@
 #include "Aql/Function.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
+#include "Aql/LimitExecutor.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/NodeFinder.h"
@@ -53,6 +53,7 @@
 #include "Aql/SubqueryBlock.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
+#include "Cluster/ServerState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
@@ -109,10 +110,12 @@ std::unordered_map<int, std::string const> const typeNames{
 // that shows the subquery depth and if filled
 // during register planning
 bool isInSubQuery(ExecutionNode const* node) {
-  while (node->hasParent()) {
-    node = node->getFirstParent();
+  auto current = node;
+  while (current->hasDependency()){
+    current = current->getFirstDependency();
   }
-  return node->plan()->root() != node;
+  TRI_ASSERT(current->getType() == ExecutionNode::NodeType::SINGLETON);
+  return current->id() != 1;
 }
 
 }  // namespace
@@ -1197,7 +1200,6 @@ void ExecutionNode::removeDependencies() {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-
   std::unordered_set<RegisterId> toKeep;
   if (isInSubQuery(this)) {
     auto const& varinfo = this->getRegisterPlan()->varInfo;
@@ -1210,7 +1212,8 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     }
   }
 
-  IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()], std::move(toKeep), getRegsToClear());
+  IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
+                        std::move(toKeep), getRegsToClear());
 
   return std::make_unique<ExecutionBlockImpl<IdExecutor>>(&engine, this, std::move(infos));
 }
@@ -1431,7 +1434,18 @@ LimitNode::LimitNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<LimitBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  // Fullcount must only be enabled on the last limit node on the main level
+  TRI_ASSERT(!_fullCount || !isInSubQuery(this));
+
+  LimitExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                           getRegisterPlan()->nrRegs[getDepth()],
+                           getRegsToClear(), _offset, _limit, _fullCount);
+
+  return std::make_unique<ExecutionBlockImpl<LimitExecutor>>(&engine, this,
+                                                             std::move(infos));
 }
 
 // @brief toVelocyPack, for LimitNode
@@ -1556,20 +1570,33 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
     expInRegs.emplace_back(infoIter->second.registerId);
   }
 
+  bool const isReference = (expression()->node()->type == NODE_TYPE_REFERENCE);
+  if (isReference) {
+    TRI_ASSERT(expInRegs.size() == 1);
+  }
+  bool const willUseV8 = expression()->willUseV8();
+
+  TRI_ASSERT(engine.getQuery() != nullptr);
+  TRI_ASSERT(expression() != nullptr);
+
   CalculationExecutorInfos infos(
       outputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
-      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear()
-
-                                                 ,
-      engine.getQuery()  // used for v8 contexts and in expression
-      ,
-      this->expression(), std::move(expInVars)  // required by expression.execute
-      ,
-      std::move(expInRegs)  // required by expression.execute
+      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+      *engine.getQuery() /* used for v8 contexts and in expression */,
+      *expression(), std::move(expInVars) /* required by expression.execute */,
+      std::move(expInRegs) /* required by expression.execute */
   );
 
-  return std::make_unique<ExecutionBlockImpl<CalculationExecutor>>(&engine, this,
-                                                                   std::move(infos));
+  if (isReference) {
+    return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>>(
+        &engine, this, std::move(infos));
+  } else if (!willUseV8) {
+    return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>>(
+        &engine, this, std::move(infos));
+  } else {
+    return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>>(
+        &engine, this, std::move(infos));
+  }
 }
 
 ExecutionNode* CalculationNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -1938,13 +1965,23 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
   //}
   // LOG_DEVEL << "registersToClear:  " << ss.rdbuf();
 
-  ReturnExecutorInfos infos(inputRegister, 0,
+  bool const isRoot = plan()->root() == this;
+
+  bool const isDBServer = arangodb::ServerState::instance()->isDBServer();
+
+  bool const returnInheritedResults = isRoot && !isDBServer;
+
+  ReturnExecutorInfos infos(inputRegister,
                             getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                            getRegisterPlan()->nrRegs[getDepth()],  // if that is set to 1 - infos will complain that there are less output than input registers
-                            getRegsToClear(), _count,
-                            false /*return inherited was set on return block*/);
-  return std::make_unique<ExecutionBlockImpl<ReturnExecutor>>(&engine, this,
-                                                              std::move(infos));
+                            getRegisterPlan()->nrRegs[getDepth()], _count,
+                            returnInheritedResults);
+  if (returnInheritedResults) {
+    return std::make_unique<ExecutionBlockImpl<ReturnExecutor<true>>>(&engine, this,
+                                                                      std::move(infos));
+  } else {
+    return std::make_unique<ExecutionBlockImpl<ReturnExecutor<false>>>(&engine, this,
+                                                                       std::move(infos));
+  }
 }
 
 /// @brief clone ExecutionNode recursively
@@ -1987,7 +2024,9 @@ std::unique_ptr<ExecutionBlock> NoResultsNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  ExecutorInfos infos(0, 0, getRegisterPlan()->nrRegs[previousNode->getDepth()],
+  ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
+                      arangodb::aql::make_shared_unordered_set(),
+                      getRegisterPlan()->nrRegs[previousNode->getDepth()],
                       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
   return std::make_unique<ExecutionBlockImpl<NoResultsExecutor>>(&engine, this,
                                                                  std::move(infos));

@@ -20,7 +20,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #ifndef ARANGOD_AQL_NORESULTS_EXECUTOR_H
 #define ARANGOD_AQL_NORESULTS_EXECUTOR_H
 
@@ -36,6 +35,7 @@ class Methods;
 
 namespace aql {
 
+template <bool>
 class SingleRowFetcher;
 class AqlItemMatrix;
 class ExecutorInfos;
@@ -45,10 +45,13 @@ struct SortRegister;
 
 class NoResultsExecutor {
  public:
-  using Fetcher = SingleRowFetcher;
+  struct Properties {
+    static const bool preservesOrder = true;
+    static const bool allowsBlockPassthrough = false;
+  };
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = ExecutorInfos;
   using Stats = NoStats;
-
   NoResultsExecutor(Fetcher& fetcher, ExecutorInfos&);
   ~NoResultsExecutor();
 
@@ -59,11 +62,6 @@ class NoResultsExecutor {
    *         if something was written output.hasValue() == true
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
-
- private:
-  ExecutorInfos& _infos;
-  Fetcher& _fetcher;
-
 };
 }  // namespace aql
 }  // namespace arangodb

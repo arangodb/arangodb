@@ -23,7 +23,6 @@
 
 #include "IResearchViewNode.h"
 #include "Aql/Ast.h"
-#include "Aql/BasicBlocks.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
@@ -908,10 +907,15 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(ServerState::instance()->isCoordinator());
 #endif
-
+    aql::ExecutionNode const* previousNode = getFirstDependency();
+    TRI_ASSERT(previousNode != nullptr);
+    auto it = getRegisterPlan()->varInfo.find(outVariable().id);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    aql::RegisterId outputRegister = it->second.registerId;
     aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
-                             arangodb::aql::make_shared_unordered_set(), 0, 0,
-                             getRegsToClear());
+                             arangodb::aql::make_shared_unordered_set({outputRegister}),
+                             getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                             getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
 
     return std::make_unique<aql::ExecutionBlockImpl<aql::NoResultsExecutor>>(&engine, this,
                                                                              std::move(infos));
@@ -957,9 +961,16 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   if (0 == reader->size()) {
     // nothing to query
+    aql::ExecutionNode const* previousNode = getFirstDependency();
+    TRI_ASSERT(previousNode != nullptr);
+    auto it = getRegisterPlan()->varInfo.find(outVariable().id);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    aql::RegisterId outputRegister = it->second.registerId;
     aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
-                             arangodb::aql::make_shared_unordered_set(), 0, 0,
-                             getRegsToClear());
+                             arangodb::aql::make_shared_unordered_set({outputRegister}),
+                             getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                             getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
+
     return std::make_unique<aql::ExecutionBlockImpl<aql::NoResultsExecutor>>(&engine, this,
                                                                              std::move(infos));
   }

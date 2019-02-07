@@ -32,6 +32,7 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
+template <bool>
 class BlockFetcher;
 
 /**
@@ -43,6 +44,8 @@ class BlockFetcher;
  *        of fetchRow.
  */
 class ConstFetcher {
+  using BlockFetcher = aql::BlockFetcher<true>;
+
  public:
   explicit ConstFetcher(BlockFetcher& executionBlock);
   TEST_VIRTUAL ~ConstFetcher() = default;
@@ -52,7 +55,6 @@ class ConstFetcher {
   ConstFetcher();
 
  public:
-
   /**
    * @brief Fetch one new AqlItemRow from upstream.
    *        **Guarantee**: the pointer returned is valid only
@@ -71,16 +73,21 @@ class ConstFetcher {
    *           If DONE => Row can be a nullptr (nothing received) or valid.
    */
   TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow();
-  void injectBlock(std::shared_ptr<InputAqlItemBlockShell> block);
+  void injectBlock(std::shared_ptr<AqlItemBlockShell> block);
+
+  // Argument will be ignored!
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
+    fetchBlockForPassthrough(size_t);
 
  private:
-
   /**
    * @brief Input block currently in use. Used for memory management by the
    *        ConstFetcher. May be moved if the Fetcher implementations
    *        are moved into separate classes.
    */
-  std::shared_ptr<InputAqlItemBlockShell> _currentBlock;
+  std::shared_ptr<AqlItemBlockShell> _currentBlock;
+
+  std::shared_ptr<AqlItemBlockShell> _blockForPassThrough;
 
   /**
    * @brief Index of the row to be returned next by fetchRow(). This is valid

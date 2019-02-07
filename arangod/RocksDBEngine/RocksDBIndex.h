@@ -42,7 +42,6 @@ namespace cache {
 class Cache;
 }
 class LogicalCollection;
-class RocksDBSettingsManager;
 class RocksDBMethods;
 
 class RocksDBIndex : public Index {

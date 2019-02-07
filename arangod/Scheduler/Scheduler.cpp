@@ -50,7 +50,7 @@ class SchedulerThread : virtual public Thread {
  public:
   explicit SchedulerThread(Scheduler& scheduler)
       : Thread("Scheduler"), _scheduler(scheduler) {}
-  ~SchedulerThread() { shutdown(); }
+  ~SchedulerThread() {} // shutdown is called by derived implementation!
 
  protected:
   Scheduler& _scheduler;
@@ -60,6 +60,8 @@ class SchedulerCronThread : public SchedulerThread {
  public:
   explicit SchedulerCronThread(Scheduler& scheduler)
       : Thread("SchedCron"), SchedulerThread(scheduler) {}
+
+  ~SchedulerCronThread() { shutdown(); }
 
   void run() override { _scheduler.runCronThread(); }
 };

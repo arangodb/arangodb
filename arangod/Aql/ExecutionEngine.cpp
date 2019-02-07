@@ -25,15 +25,16 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlResult.h"
-#include "Aql/BasicBlocks.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/Collection.h"
 #include "Aql/EngineInfoContainerCoordinator.h"
 #include "Aql/EngineInfoContainerDBServer.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/GraphNode.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/ReturnExecutor.h"
 #include "Aql/WalkerWorker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
@@ -565,15 +566,24 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry* queryRegist
     TRI_ASSERT(root != nullptr);
 
     // inspect the root block of the query
-    if (!isDBServer && root->getPlanNode()->getType() == ExecutionNode::RETURN) {
+    if (root->getPlanNode()->getType() == ExecutionNode::RETURN) {
       // it's a return node. now tell it to not copy its results from above,
       // but directly return it. we also need to note the RegisterId the
       // caller needs to look into when fetching the results
 
       // in short: this avoids copying the return values
 
-      //RENABLE?!
-      //engine->resultRegister(static_cast<ReturnBlock*>(root)->returnInheritedResults());
+      bool const returnInheritedResults = !isDBServer;
+      if (returnInheritedResults) {
+        auto returnNode = dynamic_cast<ExecutionBlockImpl<ReturnExecutor<true>>*>(root);
+        TRI_ASSERT(returnNode != nullptr);
+        engine->resultRegister(returnNode->infos().getInputRegisterId());
+        TRI_ASSERT(returnNode->infos().returnInheritedResults() == returnInheritedResults);
+      } else {
+        auto returnNode = dynamic_cast<ExecutionBlockImpl<ReturnExecutor<false>>*>(root);
+        TRI_ASSERT(returnNode != nullptr);
+        TRI_ASSERT(returnNode->infos().returnInheritedResults() == returnInheritedResults);
+      }
     }
 
     engine->_root = root;

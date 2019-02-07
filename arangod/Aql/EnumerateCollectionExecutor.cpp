@@ -69,8 +69,9 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
 EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
-      _input(ExecutionState::HASMORE, InputAqlItemRow{CreateInvalidInputRowHint{}}) {
-  _cursorHasMore = false;
+      _state(ExecutionState::HASMORE),
+      _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
+      _cursorHasMore(false) {
   _cursor =
       _infos.getTrxPtr()->indexScan(_infos.getCollection()->name(),
                                     (_infos.getRandom()
@@ -85,9 +86,9 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
                                        std::to_string(maxWait) + ")");
   }
   this->setProducingFunction(buildCallback(
-          _documentProducer, _infos.getOutVariable(), _infos.getProduceResult(),
-          _infos.getProjections(), _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
-          _infos.getAllowCoveringIndexOptimization(), _infos.getUseRawDocumentPointers()));
+        _documentProducer, _infos.getOutVariable(), _infos.getProduceResult(),
+        _infos.getProjections(), _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
+        _infos.getAllowCoveringIndexOptimization(), _infos.getUseRawDocumentPointers()));
 
 };
 
@@ -98,73 +99,55 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
   TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRow") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  ExecutionState state;
   EnumerateCollectionStats stats{};
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   while (true) {
     if (!_cursorHasMore) {
-      _input = _fetcher.fetchRow();
+      std::tie(_state, _input) = _fetcher.fetchRow();
+
+      if (_state == ExecutionState::WAITING) {
+        return {_state, stats};
+      }
+
+      if (!_input) {
+        TRI_ASSERT(_state == ExecutionState::DONE);
+        return {_state, stats};
+      }
       _cursor->reset();
+      _cursorHasMore = _cursor->hasMore();
+      continue;
     }
 
-    std::tie(state, input) = _input;
+    TRI_ASSERT(_input.isInitialized());
+    TRI_ASSERT(_cursor->hasMore());
 
-    if (state == ExecutionState::WAITING) {
-      return {state, stats};
+    TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    if (!input) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return {state, stats};
-    }
-    TRI_ASSERT(input.isInitialized());
-
-    if (_cursor->hasMore()) {
-      uint64_t atMost = 1;
-      TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-
-      if (_infos.getProduceResult()) {
-        // properly build up results by fetching the actual documents
-        // using nextDocument()
-        _cursorHasMore = _cursor->nextDocument(
-            [&](LocalDocumentId const&, VPackSlice slice) {
-              _documentProducer(input, output, slice, _infos.getOutputRegisterId());
-            },
-            atMost);
-      } else {
-        // performance optimization: we do not need the documents at all,
-        // so just call next()
-        _cursorHasMore = _cursor->next(
-            [&](LocalDocumentId const&) {
-              _documentProducer(input, output, VPackSlice::nullSlice(),
-                                _infos.getOutputRegisterId());
-            },
-            atMost);
-      }
-      stats.incrScanned();
-
-      if (!_cursorHasMore) {
-        TRI_ASSERT(!_cursor->hasMore());
-      }
+    if (_infos.getProduceResult()) {
+      // properly build up results by fetching the actual documents
+      // using nextDocument()
+      _cursorHasMore = _cursor->nextDocument(
+          [&](LocalDocumentId const&, VPackSlice slice) {
+            _documentProducer(_input, output, slice, _infos.getOutputRegisterId());
+            stats.incrScanned();
+          }, 1 /*atMost*/);
+    } else {
+      // performance optimization: we do not need the documents at all,
+      // so just call next()
+      _cursorHasMore = _cursor->next(
+          [&](LocalDocumentId const&) {
+            _documentProducer(_input, output, VPackSlice::nullSlice(),
+                              _infos.getOutputRegisterId());
+            stats.incrScanned();
+          }, 1 /*atMost*/);
     }
 
-    if (state == ExecutionState::DONE && !_cursor->hasMore()) {
-      return {state, stats};
+    if (_state == ExecutionState::DONE && !_cursorHasMore) {
+      return {_state, stats};
     }
-
-    if (!_cursor->hasMore()) {
-      // we have exhausted this cursor
-      // re-initialize fetching of documents
-      //_cursorHasMore = false;
-      _cursor->reset();
-    }
-
     return {ExecutionState::HASMORE, stats};
-
-    TRI_ASSERT(state == ExecutionState::HASMORE);
   }
 }
 

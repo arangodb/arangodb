@@ -37,6 +37,7 @@ namespace aql {
 class ExecutorInfos;
 class InputAqlItemRow;
 class NoStats;
+template <bool>
 class SingleRowFetcher;
 class Expression;
 class Query;
@@ -45,8 +46,9 @@ struct Variable;
 struct CalculationExecutorInfos : public ExecutorInfos {
   CalculationExecutorInfos(RegisterId outputRegister, RegisterId nrInputRegisters,
                            RegisterId nrOutputRegisters,
-                           std::unordered_set<RegisterId> registersToClear, Query*,
-                           Expression*, std::vector<Variable const*>&& expInVars,
+                           std::unordered_set<RegisterId> registersToClear,
+                           Query& query, Expression& expression,
+                           std::vector<Variable const*>&& expInVars,
                            std::vector<RegisterId>&& expInRegs);
 
   CalculationExecutorInfos() = delete;
@@ -54,18 +56,37 @@ struct CalculationExecutorInfos : public ExecutorInfos {
   CalculationExecutorInfos(CalculationExecutorInfos const&) = delete;
   ~CalculationExecutorInfos() = default;
 
+  RegisterId getOutputRegisterId() const { return _outputRegisterId; }
+
+  Query& getQuery() const { return _query; }
+
+  Expression& getExpression() const { return _expression; }
+
+  std::vector<const Variable*> const& getExpInVars() const {
+    return _expInVars;
+  }
+
+  std::vector<RegisterId> const& getExpInRegs() const { return _expInRegs; }
+
+ private:
   RegisterId _outputRegisterId;
 
-  Query* _query;
-  Expression* _expression;
+  Query& _query;
+  Expression& _expression;
   std::vector<Variable const*> _expInVars;  // input variables for expresseion
   std::vector<RegisterId> _expInRegs;       // input registers for expression
-  bool _isReference;
 };
 
+enum class CalculationType { Condition, V8Condition, Reference };
+
+template <CalculationType calculationType>
 class CalculationExecutor {
  public:
-  using Fetcher = SingleRowFetcher;
+  struct Properties {
+    static const bool preservesOrder = true;
+    static const bool allowsBlockPassthrough = true;
+  };
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = CalculationExecutorInfos;
   using Stats = NoStats;
 

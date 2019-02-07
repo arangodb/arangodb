@@ -701,19 +701,47 @@ int MMFilesCollection::close() {
 
   {
     // We also have to unload the indexes.
-    READ_LOCKER(guard, _indexesLock);  /// TODO - DEADLOCK!?!?
     WRITE_LOCKER(writeLocker, _dataLock);
+
+    READ_LOCKER_EVENTUAL(guard, _indexesLock); 
+
     for (auto& idx : _indexes) {
       idx->unload();
     }
   }
 
   // wait until ditches have been processed fully
-  while (_ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_DROP) ||
-         _ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_RENAME) ||
-         _ditches.contains(MMFilesDitch::TRI_DITCH_COMPACTION)) {
-    WRITE_UNLOCKER(unlocker, _logicalCollection.lock());
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+  int tries = 0;
+  while (true) {
+    bool hasDocumentDitch = _ditches.contains(MMFilesDitch::TRI_DITCH_DOCUMENT);
+    bool hasOtherDitch = (_ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_DROP) ||
+                          _ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_RENAME) ||
+                          _ditches.contains(MMFilesDitch::TRI_DITCH_REPLICATION) ||
+                          _ditches.contains(MMFilesDitch::TRI_DITCH_COMPACTION));
+   
+    if (!hasDocumentDitch && !hasOtherDitch) {
+      // we can abort now
+      break;
+    } 
+
+    // give the cleanup thread more time to clean up
+    {
+      WRITE_UNLOCKER(unlocker, _logicalCollection.lock());
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+
+    if ((++tries % 10) == 0) {
+      if (hasDocumentDitch) {
+        LOG_TOPIC(WARN, Logger::ENGINES) << "waiting for cleanup of document ditches for collection '" << _logicalCollection.name() << "'. has other: " << hasOtherDitch; 
+      } else {
+        LOG_TOPIC(WARN, Logger::ENGINES) << "waiting for cleanup of ditches for collection '" << _logicalCollection.name() << "'";
+      }
+    }
+
+    if (tries == 60 && !hasOtherDitch) {
+      // give it up after a minute - this will close the collection at all cost
+      break;
+    }
   }
 
   {

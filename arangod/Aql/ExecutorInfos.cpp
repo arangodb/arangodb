@@ -24,11 +24,10 @@
 
 using namespace arangodb::aql;
 
-ExecutorInfos::ExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear)
+ExecutorInfos::ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
+                             std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+                             RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                             std::unordered_set<RegisterId> registersToClear)
     : _inRegs(std::move(readableInputRegisters)),
       _outRegs(std::move(writeableOutputRegisters)),
       _numInRegs(nrInputRegisters),
@@ -43,12 +42,6 @@ ExecutorInfos::ExecutorInfos(
   if (_outRegs == nullptr) {
     _outRegs = std::make_shared<decltype(_outRegs)::element_type>();
   }
-  for (RegisterId const inReg : *_inRegs) {
-    TRI_ASSERT(inReg < nrInputRegisters);
-  }
-  for (RegisterId const outReg : *_outRegs) {
-    TRI_ASSERT(outReg < nrOutputRegisters);
-  }
   TRI_ASSERT(nrInputRegisters <= nrOutputRegisters);
   {
     auto registersToKeep = std::make_shared<std::unordered_set<RegisterId>>();
@@ -59,21 +52,36 @@ ExecutorInfos::ExecutorInfos(
     }
     _registersToKeep = std::move(registersToKeep);
   }
-  TRI_ASSERT(_registersToClear.size() + _registersToKeep->size() ==
-             nrInputRegisters);
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  for (RegisterId const inReg : *_inRegs) {
+    TRI_ASSERT(inReg < nrInputRegisters);
+  }
+  // Number of output registers this node
+  // writes that are actually not used later
+  // e.g. FOR x IN [] RETURN 1
+  size_t nrThrowAwayRegisters = 0;
+  for (RegisterId const outReg : *_outRegs) {
+    TRI_ASSERT(outReg < nrOutputRegisters);
+          if (_registersToClear.find(outReg) != _registersToClear.end()) {
+        nrThrowAwayRegisters++;
+      }
+  }
+  TRI_ASSERT(_registersToClear.size() + _registersToKeep->size() == nrInputRegisters + nrThrowAwayRegisters);
+#endif
 }
 
-ExecutorInfos::ExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep)
+ExecutorInfos::ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
+                             std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
+                             RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                             std::unordered_set<RegisterId> registersToClear,
+                             std::unordered_set<RegisterId> registersToKeep)
     : _inRegs(std::move(inputRegisters)),
       _outRegs(std::move(outputRegisters)),
       _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
-      _registersToKeep(std::make_shared<std::unordered_set<RegisterId>>(std::move(registersToKeep))),
+      _registersToKeep(std::make_shared<std::unordered_set<RegisterId>>(
+          std::move(registersToKeep))),
       _registersToClear(std::move(registersToClear)) {
   // We allow these to be passed as nullptr for ease of use, but do NOT allow
   // the members to be null for simplicity and safety.

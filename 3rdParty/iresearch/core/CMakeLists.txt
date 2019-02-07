@@ -576,11 +576,12 @@ if (MSVC)
 
   set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
   set(IResearch_STATIC_LIBRARIES_CMD "lib.exe \"/OUT:${IResearch_STATIC_LIBRARIES_OUT}\" \"$<TARGET_FILE:${IResearch_TARGET_NAME}-static>\" ${IResearch_STATIC_LIBRARIES}")
+  string(REPLACE " " ";" IResearch_STATIC_LIBRARIES_CMD "${IResearch_STATIC_LIBRARIES_CMD}") # COMMAND requires ';' instead of ' ' (this is required for MSVC, cannot use VERBATIM)
   add_custom_command(
     OUTPUT "${IResearch_STATIC_LIBRARIES_OUT}"
     DEPENDS ${IResearch_TARGET_NAME}-static
     COMMAND ${IResearch_STATIC_LIBRARIES_CMD}
-    VERBATIM
+    #VERBATIM - this causes error: "The input line is too long."
   )
 
   add_library(${IResearch_TARGET_NAME}-static-allinone
@@ -632,11 +633,12 @@ if (MSVC)
 
   set(IResearch_STATIC_SCRT_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-srct-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
   set(IResearch_STATIC_SCRT_LIBRARIES_CMD "lib.exe \"/OUT:${IResearch_STATIC_SCRT_LIBRARIES_OUT}\" \"$<TARGET_FILE:${IResearch_TARGET_NAME}-static-scrt>\" ${IResearch_STATIC_SCRT_LIBRARIES}")
+  string(REPLACE " " ";" IResearch_STATIC_SCRT_LIBRARIES_CMD "${IResearch_STATIC_SCRT_LIBRARIES_CMD}") # COMMAND requires ';' instead of ' ' (this is required for MSVC, cannot use VERBATIM)
   add_custom_command(
     OUTPUT "${IResearch_STATIC_SCRT_LIBRARIES_OUT}"
     DEPENDS ${IResearch_TARGET_NAME}-static-scrt
     COMMAND ${IResearch_STATIC_SCRT_LIBRARIES_CMD}
-    VERBATIM
+    #VERBATIM - this causes error: "The input line is too long."
   )
 
   add_library(${IResearch_TARGET_NAME}-static-scrt-allinone

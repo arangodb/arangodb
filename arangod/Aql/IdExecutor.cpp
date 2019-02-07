@@ -22,8 +22,8 @@
 
 #include "IdExecutor.h"
 #include "Aql/AqlValue.h"
-#include "Aql/OutputAqlItemRow.h"
 #include "Aql/ConstFetcher.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Basics/Common.h"
 
 #include <algorithm>
@@ -39,7 +39,7 @@ IdExecutorInfos::IdExecutorInfos(RegisterId nrInOutRegisters,
                     std::move(registersToClear), std::move(toKeep)) {}
 
 IdExecutor::IdExecutor(Fetcher& fetcher, IdExecutorInfos& infos)
-    : _infos(infos), _fetcher(fetcher){};
+    : _fetcher(fetcher){};
 IdExecutor::~IdExecutor() = default;
 
 std::pair<ExecutionState, IdExecutor::Stats> IdExecutor::produceRow(OutputAqlItemRow& output) {

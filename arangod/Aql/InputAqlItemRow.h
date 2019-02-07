@@ -26,13 +26,14 @@
 #ifndef ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H
 #define ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H 1
 
+#include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemBlockShell.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
 
-class InputAqlItemBlockShell;
 class AqlItemBlock;
 struct AqlValue;
 
@@ -54,10 +55,13 @@ struct CreateInvalidInputRowHint {
 class InputAqlItemRow {
  public:
   // The default constructor contains an invalid item row
-  explicit InputAqlItemRow(CreateInvalidInputRowHint);
+  explicit InputAqlItemRow(CreateInvalidInputRowHint)
+      : _blockShell(nullptr), _baseIndex(0) {}
 
-  InputAqlItemRow(std::shared_ptr<InputAqlItemBlockShell> blockShell,
-                  size_t baseIndex);
+  InputAqlItemRow(std::shared_ptr<AqlItemBlockShell> blockShell, size_t baseIndex)
+      : _blockShell(std::move(blockShell)), _baseIndex(baseIndex) {
+    TRI_ASSERT(_blockShell != nullptr);
+  }
 
   /**
    * @brief Get a reference to the value of the given Variable Nr
@@ -66,26 +70,67 @@ class InputAqlItemRow {
    *
    * @return Reference to the AqlValue stored in that variable.
    */
-  const AqlValue& getValue(RegisterId registerId) const;
+  inline const AqlValue& getValue(RegisterId registerId) const {
+    TRI_ASSERT(isInitialized());
+    TRI_ASSERT(registerId < getNrRegisters());
+    return block().getValueReference(_baseIndex, registerId);
+  }
 
-  std::size_t getNrRegisters() const;
+  /**
+   * @brief Get a reference to the value of the given Variable Nr
+   *
+   * @param registerId The register ID of the variable to read.
+   *
+   * @return The AqlValue stored in that variable. It is invalidated in source.
+   */
+  inline AqlValue&& stealValue(RegisterId registerId) {
+    TRI_ASSERT(isInitialized());
+    TRI_ASSERT(registerId < getNrRegisters());
+    AqlValue a = block().getValueReference(_baseIndex, registerId);
+    if (!a.isEmpty() && a.requiresDestruction()) {
+      // Now no one is responsible for AqlValue a
+      block().steal(a);
+    }
+    // This cannot fail, caller needs to take immediate owner shops.
+    return std::move(a);
+  }
 
-  bool operator==(InputAqlItemRow const& other) const noexcept;
-  bool operator!=(InputAqlItemRow const& other) const noexcept;
+  std::size_t getNrRegisters() const { return block().getNrRegs(); }
+
+  bool operator==(InputAqlItemRow const& other) const noexcept {
+    TRI_ASSERT(isInitialized());
+    return this->_blockShell == other._blockShell && this->_baseIndex == other._baseIndex;
+  }
+
+  bool operator!=(InputAqlItemRow const& other) const noexcept {
+    TRI_ASSERT(isInitialized());
+    return !(*this == other);
+  }
 
   bool isInitialized() const noexcept { return _blockShell != nullptr; }
 
   explicit operator bool() const noexcept { return isInitialized(); }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  /**
+   * @brief Compare the underlying block. Only for assertions.
+   */
+  bool internalBlockIs(AqlItemBlockShell const& other) const;
+#endif
+
  private:
-  AqlItemBlock& block();
-  AqlItemBlock const& block() const;
+  AqlItemBlockShell& blockShell() { return *_blockShell; }
+  AqlItemBlockShell const& blockShell() const {
+    return *_blockShell;
+  }
+  AqlItemBlock& block() { return blockShell().block(); }
+  AqlItemBlock const& block() const { return blockShell().block(); }
 
  private:
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
-  std::shared_ptr<InputAqlItemBlockShell> _blockShell;
+  std::shared_ptr<AqlItemBlockShell> _blockShell;
 
   /**
    * @brief The offset into the AqlItemBlock. In other words, the row's index.

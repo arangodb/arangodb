@@ -33,6 +33,8 @@
 
 NS_ROOT
 
+struct data_output; // forward declaration
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class boost
 /// @brief represents a boost related to the particular query
@@ -91,36 +93,41 @@ class IRESEARCH_API sort {
  public:
   DECLARE_SHARED_PTR(sort);
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief object used for collecting index statistics for a specific term
-  ///        that are required by the scorer for scoring individual documents
-  ////////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API collector {
-   public:
-    DECLARE_UNIQUE_PTR(collector);
-    DEFINE_FACTORY_INLINE(collector);
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief object used for collecting index statistics, for a specific matched
+  ///        field, that are required by the scorer for scoring individual
+  ///        documents
+  //////////////////////////////////////////////////////////////////////////////
+  class IRESEARCH_API field_collector {
+    public:
+     DECLARE_UNIQUE_PTR(field_collector);
 
-    virtual ~collector();
+     virtual ~field_collector() = default;
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief collect term level statistics, e.g. from current attribute values
-    ///        called for the same term once for every segment
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual void collect(
-      const sub_reader& segment,
-      const term_reader& field,
-      const attribute_view& term_attrs
-    ) = 0;
+     ////////////////////////////////////////////////////////////////////////////
+     /// @brief collect field related statistics, i.e. field used in the filter
+     /// @param segment the segment being processed (e.g. for columnstore)
+     /// @param field the field matched by the filter in the 'segment'
+     /// @note called once for every field matched by a filter per each segment
+     /// @note always called on each matched 'field' irrespective of if it
+     ///       contains a matching 'term'
+     ////////////////////////////////////////////////////////////////////////////
+     virtual void collect(
+       const sub_reader& segment,
+       const term_reader& field
+     ) = 0;
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief store collected index statistics into attributes for the current
-    ///        filter node
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual void finish(
-      attribute_store& filter_attrs,
-      const index_reader& index
-    ) = 0;
-  }; // collector
+     ///////////////////////////////////////////////////////////////////////////
+     /// @brief collect field related statistics from a serialized
+     ///        representation as produced by write(...) below
+     ///////////////////////////////////////////////////////////////////////////
+     virtual void collect(const bytes_ref& in) = 0;
+
+     ///////////////////////////////////////////////////////////////////////////
+     /// @brief serialize the internal data representation into 'out'
+     ///////////////////////////////////////////////////////////////////////////
+     virtual void write(data_output& out) const = 0;
+  };
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief stateful object used for computing the document score based on the
@@ -129,9 +136,9 @@ class IRESEARCH_API sort {
   class IRESEARCH_API scorer {
    public:
     DECLARE_UNIQUE_PTR(scorer);
-    DEFINE_FACTORY_INLINE(scorer);
+    DEFINE_FACTORY_INLINE(scorer)
 
-    virtual ~scorer();
+    virtual ~scorer() = default;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief set the document score based on the stored state
@@ -150,6 +157,44 @@ class IRESEARCH_API sort {
     }
   }; // scorer_base
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief object used for collecting index statistics, for a specific matched
+  ///        term of a field, that are required by the scorer for scoring
+  ///        individual documents
+  //////////////////////////////////////////////////////////////////////////////
+  class IRESEARCH_API term_collector {
+   public:
+    DECLARE_UNIQUE_PTR(term_collector);
+
+    virtual ~term_collector() = default;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief collect term related statistics, i.e. term used in the filter
+    /// @param segment the segment being processed (e.g. for columnstore)
+    /// @param field the field matched by the filter in the 'segment'
+    /// @param term_attributes the attributes of the matched term in the field
+    /// @note called once for every term matched by a filter in the 'field'
+    ///       per each segment
+    /// @note only called on a matched 'term' in the 'field' in the 'segment'
+    ////////////////////////////////////////////////////////////////////////////
+    virtual void collect(
+      const sub_reader& segment,
+      const term_reader& field,
+      const attribute_view& term_attrs
+    ) = 0;
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// @brief collect term related statistics from a serialized
+    ///        representation as produced by write(...) below
+    ///////////////////////////////////////////////////////////////////////////
+    virtual void collect(const bytes_ref& in) = 0;
+
+    ///////////////////////////////////////////////////////////////////////////
+    /// @brief serialize the internal data representation into 'out'
+    ///////////////////////////////////////////////////////////////////////////
+    virtual void write(data_output& out) const = 0;
+  };
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @class sort::prepared
   /// @brief base class for all prepared(compiled) sort entries
@@ -160,22 +205,49 @@ class IRESEARCH_API sort {
 
     prepared() = default;
     explicit prepared(attribute_view&& attrs);
-    virtual ~prepared();
+    virtual ~prepared() = default;
 
     using util::attribute_view_provider::attributes;
     virtual attribute_view& attributes() NOEXCEPT override final {
       return attrs_;
     }
 
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief store collected index statistics into 'filter_attrs' of the
+    ///        current 'filter'
+    /// @param filter_attrs out-parameter to store statistics for later use in
+    ///        calls to score(...)
+    /// @param index the full index to collect statistics on
+    /// @param field the field level statistics collector as returned from
+    ///        prepare_field_collector()
+    /// @param term the term level statistics collector as returned from
+    ///        prepare_term_collector()
+    /// @note called once on the 'index' for every field+term matched by the
+    ///       filter
+    /// @note called once on the 'index' for every field with null term stats
+    ///       if term is not applicable, e.g. by_column_existence filter
+    /// @note called exactly once if field/term collection is not applicable,
+    ///       e.g. collecting statistics over the columnstore
+    /// @note called after all calls to collector::collect(...) on each segment
+    ////////////////////////////////////////////////////////////////////////////
+    virtual void collect(
+      attribute_store& filter_attrs,
+      const index_reader& index,
+      const field_collector* field,
+      const term_collector* term
+    ) const = 0;
+
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief the features required for proper operation of this sort::prepared
     ////////////////////////////////////////////////////////////////////////////////
     virtual const flags& features() const = 0;
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief create an object to be used for collecting index statistics
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual collector::ptr prepare_collector() const = 0;
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief create an object to be used for collecting index statistics, one
+    ///        instance per matched field
+    /// @return nullptr == no statistics collection required
+    ////////////////////////////////////////////////////////////////////////////
+    virtual field_collector::ptr prepare_field_collector() const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief create a stateful scorer used for computation of document scores
@@ -186,6 +258,13 @@ class IRESEARCH_API sort {
       const attribute_store& query_attrs,
       const attribute_view& doc_attrs
     ) const = 0;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief create an object to be used for collecting index statistics, one
+    ///        instance per matched term
+    /// @return nullptr == no statistics collection required
+    ////////////////////////////////////////////////////////////////////////////
+    virtual term_collector::ptr prepare_term_collector() const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief initialize the score container and prepare it for add(...) calls
@@ -286,7 +365,7 @@ class IRESEARCH_API sort {
   }; // type_id
 
   explicit sort(const type_id& id);
-  virtual ~sort();
+  virtual ~sort() = default;
 
   const type_id& type() const { return *type_; }
 
@@ -381,6 +460,7 @@ class IRESEARCH_API order final {
   ////////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API prepared final : private util::noncopyable {
    public:
+
     struct prepared_sort : private util::noncopyable {
       explicit prepared_sort(sort::prepared::ptr&& bucket, bool reverse)
         : bucket(std::move(bucket)), offset(0), reverse(reverse) {
@@ -408,59 +488,101 @@ class IRESEARCH_API order final {
       bool reverse;
     }; // prepared_sort
 
-    class IRESEARCH_API stats final : private util::noncopyable {
+    typedef std::vector<prepared_sort> prepared_order_t;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief a convinience class for filters to invoke collector functions
+    ///        on collectors in each order bucket
+    ////////////////////////////////////////////////////////////////////////////
+    class IRESEARCH_API collectors: private util::noncopyable { // noncopyable required by MSVC
      public:
-      typedef std::vector<sort::collector::ptr> collectors_t;
+      collectors(const prepared_order_t& buckets, size_t terms_count);
+      collectors(collectors&& other) NOEXCEPT; // function definition explicitly required by MSVC
 
-      explicit stats(collectors_t&& colls);
-      stats(stats&& rhs) NOEXCEPT;
+      //////////////////////////////////////////////////////////////////////////
+      /// @brief collect field related statistics, i.e. field used in the filter
+      /// @param segment the segment being processed (e.g. for columnstore)
+      /// @param field the field matched by the filter in the 'segment'
+      /// @note called once for every field matched by a filter per each segment
+      /// @note always called on each matched 'field' irrespective of if it
+      ///       contains a matching 'term'
+      //////////////////////////////////////////////////////////////////////////
+      void collect(
+        const sub_reader& segment,
+        const term_reader& field
+      ) const;
 
-      stats& operator=(stats&& rhs) NOEXCEPT;
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief collect term level statistics, e.g. from current attribute values
-      ///        called for the same term once for every segment
-      ////////////////////////////////////////////////////////////////////////////////
+      //////////////////////////////////////////////////////////////////////////
+      /// @brief collect term related statistics, i.e. term used in the filter
+      /// @param segment the segment being processed (e.g. for columnstore)
+      /// @param field the field matched by the filter in the 'segment'
+      /// @param term_offset offset of term, value < constructor 'terms_count'
+      /// @param term_attributes the attributes of the matched term in the field
+      /// @note called once for every term matched by a filter in the 'field'
+      ///       per each segment
+      /// @note only called on a matched 'term' in the 'field' in the 'segment'
+      //////////////////////////////////////////////////////////////////////////
       void collect(
         const sub_reader& segment,
         const term_reader& field,
+        size_t term_offset,
         const attribute_view& term_attrs
       ) const;
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief store collected index statistics into attributes for the current
-      ///        filter node
-      ////////////////////////////////////////////////////////////////////////////////
+      //////////////////////////////////////////////////////////////////////////
+      /// @brief store collected index statistics into 'filter_attrs' of the
+      ///        current 'filter'
+      /// @param filter_attrs out-parameter to store statistics for later use in
+      ///        calls to score(...)
+      /// @param index the full index to collect statistics on
+      /// @note called once on the 'index' for every term matched by a filter
+      ///       calling collect(...) on each of its segments
+      /// @note if not matched terms then called exactly once
+      //////////////////////////////////////////////////////////////////////////
       void finish(
         attribute_store& filter_attrs,
         const index_reader& index
       ) const;
 
+      //////////////////////////////////////////////////////////////////////////
+      /// @brief add collectors for another term
+      /// @return term_offset
+      //////////////////////////////////////////////////////////////////////////
+      size_t push_back();
+
      private:
       IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-      collectors_t colls_;
+      const std::vector<prepared_sort>& buckets_;
+      std::vector<sort::field_collector::ptr> field_collectors_; // size == buckets_.size()
+      std::vector<sort::term_collector::ptr> term_collectors_; // size == buckets_.size() * terms_count, layout order [t0.b0, t0.b1, ... t0.bN, t1.b0, t1.b1 ... tM.BN]
       IRESEARCH_API_PRIVATE_VARIABLES_END
-    }; // collectors
+    };
 
-    class IRESEARCH_API scorers final : private util::noncopyable {
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief a convinience class for doc_iterators to invoke scorer functions
+    ///        on scorers in each order bucket
+    ////////////////////////////////////////////////////////////////////////////
+    class IRESEARCH_API scorers: private util::noncopyable { // noncopyable required by MSVC
      public:
-      typedef std::vector<sort::scorer::ptr> scorers_t;
-
       scorers() = default;
-      explicit scorers(scorers_t&& scorers);
-      scorers(scorers&& rhs) NOEXCEPT;
+      scorers(
+        const prepared_order_t& buckets,
+        const sub_reader& segment,
+        const term_reader& field,
+        const attribute_store& stats,
+        const attribute_view& doc
+      );
+      scorers(scorers&& other) NOEXCEPT; // function definition explicitly required by MSVC
 
-      scorers& operator=(scorers&& rhs) NOEXCEPT;
+      scorers& operator=(scorers&& other) NOEXCEPT; // function definition explicitly required by MSVC
 
       void score(const prepared& ord, byte_type* score) const;
 
      private:
       IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-      scorers_t scorers_;
+      std::vector<sort::scorer::ptr> scorers_;
       IRESEARCH_API_PRIVATE_VARIABLES_END
     }; // scorers
-
-    typedef std::vector<prepared_sort> prepared_order_t;
 
     static const prepared& unordered();
 
@@ -470,7 +592,29 @@ class IRESEARCH_API order final {
     prepared& operator=(prepared&& rhs) NOEXCEPT;
 
     const flags& features() const { return features_; }
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief create an index statistics compound collector for all buckets
+    /// @param terms_count number of term_collectors to allocate
+    ///        0 == collect only field level statistics e.g. by_column_existence
+    ////////////////////////////////////////////////////////////////////////////
+    collectors prepare_collectors(size_t terms_count = 0) const;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief prepare empty collectors, i.e. call collect(...) on each of the
+    ///        buckets without explicitly collecting field or term statistics,
+    ///        e.g. for 'all' filter
+    ////////////////////////////////////////////////////////////////////////////
+    void prepare_collectors(
+      attribute_store& filter_attrs,
+      const index_reader& index
+    ) const;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief number of bytes required to store the score types of all buckets
+    ////////////////////////////////////////////////////////////////////////////
     size_t size() const { return size_; }
+
     bool empty() const { return order_.empty(); }
 
     prepared_order_t::const_iterator begin() const {
@@ -484,8 +628,6 @@ class IRESEARCH_API order final {
     const prepared_sort& operator[]( size_t i ) const {
       return order_[i];
     }
-
-    prepared::stats prepare_stats() const;
 
     prepared::scorers prepare_scorers(
       const sub_reader& segment,

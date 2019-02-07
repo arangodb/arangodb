@@ -87,38 +87,34 @@ class AqlItemBlock {
 
  public:
   /// @brief getValue, get the value of a register
-  AqlValue getValue(size_t index, RegisterId varNr) const {
-    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
+  inline AqlValue getValue(size_t index, RegisterId varNr) const {
+    TRI_ASSERT(index < _nrItems);
+    TRI_ASSERT(varNr < _nrRegs);
     return _data[index * _nrRegs + varNr];
   }
 
   /// @brief getValue, get the value of a register by reference
   inline AqlValue const& getValueReference(size_t index, RegisterId varNr) const {
-    TRI_ASSERT(_data.size() > index * _nrRegs + varNr);
+    TRI_ASSERT(index < _nrItems);
+    TRI_ASSERT(varNr < _nrRegs);
     return _data[index * _nrRegs + varNr];
   }
 
   /// @brief setValue, set the current value of a register
-  void setValue(size_t index, RegisterId varNr, AqlValue const& value) {
-    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
+  inline void setValue(size_t index, RegisterId varNr, AqlValue const& value) {
+    TRI_ASSERT(index < _nrItems);
+    TRI_ASSERT(varNr < _nrRegs);
     TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
-
-    size_t mem = 0;
 
     // First update the reference count, if this fails, the value is empty
     if (value.requiresDestruction()) {
       if (++_valueCount[value] == 1) {
-        mem = value.memoryUsage();
+        size_t mem = value.memoryUsage();
         increaseMemoryUsage(mem);
       }
     }
 
-    try {
-      _data[index * _nrRegs + varNr] = value;
-    } catch (...) {
-      decreaseMemoryUsage(mem);
-      throw;
-    }
+    _data[index * _nrRegs + varNr] = value;
   }
 
   /// @brief emplaceValue, set the current value of a register, constructing
@@ -127,10 +123,11 @@ class AqlItemBlock {
   //std::enable_if_t<!(std::is_same<AqlValue,std::decay_t<Args>>::value || ...), void>
   void
   emplaceValue(size_t index, RegisterId varNr, Args&&... args) {
-    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
-    TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
+    TRI_ASSERT(index < _nrItems);
+    TRI_ASSERT(varNr < _nrRegs);
 
-    void* p = &_data[index * _nrRegs + varNr];
+    AqlValue* p = &_data[index * _nrRegs + varNr];
+    TRI_ASSERT(p->isEmpty());
     // construct the AqlValue in place
     AqlValue* value;
     try {
@@ -171,12 +168,9 @@ class AqlItemBlock {
       if (it != _valueCount.end()) {
         if (--(it->second) == 0) {
           decreaseMemoryUsage(element.memoryUsage());
-          try {
-            _valueCount.erase(it);
-            element.destroy();
-            return;  // no need for an extra element.erase() in this case
-          } catch (...) {
-          }
+          _valueCount.erase(it);
+          element.destroy();
+          return;  // no need for an extra element.erase() in this case
         }
       }
     }
@@ -210,7 +204,8 @@ class AqlItemBlock {
   /// them. this is used if the value is stolen and later released from
   /// elsewhere
   void eraseAll() {
-    for (auto& it : _data) {
+    for (size_t i = 0; i < numEntries(); i++) {
+      auto &it = _data[i];
       if (!it.isEmpty()) {
         it.erase();
       }
@@ -231,7 +226,8 @@ class AqlItemBlock {
       // nothing to do
       return;
     }
-    TRI_ASSERT(_data.size() > currentRow * _nrRegs + curRegs);
+    TRI_ASSERT(currentRow < _nrItems);
+    TRI_ASSERT(curRegs <= _nrRegs);
 
     copyValuesFromRow(currentRow, curRegs, 0);
   }
@@ -295,7 +291,16 @@ class AqlItemBlock {
   /// @brief getter for _nrItems
   inline size_t size() const noexcept { return _nrItems; }
 
-  inline size_t capacity() const { return _data.size(); }
+
+  /// @brief Number of entries in the matrix. If this changes, the memory usage
+  /// must be / in- or decreased appropriately as well.
+  /// All entries _data[i] for numEntries() <= i < _data.size() always have to
+  /// be erased, i.e. empty / none!
+  inline size_t numEntries() const {
+    return _nrRegs * _nrItems;
+  }
+
+  inline size_t capacity() const { return _data.capacity(); }
 
   /// @brief shrink the block to the specified number of rows
   /// the superfluous rows are cleaned
@@ -315,7 +320,8 @@ class AqlItemBlock {
 
   /// @brief create an AqlItemBlock with a single row, with copies of the
   /// specified registers from the current block
-  AqlItemBlock* slice(size_t row, std::unordered_set<RegisterId> const&) const;
+  AqlItemBlock* slice(size_t row, std::unordered_set<RegisterId> const& registers,
+                      size_t newNrRegs) const;
 
   /// @brief slice/clone chosen rows for a subset, this does a deep copy
   /// of all entries

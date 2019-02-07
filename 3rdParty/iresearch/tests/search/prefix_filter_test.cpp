@@ -51,20 +51,29 @@ class prefix_filter_test_case : public filter_test_case_base {
       costs_t costs{ docs.size() };
       irs::order order;
 
-      size_t collect_count = 0;
+      size_t collect_field_count = 0;
+      size_t collect_term_count = 0;
       size_t finish_count = 0;
       auto& scorer = order.add<sort::custom_sort>(false);
-      scorer.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
-        ++collect_count;
+
+      scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+        ++collect_field_count;
       };
-      scorer.collector_finish = [&finish_count](irs::attribute_store&, const irs::index_reader&)->void{
+      scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+        ++collect_term_count;
+      };
+      scorer.collectors_collect_ = [&finish_count](irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++finish_count;
       };
-      scorer.prepare_collector = [&scorer]()->irs::sort::collector::ptr{
+      scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
+        return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer);
+      };
+      scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
         return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer);
       };
       check_query(irs::by_prefix().field("prefix"), order, docs, rdr);
-      ASSERT_EQ(9, collect_count);
+      ASSERT_EQ(9, collect_field_count); // 9 fields (1 per term since treated as a disjunction) in 1 segment
+      ASSERT_EQ(9, collect_term_count); // 9 different terms
       ASSERT_EQ(9, finish_count); // 9 unque terms
     }
 

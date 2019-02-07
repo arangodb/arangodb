@@ -289,15 +289,6 @@ function ahuacatlFailureSuite () {
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
 
-    testFilterBlock4 : function () {
-      internal.debugSetFailAt("BlockCollector::getOrSkipSomeConcatenate");
-      assertFailingQuery("FOR c IN " + c.name() + " FILTER c.value >= 20 && c.value < 30 LIMIT 0, 10 SORT c.value RETURN c");
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test failure
-////////////////////////////////////////////////////////////////////////////////
-
     testModificationBlock : function () {
       internal.debugSetFailAt("ModificationBlock::getSome");
       assertFailingQuery("FOR i IN " + c.name() + " REMOVE i IN " + c.name());
@@ -392,7 +383,7 @@ function ahuacatlFailureSuite () {
 
     testExecutionBlock3 : function () {
       internal.debugSetFailAt("ExecutionBlock::getOrSkipSome1");
-      assertFailingQuery("FOR u in " + c.name() + " SORT u.id DESC LIMIT 0,4 RETURN u");
+      assertFailingQuery("FOR u in " + c.name() + " SORT u.id DESC LIMIT 0,4 RETURN u", ['-sort-limit']);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -401,7 +392,7 @@ function ahuacatlFailureSuite () {
 
     testExecutionBlock4 : function () {
       internal.debugSetFailAt("ExecutionBlock::getOrSkipSome2");
-      assertFailingQuery("FOR u in " + c.name() + " SORT u.id DESC LIMIT " + (count - 1) + ",100 RETURN u");
+      assertFailingQuery("FOR u in " + c.name() + " SORT u.id DESC LIMIT " + (count - 1) + ",100 RETURN u", ['-sort-limit']);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

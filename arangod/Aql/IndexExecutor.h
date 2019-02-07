@@ -45,6 +45,8 @@ namespace aql {
 
 class InputAqlItemRow;
 class ExecutorInfos;
+
+template<bool pass>
 class SingleRowFetcher;
 
 class IndexExecutorInfos : public ExecutorInfos {
@@ -227,7 +229,12 @@ void setHasMultipleExpansions(bool flag) { _hasMultipleExpansions = flag; };
  */
 class IndexExecutor {
  public:
-  using Fetcher = SingleRowFetcher;
+  struct Properties {
+    static const bool preservesOrder = true;
+    static const bool allowsBlockPassthrough = false;
+  };
+
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = IndexExecutorInfos;
   using Stats = IndexStats;
 
