@@ -770,11 +770,8 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
   } else {  // non-embedded
     // now start our own transaction
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
-    _state = engine
-                 ->createTransactionState(_transactionContextPtr->vocbase(),
-                                          TRI_NewTickServer(), options)
-                 .release();
+    TRI_vocbase_t& vocbase = _transactionContextPtr->vocbase();
+    _state = engine->createTransactionState(vocbase, TRI_NewTickServer(), options).release();
     TRI_ASSERT(_state != nullptr);
     TRI_ASSERT(_state->isTopLevelTransaction());
 
@@ -1461,8 +1458,8 @@ OperationResult transaction::Methods::documentCoordinator(std::string const& col
     }
   }
 
-  int res = arangodb::getDocumentOnCoordinator(vocbase().name(), collectionName,
-                                               *this, value, options, responseCode,
+  int res = arangodb::getDocumentOnCoordinator(*this, collectionName,
+                                               value, options, responseCode,
                                                errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -1588,8 +1585,8 @@ OperationResult transaction::Methods::insertCoordinator(std::string const& colle
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
 
-  Result res = arangodb::createDocumentOnCoordinator(vocbase().name(), collectionName,
-                                                     *this, options, value, responseCode,
+  Result res = arangodb::createDocumentOnCoordinator(*this, collectionName,
+                                                     options, value, responseCode,
                                                      errorCounter, resultBody);
 
   if (res.ok()) {
@@ -1891,8 +1888,8 @@ OperationResult transaction::Methods::updateCoordinator(std::string const& colle
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  int res = arangodb::modifyDocumentOnCoordinator(vocbase().name(), collectionName,
-                                                  *this, newValue, options,
+  int res = arangodb::modifyDocumentOnCoordinator(*this, collectionName,
+                                                  newValue, options,
                                                   true /* isPatch */, headers, responseCode,
                                                   errorCounter, resultBody);
 
@@ -1940,8 +1937,8 @@ OperationResult transaction::Methods::replaceCoordinator(std::string const& coll
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  int res = arangodb::modifyDocumentOnCoordinator(vocbase().name(), collectionName,
-                                                  *this, newValue, options,
+  int res = arangodb::modifyDocumentOnCoordinator(*this, collectionName,
+                                                  newValue, options,
                                                   false /* isPatch */, headers, responseCode,
                                                   errorCounter, resultBody);
 
@@ -2215,8 +2212,8 @@ OperationResult transaction::Methods::removeCoordinator(std::string const& colle
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  int res = arangodb::deleteDocumentOnCoordinator(vocbase().name(), collectionName,
-                                                  *this, value, options, responseCode,
+  int res = arangodb::deleteDocumentOnCoordinator(*this, collectionName,
+                                                  value, options, responseCode,
                                                   errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -2702,7 +2699,7 @@ OperationResult transaction::Methods::countCoordinatorHelper(
   if (documents == CountCache::NotPopulated) {
     // no cache hit, or detailed results requested
     std::vector<std::pair<std::string, uint64_t>> count;
-    auto res = arangodb::countOnCoordinator(vocbase().name(), collectionName, *this, count);
+    auto res = arangodb::countOnCoordinator(*this, collectionName, count);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return OperationResult(res);

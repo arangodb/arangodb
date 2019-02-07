@@ -218,8 +218,7 @@ class TransactionState {
   TransactionCollection* findCollection(TRI_voc_cid_t cid, size_t& position) const;
 
   /// @brief check if current user can access this collection
-  int checkCollectionPermission(TRI_voc_cid_t cid, std::string const& cname,
-                                AccessMode::Type) const;
+  int checkCollectionPermission(std::string const& cname, AccessMode::Type) const;
 
   /// @brief release collection locks for a transaction
   int releaseCollections();

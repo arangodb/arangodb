@@ -123,7 +123,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cname,
                   "AccessMode::Type total order fail");
     // we may need to recheck permissions here
     if (trxCollection->accessType() < accessType) {
-      int res = checkCollectionPermission(cid, cname, accessType);
+      int res = checkCollectionPermission(cname, accessType);
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
@@ -145,7 +145,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cname,
   }
 
   // now check the permissions
-  int res = checkCollectionPermission(cid, cname, accessType);
+  int res = checkCollectionPermission(cname, accessType);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -320,8 +320,9 @@ bool TransactionState::isOnlyExclusiveTransaction() const {
   return true;
 }
 
-int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid, std::string const& cname,
+int TransactionState::checkCollectionPermission(std::string const& cname,
                                                 AccessMode::Type accessType) const {
+  TRI_ASSERT(!cname.empty());
   ExecContext const* exec = ExecContext::CURRENT;
 
   // no need to check for superuser, cluster_sync tests break otherwise

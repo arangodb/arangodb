@@ -902,8 +902,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 /// @brief counts number of documents in a coordinator, by shard
 ////////////////////////////////////////////////////////////////////////////////
 
-int countOnCoordinator(std::string const& dbname, std::string const& cname,
-                       transaction::Methods const& trx,
+int countOnCoordinator(transaction::Methods const& trx, std::string const& cname,
                        std::vector<std::pair<std::string, uint64_t>>& result) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -915,6 +914,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& cname,
 
   result.clear();
 
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, cname);
@@ -1082,8 +1082,8 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
 /// for their documents.
 ////////////////////////////////////////////////////////////////////////////////
 
-Result createDocumentOnCoordinator(std::string const& dbname, std::string const& collname,
-                                   transaction::Methods const& trx,
+Result createDocumentOnCoordinator(transaction::Methods const& trx,
+                                   std::string const& collname,
                                    arangodb::OperationOptions const& options,
                                    VPackSlice const& slice,
                                    arangodb::rest::ResponseCode& responseCode,
@@ -1098,6 +1098,7 @@ Result createDocumentOnCoordinator(std::string const& dbname, std::string const&
   ClusterInfo* ci = ClusterInfo::instance();
   TRI_ASSERT(ci != nullptr);
 
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, collname);
@@ -1224,8 +1225,8 @@ Result createDocumentOnCoordinator(std::string const& dbname, std::string const&
 /// @brief deletes a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int deleteDocumentOnCoordinator(std::string const& dbname, std::string const& collname,
-                                arangodb::transaction::Methods const& trx,
+int deleteDocumentOnCoordinator(arangodb::transaction::Methods const& trx,
+                                std::string const& collname,
                                 VPackSlice const slice,
                                 arangodb::OperationOptions const& options,
                                 arangodb::rest::ResponseCode& responseCode,
@@ -1239,6 +1240,7 @@ int deleteDocumentOnCoordinator(std::string const& dbname, std::string const& co
     return TRI_ERROR_SHUTTING_DOWN;
   }
 
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, collname);
@@ -1509,8 +1511,8 @@ int truncateCollectionOnCoordinator(std::string const& dbname, std::string const
 /// @brief get a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int getDocumentOnCoordinator(std::string const& dbname, std::string const& collname,
-                             arangodb::transaction::Methods const& trx,
+int getDocumentOnCoordinator(arangodb::transaction::Methods const& trx,
+                             std::string const& collname,
                              VPackSlice slice, OperationOptions const& options,
                              arangodb::rest::ResponseCode& responseCode,
                              std::unordered_map<int, size_t>& errorCounter,
@@ -1523,6 +1525,7 @@ int getDocumentOnCoordinator(std::string const& dbname, std::string const& colln
     return TRI_ERROR_SHUTTING_DOWN;
   }
 
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, collname);
@@ -2057,8 +2060,8 @@ void fetchVerticesFromEngines(
 /// @brief get all edges on coordinator using a Traverser Filter
 ////////////////////////////////////////////////////////////////////////////////
 
-int getFilteredEdgesOnCoordinator(std::string const& dbname, std::string const& collname,
-                                  arangodb::transaction::Methods const& trx,
+int getFilteredEdgesOnCoordinator(arangodb::transaction::Methods const& trx,
+                                  std::string const& collname,
                                   std::string const& vertex,
                                   TRI_edge_direction_e const& direction,
                                   arangodb::rest::ResponseCode& responseCode,
@@ -2072,7 +2075,8 @@ int getFilteredEdgesOnCoordinator(std::string const& dbname, std::string const& 
     // nullptr happens only during controlled shutdown
     return TRI_ERROR_SHUTTING_DOWN;
   }
-
+  
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo = ci->getCollection(dbname, collname);
 

@@ -457,6 +457,7 @@ void RocksDBEngine::start() {
                              static_cast<int>(opts->_blockCacheShardBits),
                              /*strict_capacity_limit*/ opts->_enforceBlockCacheSizeLimit);
     // tableOptions.cache_index_and_filter_blocks =
+    // tableOptions.pin_l0_filter_and_index_blocks_in_cache
     // opts->_compactionReadaheadSize > 0;
   } else {
     tableOptions.no_block_cache = true;
