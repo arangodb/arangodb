@@ -38,6 +38,9 @@ static void EnvGetter(v8::Local<v8::Name> property,
                       const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
+  if (property->IsSymbol()) {
+    return args.GetReturnValue().SetUndefined();
+  }
 #ifndef _WIN32
   v8::String::Utf8Value const key(isolate, property);
   char const* val = getenv(*key);
