@@ -20,7 +20,6 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Indexes.h"
 #include "Basics/Common.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
@@ -32,6 +31,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Indexes.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexFactory.h"
 #include "Rest/HttpRequest.h"
@@ -306,10 +306,11 @@ Result Indexes::ensureIndexCoordinator(arangodb::LogicalCollection const* collec
   TRI_ASSERT(collection != nullptr);
   auto& dbName = collection->vocbase().name();
   auto cid = std::to_string(collection->id());
-  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
+  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>(
+      "Cluster");
 
-  return ClusterInfo::instance()->ensureIndexCoordinator( // create index
-    dbName, cid, indexDef, create, resultBuilder, cluster->indexCreationTimeout() // args
+  return ClusterInfo::instance()->ensureIndexCoordinator(  // create index
+      dbName, cid, indexDef, create, resultBuilder, cluster->indexCreationTimeout()  // args
   );
 }
 
@@ -333,7 +334,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
       engine->indexFactory().enhanceIndexDefinition(input, normalized, create,
                                                     ServerState::instance()->isCoordinator());
 
-  if (!res.ok()) {
+  if (res.fail()) {
     return res;
   }
 
@@ -555,8 +556,8 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
     TRI_ASSERT(collection);
     auto& databaseName = collection->vocbase().name();
 
-    return ClusterInfo::instance()->dropIndexCoordinator( // drop index
-      databaseName, std::to_string(collection->id()), iid, 0.0 // args
+    return ClusterInfo::instance()->dropIndexCoordinator(         // drop index
+        databaseName, std::to_string(collection->id()), iid, 0.0  // args
     );
 #endif
   } else {
