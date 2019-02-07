@@ -1,6 +1,15 @@
 devel
 -----
 
+* added greeting warning about maintainer mode
+
+* improve insertion time into non-unique secondary indexes with the RocksDB
+  engine
+
+* fixed possible segfault when using COLLECT with a LIMIT and an offset
+
+* fixed COLLECT forgetting top-level variables after 1000 rows
+
 * added sort-limit optimization in AQL; improves memory usage and execution
   time for some queries
 

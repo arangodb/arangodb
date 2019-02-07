@@ -91,7 +91,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
   masterFunc2(state);
 
   // use lastLogTick as of now
-  state.lastLogTick = replication.logger.state().state.lastLogTick;
+  state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
 
   applierConfiguration = applierConfiguration || {};
   applierConfiguration.endpoint = masterEndpoint;
@@ -718,7 +718,7 @@ function BaseTestConfig () {
             return 'wait';
           } catch (err) {
             // task does not exist. we're done
-            state.lastLogTick = replication.logger.state().state.lastLogTick;
+            state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
             state.checksum = collectionChecksum(cn);
             state.count = collectionCount(cn);
             assertEqual(20, state.count);
@@ -804,7 +804,7 @@ function BaseTestConfig () {
             return 'wait';
           } catch (err) {
             // task does not exist anymore. we're done
-            state.lastLogTick = replication.logger.state().state.lastLogTick;
+            state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
             state.checksum = collectionChecksum(cn);
             state.count = collectionCount(cn);
             assertEqual(20, state.count);
@@ -1368,7 +1368,7 @@ function ReplicationOtherDBSuite () {
       // Flush wal to trigger replication
       internal.wal.flush(true, true);
 
-      const lastLogTick = replication.logger.state().state.lastLogTick;
+      const lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
 
       // Section - Slave
       connectToSlave();
@@ -1408,7 +1408,7 @@ function ReplicationOtherDBSuite () {
       let dbs = db._databases();
       assertEqual(-1, dbs.indexOf(dbName));
       
-      const lastLogTick = replication.logger.state().state.lastLogTick;
+      const lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
 
       // Section - Slave
       connectToSlave();
