@@ -561,17 +561,11 @@ RestStatus RestAgencyHandler::handleConfig() {
 
 RestStatus RestAgencyHandler::handleState() {
 
-  Node agency;
-  arangodb::consensus::index_t index = _agent->readDB(node);
   VPackBuilder body;
-  _agent->readDB(body);
-  
-  Builder body = 
-  { VPackObjectBuilder b(&body);
+  { VPackObjectBuilder o(&body);
+    arangodb::consensus::index_t index = _agent->readDB(body); }
     
-  }
-    
-  generateResult(rest::ResponseCode::OK, _agent->handleState());
+  generateResult(rest::ResponseCode::OK, body.slice());
   return RestStatus::DONE;
 }
 

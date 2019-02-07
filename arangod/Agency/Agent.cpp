@@ -1588,16 +1588,22 @@ arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
   { READ_LOCKER(oLocker, _outputLock);
 
     commitIndex = _commitIndex;
+    LOG_DEVEL << __FILE__ << __LINE__;
     // commit index
-    builder.add("index", commitIndex);
+    builder.add("index", VPackValue(commitIndex));
+    LOG_DEVEL << __FILE__ << __LINE__;
+    builder.add("term", VPackValue(term()));
+    LOG_DEVEL << __FILE__ << __LINE__;
 
     // key-value store {}
     builder.add(VPackValue("agency"));
+    LOG_DEVEL << __FILE__ << __LINE__;
     _readDB.get().toBuilder(builder, true); }
+  LOG_DEVEL << __FILE__ << __LINE__;
   
   // replicated log []
-  builder.add(VPackValue("log"));
   _state.toVelocyPack(commitIndex, builder);
+  LOG_DEVEL << __FILE__ << __LINE__;
   
   return commitIndex;
 }
