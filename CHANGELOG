@@ -1,6 +1,8 @@
 devel
 -----
 
+* added greeting warning about maintainer mode
+
 * improve insertion time into non-unique secondary indexes with the RocksDB
   engine
 

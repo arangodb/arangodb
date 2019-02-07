@@ -63,10 +63,6 @@ Expression::Expression(ExecutionPlan* plan, Ast* ast, AstNode* node)
       _ast(ast),
       _node(node),
       _type(UNPROCESSED),
-      _canRunOnDBServer(false),
-      _isDeterministic(false),
-      _willUseV8(false),
-      _attributes(),
       _expressionContext(nullptr) {
   _ast->query()->unPrepareV8Context();
   TRI_ASSERT(_ast != nullptr);
@@ -186,7 +182,6 @@ void Expression::invalidateAfterReplacements() {
   }
 
   const_cast<AstNode*>(_node)->clearFlags();
-  _attributes.clear();
 }
 
 /// @brief invalidates an expression
@@ -282,20 +277,18 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
   return false;
 }
 
-void Expression::initConstantExpression() {
-  _canRunOnDBServer = true;
-  _isDeterministic = true;
-  _willUseV8 = false;
-  _data = nullptr;
+/// @brief analyze the expression (determine its type etc.)
+void Expression::initExpression() {
+  TRI_ASSERT(_type == UNPROCESSED);
 
-  _type = JSON;
-}
+  if (_node->isConstant()) {
+    // expression is a constant value
+    _data = nullptr;
+    _type = JSON;
+    return;
+  }
 
-void Expression::initSimpleExpression() {
-  _canRunOnDBServer = _node->canRunOnDBServer();
-  _isDeterministic = _node->isDeterministic();
-  _willUseV8 = _node->willUseV8();
-
+  // expression is a simple expression
   _type = SIMPLE;
 
   if (_node->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
@@ -334,28 +327,11 @@ void Expression::initSimpleExpression() {
   _type = ATTRIBUTE_ACCESS;
 }
 
-/// @brief analyze the expression (determine its type etc.)
-void Expression::initExpression() {
-  TRI_ASSERT(_type == UNPROCESSED);
-
-  if (_node->isConstant()) {
-    // expression is a constant value
-    initConstantExpression();
-  } else {
-    // expression is a simple expression
-    initSimpleExpression();
-  }
-
-  TRI_ASSERT(_type != UNPROCESSED);
-}
-
 /// @brief build the expression
 void Expression::buildExpression(transaction::Methods* trx) {
   if (_type == UNPROCESSED) {
     initExpression();
   }
-
-  TRI_ASSERT(_type != UNPROCESSED);
 
   if (_type == JSON && _data == nullptr) {
     // generate a constant value
