@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PathEnumerator.h"
+#include "Aql/AqlValue.h"
+#include "Aql/PruneExpressionEvaluator.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/Traverser.h"
@@ -146,6 +148,25 @@ bool DepthFirstEnumerator::next() {
 
       if (cursor->next(callback)) {
         if (foundPath) {
+          // We need to call prune here
+          if (_opts->usesPrune()) {
+            auto* evaluator = _opts->getPruneEvaluator();
+            if (evaluator->needsVertex()) {
+              evaluator->injectVertex(lastVertexToAqlValue().slice());
+            }
+            if (evaluator->needsEdge()) {
+              evaluator->injectEdge(lastEdgeToAqlValue().slice());
+            }
+            transaction::BuilderLeaser builder(_opts->trx);
+            if (evaluator->needsPath()) {
+              aql::AqlValue val = pathToAqlValue(*builder.get());
+              evaluator->injectPath(val.slice());
+            }
+            if (evaluator->evaluate()) {
+              _pruneNext = true;
+            }
+          }
+
           if (_enumeratedPath.edges.size() < _opts->minDepth) {
             // We have a valid prefix, but do NOT return this path
             break;
@@ -171,9 +192,7 @@ bool DepthFirstEnumerator::next() {
   }  // while (true)
 }
 
-void DepthFirstEnumerator::prune() {
-  _pruneNext = true;
-}
+void DepthFirstEnumerator::prune() {}
 
 arangodb::aql::AqlValue DepthFirstEnumerator::lastVertexToAqlValue() {
   return _traverser->fetchVertexData(StringRef(_enumeratedPath.vertices.back()));
