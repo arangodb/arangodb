@@ -857,7 +857,7 @@ ArangoCollection.prototype.firstExample = function (example) {
 
 ArangoCollection.prototype.save =
   ArangoCollection.prototype.insert = function (from, to, data, options) {
-    var type = this.type(), url;
+    let type = this.type(), url;
 
     if (type === undefined) {
       type = ArangoCollection.TYPE_DOCUMENT;
@@ -919,6 +919,11 @@ ArangoCollection.prototype.save =
       url = this._appendBoolParameter(url, 'overwrite', options.overwrite);
     }
 
+    let headers = {};
+    if (options.transactionId && Number.isInteger(options.transactionId)) {
+      headers['x-arango-trx'] = options.transactionId;
+    }
+    
     if (data === undefined || typeof data !== 'object') {
       throw new ArangoError({
         errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
@@ -926,8 +931,8 @@ ArangoCollection.prototype.save =
       });
     }
 
-    var requestResult = this._database._connection.POST(
-      url, data
+    let requestResult = this._database._connection.POST(
+      url, data, headers
     );
 
     arangosh.checkRequestResult(requestResult);
@@ -947,8 +952,7 @@ ArangoCollection.prototype.save =
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
-  var rev = null;
-  var requestResult;
+  let rev = null;
 
   if (id === undefined || id === null) {
     throw new ArangoError({
@@ -957,8 +961,8 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
     });
   }
 
-  var ignoreRevs = false;
-  var options;
+  let ignoreRevs = false;
+  let options;
   if (typeof overwrite === 'object') {
     // we assume the caller uses new signature (id, data, options)
     if (typeof waitForSync !== 'undefined') {
@@ -982,8 +986,8 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
     delete id._rev;
   }
 
-  var url;
-  var body = null;
+  let url;
+  let body = null;
 
   if (Array.isArray(id)) {
     url = this._documentcollectionurl();
@@ -1011,13 +1015,15 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
     url = this._appendBoolParameter(url, 'silent', options.silent);
   }
 
-  if (rev === null || ignoreRevs) {
-    requestResult = this._database._connection.DELETE(url, body);
-  } else {
-    requestResult = this._database._connection.DELETE(url, body,
-      {'if-match': JSON.stringify(rev)});
+  let headers = {};
+  if (options.transactionId && Number.isInteger(options.transactionId)) {
+    headers['x-arango-trx'] = options.transactionId;
+  }
+  if (rev !== null && !ignoreRevs) {
+    headers['if-match'] = JSON.stringify(rev);
   }
 
+  let requestResult = this._database._connection.DELETE(url, headers, body);
   if (requestResult !== null && requestResult.error === true) {
     if (requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code) {
       requestResult.errorNum = internal.errors.ERROR_ARANGO_CONFLICT.code;
@@ -1041,7 +1047,7 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function fillInSpecial (id, data) {
-  var pos;
+  let pos;
   if (data === null || typeof data !== 'object' || Array.isArray(data)) {
     return;
   }
@@ -1082,8 +1088,7 @@ function fillInSpecial (id, data) {
 }
 
 ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync) {
-  var rev = null;
-  var requestResult;
+  let rev = null;
 
   if (id === undefined || id === null) {
     throw new ArangoError({
@@ -1115,7 +1120,7 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
     options = {};
   }
 
-  var url;
+  let url;
   if (Array.isArray(id)) {
     if (!Array.isArray(data) || id.length !== data.length) {
       throw new ArangoError({
@@ -1125,7 +1130,7 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
         errorMessage: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.message
       });
     }
-    for (var i = 0; i < id.length; i++) {
+    for (let i = 0; i < id.length; i++) {
       fillInSpecial(id[i], data[i]);
     }
     url = this._documentcollectionurl();
@@ -1158,12 +1163,15 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
     url = this._appendBoolParameter(url, 'silent', options.silent);
   }
 
-  if (rev === null || ignoreRevs) {
-    requestResult = this._database._connection.PUT(url, data);
-  }else {
-    requestResult = this._database._connection.PUT(url, data, {'if-match': JSON.stringify(rev) });
+  let headers ={};
+  if (options.transactionId && Number.isInteger(options.transactionId)) {
+    headers['x-arango-trx'] = options.transactionId;
   }
-
+  if (rev !== null && !ignoreRevs) {
+    headers['if-match'] = JSON.stringify(rev);
+  }
+  
+  let requestResult = this._database._connection.PUT(url, data, headers);
   if (requestResult !== null && requestResult.error === true) {
     if (requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code) {
       requestResult.errorNum = internal.errors.ERROR_ARANGO_CONFLICT.code;
@@ -1189,8 +1197,7 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, waitForSync) {
-  var rev = null;
-  var requestResult;
+  let rev = null;
 
   if (id === undefined || id === null) {
     throw new ArangoError({
@@ -1274,13 +1281,15 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     url = this._appendBoolParameter(url, 'silent', options.silent);
   }
 
-  if (rev === null || ignoreRevs) {
-    requestResult = this._database._connection.PATCH(url, data);
-  } else {
-    requestResult = this._database._connection.PATCH(url, data,
-      {'if-match': JSON.stringify(rev) });
+  let headers = {};
+  if (options.transactionId && Number.isInteger(options.transactionId)) {
+    headers['x-arango-trx'] = options.transactionId;
+  }
+  if (rev !== null && !ignoreRevs) {
+    headers['if-match'] = JSON.stringify(rev);
   }
 
+  let requestResult = this._database._connection.PATCH(url, data, headers);
   if (requestResult !== null && requestResult.error === true) {
     if (requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code) {
       requestResult.errorNum = internal.errors.ERROR_ARANGO_CONFLICT.code;
