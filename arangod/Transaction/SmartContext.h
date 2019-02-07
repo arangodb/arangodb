@@ -75,7 +75,7 @@ class SmartContext final : public Context {
   CollectionNameResolver const& resolver() override final;
 
   /// @brief get parent transaction (if any) and increase nesting
-  TransactionState* getParentTransaction() const override;
+  TransactionState* leaseParentTransaction() const override;
 
   /// @brief register the transaction,
   void registerTransaction(TransactionState*) override;

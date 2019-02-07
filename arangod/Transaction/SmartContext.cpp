@@ -80,7 +80,7 @@ CollectionNameResolver const& transaction::SmartContext::resolver() {
 }
 
 /// @brief get parent transaction (if any) and increase nesting
-TransactionState* transaction::SmartContext::getParentTransaction() const {
+TransactionState* transaction::SmartContext::leaseParentTransaction() const {
   return _state;
 }
 

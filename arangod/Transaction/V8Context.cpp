@@ -21,10 +21,10 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "V8Context.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
+#include "V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 
 #include <v8.h>
@@ -85,10 +85,14 @@ CollectionNameResolver const& transaction::V8Context::resolver() {
   return *_resolver;
 }
 
-/// @brief get parent transaction (if any)
-TransactionState* transaction::V8Context::getParentTransaction() const {
+/// @brief get parent transaction (if any) and increase nesting
+TransactionState* transaction::V8Context::leaseParentTransaction() const {
   TRI_ASSERT(_sharedTransactionContext != nullptr);
-  return _sharedTransactionContext->_currentTransaction;
+  TransactionState* state = _sharedTransactionContext->_currentTransaction;
+  if (state != nullptr) {
+    state->increaseNesting();
+  }
+  return state;
 }
 
 /// @brief register the transaction in the context

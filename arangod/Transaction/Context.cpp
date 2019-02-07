@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/StringBuffer.h"
+#include "Cluster/ClusterInfo.h"
 #include "Context.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -212,4 +213,10 @@ transaction::ContextData* transaction::Context::contextData() {
   }
 
   return _contextData.get();
+}
+
+TRI_voc_tid_t transaction::Context::generateId() const {
+  return ServerState::instance()->isCoordinator()
+             ? TRI_NewServerSpecificTickMod4()       // coordinator
+             : TRI_NewServerSpecificTickMod4() + 3;  // legacy
 }

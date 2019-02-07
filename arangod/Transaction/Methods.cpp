@@ -755,7 +755,7 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
   // this will first check if the transaction is embedded in a parent
   // transaction. if not, it will create a transaction of its own
   // check in the context if we are running embedded
-  TransactionState* parent = _transactionContextPtr->getParentTransaction();
+  TransactionState* parent = _transactionContextPtr->leaseParentTransaction();
 
   if (parent != nullptr) {  // yes, we are embedded
     if (!_transactionContextPtr->isEmbeddable()) {
@@ -764,17 +764,15 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
     }
 
     _state = parent;
-
-    TRI_ASSERT(_state != nullptr);
-    _state->increaseNesting();
+    TRI_ASSERT(_state != nullptr && _state->isEmbeddedTransaction());
   } else {  // non-embedded
     // now start our own transaction
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     TRI_vocbase_t& vocbase = _transactionContextPtr->vocbase();
-    _state =
-        engine->createTransactionState(vocbase, TRI_NewTickServer(), options).release();
-    TRI_ASSERT(_state != nullptr);
-    TRI_ASSERT(_state->isTopLevelTransaction());
+
+    TRI_voc_tick_t tid = _transactionContextPtr->generateId();
+    _state = engine->createTransactionState(vocbase, tid, options).release();
+    TRI_ASSERT(_state != nullptr && _state->isTopLevelTransaction());
 
     // register the transaction in the context
     _transactionContextPtr->registerTransaction(_state);
@@ -805,9 +803,7 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
 
 /// @brief destroy the transaction
 transaction::Methods::~Methods() {
-  if (_state->isEmbeddedTransaction()) {
-    _state->decreaseNesting();
-  } else {
+  if (_state->isTopLevelTransaction()) {  // _nestingLevel == 0
     if (_state->status() == transaction::Status::RUNNING) {
       // auto abort a running transaction
       try {
@@ -820,13 +816,15 @@ transaction::Methods::~Methods() {
 
     // free the state associated with the transaction
     TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
-    // store result
+    // store result in context
     _transactionContextPtr->storeTransactionResult(_state->id(),
                                                    _state->hasFailedOperations());
     _transactionContextPtr->unregisterTransaction();
 
     delete _state;
     _state = nullptr;
+  } else {
+    _state->decreaseNesting();  // return transaction
   }
 }
 
@@ -932,16 +930,10 @@ Result transaction::Methods::begin() {
                                    "invalid transaction state");
   }
 
-  if (_state->isCoordinator()) {
-    if (_state->isTopLevelTransaction()) {
-      _state->updateStatus(transaction::Status::RUNNING);
-    }
-  } else {
-    auto res = _state->beginTransaction(_localHints);
+  auto res = _state->beginTransaction(_localHints);
 
-    if (res.fail()) {
-      return res;
-    }
+  if (res.fail()) {
+    return res;
   }
 
   applyStatusChangeCallbacks(*this, Status::RUNNING);
@@ -967,16 +959,20 @@ Result transaction::Methods::commit() {
     }
   }
 
-  if (_state->isCoordinator()) {
-    if (_state->isTopLevelTransaction()) {
-      _state->updateStatus(transaction::Status::COMMITTED);
-    }
-  } else {
-    auto res = _state->commitTransaction(this);
-
-    if (res.fail()) {
+  if (_state->isRunningInCluster() && _state->isTopLevelTransaction() &&
+      !_state->hasHint(Hints::Hint::SINGLE_OPERATION)) {
+    // first commit transaction on subordinate servers
+    Result res = ::arangodb::commitTransaction(*this);
+    if (res.fail()) {  // do not commit locally
+      LOG_TOPIC(WARN, Logger::TRANSACTIONS)
+          << "failed to commit on subordinates " << res.errorMessage();
       return res;
     }
+  }
+
+  auto res = _state->commitTransaction(this);
+  if (res.fail()) {
+    return res;
   }
 
   applyStatusChangeCallbacks(*this, Status::COMMITTED);
@@ -992,16 +988,19 @@ Result transaction::Methods::abort() {
                   "transaction not running on abort");
   }
 
-  if (_state->isCoordinator()) {
-    if (_state->isTopLevelTransaction()) {
-      _state->updateStatus(transaction::Status::ABORTED);
+  if (_state->isRunningInCluster() && _state->isTopLevelTransaction() &&
+      !_state->hasHint(Hints::Hint::SINGLE_OPERATION)) {
+    // first commit transaction on subordinate servers
+    Result res = ::arangodb::abortTransaction(*this);
+    if (res.fail()) {  // abort locally anyway, GC can cleanup
+      LOG_TOPIC(WARN, Logger::TRANSACTIONS)
+          << "failed to abort on subordinates: " << res.errorMessage();
     }
-  } else {
-    auto res = _state->abortTransaction(this);
+  }
 
-    if (res.fail()) {
-      return res;
-    }
+  auto res = _state->abortTransaction(this);
+  if (res.fail()) {
+    return res;
   }
 
   applyStatusChangeCallbacks(*this, Status::ABORTED);
@@ -1675,7 +1674,7 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
   std::function<Result(void)> updateFollowers = nullptr;
 
   if (needsToGetFollowersUnderLock) {
-    auto const& followerInfo = *collection->followers();
+    FollowerInfo const& followerInfo = *collection->followers();
 
     updateFollowers = [&followerInfo, &followers]() -> Result {
       TRI_ASSERT(followers == nullptr);

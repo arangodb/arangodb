@@ -97,7 +97,8 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
 /// @brief creates a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Result createDocumentOnCoordinator(transaction::Methods const& trx, std::string const& collname,
+Result createDocumentOnCoordinator(transaction::Methods const& trx,
+                                   std::string const& collname,
                                    OperationOptions const& options,
                                    arangodb::velocypack::Slice const& slice,
                                    arangodb::rest::ResponseCode& responseCode,
@@ -201,8 +202,8 @@ void fetchVerticesFromEngines(
 ///        Also returns the result in VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-int getFilteredEdgesOnCoordinator(transaction::Methods const& trx, std::string const& collname,
-                                  std::string const& vertex,
+int getFilteredEdgesOnCoordinator(transaction::Methods const& trx,
+                                  std::string const& collname, std::string const& vertex,
                                   TRI_edge_direction_e const& direction,
                                   arangodb::rest::ResponseCode& responseCode,
                                   arangodb::velocypack::Builder& result);
@@ -237,8 +238,7 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector,
 ////////////////////////////////////////////////////////////////////////////////
 
 int rotateActiveJournalOnAllDBServers(std::string const& dbname, std::string const& collname);
-  
-  
+
 /// @brief begin a transaction on all followers
 arangodb::Result beginTransactionOnLeaders(transaction::Methods& trx,
                                            std::vector<ServerID> const& leaders);
@@ -251,13 +251,13 @@ arangodb::Result beginTransactionOnFollowers(transaction::Methods& trx,
 /// @brief commit a transaction on a subordinate
 arangodb::Result commitTransaction(transaction::Methods& trx);
 
-/// @brief commit a transaction on a subordinate
+/// @brief abort a transaction on a subordinate
 arangodb::Result abortTransaction(transaction::Methods& trx);
 
 /// @brief set the transaction ID header
 void transactionHeader(transaction::Methods& trx,
-                      std::unordered_map<std::string, std::string>& headers,
-                      bool addBegin = false);
+                       std::unordered_map<std::string, std::string>& headers,
+                       bool addBegin = false);
 
 class ClusterMethods {
  public:

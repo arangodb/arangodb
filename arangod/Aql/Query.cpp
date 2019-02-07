@@ -217,8 +217,8 @@ Query::~Query() {
   AqlFeature::unlease();
 }
 
-void Query::addDataSource( // track DataSource
-    std::shared_ptr<arangodb::LogicalDataSource> const& ds // DataSource to track
+void Query::addDataSource(                                  // track DataSource
+    std::shared_ptr<arangodb::LogicalDataSource> const& ds  // DataSource to track
 ) {
   _queryDataSources.emplace(ds);
 }
@@ -371,7 +371,7 @@ void Query::prepare(QueryRegistry* registry) {
 
       int res = trx->addCollections(*_collections.collections());
 
-      if (!trx->transactionContextPtr()->getParentTransaction()) {
+      if (!trx->transactionContextPtr()->leaseParentTransaction()) {
         trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
       }
 
@@ -474,7 +474,7 @@ ExecutionPlan* Query::preparePlan() {
   // create the transaction object, but do not start it yet
   _trx = trx.get();
 
-  if (!trx->transactionContextPtr()->getParentTransaction()) {
+  if (!trx->transactionContextPtr()->leaseParentTransaction()) {
     trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
   }
 
@@ -577,7 +577,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
 
             // got a result from the query cache
             if (exe != nullptr) {
-              for (auto& dataSource: cacheEntry->_dataSources) {
+              for (auto& dataSource : cacheEntry->_dataSources) {
                 if (!dataSource) {
                   continue;
                 }
@@ -687,18 +687,18 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
         if (useQueryCache && _warnings.empty()) {
           auto dataSources = _queryDataSources;
 
-          _trx->state()->allCollections( // collect transaction DataSources
-            [&dataSources](TransactionCollection& trxCollection)->bool {
-              dataSources.emplace(trxCollection.collection()); // add collection from transaction
-              return true; // continue traversal
-            }
-          );
+          _trx->state()->allCollections(  // collect transaction DataSources
+              [&dataSources](TransactionCollection& trxCollection) -> bool {
+                dataSources.emplace(trxCollection.collection());  // add collection from transaction
+                return true;  // continue traversal
+              });
 
           // create a query cache entry for later storage
-          _cacheEntry = std::make_unique<QueryCacheResultEntry>(
-              hash(), _queryString, _resultBuilder, bindParameters(),
-            std::move(dataSources) // query DataSources
-          );
+          _cacheEntry =
+              std::make_unique<QueryCacheResultEntry>(hash(), _queryString, _resultBuilder,
+                                                      bindParameters(),
+                                                      std::move(dataSources)  // query DataSources
+              );
         }
 
         queryResult.result = std::move(_resultBuilder);
@@ -794,7 +794,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
 
         // got a result from the query cache
         if (exe != nullptr) {
-          for (auto& dataSource: cacheEntry->_dataSources) {
+          for (auto& dataSource : cacheEntry->_dataSources) {
             if (!dataSource) {
               continue;
             }
@@ -913,18 +913,16 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
     if (useQueryCache && _warnings.empty()) {
       auto dataSources = _queryDataSources;
 
-      _trx->state()->allCollections( // collect transaction DataSources
-        [&dataSources](TransactionCollection& trxCollection)->bool {
-          dataSources.emplace(trxCollection.collection()); // add collection from transaction
-          return true; // continue traversal
-        }
-      );
+      _trx->state()->allCollections(  // collect transaction DataSources
+          [&dataSources](TransactionCollection& trxCollection) -> bool {
+            dataSources.emplace(trxCollection.collection());  // add collection from transaction
+            return true;  // continue traversal
+          });
 
       // create a cache entry for later usage
-      _cacheEntry =
-          std::make_unique<QueryCacheResultEntry>(hash(), _queryString, builder,
-                                                  bindParameters(),
-        std::move(dataSources) // query DataSources
+      _cacheEntry = std::make_unique<QueryCacheResultEntry>(hash(), _queryString,
+                                                            builder, bindParameters(),
+                                                            std::move(dataSources)  // query DataSources
       );
     }
 
