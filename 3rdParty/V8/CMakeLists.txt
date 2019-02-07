@@ -299,10 +299,10 @@ if (WIN32)
     optimized "${V8_LIBRARY_RELEASE}/lib/v8_libbase.lib"
 
     debug "${V8_LIBRARY_DEBUG}/lib/v8_initializers.lib"
-    optimized "${V8_LIBRARY_RELEASE}/v8_initializers.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_initializers.lib"
 
     debug "${V8_LIBRARY_DEBUG}/lib/v8_init.lib"
-    optimized "${V8_LIBRARY_RELEASE}/v8_init.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_init.lib"
 
     debug "DbgHelp.lib"
     optimized "DbgHelp.lib"
