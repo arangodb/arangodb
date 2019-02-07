@@ -47,7 +47,7 @@ class OurLessThan {
       std::vector<SortRegister> const& sortRegisters) noexcept
     : _trx(trx),
       _input(input),
-      _sortRegisters(sortRegisters) {
+      _sortRegisters(sortRegisters){
   }
 
   bool operator()(size_t const& a,
@@ -93,7 +93,9 @@ static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegiste
 }
 
 SortExecutorInfos::SortExecutorInfos(
-    std::vector<SortRegister> sortRegisters, RegisterId nrInputRegisters,
+    std::vector<SortRegister> sortRegisters,
+    SortNode::SorterType sorterType,
+    RegisterId nrInputRegisters,
     RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear, transaction::Methods* trx,
     bool stable)
@@ -102,6 +104,7 @@ SortExecutorInfos::SortExecutorInfos(
                     std::move(registersToClear)),
       _trx(trx),
       _sortRegisters(std::move(sortRegisters)),
+      _sorterType(sorterType),
       _stable(stable) {
   TRI_ASSERT(trx != nullptr);
   TRI_ASSERT(!_sortRegisters.empty());

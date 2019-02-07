@@ -29,6 +29,7 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/SortNode.h"
 
 #include <memory>
 
@@ -48,7 +49,7 @@ struct SortRegister;
 
 class SortExecutorInfos : public ExecutorInfos {
  public:
-  SortExecutorInfos(std::vector<SortRegister> sortRegisters,
+  SortExecutorInfos(std::vector<SortRegister> sortRegisters, SortNode::SorterType sorterType,
                     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                     std::unordered_set<RegisterId> registersToClear,
                     transaction::Methods* trx, bool stable);
@@ -67,6 +68,7 @@ class SortExecutorInfos : public ExecutorInfos {
  private:
   arangodb::transaction::Methods* _trx;
   std::vector<SortRegister> _sortRegisters;
+  SortNode::SorterType _sorterType;
   bool _stable;
 };
 

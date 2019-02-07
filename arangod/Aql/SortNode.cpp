@@ -296,12 +296,10 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
 #endif
   }
 
-  SortExecutorInfos infos( std::move(sortRegs)
-                         , getRegisterPlan()->nrRegs[previousNode->getDepth()]
-                         , getRegisterPlan()->nrRegs[getDepth()]
-                         , getRegsToClear()
-                         , engine.getQuery()->trx()
-                         , _stable);
+  SortExecutorInfos infos(std::move(sortRegs), sorterType(),
+                          getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                          getRegisterPlan()->nrRegs[getDepth()],
+                          getRegsToClear(), engine.getQuery()->trx(), _stable);
 
   return std::make_unique<ExecutionBlockImpl<SortExecutor>>(&engine, this, std::move(infos));
 }
