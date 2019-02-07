@@ -926,7 +926,7 @@ static void JS_FiguresVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto const* collection = UnwrapCollection(args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -1741,7 +1741,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
                              std::string* attachment) {
   v8::HandleScope scope(isolate);
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto const* collection = UnwrapCollection(args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -2004,7 +2004,7 @@ static void JS_TruncateVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& arg
   opOptions.waitForSync = ExtractBooleanArgument(args, 1);
   ExtractStringArgument(args, 2, opOptions.isSynchronousReplicationFrom);
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto const* collection = UnwrapCollection(args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
