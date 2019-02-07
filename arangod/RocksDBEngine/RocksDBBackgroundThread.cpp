@@ -32,7 +32,8 @@
 using namespace arangodb;
 
 RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine* eng, double interval)
-    : Thread("RocksDBThread"), _engine(eng), _interval(interval) {}
+    : Thread("RocksDBThread"), _engine(eng), _interval(interval),
+      _disableWalFilePruning(0) {}
 
 RocksDBBackgroundThread::~RocksDBBackgroundThread() { shutdown(); }
 
@@ -97,16 +98,18 @@ void RocksDBBackgroundThread::run() {
         });
       }
 
-      // only start pruning of obsolete WAL files a few minutes after
-      // server start. if we start pruning too early, replication slaves
-      // will not have a chance to reconnect to a restarted master in
-      // time so the master may purge WAL files that replication slaves
-      // would still like to peek into
-      if (TRI_microtime() >= startTime + _engine->pruneWaitTimeInitial()) {
-        // determine which WAL files can be pruned
-        _engine->determinePrunableWalFiles(minTick);
-        // and then prune them when they expired
-        _engine->pruneWalFiles();
+      if (!disableWalFilePruning()) {
+        // only start pruning of obsolete WAL files a few minutes after
+        // server start. if we start pruning too early, replication slaves
+        // will not have a chance to reconnect to a restarted master in
+        // time so the master may purge WAL files that replication slaves
+        // would still like to peek into
+        if (TRI_microtime() >= startTime + _engine->pruneWaitTimeInitial()) {
+          // determine which WAL files can be pruned
+          _engine->determinePrunableWalFiles(minTick);
+          // and then prune them when they expired
+          _engine->pruneWalFiles();
+        }
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC(WARN, Logger::ENGINES)

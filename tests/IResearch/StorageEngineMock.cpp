@@ -34,6 +34,7 @@
 #include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "RestServer/FlushFeature.h"
 #include "StorageEngine/TransactionManager.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -170,7 +171,7 @@ class EdgeIndexMock final : public arangodb::Index {
   bool canBeDropped() const override { return false; }
 
   bool isHidden() const override { return false; }
-  
+
   bool isSorted() const override { return false; }
 
   bool hasSelectivityEstimate() const override { return false; }
@@ -215,7 +216,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::LocalDocumentId const& documentId,
       arangodb::velocypack::Slice const& doc,
       OperationMode
-  ) override {
+  ) {
     if (!doc.isObject()) {
       return { TRI_ERROR_INTERNAL };
     }
@@ -243,7 +244,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::LocalDocumentId const&,
       arangodb::velocypack::Slice const& doc,
       OperationMode
-  ) override {
+  ) {
     if (!doc.isObject()) {
       return { TRI_ERROR_INTERNAL };
     }
@@ -532,8 +533,7 @@ int PhysicalCollectionMock::close() {
   return TRI_ERROR_NO_ERROR; // assume close successful
 }
 
-std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::velocypack::Slice const& info,
-                                                                     bool restore, bool& created) {
+std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::velocypack::Slice const& info, bool restore, bool& created) {
   before();
 
   std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> docs;
@@ -598,7 +598,19 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::v
   auto res = trx.begin();
   TRI_ASSERT(res.ok());
 
-  index->batchInsert(trx, docs, taskQueuePtr);
+  if (index->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+    auto* l = dynamic_cast<EdgeIndexMock*>(index.get());
+    TRI_ASSERT(l != nullptr);
+    for (auto const& pair : docs) {
+      l->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+    }
+  } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
+    TRI_ASSERT(l != nullptr);;
+    l->batchInsert(trx, docs, taskQueuePtr);
+  } else {
+    TRI_ASSERT(false);
+  }
 
   if (TRI_ERROR_NO_ERROR != taskQueue.status()) {
     return nullptr;
@@ -689,9 +701,31 @@ arangodb::Result PhysicalCollectionMock::insert(
   result.setUnmanaged(documents.back().first.data(), docId);
 
   for (auto& index : _indexes) {
-    if (!index->insert(*trx, docId, arangodb::velocypack::Slice(result.vpack()), arangodb::Index::OperationMode::normal).ok()) {
-      return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+    if (index->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+      auto* l = static_cast<EdgeIndexMock*>(index.get());
+      if (!l->insert(*trx, docId, arangodb::velocypack::Slice(result.vpack()),
+                     arangodb::Index::OperationMode::normal).ok()) {
+        return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+      }
+      continue;
+    } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+      
+      if (arangodb::ServerState::instance()->isCoordinator()) {
+        auto* l = static_cast<arangodb::iresearch::IResearchLinkCoordinator*>(index.get());
+        if (!l->insert(*trx, docId, arangodb::velocypack::Slice(result.vpack()),
+                       arangodb::Index::OperationMode::normal).ok()) {
+          return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+        }
+      } else {
+        auto* l = static_cast<arangodb::iresearch::IResearchMMFilesLink*>(index.get());
+        if (!l->insert(*trx, docId, arangodb::velocypack::Slice(result.vpack()),
+                       arangodb::Index::OperationMode::normal).ok()) {
+          return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+        }
+      }
+      continue;
     }
+    TRI_ASSERT(false);
   }
 
   return arangodb::Result();
@@ -1003,6 +1037,7 @@ arangodb::Result PhysicalCollectionMock::updateProperties(arangodb::velocypack::
 }
 
 std::function<void()> StorageEngineMock::before = []()->void {};
+arangodb::Result StorageEngineMock::flushSubscriptionResult;
 bool StorageEngineMock::inRecoveryResult = false;
 /*static*/ std::string StorageEngineMock::versionFilenameResult;
 
@@ -1016,6 +1051,11 @@ StorageEngineMock::StorageEngineMock(
       std::unique_ptr<arangodb::IndexFactory>(new IndexFactoryMock())
     ),
     _releasedTick(0) {
+  arangodb::FlushFeature::_defaultFlushSubscription = [](
+    std::string const&, TRI_vocbase_t const&, arangodb::velocypack::Slice const&
+  )->arangodb::Result {
+    return flushSubscriptionResult;
+  };
 }
 
 arangodb::WalAccess const* StorageEngineMock::walAccess() const {
@@ -1174,7 +1214,6 @@ void StorageEngineMock::getViewProperties(
 }
 
 TRI_voc_tick_t StorageEngineMock::currentTick() const {
-  before();
   return TRI_CurrentTickServer();
 }
 

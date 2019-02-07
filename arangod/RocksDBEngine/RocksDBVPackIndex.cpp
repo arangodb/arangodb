@@ -586,10 +586,10 @@ void RocksDBVPackIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
 }
 
 /// @brief inserts a document into the index
-Result RocksDBVPackIndex::insertInternal(transaction::Methods& trx, RocksDBMethods* mthds,
-                                         LocalDocumentId const& documentId,
-                                         velocypack::Slice const& doc,
-                                         Index::OperationMode mode) {
+Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
+                                 LocalDocumentId const& documentId,
+                                 velocypack::Slice const& doc,
+                                 Index::OperationMode mode) {
   Result res;
   rocksdb::Status s;
   SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
@@ -624,9 +624,13 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods& trx, RocksDBMetho
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
         break;
       }
+      
+      s = mthds->Put(_cf, key, value.string());
+    } else {
+      TRI_ASSERT(key.containsLocalDocumentId(documentId));
+      s = mthds->PutUntracked(_cf, key, value.string());
     }
 
-    s = mthds->Put(_cf, key, value.string());
     if (!s.ok()) {
       res = rocksutils::convertStatus(s, rocksutils::index);
       break;
@@ -663,17 +667,17 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods& trx, RocksDBMetho
   return res;
 }
 
-Result RocksDBVPackIndex::updateInternal(transaction::Methods& trx, RocksDBMethods* mthds,
-                                         LocalDocumentId const& oldDocumentId,
-                                         velocypack::Slice const& oldDoc,
-                                         LocalDocumentId const& newDocumentId,
-                                         velocypack::Slice const& newDoc,
-                                         Index::OperationMode mode) {
+Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthds,
+                                 LocalDocumentId const& oldDocumentId,
+                                 velocypack::Slice const& oldDoc,
+                                 LocalDocumentId const& newDocumentId,
+                                 velocypack::Slice const& newDoc,
+                                 Index::OperationMode mode) {
   if (!_unique || _useExpansion) {
     // only unique index supports in-place updates
     // lets also not handle the complex case of expanded arrays
-    return RocksDBIndex::updateInternal(trx, mthds, oldDocumentId, oldDoc,
-                                        newDocumentId, newDoc, mode);
+    return RocksDBIndex::update(trx, mthds, oldDocumentId, oldDoc,
+                                newDocumentId, newDoc, mode);
   } else {
     Result res;
     rocksdb::Status s;
@@ -699,8 +703,8 @@ Result RocksDBVPackIndex::updateInternal(transaction::Methods& trx, RocksDBMetho
     }
     if (!equal) {
       // we can only use in-place updates if no indexed attributes changed
-      return RocksDBIndex::updateInternal(trx, mthds, oldDocumentId, oldDoc,
-                                          newDocumentId, newDoc, mode);
+      return RocksDBIndex::update(trx, mthds, oldDocumentId, oldDoc,
+                                  newDocumentId, newDoc, mode);
     }
 
     // more expensive method to
@@ -734,10 +738,10 @@ Result RocksDBVPackIndex::updateInternal(transaction::Methods& trx, RocksDBMetho
 }
 
 /// @brief removes a document from the index
-Result RocksDBVPackIndex::removeInternal(transaction::Methods& trx, RocksDBMethods* mthds,
-                                         LocalDocumentId const& documentId,
-                                         velocypack::Slice const& doc,
-                                         Index::OperationMode mode) {
+Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthds,
+                                 LocalDocumentId const& documentId,
+                                 velocypack::Slice const& doc,
+                                 Index::OperationMode mode) {
   Result res;
   rocksdb::Status s;
   SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;

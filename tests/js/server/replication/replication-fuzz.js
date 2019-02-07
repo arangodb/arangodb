@@ -92,7 +92,7 @@ function ReplicationSuite() {
     masterFunc2(state);
 
     // use lastLogTick as of now
-    state.lastLogTick = replication.logger.state().state.lastLogTick;
+    state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
 
     let applierConfiguration = {
       endpoint: masterEndpoint,

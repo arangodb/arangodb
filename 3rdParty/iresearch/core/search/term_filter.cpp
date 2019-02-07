@@ -35,8 +35,8 @@ NS_ROOT
 // --SECTION--                                            by_term implementation
 // -----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(by_term);
-DEFINE_FACTORY_DEFAULT(by_term);
+DEFINE_FILTER_TYPE(by_term)
+DEFINE_FACTORY_DEFAULT(by_term)
 
 by_term::by_term() 
   : filter(by_term::type()) {
@@ -68,3 +68,7 @@ filter::prepared::ptr by_term::prepare(
 }
 
 NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

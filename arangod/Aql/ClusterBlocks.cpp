@@ -703,10 +703,17 @@ arangodb::Result RemoteBlock::handleCommErrors(ClusterCommResult* res) const {
     return {res->getErrorCode(), res->stringifyErrorMessage()};
   }
   if (res->status == CL_COMM_ERROR) {
-    std::string errorMessage =
-        std::string("Error message received from shard '") +
-        std::string(res->shardID) + std::string("' on cluster node '") +
+    std::string errorMessage;
+    auto const& shardID = res->shardID;
+
+    if (shardID.empty()) {
+      errorMessage = std::string("Error message received from cluster node '") +
         std::string(res->serverID) + std::string("': ");
+    } else {
+      errorMessage = std::string("Error message received from shard '") +
+        std::string(shardID) + std::string("' on cluster node '") +
+        std::string(res->serverID) + std::string("': ");
+    }
 
     int errorNum = TRI_ERROR_INTERNAL;
     if (res->result != nullptr) {
@@ -1181,11 +1188,12 @@ SortingGatherBlock::SortingGatherBlock(ExecutionEngine& engine, GatherNode const
   TRI_ASSERT(!en.elements().empty());
 
   switch (en.sortMode()) {
-    case GatherNode::SortMode::Heap:
-      _strategy = std::make_unique<HeapSorting>(_trx, _gatherBlockBuffer, _sortRegisters);
-      break;
     case GatherNode::SortMode::MinElement:
       _strategy = std::make_unique<MinElementSorting>(_trx, _gatherBlockBuffer, _sortRegisters);
+      break;
+    case GatherNode::SortMode::Heap:
+    case GatherNode::SortMode::Default: // use heap by default
+      _strategy = std::make_unique<HeapSorting>(_trx, _gatherBlockBuffer, _sortRegisters);
       break;
     default:
       TRI_ASSERT(false);

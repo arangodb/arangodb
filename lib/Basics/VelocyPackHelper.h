@@ -38,6 +38,7 @@ namespace arangodb {
 namespace velocypack {
 struct AttributeExcludeHandler;
 class AttributeTranslator;
+class StringRef;
 }  // namespace velocypack
 
 namespace basics {
@@ -76,10 +77,7 @@ class VelocyPackHelper {
   ~VelocyPackHelper() = delete;
 
  public:
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief static initializer for all VPack values
-  ////////////////////////////////////////////////////////////////////////////////
-
   static void initialize();
   static void disableAssemblerFunctions();
 
@@ -104,10 +102,7 @@ class VelocyPackHelper {
     }
   };
 
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief equality comparator for VelocyPack values
-  ////////////////////////////////////////////////////////////////////////////////
-
   struct VPackEqual {
    private:
     arangodb::velocypack::Options const* _options;
@@ -136,10 +131,7 @@ class VelocyPackHelper {
     bool operator()(VPackHashedSlice const&, VPackHashedSlice const&) const noexcept;
   };
 
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief less comparator for VelocyPack values
-  ////////////////////////////////////////////////////////////////////////////////
-
   template <bool useUtf8>
   struct VPackLess {
     VPackLess(arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults,
@@ -199,15 +191,20 @@ class VelocyPackHelper {
   struct AttributeSorterUTF8 {
     bool operator()(std::string const& l, std::string const& r) const;
   };
-
-  struct AttributeSorterBinary {
-    bool operator()(std::string const& l, std::string const& r) const;
+  
+  struct AttributeSorterUTF8StringRef {
+    bool operator()(arangodb::velocypack::StringRef const& l, arangodb::velocypack::StringRef const& r) const;
   };
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns a numeric value
-  //////////////////////////////////////////////////////////////////////////////
+  struct AttributeSorterBinary {
+    bool operator()(std::string const& l, std::string const& r) const noexcept;
+  };
+  
+  struct AttributeSorterBinaryStringRef {
+    bool operator()(arangodb::velocypack::StringRef const& l, arangodb::velocypack::StringRef const& r) const noexcept;
+  };
 
+  /// @brief returns a numeric value
   template <typename T>
   static typename std::enable_if<std::is_signed<T>::value, T>::type getNumericValue(
       VPackSlice const& slice, T defaultValue) {
@@ -236,10 +233,7 @@ class VelocyPackHelper {
     return defaultValue;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a numeric sub-element, or a default if it does not exist
-  //////////////////////////////////////////////////////////////////////////////
-
   template <typename T>
   static T getNumericValue(VPackSlice const& slice, char const* name, T defaultValue) {
     TRI_ASSERT(slice.isObject());
@@ -271,10 +265,7 @@ class VelocyPackHelper {
                                                     static_cast<BaseType>(def)));
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a boolean sub-element, or a default if it does not exist
-  //////////////////////////////////////////////////////////////////////////////
-
   static bool getBooleanValue(VPackSlice const&, char const* name, bool defaultValue);
   static bool getBooleanValue(VPackSlice const&, std::string const& name, bool defaultValue);
 
@@ -285,26 +276,17 @@ class VelocyPackHelper {
     return getBooleanValue(info, name, defaultValue);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a string sub-element, or throws if <name> does not exist
   /// or it is not a string
-  //////////////////////////////////////////////////////////////////////////////
-
   static std::string checkAndGetStringValue(VPackSlice const&, char const*);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief ensures a sub-element is of type string
-  //////////////////////////////////////////////////////////////////////////////
-
   static std::string checkAndGetStringValue(VPackSlice const&, std::string const&);
 
   static void ensureStringValue(VPackSlice const&, std::string const&);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a Numeric sub-element, or throws if <name> does not exist
   /// or it is not a Number
-  //////////////////////////////////////////////////////////////////////////////
-
   template <typename T>
   static T checkAndGetNumericValue(VPackSlice const& slice, char const* name) {
     TRI_ASSERT(slice.isObject());
@@ -322,112 +304,74 @@ class VelocyPackHelper {
     return sub.getNumericValue<T>();
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @return string ref, or the default ref if slice is not a string
-  //////////////////////////////////////////////////////////////////////////////
   static arangodb::velocypack::StringRef getStringRef(
       arangodb::velocypack::Slice slice,
       arangodb::velocypack::StringRef const& defaultValue) noexcept;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @return string ref, or the default ref if slice is not a string
-  //////////////////////////////////////////////////////////////////////////////
   static arangodb::velocypack::StringRef getStringRef(arangodb::velocypack::Slice slice,
                                                       char const* defaultValue) noexcept {
     return getStringRef(slice, arangodb::velocypack::StringRef(defaultValue));
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @return string ref, or the defaultValue if slice[key] is not a string
-  //////////////////////////////////////////////////////////////////////////////
   static arangodb::velocypack::StringRef getStringRef(
       arangodb::velocypack::Slice slice, std::string const& key,
       arangodb::velocypack::StringRef const& defaultValue) noexcept;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @return string ref, or the defaultValue if slice[key] is not a string
-  //////////////////////////////////////////////////////////////////////////////
   static arangodb::velocypack::StringRef getStringRef(arangodb::velocypack::Slice slice,
                                                       std::string const& key,
                                                       char const* defaultValue) noexcept {
     return getStringRef(slice, key, arangodb::velocypack::StringRef(defaultValue));
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a string value, or the default value if it is not a string
-  //////////////////////////////////////////////////////////////////////////////
-
   static std::string getStringValue(VPackSlice const&, std::string const&);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a string sub-element, or the default value if it does not
   /// exist
   /// or it is not a string
-  //////////////////////////////////////////////////////////////////////////////
-
   static std::string getStringValue(VPackSlice, char const*, std::string const&);
   static std::string getStringValue(VPackSlice, std::string const&, std::string const&);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief convert an Object sub value into a uint64
-  //////////////////////////////////////////////////////////////////////////////
-
   static uint64_t stringUInt64(VPackSlice const& slice);
   static uint64_t stringUInt64(VPackSlice const& slice, char const* name) {
     return stringUInt64(slice.get(name));
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief parses a json file to VelocyPack
-  //////////////////////////////////////////////////////////////////////////////
-
   static VPackBuilder velocyPackFromFile(std::string const&);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief writes a VelocyPack to a file
-  //////////////////////////////////////////////////////////////////////////////
-
   static bool velocyPackToFile(std::string const& filename,
                                VPackSlice const& slice, bool syncFile);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief compares two VelocyPack number values
-  //////////////////////////////////////////////////////////////////////////////
-
   static int compareNumberValues(arangodb::velocypack::ValueType,
                                  arangodb::velocypack::Slice lhs,
                                  arangodb::velocypack::Slice rhs);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief compares two VelocyPack string values
-  //////////////////////////////////////////////////////////////////////////////
-
   static int compareStringValues(char const* left, VPackValueLength nl,
                                  char const* right, VPackValueLength nr, bool useUTF8);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Compares two VelocyPack slices
-  //////////////////////////////////////////////////////////////////////////////
-
   static int compare(arangodb::velocypack::Slice lhs,
                      arangodb::velocypack::Slice rhs, bool useUTF8,
                      arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults,
                      arangodb::velocypack::Slice const* lhsBase = nullptr,
                      arangodb::velocypack::Slice const* rhsBase = nullptr);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Merges two VelocyPack Slices
-  //////////////////////////////////////////////////////////////////////////////
-
   static arangodb::velocypack::Builder merge(arangodb::velocypack::Slice const&,
                                              arangodb::velocypack::Slice const&,
                                              bool, bool);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Transforms any VelocyPack to a double value. The second parameter
   ///        indicates if the transformation was successful.
-  //////////////////////////////////////////////////////////////////////////////
-
   static double toDouble(VPackSlice const&, bool&);
 
   // modify a VPack double value in place
@@ -495,10 +439,7 @@ struct equal_to<arangodb::basics::VPackHashedSlice> {
 
 }  // namespace std
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief Simple and limited logging of VelocyPack slices
-//////////////////////////////////////////////////////////////////////////////
-
 arangodb::LoggerStream& operator<<(arangodb::LoggerStream&,
                                    arangodb::velocypack::Slice const&);
 

@@ -17,7 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Gräter
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Databases.h"
@@ -212,12 +212,12 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
     }
 
     ClusterInfo* ci = ClusterInfo::instance();
-    std::string errorMsg;
+    auto res = ci->createDatabaseCoordinator(dbName, builder.slice(), 120.0);
 
-    int res = ci->createDatabaseCoordinator(dbName, builder.slice(), errorMsg, 120.0);
-    if (res != TRI_ERROR_NO_ERROR) {
-      return Result(res);
+    if (!res.ok()) {
+      return res;
     }
+
     // database was created successfully in agency
 
     // now wait for heartbeat thread to create the database object
@@ -311,24 +311,25 @@ int dropDBCoordinator(std::string const& dbName) {
   // Arguments are already checked, there is exactly one argument
   DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
   TRI_vocbase_t* vocbase = databaseFeature->useDatabase(dbName);
+
   if (vocbase == nullptr) {
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
 
   TRI_voc_tick_t const id = vocbase->id();
+
   vocbase->release();
 
   ClusterInfo* ci = ClusterInfo::instance();
-  std::string errorMsg;
+  auto res = ci->dropDatabaseCoordinator(dbName, 120.0);
 
-  int res = ci->dropDatabaseCoordinator(dbName, errorMsg, 120.0);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+  if (!res.ok()) {
+    return res.errorNumber();
   }
 
   // now wait for heartbeat thread to drop the database object
   int tries = 0;
+
   while (++tries <= 6000) {
     TRI_vocbase_t* vocbase = databaseFeature->useDatabase(id);
 

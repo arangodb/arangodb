@@ -250,6 +250,7 @@ function assertIsProfileStatsObject (stats, {level}) {
     'scannedIndex',
     'filtered',
     'httpRequests',
+    'peakMemoryUsage',
     'executionTime',
   ];
 
@@ -266,6 +267,7 @@ function assertIsProfileStatsObject (stats, {level}) {
   expect(stats.scannedIndex).to.be.a('number');
   expect(stats.filtered).to.be.a('number');
   expect(stats.httpRequests).to.be.a('number');
+  expect(stats.peakMemoryUsage).to.be.a('number');
   expect(stats.executionTime).to.be.a('number');
 }
 

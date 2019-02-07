@@ -370,6 +370,8 @@ SECTION("test_upgrade0_1") {
     CHECK((logicalView1->properties(builder, true, true).ok()));
     builder.close();
     CHECK((1 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 1 after upgrade
+    
+    server.getFeature<arangodb::DatabaseFeature>("Database")->unprepare();
   }
 
   // test coordinator
@@ -426,19 +428,13 @@ SECTION("test_upgrade0_1") {
     auto* ci = arangodb::ClusterInfo::instance();
     REQUIRE((nullptr != ci));
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
-    std::string error;
 
     REQUIRE((TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase)));
-    REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.0)));
-    CHECK((std::string("no error") == error));
-    error.clear();
-    REQUIRE((TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0)));
-    CHECK((error.empty()));
+    REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).ok()));
+    REQUIRE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), 0.0).ok()));
     auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     REQUIRE((false == !logicalCollection));
-    error.clear();
-    CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), viewId, viewJson->slice(), error)));
-    CHECK((error.empty()));
+    CHECK((ci->createViewCoordinator(vocbase->name(), viewId, viewJson->slice()).ok()));
     auto logicalView0 = ci->getView(vocbase->name(), viewId);
     REQUIRE((false == !logicalView0));
 
@@ -468,12 +464,12 @@ SECTION("test_upgrade0_1") {
       CHECK(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
     }
     CHECK((arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok())); // run upgrade
-    logicalCollection = ci->getCollection(vocbase->name(), collectionId);
-    REQUIRE((false == !logicalCollection));
+    auto logicalCollection2 = ci->getCollection(vocbase->name(), collectionId);
+    REQUIRE((false == !logicalCollection2));
     auto logicalView1 = ci->getView(vocbase->name(), viewId);
     CHECK((false == !logicalView1)); // ensure view present after upgrade
     CHECK((logicalView0->id() == logicalView1->id())); // ensure same id for view
-    auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *logicalView1);
+    auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *logicalView1);
     CHECK((false == !link1)); // ensure link present after upgrade
     CHECK((link0->id() != link1->id())); // ensure new link
     builder.clear();
@@ -481,6 +477,8 @@ SECTION("test_upgrade0_1") {
     CHECK((logicalView1->properties(builder, true, true).ok()));
     builder.close();
     CHECK((1 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 1 after upgrade
+    
+    server.getFeature<arangodb::DatabaseFeature>("Database")->unprepare();
   }
 
   // test db-server (no directory)
@@ -559,6 +557,8 @@ SECTION("test_upgrade0_1") {
     logicalView = vocbase.lookupView(logicalView->name());
     CHECK((true == !logicalView)); // ensure view removed after upgrade
     CHECK((viewDataPath.exists(result) && !result)); // ensure view directory not present
+    
+    server.getFeature<arangodb::DatabaseFeature>("Database")->unprepare();
   }
 
   // test db-server (with directory)

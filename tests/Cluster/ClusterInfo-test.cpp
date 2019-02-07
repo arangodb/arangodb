@@ -97,9 +97,8 @@ struct ViewFactory: public arangodb::ViewFactory {
 
     builder.close();
 
-    std::string error;
     return ci->createViewCoordinator(
-      vocbase.name(), std::to_string(view->id()), builder.slice(), error
+      vocbase.name(), std::to_string(view->id()), builder.slice()
     );
   }
 
@@ -225,7 +224,7 @@ TEST_CASE("ClusterInfoTest", "[cluster]") {
   ClusterInfoSetup s;
   (void)(s);
 
-SECTION("test_drop_databse") {
+SECTION("test_drop_database") {
   auto* database = arangodb::DatabaseFeature::DATABASE;
   REQUIRE(nullptr != database);
   auto* ci = arangodb::ClusterInfo::instance();
@@ -234,11 +233,10 @@ SECTION("test_drop_databse") {
   // test LogicalView dropped when database dropped
   {
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    std::string error;
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase)));
     REQUIRE((nullptr != vocbase));
-    REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.0)));
+    REQUIRE((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).ok()));
 
     // initial view creation
     {
@@ -247,8 +245,8 @@ SECTION("test_drop_databse") {
       REQUIRE((false == !logicalView));
     }
 
-    CHECK((TRI_ERROR_NO_ERROR == ci->dropDatabaseCoordinator(vocbase->name(), error, 0.0)));
-    CHECK((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.0)));
+    CHECK((ci->dropDatabaseCoordinator(vocbase->name(), 0.0).ok()));
+    CHECK((ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).ok()));
 
     arangodb::LogicalView::ptr logicalView;
     CHECK((s.viewFactory.create(logicalView, *vocbase, viewCreateJson->slice()).ok()));
