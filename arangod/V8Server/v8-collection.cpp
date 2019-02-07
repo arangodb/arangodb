@@ -78,8 +78,7 @@ namespace {
 /// @brief retrieves a collection from a V8 argument
 ////////////////////////////////////////////////////////////////////////////////
 std::shared_ptr<arangodb::LogicalCollection> GetCollectionFromArgument(
-                                                                       v8::Isolate* isolate, 
-    TRI_vocbase_t& vocbase, v8::Handle<v8::Value> const val) {
+    v8::Isolate* isolate, TRI_vocbase_t& vocbase, v8::Handle<v8::Value> const val) {
   if (arangodb::ServerState::instance()->isCoordinator()) {
     auto* ci = arangodb::ClusterInfo::instance();
 
@@ -107,7 +106,8 @@ using namespace arangodb::rest;
 /// must specify the argument index starting from 1
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool ExtractBooleanArgument(v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args,
+static inline bool ExtractBooleanArgument(v8::Isolate* isolate,
+                                          v8::FunctionCallbackInfo<v8::Value> const& args,
                                           int index) {
   TRI_ASSERT(index > 0);
 
@@ -144,7 +144,8 @@ static std::string ExtractIdString(v8::Isolate* isolate, v8::Handle<v8::Value> c
 
   if (val->IsObject()) {
     TRI_GET_GLOBALS();
-    v8::Handle<v8::Object> obj = val->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+    v8::Handle<v8::Object> obj =
+        val->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
     TRI_GET_GLOBAL_STRING(_IdKey);
     if (obj->HasRealNamedProperty(_IdKey)) {
       v8::Handle<v8::Value> idVal = obj->Get(_IdKey);
@@ -541,15 +542,18 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::Object> optionsObject = args[1].As<v8::Object>();
       TRI_GET_GLOBAL_STRING(OverwriteKey);
       if (TRI_OBJECT_HAS_V8_PROPERTY(optionsObject, OverwriteKey)) {
-        options.ignoreRevs = TRI_ObjectToBoolean(isolate, optionsObject->Get(OverwriteKey));
+        options.ignoreRevs =
+            TRI_ObjectToBoolean(isolate, optionsObject->Get(OverwriteKey));
       }
       TRI_GET_GLOBAL_STRING(WaitForSyncKey);
       if (TRI_OBJECT_HAS_V8_PROPERTY(optionsObject, WaitForSyncKey)) {
-        options.waitForSync = TRI_ObjectToBoolean(isolate, optionsObject->Get(WaitForSyncKey));
+        options.waitForSync =
+            TRI_ObjectToBoolean(isolate, optionsObject->Get(WaitForSyncKey));
       }
       TRI_GET_GLOBAL_STRING(ReturnOldKey);
       if (TRI_OBJECT_HAS_V8_PROPERTY(optionsObject, ReturnOldKey)) {
-        options.returnOld = TRI_ObjectToBoolean(isolate, optionsObject->Get(ReturnOldKey));
+        options.returnOld =
+            TRI_ObjectToBoolean(isolate, optionsObject->Get(ReturnOldKey));
       }
       TRI_GET_GLOBAL_STRING(SilentKey);
       if (TRI_OBJECT_HAS_V8_PROPERTY(optionsObject, SilentKey)) {
@@ -661,15 +665,18 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::Object> optionsObject = args[1].As<v8::Object>();
       TRI_GET_GLOBAL_STRING(OverwriteKey);
       if (TRI_OBJECT_HAS_V8_PROPERTY(optionsObject, OverwriteKey)) {
-        options.ignoreRevs = TRI_ObjectToBoolean(isolate, optionsObject->Get(OverwriteKey));
+        options.ignoreRevs =
+            TRI_ObjectToBoolean(isolate, optionsObject->Get(OverwriteKey));
       }
       TRI_GET_GLOBAL_STRING(WaitForSyncKey);
       if (TRI_OBJECT_HAS_V8_PROPERTY(optionsObject, WaitForSyncKey)) {
-        options.waitForSync = TRI_ObjectToBoolean(isolate, optionsObject->Get(WaitForSyncKey));
+        options.waitForSync =
+            TRI_ObjectToBoolean(isolate, optionsObject->Get(WaitForSyncKey));
       }
       TRI_GET_GLOBAL_STRING(ReturnOldKey);
       if (TRI_OBJECT_HAS_V8_PROPERTY(optionsObject, ReturnOldKey)) {
-        options.returnOld = TRI_ObjectToBoolean(isolate, optionsObject->Get(ReturnOldKey));
+        options.returnOld =
+            TRI_ObjectToBoolean(isolate, optionsObject->Get(ReturnOldKey));
       }
       TRI_GET_GLOBAL_STRING(SilentKey);
       if (TRI_OBJECT_HAS_V8_PROPERTY(optionsObject, SilentKey)) {
@@ -1109,7 +1116,8 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
                                });
 
   // return the current parameter set
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice())->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()));
+  TRI_V8_RETURN(
+      TRI_VPackToV8(isolate, builder.slice())->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1177,7 +1185,8 @@ static void parseReplaceAndUpdateOptions(v8::Isolate* isolate,
     }
     TRI_GET_GLOBAL_STRING(WaitForSyncKey);
     if (TRI_OBJECT_HAS_V8_PROPERTY(optionsObject, WaitForSyncKey)) {
-      options.waitForSync = TRI_ObjectToBoolean(isolate, optionsObject->Get(WaitForSyncKey));
+      options.waitForSync =
+          TRI_ObjectToBoolean(isolate, optionsObject->Get(WaitForSyncKey));
     }
     TRI_GET_GLOBAL_STRING(SilentKey);
     if (TRI_OBJECT_HAS_V8_PROPERTY(optionsObject, SilentKey)) {
@@ -1208,7 +1217,8 @@ static void parseReplaceAndUpdateOptions(v8::Isolate* isolate,
       }
       TRI_GET_GLOBAL_STRING(MergeObjectsKey);
       if (TRI_OBJECT_HAS_V8_PROPERTY(optionsObject, MergeObjectsKey)) {
-        options.mergeObjects = TRI_ObjectToBoolean(isolate, optionsObject->Get(MergeObjectsKey));
+        options.mergeObjects =
+            TRI_ObjectToBoolean(isolate, optionsObject->Get(MergeObjectsKey));
       }
     }
   } else {
@@ -1325,7 +1335,8 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
     if (options.isRestore) {
       // In this case we have to extract the _rev entry from newVal:
       TRI_GET_GLOBALS();
-      v8::Handle<v8::Object> obj = newVal->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      v8::Handle<v8::Object> obj =
+          newVal->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
       TRI_GET_GLOBAL_STRING(_RevKey);
       if (!obj->HasRealNamedProperty(_RevKey)) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_REV_BAD);
@@ -1568,7 +1579,8 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "_pregelStart(<algorithm>, <vertexCollections>,"
         "<edgeCollections>[, {maxGSS:100, ...}]");
   }
-  auto parse = [](v8::Isolate* isolate, v8::Local<v8::Value> const& value, std::vector<std::string>& out) {
+  auto parse = [](v8::Isolate* isolate, v8::Local<v8::Value> const& value,
+                  std::vector<std::string>& out) {
     v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(value);
     uint32_t const n = array->Length();
     for (uint32_t i = 0; i < n; ++i) {
@@ -1787,7 +1799,8 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     v8::Handle<v8::Object> optionsObject = args[optsIdx].As<v8::Object>();
     TRI_GET_GLOBAL_STRING(WaitForSyncKey);
     if (TRI_OBJECT_HAS_V8_PROPERTY(optionsObject, WaitForSyncKey)) {
-      options.waitForSync = TRI_ObjectToBoolean(isolate, optionsObject->Get(WaitForSyncKey));
+      options.waitForSync =
+          TRI_ObjectToBoolean(isolate, optionsObject->Get(WaitForSyncKey));
     }
     TRI_GET_GLOBAL_STRING(OverwriteKey);
     if (TRI_OBJECT_HAS_V8_PROPERTY(optionsObject, OverwriteKey)) {

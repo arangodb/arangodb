@@ -47,8 +47,8 @@ TRI_vocbase_t& GetContextVocBase(v8::Isolate* isolate) {
 /// @brief checks if argument is a document identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ParseDocumentHandle(v8::Isolate* isolate,
-                                v8::Handle<v8::Value> const arg, std::string& collectionName,
+static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const arg,
+                                std::string& collectionName,
                                 std::unique_ptr<char[]>& key) {
   TRI_ASSERT(collectionName.empty());
 
@@ -121,7 +121,8 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
   if (val->IsObject()) {
     TRI_GET_GLOBALS();
 
-    v8::Handle<v8::Object> obj = val->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+    v8::Handle<v8::Object> obj =
+        val->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
     TRI_GET_GLOBAL_STRING(_IdKey);
     TRI_GET_GLOBAL_STRING(_KeyKey);
     if (obj->HasRealNamedProperty(_IdKey)) {

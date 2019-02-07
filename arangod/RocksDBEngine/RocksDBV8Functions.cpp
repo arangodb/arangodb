@@ -54,17 +54,20 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (args.Length() > 0) {
     if (args[0]->IsObject()) {
-      v8::Handle<v8::Object> obj = args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      v8::Handle<v8::Object> obj =
+          args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
       if (TRI_OBJECT_HAS_PROPERTY(obj, "waitForSync")) {
-        waitForSync = TRI_ObjectToBoolean(isolate, 
-            obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSync")));
+        waitForSync = TRI_ObjectToBoolean(
+            isolate, obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSync")));
       }
       if (TRI_OBJECT_HAS_PROPERTY(obj, "waitForCollector")) {
-        waitForCollector = TRI_ObjectToBoolean(isolate, 
+        waitForCollector = TRI_ObjectToBoolean(
+            isolate,
             obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForCollector")));
       }
       if (TRI_OBJECT_HAS_PROPERTY(obj, "writeShutdownFile")) {
-        writeShutdownFile = TRI_ObjectToBoolean(isolate, 
+        writeShutdownFile = TRI_ObjectToBoolean(
+            isolate,
             obj->Get(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile")));
       }
     } else {

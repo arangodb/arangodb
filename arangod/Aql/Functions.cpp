@@ -2106,7 +2106,7 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
   for (auto const& searchStr : matchPatterns) {
     // create a vector of string searches
     searchVec.push_back(std::make_unique<icu::StringSearch>(searchStr, unicodeStr,
-                                                       locale, nullptr, status));
+                                                            locale, nullptr, status));
     if (U_FAILURE(status)) {
       ::registerICUWarning(expressionContext, AFN, status);
       return AqlValue(AqlValueHintNull());
@@ -2247,7 +2247,8 @@ AqlValue Functions::Left(ExpressionContext*, transaction::Methods* trx,
   ::appendAsString(trx, adapter, value);
 
   icu::UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
-  icu::UnicodeString left = unicodeStr.tempSubString(0, unicodeStr.moveIndex32(0, length));
+  icu::UnicodeString left =
+      unicodeStr.tempSubString(0, unicodeStr.moveIndex32(0, length));
 
   left.toUTF8String(utf8);
   return AqlValue(utf8);
@@ -2340,8 +2341,8 @@ AqlValue Functions::Trim(ExpressionContext* expressionContext, transaction::Meth
     } else if (optional.isString()) {
       buffer->clear();
       ::appendAsString(trx, adapter, optional);
-      whitespace =
-          icu::UnicodeString(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+      whitespace = icu::UnicodeString(buffer->c_str(),
+                                      static_cast<int32_t>(buffer->length()));
     }
   }
 
@@ -2387,7 +2388,8 @@ AqlValue Functions::LTrim(ExpressionContext* expressionContext, transaction::Met
     AqlValue const& pWhitespace = extractFunctionParameterValue(parameters, 1);
     buffer->clear();
     ::appendAsString(trx, adapter, pWhitespace);
-    whitespace = icu::UnicodeString(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+    whitespace =
+        icu::UnicodeString(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   }
 
   uint32_t numWhitespaces = whitespace.countChar32();
@@ -2426,7 +2428,8 @@ AqlValue Functions::RTrim(ExpressionContext* expressionContext, transaction::Met
     AqlValue const& pWhitespace = extractFunctionParameterValue(parameters, 1);
     buffer->clear();
     ::appendAsString(trx, adapter, pWhitespace);
-    whitespace = icu::UnicodeString(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+    whitespace =
+        icu::UnicodeString(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   }
 
   uint32_t numWhitespaces = whitespace.countChar32();
@@ -2659,7 +2662,8 @@ AqlValue Functions::RegexMatches(ExpressionContext* expressionContext,
   buffer->clear();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   ::appendAsString(trx, adapter, value);
-  icu::UnicodeString valueToMatch(buffer->c_str(), static_cast<uint32_t>(buffer->length()));
+  icu::UnicodeString valueToMatch(buffer->c_str(),
+                                  static_cast<uint32_t>(buffer->length()));
 
   VPackBuilder result;
   result.openArray();

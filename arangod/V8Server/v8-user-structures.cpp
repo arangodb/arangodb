@@ -602,19 +602,22 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
   }
 
   if (parameter->IsBoolean()) {
-    v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean(TRI_IGETC).FromMaybe(v8::Local<v8::Boolean>());
+    v8::Handle<v8::Boolean> booleanParameter =
+        parameter->ToBoolean(TRI_IGETC).FromMaybe(v8::Local<v8::Boolean>());
     TRI_InitBooleanJson(result, booleanParameter->Value());
     return TRI_ERROR_NO_ERROR;
   }
 
   if (parameter->IsNumber()) {
-    v8::Handle<v8::Number> numberParameter = parameter->ToNumber(TRI_IGETC).FromMaybe(v8::Local<v8::Number>());
+    v8::Handle<v8::Number> numberParameter =
+        parameter->ToNumber(TRI_IGETC).FromMaybe(v8::Local<v8::Number>());
     TRI_InitNumberJson(result, numberParameter->Value());
     return TRI_ERROR_NO_ERROR;
   }
 
   if (parameter->IsString()) {
-    v8::Handle<v8::String> stringParameter = parameter->ToString(TRI_IGETC).FromMaybe(v8::Local<v8::String>());
+    v8::Handle<v8::String> stringParameter =
+        parameter->ToString(TRI_IGETC).FromMaybe(v8::Local<v8::String>());
     TRI_Utf8ValueNFC str(isolate, stringParameter);
 
     if (*str == nullptr) {
@@ -668,17 +671,22 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
 
   if (parameter->IsObject()) {
     if (parameter->IsBooleanObject()) {
-      TRI_InitBooleanJson(result, v8::Handle<v8::BooleanObject>::Cast(parameter)->BooleanValue(TRI_IGETC).FromMaybe(false));
+      TRI_InitBooleanJson(result, v8::Handle<v8::BooleanObject>::Cast(parameter)
+                                      ->BooleanValue(TRI_IGETC)
+                                      .FromMaybe(false));
       return TRI_ERROR_NO_ERROR;
     }
 
     if (parameter->IsNumberObject()) {
-      TRI_InitNumberJson(result, v8::Handle<v8::NumberObject>::Cast(parameter)->NumberValue(TRI_IGETC).FromMaybe(0.0));
+      TRI_InitNumberJson(result, v8::Handle<v8::NumberObject>::Cast(parameter)
+                                     ->NumberValue(TRI_IGETC)
+                                     .FromMaybe(0.0));
       return TRI_ERROR_NO_ERROR;
     }
 
     if (parameter->IsStringObject()) {
-      v8::Handle<v8::String> stringParameter(parameter->ToString(TRI_IGETC).FromMaybe(v8::Local<v8::String>()));
+      v8::Handle<v8::String> stringParameter(
+          parameter->ToString(TRI_IGETC).FromMaybe(v8::Local<v8::String>()));
       TRI_Utf8ValueNFC str(isolate, stringParameter);
 
       if (*str == nullptr) {
@@ -696,13 +704,15 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
       return TRI_ERROR_BAD_PARAMETER;
     }
 
-    v8::Handle<v8::Object> o = parameter->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+    v8::Handle<v8::Object> o =
+        parameter->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
     // first check if the object has a "toJSON" function
     v8::Handle<v8::String> toJsonString = TRI_V8_PAIR_STRING(isolate, "toJSON", 6);
     if (TRI_OBJECT_HAS_V8_PROPERTY(o, toJsonString)) {
       // call it if yes
-      v8::Handle<v8::Value> func = o->Get(TRI_IGETC, toJsonString).FromMaybe(v8::Local<v8::Value>());
+      v8::Handle<v8::Value> func =
+          o->Get(TRI_IGETC, toJsonString).FromMaybe(v8::Local<v8::Value>());
       if (func->IsFunction()) {
         v8::Handle<v8::Function> toJson = v8::Handle<v8::Function>::Cast(func);
 
@@ -711,7 +721,8 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
 
         if (!converted.IsEmpty()) {
           // return whatever toJSON returned
-          TRI_Utf8ValueNFC str(isolate, converted->ToString(TRI_IGETC).FromMaybe(v8::Local<v8::String>()));
+          TRI_Utf8ValueNFC str(isolate, converted->ToString(TRI_IGETC).FromMaybe(
+                                            v8::Local<v8::String>()));
 
           if (*str == nullptr) {
             TRI_InitNullJson(result);

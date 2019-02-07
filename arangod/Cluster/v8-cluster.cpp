@@ -70,7 +70,8 @@ static void CreateAgencyException(v8::FunctionCallbackInfo<v8::Value> const& arg
     isolate->ThrowException(v8::Object::New(isolate));
     return;
   }
-  v8::Handle<v8::Object> errorObject = v8::Exception::Error(errorMessage)->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+  v8::Handle<v8::Object> errorObject =
+      v8::Exception::Error(errorMessage)->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   if (errorObject.IsEmpty()) {
     isolate->ThrowException(v8::Object::New(isolate));
     return;
@@ -657,7 +658,8 @@ static void JS_GetCollectionInfoClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
   VPackSlice info = infoBuilder.slice();
 
   TRI_ASSERT(info.isObject());
-  v8::Handle<v8::Object> result = TRI_VPackToV8(isolate, info)->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+  v8::Handle<v8::Object> result =
+      TRI_VPackToV8(isolate, info)->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
   // Compute ShardShorts
   auto serverAliases = ClusterInfo::instance()->getServerAliases();
@@ -775,8 +777,8 @@ static void JS_GetResponsibleServerClusterInfo(v8::FunctionCallbackInfo<v8::Valu
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServer(<shard-id>)");
   }
 
-  auto result =
-      ClusterInfo::instance()->getResponsibleServer(TRI_ObjectToString(isolate, args[0]));
+  auto result = ClusterInfo::instance()->getResponsibleServer(
+      TRI_ObjectToString(isolate, args[0]));
   v8::Handle<v8::Array> list = v8::Array::New(isolate, (int)result->size());
   uint32_t count = 0;
   for (auto const& s : *result) {
@@ -1359,7 +1361,8 @@ static void PrepareClusterCommRequest(v8::FunctionCallbackInfo<v8::Value> const&
     v8::Handle<v8::Object> opt = args[6].As<v8::Object>();
     TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
     if (TRI_OBJECT_HAS_V8_PROPERTY(opt, CoordTransactionIDKey)) {
-      coordTransactionID = TRI_ObjectToUInt64(isolate, opt->Get(CoordTransactionIDKey), true);
+      coordTransactionID =
+          TRI_ObjectToUInt64(isolate, opt->Get(CoordTransactionIDKey), true);
     }
     TRI_GET_GLOBAL_STRING(TimeoutKey);
     if (TRI_OBJECT_HAS_V8_PROPERTY(opt, TimeoutKey)) {
@@ -1711,7 +1714,8 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
     TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
     if (TRI_OBJECT_HAS_V8_PROPERTY(obj, CoordTransactionIDKey)) {
-      mycoordTransactionID = TRI_ObjectToUInt64(isolate, obj->Get(CoordTransactionIDKey), true);
+      mycoordTransactionID =
+          TRI_ObjectToUInt64(isolate, obj->Get(CoordTransactionIDKey), true);
     }
     TRI_GET_GLOBAL_STRING(OperationIDKey);
     if (TRI_OBJECT_HAS_V8_PROPERTY(obj, OperationIDKey)) {
@@ -1771,7 +1775,8 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
     TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
     if (TRI_OBJECT_HAS_V8_PROPERTY(obj, CoordTransactionIDKey)) {
-      mycoordTransactionID = TRI_ObjectToUInt64(isolate, obj->Get(CoordTransactionIDKey), true);
+      mycoordTransactionID =
+          TRI_ObjectToUInt64(isolate, obj->Get(CoordTransactionIDKey), true);
     }
     TRI_GET_GLOBAL_STRING(OperationIDKey);
     if (TRI_OBJECT_HAS_V8_PROPERTY(obj, OperationIDKey)) {

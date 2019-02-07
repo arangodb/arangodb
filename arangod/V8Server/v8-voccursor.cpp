@@ -40,8 +40,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <stdio.h>
 #include "Logger/Logger.h"
-#include<stdio.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -239,7 +239,7 @@ struct V8Cursor final {
         return false;
       }
     }
-    return true; // still got some data
+    return true;  // still got some data
   }
 
   /// @brief fetch the next batch
@@ -350,7 +350,7 @@ struct V8Cursor final {
     // args.Holder() is supposedly better than args.This()
     auto self = std::make_unique<V8Cursor>(isolate, args.Holder(), *vocbase, cc->id());
     Result r = self->fetchData(cc);
-    self.release(); // args.Holder() owns the pointer
+    self.release();  // args.Holder() owns the pointer
     if (r.fail()) {
       TRI_V8_THROW_EXCEPTION(r);
     } else {
@@ -370,26 +370,26 @@ struct V8Cursor final {
     TRI_V8_TRY_CATCH_BEGIN(isolate);
     v8::Isolate* isolate = args.GetIsolate();
     v8::HandleScope scope(isolate);
-    
+
     V8Cursor* self = V8Cursor::unwrap(args.Holder());
     if (self == nullptr) {
       TRI_V8_RETURN_UNDEFINED();
     }
-    
+
     v8::Handle<v8::Array> resArray = v8::Array::New(isolate);
-    
+
     // iterate over result and return it
     uint32_t j = 0;
     while (self->maybeFetchBatch(isolate)) {
       if (!self->_dataIterator) {
         break;
       }
-      
+
       if (V8PlatformFeature::isOutOfMemory(isolate)) {
         TRI_V8_SET_EXCEPTION_MEMORY();
         break;
       }
-      
+
       while (self->_dataIterator->valid()) {
         VPackSlice s = self->_dataIterator->value();
         resArray->Set(j++, TRI_VPackToV8(isolate, s, &self->_options));
@@ -399,7 +399,7 @@ struct V8Cursor final {
       self->_dataIterator.reset();
     }
     TRI_V8_RETURN(resArray);
-    
+
     TRI_V8_TRY_CATCH_END
   }
 
@@ -454,7 +454,7 @@ struct V8Cursor final {
     } else {
       TRI_V8_RETURN_FALSE();
     }
-    
+
     TRI_V8_TRY_CATCH_END
   }
 
@@ -596,7 +596,8 @@ void TRI_InitV8cursor(v8::Handle<v8::Context> context, TRI_v8_global_t* v8g) {
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(1);
 
-  ft->PrototypeTemplate()->Set(TRI_V8_ASCII_STRING(isolate, "isArangoResultSet"),
+  ft->PrototypeTemplate()->Set(TRI_V8_ASCII_STRING(isolate,
+                                                   "isArangoResultSet"),
                                v8::True(isolate));
   TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "toArray"),
                         V8Cursor::toArray);

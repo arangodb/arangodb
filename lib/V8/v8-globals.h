@@ -56,21 +56,24 @@ class LogicalDataSource;  // forward declaration
   }
 
 static inline v8::Local<v8::String> v8OneByteStringFactory(v8::Isolate* isolate,
-                                                            void const* ptr, int length) {
+                                                           void const* ptr, int length) {
   return v8::String::NewFromOneByte(isolate, static_cast<uint8_t const*>(ptr),
-                                    v8::NewStringType::kNormal, length).ToLocalChecked();
+                                    v8::NewStringType::kNormal, length)
+      .ToLocalChecked();
 }
 
 static inline v8::Local<v8::String> v8TwoByteStringFactory(v8::Isolate* isolate,
-                                                            void const* ptr, int length) {
+                                                           void const* ptr, int length) {
   return v8::String::NewFromTwoByte(isolate, static_cast<uint16_t const*>(ptr),
-                                    v8::NewStringType::kNormal, length).ToLocalChecked();
+                                    v8::NewStringType::kNormal, length)
+      .ToLocalChecked();
 }
 
 static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
-                                                             void const* ptr, int length) {
+                                                        void const* ptr, int length) {
   return v8::String::NewFromUtf8(isolate, static_cast<char const*>(ptr),
-                                 v8::NewStringType::kNormal, length).ToLocalChecked();
+                                 v8::NewStringType::kNormal, length)
+      .ToLocalChecked();
 }
 
 /// @brief shortcut for creating a v8 symbol for the specified string
@@ -288,85 +291,82 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
 /// @brief return a char*
 ///   implicitly requires 'args and 'isolate' to be available
 /// @param WHAT the name of the char* variable
-#define TRI_V8_RETURN_STRING(WHAT)                                   \
-  args.GetReturnValue().Set(v8::String::NewFromUtf8(isolate, WHAT,     \
-                                                    v8::NewStringType::kNormal).FromMaybe(v8::Local<v8::String>())); \
+#define TRI_V8_RETURN_STRING(WHAT)                                                             \
+  args.GetReturnValue().Set(v8::String::NewFromUtf8(isolate, WHAT, v8::NewStringType::kNormal) \
+                                .FromMaybe(v8::Local<v8::String>()));                          \
   return
 
 /// @brief return a std::string
 ///   implicitly requires 'args and 'isolate' to be available
 /// @param WHAT the name of the std::string variable
-#define TRI_V8_RETURN_STD_STRING(WHAT)                                         \
-  args.GetReturnValue().Set(v8::String::NewFromUtf8(isolate, WHAT.c_str(),     \
+#define TRI_V8_RETURN_STD_STRING(WHAT)                                          \
+  args.GetReturnValue().Set(v8::String::NewFromUtf8(isolate, WHAT.c_str(),      \
                                                     v8::NewStringType::kNormal, \
-                                                    (int)WHAT.length()).FromMaybe(v8::Local<v8::String>())); \
+                                                    (int)WHAT.length())         \
+                                .FromMaybe(v8::Local<v8::String>()));           \
   return
 
 /// @brief return a std::wstring
 ///   implicitly requires 'args and 'isolate' to be available
 /// @param WHAT the name of the std::string variable
-#define TRI_V8_RETURN_STD_WSTRING(WHAT)                                           \
-  args.GetReturnValue().Set(                                                      \
-      v8::String::NewFromTwoByte(isolate, (const uint16_t*)WHAT.c_str(),          \
-                                 v8::NewStringType::kNormal, (int)WHAT.length()).FromMaybe(v8::Local<v8::String>())); \
+#define TRI_V8_RETURN_STD_WSTRING(WHAT)                                          \
+  args.GetReturnValue().Set(                                                     \
+      v8::String::NewFromTwoByte(isolate, (const uint16_t*)WHAT.c_str(),         \
+                                 v8::NewStringType::kNormal, (int)WHAT.length()) \
+          .FromMaybe(v8::Local<v8::String>()));                                  \
   return
 
 /// @brief return a string which you know the length of
 ///   implicitly requires 'args and 'isolate' to be available
 /// @param WHAT the name of the char* variable
 /// @param WHATLEn the name of the int variable containing the length of WHAT
-#define TRI_V8_RETURN_PAIR_STRING(WHAT, WHATLEN)                                        \
-  args.GetReturnValue().Set(                                                            \
+#define TRI_V8_RETURN_PAIR_STRING(WHAT, WHATLEN)                                         \
+  args.GetReturnValue().Set(                                                             \
       v8::String::NewFromUtf8(isolate, WHAT, v8::NewStringType::kNormal, (int)WHATLEN)); \
   return
 
 #define TRI_IGETC isolate->GetCurrentContext()
 
-#define TRI_GET_INT32(VAL) \
-  VAL->Int32Value(TRI_IGETC).FromMaybe(0)
+#define TRI_GET_INT32(VAL) VAL->Int32Value(TRI_IGETC).FromMaybe(0)
 
-#define TRI_GET_UINT32(VAL) \
-  VAL->Uint32Value(TRI_IGETC).FromMaybe(0)
+#define TRI_GET_UINT32(VAL) VAL->Uint32Value(TRI_IGETC).FromMaybe(0)
 
-#define TRI_GET_DOUBLE(VAL)                     \
-  VAL->NumberValue(TRI_IGETC).FromMaybe(0.0)
+#define TRI_GET_DOUBLE(VAL) VAL->NumberValue(TRI_IGETC).FromMaybe(0.0)
 
 #define TRI_GET_STRING(VAL) \
   VAL->ToString(TRI_IGETC).FromMaybe(v8::Local<v8::String>())
 
-#define TRI_GET_OBJECT(VAL)                                     \
+#define TRI_GET_OBJECT(VAL) \
   VAL->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>())
 
-#define TRI_OBJECT_HAS_PROPERTY(OBJECT, PROPERTYSTRING)                \
+#define TRI_OBJECT_HAS_PROPERTY(OBJECT, PROPERTYSTRING) \
   OBJECT->Has(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, PROPERTYSTRING)).FromMaybe(false)
 
-#define TRI_OBJECT_HAS_V8_PROPERTY(OBJECT, PROPERTYSTRING)      \
+#define TRI_OBJECT_HAS_V8_PROPERTY(OBJECT, PROPERTYSTRING) \
   OBJECT->Has(TRI_IGETC, PROPERTYSTRING).FromMaybe(false)
 
-#define TRI_OBJECT_HAS_OWN_V8_PROPERTY(OBJECT, PROPERTYSTRING)                \
+#define TRI_OBJECT_HAS_OWN_V8_PROPERTY(OBJECT, PROPERTYSTRING) \
   OBJECT->HasOwnProperty(TRI_IGETC, PROPERTYSTRING).FromMaybe(false)
 
-#define TRI_OBJECT_HAS_OWN_PROPERTY(OBJECT, PROPERTYSTRING)                \
-  OBJECT->HasOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, PROPERTYSTRING)).FromMaybe(false)
-
-
+#define TRI_OBJECT_HAS_OWN_PROPERTY(OBJECT, PROPERTYSTRING)                       \
+  OBJECT->HasOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, PROPERTYSTRING)) \
+      .FromMaybe(false)
 
 #define TRI_OBJECT_GET_PROPERTY(OBJECT, PROPERTYSTRING)                \
-  OBJECT->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, PROPERTYSTRING)).FromMaybe(v8::Local<v8::Value>())
+  OBJECT->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, PROPERTYSTRING)) \
+      .FromMaybe(v8::Local<v8::Value>())
 
-#define TRI_OBJECT_GET_V8_PROPERTY(OBJECT, PROPERTY)                \
+#define TRI_OBJECT_GET_V8_PROPERTY(OBJECT, PROPERTY) \
   OBJECT->Get(TRI_IGETC, PROPERTY).FromMaybe(v8::Local<v8::Value>())
 
-#define TRI_OBJECT_DELETE_PROPERTY(OBJECT, PROPERTYSTRING)                \
+#define TRI_OBJECT_DELETE_PROPERTY(OBJECT, PROPERTYSTRING) \
   OBJECT->Delete(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, PROPERTYSTRING)).FromMaybe(false)
 
-#define TRI_OBJECT_DELETE_V8_PROPERTY(OBJECT, PROPERTY)                \
+#define TRI_OBJECT_DELETE_V8_PROPERTY(OBJECT, PROPERTY) \
   OBJECT->Delete(TRI_IGETC, PROPERTY).FromMaybe(false)
-
 
 #define TRI_OBJECT_TO_V8_STRING(OBJECT) \
   OBJECT->ToString(TRI_IGETC).FromMaybe(v8::Local<v8::String>())
-
 
 #define TRI_TO_OBJECT(VAL) \
   VAL->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>())
@@ -571,7 +571,7 @@ struct TRI_v8_global_t {
 
   /// @brief "id" key name
   v8::Persistent<v8::String> IdKey;
-  
+
   /// @brief "isAdminUser" key name
   v8::Persistent<v8::String> IsAdminUser;
 
@@ -751,7 +751,7 @@ bool TRI_V8_AddProtoMethod(v8::Isolate* isolate, TARGET tpl, v8::Handle<v8::Stri
 
   // normal method
   else {
-     tpl->PrototypeTemplate()->Set(name, v8::FunctionTemplate::New(isolate, callback));
+    tpl->PrototypeTemplate()->Set(name, v8::FunctionTemplate::New(isolate, callback));
   }
   return true;
 }
@@ -763,9 +763,9 @@ inline bool TRI_V8_AddMethod(v8::Isolate* isolate, TARGET tpl, v8::Handle<v8::St
                              bool isHidden = false) {
   // hidden method
   if (isHidden) {
-    return tpl->DefineOwnProperty(
-      TRI_IGETC,
-      name, callback->GetFunction(), v8::DontEnum).FromMaybe(false);
+    return tpl
+        ->DefineOwnProperty(TRI_IGETC, name, callback->GetFunction(), v8::DontEnum)
+        .FromMaybe(false);
   }
   // normal method
   else {
@@ -778,10 +778,11 @@ inline bool TRI_V8_AddMethod(v8::Isolate* isolate, TARGET tpl, v8::Handle<v8::St
                              v8::FunctionCallback callback, bool isHidden = false) {
   // hidden method
   if (isHidden) {
-    return tpl->DefineOwnProperty(
-                           TRI_IGETC,
-                           name, v8::FunctionTemplate::New(isolate, callback)->GetFunction(),
-                           v8::DontEnum).FromMaybe(false); // Ignore ret
+    return tpl
+        ->DefineOwnProperty(TRI_IGETC, name,
+                            v8::FunctionTemplate::New(isolate, callback)->GetFunction(),
+                            v8::DontEnum)
+        .FromMaybe(false);  // Ignore ret
   }
   // normal method
   else {

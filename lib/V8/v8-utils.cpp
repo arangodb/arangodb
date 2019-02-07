@@ -128,7 +128,8 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
       return;
     }
 
-    v8::Handle<v8::Object> errorObject = err->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+    v8::Handle<v8::Object> errorObject =
+        err->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
     if (errorObject.IsEmpty()) {
       isolate->ThrowException(v8::Object::New(isolate));
@@ -145,7 +146,7 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
     v8::Handle<v8::Object> ArangoError = ArangoErrorTempl->NewInstance();
 
     if (!ArangoError.IsEmpty()) {
-      errorObject->SetPrototype(TRI_IGETC, ArangoError).FromMaybe(false); // Ignore error
+      errorObject->SetPrototype(TRI_IGETC, ArangoError).FromMaybe(false);  // Ignore error
     }
 
     isolate->ThrowException(errorObject);
@@ -213,9 +214,11 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   v8::Handle<v8::String> source =
       TRI_V8_PAIR_STRING(isolate, content + bangOffset, (int)length);
 
-  v8::TryCatch tryCatch(isolate);;
+  v8::TryCatch tryCatch(isolate);
+  ;
   v8::ScriptOrigin scriptOrigin(name);
-  v8::Handle<v8::Script> script = v8::Script::Compile(TRI_IGETC, source, &scriptOrigin).FromMaybe(v8::Local<v8::Script>());
+  v8::Handle<v8::Script> script =
+      v8::Script::Compile(TRI_IGETC, source, &scriptOrigin).FromMaybe(v8::Local<v8::Script>());
 
   if (tryCatch.HasCaught()) {
     TRI_LogV8Exception(isolate, &tryCatch);
@@ -231,7 +234,8 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 
   if (execute) {
     // execute script
-    v8::Handle<v8::Value> result = script->Run(TRI_IGETC).FromMaybe(v8::Local<v8::Value>());// TODO: do we want a better default fail here?
+    v8::Handle<v8::Value> result = script->Run(TRI_IGETC).FromMaybe(
+        v8::Local<v8::Value>());  // TODO: do we want a better default fail here?
 
     if (tryCatch.HasCaught()) {
       TRI_LogV8Exception(isolate, &tryCatch);
@@ -268,7 +272,8 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path, bool
       continue;
     }
 
-    v8::TryCatch tryCatch(isolate);;
+    v8::TryCatch tryCatch(isolate);
+    ;
 
     std::string full = FileUtils::buildFilename(path, filename);
 
@@ -398,14 +403,15 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<script> must be a string");
   }
 
-  v8::TryCatch tryCatch(isolate);;
-
+  v8::TryCatch tryCatch(isolate);
+  ;
 
   v8::ScriptOrigin scriptOrigin(TRI_OBJECT_TO_V8_STRING(filename));
   v8::Handle<v8::Script> script =
-    v8::Script::Compile(TRI_IGETC,
-                        source->ToString(TRI_IGETC).FromMaybe(v8::Local<v8::String>()),
-                        &scriptOrigin).FromMaybe(v8::Handle<v8::Script>());
+      v8::Script::Compile(TRI_IGETC,
+                          source->ToString(TRI_IGETC).FromMaybe(v8::Local<v8::String>()),
+                          &scriptOrigin)
+          .FromMaybe(v8::Handle<v8::Script>());
 
   // compilation failed, we have caught an exception
   if (tryCatch.HasCaught()) {
@@ -414,11 +420,14 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::Message> message = tryCatch.Message();
       if (!message.IsEmpty()) {
         exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "lineNumber"),
-                          v8::Number::New(isolate, message->GetLineNumber(TRI_IGETC).FromMaybe(-1)));
+                          v8::Number::New(isolate,
+                                          message->GetLineNumber(TRI_IGETC).FromMaybe(-1)));
         exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "columnNumber"),
                           v8::Number::New(isolate, message->GetStartColumn()));
       }
-      exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "fileName"), filename->ToString(TRI_IGETC).FromMaybe(TRI_V8_ASCII_STRING(isolate, "unknown")));
+      exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "fileName"),
+                        filename->ToString(TRI_IGETC).FromMaybe(
+                            TRI_V8_ASCII_STRING(isolate, "unknown")));
       tryCatch.ReThrow();
       return;
     } else {
@@ -473,12 +482,12 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "cannot read file");
   }
 
-  v8::TryCatch tryCatch(isolate);;
+  v8::TryCatch tryCatch(isolate);
+  ;
   v8::ScriptOrigin scriptOrigin(TRI_OBJECT_TO_V8_STRING(args[0]));
   v8::Handle<v8::Script> script =
-    v8::Script::Compile(TRI_IGETC,
-                        TRI_V8_PAIR_STRING(isolate, content, (int)length),
-                        &scriptOrigin).FromMaybe(v8::Handle<v8::Script>());
+      v8::Script::Compile(TRI_IGETC, TRI_V8_PAIR_STRING(isolate, content, (int)length), &scriptOrigin)
+          .FromMaybe(v8::Handle<v8::Script>());
 
   TRI_FreeString(content);
 
@@ -489,7 +498,8 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::Message> message = tryCatch.Message();
       if (!message.IsEmpty()) {
         exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "lineNumber"),
-                          v8::Number::New(isolate, message->GetLineNumber(TRI_IGETC).FromMaybe(-1)));
+                          v8::Number::New(isolate,
+                                          message->GetLineNumber(TRI_IGETC).FromMaybe(-1)));
         exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "columnNumber"),
                           v8::Number::New(isolate, message->GetStartColumn()));
       }
@@ -684,13 +694,16 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                        "invalid option value for sslProtocol");
       }
 
-      sslProtocol = TRI_ObjectToUInt64(isolate, TRI_OBJECT_GET_PROPERTY(options, "sslProtocol"), false);
+      sslProtocol =
+          TRI_ObjectToUInt64(isolate,
+                             TRI_OBJECT_GET_PROPERTY(options, "sslProtocol"), false);
     }
 
     // method
     if (TRI_OBJECT_HAS_PROPERTY(options, "method")) {
-      std::string methodString = TRI_ObjectToString(
-          isolate, TRI_OBJECT_GET_PROPERTY(options,"method"));
+      std::string methodString =
+          TRI_ObjectToString(isolate,
+                             TRI_OBJECT_GET_PROPERTY(options, "method"));
 
       method = HttpRequest::translateMethod(methodString);
     }
@@ -717,17 +730,20 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                        "invalid option value for timeout");
       }
 
-      timeout = TRI_ObjectToDouble(isolate, TRI_OBJECT_GET_PROPERTY(options, "timeout"));
+      timeout = TRI_ObjectToDouble(isolate,
+                                   TRI_OBJECT_GET_PROPERTY(options, "timeout"));
     }
 
     // return body as a buffer?
     if (TRI_OBJECT_HAS_PROPERTY(options, "returnBodyAsBuffer")) {
-      returnBodyAsBuffer = TRI_ObjectToBoolean(isolate, TRI_OBJECT_GET_PROPERTY(options, "returnBodyAsBuffer"));
+      returnBodyAsBuffer = TRI_ObjectToBoolean(
+          isolate, TRI_OBJECT_GET_PROPERTY(options, "returnBodyAsBuffer"));
     }
 
     // follow redirects
     if (TRI_OBJECT_HAS_PROPERTY(options, "followRedirects")) {
-      followRedirects = TRI_ObjectToBoolean(isolate, TRI_OBJECT_GET_PROPERTY(options, "followRedirects"));
+      followRedirects = TRI_ObjectToBoolean(
+          isolate, TRI_OBJECT_GET_PROPERTY(options, "followRedirects"));
     }
 
     // max redirects
@@ -737,7 +753,8 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                        "invalid option value for maxRedirects");
       }
 
-      maxRedirects = (int)TRI_ObjectToInt64(isolate, TRI_OBJECT_GET_PROPERTY(options, "maxRedirects"));
+      maxRedirects = (int)TRI_ObjectToInt64(
+          isolate, TRI_OBJECT_GET_PROPERTY(options, "maxRedirects"));
     }
 
     if (!body.empty() &&
@@ -748,16 +765,21 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     if (TRI_OBJECT_HAS_PROPERTY(options, "returnBodyOnError")) {
-      returnBodyOnError = TRI_ObjectToBoolean(isolate, TRI_OBJECT_GET_PROPERTY(options, "returnBodyOnError"));
+      returnBodyOnError = TRI_ObjectToBoolean(
+          isolate, TRI_OBJECT_GET_PROPERTY(options, "returnBodyOnError"));
     }
 
     if (TRI_OBJECT_HAS_PROPERTY(options, "jwt")) {
       jwtToken =
           TRI_ObjectToString(isolate, TRI_OBJECT_GET_PROPERTY(options, "jwt"));
     } else if (TRI_OBJECT_HAS_PROPERTY(options, "username")) {
-      username = TRI_ObjectToString(isolate, TRI_OBJECT_GET_PROPERTY(options, "username"));
+      username =
+          TRI_ObjectToString(isolate,
+                             TRI_OBJECT_GET_PROPERTY(options, "username"));
       if (TRI_OBJECT_HAS_PROPERTY(options, "password")) {
-        password = TRI_ObjectToString(isolate, TRI_OBJECT_GET_PROPERTY(options, "password"));
+        password =
+            TRI_ObjectToString(isolate,
+                               TRI_OBJECT_GET_PROPERTY(options, "password"));
       }
     }
   }
@@ -1034,7 +1056,8 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Array> keys = sandbox->GetPropertyNames();
 
     for (uint32_t i = 0; i < keys->Length(); i++) {
-      v8::Handle<v8::String> key = TRI_OBJECT_TO_V8_STRING(keys->Get(v8::Integer::New(isolate, i)));
+      v8::Handle<v8::String> key =
+          TRI_OBJECT_TO_V8_STRING(keys->Get(v8::Integer::New(isolate, i)));
       v8::Handle<v8::Value> value = sandbox->Get(key);
 
       if (Logger::logLevel() == arangodb::LogLevel::TRACE) {
@@ -1059,10 +1082,12 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Value> result;
 
   {
-    v8::TryCatch tryCatch(isolate);;
+    v8::TryCatch tryCatch(isolate);
+    ;
 
     v8::ScriptOrigin scriptOrigin(TRI_OBJECT_TO_V8_STRING(filename));
-    script = v8::Script::Compile(TRI_IGETC, TRI_OBJECT_TO_V8_STRING(source), &scriptOrigin).FromMaybe(v8::Local<v8::Script>());
+    script = v8::Script::Compile(TRI_IGETC, TRI_OBJECT_TO_V8_STRING(source), &scriptOrigin)
+                 .FromMaybe(v8::Local<v8::Script>());
 
     // compilation failed, print errors that happened during compilation
     if (script.IsEmpty()) {
@@ -1076,11 +1101,14 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
         v8::Handle<v8::Message> message = tryCatch.Message();
         if (!message.IsEmpty()) {
           exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "lineNumber"),
-                            v8::Number::New(isolate, message->GetLineNumber(TRI_IGETC).FromMaybe(-1)));
+                            v8::Number::New(isolate,
+                                            message->GetLineNumber(TRI_IGETC).FromMaybe(-1)));
           exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "columnNumber"),
-                            v8::Number::New(isolate, message->GetStartColumn(TRI_IGETC).FromMaybe(-1)));
+                            v8::Number::New(isolate,
+                                            message->GetStartColumn(TRI_IGETC).FromMaybe(-1)));
         }
-        exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "fileName"), TRI_OBJECT_TO_V8_STRING(filename));
+        exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "fileName"),
+                          TRI_OBJECT_TO_V8_STRING(filename));
         tryCatch.ReThrow();
         return;
       } else {
@@ -1116,7 +1144,8 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Array> keys = context->Global()->GetPropertyNames();
 
     for (uint32_t i = 0; i < keys->Length(); i++) {
-      v8::Handle<v8::String> key = TRI_OBJECT_TO_V8_STRING(keys->Get(v8::Integer::New(isolate, i)));
+      v8::Handle<v8::String> key =
+          TRI_OBJECT_TO_V8_STRING(keys->Get(v8::Integer::New(isolate, i)));
       v8::Handle<v8::Value> value = context->Global()->Get(key);
 
       if (Logger::logLevel() == arangodb::LogLevel::TRACE) {
@@ -1753,11 +1782,12 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto oldDirname = TRI_OBJECT_GET_PROPERTY(current, "__dirname");
   auto dirname = TRI_Dirname(TRI_ObjectToString(isolate, filename));
   current->Set(TRI_V8_ASCII_STRING(isolate, "__dirname"),
-                    TRI_V8_STD_STRING(isolate, dirname));
+               TRI_V8_STD_STRING(isolate, dirname));
 
   v8::Handle<v8::Value> result;
   {
-    v8::TryCatch tryCatch(isolate);;
+    v8::TryCatch tryCatch(isolate);
+    ;
 
     result = TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
                                          TRI_V8_PAIR_STRING(isolate, content, length),
@@ -4062,7 +4092,7 @@ static void JS_VPackToV8(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("VPACK_TO_V8(value)");
   }
-    
+
   VPackValidator validator;
 
   if (args[0]->IsString() || args[0]->IsStringObject()) {
@@ -4105,7 +4135,8 @@ static void JS_ArangoError(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBAL_STRING(ErrorKey);
   TRI_GET_GLOBAL_STRING(ErrorNumKey);
 
-  v8::Handle<v8::Object> self = args.Holder()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+  v8::Handle<v8::Object> self =
+      args.Holder()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
   self->Set(ErrorKey, v8::True(isolate));
   self->Set(ErrorNumKey, v8::Integer::New(isolate, TRI_ERROR_FAILED));
@@ -4137,7 +4168,8 @@ static void JS_ArangoError(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // call Error.captureStackTrace(this) so the ArangoError object gets a nifty
     // stack trace
     v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
-    v8::Handle<v8::Value> errorObject = TRI_OBJECT_GET_PROPERTY(current, "Error");
+    v8::Handle<v8::Value> errorObject =
+        TRI_OBJECT_GET_PROPERTY(current, "Error");
     v8::Handle<v8::Object> err = v8::Handle<v8::Object>::Cast(errorObject);
     v8::Handle<v8::Function> captureStackTrace = v8::Handle<v8::Function>::Cast(
         TRI_OBJECT_GET_PROPERTY(err, "captureStackTrace"));
@@ -4266,7 +4298,8 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatc
       }
     }
 
-    TRI_Utf8ValueNFC sourceline(isolate, message->GetSourceLine(TRI_IGETC).FromMaybe(v8::Local<v8::String>()));
+    TRI_Utf8ValueNFC sourceline(isolate, message->GetSourceLine(TRI_IGETC).FromMaybe(
+                                             v8::Local<v8::String>()));
 
     if (*sourceline) {
       std::string l = *sourceline;
@@ -4291,7 +4324,8 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatc
       result += "!" + l + "\n";
     }
 
-    auto stacktraceV8 = tryCatch->StackTrace(TRI_IGETC).FromMaybe(v8::Local<v8::Value>());
+    auto stacktraceV8 =
+        tryCatch->StackTrace(TRI_IGETC).FromMaybe(v8::Local<v8::Value>());
     TRI_Utf8ValueNFC stacktrace(isolate, stacktraceV8);
 
     if (*stacktrace && stacktrace.length() > 0) {
@@ -4348,7 +4382,8 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
       }
     }
 
-    TRI_Utf8ValueNFC sourceline(isolate, message->GetSourceLine(TRI_IGETC).FromMaybe(v8::Local<v8::String>()));
+    TRI_Utf8ValueNFC sourceline(isolate, message->GetSourceLine(TRI_IGETC).FromMaybe(
+                                             v8::Local<v8::String>()));
 
     if (*sourceline) {
       std::string l = *sourceline;
@@ -4415,7 +4450,8 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
   v8::ScriptOrigin scriptOrigin(name);
 
   v8::Handle<v8::Value> result;
-  v8::Handle<v8::Script> script = v8::Script::Compile(context, source, &scriptOrigin).FromMaybe(v8::Local<v8::Script>());
+  v8::Handle<v8::Script> script =
+      v8::Script::Compile(context, source, &scriptOrigin).FromMaybe(v8::Local<v8::Script>());
 
   // compilation failed, print errors that happened during compilation
   if (script.IsEmpty()) {
@@ -4432,7 +4468,8 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
   // if all went well and the result wasn't undefined then print the returned
   // value
   if (printResult && !result->IsUndefined()) {
-    v8::TryCatch tryCatch(isolate);;
+    v8::TryCatch tryCatch(isolate);
+    ;
 
     v8::Handle<v8::String> printFuncName =
         TRI_V8_ASCII_STRING(isolate, "print");
@@ -4520,7 +4557,7 @@ void TRI_normalize_V8_Obj(v8::FunctionCallbackInfo<v8::Value> const& args,
     }
 
     icu::UnicodeString result =
-      normalizer->normalize(icu::UnicodeString((UChar*)*str, (int32_t)str_len), errorCode);
+        normalizer->normalize(icu::UnicodeString((UChar*)*str, (int32_t)str_len), errorCode);
 
     if (U_FAILURE(errorCode)) {
       TRI_V8_RETURN(TRI_V8_STRING_UTF16(isolate, *str, (int)str_len));
@@ -4639,12 +4676,14 @@ void TRI_ClearObjectCacheV8(v8::Isolate* isolate) {
 
   if (TRI_OBJECT_HAS_PROPERTY(globals, "__dbcache__")) {
     v8::Handle<v8::Object> cacheObject =
-      TRI_OBJECT_GET_PROPERTY(globals, "__dbcache__")->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+        TRI_OBJECT_GET_PROPERTY(globals, "__dbcache__")
+            ->ToObject(TRI_IGETC)
+            .FromMaybe(v8::Local<v8::Object>());
     if (!cacheObject.IsEmpty()) {
       v8::Handle<v8::Array> props = cacheObject->GetPropertyNames();
       for (uint32_t i = 0; i < props->Length(); i++) {
         v8::Handle<v8::Value> key = props->Get(i);
-        cacheObject->Delete(TRI_IGETC, key).FromMaybe(false);// Ignore errors.
+        cacheObject->Delete(TRI_IGETC, key).FromMaybe(false);  // Ignore errors.
       }
     }
   }
@@ -4694,9 +4733,15 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   v8::Handle<v8::Value> ErrorObject =
       context->Global()->Get(TRI_V8_ASCII_STRING(isolate, "Error"));
   v8::Handle<v8::Value> ErrorPrototype =
-    ErrorObject->ToObject(context).FromMaybe(v8::Local<v8::Object>())->Get(TRI_V8_ASCII_STRING(isolate, "prototype"));
+      ErrorObject->ToObject(context)
+          .FromMaybe(v8::Local<v8::Object>())
+          ->Get(TRI_V8_ASCII_STRING(isolate, "prototype"));
 
-  ArangoErrorFunc->Get(TRI_V8_ASCII_STRING(isolate, "prototype"))->ToObject(context).FromMaybe(v8::Local<v8::Object>())->SetPrototype(context, ErrorPrototype).FromMaybe(false);
+  ArangoErrorFunc->Get(TRI_V8_ASCII_STRING(isolate, "prototype"))
+      ->ToObject(context)
+      .FromMaybe(v8::Local<v8::Object>())
+      ->SetPrototype(context, ErrorPrototype)
+      .FromMaybe(false);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "ArangoError"), ArangoErrorFunc);

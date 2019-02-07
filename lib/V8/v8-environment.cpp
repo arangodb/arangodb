@@ -208,13 +208,10 @@ void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   rt = ft->InstanceTemplate();
   // rt->SetInternalFieldCount(3);
 
-  rt->SetHandler(v8::NamedPropertyHandlerConfiguration(EnvGetter,
-                                                       EnvSetter,
-                                                       EnvQuery,
-                                                       EnvDeleter,
-                                                       EnvEnumerator,
+  rt->SetHandler(v8::NamedPropertyHandlerConfiguration(EnvGetter, EnvSetter, EnvQuery,
+                                                       EnvDeleter, EnvEnumerator,
                                                        v8::Object::New(isolate)));
-                                               
+
   v8g->EnvTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "ENV"),
                                ft->GetFunction());

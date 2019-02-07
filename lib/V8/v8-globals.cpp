@@ -294,15 +294,19 @@ bool TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate, v8::Handle<v8::String> n
                                   bool isHidden) {
   // all global functions are read-only
   if (isHidden) {
-    return isolate->GetCurrentContext()->Global()->DefineOwnProperty(
-      TRI_IGETC,
-      name,
-      v8::FunctionTemplate::New(isolate, func)->GetFunction(),
-      static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum)).FromMaybe(false);
+    return isolate->GetCurrentContext()
+        ->Global()
+        ->DefineOwnProperty(TRI_IGETC, name,
+                            v8::FunctionTemplate::New(isolate, func)->GetFunction(),
+                            static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum))
+        .FromMaybe(false);
   } else {
-    return isolate->GetCurrentContext()->Global()->DefineOwnProperty(
-      TRI_IGETC,
-      name, v8::FunctionTemplate::New(isolate, func)->GetFunction(), v8::ReadOnly).FromMaybe(false);
+    return isolate->GetCurrentContext()
+        ->Global()
+        ->DefineOwnProperty(TRI_IGETC, name,
+                            v8::FunctionTemplate::New(isolate, func)->GetFunction(),
+                            v8::ReadOnly)
+        .FromMaybe(false);
   }
 }
 
@@ -311,12 +315,16 @@ bool TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate, v8::Handle<v8::String> n
                                   v8::Handle<v8::Function> func, bool isHidden) {
   // all global functions are read-only
   if (isHidden) {
-    return isolate->GetCurrentContext()->Global()->DefineOwnProperty(
-      TRI_IGETC,
-      name, func, static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum)).FromMaybe(false);
+    return isolate->GetCurrentContext()
+        ->Global()
+        ->DefineOwnProperty(TRI_IGETC, name, func,
+                            static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum))
+        .FromMaybe(false);
   } else {
-    return isolate->GetCurrentContext()->Global()->DefineOwnProperty(
-      TRI_IGETC, name, func, v8::ReadOnly).FromMaybe(false);
+    return isolate->GetCurrentContext()
+        ->Global()
+        ->DefineOwnProperty(TRI_IGETC, name, func, v8::ReadOnly)
+        .FromMaybe(false);
   }
 }
 
@@ -324,6 +332,8 @@ bool TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate, v8::Handle<v8::String> n
 bool TRI_AddGlobalVariableVocbase(v8::Isolate* isolate, v8::Handle<v8::String> name,
                                   v8::Handle<v8::Value> value) {
   // all global variables are read-only
-  return isolate->GetCurrentContext()->Global()->DefineOwnProperty(
-    TRI_IGETC, name, value, v8::ReadOnly).FromMaybe(false);
+  return isolate->GetCurrentContext()
+      ->Global()
+      ->DefineOwnProperty(TRI_IGETC, name, value, v8::ReadOnly)
+      .FromMaybe(false);
 }

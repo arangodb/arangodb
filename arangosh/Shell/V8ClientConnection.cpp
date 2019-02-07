@@ -170,10 +170,8 @@ std::string V8ClientConnection::endpointSpecification() const {
   }
   return "";
 }
-    
-double V8ClientConnection::timeout() const {
-  return _requestTimeout.count();
-}
+
+double V8ClientConnection::timeout() const { return _requestTimeout.count(); }
 
 void V8ClientConnection::timeout(double value) {
   _requestTimeout = std::chrono::duration<double>(value);
@@ -380,7 +378,7 @@ static void ClientConnection_reconnect(v8::FunctionCallbackInfo<v8::Value> const
   v8::HandleScope scope(isolate);
 
   V8ClientConnection* v8connection =
-    TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
@@ -483,7 +481,7 @@ static void ClientConnection_httpGetAny(v8::FunctionCallbackInfo<v8::Value> cons
 
   // get the connection
   V8ClientConnection* v8connection =
-    TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
@@ -534,7 +532,7 @@ static void ClientConnection_httpHeadAny(v8::FunctionCallbackInfo<v8::Value> con
 
   // get the connection
   V8ClientConnection* v8connection =
-    TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
@@ -586,7 +584,7 @@ static void ClientConnection_httpDeleteAny(v8::FunctionCallbackInfo<v8::Value> c
 
   // get the connection
   V8ClientConnection* v8connection =
-    TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
@@ -866,7 +864,8 @@ static void ClientConnection_httpSendFile(v8::FunctionCallbackInfo<v8::Value> co
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FILE_NOT_FOUND);
   }
 
-  v8::TryCatch tryCatch(isolate);;
+  v8::TryCatch tryCatch(isolate);
+  ;
 
   // check header fields
   std::unordered_map<std::string, std::string> headerFields;
@@ -1175,7 +1174,7 @@ static void ClientConnection_timeout(v8::FunctionCallbackInfo<v8::Value> const& 
   if (v8connection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
   }
-  
+
   if (args.Length() == 0) {
     TRI_V8_RETURN(v8::Number::New(isolate, v8connection->timeout()));
   } else {
@@ -1188,12 +1187,12 @@ static void ClientConnection_timeout(v8::FunctionCallbackInfo<v8::Value> const& 
     if (client == nullptr) {
       TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
     }
-    
+
     client->requestTimeout(value);
 
     TRI_V8_RETURN_UNDEFINED();
   }
-    
+
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1525,11 +1524,11 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   v8::Local<v8::Object> result = v8::Object::New(isolate);
   if (!response) {
     result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-                     v8::Boolean::New(isolate, true));
+                v8::Boolean::New(isolate, true));
     result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                     v8::Integer::New(isolate, _lastHttpReturnCode));
+                v8::Integer::New(isolate, _lastHttpReturnCode));
     result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                     TRI_V8_STD_STRING(isolate, _lastErrorMessage));
+                TRI_V8_STD_STRING(isolate, _lastErrorMessage));
 
     return result;
   }
@@ -1540,21 +1539,21 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
 
   // create raw response
   result->Set(TRI_V8_ASCII_STRING(isolate, "code"),
-                   v8::Integer::New(isolate, _lastHttpReturnCode));
+              v8::Integer::New(isolate, _lastHttpReturnCode));
 
   if (_lastHttpReturnCode >= 400) {
     std::string msg(GeneralResponse::responseString(
         static_cast<ResponseCode>(_lastHttpReturnCode)));
 
     result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-                     v8::Boolean::New(isolate, true));
+                v8::Boolean::New(isolate, true));
     result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                     v8::Integer::New(isolate, _lastHttpReturnCode));
+                v8::Integer::New(isolate, _lastHttpReturnCode));
     result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                     TRI_V8_STD_STRING(isolate, msg));
+                TRI_V8_STD_STRING(isolate, msg));
   } else {
     result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-                     v8::Boolean::New(isolate, false));
+                v8::Boolean::New(isolate, false));
   }
 
   // got a body, copy it into the result
@@ -1590,9 +1589,9 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
 
     v8::Local<v8::Object> result = v8::Object::New(isolate);
     result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-                     v8::Boolean::New(isolate, true));
+                v8::Boolean::New(isolate, true));
     result->Set(TRI_V8_ASCII_STRING(isolate, "code"),
-                     v8::Integer::New(isolate, static_cast<int>(rest::ResponseCode::SERVER_ERROR)));
+                v8::Integer::New(isolate, static_cast<int>(rest::ResponseCode::SERVER_ERROR)));
 
     int errorNumber = 0;
     switch (ec) {
@@ -1615,9 +1614,9 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
     }
 
     result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                     v8::Integer::New(isolate, errorNumber));
+                v8::Integer::New(isolate, errorNumber));
     result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                     TRI_V8_STD_STRING(isolate, _lastErrorMessage));
+                TRI_V8_STD_STRING(isolate, _lastErrorMessage));
 
     return result;
   }
@@ -1649,21 +1648,21 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
   v8::Local<v8::Object> result = v8::Object::New(isolate);
 
   result->Set(TRI_V8_ASCII_STRING(isolate, "code"),
-                   v8::Integer::New(isolate, _lastHttpReturnCode));
+              v8::Integer::New(isolate, _lastHttpReturnCode));
 
   if (_lastHttpReturnCode >= 400) {
     std::string msg(GeneralResponse::responseString(
         static_cast<ResponseCode>(_lastHttpReturnCode)));
 
     result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-                     v8::Boolean::New(isolate, true));
+                v8::Boolean::New(isolate, true));
     result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                     v8::Integer::New(isolate, _lastHttpReturnCode));
+                v8::Integer::New(isolate, _lastHttpReturnCode));
     result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                     TRI_V8_STD_STRING(isolate, msg));
+                TRI_V8_STD_STRING(isolate, msg));
   } else {
     result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-                     v8::Boolean::New(isolate, false));
+                v8::Boolean::New(isolate, false));
   }
 
   return result;
@@ -1745,7 +1744,7 @@ void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Local<v8::Context>
 
   connection_proto->Set(isolate, "timeout",
                         v8::FunctionTemplate::New(isolate, ClientConnection_timeout));
-  
+
   connection_proto->Set(isolate, "toString",
                         v8::FunctionTemplate::New(isolate, ClientConnection_toString));
 

@@ -221,8 +221,7 @@ static void Encode(v8::FunctionCallbackInfo<v8::Value> const& args,
 /// @brief constructor template
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FromConstructorTemplate(v8::Isolate* isolate,
-                                    v8::Local<v8::FunctionTemplate> t,
+static void FromConstructorTemplate(v8::Isolate* isolate, v8::Local<v8::FunctionTemplate> t,
                                     v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Value> argv[32];
   size_t argc = args.Length();
@@ -235,8 +234,9 @@ static void FromConstructorTemplate(v8::Isolate* isolate,
     argv[i] = args[(int)i];
   }
 
-  v8::MaybeLocal<v8::Object> ret = t->GetFunction()->NewInstance(TRI_IGETC, (int)argc, argv);
-  
+  v8::MaybeLocal<v8::Object> ret =
+      t->GetFunction()->NewInstance(TRI_IGETC, (int)argc, argv);
+
   TRI_V8_RETURN(ret.FromMaybe(v8::Local<v8::Object>()));
 }
 
@@ -661,7 +661,7 @@ v8::Handle<v8::Object> V8Buffer::New(v8::Isolate* isolate, v8::Handle<v8::String
 
   v8::Local<v8::Value> argv[1] = {v8::Local<v8::Value>::New(isolate, string)};
   v8::Local<v8::Object> instance =
-    b->NewInstance(TRI_IGETC, 1, argv).FromMaybe(v8::Local<v8::Object>());
+      b->NewInstance(TRI_IGETC, 1, argv).FromMaybe(v8::Local<v8::Object>());
 
   return instance;
 }
@@ -676,7 +676,7 @@ V8Buffer* V8Buffer::New(v8::Isolate* isolate, size_t length) {
   v8::Local<v8::Value> arg = v8::Integer::NewFromUnsigned(isolate, (uint32_t)length);
   TRI_GET_GLOBAL(BufferTempl, v8::FunctionTemplate);
   v8::Local<v8::Object> b =
-    BufferTempl->GetFunction()->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
+      BufferTempl->GetFunction()->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
 
   if (b.IsEmpty()) {
     return NULL;
@@ -695,7 +695,7 @@ V8Buffer* V8Buffer::New(v8::Isolate* isolate, char const* data, size_t length) {
   v8::Local<v8::Value> arg = v8::Integer::NewFromUnsigned(isolate, 0);
   TRI_GET_GLOBAL(BufferTempl, v8::FunctionTemplate);
   v8::Local<v8::Object> obj =
-    BufferTempl->GetFunction()->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
+      BufferTempl->GetFunction()->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
 
   V8Buffer* buffer = V8Buffer::unwrap(obj);
   buffer->replace(isolate, const_cast<char*>(data), length, NULL, NULL);
@@ -714,7 +714,7 @@ V8Buffer* V8Buffer::New(v8::Isolate* isolate, char* data, size_t length,
   v8::Local<v8::Value> arg = v8::Integer::NewFromUnsigned(isolate, 0);
   TRI_GET_GLOBAL(BufferTempl, v8::FunctionTemplate);
   v8::Local<v8::Object> obj =
-    BufferTempl->GetFunction()->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
+      BufferTempl->GetFunction()->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
 
   V8Buffer* buffer = V8Buffer::unwrap(obj);
   buffer->replace(isolate, data, length, callback, hint);
@@ -749,7 +749,8 @@ bool V8Buffer::hasInstance(v8::Isolate* isolate, v8::Handle<v8::Value> val) {
     return false;
   }
 
-  v8::Local<v8::Object> obj = val->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+  v8::Local<v8::Object> obj =
+      val->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
   // Also check for SlowBuffers that are empty.
   TRI_GET_GLOBAL(BufferTempl, v8::FunctionTemplate);
@@ -761,7 +762,8 @@ bool V8Buffer::hasInstance(v8::Isolate* isolate, v8::Handle<v8::Value> val) {
     return true;
   }
 
-  return strcmp(*v8::String::Utf8Value(isolate, obj->GetConstructorName()), "Buffer") == 0;
+  return strcmp(*v8::String::Utf8Value(isolate, obj->GetConstructorName()),
+                "Buffer") == 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1058,7 +1060,8 @@ static void JS_Copy(v8::FunctionCallbackInfo<v8::Value> const& args) {
   size_t target_length = V8Buffer::length(isolate, target);
   size_t target_start = TRI_GET_UINT32(args[1]);
   size_t source_start = TRI_GET_UINT32(args[2]);
-  size_t source_end = args[3]->IsUndefined() ? source->_length : TRI_GET_UINT32(args[3]);
+  size_t source_end =
+      args[3]->IsUndefined() ? source->_length : TRI_GET_UINT32(args[3]);
 
   if (source_end < source_start) {
     TRI_V8_THROW_RANGE_ERROR("sourceEnd < sourceStart");
@@ -1119,8 +1122,8 @@ static void JS_Utf8Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_RANGE_ERROR("<offset> is out of bounds");
   }
 
-  size_t max_length =
-      args[2]->IsUndefined() ? buffer->_length - offset : TRI_GET_UINT32(args[2]);
+  size_t max_length = args[2]->IsUndefined() ? buffer->_length - offset
+                                             : TRI_GET_UINT32(args[2]);
   max_length = MIN(buffer->_length - offset, max_length);
 
   char* p = buffer->_data + offset;
@@ -1155,8 +1158,8 @@ static void JS_Ucs2Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_RANGE_ERROR("<offset> is out of bounds");
   }
 
-  size_t max_length =
-      args[2]->IsUndefined() ? buffer->_length - offset : TRI_GET_UINT32(args[2]);
+  size_t max_length = args[2]->IsUndefined() ? buffer->_length - offset
+                                             : TRI_GET_UINT32(args[2]);
 
   max_length = MIN(buffer->_length - offset, max_length) / 2;
 
@@ -1253,17 +1256,16 @@ static void JS_AsciiWrite(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<offset> is out of bounds");
   }
 
-  size_t max_length =
-      args[2]->IsUndefined() ? buffer->_length - offset : TRI_GET_UINT32(args[2]);
+  size_t max_length = args[2]->IsUndefined() ? buffer->_length - offset
+                                             : TRI_GET_UINT32(args[2]);
 
   max_length = MIN(length, MIN(buffer->_length - offset, max_length));
 
   char* p = buffer->_data + offset;
 
-  int written = s->WriteOneByte(isolate,
-                                reinterpret_cast<uint8_t*>(p), 0, (int)max_length,
-                                (v8::String::HINT_MANY_WRITES_EXPECTED |
-                                 v8::String::NO_NULL_TERMINATION));
+  int written =
+      s->WriteOneByte(isolate, reinterpret_cast<uint8_t*>(p), 0, (int)max_length,
+                      (v8::String::HINT_MANY_WRITES_EXPECTED | v8::String::NO_NULL_TERMINATION));
   TRI_V8_RETURN(v8::Integer::New(isolate, written));
 }
 
@@ -1285,8 +1287,8 @@ static void JS_Base64Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::String::Utf8Value s(isolate, args[0]);
   size_t length = s.length();
   size_t offset = TRI_GET_UINT32(args[1]);
-  size_t max_length =
-      args[2]->IsUndefined() ? buffer->_length - offset : TRI_GET_UINT32(args[2]);
+  size_t max_length = args[2]->IsUndefined() ? buffer->_length - offset
+                                             : TRI_GET_UINT32(args[2]);
 
   max_length = MIN(length, MIN(buffer->_length - offset, max_length));
 
@@ -1363,8 +1365,8 @@ static void JS_BinaryWrite(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   char* p = (char*)buffer->_data + offset;
-  size_t max_length =
-      args[2]->IsUndefined() ? buffer->_length - offset : TRI_GET_UINT32(args[2]);
+  size_t max_length = args[2]->IsUndefined() ? buffer->_length - offset
+                                             : TRI_GET_UINT32(args[2]);
 
   max_length = MIN(length, MIN(buffer->_length - offset, max_length));
 

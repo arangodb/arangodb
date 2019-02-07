@@ -51,24 +51,29 @@ std::string TRI_ObjectToString(v8::Isolate* isolate, v8::Handle<v8::Value> value
 /// @brief converts an V8 object to an int64_t
 int64_t TRI_ObjectToInt64(v8::Isolate* isolate, v8::Handle<v8::Value> const value) {
   if (value->IsNumber()) {
-    return static_cast<int64_t>(v8::Handle<v8::Number>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(0.0));
+    return static_cast<int64_t>(
+        v8::Handle<v8::Number>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(0.0));
   }
 
   if (value->IsNumberObject()) {
-    return static_cast<int64_t>(v8::Handle<v8::NumberObject>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(0.0));
+    return static_cast<int64_t>(
+        v8::Handle<v8::NumberObject>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(0.0));
   }
 
   return 0;
 }
 
 /// @brief converts an V8 object to a uint64_t
-uint64_t TRI_ObjectToUInt64(v8::Isolate* isolate, v8::Handle<v8::Value> const value, bool allowStringConversion) {
+uint64_t TRI_ObjectToUInt64(v8::Isolate* isolate, v8::Handle<v8::Value> const value,
+                            bool allowStringConversion) {
   if (value->IsNumber()) {
-    return static_cast<uint64_t>(v8::Handle<v8::Number>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(0.0));
+    return static_cast<uint64_t>(
+        v8::Handle<v8::Number>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(0.0));
   }
 
   if (value->IsNumberObject()) {
-    return static_cast<uint64_t>(v8::Handle<v8::NumberObject>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(0.0));
+    return static_cast<uint64_t>(
+        v8::Handle<v8::NumberObject>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(0.0));
   }
 
   if (allowStringConversion && value->IsString()) {
@@ -92,7 +97,8 @@ double TRI_ObjectToDouble(v8::Isolate* isolate, v8::Handle<v8::Value> const valu
 }
 
 /// @brief converts an V8 object to a double with error handling
-double TRI_ObjectToDouble(v8::Isolate* isolate, v8::Handle<v8::Value> const value, bool& error) {
+double TRI_ObjectToDouble(v8::Isolate* isolate,
+                          v8::Handle<v8::Value> const value, bool& error) {
   error = false;
 
   if (value->IsNumber()) {

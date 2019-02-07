@@ -1487,23 +1487,26 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
                                      TRI_V8_STD_STRING(isolate, _appPath));
 
         for (auto j : _definedBooleans) {
-          localContext->Global()->DefineOwnProperty(
-                                           TRI_IGETC, TRI_V8_STD_STRING(isolate, j.first),
-                                           v8::Boolean::New(isolate, j.second),
-                                           v8::ReadOnly).FromMaybe(false); // Ignore it...
+          localContext->Global()
+              ->DefineOwnProperty(TRI_IGETC, TRI_V8_STD_STRING(isolate, j.first),
+                                  v8::Boolean::New(isolate, j.second),
+                                  v8::ReadOnly)
+              .FromMaybe(false);  // Ignore it...
         }
 
         for (auto j : _definedDoubles) {
-          localContext->Global()->DefineOwnProperty(
-                                           TRI_IGETC, TRI_V8_STD_STRING(isolate, j.first),
-                                           v8::Number::New(isolate, j.second), v8::ReadOnly).FromMaybe(false); // Ignore it...
+          localContext->Global()
+              ->DefineOwnProperty(TRI_IGETC, TRI_V8_STD_STRING(isolate, j.first),
+                                  v8::Number::New(isolate, j.second), v8::ReadOnly)
+              .FromMaybe(false);  // Ignore it...
         }
 
         for (auto const& j : _definedStrings) {
-          localContext->Global()->DefineOwnProperty(
-                                                    TRI_IGETC, TRI_V8_STD_STRING(isolate, j.first),
-                                           TRI_V8_STD_STRING(isolate, j.second),
-                                           v8::ReadOnly).FromMaybe(false); // Ignore it...
+          localContext->Global()
+              ->DefineOwnProperty(TRI_IGETC, TRI_V8_STD_STRING(isolate, j.first),
+                                  TRI_V8_STD_STRING(isolate, j.second),
+                                  v8::ReadOnly)
+              .FromMaybe(false);  // Ignore it...
         }
       }
     }

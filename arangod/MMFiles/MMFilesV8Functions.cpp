@@ -311,37 +311,39 @@ static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // set the properties
     v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);
     if (TRI_OBJECT_HAS_PROPERTY(object, "allowOversizeEntries")) {
-      bool value = TRI_ObjectToBoolean(isolate, 
+      bool value = TRI_ObjectToBoolean(
+          isolate,
           object->Get(TRI_V8_ASCII_STRING(isolate, "allowOversizeEntries")));
       l->allowOversizeEntries(value);
     }
 
     if (TRI_OBJECT_HAS_PROPERTY(object, "logfileSize")) {
-      uint32_t value = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, 
-          object->Get(TRI_V8_ASCII_STRING(isolate, "logfileSize")), true));
+      uint32_t value = static_cast<uint32_t>(TRI_ObjectToUInt64(
+          isolate, object->Get(TRI_V8_ASCII_STRING(isolate, "logfileSize")), true));
       l->filesize(value);
     }
 
     if (TRI_OBJECT_HAS_PROPERTY(object, "historicLogfiles")) {
-      uint32_t value = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, 
-          object->Get(TRI_V8_ASCII_STRING(isolate, "historicLogfiles")), true));
+      uint32_t value = static_cast<uint32_t>(TRI_ObjectToUInt64(
+          isolate, object->Get(TRI_V8_ASCII_STRING(isolate, "historicLogfiles")), true));
       l->historicLogfiles(value);
     }
 
     if (TRI_OBJECT_HAS_PROPERTY(object, "reserveLogfiles")) {
-      uint32_t value = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, 
-          object->Get(TRI_V8_ASCII_STRING(isolate, "reserveLogfiles")), true));
+      uint32_t value = static_cast<uint32_t>(TRI_ObjectToUInt64(
+          isolate, object->Get(TRI_V8_ASCII_STRING(isolate, "reserveLogfiles")), true));
       l->reserveLogfiles(value);
     }
 
     if (TRI_OBJECT_HAS_PROPERTY(object, "throttleWait")) {
-      uint64_t value = TRI_ObjectToUInt64(isolate, 
-          object->Get(TRI_V8_ASCII_STRING(isolate, "throttleWait")), true);
+      uint64_t value = TRI_ObjectToUInt64(
+          isolate, object->Get(TRI_V8_ASCII_STRING(isolate, "throttleWait")), true);
       l->maxThrottleWait(value);
     }
 
     if (TRI_OBJECT_HAS_PROPERTY(object, "throttleWhenPending")) {
-      uint64_t value = TRI_ObjectToUInt64(isolate, 
+      uint64_t value = TRI_ObjectToUInt64(
+          isolate,
           object->Get(TRI_V8_ASCII_STRING(isolate, "throttleWhenPending")), true);
       l->throttleWhenPending(value);
     }
@@ -378,22 +380,25 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (args.Length() > 0) {
     if (args[0]->IsObject()) {
-      v8::Handle<v8::Object> obj = args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      v8::Handle<v8::Object> obj =
+          args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
       if (TRI_OBJECT_HAS_PROPERTY(obj, "waitForSync")) {
-        waitForSync = TRI_ObjectToBoolean(isolate, 
-            obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSync")));
+        waitForSync = TRI_ObjectToBoolean(
+            isolate, obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSync")));
       }
       if (TRI_OBJECT_HAS_PROPERTY(obj, "waitForCollector")) {
-        waitForCollector = TRI_ObjectToBoolean(isolate, 
+        waitForCollector = TRI_ObjectToBoolean(
+            isolate,
             obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForCollector")));
       }
       if (TRI_OBJECT_HAS_PROPERTY(obj, "writeShutdownFile")) {
-        writeShutdownFile = TRI_ObjectToBoolean(isolate, 
+        writeShutdownFile = TRI_ObjectToBoolean(
+            isolate,
             obj->Get(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile")));
       }
       if (TRI_OBJECT_HAS_PROPERTY(obj, "maxWaitTime")) {
-        maxWaitTime = TRI_ObjectToDouble(isolate, 
-            obj->Get(TRI_V8_ASCII_STRING(isolate, "maxWaitTime")));
+        maxWaitTime = TRI_ObjectToDouble(
+            isolate, obj->Get(TRI_V8_ASCII_STRING(isolate, "maxWaitTime")));
       }
     } else {
       waitForSync = TRI_ObjectToBoolean(isolate, args[0]);
@@ -497,7 +502,7 @@ static void JS_TransactionsWal(v8::FunctionCallbackInfo<v8::Value> const& args) 
       result->Set(TRI_V8_ASCII_STRING(isolate, "minLastCollected"), v8::Null(isolate));
     } else {
       result->Set(TRI_V8_ASCII_STRING(isolate, "minLastCollected"),
-                       TRI_V8UInt64String<TRI_voc_tick_t>(isolate, static_cast<TRI_voc_tick_t>(value)));
+                  TRI_V8UInt64String<TRI_voc_tick_t>(isolate, static_cast<TRI_voc_tick_t>(value)));
     }
   }
 
@@ -508,7 +513,7 @@ static void JS_TransactionsWal(v8::FunctionCallbackInfo<v8::Value> const& args) 
       result->Set(TRI_V8_ASCII_STRING(isolate, "minLastSealed"), v8::Null(isolate));
     } else {
       result->Set(TRI_V8_ASCII_STRING(isolate, "minLastSealed"),
-                       TRI_V8UInt64String<TRI_voc_tick_t>(isolate, static_cast<TRI_voc_tick_t>(value)));
+                  TRI_V8UInt64String<TRI_voc_tick_t>(isolate, static_cast<TRI_voc_tick_t>(value)));
     }
   }
 

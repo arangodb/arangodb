@@ -234,7 +234,9 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     if (!args[1]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
     }
-    int res = TRI_V8ToVPack(isolate, properties, args[1]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()), false);
+    int res =
+        TRI_V8ToVPack(isolate, properties,
+                      args[1]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()), false);
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -248,7 +250,8 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   bool enforceReplicationFactor = true;
 
   if (args.Length() >= 3 && args[args.Length() - 1]->IsObject()) {
-    v8::Handle<v8::Object> obj = args[args.Length() - 1]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+    v8::Handle<v8::Object> obj =
+        args[args.Length() - 1]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
     createWaitsForSyncReplication =
         TRI_GetOptionalBooleanProperty(isolate, obj, "waitForSyncReplication",
                                        createWaitsForSyncReplication);

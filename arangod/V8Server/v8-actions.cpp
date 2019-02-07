@@ -235,7 +235,8 @@ static void ParseActionOptions(v8::Isolate* isolate, TRI_v8_global_t* v8g,
   // check the "allowUseDatabase" field
   TRI_GET_GLOBAL_STRING(AllowUseDatabaseKey);
   if (TRI_OBJECT_HAS_V8_PROPERTY(options, AllowUseDatabaseKey)) {
-    action->_allowUseDatabase = TRI_ObjectToBoolean(isolate, options->Get(AllowUseDatabaseKey));
+    action->_allowUseDatabase =
+        TRI_ObjectToBoolean(isolate, options->Get(AllowUseDatabaseKey));
   } else {
     action->_allowUseDatabase = false;
   }
@@ -357,18 +358,18 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   } else {
     req->Set(UserKey, TRI_V8_STD_STRING(isolate, user));
   }
-  
+
   TRI_GET_GLOBAL_STRING(IsAdminUser);
   if (request->authenticated()) {
-    if (user.empty() || (ExecContext::CURRENT != nullptr &&
-                         ExecContext::CURRENT->isAdminUser())) {
+    if (user.empty() ||
+        (ExecContext::CURRENT != nullptr && ExecContext::CURRENT->isAdminUser())) {
       req->Set(IsAdminUser, v8::True(isolate));
     } else {
       req->Set(IsAdminUser, v8::False(isolate));
     }
   } else {
-    req->Set(IsAdminUser, ExecContext::isAuthEnabled() ?
-                  v8::False(isolate) : v8::True(isolate));
+    req->Set(IsAdminUser, ExecContext::isAuthEnabled() ? v8::False(isolate)
+                                                       : v8::True(isolate));
   }
 
   // create database attribute
@@ -406,10 +407,10 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   req->Set(ServerKey, serverArray);
 
   TRI_GET_GLOBAL_STRING(PortTypeKey);
-  req->DefineOwnProperty(
-      TRI_IGETC,
-      PortTypeKey, TRI_V8_STD_STRING(isolate, info.portType()),
-      static_cast<v8::PropertyAttribute>(v8::ReadOnly)).FromMaybe(false);// ignoring return value
+  req->DefineOwnProperty(TRI_IGETC, PortTypeKey,
+                         TRI_V8_STD_STRING(isolate, info.portType()),
+                         static_cast<v8::PropertyAttribute>(v8::ReadOnly))
+      .FromMaybe(false);  // ignoring return value
 
   v8::Handle<v8::Object> clientArray = v8::Object::New(isolate);
   clientArray->Set(AddressKey, TRI_V8_STD_STRING(isolate, info.clientAddress));
@@ -419,8 +420,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   TRI_GET_GLOBAL_STRING(ClientKey);
   req->Set(ClientKey, clientArray);
 
-  req->Set(TRI_V8_ASCII_STRING(isolate, "internals"),
-           v8::External::New(isolate, request));
+  req->Set(TRI_V8_ASCII_STRING(isolate, "internals"), v8::External::New(isolate, request));
 
   // copy prefix
   std::string path = request->prefix();
@@ -581,7 +581,8 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   TRI_GET_GLOBAL_STRING(ResponseCodeKey);
   if (TRI_OBJECT_HAS_V8_PROPERTY(res, ResponseCodeKey)) {
     // Windows has issues with converting from a double to an enumeration type
-    code = (rest::ResponseCode)((int)(TRI_ObjectToDouble(isolate, res->Get(ResponseCodeKey))));
+    code = (rest::ResponseCode)(
+        (int)(TRI_ObjectToDouble(isolate, res->Get(ResponseCodeKey))));
   }
   response->setResponseCode(code);
 
@@ -667,7 +668,8 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
           if (V8Buffer::hasInstance(isolate, b)) {
             // body is a Buffer
             auto obj = b.As<v8::Object>();
-            httpResponse->body().appendText(V8Buffer::data(isolate, obj), V8Buffer::length(isolate, obj));
+            httpResponse->body().appendText(V8Buffer::data(isolate, obj),
+                                            V8Buffer::length(isolate, obj));
           } else if (autoContent && request->contentTypeResponse() == rest::ContentType::VPACK) {
             // use velocypack
             try {
@@ -699,7 +701,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         if (transformArray->IsArray()) {
           TRI_GET_GLOBAL_STRING(BodyKey);
           out = TRI_ObjectToString(isolate, res->Get(BodyKey));  // there is one case where
-                                                        // we do not need a string
+                                                                 // we do not need a string
           v8::Handle<v8::Array> transformations = transformArray.As<v8::Array>();
 
           for (uint32_t i = 0; i < transformations->Length(); i++) {

@@ -142,13 +142,12 @@ static void EdgesQuery(TRI_edge_direction_e direction,
     if (val->IsString() || val->IsStringObject()) {
       builder->add(VPackValue(TRI_ObjectToString(isolate, val)));
     } else if (val->IsObject()) {
-      v8::Handle<v8::Object> obj = val->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      v8::Handle<v8::Object> obj =
+          val->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
       if (TRI_OBJECT_HAS_PROPERTY(obj, StaticStrings::IdString.c_str())) {
-        builder->add(
-                     VPackValue(
-                                TRI_ObjectToString(
-                                                   isolate, 
-                                                   obj->Get(TRI_IGETC, TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::IdString)).FromMaybe(v8::Local<v8::Value>()))));
+        builder->add(VPackValue(TRI_ObjectToString(
+            isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::IdString))
+                         .FromMaybe(v8::Local<v8::Value>()))));
       } else {
         builder->add(VPackValue(""));
       }

@@ -331,119 +331,149 @@ void TRI_InitV8Shell(v8::Isolate* isolate) {
 
   v8::Handle<v8::Object> colors = v8::Object::New(isolate);
 
-  colors->DefineOwnProperty(
-      TRI_IGETC,TRI_V8_ASCII_STRING(isolate, "COLOR_RED"),
-                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_RED)
-                         : v8::String::Empty(isolate),
-                   v8::ReadOnly).FromMaybe(false);
+  colors
+      ->DefineOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_RED"),
+                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_RED)
+                                : v8::String::Empty(isolate),
+                          v8::ReadOnly)
+      .FromMaybe(false);
 
-  colors->DefineOwnProperty(
-      TRI_IGETC,TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_RED"),
-                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_RED)
-                         : v8::String::Empty(isolate),
-                   v8::ReadOnly).FromMaybe(false);
+  colors
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_RED"),
+                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_RED)
+                                : v8::String::Empty(isolate),
+                          v8::ReadOnly)
+      .FromMaybe(false);
 
-  colors->DefineOwnProperty(
-      TRI_IGETC,TRI_V8_ASCII_STRING(isolate, "COLOR_GREEN"),
-                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_GREEN)
-                         : v8::String::Empty(isolate),
-                   v8::ReadOnly).FromMaybe(false);
+  colors
+      ->DefineOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_GREEN"),
+                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_GREEN)
+                                : v8::String::Empty(isolate),
+                          v8::ReadOnly)
+      .FromMaybe(false);
 
-  colors->DefineOwnProperty(
-      TRI_IGETC,TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_GREEN"),
-                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_GREEN)
-                         : v8::String::Empty(isolate),
-                   v8::ReadOnly).FromMaybe(false);
+  colors
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_GREEN"),
+                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_GREEN)
+                                : v8::String::Empty(isolate),
+                          v8::ReadOnly)
+      .FromMaybe(false);
 
-  colors->DefineOwnProperty(
-      TRI_IGETC,TRI_V8_ASCII_STRING(isolate, "COLOR_BLUE"),
-                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BLUE)
-                         : v8::String::Empty(isolate),
-                   v8::ReadOnly).FromMaybe(false);
+  colors
+      ->DefineOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_BLUE"),
+                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BLUE)
+                                : v8::String::Empty(isolate),
+                          v8::ReadOnly)
+      .FromMaybe(false);
 
-  colors->DefineOwnProperty(
-      TRI_IGETC,TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_BLUE"),
-                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_BLUE)
-                         : v8::String::Empty(isolate),
-                   v8::ReadOnly).FromMaybe(false);
+  colors
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_BLUE"),
+                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_BLUE)
+                                : v8::String::Empty(isolate),
+                          v8::ReadOnly)
+      .FromMaybe(false);
 
-  colors->DefineOwnProperty(
-      TRI_IGETC,TRI_V8_ASCII_STRING(isolate, "COLOR_YELLOW"),
-                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_YELLOW)
-                         : v8::String::Empty(isolate),
-                   v8::ReadOnly).FromMaybe(false);
+  colors
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "COLOR_YELLOW"),
+                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_YELLOW)
+                                : v8::String::Empty(isolate),
+                          v8::ReadOnly)
+      .FromMaybe(false);
 
-  colors->DefineOwnProperty(
-      TRI_IGETC,TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_YELLOW"),
-                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_YELLOW)
-                         : v8::String::Empty(isolate),
-                   v8::ReadOnly).FromMaybe(false);
+  colors
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_YELLOW"),
+                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_YELLOW)
+                                : v8::String::Empty(isolate),
+                          v8::ReadOnly)
+      .FromMaybe(false);
 
-  colors->DefineOwnProperty(
-      TRI_IGETC,TRI_V8_ASCII_STRING(isolate, "COLOR_WHITE"),
-                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_WHITE)
-                         : v8::String::Empty(isolate),
-                   v8::ReadOnly).FromMaybe(false);
+  colors
+      ->DefineOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_WHITE"),
+                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_WHITE)
+                                : v8::String::Empty(isolate),
+                          v8::ReadOnly)
+      .FromMaybe(false);
 
-  colors->DefineOwnProperty(
-      TRI_IGETC,TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_WHITE"),
-                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_WHITE)
-                         : v8::String::Empty(isolate),
-                   v8::ReadOnly).FromMaybe(false);
+  colors
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_WHITE"),
+                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_WHITE)
+                                : v8::String::Empty(isolate),
+                          v8::ReadOnly)
+      .FromMaybe(false);
 
-  colors->DefineOwnProperty(
-      TRI_IGETC,TRI_V8_ASCII_STRING(isolate, "COLOR_CYAN"),
-                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_CYAN)
-                         : v8::String::Empty(isolate),
-                   v8::ReadOnly).FromMaybe(false);
+  colors
+      ->DefineOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_CYAN"),
+                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_CYAN)
+                                : v8::String::Empty(isolate),
+                          v8::ReadOnly)
+      .FromMaybe(false);
 
-  colors->DefineOwnProperty(
-      TRI_IGETC,TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_CYAN"),
-                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_CYAN)
-                         : v8::String::Empty(isolate),
-                   v8::ReadOnly).FromMaybe(false);
+  colors
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_CYAN"),
+                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_CYAN)
+                                : v8::String::Empty(isolate),
+                          v8::ReadOnly)
+      .FromMaybe(false);
 
-  colors->DefineOwnProperty(
-      TRI_IGETC,TRI_V8_ASCII_STRING(isolate, "COLOR_MAGENTA"),
-                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_MAGENTA)
-                         : v8::String::Empty(isolate),
-                   v8::ReadOnly).FromMaybe(false);
+  colors
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "COLOR_MAGENTA"),
+                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_MAGENTA)
+                                : v8::String::Empty(isolate),
+                          v8::ReadOnly)
+      .FromMaybe(false);
 
-  colors->DefineOwnProperty(
-      TRI_IGETC,TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_MAGENTA"),
-                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_MAGENTA)
-                         : v8::String::Empty(isolate),
-                   v8::ReadOnly).FromMaybe(false);
+  colors
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_MAGENTA"),
+                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_MAGENTA)
+                                : v8::String::Empty(isolate),
+                          v8::ReadOnly)
+      .FromMaybe(false);
 
-  colors->DefineOwnProperty(
-      TRI_IGETC,TRI_V8_ASCII_STRING(isolate, "COLOR_BLACK"),
-                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BLACK)
-                         : v8::String::Empty(isolate),
-                   v8::ReadOnly).FromMaybe(false);
+  colors
+      ->DefineOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_BLACK"),
+                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BLACK)
+                                : v8::String::Empty(isolate),
+                          v8::ReadOnly)
+      .FromMaybe(false);
 
-  colors->DefineOwnProperty(
-      TRI_IGETC,TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_BLACK"),
-                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_BLACK)
-                         : v8::String::Empty(isolate),
-                   v8::ReadOnly).FromMaybe(false);
+  colors
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_BLACK"),
+                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_BLACK)
+                                : v8::String::Empty(isolate),
+                          v8::ReadOnly)
+      .FromMaybe(false);
 
-  colors->DefineOwnProperty(
-      TRI_IGETC,TRI_V8_ASCII_STRING(isolate, "COLOR_BLINK"),
-                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BLINK)
-                         : v8::String::Empty(isolate),
-                   v8::ReadOnly).FromMaybe(false);
+  colors
+      ->DefineOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_BLINK"),
+                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BLINK)
+                                : v8::String::Empty(isolate),
+                          v8::ReadOnly)
+      .FromMaybe(false);
 
-  colors->DefineOwnProperty(
-      TRI_IGETC,TRI_V8_ASCII_STRING(isolate, "COLOR_BRIGHT"),
-                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BRIGHT)
-                         : v8::String::Empty(isolate),
-                   v8::ReadOnly).FromMaybe(false);
+  colors
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "COLOR_BRIGHT"),
+                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BRIGHT)
+                                : v8::String::Empty(isolate),
+                          v8::ReadOnly)
+      .FromMaybe(false);
 
-  colors->DefineOwnProperty(
-      TRI_IGETC,TRI_V8_ASCII_STRING(isolate, "COLOR_RESET"),
-                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_RESET)
-                         : v8::String::Empty(isolate),
-                   v8::ReadOnly).FromMaybe(false);
+  colors
+      ->DefineOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_RESET"),
+                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_RESET)
+                                : v8::String::Empty(isolate),
+                          v8::ReadOnly)
+      .FromMaybe(false);
 
   TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "COLORS"), colors);
 }

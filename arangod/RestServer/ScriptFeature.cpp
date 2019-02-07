@@ -97,7 +97,8 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
         }
       }
 
-      v8::TryCatch tryCatch(isolate);;
+      v8::TryCatch tryCatch(isolate);
+      ;
       // run the garbage collection for at most 30 seconds
       TRI_RunGarbageCollectionV8(isolate, 30.0);
 

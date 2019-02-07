@@ -83,13 +83,12 @@ static int const SLOT_EXTERNAL = 2;
 ////////////////////////////////////////////////////////////////////////////////
 
 template <class T>
-static T* TRI_UnwrapClass(v8::Handle<v8::Object> obj,
-                          int32_t type,
+static T* TRI_UnwrapClass(v8::Handle<v8::Object> obj, int32_t type,
                           v8::Handle<v8::Context> context) {
   if (obj->InternalFieldCount() <= SLOT_CLASS) {
     return nullptr;
   }
-  auto slot = obj->GetInternalField(SLOT_CLASS_TYPE); 
+  auto slot = obj->GetInternalField(SLOT_CLASS_TYPE);
   if (slot->Int32Value(context).ToChecked() != type) {
     return nullptr;
   }

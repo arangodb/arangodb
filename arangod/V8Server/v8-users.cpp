@@ -114,8 +114,9 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
   if (!CanAccessUser(username)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
-  std::string pass =
-      args.Length() > 1 && args[1]->IsString() ? TRI_ObjectToString(isolate, args[1]) : "";
+  std::string pass = args.Length() > 1 && args[1]->IsString()
+                         ? TRI_ObjectToString(isolate, args[1])
+                         : "";
   bool active = true;
   if (args.Length() >= 3 && args[2]->IsBoolean()) {
     active = TRI_ObjectToBoolean(isolate, args[2]);

@@ -100,8 +100,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
   /// @brief the buffer data for a handle
   //////////////////////////////////////////////////////////////////////////////
 
-  static inline char* data(v8::Isolate* isolate,
-                           v8::Handle<v8::Value> val) {
+  static inline char* data(v8::Isolate* isolate, v8::Handle<v8::Value> val) {
     TRI_ASSERT(val->IsObject());
     auto o = TRI_GET_OBJECT(val);
     int32_t offsetValue = 0;
@@ -155,8 +154,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
   /// @brief length of the data for a handle
   //////////////////////////////////////////////////////////////////////////////
 
-  static inline size_t length(v8::Isolate* isolate,
-                              v8::Handle<v8::Value> val) {
+  static inline size_t length(v8::Isolate* isolate, v8::Handle<v8::Value> val) {
     TRI_ASSERT(val->IsObject());
     auto o = TRI_GET_OBJECT(val);
     int32_t lengthValue = -1;

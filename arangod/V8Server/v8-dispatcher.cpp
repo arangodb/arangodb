@@ -65,8 +65,8 @@ static std::string GetTaskId(v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
     if (TRI_OBJECT_HAS_PROPERTY(obj, "id")) {
       return TRI_ObjectToString(isolate,
                                 obj->Get(TRI_IGETC,
-                                         TRI_V8_ASCII_STRING(isolate, "id")
-                                         ).FromMaybe(v8::Local<v8::Value>()) );
+                                         TRI_V8_ASCII_STRING(isolate, "id"))
+                                    .FromMaybe(v8::Local<v8::Value>()));
     }
   }
 
@@ -108,7 +108,10 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (TRI_OBJECT_HAS_OWN_PROPERTY(obj, "id")) {
     // user-specified id
-    id = TRI_ObjectToString(isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "id")).FromMaybe(v8::Local<v8::Value>()));
+    id =
+        TRI_ObjectToString(isolate, obj->Get(TRI_IGETC,
+                                             TRI_V8_ASCII_STRING(isolate, "id"))
+                                        .FromMaybe(v8::Local<v8::Value>()));
   } else {
     // auto-generated id
     id = std::to_string(TRI_NewServerSpecificTick());
@@ -118,7 +121,9 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string name;
 
   if (TRI_OBJECT_HAS_OWN_PROPERTY(obj, "name")) {
-    name = TRI_ObjectToString(isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "name")).FromMaybe(v8::Local<v8::Value>()));
+    name = TRI_ObjectToString(isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate,
+                                                                               "name"))
+                                           .FromMaybe(v8::Local<v8::Value>()));
   } else {
     name = "user-defined task";
   }
@@ -126,24 +131,29 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bool isSystem = false;
 
   if (TRI_OBJECT_HAS_OWN_PROPERTY(obj, "isSystem")) {
-    isSystem =
-        TRI_ObjectToBoolean(isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "isSystem")).FromMaybe(v8::Local<v8::Value>()));
+    isSystem = TRI_ObjectToBoolean(
+        isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "isSystem"))
+                     .FromMaybe(v8::Local<v8::Value>()));
   }
 
   // offset in seconds into period or from now on if no period
   double offset = 0.0;
 
   if (TRI_OBJECT_HAS_OWN_PROPERTY(obj, "offset")) {
-    offset =
-        TRI_ObjectToDouble(isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "offset")).FromMaybe(v8::Local<v8::Value>()));
+    offset = TRI_ObjectToDouble(isolate,
+                                obj->Get(TRI_IGETC,
+                                         TRI_V8_ASCII_STRING(isolate, "offset"))
+                                    .FromMaybe(v8::Local<v8::Value>()));
   }
 
   // period in seconds & count
   double period = 0.0;
 
   if (TRI_OBJECT_HAS_OWN_PROPERTY(obj, "period")) {
-    period =
-        TRI_ObjectToDouble(isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "period")).FromMaybe(v8::Local<v8::Value>()));
+    period = TRI_ObjectToDouble(isolate,
+                                obj->Get(TRI_IGETC,
+                                         TRI_V8_ASCII_STRING(isolate, "period"))
+                                    .FromMaybe(v8::Local<v8::Value>()));
 
     if (period <= 0.0) {
       TRI_V8_THROW_EXCEPTION_PARAMETER(
@@ -153,8 +163,9 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string runAsUser;
   if (TRI_OBJECT_HAS_OWN_PROPERTY(obj, "runAsUser")) {
-    runAsUser =
-      TRI_ObjectToString(isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "runAsUser")).FromMaybe(v8::Local<v8::Value>()));
+    runAsUser = TRI_ObjectToString(
+        isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "runAsUser"))
+                     .FromMaybe(v8::Local<v8::Value>()));
   }
 
   // only the superroot is allowed to run tasks as an arbitrary user
@@ -173,15 +184,19 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string command;
-  if (obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "command")).FromMaybe(v8::Local<v8::Value>())->IsFunction()) {
+  if (obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "command"))
+          .FromMaybe(v8::Local<v8::Value>())
+          ->IsFunction()) {
     // need to add ( and ) around function because call would otherwise break
-    command =
-        "(" +
-      TRI_ObjectToString(isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "command")).FromMaybe(v8::Local<v8::Value>())) +
-        ")(params)";
+    command = "(" +
+              TRI_ObjectToString(isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate,
+                                                                                  "command"))
+                                              .FromMaybe(v8::Local<v8::Value>())) +
+              ")(params)";
   } else {
-    command =
-      TRI_ObjectToString(isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "command")).FromMaybe(v8::Local<v8::Value>()));
+    command = TRI_ObjectToString(
+        isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "command"))
+                     .FromMaybe(v8::Local<v8::Value>()));
   }
 
   if (!Task::tryCompile(isolate, command)) {
@@ -193,7 +208,10 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (TRI_OBJECT_HAS_OWN_PROPERTY(obj, "params")) {
     int res = TRI_V8ToVPack(isolate, *parameters,
-                            obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "params")).FromMaybe(v8::Local<v8::Value>()), false);
+                            obj->Get(TRI_IGETC,
+                                     TRI_V8_ASCII_STRING(isolate, "params"))
+                                .FromMaybe(v8::Local<v8::Value>()),
+                            false);
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -324,7 +342,8 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string key = TRI_ObjectToString(isolate, args[0]);
-  uint64_t maxWorkers = std::min(TRI_ObjectToUInt64(isolate, args[1], false), (uint64_t)64);
+  uint64_t maxWorkers =
+      std::min(TRI_ObjectToUInt64(isolate, args[1], false), (uint64_t)64);
 
   VPackBuilder doc;
 
