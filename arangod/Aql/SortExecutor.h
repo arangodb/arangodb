@@ -64,10 +64,10 @@ class SortExecutorInfos : public ExecutorInfos {
 
   bool stable() const;
 
+  std::size_t _limit;
  private:
   arangodb::transaction::Methods* _trx;
   std::vector<SortRegister> _sortRegisters;
-  std::size_t _limit;
   bool _stable;
 };
 

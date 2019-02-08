@@ -40,25 +40,27 @@ using namespace arangodb::aql;
 namespace {
 
 /// @brief OurLessThan
-class OurLessThan {
+class ConstrainedLessThan {
  public:
-  OurLessThan(arangodb::transaction::Methods* trx, AqlItemMatrix const& input,
-              std::vector<SortRegister> const& sortRegisters) noexcept
-      : _trx(trx), _input(input), _sortRegisters(sortRegisters) {}
+  ConstrainedLessThan(arangodb::transaction::Methods* trx,
+                      std::vector<arangodb::aql::SortRegister>& sortRegisters) noexcept
+      : _trx(trx), _lhsBuffer(nullptr), _rhsBuffer(nullptr), _sortRegisters(sortRegisters) {}
 
-  bool operator()(size_t const& a, size_t const& b) const {
-    InputAqlItemRow left = _input.getRow(a);
-    InputAqlItemRow right = _input.getRow(b);
+  void setBuffers(arangodb::aql::AqlItemBlock* lhsBuffer,
+                  arangodb::aql::AqlItemBlock* rhsBuffer) {
+    _lhsBuffer = lhsBuffer;
+    _rhsBuffer = rhsBuffer;
+  }
+
+  bool operator()(uint32_t const& a, uint32_t const& b) const {
+    TRI_ASSERT(_lhsBuffer);
+    TRI_ASSERT(_rhsBuffer);
+
     for (auto const& reg : _sortRegisters) {
-      AqlValue const& lhs = left.getValue(reg.reg);
-      AqlValue const& rhs = right.getValue(reg.reg);
+      auto const& lhs = _lhsBuffer->getValueReference(a, reg.reg);
+      auto const& rhs = _rhsBuffer->getValueReference(b, reg.reg);
 
-#if 0  // #ifdef USE_IRESEARCH
-      TRI_ASSERT(reg.comparator);
-      int const cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
-#else
-      int const cmp = AqlValue::Compare(_trx, lhs, rhs, true);
-#endif
+      int const cmp = arangodb::aql::AqlValue::Compare(_trx, lhs, rhs, true);
 
       if (cmp < 0) {
         return reg.asc;
@@ -72,9 +74,46 @@ class OurLessThan {
 
  private:
   arangodb::transaction::Methods* _trx;
-  AqlItemMatrix const& _input;
-  std::vector<SortRegister> const& _sortRegisters;
-};  // OurLessThan
+  arangodb::aql::AqlItemBlock* _lhsBuffer;
+  arangodb::aql::AqlItemBlock* _rhsBuffer;
+  std::vector<arangodb::aql::SortRegister>& _sortRegisters;
+};  // ConstrainedLessThan
+
+// class OurLessThan {
+// public:
+//  OurLessThan(arangodb::transaction::Methods* trx, AqlItemMatrix const& input,
+//              std::vector<SortRegister> const& sortRegisters) noexcept
+//      : _trx(trx), _input(input), _sortRegisters(sortRegisters) {}
+//
+//  bool operator()(size_t const& a, size_t const& b) const {
+//    InputAqlItemRow left = _input.getRow(a);
+//    InputAqlItemRow right = _input.getRow(b);
+//    for (auto const& reg : _sortRegisters) {
+//      AqlValue const& lhs = left.getValue(reg.reg);
+//      AqlValue const& rhs = right.getValue(reg.reg);
+//
+//#if 0  // #ifdef USE_IRESEARCH
+//      TRI_ASSERT(reg.comparator);
+//      int const cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
+//#else
+//      int const cmp = AqlValue::Compare(_trx, lhs, rhs, true);
+//#endif
+//
+//      if (cmp < 0) {
+//        return reg.asc;
+//      } else if (cmp > 0) {
+//        return !reg.asc;
+//      }
+//    }
+//
+//    return false;
+//  }
+//
+// private:
+//  arangodb::transaction::Methods* _trx;
+//  AqlItemMatrix const& _input;
+//  std::vector<SortRegister> const& _sortRegisters;
+//};  // OurLessThan
 
 }  // namespace
 
@@ -87,65 +126,80 @@ static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegiste
   return set;
 }
 
-
-
-
 ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
-    : _infos(infos), _fetcher(fetcher), _input(nullptr), _returnNext(0){};
+    : _infos(infos),
+      _fetcher(fetcher),
+      //_input(nullptr),
+      _returnNext(0),
+      _cmpHeap(std::make_unique<ConstrainedLessThan>(_infos.trx(), _infos.sortRegisters())),
+      _cmpInput(std::make_unique<ConstrainedLessThan>(_infos.trx(), _infos.sortRegisters())) {
+  TRI_ASSERT(_infos._limit > 0);
+  _rows.reserve(infos._limit);
+};
+
 ConstrainedSortExecutor::~ConstrainedSortExecutor() = default;
 
 std::pair<ExecutionState, NoStats> ConstrainedSortExecutor::produceRow(OutputAqlItemRow& output) {
-  ExecutionState state;
-  if (_input == nullptr) {
-    // We need to get data
-    //std::tie(state, _input) = _fetcher.fetchRow();
-    if (state == ExecutionState::WAITING) {
-      return {state, NoStats{}};
-    }
-    // If the execution state was not waiting it is guaranteed that we get a
-    // matrix. Maybe empty still
-    TRI_ASSERT(_input != nullptr);
-    if (_input == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-    // After allRows the dependency has to be done
-    TRI_ASSERT(state == ExecutionState::DONE);
+  ExecutionState state = ExecutionState::HASMORE;
 
-    // Execute the sort
-    doSorting();
+  if (!_outputPrepared) {
+    // build-up heap by pulling form all rows in the singlerow fetcher
+    state = doSorting();
   }
-  // If we get here we have an input matrix
-  // And we have a list of sorted indexes.
-  TRI_ASSERT(_input != nullptr);
-  TRI_ASSERT(_sortedIndexes.size() == _input->size());
-  if (_returnNext >= _sortedIndexes.size()) {
-    // Bail out if called too often,
-    // Bail out on no elements
+
+  if (state != ExecutionState::HASMORE) {
+    TRI_ASSERT(state != ExecutionState::WAITING || state == ExecutionState::DONE);
+    // assert heap empty
+    return {state, NoStats{}};
+  }
+
+  // get next row from cache
+  // output.copyRow() //from heap
+
+  if (true /*cursor expired*/) {
     return {ExecutionState::DONE, NoStats{}};
+  } else {
+    return {ExecutionState::HASMORE, NoStats{}};
   }
-  InputAqlItemRow inRow = _input->getRow(_sortedIndexes[_returnNext]);
-  output.copyRow(inRow);
-  _returnNext++;
-  if (_returnNext >= _sortedIndexes.size()) {
-    return {ExecutionState::DONE, NoStats{}};
-  }
-  return {ExecutionState::HASMORE, NoStats{}};
 }
 
-void ConstrainedSortExecutor::doSorting() {
+
+// TRI_ASSERT(_sortedIndexes.size() == _input->size());
+// if (_returnNext >= _sortedIndexes.size()) {
+//   // Bail out if called too often,
+//   // Bail out on no elements
+//   return {ExecutionState::DONE, NoStats{}};
+// }
+// InputAqlItemRow inRow = _input->getRow(_sortedIndexes[_returnNext]);
+// output.copyRow(inRow);
+// _returnNext++;
+// if (_returnNext >= _sortedIndexes.size()) {
+//   return {ExecutionState::DONE, NoStats{}};
+// }
+// return {ExecutionState::HASMORE, NoStats{}};
+//}
+
+ExecutionState ConstrainedSortExecutor::doSorting() {
+  // pull row one by one and add to heap if fitting
+  ExecutionState state = ExecutionState::HASMORE;
+
   TRI_IF_FAILURE("SortBlock::doSorting") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  TRI_ASSERT(_input != nullptr);
-  _sortedIndexes.reserve(_input->size());
-  for (size_t i = 0; i < _input->size(); ++i) {
-    _sortedIndexes.emplace_back(i);
+
+  do {
+    InputAqlItemRow input(CreateInvalidInputRowHint{});
+    std::tie(state, input) = _fetcher.fetchRow();
+    if (state == ExecutionState::HASMORE ||
+        (state == ExecutionState::DONE && input.isInitialized())) {
+      //there is something to add to the heap
+    }
+
+  } while (state == ExecutionState::HASMORE);
+
+  if (state == ExecutionState::DONE) {
+    _outputPrepared = true; // we do not need to re-enter this function
   }
-  // comparison function
-  OurLessThan ourLessThan(_infos.trx(), *_input, _infos.sortRegisters());
-  if (_infos.stable()) {
-    std::stable_sort(_sortedIndexes.begin(), _sortedIndexes.end(), ourLessThan);
-  } else {
-    std::sort(_sortedIndexes.begin(), _sortedIndexes.end(), ourLessThan);
-  }
+
+  return state;
 }

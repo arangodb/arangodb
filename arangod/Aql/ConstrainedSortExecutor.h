@@ -46,6 +46,7 @@ class ExecutorInfos;
 class NoStats;
 class OutputAqlItemRow;
 struct SortRegister;
+class ConstrainedLessThan;
 
 /**
  * @brief Implementation of Sort Node
@@ -74,20 +75,27 @@ class ConstrainedSortExecutor {
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
  private:
-  void doSorting();
+  ExecutionState doSorting();
 
  private:
   Infos& _infos;
 
   Fetcher& _fetcher;
 
-  AqlItemMatrix const* _input;
+  //AqlItemMatrix const* _input;
 
   std::vector<size_t> _sortedIndexes;
 
   size_t _returnNext;
 
+  bool _outputPrepared;
+  std::vector<uint32_t> _rows;
+  size_t _rowsPushed = 0;
+
   std::unordered_map<AqlValue, AqlValue> _cache;
+  std::unique_ptr<arangodb::aql::AqlItemBlock> _heapBuffer;
+  std::unique_ptr<ConstrainedLessThan> _cmpHeap; //in pointer to avoid
+  std::unique_ptr<ConstrainedLessThan> _cmpInput;
 };
 }  // namespace aql
 }  // namespace arangodb
