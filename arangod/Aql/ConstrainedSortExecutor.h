@@ -17,18 +17,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Goedderz
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
+/// @author Daniel Larkin
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-
-#ifndef ARANGOD_AQL_SORT_EXECUTOR_H
-#define ARANGOD_AQL_SORT_EXECUTOR_H
+#ifndef ARANGOD_AQL_CONSTRAINED_SORT_EXECUTOR_H
+#define ARANGOD_AQL_CONSTRAINED_SORT_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/SortNode.h"
+#include "Aql/SortExecutor.h"
+#include "AqlValue.h"
 
 #include <memory>
 
@@ -39,53 +39,31 @@ class Methods;
 
 namespace aql {
 
-class AllRowsFetcher;
+template <bool>
+class SingleRowFetcher;
 class AqlItemMatrix;
 class ExecutorInfos;
 class NoStats;
 class OutputAqlItemRow;
 struct SortRegister;
 
-class SortExecutorInfos : public ExecutorInfos {
- public:
-  SortExecutorInfos(std::vector<SortRegister> sortRegisters, std::size_t limit,
-                    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                    std::unordered_set<RegisterId> registersToClear,
-                    transaction::Methods* trx, bool stable);
-
-  SortExecutorInfos() = delete;
-  SortExecutorInfos(SortExecutorInfos &&) = default;
-  SortExecutorInfos(SortExecutorInfos const&) = delete;
-  ~SortExecutorInfos() = default;
-
-  arangodb::transaction::Methods* trx() const;
-
-  std::vector<SortRegister> const& sortRegisters() const;
-
-  bool stable() const;
-
- private:
-  arangodb::transaction::Methods* _trx;
-  std::vector<SortRegister> _sortRegisters;
-  std::size_t _limit;
-  bool _stable;
-};
-
 /**
  * @brief Implementation of Sort Node
  */
-class SortExecutor {
+class ConstrainedSortExecutor {
  public:
+  friend class Sorter;
+
   struct Properties {
     static const bool preservesOrder = false;
     static const bool allowsBlockPassthrough = false;
   };
-  using Fetcher = AllRowsFetcher;
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = SortExecutorInfos;
   using Stats = NoStats;
 
-  SortExecutor(Fetcher& fetcher, Infos&);
-  ~SortExecutor();
+  ConstrainedSortExecutor(Fetcher& fetcher, Infos&);
+  ~ConstrainedSortExecutor();
 
   /**
    * @brief produce the next Row of Aql Values.
@@ -108,6 +86,8 @@ class SortExecutor {
   std::vector<size_t> _sortedIndexes;
 
   size_t _returnNext;
+
+  std::unordered_map<AqlValue, AqlValue> _cache;
 };
 }  // namespace aql
 }  // namespace arangodb
