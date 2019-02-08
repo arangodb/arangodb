@@ -115,7 +115,8 @@ IndexExecutorInfos::IndexExecutorInfos(
 IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
-      _input(ExecutionState::HASMORE, InputAqlItemRow{CreateInvalidInputRowHint{}}),
+      _state(ExecutionState::HASMORE),
+      _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _initDone(false) {
   _mmdr.reset(new ManagedDocumentResult);
 
@@ -445,16 +446,23 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
   TRI_IF_FAILURE("IndexExecutor::produceRow") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  ExecutionState state;
   IndexStats stats{};
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   while (true) {
     if (_infos.getIndexesExhausted() || !_initDone) {
       LOG_DEVEL << "fetched a new row";
-      _input = _fetcher.fetchRow();
+      std::tie(_state, _input) = _fetcher.fetchRow();
 
-      if (!initIndexes(input)) {
+      if (_state == ExecutionState::WAITING) {
+        return {_state, stats};
+      }
+
+      if (!_input) {
+        TRI_ASSERT(_state == ExecutionState::DONE);
+        return {_state, stats};
+      }
+
+      if (!initIndexes(_input)) {
         _infos.setDone(true);
         break;
       }
@@ -463,22 +471,21 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
     } else {
       LOG_DEVEL << "no need to fetch more";
     }
-    std::tie(state, input) = _input;
 
-    if (_infos.getDone() && state == ExecutionState::DONE) {
+    if (_infos.getDone() && _state == ExecutionState::DONE) {
       return {ExecutionState::DONE, stats};
     }
 
-    if (state == ExecutionState::WAITING) {
-      return {state, stats};
+    if (_state == ExecutionState::WAITING) {
+      return {_state, stats};
     }
 
-    if (!input) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return {state, stats};
+    if (!_input) {
+      TRI_ASSERT(_state == ExecutionState::DONE);
+      return {_state, stats};
     }
     LOG_DEVEL << "INPUT NEEDS TO BE INITIALIZED HERE";
-    TRI_ASSERT(input.isInitialized());
+    TRI_ASSERT(_input.isInitialized());
 
     // TODO  init indizes, right position?
     // initIndexes(input);
@@ -488,7 +495,7 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
     }*/
 
     if (_infos.getDone()) {
-      return {state, stats};
+      return {_state, stats};
     }
 
     // LOGIC HERE
@@ -512,17 +519,17 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
           }
         }
 
-        _documentProducer(this->_input.second, output, slice, _infos.getOutputRegisterId());
+        _documentProducer(this->_input, output, slice, _infos.getOutputRegisterId());
       };
     } else {
       // No uniqueness checks
       callback = [this, &output](LocalDocumentId const&, VPackSlice slice) {
-        _documentProducer(this->_input.second, output, slice, _infos.getOutputRegisterId());
+        _documentProducer(this->_input, output, slice, _infos.getOutputRegisterId());
       };
     }
 
     if (_infos.getIndexesExhausted()) {
-      if (!initIndexes(input)) {
+      if (!initIndexes(_input)) {
         // not found any index, so we are done
         _infos.setDone(true);
         break;

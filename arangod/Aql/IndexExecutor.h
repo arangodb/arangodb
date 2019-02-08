@@ -275,7 +275,8 @@ class IndexExecutor {
   Infos& _infos;
   Fetcher& _fetcher;
   DocumentProducingFunction _documentProducer;
-  std::pair<ExecutionState, InputAqlItemRow> _input;
+  ExecutionState _state;
+  InputAqlItemRow _input;
   bool _initDone = false;
 
   /// @brief set of already returned documents. Used to make the result distinct
