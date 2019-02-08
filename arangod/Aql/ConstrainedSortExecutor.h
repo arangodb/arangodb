@@ -41,12 +41,15 @@ namespace aql {
 
 template <bool>
 class SingleRowFetcher;
+
+class AqlItemBlockShell;
 class AqlItemMatrix;
+class ConstrainedLessThan;
 class ExecutorInfos;
+class InputAqlItemRow;
 class NoStats;
 class OutputAqlItemRow;
 struct SortRegister;
-class ConstrainedLessThan;
 
 /**
  * @brief Implementation of Sort Node
@@ -76,6 +79,10 @@ class ConstrainedSortExecutor {
 
  private:
   ExecutionState doSorting();
+  void ensureHeapBuffer(InputAqlItemRow&);
+  bool compareInput(uint32_t const& rosPos, InputAqlItemRow& row) const ;
+  arangodb::Result pushRow(InputAqlItemRow& row);
+
 
  private:
   Infos& _infos;
@@ -93,9 +100,8 @@ class ConstrainedSortExecutor {
   size_t _rowsPushed = 0;
 
   std::unordered_map<AqlValue, AqlValue> _cache;
-  std::unique_ptr<arangodb::aql::AqlItemBlock> _heapBuffer;
+  std::shared_ptr<arangodb::aql::AqlItemBlockShell> _heapBuffer;
   std::unique_ptr<ConstrainedLessThan> _cmpHeap; //in pointer to avoid
-  std::unique_ptr<ConstrainedLessThan> _cmpInput;
 };
 }  // namespace aql
 }  // namespace arangodb

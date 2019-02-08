@@ -297,7 +297,7 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
 #endif
   }
 
-  SortExecutorInfos infos(std::move(sortRegs), _limit,
+  SortExecutorInfos infos(std::move(sortRegs), _limit, engine.itemBlockManager(),
                           getRegisterPlan()->nrRegs[previousNode->getDepth()],
                           getRegisterPlan()->nrRegs[getDepth()],
                           getRegsToClear(), engine.getQuery()->trx(), _stable);

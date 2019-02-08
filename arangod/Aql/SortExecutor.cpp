@@ -41,24 +41,18 @@ namespace {
 /// @brief OurLessThan
 class OurLessThan {
  public:
-  OurLessThan(
-      arangodb::transaction::Methods* trx,
-      AqlItemMatrix const& input,
-      std::vector<SortRegister> const& sortRegisters) noexcept
-    : _trx(trx),
-      _input(input),
-      _sortRegisters(sortRegisters) {
-  }
+  OurLessThan(arangodb::transaction::Methods* trx, AqlItemMatrix const& input,
+              std::vector<SortRegister> const& sortRegisters) noexcept
+      : _trx(trx), _input(input), _sortRegisters(sortRegisters) {}
 
-  bool operator()(size_t const& a,
-                  size_t const& b) const {
+  bool operator()(size_t const& a, size_t const& b) const {
     InputAqlItemRow left = _input.getRow(a);
     InputAqlItemRow right = _input.getRow(b);
     for (auto const& reg : _sortRegisters) {
       AqlValue const& lhs = left.getValue(reg.reg);
       AqlValue const& rhs = right.getValue(reg.reg);
 
-#if 0 // #ifdef USE_IRESEARCH
+#if 0  // #ifdef USE_IRESEARCH
       TRI_ASSERT(reg.comparator);
       int const cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
 #else
@@ -79,9 +73,9 @@ class OurLessThan {
   arangodb::transaction::Methods* _trx;
   AqlItemMatrix const& _input;
   std::vector<SortRegister> const& _sortRegisters;
-}; // OurLessThan
+};  // OurLessThan
 
-}
+}  // namespace
 
 static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegisterIds(
     std::vector<SortRegister> const& sortRegisters) {
@@ -92,40 +86,35 @@ static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegiste
   return set;
 }
 
-SortExecutorInfos::SortExecutorInfos(
-    std::vector<SortRegister> sortRegisters, std::size_t limit, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear, transaction::Methods* trx,
-    bool stable)
+SortExecutorInfos::SortExecutorInfos(std::vector<SortRegister> sortRegisters,
+                                     std::size_t limit, AqlItemBlockManager& manager,
+                                     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                                     std::unordered_set<RegisterId> registersToClear,
+                                     transaction::Methods* trx, bool stable)
     : ExecutorInfos(mapSortRegistersToRegisterIds(sortRegisters), nullptr,
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear)),
+                    nrInputRegisters, nrOutputRegisters, std::move(registersToClear)),
+      _limit(limit),
+      _manager(manager),
       _trx(trx),
       _sortRegisters(std::move(sortRegisters)),
-      _limit(limit),
       _stable(stable) {
   TRI_ASSERT(trx != nullptr);
   TRI_ASSERT(!_sortRegisters.empty());
 }
 
-transaction::Methods* SortExecutorInfos::trx() const {
-  return _trx;
-}
+transaction::Methods* SortExecutorInfos::trx() const { return _trx; }
 
-std::vector<SortRegister> const& SortExecutorInfos::sortRegisters() const {
+std::vector<SortRegister>& SortExecutorInfos::sortRegisters() {
   return _sortRegisters;
 }
 
-bool SortExecutorInfos::stable() const {
-  return _stable;
-}
+bool SortExecutorInfos::stable() const { return _stable; }
 
 SortExecutor::SortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
-    :_infos(infos),  _fetcher(fetcher), _input(nullptr), _returnNext(0) {};
+    : _infos(infos), _fetcher(fetcher), _input(nullptr), _returnNext(0){};
 SortExecutor::~SortExecutor() = default;
 
-std::pair<ExecutionState, NoStats> SortExecutor::produceRow(
-    OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> SortExecutor::produceRow(OutputAqlItemRow& output) {
   ExecutionState state;
   if (_input == nullptr) {
     // We need to get data
@@ -133,8 +122,8 @@ std::pair<ExecutionState, NoStats> SortExecutor::produceRow(
     if (state == ExecutionState::WAITING) {
       return {state, NoStats{}};
     }
-    // If the execution state was not waiting it is guaranteed that we get a matrix.
-    // Maybe empty still
+    // If the execution state was not waiting it is guaranteed that we get a
+    // matrix. Maybe empty still
     TRI_ASSERT(_input != nullptr);
     if (_input == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
