@@ -157,7 +157,7 @@ bool DepthFirstEnumerator::next() {
             if (evaluator->needsEdge()) {
               evaluator->injectEdge(lastEdgeToAqlValue().slice());
             }
-            transaction::BuilderLeaser builder(_opts->trx);
+            transaction::BuilderLeaser builder(_opts->trx());
             if (evaluator->needsPath()) {
               aql::AqlValue val = pathToAqlValue(*builder.get());
               evaluator->injectPath(val.slice());

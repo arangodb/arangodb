@@ -23,6 +23,7 @@
 
 #include "BreadthFirstEnumerator.h"
 
+#include "Aql/PruneExpressionEvaluator.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Traverser.h"
@@ -140,7 +141,27 @@ bool BreadthFirstEnumerator::next() {
 
           _schreier.emplace_back(std::make_unique<PathStep>(nextIdx, std::move(eid), vId));
           if (_currentDepth < _opts->maxDepth - 1) {
-            _nextDepth.emplace_back(NextStep(_schreierIndex));
+            // Prune here
+            if (_opts->usesPrune()) {
+              auto* evaluator = _opts->getPruneEvaluator();
+              if (evaluator->needsVertex()) {
+                evaluator->injectVertex(vertexToAqlValue(_schreierIndex).slice());
+              }
+              if (evaluator->needsEdge()) {
+                evaluator->injectEdge(edgeToAqlValue(_schreierIndex).slice());
+              }
+              transaction::BuilderLeaser builder(_opts->trx());
+              if (evaluator->needsPath()) {
+                aql::AqlValue val = pathToIndexToAqlValue(*builder.get(), _schreierIndex);
+                evaluator->injectPath(val.slice());
+              }
+              if (!evaluator->evaluate()) {
+                // Do not prune, so add.
+                _nextDepth.emplace_back(NextStep(_schreierIndex));
+              }
+            } else {
+              _nextDepth.emplace_back(NextStep(_schreierIndex));
+            }
           }
           _schreierIndex++;
           didInsert = true;
@@ -169,86 +190,43 @@ bool BreadthFirstEnumerator::next() {
   return true;
 }
 
-void BreadthFirstEnumerator::prune() {
-  if (_nextDepth.empty()) {
-    // Nothing to prune, we do not search any further
-    return;
-  }
-
-  // We execute a binarySearch on the nextDepth
-  // vector.
-  // We make use of the following features:
-  // 1. The elements in vector are sorted
-  // 2. The distance between two adjacent
-  //    entries is most likely 1
-  // 3. The element is stored atMost once
-  size_t upperBound = _nextDepth.size();
-  size_t lowerBound = 0;
-  if (_nextDepth[upperBound].sourceIdx < _lastReturned
-      || _lastReturned < _nextDepth[lowerBound].sourceIdx) {
-    // We do not have this vertex
-    // short circuit.
-    return;
-  }
-  size_t candidate = 0;
-  while (true) {
-    TRI_ASSERT(lowerBound <= upperBound);
-    candidate = (upperBound + lowerBound) / 2;
-    size_t toCompare = _nextDepth[candidate].sourceIdx;
-    if (candidate == lowerBound) {
-      // Only possible if they differ by 0 or 1
-      TRI_ASSERT(upperBound - lowerBound < 2);
-      // We do two more compares and we are either done
-      // or give up.
-      if (toCompare == _lastReturned) {
-        // We are done, eliminate
-        _nextDepth.erase(_nextDepth.begin() + candidate);
-        return;
-      }
-      if (_nextDepth[upperBound].sourceIdx == _lastReturned) {
-        // We are done, eliminate
-        _nextDepth.erase(_nextDepth.begin() + upperBound);
-        return;
-      }
-      // Not found
-      return;
-    }
-    if (toCompare == _lastReturned) {
-      // We are done, eliminate
-      _nextDepth.erase(_nextDepth.begin() + candidate);
-      return;
-    }
-    if (toCompare < _lastReturned) {
-      lowerBound = candidate;
-    } else {
-      upperBound = candidate;
-    }
-  }
-}
+void BreadthFirstEnumerator::prune() {}
 
 arangodb::aql::AqlValue BreadthFirstEnumerator::lastVertexToAqlValue() {
-  TRI_ASSERT(_lastReturned < _schreier.size());
-  return _traverser->fetchVertexData(_schreier[_lastReturned]->vertex);
+  return vertexToAqlValue(_lastReturned);
 }
 
 arangodb::aql::AqlValue BreadthFirstEnumerator::lastEdgeToAqlValue() {
-  TRI_ASSERT(_lastReturned < _schreier.size());
-  if (_lastReturned == 0) {
-    // This is the first Vertex. No Edge Pointing to it
-    return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull());
-  }
-  return _opts->cache()->fetchEdgeAqlResult(_schreier[_lastReturned]->edge);
+  return edgeToAqlValue(_lastReturned);
 }
 
 arangodb::aql::AqlValue BreadthFirstEnumerator::pathToAqlValue(arangodb::velocypack::Builder& result) {
+  return pathToIndexToAqlValue(result, _lastReturned);
+}
+
+arangodb::aql::AqlValue BreadthFirstEnumerator::vertexToAqlValue(size_t index) {
+  TRI_ASSERT(index < _schreier.size());
+  return _traverser->fetchVertexData(_schreier[index]->vertex);
+}
+
+arangodb::aql::AqlValue BreadthFirstEnumerator::edgeToAqlValue(size_t index) {
+  TRI_ASSERT(index < _schreier.size());
+  if (index == 0) {
+    // This is the first Vertex. No Edge Pointing to it
+    return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull());
+  }
+  return _opts->cache()->fetchEdgeAqlResult(_schreier[index]->edge);
+}
+
+arangodb::aql::AqlValue BreadthFirstEnumerator::pathToIndexToAqlValue(
+    arangodb::velocypack::Builder& result, size_t index) {
   // TODO make deque class variable
   std::deque<size_t> fullPath;
-  size_t cur = _lastReturned;
-  while (cur != 0) {
+  while (index != 0) {
     // Walk backwards through the path and push everything found on the local
     // stack
-    fullPath.emplace_front(cur);
-    cur = _schreier[cur]->sourceIdx;
+    fullPath.emplace_front(index);
+    index = _schreier[index]->sourceIdx;
   }
 
   result.clear();

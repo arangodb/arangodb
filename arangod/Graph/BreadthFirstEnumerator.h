@@ -181,6 +181,12 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
    * @return true if we can continue searching. False if we are done
    */
   bool prepareSearchOnNextDepth();
+
+  aql::AqlValue vertexToAqlValue(size_t index);
+
+  aql::AqlValue edgeToAqlValue(size_t index);
+
+  aql::AqlValue pathToIndexToAqlValue(arangodb::velocypack::Builder& result, size_t index);
 };
 }  // namespace graph
 }  // namespace arangodb
