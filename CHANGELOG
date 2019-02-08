@@ -1,6 +1,8 @@
 devel
 -----
 
+* added "random" masking to mask any data type, added wildcard masking
+
 * report run-time openssl version (for dynamically linked executables)
 
 * added greeting warning about maintainer mode
