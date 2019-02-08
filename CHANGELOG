@@ -3,15 +3,17 @@ devel
 
 * update V8 to 7.1.302.28
 
-  New V8 behaviours introduced herin: 
+  New V8 behavior introduced herein: 
 
-  - ES2016 changed the default timezone of dates to be conditional on
-    whether a time is included. The semantics were a compromise approach
+  - ES2016 changed the default timezone of date strings to be conditional on
+    whether a time part is included. The semantics were a compromise approach
     based on web compatibility feedback from V8, but until now, we have been
     shipping ES5.1 default timezone semantics. This patch implements the
     new semantics, following ChakraCore and SpiderMonkey (though JSC
     implements V8's previous semantics).
  
+* report run-time openssl version (for dynamically linked executables)
+
 * added greeting warning about maintainer mode
 
 * improve insertion time into non-unique secondary indexes with the RocksDB
