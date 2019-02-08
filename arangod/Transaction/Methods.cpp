@@ -764,7 +764,7 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
     }
 
     _state = parent;
-    TRI_ASSERT(_state != nullptr && _state->isEmbeddedTransaction());
+    TRI_ASSERT(_state != nullptr);
     _state->increaseNesting();
   } else {  // non-embedded
     // now start our own transaction
@@ -1888,10 +1888,9 @@ OperationResult transaction::Methods::updateCoordinator(std::string const& colle
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  int res = arangodb::modifyDocumentOnCoordinator(*this, collectionName,
-                                                  newValue, options,
-                                                  true /* isPatch */, headers, responseCode,
-                                                  errorCounter, resultBody);
+  int res = arangodb::modifyDocumentOnCoordinator(*this, collectionName, newValue,
+                                                  options, true /* isPatch */, headers,
+                                                  responseCode, errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultModify(responseCode, resultBody, errorCounter);
@@ -1937,9 +1936,9 @@ OperationResult transaction::Methods::replaceCoordinator(std::string const& coll
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  int res = arangodb::modifyDocumentOnCoordinator(*this, collectionName,
-                                                  newValue, options,
-                                                  false /* isPatch */, headers, responseCode,
+  int res = arangodb::modifyDocumentOnCoordinator(*this, collectionName, newValue,
+                                                  options, false /* isPatch */,
+                                                  headers, responseCode,
                                                   errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -2517,8 +2516,7 @@ OperationResult transaction::Methods::truncate(std::string const& collectionName
 #ifndef USE_ENTERPRISE
 OperationResult transaction::Methods::truncateCoordinator(std::string const& collectionName,
                                                           OperationOptions& options) {
-  return OperationResult(
-      arangodb::truncateCollectionOnCoordinator(*this, collectionName));
+  return OperationResult(arangodb::truncateCollectionOnCoordinator(*this, collectionName));
 }
 #endif
 

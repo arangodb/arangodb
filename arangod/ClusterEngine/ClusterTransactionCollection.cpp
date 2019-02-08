@@ -20,9 +20,9 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClusterTransactionCollection.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterInfo.h"
+#include "ClusterTransactionCollection.h"
 #include "Logger/Logger.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
@@ -145,7 +145,7 @@ void ClusterTransactionCollection::release() {
     LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
 
     if (_usageLocked) {
-      _transaction->vocbase().releaseCollection(_collection.get());
+      //_transaction->vocbase().releaseCollection(_collection.get());
       _usageLocked = false;
     }
     _collection = nullptr;

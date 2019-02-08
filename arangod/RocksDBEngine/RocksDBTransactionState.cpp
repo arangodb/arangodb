@@ -113,7 +113,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   if (_nestingLevel == 0) {
     // register a protector (intentionally empty)
     TransactionManagerFeature::manager()->registerTransaction(
-        *this, std::unique_ptr<RocksDBTransactionData>());
+        *this, std::make_unique<RocksDBTransactionData>());
 
     TRI_ASSERT(_rocksTransaction == nullptr);
     TRI_ASSERT(_cacheTx == nullptr);

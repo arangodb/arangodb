@@ -79,7 +79,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   if (_nestingLevel == 0) {
     // register a protector (intentionally empty)
     TransactionManagerFeature::manager()->registerTransaction(
-        *this, std::unique_ptr<ClusterTransactionData>());
+        *this, std::make_unique<ClusterTransactionData>());
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
