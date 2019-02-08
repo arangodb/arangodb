@@ -48,6 +48,7 @@ function runSetup () {
   view.properties(meta);
 
   meta = {
+    commitIntervalMsec: 12345,
     consolidationIntervalMsec: 10000,
     consolidationPolicy: { threshold: 0.5, type: "bytes_accum" },
   };
@@ -88,6 +89,7 @@ function recoverySuite () {
       var properties = v.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(42, properties.cleanupIntervalStep);
+      assertEqual(12345, properties.commitIntervalMsec);
       assertEqual(10000, properties.consolidationIntervalMsec);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
       assertEqual("bytes_accum", properties.consolidationPolicy.type);
