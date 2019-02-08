@@ -109,13 +109,16 @@ IndexExecutorInfos::IndexExecutorInfos(
       _useRawDocumentPointers(useRawDocumentPointers),
       _nonConstExpression(std::move(nonConstExpression)),
       _produceResult(produceResult),
+      _returned(0),
       _hasV8Expression(hasV8Expression) {}
 
 IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
-      _input(ExecutionState::HASMORE, InputAqlItemRow{CreateInvalidInputRowHint{}}) {
+      _input(ExecutionState::HASMORE, InputAqlItemRow{CreateInvalidInputRowHint{}}),
+      _initDone(false) {
   _mmdr.reset(new ManagedDocumentResult);
+
   TRI_ASSERT(!_infos.getIndexes().empty());
 
   if (_infos.getCondition() != nullptr) {
@@ -175,7 +178,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       buildCallback(_documentProducer, _infos.getOutVariable(),
                     _infos.getProduceResult(), _infos.getProjections(),
                     _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
-                    true, _infos.getUseRawDocumentPointers())); // remove true flag later, it is always true in any case (?)
+                    true, _infos.getUseRawDocumentPointers()));  // remove true flag later, it is always true in any case (?)
 };
 
 IndexExecutor::~IndexExecutor() = default;
@@ -183,6 +186,7 @@ IndexExecutor::~IndexExecutor() = default;
 /// @brief order a cursor for the index at the specified position
 arangodb::OperationCursor* IndexExecutor::orderCursor(size_t currentIndex) {
   TRI_ASSERT(_infos.getIndexes().size() > currentIndex);
+  LOG_DEVEL << "ORDERING A CURSOR";
 
   // TODO: if we have _nonConstExpressions, we should also reuse the
   // cursors, but in this case we have to adjust the iterator's search condition
@@ -199,12 +203,14 @@ arangodb::OperationCursor* IndexExecutor::orderCursor(size_t currentIndex) {
 
     // yet no cursor for index, so create it
     // IndexNode const* node = ExecutionNode::castTo<IndexNode const*>(getPlanNode()); // TODO remove me
+    LOG_DEVEL << "new cursor?";
     _infos.resetCursor(currentIndex, _infos.getTrxPtr()->indexScanForCondition(
                                          _infos.getIndexes()[currentIndex],
                                          conditionNode, _infos.getOutVariable(),
                                          _mmdr.get(), _infos.getOptions()));
   } else {
     // cursor for index already exists, reset and reuse it
+    LOG_DEVEL << "Reusing current index cursor";
     _infos.resetCursor(currentIndex);
   }
 
@@ -247,25 +253,27 @@ bool IndexExecutor::readIndex(size_t atMost, IndexIterator::DocumentCallback con
     return false;
   }
 
+  LOG_DEVEL << "Returned is : " << _infos.getReturned();
+
   while (_infos.getCursor() != nullptr) {
+    LOG_DEVEL << "iterating inside cursor";
     if (!_infos.getCursor()->hasMore()) {
       startNextCursor();
       continue;
     }
 
-    // TRI_ASSERT(atMost >= _returned);
+    TRI_ASSERT(atMost >= _infos.getReturned());
 
-    /*
-     if (_returned == atMost) {
+     if (_infos.getReturned() == atMost) {
        // We have returned enough, do not check if we have more
        return true;
-     }*/
+     }
 
     TRI_IF_FAILURE("IndexBlock::readIndex") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    //  TRI_ASSERT(atMost >= _returned);
+    TRI_ASSERT(atMost >= _infos.getReturned());
 
     bool res;
     if (!_infos.getProduceResult()) {
@@ -295,6 +303,7 @@ bool IndexExecutor::readIndex(size_t atMost, IndexIterator::DocumentCallback con
     }
 
     if (res) {
+      LOG_DEVEL << "We have more";
       // We have returned enough.
       // And this index could return more.
       // We are good.
@@ -302,6 +311,7 @@ bool IndexExecutor::readIndex(size_t atMost, IndexIterator::DocumentCallback con
     }
   }
   // if we get here the indexes are exhausted.
+  LOG_DEVEL << "We do not have more";
   return false;
 }
 
@@ -440,12 +450,24 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   while (true) {
-    if (_infos.getDone()) {
+    if (_infos.getIndexesExhausted() || !_initDone) {
+      LOG_DEVEL << "fetched a new row";
+      _input = _fetcher.fetchRow();
+
+      if (!initIndexes(input)) {
+        _infos.setDone(true);
+        break;
+      }
+
+      _initDone = true;
+    } else {
+      LOG_DEVEL << "no need to fetch more";
+    }
+    std::tie(state, input) = _input;
+
+    if (_infos.getDone() && state == ExecutionState::DONE) {
       return {ExecutionState::DONE, stats};
     }
-
-    // std::tie(state, input) = _input;
-    std::tie(state, input) = _fetcher.fetchRow();
 
     if (state == ExecutionState::WAITING) {
       return {state, stats};
@@ -455,14 +477,15 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
       TRI_ASSERT(state == ExecutionState::DONE);
       return {state, stats};
     }
+    LOG_DEVEL << "INPUT NEEDS TO BE INITIALIZED HERE";
     TRI_ASSERT(input.isInitialized());
 
     // TODO  init indizes, right position?
     // initIndexes(input);
-    if (!initIndexes(input)) {
+   /* if (!initIndexes(input)) {
       _infos.setDone(true);
       break;
-    }
+    }*/
 
     if (_infos.getDone()) {
       return {state, stats};
@@ -474,7 +497,7 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
 
     if (_infos.getIndexes().size() > 1 || _infos.hasMultipleExpansions()) {
       // Activate uniqueness checks
-      callback = [this, &input, &output](LocalDocumentId const& token, VPackSlice slice) {
+      callback = [this, &output](LocalDocumentId const& token, VPackSlice slice) {
         if (!_infos.isLastIndex()) {
           // insert & check for duplicates in one go
           if (!_alreadyReturned.insert(token.id()).second) {
@@ -489,17 +512,18 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
           }
         }
 
-        _documentProducer(input, output, slice, _infos.getOutputRegisterId());
+        _documentProducer(this->_input.second, output, slice, _infos.getOutputRegisterId());
       };
     } else {
       // No uniqueness checks
-      callback = [this, &input, &output](LocalDocumentId const&, VPackSlice slice) {
-        _documentProducer(input, output, slice, _infos.getOutputRegisterId());
+      callback = [this, &output](LocalDocumentId const&, VPackSlice slice) {
+        _documentProducer(this->_input.second, output, slice, _infos.getOutputRegisterId());
       };
     }
 
     if (_infos.getIndexesExhausted()) {
       if (!initIndexes(input)) {
+        // not found any index, so we are done
         _infos.setDone(true);
         break;
       }
@@ -511,11 +535,18 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
     TRI_ASSERT(!_infos.getIndexesExhausted());
 
     // Read the next elements from the indexes
-    auto saveReturned = _returned;
+    auto saveReturned = _infos.getReturned();
+    LOG_DEVEL << "Reading index";
     _infos.setIndexesExhausted(!readIndex(1, callback));
-    if (_returned != saveReturned) {
+    LOG_DEVEL << "index is exhausted: " << _infos.getIndexesExhausted();
+    if (_infos.getReturned() != saveReturned) {
       // Update statistics
-      stats.incrScanned(_returned - saveReturned);
+      stats.incrScanned(_infos.getReturned() - saveReturned);
+    }
+
+    if (_infos.getIndexesExhausted()) {
+      _infos.setDone(true);
+      return {ExecutionState::DONE, stats};
     }
 
     return {ExecutionState::HASMORE, stats};

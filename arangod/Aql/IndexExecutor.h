@@ -69,19 +69,11 @@ class IndexExecutorInfos : public ExecutorInfos {
   IndexExecutorInfos(IndexExecutorInfos const&) = delete;
   ~IndexExecutorInfos() = default;
 
-  // void resetCursor() { _cursor->reset(); };
   void resetCursor(size_t pos) {
-    LOG_DEVEL << "cursor arr length: " << _cursors.size();
-    LOG_DEVEL << "cursor pos: " << pos;
-    LOG_DEVEL << "HELP";
-    LOG_DEVEL << "HELP";
-    LOG_DEVEL << "HELP";
-    LOG_DEVEL << "HELP";
     _cursors[pos]->reset();
   };
+
   void resetCursor(size_t pos, OperationCursor* cursor) {
-    LOG_DEVEL << "cursor arr length: " << _cursors.size();
-    LOG_DEVEL << "cursor pos: " << pos;
     _cursors[pos].reset(cursor);
   };
 
@@ -126,10 +118,10 @@ class IndexExecutorInfos : public ExecutorInfos {
 
   Ast* getAst() { return _ast; };
 
-  std::vector<Variable const*> getExpInVars() { return _expInVars; };
-  std::vector<RegisterId> getExpInRegs() { return _expInRegs; };
+  std::vector<Variable const*> const& getExpInVars() const { return _expInVars; };
+  std::vector<RegisterId> const& getExpInRegs() const { return _expInRegs; };
 
-  size_t getCurrentIndex() { return _currentIndex; };
+  size_t getCurrentIndex() const noexcept { return _currentIndex; };
 
   arangodb::OperationCursor* getCursor() { return _cursor; };
   arangodb::OperationCursor* getCursor(size_t pos) {
@@ -144,6 +136,8 @@ class IndexExecutorInfos : public ExecutorInfos {
     }
     return true;
   };
+
+  size_t getReturned() { return _returned; };
 
   // setter
 void setHasMultipleExpansions(bool flag) { _hasMultipleExpansions = flag; };
@@ -221,6 +215,10 @@ void setHasMultipleExpansions(bool flag) { _hasMultipleExpansions = flag; };
   bool _useRawDocumentPointers;
   std::vector<std::unique_ptr<NonConstExpression>> _nonConstExpression;
   bool _produceResult;
+  /// @brief Counter how many documents have been returned/skipped
+  ///        during one call. Retained during WAITING situations.
+  ///        Needs to be 0 after we return a result.
+  size_t _returned;
   bool _hasV8Expression;
 };
 
@@ -278,11 +276,7 @@ class IndexExecutor {
   Fetcher& _fetcher;
   DocumentProducingFunction _documentProducer;
   std::pair<ExecutionState, InputAqlItemRow> _input;
-
-  /// @brief Counter how many documents have been returned/skipped
-  ///        during one call. Retained during WAITING situations.
-  ///        Needs to be 0 after we return a result.
-  size_t _returned;
+  bool _initDone = false;
 
   /// @brief set of already returned documents. Used to make the result distinct
   std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
