@@ -24,8 +24,9 @@
 #ifndef ARANGOD_TRANSACTION_STANDALONE_CONTEXT_H
 #define ARANGOD_TRANSACTION_STANDALONE_CONTEXT_H 1
 
-#include "Basics/Common.h"
 #include "Context.h"
+
+#include "Basics/Common.h"
 #include "VocBase/vocbase.h"
 
 struct TRI_vocbase_t;
@@ -48,7 +49,7 @@ class StandaloneContext final : public Context {
   std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() override final;
 
   /// @brief return the parent transaction (none in our case)
-  TransactionState* leaseParentTransaction() const override { return nullptr; }
+  TransactionState* getParentTransaction() const override { return nullptr; }
 
   /// @brief register the transaction, does nothing
   void registerTransaction(TransactionState*) override {}

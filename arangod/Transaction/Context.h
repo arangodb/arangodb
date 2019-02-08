@@ -103,8 +103,8 @@ class Context {
   /// @brief get a custom type handler
   virtual std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() = 0;
 
-  /// @brief get parent transaction (if any) and increase nesting
-  virtual TransactionState* leaseParentTransaction() const = 0;
+  /// @brief get parent transaction (if any)
+  virtual TransactionState* getParentTransaction() const = 0;
 
   /// @brief whether or not the transaction is embeddable
   virtual bool isEmbeddable() const = 0;

@@ -371,7 +371,7 @@ void Query::prepare(QueryRegistry* registry) {
 
       int res = trx->addCollections(*_collections.collections());
 
-      if (!trx->transactionContextPtr()->leaseParentTransaction()) {
+      if (!trx->transactionContextPtr()->getParentTransaction()) {
         trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
       }
 
@@ -474,7 +474,7 @@ ExecutionPlan* Query::preparePlan() {
   // create the transaction object, but do not start it yet
   _trx = trx.get();
 
-  if (!trx->transactionContextPtr()->leaseParentTransaction()) {
+  if (!trx->transactionContextPtr()->getParentTransaction()) {
     trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
   }
 
