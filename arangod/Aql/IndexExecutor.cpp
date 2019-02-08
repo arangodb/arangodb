@@ -187,7 +187,6 @@ IndexExecutor::~IndexExecutor() = default;
 /// @brief order a cursor for the index at the specified position
 arangodb::OperationCursor* IndexExecutor::orderCursor(size_t currentIndex) {
   TRI_ASSERT(_infos.getIndexes().size() > currentIndex);
-  LOG_DEVEL << "ORDERING A CURSOR";
 
   // TODO: if we have _nonConstExpressions, we should also reuse the
   // cursors, but in this case we have to adjust the iterator's search condition
@@ -204,14 +203,12 @@ arangodb::OperationCursor* IndexExecutor::orderCursor(size_t currentIndex) {
 
     // yet no cursor for index, so create it
     // IndexNode const* node = ExecutionNode::castTo<IndexNode const*>(getPlanNode()); // TODO remove me
-    LOG_DEVEL << "new cursor?";
     _infos.resetCursor(currentIndex, _infos.getTrxPtr()->indexScanForCondition(
                                          _infos.getIndexes()[currentIndex],
                                          conditionNode, _infos.getOutVariable(),
                                          _mmdr.get(), _infos.getOptions()));
   } else {
     // cursor for index already exists, reset and reuse it
-    LOG_DEVEL << "Reusing current index cursor";
     _infos.resetCursor(currentIndex);
   }
 
@@ -254,10 +251,7 @@ bool IndexExecutor::readIndex(size_t atMost, IndexIterator::DocumentCallback con
     return false;
   }
 
-  LOG_DEVEL << "Returned is : " << _infos.getReturned();
-
   while (_infos.getCursor() != nullptr) {
-    LOG_DEVEL << "iterating inside cursor";
     if (!_infos.getCursor()->hasMore()) {
       startNextCursor();
       continue;
@@ -304,7 +298,6 @@ bool IndexExecutor::readIndex(size_t atMost, IndexIterator::DocumentCallback con
     }
 
     if (res) {
-      LOG_DEVEL << "We have more";
       // We have returned enough.
       // And this index could return more.
       // We are good.
@@ -312,7 +305,6 @@ bool IndexExecutor::readIndex(size_t atMost, IndexIterator::DocumentCallback con
     }
   }
   // if we get here the indexes are exhausted.
-  LOG_DEVEL << "We do not have more";
   return false;
 }
 
@@ -450,7 +442,6 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
 
   while (true) {
     if (_infos.getIndexesExhausted() || !_initDone) {
-      LOG_DEVEL << "fetched a new row";
       std::tie(_state, _input) = _fetcher.fetchRow();
 
       if (_state == ExecutionState::WAITING) {
@@ -468,8 +459,6 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
       }
 
       _initDone = true;
-    } else {
-      LOG_DEVEL << "no need to fetch more";
     }
 
     if (_infos.getDone() && _state == ExecutionState::DONE) {
@@ -484,7 +473,6 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
       TRI_ASSERT(_state == ExecutionState::DONE);
       return {_state, stats};
     }
-    LOG_DEVEL << "INPUT NEEDS TO BE INITIALIZED HERE";
     TRI_ASSERT(_input.isInitialized());
 
     // TODO  init indizes, right position?
@@ -543,9 +531,7 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
 
     // Read the next elements from the indexes
     auto saveReturned = _infos.getReturned();
-    LOG_DEVEL << "Reading index";
     _infos.setIndexesExhausted(!readIndex(1, callback));
-    LOG_DEVEL << "index is exhausted: " << _infos.getIndexesExhausted();
     if (_infos.getReturned() != saveReturned) {
       // Update statistics
       stats.incrScanned(_infos.getReturned() - saveReturned);
