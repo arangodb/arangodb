@@ -305,8 +305,10 @@ IResearchView::IResearchView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice
     });
   }
 
-  _asyncFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchFeature>();
+  _asyncFeature = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
+    arangodb::iresearch::IResearchFeature // feature type
+  >();
+  _asyncFeature = nullptr; // disable FIXME TODO remove consolidation job (done by link)
 
   // add asynchronous commit tasks
   if (_asyncFeature) {
@@ -725,40 +727,43 @@ arangodb::Result IResearchView::dropImpl() {
 
 bool IResearchView::link(AsyncLinkPtr const& link) {
   if (!link) {
-    return false;  // invalid link
+    return false; // invalid link
   }
 
-  SCOPED_LOCK(link->mutex());  // prevent the link from being deallocated
+  SCOPED_LOCK(link->mutex()); // prevent the link from being deallocated
 
   if (!link->get()) {
-    return false;  // invalid link
+    return false; // invalid link
   }
 
   auto cid = link->get()->collection().id();
-  WriteMutex mutex(_mutex);  // '_meta'/'_links' can be asynchronously read
+  WriteMutex mutex(_mutex); // '_meta'/'_links' can be asynchronously read
   SCOPED_LOCK(mutex);
   auto itr = _links.find(cid);
+  IResearchLink::RuntimeMeta properties;
 
-  irs::index_writer::segment_options properties;
-  properties.segment_count_max = _meta._writebufferActive;
-  properties.segment_memory_max = _meta._writebufferSizeMax;
+  properties._cleanupIntervalStep = _meta._cleanupIntervalStep;
+  properties._commitIntervalMsec = 60 * 1000; // FIXME TODO make configurable _meta._commitIntervalMsec;
+  properties._consolidationIntervalMsec = _meta._consolidationIntervalMsec;
+  properties._consolidationPolicy = _meta._consolidationPolicy;
+  properties._writebufferActive = _meta._writebufferActive;
+  properties._writebufferSizeMax = _meta._writebufferSizeMax;
 
   if (itr == _links.end()) {
     _links.emplace(cid, link);
-  } else if (arangodb::ServerState::instance()->isSingleServer() && !itr->second) {
+  } else if (arangodb::ServerState::instance()->isSingleServer() // single server
+             && !itr->second) {
     _links[cid] = link;
     link->get()->properties(properties);
 
-    return true;  // single-server persisted cid placeholder substituted with
-                  // actual link
+    return true; // single-server persisted cid placeholder substituted with actual link
   } else if (itr->second && !itr->second->get()) {
     _links[cid] = link;
     link->get()->properties(properties);
 
-    return true;  // a previous link instance was unload()ed and a new instance
-                  // is linking
+    return true; // a previous link instance was unload()ed and a new instance is linking
   } else {
-    return false;  // link already present
+    return false; // link already present
   }
 
   auto res = arangodb::ServerState::instance()->isSingleServer()

@@ -108,7 +108,7 @@ class Version {
   static std::string getV8Version();
 
   /// @brief get OpenSSL version
-  static std::string getOpenSSLVersion();
+  static std::string getOpenSSLVersion(bool compileTime);
 
   /// @brief get vpack version
   static std::string getVPackVersion();
