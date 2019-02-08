@@ -23,6 +23,7 @@
 
 #include "NeighborsEnumerator.h"
 
+#include "Aql/PruneExpressionEvaluator.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/Traverser.h"
@@ -89,8 +90,22 @@ bool NeighborsEnumerator::next() {
 
           if (_allFound.find(v) == _allFound.end()) {
             if (_traverser->vertexMatchesConditions(v, _searchDepth + 1)) {
-              _currentDepth.emplace(v);
               _allFound.emplace(v);
+              // Prune here
+              if (_opts->usesPrune()) {
+                auto* evaluator = _opts->getPruneEvaluator();
+                if (evaluator->needsVertex()) {
+                  evaluator->injectVertex(_traverser->fetchVertexData(v).slice());
+                }
+                // We cannot support these two here
+                TRI_ASSERT(!evaluator->needsEdge());
+                TRI_ASSERT(!evaluator->needsPath());
+                if (evaluator->evaluate()) {
+                  // Do not prune, so add.
+                  _toPrune.emplace(v);
+                }
+              }
+              _currentDepth.emplace(v);
             }
           } else {
             _opts->cache()->increaseFilterCounter();
@@ -113,9 +128,7 @@ bool NeighborsEnumerator::next() {
   return true;
 }
 
-void NeighborsEnumerator::prune() {
-  _toPrune.emplace(*_iterator);
-}
+void NeighborsEnumerator::prune() {}
 
 arangodb::aql::AqlValue NeighborsEnumerator::lastVertexToAqlValue() {
   TRI_ASSERT(_iterator != _currentDepth.end());
