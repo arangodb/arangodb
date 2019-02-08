@@ -97,7 +97,7 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
 /// @brief creates a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Result createDocumentOnCoordinator(transaction::Methods const& trx,
+Result createDocumentOnCoordinator(transaction::Methods& trx,
                                    std::string const& collname,
                                    OperationOptions const& options,
                                    arangodb::velocypack::Slice const& slice,
@@ -109,7 +109,7 @@ Result createDocumentOnCoordinator(transaction::Methods const& trx,
 /// @brief delete a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int deleteDocumentOnCoordinator(transaction::Methods const& trx, std::string const& collname,
+int deleteDocumentOnCoordinator(transaction::Methods& trx, std::string const& collname,
                                 VPackSlice const slice, OperationOptions const& options,
                                 arangodb::rest::ResponseCode& responseCode,
                                 std::unordered_map<int, size_t>& errorCounters,
@@ -119,7 +119,7 @@ int deleteDocumentOnCoordinator(transaction::Methods const& trx, std::string con
 /// @brief get a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int getDocumentOnCoordinator(transaction::Methods const& trx, std::string const& collname,
+int getDocumentOnCoordinator(transaction::Methods& trx, std::string const& collname,
                              VPackSlice slice, OperationOptions const& options,
                              arangodb::rest::ResponseCode& responseCode,
                              std::unordered_map<int, size_t>& errorCounter,
@@ -213,8 +213,8 @@ int getFilteredEdgesOnCoordinator(transaction::Methods const& trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 int modifyDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname,
-    transaction::Methods const& trx, arangodb::velocypack::Slice const& slice,
+    transaction::Methods& trx, std::string const& collname,
+    arangodb::velocypack::Slice const& slice,
     OperationOptions const& options, bool isPatch,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
     arangodb::rest::ResponseCode& responseCode, std::unordered_map<int, size_t>& errorCounter,
@@ -224,7 +224,8 @@ int modifyDocumentOnCoordinator(
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int truncateCollectionOnCoordinator(std::string const& dbname, std::string const& collname);
+Result truncateCollectionOnCoordinator(transaction::Methods& trx,
+                                       std::string const& collname);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush Wal on all DBservers
@@ -238,26 +239,6 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector,
 ////////////////////////////////////////////////////////////////////////////////
 
 int rotateActiveJournalOnAllDBServers(std::string const& dbname, std::string const& collname);
-
-/// @brief begin a transaction on all followers
-arangodb::Result beginTransactionOnLeaders(transaction::Methods& trx,
-                                           std::vector<ServerID> const& leaders);
-
-/// @brief begin a transaction on all followers
-arangodb::Result beginTransactionOnFollowers(transaction::Methods& trx,
-                                             arangodb::FollowerInfo& info,
-                                             std::vector<ServerID> const& followers);
-
-/// @brief commit a transaction on a subordinate
-arangodb::Result commitTransaction(transaction::Methods& trx);
-
-/// @brief abort a transaction on a subordinate
-arangodb::Result abortTransaction(transaction::Methods& trx);
-
-/// @brief set the transaction ID header
-void transactionHeader(transaction::Methods& trx,
-                       std::unordered_map<std::string, std::string>& headers,
-                       bool addBegin = false);
 
 class ClusterMethods {
  public:
@@ -274,6 +255,26 @@ class ClusterMethods {
       TRI_col_type_e collectionType, TRI_vocbase_t& vocbase,
       arangodb::velocypack::Slice parameters, bool ignoreDistributeShardsLikeErrors,
       bool waitForSyncReplication, bool enforceReplicationFactor);
+  
+  /// @brief begin a transaction on all followers
+  static arangodb::Result beginTransactionOnLeaders(transaction::Methods& trx,
+                                                    std::vector<ServerID> const& leaders);
+  
+  /// @brief begin a transaction on all followers
+  static arangodb::Result beginTransactionOnFollowers(transaction::Methods& trx,
+                                                      arangodb::FollowerInfo& info,
+                                                      std::vector<ServerID> const& followers);
+  
+  /// @brief commit a transaction on a subordinate
+  static arangodb::Result commitTransaction(transaction::Methods const& trx);
+  
+  /// @brief commit a transaction on a subordinate
+  static arangodb::Result abortTransaction(transaction::Methods const& trx);
+  
+  /// @brief set the transaction ID header
+  static void transactionHeader(transaction::Methods const& trx,
+                                std::unordered_map<std::string, std::string>& headers,
+                                bool addBegin = false);
 
  private:
   ////////////////////////////////////////////////////////////////////////////////

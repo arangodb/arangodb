@@ -212,6 +212,19 @@ class TransactionState {
 
   /// @brief whether or not a transaction only has exculsive or read accesses
   bool isOnlyExclusiveTransaction() const;
+  
+  // TODO move all of these into ClusterTransactionState
+  std::set<std::string> const& servers() const {
+    return _servers;
+  }
+  bool knowsServer(std::string const& uuid) const {
+    return _servers.find(uuid) != _servers.end();
+  }
+  
+  void addServer(std::string const& uuid) {
+    _servers.emplace(uuid);
+  }
+  
 
  protected:
   /// @brief find a collection in the transaction's list of collections
@@ -251,8 +264,12 @@ class TransactionState {
   /// a collection of stored cookies
   std::map<void const*, Cookie::ptr> _cookies;
 
+#warning REMOVE asap
   /// the list of locked shards (cluster only)
   std::unordered_set<std::string> _lockedShards;
+  
+  /// @brief servers we already talked to for this transactions
+  std::set<std::string> _servers;
 };
 
 }  // namespace arangodb

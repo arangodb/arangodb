@@ -962,7 +962,7 @@ Result transaction::Methods::commit() {
   if (_state->isRunningInCluster() && _state->isTopLevelTransaction() &&
       !_state->hasHint(Hints::Hint::SINGLE_OPERATION)) {
     // first commit transaction on subordinate servers
-    Result res = ::arangodb::commitTransaction(*this);
+    Result res = ClusterMethods::commitTransaction(*this);
     if (res.fail()) {  // do not commit locally
       LOG_TOPIC(WARN, Logger::TRANSACTIONS)
           << "failed to commit on subordinates " << res.errorMessage();
@@ -991,7 +991,7 @@ Result transaction::Methods::abort() {
   if (_state->isRunningInCluster() && _state->isTopLevelTransaction() &&
       !_state->hasHint(Hints::Hint::SINGLE_OPERATION)) {
     // first commit transaction on subordinate servers
-    Result res = ::arangodb::abortTransaction(*this);
+    Result res = ClusterMethods::abortTransaction(*this);
     if (res.fail()) {  // abort locally anyway, GC can cleanup
       LOG_TOPIC(WARN, Logger::TRANSACTIONS)
           << "failed to abort on subordinates: " << res.errorMessage();
@@ -1887,8 +1887,8 @@ OperationResult transaction::Methods::updateCoordinator(std::string const& colle
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  int res = arangodb::modifyDocumentOnCoordinator(vocbase().name(), collectionName,
-                                                  *this, newValue, options,
+  int res = arangodb::modifyDocumentOnCoordinator(*this, collectionName,
+                                                  newValue, options,
                                                   true /* isPatch */, headers, responseCode,
                                                   errorCounter, resultBody);
 
@@ -1936,8 +1936,8 @@ OperationResult transaction::Methods::replaceCoordinator(std::string const& coll
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  int res = arangodb::modifyDocumentOnCoordinator(vocbase().name(), collectionName,
-                                                  *this, newValue, options,
+  int res = arangodb::modifyDocumentOnCoordinator(*this, collectionName,
+                                                  newValue, options,
                                                   false /* isPatch */, headers, responseCode,
                                                   errorCounter, resultBody);
 
@@ -2517,7 +2517,7 @@ OperationResult transaction::Methods::truncate(std::string const& collectionName
 OperationResult transaction::Methods::truncateCoordinator(std::string const& collectionName,
                                                           OperationOptions& options) {
   return OperationResult(
-      arangodb::truncateCollectionOnCoordinator(vocbase().name(), collectionName));
+      arangodb::truncateCollectionOnCoordinator(*this, collectionName));
 }
 #endif
 

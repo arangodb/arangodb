@@ -21,6 +21,8 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ClusterMethods.h"
+
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
@@ -31,7 +33,6 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
-#include "ClusterMethods.h"
 #include "Graph/Traverser.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -1213,7 +1214,7 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
 /// for their documents.
 ////////////////////////////////////////////////////////////////////////////////
 
-Result createDocumentOnCoordinator(transaction::Methods const& trx,
+Result createDocumentOnCoordinator(transaction::Methods& trx,
                                    std::string const& collname,
                                    arangodb::OperationOptions const& options,
                                    VPackSlice const& slice,
@@ -1263,9 +1264,10 @@ Result createDocumentOnCoordinator(transaction::Methods const& trx,
     }
   }
 
+  TransactionState* state = trx.state();
   // lazily begin transactions on leaders
-  if (!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
-    Result res = ::beginTransactionCoordinator(state, collinfo, shardMap);
+  if (!state->hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
+    Result res = ::beginTransactionCoordinator(*state, collinfo, shardMap);
     if (res.fail()) {
       return res;
     }
@@ -1318,11 +1320,11 @@ Result createDocumentOnCoordinator(transaction::Methods const& trx,
       body = std::make_shared<std::string>(reqBuilder.slice().toJson());
     }
 
-    auto headers = ::CreateNoLockHeader(trx, it.first));
-    ::arangodb::transactionHeader(state, *headers);
+    auto headers = ::CreateNoLockHeader(trx, it.first);
+    ClusterMethods::transactionHeader(trx, *headers);
     requests.emplace_back("shard:" + it.first, arangodb::rest::RequestType::POST,
                           baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
-                          body, std::move(headers);
+                          body, std::move(headers));
   }
 
   // Perform the requests
@@ -1366,7 +1368,7 @@ Result createDocumentOnCoordinator(transaction::Methods const& trx,
 /// @brief deletes a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int deleteDocumentOnCoordinator(arangodb::transaction::Methods const& trx,
+int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
                                 std::string const& collname, VPackSlice const slice,
                                 arangodb::OperationOptions const& options,
                                 arangodb::rest::ResponseCode& responseCode,
@@ -1465,9 +1467,10 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods const& trx,
 
     // We sorted the shards correctly.
 
+    TransactionState* state = trx.state();
     // lazily begin transactions on leaders
-    if (!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
-      Result res = ::beginTransactionCoordinator(state, collinfo, shardMap);
+    if (!state->hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
+      Result res = ::beginTransactionCoordinator(*state, collinfo, shardMap);
       if (res.fail()) {
         return res.errorNumber();
       }
@@ -1489,11 +1492,11 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods const& trx,
         reqBuilder.close();
         body = std::make_shared<std::string>(reqBuilder.slice().toJson());
       }
-      auto headers = ::CreateNoLockHeader(trx, it.first));
-      ::arangodb::transactionHeader(state, *headers);
+      auto headers = ::CreateNoLockHeader(trx, it.first);
+      ClusterMethods::transactionHeader(trx, *headers);
       requests.emplace_back("shard:" + it.first, arangodb::rest::RequestType::DELETE_REQ,
                             baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
-                            body, std::move(headers);
+                            body, std::move(headers));
     }
 
     // Perform the requests
@@ -1610,7 +1613,8 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods const& trx,
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Result truncateCollectionOnCoordinator(std::string const& dbname, std::string const& collname) {
+Result truncateCollectionOnCoordinator(transaction::Methods& trx,
+                                       std::string const& collname) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
@@ -1619,6 +1623,7 @@ Result truncateCollectionOnCoordinator(std::string const& dbname, std::string co
     return TRI_ERROR_SHUTTING_DOWN;
   }
 
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci->getCollectionNT(dbname, collname);
@@ -1630,13 +1635,14 @@ Result truncateCollectionOnCoordinator(std::string const& dbname, std::string co
   // We have to contact everybody:
   auto shards = collinfo->shardIds();
 
+  TransactionState* state = trx.state();
   // lazily begin transactions on leaders
-  if (!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
+  if (!state->hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
     std::vector<ServerID> leaders;
     for (auto const& shardServers : *shards) {
       leaders.emplace_back(shardServers.second[0]);
     }
-    Result res = ClusterMethods::beginTransactionOnLeaders(state, leaders);
+    Result res = ClusterMethods::beginTransactionOnLeaders(trx, leaders);
     if (res.fail()) {
       return res;
     }
@@ -1644,7 +1650,7 @@ Result truncateCollectionOnCoordinator(std::string const& dbname, std::string co
 
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   std::unordered_map<std::string, std::string> headers;
-  ::arangodb::transactionHeader(state, headers);
+  ClusterMethods::transactionHeader(trx, headers);
   for (auto const& p : *shards) {
     cc->asyncRequest(coordTransactionID, "shard:" + p.first,
                      arangodb::rest::RequestType::PUT,
@@ -1681,7 +1687,7 @@ Result truncateCollectionOnCoordinator(std::string const& dbname, std::string co
 /// @brief get a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int getDocumentOnCoordinator(arangodb::transaction::Methods const& trx,
+int getDocumentOnCoordinator(arangodb::transaction::Methods& trx,
                              std::string const& collname, VPackSlice slice,
                              OperationOptions const& options,
                              arangodb::rest::ResponseCode& responseCode,
@@ -1736,9 +1742,10 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods const& trx,
     }
   }
 
+  TransactionState* state = trx.state();
   // lazily begin transactions on leaders
-  if (!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
-    Result res = ::beginTransactionCoordinator(state, collinfo, shardMap);
+  if (!state->hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
+    Result res = ::beginTransactionCoordinator(*state, collinfo, shardMap);
     if (res.fail()) {
       return res.errorNumber();
     }
@@ -1767,7 +1774,7 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods const& trx,
   }
 
   auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-  ::arangodb::transactionHeader(state, *headers);
+  ClusterMethods::transactionHeader(trx, *headers);
   if (canUseFastPath) {
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
@@ -2363,8 +2370,8 @@ int getFilteredEdgesOnCoordinator(arangodb::transaction::Methods const& trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 int modifyDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname,
-    arangodb::transaction::Methods const& trx, VPackSlice const& slice,
+    transaction::Methods& trx, std::string const& collname,
+    VPackSlice const& slice,
     arangodb::OperationOptions const& options, bool isPatch,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
     arangodb::rest::ResponseCode& responseCode, std::unordered_map<int, size_t>& errorCounter,
@@ -2377,6 +2384,7 @@ int modifyDocumentOnCoordinator(
     return TRI_ERROR_SHUTTING_DOWN;
   }
 
+  std::string const& dbname = trx.vocbase().name();
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo = ci->getCollection(dbname, collname);
   auto collid = std::to_string(collinfo->id());
@@ -2434,9 +2442,10 @@ int modifyDocumentOnCoordinator(
     }
   }
 
+  TransactionState* state = trx.state();
   // lazily begin transactions on leaders
-  if (!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
-    Result res = ::beginTransactionCoordinator(state, collinfo, shardMap);
+  if (!state->hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
+    Result res = ::beginTransactionCoordinator(*state, collinfo, shardMap);
     if (res.fail()) {
       return res.errorNumber();
     }
@@ -2472,7 +2481,7 @@ int modifyDocumentOnCoordinator(
   if (options.returnOld) {
     optsUrlPart += "&returnOld=true";
   }
-
+  
   if (canUseFastPath) {
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
@@ -2481,7 +2490,7 @@ int modifyDocumentOnCoordinator(
     auto body = std::make_shared<std::string>();
     for (auto const& it : shardMap) {
       auto headers = ::CreateNoLockHeader(trx, it.first);
-      ::arangodb::transactionHeader(state, *headers);
+      ClusterMethods::transactionHeader(trx, *headers);
       if (!useMultiple) {
         TRI_ASSERT(it.second.size() == 1);
         body = std::make_shared<std::string>(slice.toJson());
@@ -2551,16 +2560,17 @@ int modifyDocumentOnCoordinator(
   std::vector<ClusterCommRequest> requests;
   auto body = std::make_shared<std::string>(slice.toJson());
   auto shardList = ci->getShardList(collid);
-  auto headers = ::CreateNoLockHeader(trx, shard);
   if (!useMultiple) {
     std::string key = slice.get(StaticStrings::KeyString).copyString();
     for (auto const& shard : *shardList) {
+      auto headers = ::CreateNoLockHeader(trx, shard);
       requests.emplace_back("shard:" + shard, reqType,
                             baseUrl + StringUtils::urlEncode(shard) + "/" + key + optsUrlPart,
                             body, std::move(headers));
     }
   } else {
     for (auto const& shard : *shardList) {
+      auto headers = ::CreateNoLockHeader(trx, shard);
       requests.emplace_back("shard:" + shard, reqType,
                             baseUrl + StringUtils::urlEncode(shard) + optsUrlPart,
                             body, std::move(headers));
@@ -2709,9 +2719,10 @@ std::shared_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator
 }
 #endif
 
-/// @brief begin a transaction on all followers
-arangodb::Result ClusterMethods::beginTransactionOnLeaders(arangodb::TransactionState& state,
+/// @brief begin a transaction on all leaders
+arangodb::Result ClusterMethods::beginTransactionOnLeaders(transaction::Methods& trx,
                                                            std::vector<ServerID> const& leaders) {
+  TransactionState& state = *trx.state();
   TRI_ASSERT(state.isCoordinator());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 
@@ -2742,9 +2753,10 @@ arangodb::Result ClusterMethods::beginTransactionOnLeaders(arangodb::Transaction
 }
 
 /// @brief begin a transaction on all followers
-Result ClusterMethods::beginTransactionOnFollowers(arangodb::TransactionState& state,
+Result ClusterMethods::beginTransactionOnFollowers(transaction::Methods& trx,
                                                    arangodb::FollowerInfo& info,
                                                    std::vector<ServerID> const& followers) {
+  TransactionState& state = *trx.state();
   TRI_ASSERT(state.isDBServer());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 
@@ -2801,7 +2813,8 @@ Result ClusterMethods::beginTransactionOnFollowers(arangodb::TransactionState& s
 }
 
 namespace {
-Result commitAbortTransaction(arangodb::TransactionState& state, transaction::Status status) {
+Result commitAbortTransaction(transaction::Methods const& trx, transaction::Status status) {
+  arangodb::TransactionState const& state = *trx.state();
   TRI_ASSERT(state.isRunning());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
   if (state.servers().empty()) {
@@ -2872,23 +2885,23 @@ Result commitAbortTransaction(arangodb::TransactionState& state, transaction::St
 }  // namespace
 
 /// @brief commit a transaction on a subordinate
-Result ClusterMethods::commitTransaction(arangodb::TransactionState& state) {
-  return commitAbortTransaction(state, transaction::Status::COMMITTED);
+Result ClusterMethods::commitTransaction(transaction::Methods const& trx) {
+  return commitAbortTransaction(trx, transaction::Status::COMMITTED);
 }
 
 /// @brief commit a transaction on a subordinate
-Result ClusterMethods::abortTransaction(arangodb::TransactionState& state) {
-  return commitAbortTransaction(state, transaction::Status::ABORTED);
+Result ClusterMethods::abortTransaction(transaction::Methods const& trx) {
+  return commitAbortTransaction(trx, transaction::Status::ABORTED);
 }
 
 /// @brief set the transaction ID header
-void ClusterMethods::transactionHeader(arangodb::TransactionState& state,
+void ClusterMethods::transactionHeader(transaction::Methods const& trx,
                                        std::unordered_map<std::string, std::string>& headers,
                                        bool addBegin) {
-  TRI_ASSERT(state.isRunningInCluster());
-  std::string value = std::to_string(state.id() + 1);
+  TRI_ASSERT(trx.state()->isRunningInCluster());
+  std::string value = std::to_string(trx.state()->id() + 1);
   // receiving side should just use the provided ID for consistency
-  if (addBegin || state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
+  if (addBegin || trx.state()->hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
     value += " begin";
   }
   headers.emplace(arangodb::StaticStrings::TransactionId, std::move(value));
