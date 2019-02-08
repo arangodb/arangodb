@@ -18,6 +18,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Simon Grätzer
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestClusterHandler.h"
@@ -47,14 +48,29 @@ RestStatus RestClusterHandler::execute() {
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
-  if (!suffixes.empty() && suffixes[0] == "endpoints") {
-    handleCommandEndpoints();
+  if (!suffixes.empty()) {
+    if (suffixes[0] == "endpoints") {
+      handleCommandEndpoints();
+    } else if (suffixes[0] == "agency-dump") {
+      handleAgencyDump();
+    } else {
+      generateError(
+        Result(TRI_ERROR_FORBIDDEN, "expecting _api/cluster/[endpoints,agency-dump]"));
+    }
   } else {
     generateError(
-        Result(TRI_ERROR_FORBIDDEN, "expecting _api/cluster/endpoints"));
+      Result(TRI_ERROR_FORBIDDEN, "expecting _api/cluster/[endpoints,agency-dump]"));
   }
 
   return RestStatus::DONE;
+}
+
+void RestClusterHandler::handleAgencyDump() {
+
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  ClusterInfo::instance()->agencyDump(body);
+  generateResult(rest::ResponseCode::OK, body->slice());
+
 }
 
 /// @brief returns information about all coordinator endpoints
