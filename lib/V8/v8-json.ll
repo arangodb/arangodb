@@ -1,5 +1,4 @@
-%
-        top{
+%top{
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json parser
 ///
@@ -29,19 +28,25 @@
 
 #include "Basics/Common.h"
 #include "Basics/tri-strings.h"
-#include "V8/v8-globals.h"
 #include "V8/v8-json.h"
+#include "V8/v8-globals.h"
 
 #define YY_NO_INPUT
-        }
+}
 
-        % option noyywrap nounput batch % option 8bit % option reentrant % option extra -
-    type = "struct jsonData" % option prefix =
-               "tri_v8_"
+%option noyywrap nounput batch
+%option 8bit
+%option reentrant
+%option extra-type="struct jsonData"
+%option prefix="tri_v8_"
 
-               ZERO[0] DIGIT[0 - 9] DIGIT1[1 - 9] MINUS[-] PLUS[+]
+ZERO          [0]
+DIGIT         [0-9]
+DIGIT1        [1-9]
+MINUS         [-]
+PLUS          [+]
 
-               % {
+%{
 #define END_OF_FILE 0
 #define FALSE_CONSTANT 1
 #define TRUE_CONSTANT 2
@@ -57,93 +62,108 @@
 #define UNQUOTED_STRING 12
 #define STRING_CONSTANT_ASCII 13
 
-  struct jsonData {
-    char const* _message;
-  };
+struct jsonData {
+  char const* _message;
+};
 
-#define YY_FATAL_ERROR(a)         \
-  do {                            \
-    if (false) {                  \
-      yy_fatal_error(a, nullptr); \
-    }                             \
-  } while (0)
-  %
-}
+#define YY_FATAL_ERROR(a)          \
+  do {                             \
+    if (false) {                   \
+      yy_fatal_error(a, nullptr);  \
+    }                              \
+  }                                \
+  while (0)
+%}
 
-% %
+%%
 
-    /* -----------------------------------------------------------------------------
-     * keywords
-     * ----------------------------------------------------------------------------- */
+ /* -----------------------------------------------------------------------------
+  * keywords
+  * ----------------------------------------------------------------------------- */
 
-    (? i : false) {
+(?i:false) {
   return FALSE_CONSTANT;
 }
 
-(? i : null) { return NULL_CONSTANT; }
+(?i:null) {
+  return NULL_CONSTANT;
+}
 
-(? i : true) { return TRUE_CONSTANT; }
+(?i:true) {
+  return TRUE_CONSTANT;
+}
 
-/* -----------------------------------------------------------------------------
- * strings
- * ----------------------------------------------------------------------------- */
+ /* -----------------------------------------------------------------------------
+  * strings
+  * ----------------------------------------------------------------------------- */
 
 \"[ !\x23-\x5b\x5d-\x7f]*\" {
-    // performance optimization for all-ASCII strings without escape characters
-    // this matches the ASCII chars with ordinal numbers 35 (x23) to 127 (x7f),
-    // plus space (32) and ! (33) but no quotation marks (34, x22) and backslashes (92, x5c)
-    return STRING_CONSTANT_ASCII;
+  // performance optimization for all-ASCII strings without escape characters
+  // this matches the ASCII chars with ordinal numbers 35 (x23) to 127 (x7f), 
+  // plus space (32) and ! (33) but no quotation marks (34, x22) and backslashes (92, x5c)
+  return STRING_CONSTANT_ASCII;
 }
 
 \"(\\.|[^\\\"])*\" {
-    return STRING_CONSTANT;
+  return STRING_CONSTANT;
 }
 
-/* -----------------------------------------------------------------------------
- * numbers
- * ----------------------------------------------------------------------------- */
+ /* -----------------------------------------------------------------------------
+  * numbers
+  * ----------------------------------------------------------------------------- */
 
-({MINUS} | {PLUS})
-    ? ({ZERO} | ({DIGIT1} {DIGIT}*))((\.{DIGIT} +) ? ([eE]({MINUS} | {PLUS}) ? {DIGIT} +) ?)
-    ? {
+({MINUS}|{PLUS})?({ZERO}|({DIGIT1}{DIGIT}*))((\.{DIGIT}+)?([eE]({MINUS}|{PLUS})?{DIGIT}+)?)? {
   return NUMBER_CONSTANT;
 }
 
-/* -----------------------------------------------------------------------------
- * special characters
- * ----------------------------------------------------------------------------- */
+ /* -----------------------------------------------------------------------------
+  * special characters
+  * ----------------------------------------------------------------------------- */
 
-"{" { return OPEN_BRACE; }
+"{" {
+  return OPEN_BRACE;
+}
 
-"}" { return CLOSE_BRACE; }
+"}" {
+  return CLOSE_BRACE;
+}
 
-"[" { return OPEN_BRACKET; }
+"[" {
+  return OPEN_BRACKET;
+}
 
-"]" { return CLOSE_BRACKET; }
+"]" {
+  return CLOSE_BRACKET;
+}
 
-"," { return COMMA; }
+"," {
+ return COMMA;
+}
 
-":" { return COLON; }
+":" {
+  return COLON;
+}
 
-/* -----------------------------------------------------------------------------
- * Skip whitespaces. Whatever is left, should be an unquoted string appearing
- * somewhere. This will be reported as an error.
- * ----------------------------------------------------------------------------- */
+ /* -----------------------------------------------------------------------------
+  * Skip whitespaces. Whatever is left, should be an unquoted string appearing
+  * somewhere. This will be reported as an error.
+  * ----------------------------------------------------------------------------- */
 
-[ \t\r\n] * {}
+[ \t\r\n]* {
+}
 
-                .{
+. {
   return UNQUOTED_STRING;
 }
 
-% %
+%%
 
-    // -----------------------------------------------------------------------------
-    // --SECTION--                                              forward declarations
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
 
-    static v8::Handle<v8::Value> ParseObject(v8::Isolate* isolate, yyscan_t scanner);
-static v8::Handle<v8::Value> ParseValue(v8::Isolate* isolate, yyscan_t scanner, int c);
+static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate, yyscan_t scanner);
+static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate, yyscan_t scanner, int c);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -153,8 +173,9 @@ static v8::Handle<v8::Value> ParseValue(v8::Isolate* isolate, yyscan_t scanner, 
 /// @brief parses an array
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ParseArray(v8::Isolate* isolate, yyscan_t scanner) {
-  struct yyguts_t* yyg = (struct yyguts_t*)scanner;
+static v8::Handle<v8::Value> ParseArray (v8::Isolate* isolate,
+                                         yyscan_t scanner) {
+  struct yyguts_t* yyg = (struct yyguts_t*) scanner;
 
   v8::Handle<v8::Array> array = v8::Array::New(isolate);
   uint32_t pos = 0;
@@ -196,8 +217,9 @@ static v8::Handle<v8::Value> ParseArray(v8::Isolate* isolate, yyscan_t scanner) 
 /// @brief parses an object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ParseObject(v8::Isolate* isolate, yyscan_t scanner) {
-  struct yyguts_t* yyg = (struct yyguts_t*)scanner;
+static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
+                                         yyscan_t scanner) {
+  struct yyguts_t* yyg = (struct yyguts_t*) scanner;
 
   v8::Handle<v8::Object> object = v8::Object::New(isolate);
   bool comma = false;
@@ -216,7 +238,8 @@ static v8::Handle<v8::Value> ParseObject(v8::Isolate* isolate, yyscan_t scanner)
       }
 
       c = yylex(scanner);
-    } else {
+    }
+    else {
       comma = true;
     }
 
@@ -227,7 +250,7 @@ static v8::Handle<v8::Value> ParseObject(v8::Isolate* isolate, yyscan_t scanner)
       // utf-8 attribute name
       size_t outLength;
       char* name = TRI_UnescapeUtf8String(yytext + 1, yyleng - 2, &outLength, true);
-
+    
       if (name == nullptr) {
         yyextra._message = "out-of-memory";
         return v8::Undefined(isolate);
@@ -235,10 +258,12 @@ static v8::Handle<v8::Value> ParseObject(v8::Isolate* isolate, yyscan_t scanner)
 
       attributeName = TRI_V8_PAIR_STRING(isolate, name, outLength);
       TRI_FreeString(name);
-    } else if (c == STRING_CONSTANT_ASCII) {
+    }
+    else if (c == STRING_CONSTANT_ASCII) {
       // ASCII-only attribute name
       attributeName = TRI_V8_ASCII_PAIR_STRING(isolate, yytext + 1, yyleng - 2);
-    } else {
+    }
+    else {
       yyextra._message = "expecting attribute name";
       return v8::Undefined(isolate);
     }
@@ -260,13 +285,12 @@ static v8::Handle<v8::Value> ParseObject(v8::Isolate* isolate, yyscan_t scanner)
       return v8::Undefined(isolate);
     }
 
-    object->ForceSet(attributeName, sub);
+    object->Set(attributeName, sub);
 
     c = yylex(scanner);
   }
 
-  yyextra._message =
-      "expecting an object attribute name or element, got end-of-file";
+  yyextra._message = "expecting an object attribute name or element, got end-of-file";
   return v8::Undefined(isolate);
 }
 
@@ -274,8 +298,10 @@ static v8::Handle<v8::Value> ParseObject(v8::Isolate* isolate, yyscan_t scanner)
 /// @brief parses an object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ParseValue(v8::Isolate* isolate, yyscan_t scanner, int c) {
-  struct yyguts_t* yyg = (struct yyguts_t*)scanner;
+static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate,
+                                         yyscan_t scanner, 
+                                         int c) {
+  struct yyguts_t* yyg = (struct yyguts_t*) scanner;
 
   switch (c) {
     case END_OF_FILE: {
@@ -298,7 +324,7 @@ static v8::Handle<v8::Value> ParseValue(v8::Isolate* isolate, yyscan_t scanner, 
     case NUMBER_CONSTANT: {
       char* ep;
 
-      if ((size_t)yyleng >= 512) {
+      if ((size_t) yyleng >= 512) {
         yyextra._message = "number too big";
         return v8::Undefined(isolate);
       }
@@ -347,7 +373,7 @@ static v8::Handle<v8::Value> ParseValue(v8::Isolate* isolate, yyscan_t scanner, 
 
       return str;
     }
-
+    
     case STRING_CONSTANT_ASCII: {
       if (yyleng <= 2) {
         // string is empty
@@ -404,11 +430,13 @@ static v8::Handle<v8::Value> ParseValue(v8::Isolate* isolate, yyscan_t scanner, 
 /// @brief parses a json string
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_FromJsonString(v8::Isolate* isolate, char const* text,
-                                         size_t len, char** error) {
+v8::Handle<v8::Value> TRI_FromJsonString (v8::Isolate* isolate,
+                                          char const* text,
+                                          size_t len,
+                                          char** error) {
   yyscan_t scanner;
   yylex_init(&scanner);
-  struct yyguts_t* yyg = (struct yyguts_t*)scanner;
+  struct yyguts_t* yyg = (struct yyguts_t*) scanner;
 
   YY_BUFFER_STATE buf = yy_scan_bytes(text, len, scanner);
 
@@ -426,7 +454,8 @@ v8::Handle<v8::Value> TRI_FromJsonString(v8::Isolate* isolate, char const* text,
   if (error != nullptr) {
     if (yyextra._message != nullptr) {
       *error = TRI_DuplicateString(yyextra._message);
-    } else {
+    }
+    else {
       *error = nullptr;
     }
   }
