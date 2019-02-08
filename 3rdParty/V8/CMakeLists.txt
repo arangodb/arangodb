@@ -439,7 +439,7 @@ message(${V8_GYP_ARGS})
 
   set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
   set(V8_INCLUDE_DIR
-    "${V8_DIR}/include;${V8_DIR};${V8_TARGET_DIR}/x64.release/obj/gen"
+    "${V8_DIR}/include;${V8_DIR};${V8_TARGET_DIR}/${V8_TARGET_ARCH}/obj/gen"
     CACHE INTERNAL
     "${PROJECT_NAME}: include path"
     )
