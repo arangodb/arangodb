@@ -97,18 +97,18 @@ which are suitable for different usage scenarios:
     latency. Essentially, this moves some of the database distribution
     logic to the machine where the client runs.
 
-As you acn see, the _Coordinator_ layer can be scaled and deployed independently
+As you can see, the _Coordinator_ layer can be scaled and deployed independently
 from the _DBServer_ layer.
 
 {% hint 'warning' %}
-It is a best practice and a reccomended approach to not run _Agent_ instances
+It is a best practice and a recommended approach to not run _Agent_ instances
 on the same machines where _DBServer_ instances are running.
 
 When deploying using the tool [_Starter_](../../../Deployment/ArangoDBStarter/README.md)
-this can be achived by using the options `--cluster.start-dbserver=false` and
+this can be achieved by using the options `--cluster.start-dbserver=false` and
 `--cluster.start-coordinator=false` on the first three machines where the _Starter_
-is started, if the desidered _Agency_ _size_ is 3, or on the first 5 machines
-if the desidered _Agency_ _size_ is 5.
+is started, if the desired _Agency_ _size_ is 3, or on the first 5 machines
+if the desired _Agency_ _size_ is 5.
 {% endhint %}
 
 Cluster ID
@@ -166,11 +166,11 @@ fails.
 
 {% hint 'warning' %} 
 The _replication factor_ has to be set to a value equals or higher than 2
-to achive mimimal data redundancy via the synchronous replication.
+to achieve minimal data redundancy via the synchronous replication.
 {% endhint %}
 
 {% hint 'warning' %}
-An equal-or-higher-than 2 _replication factor_ has to be set **explicitely**
+An equal-or-higher-than 2 _replication factor_ has to be set **explicitly**
 when the collection is created, or can be set later at run time if you forgot
 to set it at creation time.
 {% endhint %}
