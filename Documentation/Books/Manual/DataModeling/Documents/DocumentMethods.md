@@ -535,6 +535,7 @@ Insert/Save
 
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
+Note: since ArangoDB 2.2, _insert_ is an alias for _save_.
 
 `collection.insert(data)`
 
@@ -580,8 +581,6 @@ used to specify the following options:
   - *returnOld*: If this flag is set to *true*, the complete old document
     is returned in the output under the attribute *old*. Only available 
     in combiantion with the *overwrite* option
-
-Note: since ArangoDB 2.2, *insert* is an alias for *save*.
 
 `collection.insert(array)`
 
