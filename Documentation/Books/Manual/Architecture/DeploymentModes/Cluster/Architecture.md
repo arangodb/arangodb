@@ -1,16 +1,22 @@
 Cluster Architecture
 ====================
 
-The cluster architecture of ArangoDB is a _CP_ master/master model with no
-single point of failure. With "CP" we mean that in the presence of a
+The Cluster architecture of ArangoDB is a _CP_ master/master model with no
+single point of failure. 
+
+With "CP" we mean that in the presence of a
 network partition, the database prefers internal consistency over
-availability. With "master/master" we mean that clients can send their
+availability. 
+
+With "master/master" we mean that clients can send their
 requests to an arbitrary node, and experience the same view on the
-database regardless. "No single point of failure" means that the cluster
+database regardless. 
+
+"No single point of failure" means that the cluster
 can continue to serve requests, even if one machine fails completely.
 
 In this way, ArangoDB has been designed as a distributed multi-model
-database. This section gives a short outline on the cluster architecture and
+database. This section gives a short outline on the Cluster architecture and
 how the above features and capabilities are achieved.
 
 Structure of an ArangoDB Cluster
@@ -18,12 +24,14 @@ Structure of an ArangoDB Cluster
 
 An ArangoDB Cluster consists of a number of ArangoDB instances
 which talk to each other over the network. They play different roles,
-which will be explained in detail below. The current configuration
+which will be explained in detail below. 
+
+The current configuration
 of the Cluster is held in the _Agency_, which is a highly-available
 resilient key/value store based on an odd number of ArangoDB instances
 running [Raft Consensus Protocol](https://raft.github.io/).
 
-For the various instances in an ArangoDB Cluster there are 3 distinct
+For the various instances in an ArangoDB Cluster there are three distinct
 roles:
 
 - _Agents_
@@ -63,7 +71,7 @@ and restarted as needed.
 
 ### DBServers
 
-DBservers are the ones where the data is actually hosted. They
+_DBservers_ are the ones where the data is actually hosted. They
 host shards of data and using synchronous replication a _DBServer_ may
 either be _leader_ or _follower_ for a shard.
 
