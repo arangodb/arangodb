@@ -370,5 +370,4 @@ being able to use a single technology for various roles in a project.
 To simplify life of the _devops_ in such a scenario we try as much as
 possible to use a _zero administration_ approach for ArangoDB. A running
 ArangoDB Cluster is resilient against failures and essentially repairs
-itself in case of temporary failures. See the next section for further
-capabilities in this direction.
+itself in case of temporary failures. 
