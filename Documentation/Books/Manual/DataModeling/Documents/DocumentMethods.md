@@ -580,7 +580,7 @@ used to specify the following options:
     is returned in the output under the attribute *new*.
   - *returnOld*: If this flag is set to *true*, the complete old document
     is returned in the output under the attribute *old*. Only available 
-    in combiantion with the *overwrite* option
+    in combination with the *overwrite* option
 
 `collection.insert(array)`
 
