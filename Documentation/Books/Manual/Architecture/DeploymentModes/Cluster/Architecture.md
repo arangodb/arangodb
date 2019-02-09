@@ -223,6 +223,14 @@ replicate it to the _follower_.
    }
    ```
 
+Obviously, synchronous replication involves a certain increased latency for
+write operations, simply because there is one more network hop within the
+Cluster for every request. Therefore the user can set the _replicationFactor_
+to 1, which means that only one copy of each shard is kept, thereby
+switching off synchronous replication. This is a suitable setting for
+less important or easily recoverable data for which low latency write
+operations matter.
+
 Automatic failover
 ------------------
 
@@ -343,14 +351,6 @@ distribution of the _shards_, either manually or automatically.
 All these operations can be triggered via a REST/JSON API or via the
 graphical web UI. All fail-over operations are completely handled within
 the ArangoDB Cluster.
-
-Obviously, synchronous replication involves a certain increased latency for
-write operations, simply because there is one more network hop within the
-Cluster for every request. Therefore the user can set the _replicationFactor_
-to 1, which means that only one copy of each shard is kept, thereby
-switching off synchronous replication. This is a suitable setting for
-less important or easily recoverable data for which low latency write
-operations matter.
 
 Microservices and zero administation
 ------------------------------------
