@@ -1079,7 +1079,7 @@ removed.
     @startDocuBlockInline 010_documentsCollectionRemoveByExample
     @EXAMPLE_ARANGOSH_OUTPUT{010_documentsCollectionRemoveByExample}
     ~ db._create("example");
-    ~ db.example.save({ Hello : "world" });
+    ~ db.example.insert({ Hello : "world" });
       db.example.removeByExample( {Hello : "world"} );
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -1126,7 +1126,7 @@ replaced.
     @startDocuBlockInline 011_documentsCollectionReplaceByExample
     @EXAMPLE_ARANGOSH_OUTPUT{011_documentsCollectionReplaceByExample}
     ~ db._create("example");
-      db.example.save({ Hello : "world" });
+      db.example.insert({ Hello : "world" });
       db.example.replaceByExample({ Hello: "world" }, {Hello: "mars"}, false, 5);
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -1192,7 +1192,7 @@ an object with the following sub-attributes:
     @startDocuBlockInline 012_documentsCollectionUpdateByExample
     @EXAMPLE_ARANGOSH_OUTPUT{012_documentsCollectionUpdateByExample}
     ~ db._create("example");
-      db.example.save({ Hello : "world", foo : "bar" });
+      db.example.insert({ Hello : "world", foo : "bar" });
       db.example.updateByExample({ Hello: "world" }, { Hello: "foo", World: "bar" }, false);
       db.example.byExample({ Hello: "foo" }).toArray()
     ~ db._drop("example");
@@ -1344,7 +1344,7 @@ as second argument.
     ~db._create("example")
     |for (i = -90;  i <= 90;  i += 10) {
     |  for (j = -180;  j <= 180;  j += 10) {
-    |    db.example.save({ name : "Name/" + i + "/" + j,
+    |    db.example.insert({ name : "Name/" + i + "/" + j,
     |                      home : [ i, j ],
     |                      work : [ -i, -j ] });
     |  }
