@@ -6,13 +6,9 @@ single point of failure.
 
 With "CP" we mean that in the presence of a
 network partition, the database prefers internal consistency over
-availability. 
-
-With "master/master" we mean that clients can send their
+availability. With "master/master" we mean that clients can send their
 requests to an arbitrary node, and experience the same view on the
-database regardless. 
-
-"No single point of failure" means that the cluster
+database regardless. "No single point of failure" means that the cluster
 can continue to serve requests, even if one machine fails completely.
 
 In this way, ArangoDB has been designed as a distributed multi-model
