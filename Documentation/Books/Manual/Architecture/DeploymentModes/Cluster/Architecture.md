@@ -386,3 +386,14 @@ To simplify life of the _devops_ in such a scenario we try as much as
 possible to use a _zero administration_ approach for ArangoDB. A running
 ArangoDB Cluster is resilient against failures and essentially repairs
 itself in case of temporary failures. 
+
+Deployment
+----------
+
+An ArangoDB Cluster can be deployed in several ways, e.g. by manually
+starting all the needed instances, by using the tool 
+[_Starter_](../../../Programs/Starter/README.md), in
+Docker, in Mesos or DC/OS, and in Kubernetes.
+
+See the [Cluster Deployment](../../../Deployment/Cluster/README.md)
+for instructions.
