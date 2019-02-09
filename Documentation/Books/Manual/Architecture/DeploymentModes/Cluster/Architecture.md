@@ -115,6 +115,17 @@ is started, if the desired _Agency_ _size_ is 3, or on the first 5 machines
 if the desired _Agency_ _size_ is 5.
 {% endhint %}
 
+{% hint 'info' %}
+The difference instances part of a single Cluster are supposed to be run in the same
+_Data Center_ (DC), with reliable and high-speed network connection between
+all the machines participating to the Cluster.
+
+Multi-datacenter Clusters, where the entire structure and content of a Cluster located
+in a specific DC is replicated to others Clusters located in different DCs, are
+possible as well. See [Datacenter to datacenter replication](../DC2DC/README.md)
+(DC2DC) for further details.
+{% endhint %}
+
 Cluster ID
 ----------
 
