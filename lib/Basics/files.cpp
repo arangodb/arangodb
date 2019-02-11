@@ -947,6 +947,61 @@ char* TRI_SlurpFile(char const* filename, size_t* length) {
   return result._buffer;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Read a file and pass contents to user function:  true if entire file
+///        processed
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ProcessFile(char const* filename,
+                     std::function<bool(const char * block, size_t size)> reader ) {
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
+  int fd = TRI_TRACKED_OPEN_FILE(filename, O_RDONLY | TRI_O_CLOEXEC);
+  bool good(true);
+
+  if (fd == -1) {
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    return false;
+  }
+
+  TRI_string_buffer_t result;
+  TRI_InitStringBuffer(&result, false);
+
+  while (good) {
+    int res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_TRACKED_CLOSE_FILE(fd);
+      TRI_AnnihilateStringBuffer(&result);
+
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+      return false;
+    }
+
+    ssize_t n = TRI_READ(fd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
+
+    if (n == 0) {
+      break;
+    }
+
+    if (n < 0) {
+      TRI_TRACKED_CLOSE_FILE(fd);
+
+      TRI_AnnihilateStringBuffer(&result);
+
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      return false;
+    }
+
+    TRI_IncreaseLengthStringBuffer(&result, (size_t)n);
+
+    good=reader(result._buffer, n);
+  }
+
+  TRI_TRACKED_CLOSE_FILE(fd);
+  return good;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a lock file based on the PID
 ////////////////////////////////////////////////////////////////////////////////
