@@ -976,10 +976,9 @@ SECTION("test_write") {
     REQUIRE(l != nullptr);
     CHECK((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
+    CHECK((l->commit().ok()));
   }
 
-  flush->executeCallbacks(); // prepare memory store to be flushed to persisted storage
-  CHECK((view->commit().ok()));
   CHECK((1 == reader.reopen().live_docs_count()));
 
   {
@@ -995,10 +994,9 @@ SECTION("test_write") {
     REQUIRE(l != nullptr);
     CHECK((l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
+    CHECK((l->commit().ok()));
   }
 
-  flush->executeCallbacks(); // prepare memory store to be flushed to persisted storage
-  CHECK((view->commit().ok()));
   CHECK((2 == reader.reopen().live_docs_count()));
 
   {
@@ -1014,13 +1012,11 @@ SECTION("test_write") {
     REQUIRE(l != nullptr);
     CHECK((l->remove(trx, arangodb::LocalDocumentId(2), doc1->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
+    CHECK((l->commit().ok()));
   }
 
-  flush->executeCallbacks(); // prepare memory store to be flushed to persisted storage
-  CHECK((view->commit().ok()));
   CHECK((1 == reader.reopen().live_docs_count()));
   logicalCollection->dropIndex(link->id());
-  CHECK((view->commit().ok()));
   CHECK_THROWS((reader.reopen()));
 }
 

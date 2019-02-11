@@ -41,13 +41,9 @@ struct TRI_vocbase_t;  // forward declaration
 namespace arangodb {
 
 class FlushThread;
-class FlushTransaction;
 
 class FlushFeature final : public application_features::ApplicationFeature {
  public:
-  typedef std::unique_ptr<FlushTransaction, std::function<void(FlushTransaction*)>> FlushTransactionPtr;
-
-  typedef std::function<FlushTransactionPtr()> FlushCallback;
 
   /// @brief handle a 'Flush' marker during recovery
   /// @param vocbase the vocbase the marker applies to
@@ -109,25 +105,11 @@ class FlushFeature final : public application_features::ApplicationFeature {
 
   static bool isRunning() { return _isRunning.load(); }
 
-  /// @brief register the callback, using ptr as key
-  void registerCallback(void* ptr, FlushFeature::FlushCallback const& cb);
-
-  /// @brief unregister the callback, by ptr
-  /// if the callback is unknown, returns false.
-  bool unregisterCallback(void* ptr);
-
-  /// @brief executes all callbacks. the order in which they are executed is
-  /// undefined
-  void executeCallbacks();
-
  private:
   uint64_t _flushInterval;
   std::unique_ptr<FlushThread> _flushThread;
   static std::atomic<bool> _isRunning;
   basics::ReadWriteLock _threadLock;
-
-  basics::ReadWriteLock _callbacksLock;
-  std::unordered_map<void*, FlushCallback> _callbacks;
   std::unordered_set<std::shared_ptr<FlushSubscriptionBase>> _flushSubscriptions;
   std::mutex _flushSubscriptionsMutex;
 };

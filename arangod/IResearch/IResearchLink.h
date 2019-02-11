@@ -51,20 +51,6 @@ class IResearchLink {
   typedef std::shared_ptr<TypedResourceMutex<IResearchLink>> AsyncLinkPtr;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief runtime (not persisted) configurable properties of a link
-  //////////////////////////////////////////////////////////////////////////////
-  struct RuntimeMeta {
-    size_t _cleanupIntervalStep{0}; // issue cleanup after <count> commits (0 == disable)
-    size_t _commitIntervalMsec{0}; // issue commit after <interval> milliseconds (0 == disable)
-    size_t _consolidationIntervalMsec{0}; // issue consolidation after <interval> milliseconds (0 == disable)
-    IResearchViewMeta::ConsolidationPolicy _consolidationPolicy; // the consolidation policy to use
-    size_t _writebufferActive{0}; // maximum number of concurrent segments before segment aquisition blocks, e.g. max number of concurrent transacitons) (0 == unlimited)
-    size_t _writebufferSizeMax{0}; // maximum memory byte size per segment before a segment flush is triggered (0 == unlimited)
-    bool operator==(RuntimeMeta const& other) const noexcept;
-    bool operator!=(RuntimeMeta const& other) const noexcept;
-  };
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief a snapshot representation of the data-store
   ///        locked to prevent data store deallocation
   //////////////////////////////////////////////////////////////////////////////
@@ -124,14 +110,6 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   arangodb::Result commit();
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief invoke internal data store consolidation with the specified policy
-  /// @return success
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result consolidate(IResearchViewMeta::ConsolidationPolicy const& policy,
-                               irs::merge_writer::flush_progress_t const& progress,
-                               bool runCleanupAfterConsolidation);
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is dropped
   ////////////////////////////////////////////////////////////////////////////////
@@ -185,7 +163,7 @@ class IResearchLink {
   /// @brief update runtine data processing properties (not persisted)
   /// @return success
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result properties(RuntimeMeta const& meta);
+  arangodb::Result properties(IResearchViewMeta const& meta);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an ArangoDB document from an iResearch View
@@ -261,7 +239,7 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   struct DataStore {
     irs::directory::ptr _directory;
-    RuntimeMeta _meta; // runtime properties (not persisted)
+    IResearchViewMeta _meta; // runtime meta for a data store (not persisted)
     irs::async_utils::read_write_mutex _mutex; // for use with member '_meta'
     irs::utf8_path _path;
     irs::directory_reader _reader;
