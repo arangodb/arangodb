@@ -102,6 +102,7 @@ class OutputAqlItemRow {
     TRI_ASSERT(!_inputRowCopied);
     TRI_ASSERT(allValuesWritten());
     if (_inputRowCopied) {
+      _lastBaseIndex = _baseIndex;
       return;
     }
 
@@ -113,6 +114,7 @@ class OutputAqlItemRow {
 #endif
       _inputRowCopied = true;
       _lastSourceRow = sourceRow;
+      _lastBaseIndex = _baseIndex;
       return;
     }
 
@@ -138,6 +140,7 @@ class OutputAqlItemRow {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INPUT_REGISTERS_NOT_COPIED);
     }
 #endif
+    _lastBaseIndex = _baseIndex;
     ++_baseIndex;
     _inputRowCopied = false;
     _numValuesWritten = 0;
@@ -207,6 +210,7 @@ class OutputAqlItemRow {
    * @brief The offset into the AqlItemBlock. In other words, the row's index.
    */
   size_t _baseIndex;
+  size_t _lastBaseIndex;
 
   /**
    * @brief Whether the input registers were copied from a source row.
