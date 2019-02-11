@@ -198,7 +198,7 @@ int TRI_createFile(char const* filename, int openFlags, int modeFlags) {
   icu::UnicodeString fn(filename);
 
   fileHandle =
-    CreateFileW(reinterpret_cast<wchar_t*>(fn.getTerminatedBuffer()), GENERIC_READ | GENERIC_WRITE,
+      CreateFileW((wchar_t*)fn.getTerminatedBuffer(), GENERIC_READ | GENERIC_WRITE,
                   FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
                   (openFlags & O_APPEND) ? OPEN_ALWAYS : CREATE_NEW, 0, NULL);
 
@@ -244,7 +244,7 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
   }
 
   icu::UnicodeString fn(filename);
-  fileHandle = CreateFileW(reinterpret_cast<wchar_t*>(fn.getTerminatedBuffer()), mode,
+  fileHandle = CreateFileW((wchar_t*)fn.getTerminatedBuffer(), mode,
                            FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
                            NULL, OPEN_EXISTING, 0, NULL);
 
@@ -260,18 +260,17 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
 FILE* TRI_FOPEN(char const* filename, char const* mode) {
   icu::UnicodeString fn(filename);
   icu::UnicodeString umod(mode);
-  return _wfopen(reinterpret_cast<wchar_t*>(fn.getTerminatedBuffer()),
-                 reinterpret_cast<wchar_t*>(umod.getTerminatedBuffer()));
+  return _wfopen((wchar_t*)fn.getTerminatedBuffer(), (wchar_t*)umod.getTerminatedBuffer());
 }
 
 int TRI_CHDIR(char const* dirname) {
   icu::UnicodeString dn(dirname);
-  return ::_wchdir(reinterpret_cast<wchar_t*>(dn.getTerminatedBuffer()));
+  return ::_wchdir((wchar_t*)dn.getTerminatedBuffer());
 }
 
 int TRI_STAT(char const* path, TRI_stat_t* buffer) {
   icu::UnicodeString p(path);
-  auto rc = ::_wstat64(reinterpret_cast<wchar_t*>(p.getTerminatedBuffer()), buffer);
+  auto rc = ::_wstat64((wchar_t*)p.getTerminatedBuffer(), buffer);
   return rc;
 }
 
@@ -302,16 +301,16 @@ char* TRI_GETCWD(char* buffer, int maxlen) {
 
 int TRI_MKDIR_WIN32(char const* dirname) {
   icu::UnicodeString dir(dirname);
-  return ::_wmkdir(reinterpret_cast<wchar_t*>(dir.getTerminatedBuffer()));
+  return ::_wmkdir((wchar_t*)dir.getTerminatedBuffer());
 }
 
 int TRI_RMDIR(char const* dirname) {
   icu::UnicodeString dir(dirname);
-  return ::_wrmdir(reinterpret_cast<wchar_t*>(dir.getTerminatedBuffer()));
+  return ::_wrmdir((wchar_t*)dir.getTerminatedBuffer());
 }
 int TRI_UNLINK(char const* filename) {
   icu::UnicodeString fn(filename);
-  return ::_wunlink(reinterpret_cast<wchar_t*>(fn.getTerminatedBuffer()));
+  return ::_wunlink((wchar_t*)fn.getTerminatedBuffer());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -514,10 +513,9 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
 
   icu::UnicodeString ubufs[]{icu::UnicodeString(buf, len), icu::UnicodeString(file),
                         icu::UnicodeString(func), icu::UnicodeString(linebuf)};
-  LPCWSTR buffers[] = {reinterpret_cast<wchar_t*>(ubufs[0].getTerminatedBuffer()),
-                       reinterpret_cast<wchar_t*>(ubufs[1].getTerminatedBuffer()),
-                       reinterpret_cast<wchar_t*>(ubufs[2].getTerminatedBuffer()),
-                       reinterpret_cast<wchar_t*>(ubufs[3].getTerminatedBuffer()), nullptr};
+  LPCWSTR buffers[] = {(wchar_t*)ubufs[0].getTerminatedBuffer(),
+                       (wchar_t*)ubufs[1].getTerminatedBuffer(), (wchar_t*)ubufs[2].getTerminatedBuffer(),
+                       (wchar_t*)ubufs[3].getTerminatedBuffer(), nullptr};
   // Try to get messages through to windows syslog...
   if (!ReportEventW(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
                     MSG_INVALID_COMMAND, NULL, 4, 0, buffers, NULL)) {
@@ -539,10 +537,9 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
 
   icu::UnicodeString ubufs[]{icu::UnicodeString(buf, len), icu::UnicodeString(file),
                         icu::UnicodeString(func), icu::UnicodeString(linebuf)};
-  LPCWSTR buffers[] = {reinterpret_cast<wchar_t*>(ubufs[0].getTerminatedBuffer()),
-                       reinterpret_cast<wchar_t*>(ubufs[1].getTerminatedBuffer()),
-                       reinterpret_cast<wchar_t*>(ubufs[2].getTerminatedBuffer()),
-                       reinterpret_cast<wchar_t*>(ubufs[3].getTerminatedBuffer()), nullptr};
+  LPCWSTR buffers[] = {(wchar_t*)ubufs[0].getTerminatedBuffer(),
+                       (wchar_t*)ubufs[1].getTerminatedBuffer(), (wchar_t*)ubufs[2].getTerminatedBuffer(),
+                       (wchar_t*)ubufs[3].getTerminatedBuffer(), nullptr};
   // Try to get messages through to windows syslog...
   if (!ReportEventW(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
                     MSG_INVALID_COMMAND, NULL, 4, 0, buffers, NULL)) {
