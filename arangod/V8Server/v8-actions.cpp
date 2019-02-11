@@ -38,6 +38,7 @@
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "Utils/ExecContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -51,7 +52,6 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
-#include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -356,6 +356,19 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
     req->ForceSet(UserKey, v8::Null(isolate));
   } else {
     req->ForceSet(UserKey, TRI_V8_STD_STRING(isolate, user));
+  }
+  
+  TRI_GET_GLOBAL_STRING(IsAdminUser);
+  if (request->authenticated()) {
+    if (user.empty() || (ExecContext::CURRENT != nullptr &&
+                         ExecContext::CURRENT->isAdminUser())) {
+      req->ForceSet(IsAdminUser, v8::True(isolate));
+    } else {
+      req->ForceSet(IsAdminUser, v8::False(isolate));
+    }
+  } else {
+    req->ForceSet(IsAdminUser, ExecContext::isAuthEnabled() ?
+                  v8::False(isolate) : v8::True(isolate));
   }
 
   // create database attribute
@@ -1522,7 +1535,6 @@ static void JS_DebugShouldFailAt(v8::FunctionCallbackInfo<v8::Value> const& args
   if (v8g->_vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
-  std::string dbname(v8g->_vocbase->name());
 
   // extract arguments
   if (args.Length() != 1) {

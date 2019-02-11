@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/StringRef.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 #include <rocksdb/slice.h>
@@ -71,6 +72,9 @@ class RocksDBLogValue {
   static RocksDBLogValue SinglePut(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid);
   static RocksDBLogValue SingleRemoveV2(TRI_voc_tick_t vocbaseId,
                                         TRI_voc_cid_t cid, TRI_voc_rid_t rid);
+  
+  static RocksDBLogValue TrackedDocumentInsert(LocalDocumentId, velocypack::Slice const&);
+  static RocksDBLogValue TrackedDocumentRemove(LocalDocumentId, velocypack::Slice const&);
 
   // empty log value
   static RocksDBLogValue Empty();
@@ -96,8 +100,11 @@ class RocksDBLogValue {
   /// @brief get UUID from view drop marker
   static arangodb::StringRef viewUUID(rocksdb::Slice const&);
 
-  // deprecated method for old collection drop marker
+  /// @deprecated method for old collection drop marker
   static arangodb::StringRef oldCollectionName(rocksdb::Slice const&);
+  
+  /// @brief get slice from tracked document
+  static std::pair<LocalDocumentId, velocypack::Slice> trackedDocument(rocksdb::Slice const&);
 
   static bool containsDatabaseId(RocksDBLogType type);
   static bool containsCollectionId(RocksDBLogType type);

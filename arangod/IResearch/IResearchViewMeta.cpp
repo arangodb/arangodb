@@ -255,8 +255,12 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
     return false;  // values do not match
   }
 
-  if (!_consolidationPolicy.properties().equals(other._consolidationPolicy.properties())) {
-    return false;  // values do not match
+  try {
+    if (!_consolidationPolicy.properties().equals(other._consolidationPolicy.properties())) {
+      return false; // values do not match
+    }
+  } catch (...) {
+    return false; // exception during match
   }
 
   if (irs::locale_utils::language(_locale) != irs::locale_utils::language(other._locale) ||
@@ -731,5 +735,5 @@ size_t IResearchViewMetaState::memory() const {
 }  // namespace arangodb
 
 // -----------------------------------------------------------------------------
-// --SECTION-- END-OF-FILE
+// --SECTION--                                                      END-OF-FILE
 // -----------------------------------------------------------------------------

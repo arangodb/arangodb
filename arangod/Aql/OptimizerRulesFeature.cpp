@@ -20,12 +20,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRulesFeature.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringRef.h"
 #include "Cluster/ServerState.h"
+#include "OptimizerRulesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -282,6 +282,11 @@ void OptimizerRulesFeature::addRules() {
   // remove FILTER DISTANCE(...) and SORT DISTANCE(...)
   OptimizerRulesFeature::registerRule("geo-index-optimizer", geoIndexRule,
                                       OptimizerRule::applyGeoIndexRule,
+                                      DoesNotCreateAdditionalPlans, CanBeDisabled);
+
+  // make sort node aware of subsequent limit statements for internal optimizations
+  OptimizerRulesFeature::registerRule("sort-limit", sortLimitRule,
+                                      OptimizerRule::applySortLimitRule,
                                       DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   if (arangodb::ServerState::instance()->isCoordinator()) {

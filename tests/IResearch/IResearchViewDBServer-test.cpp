@@ -258,7 +258,7 @@ SECTION("test_drop") {
     CHECK((false == !arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *wiew)));
     CHECK((true == impl->drop().ok()));
     CHECK((true == !arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *wiew)));
-    CHECK((true == impl->visitCollections(visitor)));
+    CHECK((false == impl->visitCollections(visitor))); // list of links is not modified after link drop
   }
 
   // drop non-empty (drop failure)
@@ -1457,7 +1457,7 @@ SECTION("test_updateProperties") {
       auto slice = builder.slice();
       CHECK((slice.isObject()));
       CHECK((15U == slice.length()));
-      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
+      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 2 == slice.get("collections").length())); // list of links is not modified after link drop
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((false == slice.hasKey("links")));

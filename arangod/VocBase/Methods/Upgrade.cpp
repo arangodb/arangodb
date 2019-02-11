@@ -17,7 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Gräter
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Upgrade.h"

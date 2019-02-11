@@ -135,6 +135,8 @@ class SortedCollectBlock final : public ExecutionBlock {
 
   /// @brief list of variables names for the registers
   std::vector<std::string> _variableNames;
+
+  bool _registersInherited;
 };
 
 class HashedCollectBlock final : public ExecutionBlock {

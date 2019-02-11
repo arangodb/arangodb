@@ -99,10 +99,12 @@ struct DocIdScorer: public irs::sort {
 
   struct Prepared: public irs::sort::prepared_base<uint64_t> {
     virtual void add(irs::byte_type* dst, const irs::byte_type* src) const override { score_cast(dst) = score_cast(src); }
+    virtual void collect(irs::attribute_store& filter_attrs, const irs::index_reader& index, const irs::sort::field_collector* field, const irs::sort::term_collector* term) const override {}
     virtual irs::flags const& features() const override { return irs::flags::empty_instance(); }
     virtual bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override { return score_cast(lhs) < score_cast(rhs); }
-    virtual irs::sort::collector::ptr prepare_collector() const override { return nullptr; }
+    virtual irs::sort::field_collector::ptr prepare_field_collector() const override { return nullptr; }
     virtual void prepare_score(irs::byte_type* score) const override { }
+    virtual irs::sort::term_collector::ptr prepare_term_collector() const override { return nullptr; }
     virtual irs::sort::scorer::ptr prepare_scorer(
       irs::sub_reader const& segment,
       irs::term_reader const& field,
@@ -1600,6 +1602,30 @@ SECTION("test_insert") {
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
+    {
+      // ensure the data store directory exists with data
+      auto before = StorageEngineMock::inRecoveryResult;
+      StorageEngineMock::inRecoveryResult = false;
+      auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
+      std::shared_ptr<arangodb::Index> index;
+      REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
+      auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      REQUIRE((false == !link));
+      auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
+      arangodb::iresearch::IResearchLinkMeta linkMeta;
+      arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        arangodb::transaction::Options()
+      );
+      linkMeta._includeAllFields = true;
+      CHECK((trx.begin().ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((trx.commit().ok()));
+      CHECK((link->commit().ok()));
+    }
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
     REQUIRE((false == !index));
@@ -1650,6 +1676,30 @@ SECTION("test_insert") {
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
+    {
+      // ensure the data store directory exists with data
+      auto before = StorageEngineMock::inRecoveryResult;
+      StorageEngineMock::inRecoveryResult = false;
+      auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
+      std::shared_ptr<arangodb::Index> index;
+      REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
+      auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      REQUIRE((false == !link));
+      auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
+      arangodb::iresearch::IResearchLinkMeta linkMeta;
+      arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        arangodb::transaction::Options()
+      );
+      linkMeta._includeAllFields = true;
+      CHECK((trx.begin().ok()));
+      CHECK((link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), arangodb::Index::OperationMode::normal).ok()));
+      CHECK((trx.commit().ok()));
+      CHECK((link->commit().ok()));
+    }
     std::shared_ptr<arangodb::Index> index;
     REQUIRE((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, *logicalCollection, linkJson->slice(), 42, false).ok()));
     REQUIRE((false == !index));
