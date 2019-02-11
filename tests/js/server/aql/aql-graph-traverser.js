@@ -4057,7 +4057,6 @@ function pruneTraversalSuite() {
   return testObj;
 }
 
-/*
 jsunity.run(simpleInboundOutboundSuite);
 jsunity.run(limitSuite);
 jsunity.run(nestedSuite);
@@ -4077,7 +4076,6 @@ jsunity.run(exampleGraphsSuite);
 if (!isCluster) {
   jsunity.run(optimizeNonVertexCentricIndexesSuite);
 }
-*/
 
 jsunity.run(pruneTraversalSuite);
 
