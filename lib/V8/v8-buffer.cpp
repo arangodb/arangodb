@@ -698,7 +698,7 @@ V8Buffer* V8Buffer::New(v8::Isolate* isolate, char const* data, size_t length) {
       BufferTempl->GetFunction()->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
 
   V8Buffer* buffer = V8Buffer::unwrap(obj);
-  buffer->replace(isolate, const_cast<char*>(data), length, NULL, NULL);
+  buffer->replaceContent(isolate, const_cast<char*>(data), length, NULL, NULL);
 
   return buffer;
 }
@@ -717,12 +717,12 @@ V8Buffer* V8Buffer::New(v8::Isolate* isolate, char* data, size_t length,
       BufferTempl->GetFunction()->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
 
   V8Buffer* buffer = V8Buffer::unwrap(obj);
-  buffer->replace(isolate, data, length, callback, hint);
+  buffer->replaceContent(isolate, data, length, callback, hint);
 
   return buffer;
 }
 
-V8Buffer::~V8Buffer() { replace(_isolate, NULL, 0, NULL, NULL); }
+V8Buffer::~V8Buffer() { this->replaceContent(_isolate, NULL, 0, NULL, NULL); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief private constructor
@@ -735,7 +735,7 @@ V8Buffer::V8Buffer(v8::Isolate* isolate, v8::Handle<v8::Object> wrapper, size_t 
       _length(0),
       _data(nullptr),
       _callback(nullptr) {
-  replace(isolate, NULL, length, NULL, NULL);
+  this->replaceContent(isolate, NULL, length, NULL, NULL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -770,8 +770,8 @@ bool V8Buffer::hasInstance(v8::Isolate* isolate, v8::Handle<v8::Value> val) {
 /// @brief replaces the buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Buffer::replace(v8::Isolate* isolate, char* data, size_t length,
-                       free_callback_fptr callback, void* hint) {
+void V8Buffer::replaceContent(v8::Isolate* isolate, char* data, size_t length,
+                              free_callback_fptr callback, void* hint) {
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
   if (_callback != nullptr) {
