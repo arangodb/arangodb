@@ -137,8 +137,6 @@ class IndexExecutorInfos : public ExecutorInfos {
     return true;
   };
 
-  size_t getReturned() { return _returned; };
-
   // setter
 void setHasMultipleExpansions(bool flag) { _hasMultipleExpansions = flag; };
 
@@ -218,7 +216,6 @@ void setHasMultipleExpansions(bool flag) { _hasMultipleExpansions = flag; };
   /// @brief Counter how many documents have been returned/skipped
   ///        during one call. Retained during WAITING situations.
   ///        Needs to be 0 after we return a result.
-  size_t _returned;
   bool _hasV8Expression;
 };
 
@@ -266,7 +263,7 @@ class IndexExecutor {
   void startNextCursor();
 
   /// @brief continue fetching of documents
-  bool readIndex(size_t atMost, IndexIterator::DocumentCallback const&);
+  bool readIndex(IndexIterator::DocumentCallback const&);
 
   /// @brief order a cursor for the index at the specified position
   OperationCursor* orderCursor(size_t currentIndex);

@@ -90,11 +90,11 @@ IndexExecutorInfos::IndexExecutorInfos(
       _isLastIndex(false),
       _options(options),
       // currentIndex
-      _cursor(nullptr),
+      _cursor(nullptr), // TODO
 
-      _indexesExhausted(false),
-      _done(false),
-      _cursors(indexes.size()),
+      _indexesExhausted(false), // TODO
+      _done(false), // TODO
+      _cursors(indexes.size()), // TODO
 
       _outputRegisterId(outputRegister),
       _engine(engine),
@@ -109,7 +109,6 @@ IndexExecutorInfos::IndexExecutorInfos(
       _useRawDocumentPointers(useRawDocumentPointers),
       _nonConstExpression(std::move(nonConstExpression)),
       _produceResult(produceResult),
-      _returned(0),
       _hasV8Expression(hasV8Expression) {}
 
 IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
@@ -237,7 +236,7 @@ void IndexExecutor::startNextCursor() {
 }
 
 // this is called every time we need to fetch data from the indexes
-bool IndexExecutor::readIndex(size_t atMost, IndexIterator::DocumentCallback const& callback) {
+bool IndexExecutor::readIndex(IndexIterator::DocumentCallback const& callback) {
   // this is called every time we want to read the index.
   // For the primary key index, this only reads the index once, and never
   // again (although there might be multiple calls to this function).
@@ -246,10 +245,8 @@ bool IndexExecutor::readIndex(size_t atMost, IndexIterator::DocumentCallback con
   // Then initIndexes is read again and so on. This is to avoid reading the
   // entire index when we only want a small number of documents.
 
-  if (_infos.getCursor() == nullptr || _infos.getIndexesExhausted()) {
-    // All indexes exhausted
-    return false;
-  }
+
+  TRI_ASSERT(_infos.getCursor() != nullptr && !_infos.getIndexesExhausted());
 
   while (_infos.getCursor() != nullptr) {
     if (!_infos.getCursor()->hasMore()) {
@@ -257,18 +254,9 @@ bool IndexExecutor::readIndex(size_t atMost, IndexIterator::DocumentCallback con
       continue;
     }
 
-    TRI_ASSERT(atMost >= _infos.getReturned());
-
-     if (_infos.getReturned() == atMost) {
-       // We have returned enough, do not check if we have more
-       return true;
-     }
-
     TRI_IF_FAILURE("IndexBlock::readIndex") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-
-    TRI_ASSERT(atMost >= _infos.getReturned());
 
     bool res;
     if (!_infos.getProduceResult()) {
@@ -278,7 +266,7 @@ bool IndexExecutor::readIndex(size_t atMost, IndexIterator::DocumentCallback con
           [&callback](LocalDocumentId const& id) {
             callback(id, VPackSlice::nullSlice());
           },
-          atMost);
+          1);
     } else {
       // check if the *current* cursor supports covering index queries or not
       // if we can optimize or not must be stored in our instance, so the
@@ -290,10 +278,10 @@ bool IndexExecutor::readIndex(size_t atMost, IndexIterator::DocumentCallback con
       if (_infos.getAllowCoveringIndexOptimization() &&
           !_infos.getCoveringIndexAttributePositions().empty()) {
         // index covers all projections
-        res = _infos.getCursor()->nextCovering(callback, atMost);
+        res = _infos.getCursor()->nextCovering(callback, 1);
       } else {
         // we need the documents later on. fetch entire documents
-        res = _infos.getCursor()->nextDocument(callback, atMost);
+        res = _infos.getCursor()->nextDocument(callback, 1);
       }
     }
 
@@ -441,7 +429,7 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
   IndexStats stats{};
 
   while (true) {
-    if (_infos.getIndexesExhausted() || !_initDone) {
+    if (!_input) {
       std::tie(_state, _input) = _fetcher.fetchRow();
 
       if (_state == ExecutionState::WAITING) {
@@ -453,46 +441,20 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
         return {_state, stats};
       }
 
+      // TODO when does init inidxex fail
       if (!initIndexes(_input)) {
-        _infos.setDone(true);
-        break;
+        return {ExecutionState::DONE, stats};
       }
-
-      _initDone = true;
-    }
-
-    if (_infos.getDone() && _state == ExecutionState::DONE) {
-      return {ExecutionState::DONE, stats};
-    }
-
-    if (_state == ExecutionState::WAITING) {
-      return {_state, stats};
-    }
-
-    if (!_input) {
-      TRI_ASSERT(_state == ExecutionState::DONE);
-      return {_state, stats};
     }
     TRI_ASSERT(_input.isInitialized());
 
-    // TODO  init indizes, right position?
-    // initIndexes(input);
-   /* if (!initIndexes(input)) {
-      _infos.setDone(true);
-      break;
-    }*/
-
-    if (_infos.getDone()) {
-      return {_state, stats};
-    }
-
-    // LOGIC HERE
     IndexIterator::DocumentCallback callback;
-    // size_t const nrInRegs = _infos.numberOfInputRegisters(); // TODO REMOVE ME
+
+    bool hasWritten = false;
 
     if (_infos.getIndexes().size() > 1 || _infos.hasMultipleExpansions()) {
       // Activate uniqueness checks
-      callback = [this, &output](LocalDocumentId const& token, VPackSlice slice) {
+      callback = [this, &output, &hasWritten](LocalDocumentId const& token, VPackSlice slice) {
         if (!_infos.isLastIndex()) {
           // insert & check for duplicates in one go
           if (!_alreadyReturned.insert(token.id()).second) {
@@ -506,23 +468,15 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
             return;
           }
         }
-
         _documentProducer(this->_input, output, slice, _infos.getOutputRegisterId());
+        hasWritten = true;
       };
     } else {
       // No uniqueness checks
-      callback = [this, &output](LocalDocumentId const&, VPackSlice slice) {
+      callback = [this, &output, &hasWritten](LocalDocumentId const&, VPackSlice slice) {
         _documentProducer(this->_input, output, slice, _infos.getOutputRegisterId());
+        hasWritten = true;
       };
-    }
-
-    if (_infos.getIndexesExhausted()) {
-      if (!initIndexes(_input)) {
-        // not found any index, so we are done
-        _infos.setDone(true);
-        break;
-      }
-      TRI_ASSERT(!_infos.getIndexesExhausted());
     }
 
     // We only get here with non-exhausted indexes.
@@ -530,18 +484,18 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
     TRI_ASSERT(!_infos.getIndexesExhausted());
 
     // Read the next elements from the indexes
-    auto saveReturned = _infos.getReturned();
-    _infos.setIndexesExhausted(!readIndex(1, callback));
-    if (_infos.getReturned() != saveReturned) {
-      // Update statistics
-      stats.incrScanned(_infos.getReturned() - saveReturned);
+ //    auto saveReturned = _infos.getReturned();
+    if (!readIndex(callback)) {
+      _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
     }
 
-    if (_infos.getIndexesExhausted()) {
-      _infos.setDone(true);
-      return {ExecutionState::DONE, stats};
-    }
+    if (hasWritten) {
+      stats.incrScanned(1);
 
-    return {ExecutionState::HASMORE, stats};
+      if (_state == ExecutionState::DONE && !_input) {
+        return {ExecutionState::DONE, stats};
+      }
+      return {ExecutionState::HASMORE, stats};
+    }
   }
 }

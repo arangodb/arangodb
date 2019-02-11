@@ -39,12 +39,6 @@ namespace aql {
 
 typedef std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
 
-static DocumentProducingFunction buildCallback(
-    DocumentProducingFunction, Variable const* outVariable, bool produceResult,
-    std::vector<std::string> const& projections, transaction::Methods* trxPtr,
-    std::vector<size_t> const& coveringIndexAttributePositions,
-    bool allowCoveringIndexOptimization, bool useRawDocumentPointers);
-
 inline void handleProjections(std::vector<std::string> const& projections,
                               transaction::Methods const* trxPtr, VPackSlice slice,
                               VPackBuilder& b, bool useRawDocumentPointers) {
