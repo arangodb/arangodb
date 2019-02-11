@@ -1214,8 +1214,7 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
 /// for their documents.
 ////////////////////////////////////////////////////////////////////////////////
 
-Result createDocumentOnCoordinator(transaction::Methods& trx,
-                                   std::string const& collname,
+Result createDocumentOnCoordinator(transaction::Methods& trx, std::string const& collname,
                                    arangodb::OperationOptions const& options,
                                    VPackSlice const& slice,
                                    arangodb::rest::ResponseCode& responseCode,
@@ -1321,6 +1320,9 @@ Result createDocumentOnCoordinator(transaction::Methods& trx,
     }
 
     auto headers = ::CreateNoLockHeader(trx, it.first);
+    if (headers == nullptr) {
+      headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+    }
     ClusterMethods::transactionHeader(trx, *headers);
     requests.emplace_back("shard:" + it.first, arangodb::rest::RequestType::POST,
                           baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
@@ -1493,6 +1495,9 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
         body = std::make_shared<std::string>(reqBuilder.slice().toJson());
       }
       auto headers = ::CreateNoLockHeader(trx, it.first);
+      if (headers == nullptr) {
+        headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+      }
       ClusterMethods::transactionHeader(trx, *headers);
       requests.emplace_back("shard:" + it.first, arangodb::rest::RequestType::DELETE_REQ,
                             baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
@@ -1613,8 +1618,7 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Result truncateCollectionOnCoordinator(transaction::Methods& trx,
-                                       std::string const& collname) {
+Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string const& collname) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
@@ -1687,9 +1691,8 @@ Result truncateCollectionOnCoordinator(transaction::Methods& trx,
 /// @brief get a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int getDocumentOnCoordinator(arangodb::transaction::Methods& trx,
-                             std::string const& collname, VPackSlice slice,
-                             OperationOptions const& options,
+int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string const& collname,
+                             VPackSlice slice, OperationOptions const& options,
                              arangodb::rest::ResponseCode& responseCode,
                              std::unordered_map<int, size_t>& errorCounter,
                              std::shared_ptr<VPackBuilder>& resultBody) {
@@ -2370,8 +2373,7 @@ int getFilteredEdgesOnCoordinator(arangodb::transaction::Methods const& trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 int modifyDocumentOnCoordinator(
-    transaction::Methods& trx, std::string const& collname,
-    VPackSlice const& slice,
+    transaction::Methods& trx, std::string const& collname, VPackSlice const& slice,
     arangodb::OperationOptions const& options, bool isPatch,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
     arangodb::rest::ResponseCode& responseCode, std::unordered_map<int, size_t>& errorCounter,
@@ -2481,7 +2483,7 @@ int modifyDocumentOnCoordinator(
   if (options.returnOld) {
     optsUrlPart += "&returnOld=true";
   }
-  
+
   if (canUseFastPath) {
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
@@ -2490,6 +2492,9 @@ int modifyDocumentOnCoordinator(
     auto body = std::make_shared<std::string>();
     for (auto const& it : shardMap) {
       auto headers = ::CreateNoLockHeader(trx, it.first);
+      if (headers == nullptr) {
+        headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+      }
       ClusterMethods::transactionHeader(trx, *headers);
       if (!useMultiple) {
         TRI_ASSERT(it.second.size() == 1);
@@ -2563,17 +2568,15 @@ int modifyDocumentOnCoordinator(
   if (!useMultiple) {
     std::string key = slice.get(StaticStrings::KeyString).copyString();
     for (auto const& shard : *shardList) {
-      auto headers = ::CreateNoLockHeader(trx, shard);
       requests.emplace_back("shard:" + shard, reqType,
                             baseUrl + StringUtils::urlEncode(shard) + "/" + key + optsUrlPart,
-                            body, std::move(headers));
+                            body, ::CreateNoLockHeader(trx, shard));
     }
   } else {
     for (auto const& shard : *shardList) {
-      auto headers = ::CreateNoLockHeader(trx, shard);
       requests.emplace_back("shard:" + shard, reqType,
                             baseUrl + StringUtils::urlEncode(shard) + optsUrlPart,
-                            body, std::move(headers));
+                            body, ::CreateNoLockHeader(trx, shard));
     }
   }
 
@@ -2899,7 +2902,7 @@ void ClusterMethods::transactionHeader(transaction::Methods const& trx,
                                        std::unordered_map<std::string, std::string>& headers,
                                        bool addBegin) {
   TRI_ASSERT(trx.state()->isRunningInCluster());
-  std::string value = std::to_string(trx.state()->id() + 1);
+  std::string value = std::to_string(trx.state()->id() + 1);  // leader
   // receiving side should just use the provided ID for consistency
   if (addBegin || trx.state()->hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
     value += " begin";
