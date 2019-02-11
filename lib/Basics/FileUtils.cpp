@@ -326,7 +326,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
 
   icu::UnicodeString f(flt.c_str());
 
-  handle = _wfindfirst((wchar_t*)f.getTerminatedBuffer(), &oneItem);
+  handle = _wfindfirst(static_cast<wchar_t*>(f.getTerminatedBuffer()), &oneItem);
 
   if (handle == -1) {
     error = "directory " + source + " not found";
@@ -335,7 +335,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
 
   do {
     rcs.clear();
-    icu::UnicodeString d((wchar_t*)oneItem.name, static_cast<int32_t>(wcslen(oneItem.name)));
+    icu::UnicodeString d(static_cast<wchar_t*>(oneItem.name), static_cast<int32_t>(wcslen(oneItem.name)));
     d.toUTF8String<std::string>(rcs);
     fn = (char*)rcs.c_str();
 #else
@@ -419,7 +419,7 @@ std::vector<std::string> listFiles(std::string const& directory) {
 
   std::string filter = directory + "\\*";
   icu::UnicodeString f(filter.c_str());
-  handle = _wfindfirst((wchar_t*)f.getTerminatedBuffer(), &oneItem);
+  handle = _wfindfirst(static_cast<wchar_t*>(f.getTerminatedBuffer()), &oneItem);
 
   if (handle == -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -432,7 +432,7 @@ std::vector<std::string> listFiles(std::string const& directory) {
 
   do {
     rcs.clear();
-    icu::UnicodeString d((wchar_t*)oneItem.name, static_cast<int32_t>(wcslen(oneItem.name)));
+    icu::UnicodeString d(static_cast<wchar_t*>(oneItem.name), static_cast<int32_t>(wcslen(oneItem.name)));
     d.toUTF8String<std::string>(rcs);
     fn = (char*)rcs.c_str();
 
@@ -614,7 +614,7 @@ static void throwProgramError(std::string const& filename) {
 std::string slurpProgram(std::string const& program) {
 #ifdef _WIN32
   icu::UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
-  FILE* fp = _wpopen((wchar_t*)uprog.getTerminatedBuffer(), L"r");
+  FILE* fp = _wpopen(static_cast<wchar_t*>(uprog.getTerminatedBuffer()), L"r");
 #else
   FILE* fp = popen(program.c_str(), "r");
 #endif

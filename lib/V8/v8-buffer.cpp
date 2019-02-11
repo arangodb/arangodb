@@ -805,7 +805,8 @@ void V8Buffer::replace(v8::Isolate* isolate, char* data, size_t length,
 
   auto handle = v8::Local<v8::Object>::New(isolate, _handle);
   TRI_GET_GLOBAL(LengthKey, v8::String);
-  handle->Set(LengthKey, v8::Integer::NewFromUnsigned(isolate, (uint32_t)_length));
+  auto len = v8::Integer::NewFromUnsigned(isolate, (uint32_t)_length);
+  handle->Set(LengthKey, len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
