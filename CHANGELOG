@@ -1,6 +1,8 @@
 v3.4.3 (XXXX-XX-XX)
 -------------------
 
+* fixed JS AQL query objects with empty query strings not being recognized as AQL queries
+
 * fixed issue #8108: AQL variable - not working query since upgrade to 3.4 release
 
 * fixed possible segfault when using COLLECT with a LIMIT and an offset
