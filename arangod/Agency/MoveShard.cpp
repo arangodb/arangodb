@@ -86,7 +86,7 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency";
     LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
-    finish("", _shard, false, err.str());
+    finish("", "", false, err.str()); // Nothing known
     _status = FAILED;
   }
 }
@@ -739,6 +739,9 @@ JOB_STATUS MoveShard::pendingFollower() {
 arangodb::Result MoveShard::abort() {
   arangodb::Result result;
 
+  // We cannot abort, if any of the shards of the distributeShardsLike group
+  // has already gone from _A, B ... to B, ..., _A in Plan.
+  
   // We can assume that the job is either in ToDo or in Pending.
   if (_status == NOTFOUND || _status == FINISHED || _status == FAILED) {
     result = Result(TRI_ERROR_SUPERVISION_GENERAL_FAILURE,

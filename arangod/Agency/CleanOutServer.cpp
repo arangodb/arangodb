@@ -111,29 +111,21 @@ JOB_STATUS CleanOutServer::status() {
 
   // Put server in /Target/CleanedServers:
   Builder reportTrx;
-  {
-    VPackArrayBuilder arrayGuard(&reportTrx);
-    {
-      VPackObjectBuilder objectGuard(&reportTrx);
+  { VPackArrayBuilder arrayGuard(&reportTrx);
+    { VPackObjectBuilder objectGuard(&reportTrx);
       reportTrx.add(VPackValue("/Target/CleanedServers"));
-      {
-        VPackObjectBuilder guard4(&reportTrx);
+      { VPackObjectBuilder guard4(&reportTrx);
         reportTrx.add("op", VPackValue("push"));
-        reportTrx.add("new", VPackValue(_server));
-      }
+        reportTrx.add("new", VPackValue(_server)); }
       reportTrx.add(VPackValue("/Target/ToBeCleanedServers"));
-      {
-        VPackObjectBuilder guard4(&reportTrx);
+      { VPackObjectBuilder guard4(&reportTrx);
         reportTrx.add("op", VPackValue("erase"));
-        reportTrx.add("val", VPackValue(_server));
-      }
+        reportTrx.add("val", VPackValue(_server)); }
       addRemoveJobFromSomewhere(reportTrx, "Pending", _jobId);
       Builder job;
       _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
       addPutJobIntoSomewhere(reportTrx, "Finished", job.slice(), "");
-      addReleaseServer(reportTrx, _server);
-    }
-  }
+      addReleaseServer(reportTrx, _server); }}
 
   // Transact to agency
   write_ret_t res = singleWriteTransaction(_agent, reportTrx);
