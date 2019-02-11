@@ -55,6 +55,7 @@ OutputAqlItemRow::OutputAqlItemRow(std::shared_ptr<AqlItemBlockShell> blockShell
 void OutputAqlItemRow::doCopyRow(const InputAqlItemRow& sourceRow, bool ignoreMissing) {
   // Note that _lastSourceRow is invalid right after construction. However, when
   // _baseIndex > 0, then we must have seen one row already.
+  TRI_ASSERT(_baseIndex == 0 || _lastSourceRow.isInitialized());
 
   bool mustClone = _baseIndex == 0 || _lastSourceRow != sourceRow;
 
