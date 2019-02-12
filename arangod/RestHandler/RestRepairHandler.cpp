@@ -314,7 +314,7 @@ ResultT<bool> RestRepairHandler::jobFinished(std::string const& jobId) {
         << "Failed to get job status: "
         << "[" << jobStatus.errorNumber() << "] " << jobStatus.errorMessage();
 
-    return jobStatus;
+    return std::move(jobStatus);
   }
 
   return false;
@@ -375,7 +375,7 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
       while (!previousJobFinished) {
         ResultT<bool> jobFinishedResult = jobFinished(jobId);
         if (jobFinishedResult.fail()) {
-          return jobFinishedResult;
+          return std::move(jobFinishedResult);
         }
         previousJobFinished = jobFinishedResult.get();
 
@@ -396,7 +396,7 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
             checkReplicationFactor(databaseId, collectionId);
 
         if (checkReplicationFactorResult.fail()) {
-          return checkReplicationFactorResult;
+          return std::move(checkReplicationFactorResult);
         }
         replicationFactorMatches = checkReplicationFactorResult.get();
 

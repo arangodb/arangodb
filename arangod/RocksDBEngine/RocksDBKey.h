@@ -58,6 +58,9 @@ class RocksDBKey {
   RocksDBKey& operator=(RocksDBKey const& other) = delete;
   RocksDBKey& operator=(RocksDBKey&& other) = delete;
 
+  /// @brief verify that a key actually contains the given local document id
+  bool containsLocalDocumentId(LocalDocumentId const& id) const;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified database key
   //////////////////////////////////////////////////////////////////////////////
