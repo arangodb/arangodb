@@ -136,16 +136,15 @@ bool ConstrainedSortExecutor::compareInput(uint32_t const& rowPos, InputAqlItemR
 ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
     : _infos(infos),
       _fetcher(fetcher),
+      _state(ExecutionState::HASMORE),
       _returnNext(0),
-      _outputPrepared(false),
       _rowsPushed(0),
       _heapBuffer(std::make_shared<AqlItemBlockShell>(
           _infos._manager, std::unique_ptr<AqlItemBlock>(_infos._manager.requestBlock(
                                _infos._limit, _infos.numberOfOutputRegisters())))),
       _cmpHeap(std::make_unique<ConstrainedLessThan>(_infos.trx(), _infos.sortRegisters())),
       _heapOutputRow{_heapBuffer, make_shared_unordered_set(),
-                     make_shared_unordered_set(_infos.numberOfOutputRegisters())},
-      _done(false) {
+                     make_shared_unordered_set(_infos.numberOfOutputRegisters())} {
   TRI_ASSERT(_infos._limit > 0);
   _rows.reserve(infos._limit);
   _cmpHeap->setBuffer(&_heapBuffer->block());
@@ -154,73 +153,45 @@ ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorI
 ConstrainedSortExecutor::~ConstrainedSortExecutor() = default;
 
 std::pair<ExecutionState, NoStats> ConstrainedSortExecutor::produceRow(OutputAqlItemRow& output) {
-  if (_done) {
-    return {ExecutionState::DONE, NoStats{}};
-  }
-
-  ExecutionState state = ExecutionState::HASMORE;
-
-  if (!_outputPrepared) {
-    // build-up heap by pulling form all rows in the singlerow fetcher
-    state = doSorting();
-  }
-
-  if (state != ExecutionState::HASMORE) {
-    TRI_ASSERT(state != ExecutionState::WAITING || state == ExecutionState::DONE);
-    // assert heap empty
-    return {state, NoStats{}};
-  }
-
-  TRI_ASSERT(state == ExecutionState::HASMORE && _outputPrepared);
-
-  std::size_t heapRowPosition = _rows[_returnNext++];
-
-  if (_returnNext > _rows.size()) {
-    _done = true;
-    return {ExecutionState::DONE, NoStats{}};
-  } else {
-    InputAqlItemRow heapRow(_heapBuffer, heapRowPosition);
-    TRI_ASSERT(heapRowPosition < _rowsPushed);
-    output.copyRow(heapRow);
-    return {ExecutionState::HASMORE, NoStats{}};
-  }
-}
-
-ExecutionState ConstrainedSortExecutor::doSorting() {
-  // pull row one by one and add to heap if fitting
-  ExecutionState state = ExecutionState::HASMORE;
-
-  TRI_IF_FAILURE("SortBlock::doSorting") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  do {
+  while (_state != ExecutionState::DONE) {
+    TRI_IF_FAILURE("SortBlock::doSorting") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    // We need to pull rows from above, and insert them into the heap
     InputAqlItemRow input(CreateInvalidInputRowHint{});
-    std::tie(state, input) = _fetcher.fetchRow();
 
-    if (input.isInitialized() &&
-        (state == ExecutionState::HASMORE || state == ExecutionState::DONE)) {
-      TRI_ASSERT(input.isInitialized());
-      if (_rowsPushed >= _infos._limit && compareInput(_rows.front(), input)) {
-        // skip row, already too low in sort order to make it past limit
-        continue;
+    std::tie(_state, input) = _fetcher.fetchRow();
+    if (_state == ExecutionState::WAITING) {
+      return {_state, NoStats{}};
+    }
+    if (!input.isInitialized()) {
+      TRI_ASSERT(_state == ExecutionState::DONE);
+    } else {
+      if (_rowsPushed < _infos._limit || !compareInput(_rows.front(), input)) {
+        // Push this row into the heap
+        pushRow(input);
       }
-      // there is something to add to the heap
-      pushRow(input);
     }
-
-  } while (state == ExecutionState::HASMORE);
-
-  if (state == ExecutionState::DONE) {
-    _outputPrepared = true;  // we do not need to re-enter this function
-    if (_rowsPushed) {
-      std::sort(_rows.begin(), _rows.end(), *_cmpHeap);
-      return ExecutionState::HASMORE;
-    }
-    return ExecutionState::DONE;
   }
-
-  TRI_ASSERT(state == ExecutionState::WAITING);
-
-  return state;
+  if (_returnNext >= _rows.size()) {
+    // Happens if, we either have no upstream e.g. _rows is empty
+    // Or if dependency is pulling too often (should not happen)
+    return {ExecutionState::DONE, NoStats{}};
+  }
+  if (_returnNext == 0) {
+    // Only once sort the rows again, s.t. the
+    // contained list of elements is in the right ordering.
+    std::sort(_rows.begin(), _rows.end(), *_cmpHeap);
+  }
+  // Now our heap is full and sorted, we just need to return it line by line
+  TRI_ASSERT(_returnNext < _rows.size());
+  std::size_t heapRowPosition = _rows[_returnNext++];
+  InputAqlItemRow heapRow(_heapBuffer, heapRowPosition);
+  TRI_ASSERT(heapRow.isInitialized());
+  TRI_ASSERT(heapRowPosition < _rowsPushed);
+  output.copyRow(heapRow);
+  if (_returnNext == _rows.size()) {
+    return {ExecutionState::DONE, NoStats{}};
+  }
+  return {ExecutionState::HASMORE, NoStats{}};
 }

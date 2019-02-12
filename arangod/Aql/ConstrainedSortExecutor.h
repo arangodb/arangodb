@@ -26,9 +26,9 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/SortNode.h"
-#include "Aql/SortExecutor.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/SortExecutor.h"
+#include "Aql/SortNode.h"
 #include "AqlValue.h"
 
 #include <memory>
@@ -79,24 +79,20 @@ class ConstrainedSortExecutor {
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
  private:
-  ExecutionState doSorting();
-  //void ensureHeapBuffer(InputAqlItemRow&);
-  bool compareInput(uint32_t const& rosPos, InputAqlItemRow& row) const ;
+  bool compareInput(uint32_t const& rosPos, InputAqlItemRow& row) const;
   arangodb::Result pushRow(InputAqlItemRow& row);
-
 
  private:
   Infos& _infos;
   Fetcher& _fetcher;
+  ExecutionState _state;
   std::vector<size_t> _sortedIndexes;
   size_t _returnNext;
-  bool _outputPrepared;
   std::vector<uint32_t> _rows;
   size_t _rowsPushed;
   std::shared_ptr<arangodb::aql::AqlItemBlockShell> _heapBuffer;
-  std::unique_ptr<ConstrainedLessThan> _cmpHeap; //in pointer to avoid
+  std::unique_ptr<ConstrainedLessThan> _cmpHeap;  // in pointer to avoid
   OutputAqlItemRow _heapOutputRow;
-  bool _done;
 };
 }  // namespace aql
 }  // namespace arangodb
