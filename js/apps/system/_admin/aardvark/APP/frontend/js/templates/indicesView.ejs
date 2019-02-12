@@ -88,6 +88,19 @@
                     </div>
                   </th>
                 </tr>
+                <tr>
+                  <th class="collectionTh">Create in background:</th>
+                  <th>
+                    <input id="newGeoBackground" type="checkbox" name="newGeoBackground" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Create the index in background.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
               </table>
             </div>
             <div id="newIndexTypePersistent" class="newIndexClass" style="display:none">
@@ -130,13 +143,26 @@
                   </th>
                 </tr>
                 <tr>
-                  <th class="collectionTh">Deduplicate:</th>
+                  <th class="collectionTh">Deduplicate array values:</th>
                   <th>
                     <input id="newPersistentDeduplicate" type="checkbox" name="newPersistentDeduplicate" value="true">
                   </th>
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Duplicate index values from the same document into a unique array index will lead to an error or not.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Create in background:</th>
+                  <th>
+                    <input id="newPersistentBackground" type="checkbox" name="newPersistentBackground" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Create the index in background.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -184,13 +210,26 @@
                   </th>
                 </tr>
                 <tr>
-                  <th class="collectionTh">Deduplicate:</th>
+                  <th class="collectionTh">Deduplicate array values:</th>
                   <th>
                     <input id="newHashDeduplicate" type="checkbox" name="newHashDeduplicate" value="true">
                   </th>
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Duplicate index values from the same document into a unique array index will lead to an error or not.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Create in background:</th>
+                  <th>
+                    <input id="newHashBackground" type="checkbox" name="newHashBackground" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Create the index in background.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -217,6 +256,19 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Minimum character length of words to index. Will default to a server-defined value if unspecified. It is thus recommended to set this value explicitly when creating the index.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Create in background:</th>
+                  <th>
+                    <input id="newFulltextBackground" type="checkbox" name="newFulltextBackground" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Create the index in background.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -265,13 +317,26 @@
                   </th>
                 </tr>
                 <tr>
-                  <th class="collectionTh">Deduplicate:</th>
+                  <th class="collectionTh">Deduplicate array values:</th>
                   <th>
                     <input id="newSkiplistDeduplicate" type="checkbox" name="newSkiplistDeduplicate" value="true">
                   </th>
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Duplicate index values from the same document into a unique array index will lead to an error or not.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Create in background:</th>
+                  <th>
+                    <input id="newSkiplistBackground" type="checkbox" name="newSkiplistBackground" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Create the index in background.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -298,6 +363,19 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Number of seconds to be added to the timestamp attribute value of each document. If documents have reached their expiration timepoint, they will eventually get deleted by a background process.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Create in background:</th>
+                  <th>
+                    <input id="newTtlBackground" type="checkbox" name="newTtlBackground" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Create the index in background.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>

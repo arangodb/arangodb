@@ -272,6 +272,10 @@ std::vector<std::string> IndexFactory::supportedIndexes() const {
                                   "ttl", "persistent", "geo",  "fulltext"};
 }
 
+std::unordered_map<std::string, std::string> IndexFactory::indexAliases() const {
+  return std::unordered_map<std::string, std::string>();
+}
+
 TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info,
                                           bool generateKey, bool isClusterConstructor) {
   if (!info.isObject()) {

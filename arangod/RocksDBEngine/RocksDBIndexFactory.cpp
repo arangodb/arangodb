@@ -357,6 +357,15 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
   emplace("skiplist", skiplistIndexFactory);
   emplace("ttl", ttlIndexFactory);
 }
+  
+/// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" => "hash")
+/// used to display storage engine capabilities
+std::unordered_map<std::string, std::string> RocksDBIndexFactory::indexAliases() const {
+  return std::unordered_map<std::string, std::string>{
+    { "skiplist", "hash" },
+    { "persistent", "hash" },
+  };
+}
 
 void RocksDBIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
                                             std::vector<std::shared_ptr<arangodb::Index>>& indexes) const {
