@@ -235,13 +235,13 @@ for aid in "${aaid[@]}"; do
     --agency.compaction-keep-size $KEEP \
     --agency.pool-size $POOLSZ \
     --agency.size $NRAGENTS \
-    --agency.supervision true \
+    --agency.supervision false \
     --agency.supervision-frequency $SFRE \
     --agency.wait-for-sync $WAIT_FOR_SYNC \
     --database.directory agency/data$port \
     --javascript.enabled false \
     --log.file agency/$port.log \
-    --log.force-direct false \
+    --log.force-direct true \
     $LOG_LEVEL \
     --log.use-microtime $USE_MICROTIME \
     --server.authentication false \

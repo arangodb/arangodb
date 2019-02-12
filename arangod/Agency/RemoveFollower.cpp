@@ -185,8 +185,8 @@ bool RemoveFollower::start() {
     }
   }
   doForAllShards(_snapshot, _database, shardsLikeMe,
-                 [&planned, &overview, &leaderBad](Slice plan, Slice current,
-                                                   std::string& planPath) {
+                 [&planned, &overview, &leaderBad](
+                   Slice plan, Slice current, std::string& planPath, std::string& curPath) {
                    if (current.length() > 0) {
                      if (current[0].copyString() != planned[0].copyString()) {
                        leaderBad = true;
@@ -345,19 +345,21 @@ bool RemoveFollower::start() {
       addRemoveJobFromSomewhere(trx, "ToDo", _jobId);
 
       // --- Plan changes
-      doForAllShards(_snapshot, _database, shardsLikeMe,
-                     [&trx, &chosenToRemove](Slice plan, Slice current, std::string& planPath) {
-                       trx.add(VPackValue(planPath));
-                       {
-                         VPackArrayBuilder serverList(&trx);
-                         for (auto const& srv : VPackArrayIterator(plan)) {
-                           if (chosenToRemove.find(srv.copyString()) ==
-                               chosenToRemove.end()) {
-                             trx.add(srv);
-                           }
-                         }
-                       }
-                     });
+      doForAllShards(
+        _snapshot, _database, shardsLikeMe,
+        [&trx, &chosenToRemove](
+          Slice plan, Slice current, std::string& planPath, std::string& curPath) {
+          trx.add(VPackValue(planPath));
+          {
+            VPackArrayBuilder serverList(&trx);
+            for (auto const& srv : VPackArrayIterator(plan)) {
+              if (chosenToRemove.find(srv.copyString()) ==
+                  chosenToRemove.end()) {
+                trx.add(srv);
+              }
+            }
+          }
+        });
 
       addIncreasePlanVersion(trx);
     }  // mutation part of transaction done

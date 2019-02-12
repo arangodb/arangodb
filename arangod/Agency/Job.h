@@ -151,7 +151,7 @@ struct Job {
 
   static void doForAllShards(
       Node const& snapshot, std::string& database, std::vector<shard_t>& shards,
-      std::function<void(Slice plan, Slice current, std::string& planPath)> worker);
+      std::function<void(Slice plan, Slice current, std::string& planPath, std::string& curPath)> worker);
 
   // The following methods adds an operation to a transaction object or
   // a condition to a precondition object. In all cases, the builder trx

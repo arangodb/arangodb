@@ -77,6 +77,14 @@ inline static std::vector<std::string> split(const std::string& str, char separa
 Node::Node(std::string const& name)
     : _nodeName(name), _parent(nullptr), _store(nullptr), _vecBufDirty(true), _isArray(false) {}
 
+/// @brief Construct with node name and value
+Node::Node(std::string const& name, Buffer<uint8_t> const& vecBuf)
+  : _nodeName(name), _parent(nullptr), _store(nullptr), _vecBuf(vecBuf), _vecBufDirty(false), _isArray(false) {}
+
+/// @brief Construct with node name and value
+Node::Node(std::string const& name, Buffer<uint8_t>&& vecBuf)
+  : _nodeName(name), _parent(nullptr), _store(nullptr), _vecBuf(std::move(vecBuf)), _vecBufDirty(false), _isArray(false) {}
+
 /// @brief Construct with node name in tree structure
 Node::Node(std::string const& name, Node* parent)
     : _nodeName(name), _parent(parent), _store(nullptr), _vecBufDirty(true), _isArray(false) {}
@@ -287,8 +295,10 @@ NodeType Node::type() const {
 Node& Node::operator()(std::vector<std::string> const& pv) {
   if (!pv.empty()) {
     std::string const& key = pv.front();
+
     // Create new child
-    // 1. Remove any values, 2. add new child
+    // 1. Remove any values
+    // 2. add new child
     if (_children.find(key) == _children.end()) {
       _isArray = false;
       if (!_value.empty()) {
@@ -306,15 +316,39 @@ Node& Node::operator()(std::vector<std::string> const& pv) {
 }
 
 /// @brief rh-value at path vector. Check if TTL has expired.
-Node const& Node::operator()(std::vector<std::string> const& pv) const {
+Node const Node::operator()(std::vector<std::string> const& pv) const {
+
   if (!pv.empty()) {
     auto const& key = pv.front();
+
+    std::string errors;
+    if (_isArray) {
+      uint64_t nth = 0;
+      
+      try {
+        nth = std::stoll(key);
+      } catch (...) {
+        throw StoreException(uri() + ": " + key + " is not an array index");
+      }
+      if (nth >= _value.size()) {
+        throw StoreException(uri() + ": index " + key + " is out of range");
+      }
+
+      Buffer<uint8_t> buffer = _value[nth];
+      VPackBuilder builder(buffer);
+      Node node("node");
+      node = builder.slice();
+      return node;
+      
+    }
+    
     auto const it = _children.find(key);
     if (it == _children.end() ||
         (it->second->_ttl != std::chrono::system_clock::time_point() &&
          it->second->_ttl < std::chrono::system_clock::now())) {
-      throw StoreException(std::string("Node ") + key + " not found!");
+      throw StoreException(uri() + "/" + key + " not found!");
     }
+
     auto const& child = *_children.at(key);
     TRI_ASSERT(child._parent == this);
     auto pvc(pv);
@@ -331,12 +365,12 @@ Node& Node::operator()(std::string const& path) {
 }
 
 /// @brief rh-value at path
-Node const& Node::operator()(std::string const& path) const {
+Node const Node::operator()(std::string const& path) const {
   return this->operator()(split(path, '/'));
 }
 
 // Get method which always throws when not found:
-Node const& Node::get(std::string const& path) const {
+Node const Node::get(std::string const& path) const {
   return this->operator()(path);
 }
 
@@ -814,6 +848,26 @@ std::vector<std::string> Node::exists(std::vector<std::string> const& rel) const
   std::vector<std::string> result;
   Node const* cur = this;
   for (auto const& sub : rel) {
+
+    if (cur->_isArray) {
+      uint64_t nth = 0;
+      
+    LOG_DEVEL << __FILE__ << __LINE__;
+      try {
+        nth = std::stoll(sub);
+      } catch (...) {
+        break;
+      }
+    LOG_DEVEL << __FILE__ << __LINE__;
+      if (nth >= cur->_value.size()) {
+        break;
+      }
+
+    LOG_DEVEL << __FILE__ << __LINE__;
+      result.push_back(sub);
+    }
+    LOG_DEVEL << __FILE__ << __LINE__;
+
     auto it = cur->children().find(sub);
     if (it != cur->children().end() &&
         (it->second->_ttl == std::chrono::system_clock::time_point() ||
