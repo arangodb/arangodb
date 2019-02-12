@@ -1220,7 +1220,6 @@ SECTION("createBlockSingleServer") {
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto logicalView = vocbase.createView(createJson->slice());
   REQUIRE((false == !logicalView));
-  auto view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
 
   // create collection0
   std::shared_ptr<arangodb::LogicalCollection> collection0;
@@ -1258,7 +1257,7 @@ SECTION("createBlockSingleServer") {
     CHECK(res.ok());
 
     CHECK((trx.commit().ok()));
-    CHECK(view->commit().ok());
+    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").code)); // commit
   }
 
   // dummy query

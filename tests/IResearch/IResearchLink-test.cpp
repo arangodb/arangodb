@@ -86,6 +86,7 @@ struct IResearchLinkSetup {
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::ENGINES.name(), arangodb::LogLevel::FATAL);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::FATAL);
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
@@ -159,6 +160,7 @@ struct IResearchLinkSetup {
       f.first->unprepare();
     }
 
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::ENGINES.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
@@ -444,7 +446,7 @@ SECTION("test_flush_marker") {
     CHECK((1 == state.errorCount));
   }
 
-  // recovery non-recovery state
+  // recovery non-recovery state (i.e. recovery marker after end of recovery)
   {
     auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = false;
@@ -527,6 +529,45 @@ SECTION("test_flush_marker") {
     CHECK((path.remove()));
     auto index1 = logicalCollection->createIndex(linkJson1->slice(), created);
     CHECK((true == !index1));
+  }
+
+  // open exisitng with checkpoint file unmatched by marker (missing WAL tail)
+  {
+    auto linkJson1 = arangodb::velocypack::Parser::fromJson("{ \"id\": 44, \"includeAllFields\": true, \"type\": \"arangosearch\", \"view\": \"testView\" }");
+
+    // initial population of link
+    {
+      auto before = StorageEngineMock::inRecoveryResult;
+      StorageEngineMock::inRecoveryResult = false;
+      auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
+      std::shared_ptr<arangodb::Index> index1;
+      CHECK((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index1, *logicalCollection, linkJson1->slice(), 44, false).ok()));
+      CHECK((false == !index1));
+      auto link1 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index1);
+      CHECK((false == !link1));
+
+      // insert doc0
+      {
+        arangodb::transaction::Methods trx(
+          arangodb::transaction::StandaloneContext::Create(*vocbase),
+          EMPTY,
+          EMPTY,
+          EMPTY,
+          arangodb::transaction::Options()
+        );
+        CHECK((trx.begin().ok()));
+        CHECK((link1->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).ok()));
+        CHECK((trx.commit().ok()));
+        CHECK((link1->commit().ok()));
+      }
+    }
+
+    auto index1 = logicalCollection->createIndex(linkJson1->slice(), created);
+    CHECK((false == !index1)); // link creation success in recovery
+    auto before = StorageEngineMock::inRecoveryResult;
+    StorageEngineMock::inRecoveryResult = false;
+    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
+    CHECK_THROWS((dbFeature->recoveryDone())); // but recovery will fail to finish
   }
 
   // commit failed write WAL
@@ -935,10 +976,9 @@ SECTION("test_write") {
     REQUIRE(l != nullptr);
     CHECK((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
+    CHECK((l->commit().ok()));
   }
 
-  flush->executeCallbacks(); // prepare memory store to be flushed to persisted storage
-  CHECK((view->commit().ok()));
   CHECK((1 == reader.reopen().live_docs_count()));
 
   {
@@ -954,10 +994,9 @@ SECTION("test_write") {
     REQUIRE(l != nullptr);
     CHECK((l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
+    CHECK((l->commit().ok()));
   }
 
-  flush->executeCallbacks(); // prepare memory store to be flushed to persisted storage
-  CHECK((view->commit().ok()));
   CHECK((2 == reader.reopen().live_docs_count()));
 
   {
@@ -973,13 +1012,11 @@ SECTION("test_write") {
     REQUIRE(l != nullptr);
     CHECK((l->remove(trx, arangodb::LocalDocumentId(2), doc1->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
+    CHECK((l->commit().ok()));
   }
 
-  flush->executeCallbacks(); // prepare memory store to be flushed to persisted storage
-  CHECK((view->commit().ok()));
   CHECK((1 == reader.reopen().live_docs_count()));
   logicalCollection->dropIndex(link->id());
-  CHECK((view->commit().ok()));
   CHECK_THROWS((reader.reopen()));
 }
 

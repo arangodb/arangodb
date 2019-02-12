@@ -92,27 +92,51 @@ class Expression {
   inline AstNode* nodeForModification() const { return _node; }
 
   /// @brief whether or not the expression can safely run on a DB server
-  inline bool canRunOnDBServer() {
+  bool canRunOnDBServer() {
     if (_type == UNPROCESSED) {
       initExpression();
     }
-    return _canRunOnDBServer;
+
+    if (_type == JSON) {
+      // can always run on DB server
+      return true;
+    }
+
+    TRI_ASSERT(_type == SIMPLE || _type == ATTRIBUTE_ACCESS);
+    TRI_ASSERT(_node != nullptr);
+    return _node->canRunOnDBServer();
   }
 
   /// @brief whether or not the expression is deterministic
-  inline bool isDeterministic() {
+  bool isDeterministic() {
     if (_type == UNPROCESSED) {
       initExpression();
     }
-    return _isDeterministic;
+    
+    if (_type == JSON) {
+      // always deterministic
+      return true;
+    }
+
+    TRI_ASSERT(_type == SIMPLE || _type == ATTRIBUTE_ACCESS);
+    TRI_ASSERT(_node != nullptr);
+    return _node->isDeterministic();
   }
 
   /// @brief whether or not the expression will use V8
-  inline bool willUseV8() {
+  bool willUseV8() {
     if (_type == UNPROCESSED) {
       initExpression();
     }
-    return _willUseV8;
+    
+    if (_type != SIMPLE) {
+      return false;
+    }
+
+    // only simple expressions can make use of V8
+    TRI_ASSERT(_type == SIMPLE);
+    TRI_ASSERT(_node != nullptr);
+     return _node->willUseV8();
   }
 
   /// @brief clone the expression, needed to clone execution plans
@@ -202,21 +226,18 @@ class Expression {
   }
 
   void clearVariable(Variable const* variable) { _variables.erase(variable); }
+  
+  /// @brief reset internal attributes after variables in the expression were
+  /// changed
+  void invalidateAfterReplacements();
 
  private:
   /// @brief free the internal data structures
   void freeInternals() noexcept;
 
-  /// @brief reset internal attributes after variables in the expression were
-  /// changed
-  void invalidateAfterReplacements();
-
   /// @brief find a value in an array
   bool findInArray(AqlValue const&, AqlValue const&, transaction::Methods*,
                    AstNode const*) const;
-
-  void initConstantExpression();
-  void initSimpleExpression();
 
   /// @brief analyze the expression (determine its type etc.)
   void initExpression();
@@ -331,15 +352,6 @@ class Expression {
 
   /// @brief type of expression
   ExpressionType _type;
-
-  /// @brief whether or not the expression can be run safely on a DB server
-  bool _canRunOnDBServer;
-
-  /// @brief whether or not the expression is deterministic
-  bool _isDeterministic;
-
-  /// @brief whether or not the expression will make use of V8
-  bool _willUseV8;
 
   /// @brief variables only temporarily valid during execution
   std::unordered_map<Variable const*, arangodb::velocypack::Slice> _variables;

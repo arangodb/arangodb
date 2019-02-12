@@ -2208,10 +2208,10 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
     return;
   }
 
-  bool modified = false;
+  bool modifiedNode = false;
   auto p = plan.get();
 
-  auto visitor = [p, &modified](AstNode* node) {
+  auto visitor = [p, &modifiedNode](AstNode* node) {
     AstNode* original = node;
 
   again:
@@ -2264,7 +2264,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
 
         // attribute not found
         if (!isDynamic) {
-          modified = true;
+          modifiedNode = true;
           return Ast::createNodeValueNull();
         }
       }
@@ -2337,7 +2337,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
 
         // attribute not found
         if (!isDynamic) {
-          modified = true;
+          modifiedNode = true;
           return Ast::createNodeValueNull();
         }
       } else if (accessed->type == NODE_TYPE_ARRAY) {
@@ -2351,7 +2351,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
                                                 valid);
           if (!valid) {
             // invalid index
-            modified = true;
+            modifiedNode = true;
             return Ast::createNodeValueNull();
           }
         } else {
@@ -2378,17 +2378,19 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
         }
 
         // index out of bounds
-        modified = true;
+        modifiedNode = true;
         return Ast::createNodeValueNull();
       }
     }
 
     if (node != original) {
       // we come out with a different, so we changed something...
-      modified = true;
+      modifiedNode = true;
     }
     return node;
   };
+
+  bool modified = false;
 
   for (auto const& n : nodes) {
     auto nn = ExecutionNode::castTo<CalculationNode*>(n);
@@ -2401,9 +2403,14 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
     AstNode* root = nn->expression()->nodeForModification();
 
     if (root != nullptr) {
+      // reset for every round. can be modified by the visitor function!
+      modifiedNode = false;
       AstNode* simplified = plan->getAst()->traverseAndModify(root, visitor);
       if (simplified != root) {
         nn->expression()->replaceNode(simplified);
+      }
+      if (modifiedNode) {
+        nn->expression()->invalidateAfterReplacements();
         modified = true;
       }
     }

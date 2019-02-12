@@ -954,7 +954,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& cname,
         return static_cast<int>(res.answer_code);
       }
     } else {
-      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+      return handleGeneralCommErrors(&req.result);
     }
   }
 
@@ -1053,7 +1053,7 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
         return static_cast<int>(res.answer_code);
       }
     } else {
-      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+      return handleGeneralCommErrors(&req.result);
     }
   }
 
