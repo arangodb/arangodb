@@ -2586,12 +2586,18 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query, transaction::Methods
       arangodb::velocypack::ValueLength length;
       char const* str = it.key.getString(length);
       matchPatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
-      if (!it.value.isString()) {
+      if (it.value.isNull()) {
+        // null replacement value => replace with an empty string
+        replacePatterns.push_back(UnicodeString("", int32_t(0)));
+      } else if (it.value.isString()) {
+        // string case
+        str = it.value.getStringUnchecked(length);
+        replacePatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
+      } else {
+        // non strings
         ::registerInvalidArgumentWarning(query, AFN);
         return AqlValue(AqlValueHintNull());
       }
-      str = it.value.getStringUnchecked(length);
-      replacePatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
     }
   } else {
     if (parameters.size() < 2) {
@@ -2605,13 +2611,14 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query, transaction::Methods
     VPackSlice slice = materializer.slice(search, false);
     if (search.isArray()) {
       for (auto const& it : VPackArrayIterator(slice)) {
-        if (!it.isString()) {
+        if (it.isString()) {
+          arangodb::velocypack::ValueLength length;
+          char const* str = it.getStringUnchecked(length);
+          matchPatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
+        } else {
           ::registerInvalidArgumentWarning(query, AFN);
           return AqlValue(AqlValueHintNull());
         }
-        arangodb::velocypack::ValueLength length;
-        char const* str = it.getStringUnchecked(length);
-        matchPatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
       }
     } else {
       if (!search.isString()) {
@@ -2628,13 +2635,17 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query, transaction::Methods
       VPackSlice rslice = materializer2.slice(replace, false);
       if (replace.isArray()) {
         for (auto const& it : VPackArrayIterator(rslice)) {
-          if (!it.isString()) {
+          if (it.isNull()) {
+            // null replacement value => replace with an empty string
+            replacePatterns.push_back(UnicodeString("", int32_t(0)));
+          } else if (it.isString()) {
+            arangodb::velocypack::ValueLength length;
+            char const* str = it.getString(length);
+            replacePatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
+          } else {
             ::registerInvalidArgumentWarning(query, AFN);
             return AqlValue(AqlValueHintNull());
           }
-          arangodb::velocypack::ValueLength length;
-          char const* str = it.getString(length);
-          replacePatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
         }
       } else if (replace.isString()) {
         // If we have a string as replacement,
