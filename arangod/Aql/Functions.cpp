@@ -1446,7 +1446,7 @@ AqlValue Functions::Length(ExpressionContext*, transaction::Methods* trx,
     }
   } else if (value.isString()) {
     VPackValueLength l;
-    char const* p = value.slice().getString(l);
+    char const* p = value.slice().getStringUnchecked(l);
     length = TRI_CharLengthUtf8String(p, l);
   } else if (value.isObject()) {
     length = static_cast<size_t>(value.length());
@@ -1915,7 +1915,7 @@ AqlValue Functions::CharLength(ExpressionContext*, transaction::Methods* trx,
 
   } else if (value.isString()) {
     VPackValueLength l;
-    char const* p = value.slice().getString(l);
+    char const* p = value.slice().getStringUnchecked(l);
     length = TRI_CharLengthUtf8String(p, l);
   }
 
@@ -2054,7 +2054,7 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
         return AqlValue(AqlValueHintNull());
       }
       arangodb::velocypack::ValueLength length;
-      char const* str = slice.getString(length);
+      char const* str = slice.getStringUnchecked(length);
       matchPatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
     }
     if (parameters.size() > 2) {
@@ -2068,7 +2068,7 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
             return AqlValue(AqlValueHintNull());
           }
           arangodb::velocypack::ValueLength length;
-          char const* str = it.getString(length);
+          char const* str = it.getStringUnchecked(length);
           replacePatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
         }
       } else if (replace.isString()) {
