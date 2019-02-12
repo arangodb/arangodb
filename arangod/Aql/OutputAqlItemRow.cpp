@@ -82,7 +82,7 @@ void OutputAqlItemRow::doCopyRow(const InputAqlItemRow& sourceRow, bool ignoreMi
     }
   } else {
     TRI_ASSERT(_baseIndex > 0);
-    block().copyValuesFromRow(_baseIndex, registersToKeep(), _baseIndex - 1);
+    block().copyValuesFromRow(_baseIndex, registersToKeep(), _lastBaseIndex);
   }
   _lastBaseIndex = _baseIndex;
   _inputRowCopied = true;
