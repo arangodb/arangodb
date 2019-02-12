@@ -298,7 +298,7 @@ bool RocksDBPrimaryIndexInIterator::nextCovering(DocumentCallback const& cb, siz
     if (!_iterator.valid()) {
       return false;
     }
-  } while (true);
+  }
   return true;
 }
 
