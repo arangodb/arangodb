@@ -85,7 +85,7 @@ class Node {
   typedef std::unordered_map<std::string, std::shared_ptr<Node>> Children;
 
   /// @brief Construct with name
-  explicit Node(std::string const& name);
+  explicit Node(std::string const& name = std::string());
 
   /// @brief Copy constructor
   Node(Node const& other);
@@ -130,7 +130,7 @@ class Node {
   Node& operator()(std::vector<std::string> const& pv);
 
   /// @brief Get node specified by path vector
-  Node const operator()(std::vector<std::string> const& pv) const;
+  Node const& operator()(std::vector<std::string> const& pv) const;
 
   /// @brief Remove child by name
   bool removeChild(std::string const& key);
@@ -282,7 +282,7 @@ class Node {
   Node& operator()(std::string const& path);
 
   /// @brief Get node specified by path string
-  Node const operator()(std::string const& path) const;
+  Node const& operator()(std::string const& path) const;
 
   /// @brief Get string value (throws if type NODE or if conversion fails)
   std::string getString() const;
@@ -299,7 +299,7 @@ class Node {
   //
  protected:
   /// @brief Get node specified by path string, always throw if not there
-  Node const get(std::string const& path) const;
+  Node const& get(std::string const& path) const;
 
   /// @brief Get integer value (throws if type NODE or if conversion fails)
   int64_t getInt() const;
@@ -328,8 +328,8 @@ class Node {
   Store* _store;                        ///< @brief Store
   Children _children;                   ///< @brief child nodes
   TimePoint _ttl;                       ///< @brief my expiry
-  std::vector<Buffer<uint8_t>> _value;  ///< @brief my value
-  mutable Buffer<uint8_t> _vecBuf;
+  std::vector<std::shared_ptr<Node>> _array;  ///< @brief my value
+  mutable Buffer<uint8_t> _buffer;
   mutable bool _vecBufDirty;
   bool _isArray;
 }

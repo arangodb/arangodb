@@ -93,12 +93,12 @@ Slice Node::slice() const {
   // Some array
   if (_isArray) {
     rebuildVecBuf();
-    return Slice(_vecBuf.data());
+    return Slice(_buffer.data());
   }
 
   // Some value
-  if (!_value.empty()) {
-    return Slice(_value.front().data());
+  if (!_buffer.empty()) {
+    return Slice(_buffer.data());
   }
 
   // Empty object
@@ -107,16 +107,16 @@ Slice Node::slice() const {
 
 /// @brief Optimization, which avoids recreating of Builder for output if
 /// changes have not happened since last call
-void Node::rebuildVecBuf() const {
+void Node::rebuildVecBuf() const { // TODO
   if (_vecBufDirty) {  // Dirty vector buffer
     Builder tmp;
     {
       VPackArrayBuilder t(&tmp);
-      for (auto const& i : _value) {
-        tmp.add(Slice(i.data()));
+      for (auto const& i : _array) {
+        tmp.add(i->slice());
       }
     }
-    _vecBuf = *tmp.steal();
+    _buffer = *tmp.steal();
     _vecBufDirty = false;
   }
 }
@@ -147,8 +147,8 @@ Node::Node(Node&& other)
       _store(nullptr),
       _children(std::move(other._children)),
       _ttl(std::move(other._ttl)),
-      _value(std::move(other._value)),
-      _vecBuf(std::move(other._vecBuf)),
+      _array(std::move(other._array)),
+      _buffer(std::move(other._buffer)),
       _vecBufDirty(std::move(other._vecBufDirty)),
       _isArray(std::move(other._isArray)) {
   // The _children map has been moved here, therefore we must
@@ -164,8 +164,8 @@ Node::Node(Node const& other)
       _parent(nullptr),
       _store(nullptr),
       _ttl(other._ttl),
-      _value(other._value),
-      _vecBuf(other._vecBuf),
+      _array(other._array),
+      _buffer(other._buffer),
       _vecBufDirty(other._vecBufDirty),
       _isArray(other._isArray) {
   for (auto const& p : other._children) {
@@ -183,18 +183,17 @@ Node::Node(Node const& other)
 Node& Node::operator=(VPackSlice const& slice) {
   removeTimeToLive();
   _children.clear();
-  _value.clear();
+  _array.clear();
+  _buffer.clear();
   if (slice.isArray()) {
     _isArray = true;
-    _value.resize(slice.length());
+    _array.resize(slice.length());
     for (size_t i = 0; i < slice.length(); ++i) {
-      _value.at(i).append(reinterpret_cast<char const*>(slice[i].begin()),
-                          slice[i].byteSize());
+      *(_array.at(i)) = slice[i];
     }
   } else {
     _isArray = false;
-    _value.resize(1);
-    _value.front().append(reinterpret_cast<char const*>(slice.begin()), slice.byteSize());
+    _buffer.append(reinterpret_cast<char const*>(slice.begin()), slice.byteSize());
   }
   _vecBufDirty = true;
   return *this;
@@ -213,8 +212,8 @@ Node& Node::operator=(Node&& rhs) {
   for (auto& child : _children) {
     child.second->_parent = this;
   }
-  _value = std::move(rhs._value);
-  _vecBuf = std::move(rhs._vecBuf);
+  _array = std::move(rhs._array);
+  _buffer = std::move(rhs._buffer);
   _vecBufDirty = std::move(rhs._vecBufDirty);
   _isArray = std::move(rhs._isArray);
   _ttl = std::move(rhs._ttl);
@@ -235,8 +234,8 @@ Node& Node::operator=(Node const& rhs) {
     copy->_parent = this;  // new child copy has us as _parent
     _children.insert(std::make_pair(p.first, copy));
   }
-  _value = rhs._value;
-  _vecBuf = rhs._vecBuf;
+  _array = rhs._array;
+  _buffer = rhs._buffer;
   _vecBufDirty = rhs._vecBufDirty;
   _isArray = rhs._isArray;
   _ttl = rhs._ttl;
@@ -280,7 +279,7 @@ bool Node::removeChild(std::string const& key) {
 /// @brief Node type
 /// The check is if we are an array or a value. => LEAF. NODE else
 NodeType Node::type() const {
-  return (_isArray || _value.size()) ? LEAF : NODE;
+  return (_isArray || _buffer.size()) ? LEAF : NODE;
 }
 
 /// @brief lh-value at path vector
@@ -293,9 +292,8 @@ Node& Node::operator()(std::vector<std::string> const& pv) {
     // 2. add new child
     if (_children.find(key) == _children.end()) {
       _isArray = false;
-      if (!_value.empty()) {
-        _value.clear();
-      }
+      _array.clear();
+      _buffer.clear();
       _children[key] = std::make_shared<Node>(key, this);
     }
     auto pvc(pv);
@@ -308,7 +306,7 @@ Node& Node::operator()(std::vector<std::string> const& pv) {
 }
 
 /// @brief rh-value at path vector. Check if TTL has expired.
-Node const Node::operator()(std::vector<std::string> const& pv) const {
+Node const& Node::operator()(std::vector<std::string> const& pv) const {
 
   if (!pv.empty()) {
     auto const& key = pv.front();
@@ -322,16 +320,11 @@ Node const Node::operator()(std::vector<std::string> const& pv) const {
       } catch (...) {
         throw StoreException(uri() + ": " + key + " is not an array index");
       }
-      if (nth >= _value.size()) {
+      if (nth >= _array.size()) {
         throw StoreException(uri() + ": index " + key + " is out of range");
       }
 
-      Buffer<uint8_t> buffer = _value[nth];
-      VPackBuilder builder(buffer);
-      Node node("node");
-      node = builder.slice();
-      return node;
-      
+      return *_array[nth];
     }
     
     auto const it = _children.find(key);
@@ -357,12 +350,12 @@ Node& Node::operator()(std::string const& path) {
 }
 
 /// @brief rh-value at path
-Node const Node::operator()(std::string const& path) const {
+Node const& Node::operator()(std::string const& path) const {
   return this->operator()(split(path, '/'));
 }
 
 // Get method which always throws when not found:
-Node const Node::get(std::string const& path) const {
+Node const& Node::get(std::string const& path) const {
   return this->operator()(path);
 }
 
@@ -439,6 +432,13 @@ bool Node::handle<SET>(VPackSlice const& slice) {
     } else {  // Deeper down
       this->applies(val);
     }
+  } else if (val.isArray()) {
+    _isArray = true;
+    for (auto const& i : VPackArrayIterator(val)) {
+      auto tmp = std::make_shared<Node>();
+      *tmp = i;
+      _array.emplace_back(tmp);
+    }
   } else {
     *this = val;
   }
@@ -504,15 +504,18 @@ bool Node::handle<PUSH>(VPackSlice const& slice) {
         << "Operator push without new value: " << slice.toJson();
     return false;
   }
-  Builder tmp;
-  {
-    VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray()) {
-      for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
-    }
-    tmp.add(slice.get("new"));
+
+  if (!_isArray) {
+    _buffer.clear();
+    _children.clear();
+    _array.clear();
   }
-  *this = tmp.slice();
+
+  _isArray = true;
+  auto tmp = std::make_shared<Node>();
+  *tmp = slice.get("new");
+  _array.emplace_back(tmp);
+  
   return true;
 }
 
@@ -604,21 +607,16 @@ bool Node::handle<REPLACE>(VPackSlice const& slice) {
 /// Remove element from end of array.
 template <>
 bool Node::handle<POP>(VPackSlice const& slice) {
-  Builder tmp;
-  {
-    VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray()) {
-      VPackArrayIterator it(this->slice());
-      if (it.size() > 1) {
-        size_t j = it.size() - 1;
-        for (auto old : it) {
-          tmp.add(old);
-          if (--j == 0) break;
-        }
-      }
+  if (_isArray) {
+    if(!_array.empty()) {
+      _array.pop_back();
     }
+  } else {
+    _isArray = true;
+    _children.clear();
+    _buffer.clear();
   }
-  *this = tmp.slice();
+  
   return true;
 }
 
@@ -630,37 +628,43 @@ bool Node::handle<PREPEND>(VPackSlice const& slice) {
         << "Operator prepend without new value: " << slice.toJson();
     return false;
   }
-  Builder tmp;
-  {
-    VPackArrayBuilder t(&tmp);
-    tmp.add(slice.get("new"));
-    if (this->slice().isArray()) {
-      for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
-    }
+  
+  if (_isArray) {
+    auto tmp = _array;
+    _array.resize(_array.size()+1);
+    std::copy(tmp.begin(), tmp.end(), _array.begin()+1);
+  } else {
+    _isArray = true;
+    _children.clear();
+    _buffer.clear();
+    _array.resize(1);
   }
-  *this = tmp.slice();
+
+  auto node = std::make_shared<Node>();
+  *node = slice.get("new");
+  _array.front() = node;
+  
   return true;
 }
 
 /// Remove element from front of array
 template <>
 bool Node::handle<SHIFT>(VPackSlice const& slice) {
-  Builder tmp;
-  {
-    VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray()) {  // If a
-      VPackArrayIterator it(this->slice());
-      bool first = true;
-      for (auto const& old : it) {
-        if (first) {
-          first = false;
-        } else {
-          tmp.add(old);
-        }
-      }
+
+  _children.clear();
+  _buffer.clear();
+  
+  if (_isArray) {
+    auto tmp = _array;
+    if (!_array.empty()) {
+      _array.resize(_array.size()-1);
     }
+    std::copy(tmp.begin()+1, tmp.end(), _array.begin());
+  } else {
+    _isArray = true;
+    _array.clear();
   }
-  *this = tmp.slice();
+
   return true;
 }
 
@@ -717,7 +721,8 @@ bool Node::applieOp(VPackSlice const& slice) {
   if (oper == "delete") {
     if (_parent == nullptr) {  // root node
       _children.clear();
-      _value.clear();
+      _array.clear();
+      _buffer.clear();
       return true;
     } else {
       return _parent->removeChild(_nodeName);
@@ -739,17 +744,7 @@ bool Node::applieOp(VPackSlice const& slice) {
   } else if (oper == "observe") {  // "op":"observe"
     return handle<OBSERVE>(slice);
   } else if (oper == "unobserve") {  // "op":"unobserve"
-    handle<UNOBSERVE>(slice);
-    if (_children.empty() && _value.empty()) {
-      if (_parent == nullptr) {  // root node
-        _children.clear();
-        _value.clear();
-        return true;
-      } else {
-        return _parent->removeChild(_nodeName);
-      }
-    }
-    return true;
+    return handle<UNOBSERVE>(slice);
   } else if (oper == "erase") {  // "op":"erase"
     return handle<ERASE>(slice);
   } else if (oper == "replace") {  // "op":"replace"
@@ -849,7 +844,7 @@ std::vector<std::string> Node::exists(std::vector<std::string> const& rel) const
       } catch (...) {
         break;
       }
-      if (nth >= cur->_value.size()) {
+      if (nth >= cur->_array.size()) {
         break;
       }
 
@@ -1168,14 +1163,14 @@ Slice Node::getArray() const {
     throw StoreException("Not an array type");
   }
   rebuildVecBuf();
-  return Slice(_vecBuf.data());
+  return Slice(_buffer.data());
 }
 
 void Node::clear() {
   _children.clear();
   _ttl = std::chrono::system_clock::time_point();
-  _value.clear();
-  _vecBuf.clear();
+  _array.clear();
+  _buffer.clear();
   _vecBufDirty = true;
   _isArray = false;
 }
