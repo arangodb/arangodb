@@ -202,7 +202,7 @@ std::pair<ExecutionState, NoStats> ConstrainedSortExecutor::produceRow(OutputAql
             << " pushed " << _rowsPushed
               ;
 
-  if (_returnNext >= _rows.size()) {
+  if (_returnNext > _rows.size()) {
     LOG_DEVEL << "DONE";
     _done = true;
     return {ExecutionState::DONE, NoStats{}};
