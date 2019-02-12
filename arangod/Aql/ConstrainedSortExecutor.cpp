@@ -68,28 +68,26 @@ class arangodb::aql::ConstrainedLessThan {
  public:
   ConstrainedLessThan(arangodb::transaction::Methods* trx,
                       std::vector<arangodb::aql::SortRegister>& sortRegisters) noexcept
-      : _trx(trx), _lhsBuffer(nullptr), _rhsBuffer(nullptr), _sortRegisters(sortRegisters) {}
+      : _trx(trx), _heapBuffer(nullptr), _sortRegisters(sortRegisters) {}
 
-  void setBuffers(arangodb::aql::AqlItemBlock* lhsBuffer,
-                  arangodb::aql::AqlItemBlock* rhsBuffer) {
-    _lhsBuffer = lhsBuffer;
-    _rhsBuffer = rhsBuffer;
+  void setBuffer(arangodb::aql::AqlItemBlock* heap) {
+    _heapBuffer = heap;
   }
 
   bool operator()(uint32_t const& a, uint32_t const& b) const {
-    TRI_ASSERT(_lhsBuffer);
-    TRI_ASSERT(_rhsBuffer);
+    TRI_ASSERT(_heapBuffer);
 
-    for (auto const& reg : _sortRegisters) {
-      auto const& lhs = _lhsBuffer->getValueReference(a, reg.reg);
-      auto const& rhs = _rhsBuffer->getValueReference(b, reg.reg);
+    for (auto const& sortReg : _sortRegisters) {
+
+      auto const& lhs = _heapBuffer->getValueReference(a, sortReg.reg);
+      auto const& rhs = _heapBuffer->getValueReference(b, sortReg.reg);
 
       int const cmp = arangodb::aql::AqlValue::Compare(_trx, lhs, rhs, true);
 
       if (cmp < 0) {
-        return reg.asc;
+        return sortReg.asc;
       } else if (cmp > 0) {
-        return !reg.asc;
+        return !sortReg.asc;
       }
     }
 
@@ -98,13 +96,11 @@ class arangodb::aql::ConstrainedLessThan {
 
  private:
   arangodb::transaction::Methods* _trx;
-  arangodb::aql::AqlItemBlock* _lhsBuffer;
-  arangodb::aql::AqlItemBlock* _rhsBuffer;
+  arangodb::aql::AqlItemBlock* _heapBuffer;
   std::vector<arangodb::aql::SortRegister>& _sortRegisters;
 };  // ConstrainedLessThan
 
 arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow& input) {
-  LOG_DEVEL << "enter push row";
   using arangodb::aql::AqlItemBlock;
   using arangodb::aql::AqlValue;
   using arangodb::aql::RegisterId;
@@ -125,16 +121,14 @@ arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow& input) {
   }
 
   _heapOutPutRow.*get(RowTag()) = dRow;
-  _heapOutPutRow.copyRow(input, true);
+  _heapOutPutRow.copyRow(input);
   _heapOutPutRow.advanceRow();
 
   _rows.emplace_back(dRow); // add to heap vector
-  LOG_DEVEL << "increase rows pushed";
   ++_rowsPushed;
 
   // now restore heap condition
   std::push_heap(_rows.begin(), _rows.end(), *_cmpHeap.get());
-  LOG_DEVEL << "exit push row" << _rowsPushed;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -163,13 +157,12 @@ ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorI
       _rowsPushed(0),
       _heapBuffer(std::make_shared<AqlItemBlockShell>(_infos._manager, std::unique_ptr<AqlItemBlock>(_infos._manager.requestBlock(_infos._limit, _infos.numberOfOutputRegisters())))),
       _cmpHeap(std::make_unique<ConstrainedLessThan>(_infos.trx(), _infos.sortRegisters())),
-      _heapOutPutRow{_heapBuffer, infos.getOutputRegisters(), infos.registersToKeep()},
+      _heapOutPutRow{_heapBuffer, make_shared_unordered_set(), make_shared_unordered_set(_infos.numberOfOutputRegisters())},
       _done(false)
   {
   TRI_ASSERT(_infos._limit > 0);
   _rows.reserve(infos._limit);
-  _cmpHeap->setBuffers(&_heapBuffer->block(), &_heapBuffer->block());
-  LOG_DEVEL << "####################### CREATED EXECUTOR ################################";
+  _cmpHeap->setBuffer(&_heapBuffer->block());
 };
 
 ConstrainedSortExecutor::~ConstrainedSortExecutor() = default;
@@ -195,15 +188,14 @@ std::pair<ExecutionState, NoStats> ConstrainedSortExecutor::produceRow(OutputAql
   TRI_ASSERT( state == ExecutionState::HASMORE && _outputPrepared);
 
   std::size_t heapRowPosition = _rows[_returnNext++];
-  LOG_DEVEL << "heapRow: " << heapRowPosition
-            << " next: " << _returnNext
-            << " limit: " << _infos._limit
-            << " rows->size(): " << _rows.size()
-            << " pushed " << _rowsPushed
-              ;
+  //LOG_DEVEL << "heapRow: " << heapRowPosition
+  //          << " next: " << _returnNext
+  //          << " limit: " << _infos._limit
+  //          << " rows->size(): " << _rows.size()
+  //          << " pushed " << _rowsPushed
+  //            ;
 
   if (_returnNext > _rows.size()) {
-    LOG_DEVEL << "DONE";
     _done = true;
     return {ExecutionState::DONE, NoStats{}};
   } else {
@@ -231,12 +223,10 @@ ExecutionState ConstrainedSortExecutor::doSorting() {
        ) {
       TRI_ASSERT(input.isInitialized());
       if (_rowsPushed >= _infos._limit && compareInput(_rows.front(), input)) {
-        LOG_DEVEL << "skipping because of compare -- limit " << _infos._limit << " - pushed; " << _rowsPushed  ;
         // skip row, already too low in sort order to make it past limit
         continue;
       }
       // there is something to add to the heap
-      LOG_DEVEL << "pushing " << _rowsPushed;
       pushRow(input);
     }
 
