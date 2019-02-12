@@ -102,20 +102,20 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
 
 class IndexStats {
  public:
-  IndexStats() noexcept : _scannedFull(0) {}
+  IndexStats() noexcept : _scannedIndex(0) {}
 
-  void incrScanned() noexcept { _scannedFull++; }
-  void incrScanned(size_t value) noexcept { _scannedFull = _scannedFull + value; }
+  void incrScanned() noexcept { _scannedIndex++; }
+  void incrScanned(size_t value) noexcept { _scannedIndex = _scannedIndex + value; }
 
-  std::size_t getScanned() const noexcept { return _scannedFull; }
+  std::size_t getScanned() const noexcept { return _scannedIndex; }
 
  private:
-  std::size_t _scannedFull;
+  std::size_t _scannedIndex;
 };
 
 inline ExecutionStats& operator+=(ExecutionStats& executionStats,
                                   IndexStats const& enumerateCollectionStats) noexcept {
-  executionStats.scannedFull += enumerateCollectionStats.getScanned();
+  executionStats.scannedIndex += enumerateCollectionStats.getScanned();
   return executionStats;
 }
 

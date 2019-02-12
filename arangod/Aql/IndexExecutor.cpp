@@ -236,7 +236,7 @@ void IndexExecutor::startNextCursor() {
 }
 
 // this is called every time we need to fetch data from the indexes
-bool IndexExecutor::readIndex(IndexIterator::DocumentCallback const& callback) {
+bool IndexExecutor::readIndex(IndexIterator::DocumentCallback const& callback, bool& hasWritten) {
   // this is called every time we want to read the index.
   // For the primary key index, this only reads the index once, and never
   // again (although there might be multiple calls to this function).
@@ -247,13 +247,9 @@ bool IndexExecutor::readIndex(IndexIterator::DocumentCallback const& callback) {
 
 
   TRI_ASSERT(_infos.getCursor() != nullptr && !_infos.getIndexesExhausted());
+  TRI_ASSERT(_infos.getCursor()->hasMore());
 
-  while (_infos.getCursor() != nullptr) {
-    if (!_infos.getCursor()->hasMore()) {
-      startNextCursor();
-      continue;
-    }
-
+  while (true) {
     TRI_IF_FAILURE("IndexBlock::readIndex") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
@@ -263,10 +259,10 @@ bool IndexExecutor::readIndex(IndexIterator::DocumentCallback const& callback) {
       // optimization: iterate over index (e.g. for filtering), but do not fetch
       // the actual documents
       res = _infos.getCursor()->next(
-          [&callback](LocalDocumentId const& id) {
-            callback(id, VPackSlice::nullSlice());
-          },
-          1);
+              [&callback](LocalDocumentId const &id) {
+                  callback(id, VPackSlice::nullSlice());
+              },
+              1);
     } else {
       // check if the *current* cursor supports covering index queries or not
       // if we can optimize or not must be stored in our instance, so the
@@ -285,15 +281,16 @@ bool IndexExecutor::readIndex(IndexIterator::DocumentCallback const& callback) {
       }
     }
 
-    if (res) {
-      // We have returned enough.
-      // And this index could return more.
-      // We are good.
-      return true;
+    if (!res) {
+      res = advanceCursor();
+    }
+    if (hasWritten) {
+      return res;
+    }
+    if (!res) {
+      return false;
     }
   }
-  // if we get here the indexes are exhausted.
-  return false;
 }
 
 // TODO why copy of input row?
@@ -349,28 +346,7 @@ bool IndexExecutor::initIndexes(InputAqlItemRow& input) {
     THROW_ARANGO_EXCEPTION(_infos.getCursor()->code);
   }
 
-  TRI_ASSERT(_infos.getCursor() != nullptr);
-  while (!_infos.getCursor()->hasMore()) {
-    if (_infos.isAscending()) {
-      _infos.decrCurrentIndex();
-    } else {
-      _infos.incrCurrentIndex();
-    }
-    if (_infos.getCurrentIndex() < _infos.getIndexes().size()) {
-      // This check will work as long as _indexes.size() < MAX_SIZE_T
-      createCursor();
-      if (_infos.getCursor()->fail()) {
-        THROW_ARANGO_EXCEPTION(_infos.getCursor()->code);
-      }
-    } else {
-      _infos.setCursor(nullptr);
-      _infos.setIndexesExhausted(true);
-      // We were not able to initialize any index with this condition
-      return false;
-    }
-  }
-  _infos.setIndexesExhausted(false);
-  return true;
+  return advanceCursor();
 }
 
 void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
@@ -422,6 +398,33 @@ void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
   }
 }
 
+bool IndexExecutor::advanceCursor() {
+  TRI_ASSERT(_infos.getCursor() != nullptr);
+  while (!_infos.getCursor()->hasMore()) {
+    if (!_infos.isAscending()) {
+      _infos.decrCurrentIndex();
+    } else {
+      _infos.incrCurrentIndex();
+    }
+
+    if (_infos.getCurrentIndex() < _infos.getIndexes().size()) {
+      // This check will work as long as _indexes.size() < MAX_SIZE_T
+      createCursor();
+      if (_infos.getCursor()->fail()) {
+        THROW_ARANGO_EXCEPTION(_infos.getCursor()->code);
+      }
+    } else {
+      _infos.setCursor(nullptr);
+      _infos.setIndexesExhausted(true);
+      // We were not able to initialize any index with this condition
+      return false;
+    }
+  }
+
+  _infos.setIndexesExhausted(false);
+  return true;
+};
+
 std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("IndexExecutor::produceRow") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -443,10 +446,12 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
 
       // TODO when does init inidxex fail
       if (!initIndexes(_input)) {
-        return {ExecutionState::DONE, stats};
+        _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+        continue;
       }
     }
     TRI_ASSERT(_input.isInitialized());
+    TRI_ASSERT(_infos.getCursor()->hasMore());
 
     IndexIterator::DocumentCallback callback;
 
@@ -485,9 +490,14 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
 
     // Read the next elements from the indexes
  //    auto saveReturned = _infos.getReturned();
-    if (!readIndex(callback)) {
+    bool more = readIndex(callback, hasWritten);
+//    TRI_ASSERT(!more || _infos.getCursor()->hasMore());
+    TRI_ASSERT((_infos.getCursor() != nullptr || !more) || more == _infos.getCursor()->hasMore());
+
+    if (!more) {
       _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
     }
+    TRI_ASSERT(!more || hasWritten);
 
     if (hasWritten) {
       stats.incrScanned(1);
@@ -497,5 +507,6 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
       }
       return {ExecutionState::HASMORE, stats};
     }
+
   }
 }

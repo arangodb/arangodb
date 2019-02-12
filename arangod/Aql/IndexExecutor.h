@@ -69,6 +69,10 @@ class IndexExecutorInfos : public ExecutorInfos {
   IndexExecutorInfos(IndexExecutorInfos const&) = delete;
   ~IndexExecutorInfos() = default;
 
+  void resetCursor() {
+    _cursor->reset();
+  }
+
   void resetCursor(size_t pos) {
     _cursors[pos]->reset();
   };
@@ -253,6 +257,8 @@ class IndexExecutor {
   };
 
  private:
+  bool initializeCursor();
+  bool advanceCursor();
   void executeExpressions(InputAqlItemRow& input);
   bool initIndexes(InputAqlItemRow& input);
 
@@ -263,7 +269,7 @@ class IndexExecutor {
   void startNextCursor();
 
   /// @brief continue fetching of documents
-  bool readIndex(IndexIterator::DocumentCallback const&);
+  bool readIndex(IndexIterator::DocumentCallback const&, bool& hasWritten);
 
   /// @brief order a cursor for the index at the specified position
   OperationCursor* orderCursor(size_t currentIndex);
