@@ -8,6 +8,7 @@ endforeach()
 
 if (USE_IRESEARCH)
   set(IRESEARCH_TESTS_SOURCES
+    Cluster/ClusterInfo-test.cpp
     IResearch/common.cpp
     IResearch/AgencyMock.cpp
     IResearch/AgencyCommManagerMock.cpp
@@ -140,6 +141,7 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/IndexEstimatorTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
+  VocBase/VersionTest.cpp
   ${IRESEARCH_TESTS_SOURCES}
 )
 

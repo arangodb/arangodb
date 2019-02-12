@@ -35,11 +35,10 @@
 namespace arangodb {
 
 namespace transaction {
-
 class Methods;
-
 }
 
+struct KeyLockInfo;
 class LocalDocumentId;
 class Index;
 class IndexIterator;
@@ -56,11 +55,10 @@ class PhysicalCollection {
 
   // path to logical collection
   virtual std::string const& path() const = 0;
-  virtual void setPath(
-      std::string const&) = 0;  // should be set during collection creation
+  virtual void setPath(std::string const&) = 0;  // should be set during collection creation
   // creation happens atm in engine->createCollection
-  virtual arangodb::Result updateProperties(
-      arangodb::velocypack::Slice const& slice, bool doSync) = 0;
+  virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice,
+                                            bool doSync) = 0;
   virtual arangodb::Result persistProperties() = 0;
   virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const = 0;
 
@@ -70,9 +68,6 @@ class PhysicalCollection {
   virtual int close() = 0;
   virtual void load() = 0;
   virtual void unload() = 0;
-  
-  /// @brief rotate the active journal - will do nothing if there is no journal
-  virtual int rotateActiveJournal() { return TRI_ERROR_NO_ERROR; }
 
   // @brief Return the number of documents in this collection
   virtual uint64_t numberDocuments(transaction::Methods* trx) const = 0;
@@ -84,137 +79,125 @@ class PhysicalCollection {
   virtual void open(bool ignoreErrors) = 0;
 
   void drop();
-  
+
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////
-  
+
   /// @brief fetches current index selectivity estimates
-  /// if allowUpdate is true, will potentially make a cluster-internal roundtrip to
-  /// fetch current values!
+  /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
+  /// to fetch current values!
   virtual std::unordered_map<std::string, double> clusterIndexEstimates(bool allowUpdate) const;
-  
+
   /// @brief sets the current index selectivity estimates
   virtual void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
-  
+
   /// @brief flushes the current index selectivity estimates
   virtual void flushClusterIndexEstimates();
 
   virtual void prepareIndexes(arangodb::velocypack::Slice indexesSlice) = 0;
-  
+
   bool hasIndexOfType(arangodb::Index::IndexType type) const;
 
   /// @brief Find index by definition
-  virtual std::shared_ptr<Index> lookupIndex(
-      velocypack::Slice const&) const = 0;
+  virtual std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const = 0;
 
   /// @brief Find index by iid
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
-
   std::vector<std::shared_ptr<Index>> getIndexes() const;
-                       
+
   void getIndexesVPack(velocypack::Builder&, unsigned flags,
                        std::function<bool(arangodb::Index const*)> const& filter) const;
-  
+
   /// @brief return the figures for a collection
   virtual std::shared_ptr<velocypack::Builder> figures();
 
-  virtual std::shared_ptr<Index> createIndex(
-      transaction::Methods* trx, arangodb::velocypack::Slice const& info,
-      bool& created) = 0;
-
-  /// @brief Restores an index from VelocyPack.
-  virtual int restoreIndex(transaction::Methods*, velocypack::Slice const&,
-                           std::shared_ptr<Index>&) = 0;
+  /// @brief create or restore an index
+  /// @param restore utilize specified ID, assume index has to be created
+  virtual std::shared_ptr<Index> createIndex(arangodb::velocypack::Slice const& info,
+                                             bool restore, bool& created) = 0;
 
   virtual bool dropIndex(TRI_idx_iid_t iid) = 0;
 
   virtual std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const = 0;
-  virtual std::unique_ptr<IndexIterator> getAnyIterator(
-      transaction::Methods* trx) const = 0;
-  virtual void invokeOnAllElements(
-      transaction::Methods* trx,
-      std::function<bool(LocalDocumentId const&)> callback) = 0;
+  virtual std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const = 0;
+  virtual void invokeOnAllElements(transaction::Methods* trx,
+                                   std::function<bool(LocalDocumentId const&)> callback) = 0;
 
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  virtual Result truncate(transaction::Methods* trx,
-                          OperationOptions&) = 0;
+  virtual Result truncate(transaction::Methods* trx, OperationOptions&) = 0;
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop
   ///        the collection and it is guaranteed that no one is using
   ///        it at that moment.
-  virtual void deferDropCollection(
-    std::function<bool(LogicalCollection&)> const& callback
-  ) = 0;
+  virtual void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) = 0;
 
-  virtual LocalDocumentId lookupKey(
-      transaction::Methods*, arangodb::velocypack::Slice const&) const = 0;
+  virtual LocalDocumentId lookupKey(transaction::Methods*,
+                                    arangodb::velocypack::Slice const&) const = 0;
 
-  virtual Result read(transaction::Methods*,
-                      arangodb::StringRef const& key,
-                      ManagedDocumentResult& result, bool) = 0;
-  
-  virtual Result read(transaction::Methods*,
-                      arangodb::velocypack::Slice const& key,
+  virtual Result read(transaction::Methods*, arangodb::StringRef const& key,
                       ManagedDocumentResult& result, bool) = 0;
 
-  virtual bool readDocument(transaction::Methods* trx,
-                            LocalDocumentId const& token,
+  virtual Result read(transaction::Methods*, arangodb::velocypack::Slice const& key,
+                      ManagedDocumentResult& result, bool) = 0;
+
+  virtual bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                             ManagedDocumentResult& result) const = 0;
-  
+
   virtual bool readDocumentWithCallback(transaction::Methods* trx,
                                         LocalDocumentId const& token,
                                         IndexIterator::DocumentCallback const& cb) const = 0;
-
+  /**
+   * @param callbackDuringLock Called immediately after a successful insert. If
+   * it returns a failure, the insert will be rolled back. If the insert wasn't
+   * successful, it isn't called. May be nullptr.
+   */
   virtual Result insert(arangodb::transaction::Methods* trx,
-                        arangodb::velocypack::Slice const newSlice,
+                        arangodb::velocypack::Slice newSlice,
                         arangodb::ManagedDocumentResult& result,
-                        OperationOptions& options,
-                        TRI_voc_tick_t& resultMarkerTick, bool lock,
-                        TRI_voc_tick_t& revisionId) = 0;
-  
-  Result insert(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice const newSlice,
-                arangodb::ManagedDocumentResult& result,
-                OperationOptions& options,
+                        OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+                        bool lock, TRI_voc_tick_t& revisionId, KeyLockInfo* keyLockInfo,
+                        std::function<Result(void)> callbackDuringLock) = 0;
+
+  Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
+                arangodb::ManagedDocumentResult& result, OperationOptions& options,
                 TRI_voc_tick_t& resultMarkerTick, bool lock) {
     TRI_voc_rid_t unused;
-    return insert(trx, newSlice, result, options, resultMarkerTick, lock, unused);
+    return insert(trx, newSlice, result, options, resultMarkerTick, lock,
+                  unused, nullptr, nullptr);
   }
 
   virtual Result update(arangodb::transaction::Methods* trx,
-                        arangodb::velocypack::Slice const newSlice,
-                        ManagedDocumentResult& result,
-                        OperationOptions& options,
+                        arangodb::velocypack::Slice newSlice,
+                        ManagedDocumentResult& result, OperationOptions& options,
                         TRI_voc_tick_t& resultMarkerTick, bool lock,
                         TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                        arangodb::velocypack::Slice const key) = 0;
+                        arangodb::velocypack::Slice key,
+                        std::function<Result(void)> callbackDuringLock) = 0;
 
-  virtual Result replace(transaction::Methods* trx,
-                         arangodb::velocypack::Slice const newSlice,
-                         ManagedDocumentResult& result,
-                         OperationOptions& options,
+  virtual Result replace(transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
+                         ManagedDocumentResult& result, OperationOptions& options,
                          TRI_voc_tick_t& resultMarkerTick, bool lock,
-                         TRI_voc_rid_t& prevRev,
-                         ManagedDocumentResult& previous) = 0;
+                         TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+                         std::function<Result(void)> callbackDuringLock) = 0;
 
-  virtual Result remove(arangodb::transaction::Methods* trx,
-                        arangodb::velocypack::Slice const slice,
+  virtual Result remove(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice slice,
                         arangodb::ManagedDocumentResult& previous,
-                        OperationOptions& options,
-                        TRI_voc_tick_t& resultMarkerTick, bool lock,
-                        TRI_voc_rid_t& prevRev,
-                        TRI_voc_rid_t& revisionId) = 0;
+                        OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+                        bool lock, TRI_voc_rid_t& prevRev,
+                        TRI_voc_rid_t& revisionId, KeyLockInfo* keyLockInfo,
+                        std::function<Result(void)> callbackDuringLock) = 0;
+
+  // returns true all documents have a persistent LocalDocumentId or false if it
+  // can change after a server restart
+  virtual bool hasAllPersistentLocalIds() const = 0;
 
  protected:
-  PhysicalCollection(
-    LogicalCollection& collection,
-    arangodb::velocypack::Slice const& info
-  );
+  PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);
 
   /// @brief Inject figures that are specific to StorageEngine
   virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
@@ -226,33 +209,26 @@ class PhysicalCollection {
   bool isValidEdgeAttribute(velocypack::Slice const& slice) const;
 
   /// @brief new object for insert, value must have _key set correctly.
-  Result newObjectForInsert(transaction::Methods* trx,
-                            velocypack::Slice const& value,
+  Result newObjectForInsert(transaction::Methods* trx, velocypack::Slice const& value,
                             bool isEdgeCollection, velocypack::Builder& builder,
-                            bool isRestore,
-                            TRI_voc_rid_t& revisionId) const;
+                            bool isRestore, TRI_voc_rid_t& revisionId) const;
 
   /// @brief new object for remove, must have _key set
-  void newObjectForRemove(transaction::Methods* trx,
-                          velocypack::Slice const& oldValue,
-                          velocypack::Builder& builder,
-                          bool isRestore, TRI_voc_rid_t& revisionId) const;
+  void newObjectForRemove(transaction::Methods* trx, velocypack::Slice const& oldValue,
+                          velocypack::Builder& builder, bool isRestore,
+                          TRI_voc_rid_t& revisionId) const;
 
   /// @brief merge two objects for update
-  Result mergeObjectsForUpdate(transaction::Methods* trx,
-                               velocypack::Slice const& oldValue,
+  Result mergeObjectsForUpdate(transaction::Methods* trx, velocypack::Slice const& oldValue,
                                velocypack::Slice const& newValue,
-                               bool isEdgeCollection,
-                               bool mergeObjects, bool keepNull,
-                               velocypack::Builder& builder,
+                               bool isEdgeCollection, bool mergeObjects,
+                               bool keepNull, velocypack::Builder& builder,
                                bool isRestore, TRI_voc_rid_t& revisionId) const;
 
   /// @brief new object for replace
-  Result newObjectForReplace(transaction::Methods* trx,
-                             velocypack::Slice const& oldValue,
+  Result newObjectForReplace(transaction::Methods* trx, velocypack::Slice const& oldValue,
                              velocypack::Slice const& newValue,
-                             bool isEdgeCollection,
-                             velocypack::Builder& builder,
+                             bool isEdgeCollection, velocypack::Builder& builder,
                              bool isRestore, TRI_voc_rid_t& revisionId) const;
 
   int checkRevision(transaction::Methods* trx, TRI_voc_rid_t expected,

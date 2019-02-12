@@ -27,38 +27,50 @@
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
+#include "Cluster/ResultT.h"
+#include "VocBase/voc-types.h"
 
 #include <chrono>
 
 namespace arangodb {
 
-class MaintenanceAction;
+class LogicalCollection;
 
 namespace maintenance {
 
 class SynchronizeShard : public ActionBase {
-
-public:
-
+ public:
   SynchronizeShard(MaintenanceFeature&, ActionDescription const& d);
 
   virtual ~SynchronizeShard();
 
-  virtual bool first() override;
+  virtual bool first() override final;
 
-private:
-  arangodb::Result getReadLock(
-    std::string const& endpoint, std::string const& database,
-    std::string const& collection, std::string const& clientId, uint64_t rlid,
-    double timeout = 300.0);
+  virtual void setState(ActionState state) override final;
 
-  arangodb::Result startReadLockOnLeader(
-    std::string const& endpoint, std::string const& database,
-    std::string const& collection, std::string const& clientId, uint64_t& rlid,
-    double timeout = 300.0);
+ private:
+  arangodb::Result getReadLock(std::string const& endpoint, std::string const& database,
+                               std::string const& collection, std::string const& clientId,
+                               uint64_t rlid, bool soft, double timeout = 300.0);
 
+  arangodb::Result startReadLockOnLeader(std::string const& endpoint,
+                                         std::string const& database,
+                                         std::string const& collection,
+                                         std::string const& clientId, uint64_t& rlid,
+                                         bool soft, double timeout = 300.0);
+
+  arangodb::ResultT<TRI_voc_tick_t> catchupWithReadLock(
+      std::string const& ep, std::string const& database, LogicalCollection const& collection,
+      std::string const& clientId, std::string const& shard,
+      std::string const& leader, TRI_voc_tick_t lastLogTick, VPackBuilder& builder);
+
+  arangodb::Result catchupWithExclusiveLock(
+      std::string const& ep, std::string const& database, LogicalCollection const& collection,
+      std::string const& clientId, std::string const& shard,
+      std::string const& leader, TRI_voc_tick_t lastLogTick, VPackBuilder& builder);
 };
 
-}}
+}  // namespace maintenance
+}  // namespace arangodb
 
 #endif

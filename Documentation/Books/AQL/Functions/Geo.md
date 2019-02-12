@@ -41,7 +41,7 @@ FOR doc IN doc // e.g. documents returned by a traversal
 Checks whether the [GeoJSON object](../../Manual/Indexing/Geo.html#geojson) `geoJsonA`
 fully contains `geoJsonB` (Every point in B is also in A). The object `geoJsonA` has to be of type 
 `Polygon` or `MultiPolygon`, other types are not supported because containment is ill defined. 
-This function can be **optimized** via a S2 based geospatial index.
+This function can be **optimized** by a S2 based [geospatial index](../../Manual/Indexing/Geo.html).
 
 - **geoJsonA** (object): first GeoJSON object or coordinate array (in longitude, latitude order)
 - **geoJsonB** (object): second GeoJSON object or coordinate array (in longitude, latitude order)
@@ -53,8 +53,9 @@ This function can be **optimized** via a S2 based geospatial index.
 `GEO_DISTANCE(geoJsonA, geoJsonB) → distance`
 
 Return the distance between two GeoJSON objects, measured from the **centroid**
-of each shape (For a list of supported Types see [geo index
-page](../../Manual/Indexing/Geo.html#geojson)).
+of each shape. For a list of supported types see the
+[geo index page](../../Manual/Indexing/Geo.html#geojson).
+
 - **geoJsonA** (object): first GeoJSON object
 - **geoJsonB** (object): second GeoJSON object
 - returns **distance** (number): the distance between the centroid points of
@@ -74,8 +75,8 @@ FOR doc IN collectionName
 
 `GEO_EQUALS(geoJsonA, geoJsonB) → bool`
 
-Checks whether two GeoJSON objects are equal or not. (For a list of supported
-Types see [geo index page](../../Manual/Indexing/Geo.html#geojson)).
+Checks whether two GeoJSON objects are equal or not. For a list of supported
+types see the [geo index page](../../Manual/Indexing/Geo.html#geojson).
 
 - **geoJsonA** (object): first GeoJSON object
 - **geoJsonB** (object): second GeoJSON object.
@@ -106,8 +107,8 @@ RETURN GEO_EQUALS(polygonA, polygonB) // false
 `GEO_INTERSECTS(geoJsonA, geoJsonB) → bool`
 
 Checks whether the [GeoJSON object](../../Manual/Indexing/Geo.html#geojson) `geoJsonA`
-intersects with `geoJsonB` (At least one point in B is also A or vice-versa). 
-This function can be **optimized** via a S2 based geospatial index, please look at the [relevant](../../Manual/Indexing/Geo.html) manual section for more information.
+intersects with `geoJsonB` (i.e. at least one point in B is also A or vice-versa).
+This function can be **optimized** by a S2 based [geospatial index](../../Manual/Indexing/Geo.html).
 
 - **geoJsonA** (object): first GeoJSON object
 - **geoJsonB** (object): second GeoJSON object.
@@ -117,9 +118,11 @@ This function can be **optimized** via a S2 based geospatial index, please look 
 
 Determine whether a coordinate is inside a polygon.
 
-Note: the *IS_IN_POLYGON* AQL function is **deprecated** as of ArangoDB 3.4.0 in
+{% hint 'warning' %}
+The *IS_IN_POLYGON* AQL function is **deprecated** as of ArangoDB 3.4.0 in
 favor of the new `GEO_CONTAINS` AQL function, which works with
 [GeoJSON](https://tools.ietf.org/html/rfc7946) Polygons and MultiPolygons.
+{% endhint %}
 
 `IS_IN_POLYGON(polygon, latitude, longitude) → bool`
 
@@ -203,8 +206,8 @@ Needs at least two elements consisting valid LineStrings coordinate arrays.
 @startDocuBlockInline aqlGeoMultiLineString_1
 @EXAMPLE_AQL{aqlGeoMultiLineString_1}
 RETURN GEO_MULTILINESTRING([
- [[100.0, 0.0], [101.0, 1.0]],
- [[102.0, 2.0], [101.0, 2.3]]
+  [[100.0, 0.0], [101.0, 1.0]],
+  [[102.0, 2.0], [101.0, 2.3]]
 ])
 @END_EXAMPLE_AQL
 @endDocuBlock aqlGeoMultiLineString_1
@@ -251,7 +254,7 @@ Each loop consists of an array with at least three longitude/latitude pairs. The
 first loop must be the outermost, while any subsequent loops will be interpreted
 as holes.
 
-- **points** (array): array of arrays of longitude/latitude pairs
+- **points** (array): array of (arrays of) longitude/latitude pairs
 - returns **geoJson** (object|null): a valid GeoJSON Polygon
 
 Simple Polygon:
@@ -275,21 +278,61 @@ RETURN GEO_POLYGON([
 @END_EXAMPLE_AQL
 @endDocuBlock aqlGeoPolygon_2
 
+### GEO_MULTIPOLYGON()
+
+`GEO_MULTIPOLYGON(polygons) → geoJson`
+
+Construct a GeoJSON MultiPolygon. Needs at least two Polygons inside.
+See [GEO_POLYGON()](#geopolygon) for the rules of Polygon construction.
+
+- **polygons** (array): array of arrays of array of longitude/latitude pairs
+- returns **geoJson** (object|null): a valid GeoJSON MultiPolygon
+
+MultiPolygon comprised of a simple Polygon and a Polygon with hole:
+
+@startDocuBlockInline aqlGeoMultiPolygon_1
+@EXAMPLE_AQL{aqlGeoMultiPolygon_1}
+RETURN GEO_MULTIPOLYGON([
+  [
+    [[40, 40], [20, 45], [45, 30], [40, 40]]
+  ],  
+  [
+    [[20, 35], [10, 30], [10, 10], [30, 5], [45, 20], [20, 35]],
+    [[30, 20], [20, 15], [20, 25], [30, 20]]
+  ]
+])
+@END_EXAMPLE_AQL
+@endDocuBlock aqlGeoMultiPolygon_1
+
 Geo Index Functions
 -------------------
 
 {% hint 'warning' %}
-The AQL functions `NEAR()`, `WITHIN()` and `WITHIN_RECTANGLE()` are deprecated.
+The AQL functions `NEAR()`, `WITHIN()` and `WITHIN_RECTANGLE()` are
+deprecated starting from version 3.4.0.
 Please use the [Geo utility functions](#geo-utility-functions) instead.
 {% endhint %}
 
-AQL offers the following functions to filter data based on [geo
-indexes](../../Manual/Indexing/Geo.html). These functions require the collection
+AQL offers the following functions to filter data based on
+[geo indexes](../../Manual/Indexing/Geo.html). These functions require the collection
 to have at least one geo index. If no geo index can be found, calling this
 function will fail with an error at runtime. There is no error when explaining
 the query however.
 
 ### NEAR()
+
+{% hint 'warning' %}
+`NEAR` is a deprecated AQL function from version 3.4.0 on.
+Use [DISTANCE()](#distance) in a query like this instead:
+
+```js
+FOR doc IN doc
+  SORT DISTANCE(doc.latitude, doc.longitude, paramLatitude, paramLongitude) ASC
+  RETURN doc
+```
+Assuming there exists a geo-type index on `latitude` and `longitude`, the
+optimizer will recognize it and accelerate the query.
+{% endhint %}
 
 `NEAR(coll, latitude, longitude, limit, distanceName) → docArray`
 
@@ -314,18 +357,23 @@ contain the distance value in an attribute of that name.
 - returns **docArray** (array): an array of documents, sorted by distance
   (shortest distance first)
 
+### WITHIN()
 
-**Note:** `NEAR` is a *deprecated* AQL function, instead use a query like this:
+{% hint 'warning' %}
+`WITHIN` is a deprecated AQL function from version 3.4.0 on.
+Use [DISTANCE()](#distance) in a query like this instead:
 
 ```js
 FOR doc IN doc
-  SORT DISTANCE(doc.latitude, doc.longitude, paramLatitude, paramLongitude) ASC
+  LET d = DISTANCE(doc.latitude, doc.longitude, paramLatitude, paramLongitude)
+  FILTER d <= radius
+  SORT d ASC
   RETURN doc
 ```
+
 Assuming there exists a geo-type index on `latitude` and `longitude`, the
 optimizer will recognize it and accelerate the query.
-
-### WITHIN()
+{% endhint %}
 
 `WITHIN(coll, latitude, longitude, radius, distanceName) → docArray`
 
@@ -348,20 +396,21 @@ value in an attribute of that name.
 - returns **docArray** (array): an array of documents, sorted by distance
   (shortest distance first)
 
-**Note:** `WITHIN` is a *deprecated* AQL function, instead use a query like this:
+### WITHIN_RECTANGLE()
+
+{% hint 'warning' %}
+`WITHIN_RECTANGLE` is a deprecated AQL function from version 3.4.0 on. Use
+[GEO_CONTAINS](#geocontains) and a GeoJSON polygon instead:
 
 ```js
+LET rect = {type: "Polygon", coordinates: [[[longitude1, latitude1], ...]]]}
 FOR doc IN doc
-  LET d = DISTANCE(doc.latitude, doc.longitude, paramLatitude, paramLongitude)
-  FILTER d <= radius
-  SORT d ASC
+  FILTER GEO_CONTAINS(poly, [doc.longitude, doc.latitude])
   RETURN doc
 ```
-
 Assuming there exists a geo-type index on `latitude` and `longitude`, the
 optimizer will recognize it and accelerate the query.
-
-### WITHIN_RECTANGLE()
+{% endhint %}
 
 `WITHIN_RECTANGLE(coll, latitude1, longitude1, latitude2, longitude2) → docArray`
 
@@ -379,15 +428,3 @@ bounding rectangle with the points (*latitude1*, *longitude1*) and (*latitude2*,
 - **longitude2** (number): the top-right longitude portion of the search
   coordinate
 - returns **docArray** (array): an array of documents, in random order
-
-**Note:** `WITHIN_RECTANGLE` is a *deprecated* AQL function, instead use a query
-using a GeoJSON polygon:
-
-```js
-LET rect = {type: "Polygon", coordinates: [[[longitude1, latitude1], ...]]]}
-FOR doc IN doc
-  FILTER GEO_CONTAINS(poly, [doc.longitude, doc.latitude])
-  RETURN doc
-```
-Assuming there exists a geo-type index on `latitude` and `longitude`, the
-optimizer will recognize it and accelerate the query.

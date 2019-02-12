@@ -73,16 +73,6 @@
 
 NS_BEGIN(std)
 
-// MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
-// due to a missing export, as per their comment:
-//   This is an active bug in our database (VSO#143857), which we'll investigate
-//   for a future release, but we're currently working on higher priority things
-// define the missing variables for at least the static-CRT implementations
-#if defined(_MSC_VER) && _MSC_VER > 1800 && !defined(_DLL)
-  std::locale::id std::codecvt<char16_t, char, _Mbstatet>::id;
-  std::locale::id std::codecvt<char32_t, char, _Mbstatet>::id;
-#endif
-
 // GCC < v5 does not explicitly define
 // std::codecvt<char16_t, char, mbstate_t>::id or std::codecvt<char32_t, char, mbstate_t>::id
 // this causes linking issues in optimized code
@@ -311,6 +301,8 @@ std::codecvt_base::result codecvtu_base<InternType>::do_unshift(
 ////////////////////////////////////////////////////////////////////////////////
 class codecvt16_facet final: public codecvtu_base<char16_t> {
  public:
+  MSVC2015_ONLY(static std::locale::id id;) // MSVC2015 requires a static instance of an 'id' member
+  MSVC2017_ONLY(static std::locale::id id;) // MSVC2017 requires a static instance of an 'id' member
   codecvt16_facet(converter_pool& converters): codecvtu_base(converters) {}
 
   bool append(
@@ -339,6 +331,9 @@ class codecvt16_facet final: public codecvtu_base<char16_t> {
     extern_type*& to_next
   ) const override;
 };
+
+MSVC2015_ONLY(/*static*/ std::locale::id codecvt16_facet::id;) // MSVC2015 requires a static instance of an 'id' member
+MSVC2017_ONLY(/*static*/ std::locale::id codecvt16_facet::id;) // MSVC2017 requires a static instance of an 'id' member
 
 #if defined (__GNUC__)
   #pragma GCC diagnostic push
@@ -524,6 +519,8 @@ std::codecvt_base::result codecvt16_facet::do_out(
 ////////////////////////////////////////////////////////////////////////////////
 class codecvt32_facet final: public codecvtu_base<char32_t> {
  public:
+  MSVC2015_ONLY(static std::locale::id id;) // MSVC2015 requires a static instance of an 'id' member
+  MSVC2017_ONLY(static std::locale::id id;) // MSVC2017 requires a static instance of an 'id' member
   codecvt32_facet(converter_pool& converters): codecvtu_base(converters) {}
 
   bool append(
@@ -552,6 +549,9 @@ class codecvt32_facet final: public codecvtu_base<char32_t> {
     extern_type*& to_next
   ) const override;
 };
+
+MSVC2015_ONLY(/*static*/ std::locale::id codecvt32_facet::id;) // MSVC2015 requires a static instance of an 'id' member
+MSVC2017_ONLY(/*static*/ std::locale::id codecvt32_facet::id;) // MSVC2017 requires a static instance of an 'id' member
 
 bool codecvt32_facet::append(
     std::basic_string<intern_type>& buf, const icu::UnicodeString& value
@@ -2676,7 +2676,9 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   auto ctx = context();
 
   if (!ctx) {
-    throw irs::detailed_io_error("failed to retrieve ICU formatter in num_put_facet::do_put(...)");
+    throw irs::io_error(
+      "failed to retrieve ICU formatter in num_put_facet::do_put(...)"
+    );
   }
 
   static_assert(sizeof(int64_t) == sizeof(long long), "sizeof(int64_t) != sizeof(long long)");
@@ -2684,7 +2686,9 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   ctx->regular_->format(int64_t(0 - value), ctx->icu_buf0_);
 
   if (!converter_.append(ctx->buf_, ctx->icu_buf0_)) {
-    throw irs::detailed_io_error("failed to convert data from UTF8 in num_put_facet::do_put(...)");
+    throw irs::io_error(
+      "failed to convert data from UTF8 in num_put_facet::do_put(...)"
+    );
   }
 
   size_t len = ctx->buf_.size() + 1; // +1 for '-'
@@ -2748,7 +2752,9 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   }
 
   if ((unsigned long long)irs::integer_traits<int64_t>::const_max < value) {
-    throw irs::detailed_io_error("value too large while converting data from UTF8 in num_put_facet::do_put(...)");
+    throw irs::io_error(
+      "value too large while converting data from UTF8 in num_put_facet::do_put(...)"
+    );
   }
 
   auto ipad = (str.flags() & std::ios_base::adjustfield) == std::ios_base::internal
@@ -2765,7 +2771,9 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   auto ctx = context();
 
   if (!ctx) {
-    throw irs::detailed_io_error("failed to retrieve ICU formatter in num_put_facet::do_put(...)");
+    throw irs::io_error(
+      "failed to retrieve ICU formatter in num_put_facet::do_put(...)"
+    );
   }
 
   static_assert(sizeof(int64_t) == sizeof(long long), "sizeof(int64_t) != sizeof(long long)");
@@ -2773,7 +2781,9 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   ctx->regular_->format(int64_t(value), ctx->icu_buf0_);
 
   if (!converter_.append(ctx->buf_, ctx->icu_buf0_)) {
-    throw irs::detailed_io_error("failed to convert data from UTF8 in num_put_facet::do_put(...)");
+    throw irs::io_error(
+      "failed to convert data from UTF8 in num_put_facet::do_put(...)"
+    );
   }
 
   size_t len = ctx->buf_.size() + (str.flags() & std::ios_base::showpos ? 1 : 0);
@@ -2827,7 +2837,9 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   auto ctx = context();
 
   if (!ctx) {
-    throw irs::detailed_io_error("failed to retrieve ICU formatter in num_put_facet::do_put(...)");
+    throw irs::io_error(
+      "failed to retrieve ICU formatter in num_put_facet::do_put(...)"
+    );
   }
 
   ctx->reset(str);
@@ -2903,7 +2915,9 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   }
 
   if (!converter_.append(ctx->buf_, *icu_buf)) {
-    throw irs::detailed_io_error("failed to convert data from UTF8 in num_put_facet::do_put(...)");
+    throw irs::io_error(
+      "failed to convert data from UTF8 in num_put_facet::do_put(...)"
+    );
   }
 
   size_t len = ctx->buf_.size()
@@ -3187,7 +3201,7 @@ template<typename T>
       *out++ = '+';
       ++size;
 
-      for (size_t i = ipad < len ? 0 : ipad - len; i; --i) {
+      for (size_t j = ipad < len ? 0 : ipad - len; j; --j) {
         *out++ = fill;
         ++len; // subtract from 'ipad'
         ++size;
@@ -3201,7 +3215,7 @@ template<typename T>
       size += 2;
     }
 
-    for (size_t i = ipad < len ? 0 : ipad - len; i; --i) {
+    for (size_t j = ipad < len ? 0 : ipad - len; j; --j) {
       *out++ = fill;
       ++size;
     }
@@ -3602,19 +3616,12 @@ const std::locale& get_locale(
   auto& converter = get_converter(locale_info->encoding());
   auto locale = std::locale(boost_locale, locale_info.release());
 
-  // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
-  // due to a missing export, as per their comment:
-  //   This is an active bug in our database (VSO#143857), which we'll investigate
-  //   for a future release, but we're currently working on higher priority things
-  // do not add char16_t/char32_t 'codecvt' instances in the aforementioned case
-  #if !defined(_MSC_VER) || _MSC_VER <= 1800
-    locale = std::locale(
-      locale, irs::memory::make_unique<codecvt16_facet>(converter).release()
-    );
-    locale = std::locale(
-      locale, irs::memory::make_unique<codecvt32_facet>(converter).release()
-    );
-  #endif
+  locale = std::locale(
+    locale, irs::memory::make_unique<codecvt16_facet>(converter).release()
+  );
+  locale = std::locale(
+    locale, irs::memory::make_unique<codecvt32_facet>(converter).release()
+  );
 
   if (unicodeSystem) {
     auto cvt8 = irs::memory::make_unique<codecvt8u_facet>(converter);
@@ -3654,6 +3661,35 @@ NS_END
 
 NS_ROOT
 NS_BEGIN( locale_utils )
+
+#if defined(_MSC_VER) && _MSC_VER <= 1800 && defined(IRESEARCH_DLL) // MSVC2013
+  // MSVC2013 does not properly export
+  // std::codecvt<char32_t, char, mbstate_t>::id for shared libraries
+  template<>
+  const std::codecvt<char32_t, char, mbstate_t>& codecvt(
+      std::locale const& locale
+  ) {
+    return std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(locale);
+  }
+#elif defined(_MSC_VER) && _MSC_VER <= 1916 // MSVC2015/MSVC2017
+  // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
+  // due to a missing export, as per their comment:
+  //   This is an active bug in our database (VSO#143857), which we'll investigate
+  //   for a future release, but we're currently working on higher priority things
+  template<>
+  const std::codecvt<char16_t, char, mbstate_t>& codecvt(
+      std::locale const& locale
+  ) {
+    return std::use_facet<codecvt16_facet>(locale);
+  }
+
+  template<>
+  const std::codecvt<char32_t, char, mbstate_t>& codecvt(
+      std::locale const& locale
+  ) {
+    return std::use_facet<codecvt32_facet>(locale);
+  }
+#endif
 
 const irs::string_ref& country(std::locale const& locale) {
   auto* loc = &locale;

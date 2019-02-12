@@ -4,6 +4,13 @@
 
 @RESTHEADER{PUT /_api/simple/within, Find documents within a radius around a coordinate}
 
+@HINTS
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4.0 on.
+They are superseded by AQL queries.
+{% endhint %}
+
 @RESTBODYPARAM{collection,string,required,string}
 The name of the collection to query.
 
@@ -41,13 +48,12 @@ coordinates for the document.  If you have more than one geo-spatial index,
 you can use the *geo* field to select a particular index.
 
 
-Returns a cursor containing the result, see [Http Cursor](../AqlQueryCursor/README.md) for details.
+Returns a cursor containing the result, see [HTTP Cursor](../AqlQueryCursor/README.md) for details.
 
 Note: the *within* simple query is **deprecated** as of ArangoDB 2.6. 
 This API may be removed in future versions of ArangoDB. The preferred
 way for retrieving documents from a collection using the near operator is
 to issue an [AQL query](../../AQL/Functions/Geo.html) using the *WITHIN* function as follows: 
-
 
     FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distanceAttributeName)
       RETURN doc

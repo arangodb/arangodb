@@ -87,7 +87,7 @@ class IRESEARCH_API filter {
   //////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API prepared: public util::attribute_store_provider {
    public:
-    DECLARE_SHARED_PTR(prepared);
+    DECLARE_SHARED_PTR(const prepared);
     DEFINE_FACTORY_INLINE(prepared);
 
     static prepared::ptr empty();

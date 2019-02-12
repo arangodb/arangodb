@@ -24,18 +24,18 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_VIEW_H
 #define ARANGOD_IRESEARCH__IRESEARCH_VIEW_H 1
 
+#include "Basics/Thread.h"
 #include "Containers.h"
 #include "IResearchViewMeta.h"
-#include "Basics/Thread.h"
 #include "Transaction/Status.h"
-#include "VocBase/LogicalDataSource.h"
-#include "VocBase/LocalDocumentId.h"
-#include "VocBase/LogicalView.h"
 #include "Utils/FlushTransaction.h"
+#include "VocBase/LocalDocumentId.h"
+#include "VocBase/LogicalDataSource.h"
+#include "VocBase/LogicalView.h"
 
-#include "store/directory.hpp"
-#include "index/index_writer.hpp"
 #include "index/directory_reader.hpp"
+#include "index/index_writer.hpp"
+#include "store/directory.hpp"
 #include "utils/async_utils.hpp"
 #include "utils/utf8_path.hpp"
 
@@ -44,31 +44,32 @@ namespace {
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
-}
+}  // namespace
 
 namespace arangodb {
 
-class DatabasePathFeature; // forward declaration
-class TransactionState; // forward declaration
-class ViewIterator; // forward declaration
+class DatabasePathFeature;  // forward declaration
+class TransactionState;     // forward declaration
+struct ViewFactory;         // forward declaration
+class ViewIterator;         // forward declaration
 
 namespace aql {
 
-class Ast; // forward declaration
-struct AstNode; // forward declaration
-class SortCondition; // forward declaration
-struct Variable; // forward declaration
-class ExpressionContext; // forward declaration
+class Ast;                // forward declaration
+struct AstNode;           // forward declaration
+class SortCondition;      // forward declaration
+struct Variable;          // forward declaration
+class ExpressionContext;  // forward declaration
 
-} // aql
+}  // namespace aql
 
 namespace transaction {
 
-class Methods; // forward declaration
+class Methods;  // forward declaration
 
-} // transaction
+}  // namespace transaction
 
-} // arangodb
+}  // namespace arangodb
 
 namespace arangodb {
 namespace iresearch {
@@ -77,7 +78,7 @@ namespace iresearch {
 /// --SECTION--                                            Forward declarations
 ///////////////////////////////////////////////////////////////////////////////
 
-class IResearchFeature; // forward declaratui
+class IResearchFeature;  // forward declaratui
 struct IResearchLinkMeta;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -88,29 +89,16 @@ struct IResearchLinkMeta;
 /// @brief IResearchViewMeta with an associated read-write mutex that can be
 ///        referenced by an std::unique_lock via read()/write()
 ////////////////////////////////////////////////////////////////////////////////
-class AsyncMeta: public IResearchViewMeta {
+class AsyncMeta : public IResearchViewMeta {
  public:
-  AsyncMeta(): _readMutex(_mutex), _writeMutex(_mutex) {}
-  ReadMutex& read() const { return _readMutex; } // prevent modification
-  WriteMutex& write() { return _writeMutex; } // exclusive modification
+  AsyncMeta() : _readMutex(_mutex), _writeMutex(_mutex) {}
+  ReadMutex& read() const { return _readMutex; }  // prevent modification
+  WriteMutex& write() { return _writeMutex; }     // exclusive modification
 
  private:
   irs::async_utils::read_write_mutex _mutex;
-  mutable ReadMutex _readMutex; // object that can be referenced by std::unique_lock
-  WriteMutex _writeMutex; // object that can be referenced by std::unique_lock
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief index reader implementation with a cached primary-key reader lambda
-////////////////////////////////////////////////////////////////////////////////
-class PrimaryKeyIndexReader: public irs::index_reader {
- public:
-  virtual irs::sub_reader const& operator[](
-    size_t subReaderId
-  ) const noexcept = 0;
-  virtual irs::columnstore_reader::values_reader_f const& pkColumn(
-    size_t subReaderId
-  ) const noexcept = 0;
+  mutable ReadMutex _readMutex;  // object that can be referenced by std::unique_lock
+  WriteMutex _writeMutex;  // object that can be referenced by std::unique_lock
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -132,17 +120,16 @@ class PrimaryKeyIndexReader: public irs::index_reader {
 ///       which may be, but are not explicitly required to be, triggered via
 ///       the IResearchLink or IResearchViewBlock
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchView final
-  : public arangodb::LogicalViewStorageEngine,
-    public arangodb::FlushTransaction {
+class IResearchView final : public arangodb::LogicalViewStorageEngine,
+                            public arangodb::FlushTransaction {
  public:
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief AsyncValue holding the view itself, modifiable by IResearchView
   ///////////////////////////////////////////////////////////////////////////////
-  class AsyncSelf: public ResourceMutex {
+  class AsyncSelf : public ResourceMutex {
    public:
     DECLARE_SHARED_PTR(AsyncSelf);
-    explicit AsyncSelf(IResearchView* value): ResourceMutex(value) {}
+    explicit AsyncSelf(IResearchView* value) : ResourceMutex(value) {}
     IResearchView* get() const {
       return static_cast<IResearchView*>(ResourceMutex::get());
     }
@@ -199,18 +186,19 @@ class IResearchView final
   ////////////////////////////////////////////////////////////////////////////////
   bool emplace(TRI_voc_cid_t cid);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the factory for this type of view
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::ViewFactory const& factory();
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert a document into this IResearch View and the underlying
   ///        IResearch stores
   ///        to be done in the scope of transaction 'tid' and 'meta'
   ////////////////////////////////////////////////////////////////////////////////
-  int insert(
-    transaction::Methods& trx,
-    TRI_voc_cid_t cid,
-    arangodb::LocalDocumentId const& documentId,
-    arangodb::velocypack::Slice const& doc,
-    IResearchLinkMeta const& meta
-  );
+  int insert(transaction::Methods& trx, TRI_voc_cid_t cid,
+             arangodb::LocalDocumentId const& documentId,
+             arangodb::velocypack::Slice const& doc, IResearchLinkMeta const& meta);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert a batch of documents into the IResearch View and the
@@ -220,24 +208,9 @@ class IResearchView final
   ///        'Itrator.second' == arangodb::velocypack::Slice
   ///        terminate on first failure
   ////////////////////////////////////////////////////////////////////////////////
-  int insert(
-    transaction::Methods& trx,
-    TRI_voc_cid_t cid,
-    std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& batch,
-    IResearchLinkMeta const& meta
-  );
-
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief view factory
-  /// @returns initialized view object
-  ///////////////////////////////////////////////////////////////////////////////
-  static std::shared_ptr<LogicalView> make(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& info,
-    bool isNew,
-    uint64_t planVersion,
-    LogicalView::PreCommitCallback const& preCommit = {}
-  );
+  int insert(transaction::Methods& trx, TRI_voc_cid_t cid,
+             std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& batch,
+             IResearchLinkMeta const& meta);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this iResearch Link
@@ -254,11 +227,8 @@ class IResearchView final
   ///        and the underlying IResearch stores
   ///        to be done in the scope of transaction 'tid'
   ////////////////////////////////////////////////////////////////////////////////
-  int remove(
-    transaction::Methods& trx,
-    TRI_voc_cid_t cid,
-    arangodb::LocalDocumentId const& documentId
-  );
+  int remove(transaction::Methods& trx, TRI_voc_cid_t cid,
+             arangodb::LocalDocumentId const& documentId);
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief 'this' for the lifetime of the view
@@ -272,16 +242,13 @@ class IResearchView final
   ///         (nullptr == no view snapshot associated with the specified state)
   ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  PrimaryKeyIndexReader* snapshot(
-    transaction::Methods& trx,
-    Snapshot mode = Snapshot::Find
-  ) const;
+  irs::index_reader const* snapshot(transaction::Methods& trx,
+                                    Snapshot mode = Snapshot::Find) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates properties of an existing view
   //////////////////////////////////////////////////////////////////////////////
-  using LogicalView::updateProperties;
-  arangodb::Result updateProperties(std::shared_ptr<AsyncMeta> const& meta); // nullptr == TRI_ERROR_BAD_PARAMETER
+  arangodb::Result updateProperties(std::shared_ptr<AsyncMeta> const& meta);  // nullptr == TRI_ERROR_BAD_PARAMETER
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief visit all collection IDs that were added to the view
@@ -290,15 +257,12 @@ class IResearchView final
   bool visitCollections(CollectionVisitor const& visitor) const override;
 
  protected:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchView object
   ///        only fields describing the view itself, not 'link' descriptions
   //////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result appendVelocyPackDetailed(
-    arangodb::velocypack::Builder& builder,
-    bool forPersistence
-  ) const override;
+  virtual arangodb::Result appendVelocyPackDetailed(arangodb::velocypack::Builder& builder,
+                                                    bool forPersistence) const override;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief drop this IResearch View
@@ -308,51 +272,41 @@ class IResearchView final
   //////////////////////////////////////////////////////////////////////////////
   /// @brief called when a view's properties are updated (i.e. delta-modified)
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result updateProperties(
-    arangodb::velocypack::Slice const& slice,
-    bool partialUpdate
-  ) override;
+  arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice,
+                                    bool partialUpdate) override;
 
  private:
   struct DataStore {
     irs::directory::ptr _directory;
     irs::directory_reader _reader;
-    irs::index_reader::ptr _readerImpl; // need this for 'std::atomic_exchange_strong'
     irs::index_writer::ptr _writer;
 
     DataStore() = default;
     DataStore(DataStore&& other) noexcept;
     DataStore& operator=(DataStore&& other) noexcept;
-    operator bool() const noexcept {
-      return _directory && _writer;
-    }
+    operator bool() const noexcept { return _directory && _writer; }
     void sync();
   };
 
-  struct PersistedStore: public DataStore {
+  struct PersistedStore : public DataStore {
     const irs::utf8_path _path;
     PersistedStore(irs::utf8_path&& path);
   };
 
-  class ViewStateHelper; // forward declaration
-  struct ViewStateRead; // forward declaration
-  struct ViewStateWrite; // forward declaration
+  struct ViewFactory;     // forward declaration
+  class ViewStateHelper;  // forward declaration
+  struct ViewStateRead;   // forward declaration
+  class ViewStateWrite;   // forward declaration
 
   struct FlushCallbackUnregisterer {
     void operator()(IResearchView* view) const noexcept;
   };
 
   typedef std::unique_ptr<IResearchView, FlushCallbackUnregisterer> FlushCallback;
-  typedef std::unique_ptr<
-    arangodb::FlushTransaction, std::function<void(arangodb::FlushTransaction*)>
-  > FlushTransactionPtr;
+  typedef std::unique_ptr<arangodb::FlushTransaction, std::function<void(arangodb::FlushTransaction*)>> FlushTransactionPtr;
 
-  IResearchView(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& info,
-    arangodb::DatabasePathFeature const& dbPathFeature,
-    uint64_t planVersion
-  );
+  IResearchView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& info,
+                arangodb::DatabasePathFeature const& dbPathFeature, uint64_t planVersion);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief registers a callback for flush feature
@@ -364,22 +318,22 @@ class IResearchView final
   //////////////////////////////////////////////////////////////////////////////
   void verifyKnownCollections();
 
-  IResearchFeature* _asyncFeature; // the feature where async jobs were registered (nullptr == no jobs registered)
-  AsyncSelf::ptr _asyncSelf; // 'this' for the lifetime of the view (for use with asynchronous calls)
-  std::shared_ptr<AsyncMeta> _meta; // the shared view configuration (never null!!!)
-  IResearchViewMetaState _metaState; // the per-instance configuration state
-  mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets and '_metaState'
-  PersistedStore _storePersisted;
-  std::mutex _readerLock; // prevents query cache double invalidation
-  std::mutex _updateLinksLock; // prevents simultaneous 'updateLinks'
-  FlushCallback _flushCallback; // responsible for flush callback unregistration
-  std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxReadCallback; // for snapshot(...)
-  std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxWriteCallback; // for insert(...)/remove(...)
-  std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
+  IResearchFeature* _asyncFeature;  // the feature where async jobs were registered (nullptr == no jobs registered)
+  AsyncSelf::ptr _asyncSelf;  // 'this' for the lifetime of the view (for use with asynchronous calls)
+  std::shared_ptr<AsyncMeta> _meta;  // the shared view configuration (never null!!!)
+  IResearchViewMetaState _metaState;  // the per-instance configuration state
+  mutable irs::async_utils::read_write_mutex _mutex;  // for use with member maps/sets and '_metaState'
+  PersistedStore _storePersisted;  // protected by _asyncSelf->mutex()
+  std::mutex _readerLock;          // prevents query cache double invalidation
+  std::mutex _updateLinksLock;     // prevents simultaneous 'updateLinks'
+  FlushCallback _flushCallback;  // responsible for flush callback unregistration
+  std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxReadCallback;  // for snapshot(...)
+  std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxWriteCallback;  // for insert(...)/remove(...)
+  std::atomic<bool> _asyncTerminate;  // trigger termination of long-running async jobs
   std::atomic<bool> _inRecovery;
 };
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif

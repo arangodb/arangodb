@@ -49,7 +49,7 @@ function runSetup () {
 
   meta = {
     consolidationIntervalMsec: 10000,
-    consolidationPolicy: { threshold: 0.5, type: "bytes" },
+    consolidationPolicy: { threshold: 0.5, type: "bytes_accum" },
   };
   view.properties(meta, true); // partial update
 
@@ -90,7 +90,7 @@ function recoverySuite () {
       assertEqual(42, properties.cleanupIntervalStep);
       assertEqual(10000, properties.consolidationIntervalMsec);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
-      assertEqual("bytes", properties.consolidationPolicy.type);
+      assertEqual("bytes_accum", properties.consolidationPolicy.type);
       assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
     }
 

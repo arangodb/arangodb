@@ -33,8 +33,8 @@
 #include "Cluster/DBServerAgencySync.h"
 #include "Logger/Logger.h"
 
-#include <chrono>
 #include <velocypack/Slice.h>
+#include <chrono>
 
 namespace arangodb {
 
@@ -78,7 +78,7 @@ class HeartbeatThread : public CriticalThread,
 
   void setReady() { _ready.store(true); }
 
-  //void runBackgroundJob();
+  // void runBackgroundJob();
 
   void dispatchedJobResult(DBServerAgencySyncResult);
 
@@ -87,7 +87,9 @@ class HeartbeatThread : public CriticalThread,
   /// this is used on the coordinator only
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool hasRunOnce() { return HasRunOnce.load(std::memory_order_acquire); }
+  static bool hasRunOnce() {
+    return HasRunOnce.load(std::memory_order_acquire);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief break runDBserver out of wait on condition after setting state in
@@ -100,14 +102,14 @@ class HeartbeatThread : public CriticalThread,
   ///        unexpectedly
   //////////////////////////////////////////////////////////////////////////////
 
-  static void recordThreadDeath(const std::string & threadName);
+  static void recordThreadDeath(const std::string& threadName);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief post list of deadThreads to current log.  Called regularly, but only
   ///        posts to log roughly every 60 minutes
   //////////////////////////////////////////////////////////////////////////////
 
-  static void logThreadDeaths(bool force=false);
+  static void logThreadDeaths(bool force = false);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -163,7 +165,7 @@ class HeartbeatThread : public CriticalThread,
   /// @brief bring the db server in sync with the desired state
   //////////////////////////////////////////////////////////////////////////////
 
-public:
+ public:
   void syncDBServerStatusQuo(bool asyncPush = false);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -213,7 +215,7 @@ public:
   /// @brief heartbeat interval
   //////////////////////////////////////////////////////////////////////////////
 
-  std::chrono::microseconds  _interval;
+  std::chrono::microseconds _interval;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief number of fails in a row before a warning is issued
@@ -279,6 +281,6 @@ public:
   //////////////////////////////////////////////////////////////////////////////
   std::unique_ptr<HeartbeatBackgroundJobThread> _maintenanceThread;
 };
-}
+}  // namespace arangodb
 
 #endif

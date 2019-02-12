@@ -42,6 +42,6 @@ class RestAqlFunctionsHandler : public RestVocbaseBaseHandler {
   char const* name() const override final { return "RestAqlFunctionsHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
 };
-}
+}  // namespace arangodb
 
 #endif

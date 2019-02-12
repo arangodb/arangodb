@@ -39,20 +39,16 @@ struct CollectionExport {
     Type type;
   };
 
-  static bool IncludeAttribute(
-      CollectionExport::Restrictions::Type const restrictionType,
-      std::unordered_set<std::string> const& fields, std::string const& key) {
-    if (restrictionType ==
-            CollectionExport::Restrictions::RESTRICTION_INCLUDE ||
-        restrictionType ==
-            CollectionExport::Restrictions::RESTRICTION_EXCLUDE) {
+  static bool IncludeAttribute(CollectionExport::Restrictions::Type const restrictionType,
+                               std::unordered_set<std::string> const& fields,
+                               std::string const& key) {
+    if (restrictionType == CollectionExport::Restrictions::RESTRICTION_INCLUDE ||
+        restrictionType == CollectionExport::Restrictions::RESTRICTION_EXCLUDE) {
       bool const keyContainedInRestrictions = (fields.find(key) != fields.end());
-      if ((restrictionType ==
-              CollectionExport::Restrictions::RESTRICTION_INCLUDE &&
-          !keyContainedInRestrictions) ||
-          (restrictionType ==
-              CollectionExport::Restrictions::RESTRICTION_EXCLUDE &&
-          keyContainedInRestrictions)) {
+      if ((restrictionType == CollectionExport::Restrictions::RESTRICTION_INCLUDE &&
+           !keyContainedInRestrictions) ||
+          (restrictionType == CollectionExport::Restrictions::RESTRICTION_EXCLUDE &&
+           keyContainedInRestrictions)) {
         // exclude the field
         return false;
       }
@@ -60,14 +56,12 @@ struct CollectionExport {
       return true;
     } else {
       // no restrictions
-      TRI_ASSERT(restrictionType ==
-                CollectionExport::Restrictions::RESTRICTION_NONE);
+      TRI_ASSERT(restrictionType == CollectionExport::Restrictions::RESTRICTION_NONE);
       return true;
     }
     return true;
   }
-
 };
-}
+}  // namespace arangodb
 
 #endif

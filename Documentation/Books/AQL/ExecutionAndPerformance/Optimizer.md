@@ -135,7 +135,7 @@ Here is the meaning of these rules in context of this query:
 * `use-indexes`: use an index to iterate over a collection instead of performing a
   full collection scan. In the example case this makes sense, as the index can be
   used for filtering and sorting.
-* `remove-filter-covered-by-index`: remove an unnessary filter whose functionality
+* `remove-filter-covered-by-index`: remove an unnecessary filter whose functionality
   is already covered by an index. In this case the index only returns documents 
   matching the filter.
 * `use-index-for-sort`: removes a `SORT` operation if it is already satisfied by

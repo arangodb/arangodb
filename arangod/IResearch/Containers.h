@@ -27,6 +27,8 @@
 #include <memory>
 #include <unordered_map>
 
+#include "Basics/Common.h"
+
 #include "utils/async_utils.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/map_utils.hpp"
@@ -35,7 +37,8 @@
 
 NS_LOCAL
 
-template <typename... > struct typelist;
+template <typename...>
+struct typelist;
 
 NS_END
 
@@ -49,19 +52,21 @@ class ResourceMutex {
  public:
   typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
   explicit ResourceMutex(void* resource)
-    : _readMutex(_mutex), _resource(resource) {}
+      : _readMutex(_mutex), _resource(resource) {}
   ~ResourceMutex() { reset(); }
   operator bool() { return get() != nullptr; }
-  ReadMutex& mutex() const { return _readMutex; } // prevent '_resource' reset()
-  void reset(); // will block until a write lock can be aquired on the _mutex
+  ReadMutex& mutex() const {
+    return _readMutex;
+  }              // prevent '_resource' reset()
+  void reset();  // will block until a write lock can be aquired on the _mutex
 
  protected:
   void* get() const { return _resource.load(); }
 
  private:
-  irs::async_utils::read_write_mutex _mutex; // read-lock to prevent '_resource' reset()
-  mutable ReadMutex _readMutex; // object that can be referenced by std::unique_lock
-  std::atomic<void*> _resource; // atomic because of 'operator bool()'
+  irs::async_utils::read_write_mutex _mutex;  // read-lock to prevent '_resource' reset()
+  mutable ReadMutex _readMutex;  // object that can be referenced by std::unique_lock
+  std::atomic<void*> _resource;  // atomic because of 'operator bool()'
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,29 +74,21 @@ class ResourceMutex {
 ///        declaration of map member variables whos' values are of the type
 ///        being declared
 ////////////////////////////////////////////////////////////////////////////////
-template<typename T>
+template <typename T>
 class UniqueHeapInstance {
  public:
-  template<
-    typename... Args,
-    typename = typename std::enable_if<
-      !std::is_same<
-        typelist<UniqueHeapInstance>,
-        typelist<typename std::decay<Args>::type...>
-      >::value
-    >::type // prevent matching of copy/move constructor
-  >
-  UniqueHeapInstance(Args&&... args)
-    : _instance(irs::memory::make_unique<T>(std::forward<Args>(args)...)) {
-  }
+  template <typename... Args,
+            typename = typename std::enable_if<!std::is_same<typelist<UniqueHeapInstance>,
+                                                             typelist<typename std::decay<Args>::type...>>::value>::type  // prevent matching of copy/move constructor
+            >
+  explicit UniqueHeapInstance(Args&&... args)
+      : _instance(irs::memory::make_unique<T>(std::forward<Args>(args)...)) {}
 
   UniqueHeapInstance(UniqueHeapInstance const& other)
-    : _instance(irs::memory::make_unique<T>(*(other._instance))) {
-  }
+      : _instance(irs::memory::make_unique<T>(*(other._instance))) {}
 
   UniqueHeapInstance(UniqueHeapInstance&& other) noexcept
-    : _instance(std::move(other._instance)) {
-  }
+      : _instance(std::move(other._instance)) {}
 
   UniqueHeapInstance& operator=(UniqueHeapInstance const& other) {
     if (this != &other) {
@@ -125,8 +122,8 @@ class UniqueHeapInstance {
   T* operator->() const noexcept { return _instance.get(); }
 
   bool operator==(UniqueHeapInstance const& other) const {
-    return _instance
-      ? (other._instance && *_instance == *(other._instance)) : !other._instance;
+    return _instance ? (other._instance && *_instance == *(other._instance))
+                     : !other._instance;
   }
 
   bool operator!=(UniqueHeapInstance const& other) const {
@@ -144,23 +141,17 @@ class UniqueHeapInstance {
 /// @brief a base class for UnorderedRefKeyMap providing implementation for
 ///        KeyHasher and KeyGenerator
 ////////////////////////////////////////////////////////////////////////////////
-template<typename CharType, typename V>
+template <typename CharType, typename V>
 struct UnorderedRefKeyMapBase {
  public:
-  typedef std::unordered_map<
-    irs::hashed_basic_string_ref<CharType>,
-    std::pair<std::basic_string<CharType>, V>
-  > MapType;
+  typedef std::unordered_map<irs::hashed_basic_string_ref<CharType>, std::pair<std::basic_string<CharType>, V>> MapType;
 
   typedef typename MapType::key_type KeyType;
   typedef V value_type;
   typedef std::hash<typename MapType::key_type::base_t> KeyHasher;
 
   struct KeyGenerator {
-    KeyType operator()(
-        KeyType const& key,
-        typename MapType::mapped_type const& value
-    ) const {
+    KeyType operator()(KeyType const& key, typename MapType::mapped_type const& value) const {
       return KeyType(key.hash(), value.first);
     }
   };
@@ -172,11 +163,10 @@ struct UnorderedRefKeyMapBase {
 ///        allowing the use of the map with an irs::basic_string_ref without
 ///        the need to allocaate memmory during find(...)
 ////////////////////////////////////////////////////////////////////////////////
-template<typename CharType, typename V>
-class UnorderedRefKeyMap:
-    public UnorderedRefKeyMapBase<CharType, V>,
-    private UnorderedRefKeyMapBase<CharType, V>::KeyGenerator,
-    private UnorderedRefKeyMapBase<CharType, V>::KeyHasher {
+template <typename CharType, typename V>
+class UnorderedRefKeyMap : public UnorderedRefKeyMapBase<CharType, V>,
+                           private UnorderedRefKeyMapBase<CharType, V>::KeyGenerator,
+                           private UnorderedRefKeyMapBase<CharType, V>::KeyHasher {
  public:
   typedef UnorderedRefKeyMapBase<CharType, V> MyBase;
   typedef typename MyBase::MapType MapType;
@@ -210,7 +200,7 @@ class UnorderedRefKeyMap:
     typename MapType::const_iterator _itr;
 
     explicit ConstIterator(typename MapType::const_iterator const& itr)
-      : _itr(itr) {}
+        : _itr(itr) {}
   };
 
   class Iterator {
@@ -238,16 +228,30 @@ class UnorderedRefKeyMap:
     friend UnorderedRefKeyMap;
     typename MapType::iterator _itr;
 
-    explicit Iterator(typename MapType::iterator const& itr): _itr(itr) {}
+    explicit Iterator(typename MapType::iterator const& itr) : _itr(itr) {}
   };
 
-  UnorderedRefKeyMap() {}
+  UnorderedRefKeyMap() = default;
+  ~UnorderedRefKeyMap() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // ensure every key points to valid data
+    for (auto& entry : _map) {
+      TRI_ASSERT(entry.first.c_str() == entry.second.first.c_str());
+    }
+#endif
+  }
   UnorderedRefKeyMap(UnorderedRefKeyMap const& other) { *this = other; }
-  UnorderedRefKeyMap(UnorderedRefKeyMap&& other) { *this = std::move(other); }
+  UnorderedRefKeyMap(UnorderedRefKeyMap&& other) noexcept
+      : _map(std::move(other._map)) {}
 
   UnorderedRefKeyMap& operator=(UnorderedRefKeyMap const& other) {
     if (this != &other) {
-      _map = other._map;
+      _map.clear();
+      _map.reserve(other._map.size());
+
+      for (auto& entry : other._map) {
+        emplace(entry.first, entry.second.second);  // ensure that the key is regenerated
+      }
     }
 
     return *this;
@@ -263,48 +267,44 @@ class UnorderedRefKeyMap:
 
   V& operator[](KeyType const& key) {
     return irs::map_utils::try_emplace_update_key(
-      _map,
-      keyGenerator(),
-      key, // use same key for MapType::key_type and MapType::value_type.first
-      std::piecewise_construct, std::forward_as_tuple(key), std::forward_as_tuple() // MapType::value_type
-    ).first->second.second;
+               _map, keyGenerator(),
+               key,  // use same key for MapType::key_type and MapType::value_type.first
+               std::piecewise_construct, std::forward_as_tuple(key),
+               std::forward_as_tuple()  // MapType::value_type
+               )
+        .first->second.second;
   }
 
   V& operator[](typename KeyType::base_t const& key) {
     return (*this)[irs::make_hashed_ref(key, keyHasher())];
   }
 
-  Iterator begin() { return Iterator(_map.begin()); }
-  ConstIterator begin() const { return ConstIterator(_map.begin()); }
+  Iterator begin() noexcept { return Iterator(_map.begin()); }
+  ConstIterator begin() const noexcept { return ConstIterator(_map.begin()); }
 
-  void clear() { _map.clear(); }
+  void clear() noexcept { _map.clear(); }
 
-  template<typename... Args>
+  template <typename... Args>
   std::pair<Iterator, bool> emplace(KeyType const& key, Args&&... args) {
     auto res = irs::map_utils::try_emplace_update_key(
-      _map,
-      keyGenerator(),
-      key, // use same key for MapType::key_type and MapType::value_type.first
-      std::piecewise_construct, std::forward_as_tuple(key), std::forward_as_tuple(std::forward<Args>(args)...) // MapType::value_type
+        _map, keyGenerator(),
+        key,  // use same key for MapType::key_type and MapType::value_type.first
+        std::piecewise_construct, std::forward_as_tuple(key),
+        std::forward_as_tuple(std::forward<Args>(args)...)  // MapType::value_type
     );
 
     return std::make_pair(Iterator(res.first), res.second);
   }
 
-  template<typename... Args>
-  std::pair<Iterator, bool> emplace(
-      typename KeyType::base_t const& key, Args&&... args
-  ) {
-    return emplace(
-      irs::make_hashed_ref(key, keyHasher()),
-      std::forward<Args>(args)...
-    );
+  template <typename... Args>
+  std::pair<Iterator, bool> emplace(typename KeyType::base_t const& key, Args&&... args) {
+    return emplace(irs::make_hashed_ref(key, keyHasher()), std::forward<Args>(args)...);
   }
 
-  bool empty() const { return _map.empty(); }
+  bool empty() const noexcept { return _map.empty(); }
 
-  Iterator end() { return Iterator(_map.end()); }
-  ConstIterator end() const { return ConstIterator(_map.end()); }
+  Iterator end() noexcept { return Iterator(_map.end()); }
+  ConstIterator end() const noexcept { return ConstIterator(_map.end()); }
 
   Iterator find(KeyType const& key) noexcept {
     return Iterator(_map.find(key));
@@ -356,6 +356,6 @@ class UnorderedRefKeyMap:
   }
 };
 
-NS_END // iresearch
-NS_END // arangodb
+NS_END      // iresearch
+    NS_END  // arangodb
 #endif

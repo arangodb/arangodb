@@ -1240,7 +1240,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     auto prepared = filter.prepare(*reader, preparedOrder, queryCtx);
     auto const& boost = prepared->attributes().get<irs::boost>();
     CHECK(boost);
-    CHECK(1.5f == boost->get()->value);
+    CHECK(1.5f == boost->value);
 
     auto column = segment.column_reader("name");
     REQUIRE(column);

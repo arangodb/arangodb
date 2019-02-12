@@ -35,7 +35,7 @@ class LogicalCollection;
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 class IndexFactory {
  public:
@@ -47,12 +47,10 @@ class IndexFactory {
   /// information about the indexs' general and implementation-specific
   /// properties.
   //////////////////////////////////////////////////////////////////////////////
-  typedef std::function<std::shared_ptr<Index>(
-    LogicalCollection& collection,
-    velocypack::Slice const& definition, // index definition
-    TRI_idx_iid_t id,
-    bool isClusterConstructor
-  )> IndexTypeFactory;
+  typedef std::function<std::shared_ptr<Index>(LogicalCollection& collection,
+                                               velocypack::Slice const& definition,  // index definition
+                                               TRI_idx_iid_t id, bool isClusterConstructor)>
+      IndexTypeFactory;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief typedef for a Index definition normalizer function
@@ -62,11 +60,7 @@ class IndexFactory {
   /// VelocyBuilder will contain the 'type' that should be used for index
   /// factory lookup (if no normalizer is registered then use the original type)
   //////////////////////////////////////////////////////////////////////////////
-  typedef std::function<Result(
-    velocypack::Builder& normalized,
-    velocypack::Slice definition,
-    bool isCreation
-  )> IndexNormalizer;
+  typedef std::function<Result(velocypack::Builder& normalized, velocypack::Slice definition, bool isCreation)> IndexNormalizer;
 
   IndexFactory() = default;
   IndexFactory(IndexFactory const&) = delete;
@@ -75,54 +69,37 @@ class IndexFactory {
   virtual ~IndexFactory() = default;
 
   /// @return 'factory' for 'type' was added successfully
-  Result emplaceFactory(
-    std::string const& type,
-    IndexTypeFactory const& factory
-  );
+  Result emplaceFactory(std::string const& type, IndexTypeFactory const& factory);
 
   /// @return 'normalizer' for 'type' was added successfully
-  Result emplaceNormalizer(
-    std::string const& type,
-    IndexNormalizer const& normalizer
-  );
+  Result emplaceNormalizer(std::string const& type, IndexNormalizer const& normalizer);
 
-  virtual Result enhanceIndexDefinition(
-    velocypack::Slice const definition,
-    velocypack::Builder& normalized,
-    bool isCreation,
-    bool isCoordinator
-  ) const;
+  virtual Result enhanceIndexDefinition(velocypack::Slice const definition,
+                                        velocypack::Builder& normalized,
+                                        bool isCreation, bool isCoordinator) const;
 
-  std::shared_ptr<Index> prepareIndexFromSlice(
-    velocypack::Slice definition,
-    bool generateKey,
-    LogicalCollection& collection,
-    bool isClusterConstructor
-  ) const;
+  std::shared_ptr<Index> prepareIndexFromSlice(velocypack::Slice definition, bool generateKey,
+                                               LogicalCollection& collection,
+                                               bool isClusterConstructor) const;
 
   /// @brief used to display storage engine capabilities
   virtual std::vector<std::string> supportedIndexes() const;
 
   /// @brief create system indexes primary / edge
-  virtual void fillSystemIndexes(
-    arangodb::LogicalCollection& col,
-    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes
-  ) const = 0;
+  virtual void fillSystemIndexes(arangodb::LogicalCollection& col,
+                                 std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const = 0;
 
   /// @brief create indexes from a list of index definitions
-  virtual void prepareIndexes(
-    LogicalCollection& col,
-    arangodb::velocypack::Slice const& indexesSlice,
-    std::vector<std::shared_ptr<arangodb::Index>>& indexes
-  ) const = 0;
+  virtual void prepareIndexes(LogicalCollection& col,
+                              arangodb::velocypack::Slice const& indexesSlice,
+                              std::vector<std::shared_ptr<arangodb::Index>>& indexes) const = 0;
 
  protected:
   /// @brief clear internal factory/normalizer maps
   void clear();
 
-  static TRI_idx_iid_t validateSlice(arangodb::velocypack::Slice info, 
-                                     bool generateKey, 
-                                     bool isClusterConstructor);
+  static TRI_idx_iid_t validateSlice(arangodb::velocypack::Slice info,
+                                     bool generateKey, bool isClusterConstructor);
 
  private:
   std::unordered_map<std::string, IndexTypeFactory> _factories;

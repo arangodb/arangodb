@@ -253,18 +253,17 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
     auto collection = vocbase.createCollection(createJson->slice());
     REQUIRE((nullptr != collection));
 
+    auto createIndexJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"edge\" }");
+    bool created = false;
+    auto index = collection->createIndex(createIndexJson->slice(), created);
+    CHECK(index);
+    CHECK(created);
+    
     arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       *collection,
-      arangodb::AccessMode::Type::WRITE
-    );
+      arangodb::AccessMode::Type::WRITE);
     CHECK((trx.begin().ok()));
-
-    auto createIndexJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"edge\" }");
-    bool created = false;
-    auto index = collection->createIndex(&trx, createIndexJson->slice(), created);
-    CHECK(index);
-    CHECK(created);
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs {
       arangodb::velocypack::Parser::fromJson("{ \"_from\": \"testCollection0/0\", \"_to\": \"testCollection0/1\" }"),
@@ -303,7 +302,7 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
         "\"testCollection1\": { \"includeAllFields\": true }"
       "}}"
     );
-    CHECK((impl->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((impl->properties(updateJson->slice(), true).ok()));
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((2 == cids.size()));

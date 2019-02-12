@@ -33,6 +33,39 @@ NS_ROOT
 NS_BEGIN( locale_utils )
 
 /**
+ * @brief provide a common way to access the codecvt facet of a locale
+ *        will work even on MSVC with missing symbol exports
+ * @param locale the locale to query for the desired facet
+ **/
+template<typename T>
+const std::codecvt<T, char, mbstate_t>& codecvt(std::locale const& locale) {
+  return std::use_facet<std::codecvt<T, char, mbstate_t>>(locale);
+}
+
+#if defined(_MSC_VER) && _MSC_VER <= 1800 && defined(IRESEARCH_DLL) // MSVC2013
+  // MSVC2013 does not properly export
+  // std::codecvt<char32_t, char, mbstate_t>::id for shared libraries
+  template<>
+  IRESEARCH_API const std::codecvt<char32_t, char, mbstate_t>& codecvt(
+    std::locale const& locale
+  );
+#elif defined(_MSC_VER) && _MSC_VER <= 1916 // MSVC2015/MSVC2017
+  // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
+  // due to a missing export, as per their comment:
+  //   This is an active bug in our database (VSO#143857), which we'll investigate
+  //   for a future release, but we're currently working on higher priority things
+  template<>
+  IRESEARCH_API const std::codecvt<char16_t, char, mbstate_t>& codecvt(
+    std::locale const& locale
+  );
+
+  template<>
+  IRESEARCH_API const std::codecvt<char32_t, char, mbstate_t>& codecvt(
+    std::locale const& locale
+  );
+#endif
+
+/**
  * @brief create a locale from name (language[_COUNTRY][.encoding][@variant])
  * @param name name of the locale to create (nullptr == "C")
  * @param encodingOverride force locale to have the specified output encoding (nullptr == take from 'name')
@@ -43,20 +76,6 @@ IRESEARCH_API std::locale locale(
   const irs::string_ref& encodingOverride = irs::string_ref::NIL,
   bool forceUnicodeSystem = true
 );
-
-/**
- * @param encoding the output encoding of the converter
- * @param forceUnicodeSystem force the internal system encoding to be unicode
- * @return the converter capable of outputing in the specified target encoding
- **/
-template<typename Internal>
-const std::codecvt<Internal, char, std::mbstate_t>& converter(
-    const irs::string_ref& encoding, bool forceUnicodeSystem = true
-) {
-  return std::use_facet<std::codecvt<Internal, char, std::mbstate_t>>(
-    locale(irs::string_ref::NIL, encoding, forceUnicodeSystem)
-  );
-}
 
 /**
  * @brief extract the locale country from a locale

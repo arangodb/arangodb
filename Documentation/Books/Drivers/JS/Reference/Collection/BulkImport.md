@@ -67,8 +67,9 @@ Bulk imports the given _data_ into the collection.
     ["peach", "pink"]
     ```
 
-- **opts**: `Object` (optional) If _opts_ is set, it must be an object with any
-  of the following properties:
+- **opts**: `Object` (optional)
+
+  If _opts_ is set, it must be an object with any of the following properties:
 
   - **type**: `string | null` (Default: `"auto"`)
 

@@ -272,7 +272,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
         "\"testCollection1\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true }"
       "}}"
     );
-    CHECK((impl->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((impl->properties(updateJson->slice(), true).ok()));
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((2 == cids.size()));

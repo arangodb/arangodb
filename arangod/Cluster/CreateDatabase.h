@@ -32,18 +32,15 @@ namespace arangodb {
 namespace maintenance {
 
 class CreateDatabase : public ActionBase {
-
-public:
-
-  CreateDatabase(MaintenanceFeature& feature,
-                 ActionDescription const& description);
+ public:
+  CreateDatabase(MaintenanceFeature& feature, ActionDescription const& description);
 
   virtual ~CreateDatabase();
 
   virtual bool first() override;
-
 };
 
-}}
+}  // namespace maintenance
+}  // namespace arangodb
 
 #endif

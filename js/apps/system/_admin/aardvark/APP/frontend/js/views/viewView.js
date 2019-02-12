@@ -1,16 +1,34 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global $, arangoHelper, JSONEditor, Backbone, templateEngine, window */
+/* global $, arangoHelper, frontendConfig, JSONEditor, Backbone, templateEngine, window, _, localStorage */
+
 (function () {
   'use strict';
 
   window.ViewView = Backbone.View.extend({
     el: '#content',
+    readOnly: false,
+    refreshRate: 5000,
 
     template: templateEngine.createTemplate('viewView.ejs'),
 
     initialize: function (options) {
+      var mode = localStorage.getItem('JSONViewEditorMode');
+      if (mode) {
+        this.defaultMode = mode;
+      }
       this.name = options.name;
+    },
+
+    defaultMode: 'tree',
+
+    storeMode: function (mode) {
+      var self = this;
+      if (mode !== 'view') {
+        localStorage.setItem('JSONViewEditorMode', mode);
+        self.defaultMode = mode;
+        self.editor.setMode(this.defaultMode);
+      }
     },
 
     remove: function () {
@@ -27,22 +45,94 @@
       'click #deleteViewButton': 'deleteView'
     },
 
+    checkIfInProgress: function () {
+      if (window.location.hash.search('view/') > -1 && $('.breadcrumb').text().search(this.model.get('name')) > -1) {
+        var self = this;
+
+        var callback = function (error, lockedViews) {
+          if (error) {
+            console.log('Could not check locked views');
+          } else {
+            var found = false;
+            _.each(lockedViews, function (foundView) {
+              if (self.model.get('name') === foundView.collection) {
+                found = true;
+              }
+            });
+
+            if (found) {
+              self.getViewProperties(true);
+              self.setInProgress(true);
+              window.setTimeout(function () {
+                self.checkIfInProgress();
+              }, self.refreshRate);
+            } else {
+              self.getViewProperties(true);
+              self.setInProgress(false);
+            }
+          }
+        };
+
+        if (!frontendConfig.ldapEnabled) {
+          window.arangoHelper.syncAndReturnUnfinishedAardvarkJobs('view', callback);
+        }
+      }
+    },
+
+    setReadOnlyPermissions: function () {
+      this.readOnly = true;
+      $('.bottomButtonBar button').attr('disabled', true);
+    },
+
     render: function () {
       this.breadcrumb();
       this.$el.html(this.template.render({}));
-      $('#propertiesEditor').height($('.centralRow').height() - 300 + 70);
+      $('#propertiesEditor').height($('.centralRow').height() - 300 + 70 - $('.infoBox').innerHeight() - 10);
       this.initAce();
-      this.getView();
+      this.getViewProperties();
+      arangoHelper.checkDatabasePermissions(this.setReadOnlyPermissions.bind(this));
+      this.checkIfInProgress();
     },
 
     jsonContentChanged: function () {
       this.enableSaveButton();
     },
 
+    buttons: [
+      '#renameViewButton',
+      '#deleteViewButton'
+    ],
+
+    disableAllButtons: function () {
+      var self = this;
+      _.each(this.buttons, function (id) {
+        self.disableButton(id);
+      });
+      this.disableSaveButton();
+    },
+
+    enableAllButtons: function () {
+      var self = this;
+      _.each(this.buttons, function (id) {
+        self.enableButton(id);
+      });
+      this.enableSaveButton();
+    },
+
+    enableButton: function (id) {
+      $(id).prop('disabled', false);
+    },
+
+    disableButton: function (id) {
+      $(id).prop('disabled', true);
+    },
+
     enableSaveButton: function () {
-      $('#savePropertiesButton').prop('disabled', false);
-      $('#savePropertiesButton').addClass('button-success');
-      $('#savePropertiesButton').removeClass('button-close');
+      if (!this.readOnly) {
+        $('#savePropertiesButton').prop('disabled', false);
+        $('#savePropertiesButton').addClass('button-success');
+        $('#savePropertiesButton').removeClass('button-close');
+      }
     },
 
     disableSaveButton: function () {
@@ -58,6 +148,9 @@
         onChange: function () {
           self.jsonContentChanged();
         },
+        onModeChange: function (newMode) {
+          self.storeMode(newMode);
+        },
         search: true,
         mode: 'code',
         modes: ['tree', 'code'],
@@ -70,25 +163,24 @@
       }
     },
 
-    getView: function () {
+    getViewProperties: function (expand) {
       var self = this;
 
-      $.ajax({
-        type: 'GET',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_api/view/' + encodeURIComponent(self.name) + '/properties'),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
+      var callback = function (error, data) {
+        if (error) {
+          arangoHelper.arangoError('View', 'Could not fetch properties for view:' + self.model.get('name'));
+        } else {
           delete data.name;
           delete data.code;
           delete data.error;
           self.editor.set(data);
-        },
-        error: function (error) {
-          arangoHelper.arangoError('View', error.errorMessage);
+          if (expand) {
+            self.editor.expandAll();
+          }
         }
-      });
+      };
+
+      this.model.getProperties(callback);
     },
 
     patchView: function () {
@@ -105,22 +197,48 @@
         return;
       }
 
-      $.ajax({
-        type: 'PUT',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_api/view/' + encodeURIComponent(self.name) + '/properties'),
-        contentType: 'application/json',
-        processData: false,
-        data: JSON.stringify(self.editor.get()),
-        success: function (properties) {
-          self.disableSaveButton();
-          self.editor.set(properties);
-          arangoHelper.arangoNotification('View', 'Saved properties.');
-        },
-        error: function (error) {
-          arangoHelper.arangoError('View', error.responseJSON.errorMessage);
+      var callback = function (error, data, done) {
+        if (error) {
+          arangoHelper.arangoError('View', 'Could not update view properties.');
+        } else {
+          if (data) {
+            self.editor.set(data);
+          }
+          if (done) {
+            // arangoHelper.arangoNotification('View', 'Saved view properties of: ' + self.model.get('name'));
+            self.setInProgress(false);
+          } else {
+            arangoHelper.arangoNotification('View', 'Saving properties of view: ' + self.model.get('name') + ' in progress.');
+            window.setTimeout(function () {
+              self.checkIfInProgress();
+            }, self.refreshRate);
+            self.setInProgress(true);
+          }
         }
-      });
+      };
+
+      this.model.patchProperties(self.editor.get(), callback);
+    },
+
+    setInProgress: function (inProgress) {
+      if (inProgress) {
+        this.disableAllButtons();
+        this.editor.setMode('view');
+        $('#viewProcessing').show();
+        $('#viewDocumentation').hide();
+        $('.jsoneditor').attr('style', 'background-color: rgba(0, 0, 0, 0.05) !important');
+        $('.jsoneditor-menu button').css('visibility', 'hidden');
+        $('.jsoneditor-modes').css('visibility', 'hidden');
+      } else {
+        this.enableAllButtons();
+        this.editor.setMode(this.defaultMode);
+        $('.buttonBarInfo').html('');
+        $('#viewProcessing').hide();
+        $('#viewDocumentation').show();
+        $('.jsoneditor').attr('style', 'background-color: rgba(255,255, 255, 1) !important');
+        $('.jsoneditor-menu button').css('visibility', 'inline');
+        $('.jsoneditor-modes').css('visibility', 'inline');
+      }
     },
 
     deleteView: function () {
@@ -144,21 +262,16 @@
 
     deleteViewTrue: function () {
       var self = this;
-      $.ajax({
-        type: 'DELETE',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_api/view/' + encodeURIComponent(self.name)),
-        contentType: 'application/json',
-        processData: false,
-        success: function () {
+
+      var callback = function (error, data) {
+        if (error) {
+          arangoHelper.arangoError('View', 'Could not delete the view.');
+        } else {
           window.modalView.hide();
           window.App.navigate('#views', {trigger: true});
-        },
-        error: function (error) {
-          window.modalView.hide();
-          arangoHelper.arangoError('View', error.responseJSON.errorMessage);
         }
-      });
+      };
+      self.model.deleteView(callback);
     },
 
     renameView: function () {
@@ -194,6 +307,7 @@
         }),
         success: function (data) {
           self.name = data.name;
+          self.model.set('name', data.name);
           self.breadcrumb();
           window.modalView.hide();
         },
@@ -209,8 +323,14 @@
 
       if (window.App.naviView) {
         $('#subNavigationBar .breadcrumb').html(
-          'View: ' + this.name
+          'View: ' + self.name
         );
+        window.setTimeout(function () {
+          $('#subNavigationBar .breadcrumb').html(
+            'View: ' + self.name
+          );
+          self.checkIfInProgress();
+        }, 100);
       } else {
         window.setTimeout(function () {
           self.breadcrumb();

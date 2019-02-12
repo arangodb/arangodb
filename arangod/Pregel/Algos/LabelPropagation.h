@@ -41,18 +41,16 @@ namespace algos {
 struct LabelPropagation : public SimpleAlgorithm<LPValue, int8_t, uint64_t> {
  public:
   explicit LabelPropagation(VPackSlice userParams)
-      : SimpleAlgorithm<LPValue, int8_t, uint64_t>("LabelPropagation",
-                                                   userParams) {}
+      : SimpleAlgorithm<LPValue, int8_t, uint64_t>("LabelPropagation", userParams) {}
 
   GraphFormat<LPValue, int8_t>* inputFormat() const override;
   MessageFormat<uint64_t>* messageFormat() const override {
     return new NumberMessageFormat<uint64_t>();
   }
 
-  VertexComputation<LPValue, int8_t, uint64_t>* createComputation(
-      WorkerConfig const*) const override;
+  VertexComputation<LPValue, int8_t, uint64_t>* createComputation(WorkerConfig const*) const override;
 };
-}
-}
-}
+}  // namespace algos
+}  // namespace pregel
+}  // namespace arangodb
 #endif

@@ -134,7 +134,7 @@ function optimizerIndexOnlyEdgeTestSuite () {
       db._drop("UnitTestsCollection");
     },
 
-    testNoProjectionsButIndex : function () {
+    testEdgeNoProjectionsButIndex : function () {
       let queries = [
         `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN doc`,
         `FOR doc IN ${c.name()} FILTER doc._from == "test/123" SORT doc._from RETURN doc`,
@@ -161,7 +161,7 @@ function optimizerIndexOnlyEdgeTestSuite () {
       });
     },
 
-    testNotCoveringProjection : function () {
+    testEdgeNotCoveringProjection : function () {
       let queries = [
         [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN doc.b`, ["b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN [ doc._from, doc.b ]`, ["_from", "b"] ],
@@ -169,18 +169,15 @@ function optimizerIndexOnlyEdgeTestSuite () {
         [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN [ doc.c, doc.d ]`, ["c", "d"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" && doc.b == 1 RETURN doc.x`, ["b", "x"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" && doc.b == 1 RETURN CONCAT(doc._from, doc.u)`, ["_from", "b", "u"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN doc._to`, ["_to"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" SORT doc.x RETURN doc.x`, ["x"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" SORT doc._from RETURN doc._to`, ["_to"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN doc.b`, ["b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN [ doc._to, doc.b ]`, ["_to", "b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN [ doc.c, doc.d ]`, ["c", "d"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" && doc.b == 1 RETURN doc.x`, ["b", "x"] ],
         [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" && doc.b == 1 RETURN CONCAT(doc._to, doc.u)`, ["_to", "b", "u"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc.x RETURN doc.x`, ["x"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc._to RETURN doc._from`, ["_from"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN doc._from`, ["_from"] ]
+        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc.x RETURN doc.x`, ["x"] ]
+
       ];
     
       queries.forEach(function(query) { 
@@ -191,18 +188,26 @@ function optimizerIndexOnlyEdgeTestSuite () {
         assertFalse(nodes[0].indexCoversProjections);
       });
     },
-    
-    testIndexFromCoveringProjection : function () {
-      let query = `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN doc._from`;
+
+    testEdgeIndexFromCoveringProjection : function () {
+      let queries = [
+        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN doc._from`, ["_from"] ],
+        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" SORT doc._from RETURN doc._to`, ["_to"] ],
+        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN doc._to`, ["_to"] ],
+        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc._to RETURN doc._from`, ["_from"] ],
+        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN doc._from`, ["_from"] ]
+      ];
      
-      let plan = AQL_EXPLAIN(query).plan;
-      let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
-      assertEqual(1, nodes.length);
-      assertEqual(["_from"], nodes[0].projections);
-      assertTrue(nodes[0].indexCoversProjections);
+      queries.forEach(function(query) { 
+        let plan = AQL_EXPLAIN(query[0]).plan;
+        let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        assertEqual(1, nodes.length);
+        assertEqual(query[1], nodes[0].projections);
+        assertTrue(nodes[0].indexCoversProjections);
+      });
     },
     
-    testIndexFromCoveringInProjection : function () {
+    testEdgeIndexFromCoveringInProjection : function () {
       let query = `FOR doc IN ${c.name()} FILTER doc._from IN ["test/123", "test/124", "test/125"] RETURN doc._from`;
      
       let plan = AQL_EXPLAIN(query).plan;
@@ -212,7 +217,7 @@ function optimizerIndexOnlyEdgeTestSuite () {
       assertTrue(nodes[0].indexCoversProjections);
     },
     
-    testIndexToCoveringProjection : function () {
+    testEdgeIndexToCoveringProjection : function () {
       let query = `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN doc._to`;
      
       let plan = AQL_EXPLAIN(query).plan;
@@ -223,7 +228,7 @@ function optimizerIndexOnlyEdgeTestSuite () {
     },
     
 
-    testIndexToCoveringInProjection : function () {
+    testEdgeIndexToCoveringInProjection : function () {
       let query = `FOR doc IN ${c.name()} FILTER doc._to IN ["test/123", "test/124", "test/125"] RETURN doc._to`;
      
       let plan = AQL_EXPLAIN(query).plan;
@@ -293,7 +298,7 @@ function optimizerIndexOnlyVPackTestSuite () {
       });
     },
     
-    testNoProjectionsButIndex : function () {
+    testVPackNoProjectionsButIndex : function () {
       c.ensureIndex({ type: "hash", fields: ["a"] });
 
       let queries = [
@@ -312,7 +317,7 @@ function optimizerIndexOnlyVPackTestSuite () {
       });
     },
 
-    testSingleFieldIndexNotCoveringProjection : function () {
+    testVPackSingleFieldIndexNotCoveringProjection : function () {
       c.ensureIndex({ type: "hash", fields: ["a"] });
       
       let queries = [
@@ -333,7 +338,7 @@ function optimizerIndexOnlyVPackTestSuite () {
       });
     },
     
-    testSingleFieldIndexCoveringProjection : function () {
+    testVPackSingleFieldIndexCoveringProjection : function () {
       c.ensureIndex({ type: "hash", fields: ["a"] });
       
       let query = `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN doc.a`;
@@ -347,7 +352,7 @@ function optimizerIndexOnlyVPackTestSuite () {
       assertTrue(nodes[0].indexCoversProjections);
     },
     
-    testSingleFieldIndexCoveringInProjection : function () {
+    testVPackSingleFieldIndexCoveringInProjection : function () {
       c.ensureIndex({ type: "hash", fields: ["a"] });
       
       let query = `FOR doc IN ${c.name()} FILTER doc.a IN [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] RETURN doc.a`;
@@ -361,7 +366,7 @@ function optimizerIndexOnlyVPackTestSuite () {
       assertTrue(nodes[0].indexCoversProjections);
     },
     
-    testSingleFieldUniqueIndexCoveringProjection : function () {
+    testVPackSingleFieldUniqueIndexCoveringProjection : function () {
       c.ensureIndex({ type: "hash", fields: ["b"], unique: true });
       
       let query = `FOR doc IN ${c.name()} FILTER doc.b >= 0 RETURN doc.b`;
@@ -375,7 +380,7 @@ function optimizerIndexOnlyVPackTestSuite () {
       assertTrue(nodes[0].indexCoversProjections);
     },
     
-    testMultipleFieldsIndexCoveringProjection : function () {
+    testVPackMultipleFieldsIndexCoveringProjection : function () {
       c.ensureIndex({ type: "hash", fields: ["a", "b"] });
       
       let queries = [
@@ -400,7 +405,7 @@ function optimizerIndexOnlyVPackTestSuite () {
       });
     },
 
-    testMultipleFieldsUniqueIndexCoveringProjection : function () {
+    testVPackMultipleFieldsUniqueIndexCoveringProjection : function () {
       c.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true });
       
       let queries = [

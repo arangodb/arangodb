@@ -29,18 +29,16 @@
 #include "Cluster/ClusterFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Collections.h"
-#include "VocBase/Methods/Indexes.h"
 #include "VocBase/Methods/Databases.h"
+#include "VocBase/Methods/Indexes.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 using namespace arangodb;
 
-DropIndex::DropIndex(
-  MaintenanceFeature& feature, ActionDescription const& d) :
-  ActionBase(feature, d) {
-
+DropIndex::DropIndex(MaintenanceFeature& feature, ActionDescription const& d)
+    : ActionBase(feature, d) {
   std::stringstream error;
 
   if (!d.has(COLLECTION)) {
@@ -63,13 +61,11 @@ DropIndex::DropIndex(
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
-
 }
 
-DropIndex::~DropIndex() {};
+DropIndex::~DropIndex(){};
 
 bool DropIndex::first() {
-
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
   auto const& id = _description.get(INDEX);
@@ -78,7 +74,6 @@ bool DropIndex::first() {
   index.add(VPackValue(_description.get(INDEX)));
 
   try {
-
     DatabaseGuard guard(database);
     auto vocbase = &guard.database();
 
@@ -93,7 +88,7 @@ bool DropIndex::first() {
     }
 
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-      << "Dropping local index " + collection + "/" + id;
+        << "Dropping local index " + collection + "/" + id;
     _result = Indexes::drop(col.get(), index.slice());
 
   } catch (std::exception const& e) {
@@ -106,5 +101,4 @@ bool DropIndex::first() {
 
   notify();
   return false;
-
 }

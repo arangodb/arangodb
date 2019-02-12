@@ -48,6 +48,7 @@ var sanitizeStats = function (stats) {
   delete stats.executionTime;
   delete stats.httpRequests;
   delete stats.fullCount;
+  delete stats.peakMemoryUsage;
   return stats;
 };
 
@@ -154,6 +155,15 @@ function ahuacatlModifySuite () {
       db._drop(cn2);
       c1 = null;
       c2 = null;
+    },
+    
+    testVariableScope : function () {
+      let query = "INSERT {value: 1} INTO " + cn1 + " LET id1 = (UPDATE 'foo' WITH {value: 2} IN " + cn2 + ")  RETURN NEW";
+      let result = AQL_EXECUTE(query).json;
+      assertEqual(1, result[0].value);
+      assertEqual(2, c1.count()); 
+      assertEqual(1, c2.count()); 
+      assertEqual(2, c2.document("foo").value);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1249,7 +1259,7 @@ function ahuacatlRemoveSuite () {
 /// @brief test remove
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleNotFound : function () {
+    testSingleRemoveNotFound : function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "REMOVE 'foobar' IN @@cn", { "@cn": cn1 });
     },
 
@@ -1257,7 +1267,7 @@ function ahuacatlRemoveSuite () {
 /// @brief test remove - return what
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleNotFoundWhat : function () {
+    testSingleRemoveNotFoundWhat : function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "REMOVE 'foobar' IN @@cn LET removed = OLD RETURN removed", { "@cn": cn1 });
     },
 
@@ -1977,7 +1987,7 @@ function ahuacatlInsertSuite () {
 /// @brief test insert
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingle : function () {
+    testSingleInsert : function () {
       var expected = { writesExecuted: 1, writesIgnored: 0 };
       var actual = getModifyQueryResults("INSERT { value: 'foobar', _key: 'test' } IN @@cn", { "@cn": cn1 });
 
@@ -1990,7 +2000,7 @@ function ahuacatlInsertSuite () {
 /// @brief test insert
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleWhat : function () {
+    testSingleInsertWhat : function () {
       var expected = { writesExecuted: 1, writesIgnored: 0 };
       var actual = getModifyQueryResultsRaw("INSERT { value: 'foobar', _key: 'test' } IN @@cn LET inserted = NEW RETURN inserted", { "@cn": cn1 });
 
@@ -2378,7 +2388,7 @@ function ahuacatlUpdateSuite () {
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleNotFound : function () {
+    testSingleUpdateNotFound : function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "UPDATE { _key: 'foobar' } WITH { value1: 1 } IN @@cn", { "@cn": cn1 });
     },
 
@@ -2386,7 +2396,7 @@ function ahuacatlUpdateSuite () {
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleNotFoundWhatNew : function () {
+    testSingleUpdateNotFoundWhatNew : function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "UPDATE { _key: 'foobar' } WITH { value1: 1 } IN @@cn LET updated = NEW RETURN updated", { "@cn": cn1 });
     },
 
@@ -2394,7 +2404,7 @@ function ahuacatlUpdateSuite () {
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingle : function () {
+    testSingleUpdate : function () {
       var expected = { writesExecuted: 1, writesIgnored: 0 };
       var actual = getModifyQueryResults("UPDATE { value: 'foobar', _key: 'test17' } IN @@cn", { "@cn": cn1 });
 
@@ -2406,7 +2416,7 @@ function ahuacatlUpdateSuite () {
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleWhatNew : function () {
+    testSingleUpdateWhatNew : function () {
       var expected = { writesExecuted: 1, writesIgnored: 0 };
       var actual = getModifyQueryResultsRaw("UPDATE { value: 'foobar', _key: 'test17' } IN @@cn LET updated = NEW RETURN updated", { "@cn": cn1 });
 
@@ -2418,7 +2428,7 @@ function ahuacatlUpdateSuite () {
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleWhatOld : function () {
+    testSingleUpdateWhatOld : function () {
       var expected = { writesExecuted: 1, writesIgnored: 0 };
       var actual = getModifyQueryResultsRaw("UPDATE { value: 'foobar', _key: 'test17' } IN @@cn LET old = OLD RETURN old", { "@cn": cn1 });
 

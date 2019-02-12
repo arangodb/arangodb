@@ -34,6 +34,8 @@
 #include "Scheduler/Socket.h"
 #include "Statistics/RequestStatistics.h"
 
+#include <list>
+
 namespace arangodb {
 class ConnectionStatistics;
 
@@ -55,7 +57,7 @@ class SocketTask : virtual public Task {
 
  public:
   bool start();
-  
+
   // whether or not this task can mix sync and async I/O
   virtual bool canUseMixedIO() const = 0;
 
@@ -172,8 +174,7 @@ class SocketTask : virtual public Task {
 
  private:
   Mutex _bufferLock;
-  SmallVector<basics::StringBuffer*, 32>::allocator_type::arena_type
-      _stringBuffersArena;
+  SmallVector<basics::StringBuffer*, 32>::allocator_type::arena_type _stringBuffersArena;
   SmallVector<basics::StringBuffer*, 32> _stringBuffers;  // needs _bufferLock
 
   WriteBuffer _writeBuffer;
@@ -186,11 +187,11 @@ class SocketTask : virtual public Task {
   std::atomic<bool> _keepAliveTimerActive;
   std::atomic<bool> _closeRequested;
 
-  std::atomic<bool> _abandoned;  // was task abandoned for another task
-  std::atomic<bool> _closedSend;  // Close socket send
+  std::atomic<bool> _abandoned;      // was task abandoned for another task
+  std::atomic<bool> _closedSend;     // Close socket send
   std::atomic<bool> _closedReceive;  // Closed socket received
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

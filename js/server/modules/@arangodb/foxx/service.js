@@ -95,7 +95,6 @@ function parseFile (servicePath, filename) {
 module.exports =
   class FoxxService {
     static validatedManifest (definition) {
-      assert(definition, 'must provide a service definition');
       assert(definition.mount, 'mount path required');
       const basePath = definition.basePath || FoxxService.basePath(definition.mount);
       const manifestPath = path.resolve(basePath, 'manifest.json');
@@ -163,7 +162,7 @@ module.exports =
 
       const warnings = this.applyConfiguration(this._configuration, false);
       if (warnings) {
-        console.warnLines(`Stored configuration for service "${definition.mount}" has errors:\n  ${
+        console.warnLines(`Stored configuration for service "${this.mount}" has errors:\n  ${
           Object.keys(warnings).map((key) => warnings[key]).join('\n  ')
         }\nValues for unknown options will be discarded if you save the configuration in production mode using the web interface.`);
       }

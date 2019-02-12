@@ -43,7 +43,7 @@ class CollectionAccessingNode {
 
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
-  
+
   /// @brief dumps the primary index
   void toVelocyPackHelperPrimaryIndex(arangodb::velocypack::Builder& builder) const;
 
@@ -55,8 +55,8 @@ class CollectionAccessingNode {
 
   /// @brief modify collection after cloning
   /// should be used only in smart-graph context!
-  void collection(aql::Collection const* collection); 
-  
+  void collection(aql::Collection const* collection);
+
   /**
    * @brief Restrict this Node to a single Shard (cluster only)
    *
@@ -80,12 +80,12 @@ class CollectionAccessingNode {
 
  protected:
   aql::Collection const* _collection;
-  
+
   /// @brief A shard this node is restricted to, may be empty
   std::string _restrictedTo;
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

@@ -33,7 +33,6 @@ namespace arangodb {
 namespace rest {
 
 class Scheduler;
-
 }
 
 class SchedulerFeature final : public application_features::ApplicationFeature {
@@ -53,7 +52,7 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   uint64_t queueSize() const { return _queueSize; }
 
  private:
-  uint64_t _nrMinimalThreads = 0;
+  uint64_t _nrMinimalThreads = 2;
   uint64_t _nrMaximalThreads = 0;
   uint64_t _queueSize = 128;
   uint64_t _fifo1Size = 1024 * 1024;
@@ -79,6 +78,6 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   std::shared_ptr<asio_ns::signal_set> _hangupSignals;
 };
 
-}
+}  // namespace arangodb
 
 #endif

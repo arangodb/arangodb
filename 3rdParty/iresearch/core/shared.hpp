@@ -154,7 +154,17 @@
   #define IMPLICIT_MOVE_WORKAROUND(x) x
 #endif
 
-// hook for MSVC2017.3-8 optimized code
+// hook for GCC 8.1/8.2 optimized code
+// these versions produce incorrect code when inlining optimizations are enabled
+#if defined(__OPTIMIZE__) && defined(__GNUC__) \
+    && ((__GNUC__ == 8 && __GNUC_MINOR__ == 1) \
+        || (__GNUC__ == 8 && __GNUC_MINOR__ == 2))
+  #define GCC8_12_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
+#else
+  #define GCC8_12_OPTIMIZED_WORKAROUND(...)
+#endif
+
+// hook for MSVC2017.3-9 optimized code
 // these versions produce incorrect code when inlining optimizations are enabled
 // for versions @see https://github.com/lordmulder/MUtilities/blob/master/include/MUtils/Version.h
 #if defined(_MSC_VER) \
@@ -164,7 +174,8 @@
         || ((_MSC_FULL_VER >= 191225830) && (_MSC_FULL_VER <= 191225835)) \
         || ((_MSC_FULL_VER >= 191326128) && (_MSC_FULL_VER <= 191326132)) \
         || ((_MSC_FULL_VER >= 191426430) && (_MSC_FULL_VER <= 191426433)) \
-        || ((_MSC_FULL_VER >= 191526726) && (_MSC_FULL_VER <= 191526730)))
+        || ((_MSC_FULL_VER >= 191526726) && (_MSC_FULL_VER <= 191526732)) \
+        || ((_MSC_FULL_VER >= 191627023) && (_MSC_FULL_VER <= 191627023)))
   #define MSVC2017_345678_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
 #else
   #define MSVC2017_345678_OPTIMIZED_WORKAROUND(...)
@@ -198,14 +209,15 @@
   #define MSVC2015_OPTIMIZED_ONLY(...)
 #endif
 
-// hook for MSVC2017-only code (2017.2 || 2017.3/2017.4 || 2017.5 || 2017.6 || 2017.7 || 2017.8)
+// hook for MSVC2017-only code (2017.2 || 2017.3/2017.4 || 2017.5 || 2017.6 || 2017.7 || 2017.8 || 2017.9)
 #if defined(_MSC_VER) \
     && (_MSC_VER == 1910 \
         || _MSC_VER == 1911 \
         || _MSC_VER == 1912 \
         || _MSC_VER == 1913 \
         || _MSC_VER == 1914 \
-        || _MSC_VER == 1915)
+        || _MSC_VER == 1915 \
+        || _MSC_VER == 1916)
   #define MSVC2017_ONLY(...) __VA_ARGS__
 #else
   #define MSVC2017_ONLY(...)
@@ -332,6 +344,13 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef IRESEARCH_DEBUG
+#define IRS_ASSERT(CHECK) \
+    ( (CHECK) ? void(0) : []{assert(!#CHECK);}() )
+#else
+#define IRS_ASSERT(CHECK) void(0)
+#endif
 
 #define UNUSED(par) (void)(par)
 

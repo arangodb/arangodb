@@ -36,6 +36,12 @@ arangodb::LogTopic& logTopic();
 ADB_IGNORE_UNUSED static auto& DATA_SOURCE_TYPE = dataSourceType();
 ADB_IGNORE_UNUSED static auto& TOPIC = logTopic();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the current implementation version of the iresearch interface
+///        e.g. which how data is stored in iresearch
+////////////////////////////////////////////////////////////////////////////////
+size_t const LATEST_VERSION = 0;
+
 struct StaticStrings {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch View definition denoting the
@@ -44,13 +50,19 @@ struct StaticStrings {
   static std::string const LinksField;
 
   ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        corresponding link definitions
+  ////////////////////////////////////////////////////////////////////////////////
+  static std::string const VersionField;
+
+  ////////////////////////////////////////////////////////////////////////////////
   /// @brief the id of the field in the IResearch Link definition denoting the
   ///        corresponding IResearch View
   ////////////////////////////////////////////////////////////////////////////////
   static std::string const ViewIdField;
 };
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif

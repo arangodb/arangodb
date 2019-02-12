@@ -8,7 +8,7 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> Accepted
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _Xk1KSvy--_
+etag: _YDCrT4---F
 x-content-type-options: nosniff
 
 { 
@@ -17,7 +17,7 @@ x-content-type-options: nosniff
   <span class="hljs-string">"edge"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/102414"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"102414"</span>, 
-    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_Xk1KSvq--_"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xk1KSvy--_"</span> 
+    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_YDCrT4---D"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YDCrT4---F"</span> 
   } 
 }

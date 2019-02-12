@@ -656,7 +656,7 @@ function GeneralGraphCreationSuite() {
         fail();
       } catch (e) {
         assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_NOT_FOUND.code);
-        assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_NOT_FOUND.message);
+        assertEqual(e.errorMessage, "graph 'UnitTestGraphUnknownExtension' not found");
       }
     },
 

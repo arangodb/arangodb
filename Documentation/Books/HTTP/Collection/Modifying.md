@@ -18,3 +18,6 @@ Modifying a Collection
 
 <!-- js/actions/api-collection.js -->
 @startDocuBlock put_api_collection_rotate
+
+<!-- js/actions/api-collection.js -->
+@startDocuBlock put_api_collection_recalculate_count

@@ -46,12 +46,9 @@ class ClientFeature final : public application_features::ApplicationFeature,
   constexpr static size_t const DEFAULT_RETRIES = 2;
   constexpr static double const LONG_TIMEOUT = 86400.0;
 
-  ClientFeature(
-    application_features::ApplicationServer& server,
-    bool allowJwtSecret,
-    double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
-    double requestTimeout = DEFAULT_REQUEST_TIMEOUT
-  );
+  ClientFeature(application_features::ApplicationServer& server, bool allowJwtSecret,
+                double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
+                double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -70,18 +67,16 @@ class ClientFeature final : public application_features::ApplicationFeature,
   std::string const& jwtSecret() const { return _jwtSecret; }
   double connectionTimeout() const { return _connectionTimeout; }
   double requestTimeout() const { return _requestTimeout; }
+  void requestTimeout(double value) { _requestTimeout = value; }
   uint64_t maxPacketSize() const { return _maxPacketSize; }
   uint64_t sslProtocol() const { return _sslProtocol; }
 
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection();
-  std::unique_ptr<httpclient::GeneralClientConnection> createConnection(
-      std::string const& definition);
+  std::unique_ptr<httpclient::GeneralClientConnection> createConnection(std::string const& definition);
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient() const;
+  std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(std::string const& definition) const;
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
-      std::string const& definition) const;
-  std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
-      std::string const& definition,
-      httpclient::SimpleHttpClientParams const&) const;
+      std::string const& definition, httpclient::SimpleHttpClientParams const&) const;
   std::vector<std::string> httpEndpoints() override;
 
   void setDatabaseName(std::string const& databaseName) {
@@ -98,9 +93,8 @@ class ClientFeature final : public application_features::ApplicationFeature,
 
   bool getWarnConnect() { return _warnConnect; }
 
-  static int runMain(
-      int argc, char* argv[],
-      std::function<int(int argc, char* argv[])> const& mainFunc);
+  static int runMain(int argc, char* argv[],
+                     std::function<int(int argc, char* argv[])> const& mainFunc);
 
  private:
   void readPassword();

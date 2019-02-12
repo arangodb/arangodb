@@ -27,6 +27,7 @@
 #include "error/error.hpp"
 #include "utils/log.hpp"
 #include "utils/object_pool.hpp"
+#include "utils/string_utils.hpp"
 #include "utils/utf8_path.hpp"
 #include "utils/file_utils.hpp"
 #include "utils/crc.hpp"
@@ -223,9 +224,10 @@ class fs_index_output : public buffered_index_output {
     crc.process_bytes(b, len_written);
 
     if (len && len_written != len) {
-      throw detailed_io_error("Failed to write buffer, written ")
-              << std::to_string(len_written) << " out of "
-              << std::to_string(len) << " bytes.";
+      throw io_error(string_utils::to_string(
+        "failed to write buffer, written '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' bytes",
+        len_written, len
+      ));
     }
   }
 
@@ -263,7 +265,9 @@ class fs_index_input : public buffered_index_input {
     return crc.checksum();
   }
 
-  virtual ptr dup() const NOEXCEPT override;
+  virtual ptr dup() const override {
+    return index_input::make<fs_index_input>(*this);
+  }
 
   static index_input::ptr open(
     const file_path_t name, size_t pool_size, IOAdvice /*advice*/
@@ -323,14 +327,15 @@ class fs_index_input : public buffered_index_input {
     return handle_->size;
   }
 
-  virtual ptr reopen() const NOEXCEPT override;
+  virtual ptr reopen() const override;
 
  protected:
   virtual void seek_internal(size_t pos) override {
     if (pos >= handle_->size) {
-      throw detailed_io_error("Seek out of range for input file, length ")
-              << std::to_string(handle_->size)
-              << ", position " << std::to_string(pos);
+      throw io_error(string_utils::to_string(
+        "seek out of range for input file, length '" IR_SIZE_T_SPECIFIER "', position '" IR_SIZE_T_SPECIFIER "'",
+        handle_->size, pos
+      ));
     }
 
     pos_ = pos;
@@ -344,9 +349,10 @@ class fs_index_input : public buffered_index_input {
 
     if (handle_->pos != pos_) {
       if (fseek(stream, static_cast<long>(pos_), SEEK_SET) != 0) {
-        throw detailed_io_error("Failed to seek to ")
-                << std::to_string(pos_)
-                << " for input file, error " << std::to_string(ferror(stream));
+        throw io_error(string_utils::to_string(
+          "failed to seek to '" IR_SIZE_T_SPECIFIER "' for input file, error '%d'",
+          pos_, ferror(stream)
+        ));
       }
 
       handle_->pos = pos_;
@@ -363,10 +369,10 @@ class fs_index_input : public buffered_index_input {
       }
 
       // read error
-      throw detailed_io_error("Failed to read from input file, read ")
-              << std::to_string(read)
-              << " out of " << std::to_string(len)
-              << " bytes, error " << std::to_string(ferror(stream));
+      throw io_error(string_utils::to_string(
+        "failed to read from input file, read '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' bytes, error '%d'",
+        read, len, ferror(stream)
+      ));
     }
 
     assert(handle_->pos == pos_);
@@ -418,76 +424,48 @@ class pooled_fs_index_input final : public fs_index_input {
   DECLARE_UNIQUE_PTR(pooled_fs_index_input); // allow private construction
 
   explicit pooled_fs_index_input(const fs_index_input& in);
-  virtual ~pooled_fs_index_input();
-  virtual index_input::ptr dup() const NOEXCEPT override;
-  virtual index_input::ptr reopen() const NOEXCEPT override;
+  virtual ~pooled_fs_index_input() NOEXCEPT;
+  virtual index_input::ptr dup() const override {
+    return index_input::make<pooled_fs_index_input>(*this);
+  }
+  virtual index_input::ptr reopen() const override;
 
  private:
   typedef unbounded_object_pool<file_handle> fd_pool_t;
   std::shared_ptr<fd_pool_t> fd_pool_;
 
   pooled_fs_index_input(const pooled_fs_index_input& in) = default;
-  file_handle::ptr reopen(const file_handle& src) const NOEXCEPT;
+  file_handle::ptr reopen(const file_handle& src) const;
 }; // pooled_fs_index_input
 
-index_input::ptr fs_index_input::dup() const NOEXCEPT {
-  try {
-    return index_input::make<fs_index_input>(*this);
-  } catch(...) {
-    IR_LOG_EXCEPTION();
-  }
-
-  return nullptr;
-}
-
-index_input::ptr fs_index_input::reopen() const NOEXCEPT {
-  auto ptr = index_input::make<pooled_fs_index_input>(*this);
-
-  if (!ptr) {
-    return nullptr;
-  }
-
-  auto& in = static_cast<pooled_fs_index_input&>(*ptr);
-
-  return in.handle_ && in.handle_->handle ? std::move(ptr) : nullptr;
+index_input::ptr fs_index_input::reopen() const {
+  return index_input::make<pooled_fs_index_input>(*this);
 }
 
 pooled_fs_index_input::pooled_fs_index_input(const fs_index_input& in)
-  : fs_index_input(in), fd_pool_(memory::make_shared<fd_pool_t>(pool_size_)) {
+  : fs_index_input(in),
+    fd_pool_(memory::make_shared<fd_pool_t>(pool_size_)) {
   handle_ = reopen(*handle_);
 }
 
-pooled_fs_index_input::~pooled_fs_index_input() {
+pooled_fs_index_input::~pooled_fs_index_input() NOEXCEPT {
   handle_.reset(); // release handle before the fs_pool_ is deallocated
 }
 
-index_input::ptr pooled_fs_index_input::dup() const NOEXCEPT {
-  try {
-    return index_input::make<pooled_fs_index_input>(*this);
-  } catch(...) {
-    IR_LOG_EXCEPTION();
-  }
-
-  return nullptr;
-}
-
-index_input::ptr pooled_fs_index_input::reopen() const NOEXCEPT {
+index_input::ptr pooled_fs_index_input::reopen() const {
   auto ptr = dup();
-
-  if (!ptr) {
-    return nullptr;
-  }
+  assert(ptr);
 
   auto& in = static_cast<pooled_fs_index_input&>(*ptr);
-
   in.handle_ = reopen(*handle_); // reserve a new handle from pool
+  assert(in.handle_ && in.handle_->handle);
 
-  return in.handle_ && in.handle_->handle ? std::move(ptr) : nullptr;
+  return ptr;
 }
 
 fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
   const file_handle& src
-) const NOEXCEPT {
+) const {
   // reserve a new handle from the pool
   auto handle = const_cast<pooled_fs_index_input*>(this)->fd_pool_->emplace().release();
 
@@ -496,13 +474,21 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 
     if (!handle->handle) {
       // even win32 uses 'errno' for error codes in calls to file_open(...)
-      IR_FRMT_ERROR("Failed to reopen input file, error: %d", errno);
-
-      return nullptr;
+      throw io_error(string_utils::to_string(
+        "Failed to reopen input file, error: %d", errno
+      ));
     }
   }
 
-  handle->pos = ::ftell(handle->handle.get()); // match position of file descriptor
+  const auto pos = ::ftell(handle->handle.get()); // match position of file descriptor
+
+  if (pos < 0) {
+    throw io_error(string_utils::to_string(
+      "Failed to obtain currnt position of input file, error: %d", errno
+    ));
+  }
+
+  handle->pos = pos;
   handle->size = src.size;
 
   return handle;
@@ -519,8 +505,6 @@ fs_directory::fs_directory(const std::string& dir)
 attribute_store& fs_directory::attributes() NOEXCEPT {
   return attributes_;
 }
-
-void fs_directory::close() NOEXCEPT { }
 
 index_output::ptr fs_directory::create(const std::string& name) NOEXCEPT {
   try {

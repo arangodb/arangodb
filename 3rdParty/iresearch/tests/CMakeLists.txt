@@ -30,7 +30,7 @@ set(IResearchTests_INCLUDE_DIR
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+if (USE_SIMDCOMP)
   set(IReSearch_tests_optimized_sources
     ./store/store_utils_optimized_tests.cpp
   )
@@ -52,7 +52,9 @@ set(IReSearch_tests_sources
   ./index/doc_generator.cpp
   ./index/assert_format.cpp
   ./index/index_meta_tests.cpp
+  ./index/index_profile_tests.cpp
   ./index/index_tests.cpp
+  ./index/index_death_tests.cpp
   ./index/transaction_store_tests.cpp
   ./index/field_meta_test.cpp
   ./index/merge_writer_tests.cpp
@@ -125,6 +127,10 @@ set(IReSearch_tests_headers
 if (MSVC)
   # disable "checked iterators" feature
   add_definitions(-D_SCL_SECURE_NO_WARNINGS) 
+
+  # when compiling or linking against GTEST on MSVC2017 the following
+  # definition is required: /D _SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING
+  add_definitions(-D_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING)
 endif()
 
 add_custom_target(${IResearchTests_TARGET_NAME}

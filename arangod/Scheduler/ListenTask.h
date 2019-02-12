@@ -61,6 +61,6 @@ class ListenTask : virtual public rest::Task {
   std::unique_ptr<Acceptor> _acceptor;
   std::function<void(asio_ns::error_code const&)> _handler;
 };
-}
+}  // namespace arangodb
 
 #endif

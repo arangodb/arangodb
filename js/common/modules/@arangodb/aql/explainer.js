@@ -23,7 +23,7 @@ const anonymize = function(doc) {
   }
   if (doc === null || typeof doc === 'number' || typeof doc === 'boolean') {
     return doc;
-  } 
+  }
   if (typeof doc === 'object') {
     let result = {};
     Object.keys(doc).forEach(function(key) {
@@ -40,15 +40,15 @@ const anonymize = function(doc) {
   return doc;
 };
 
-var stringBuilder = {
+let stringBuilder = {
   output: '',
+  prefix: '',
 
   appendLine: function (line) {
-    if (!line) {
-      this.output += '\n';
-    } else {
-      this.output += line + '\n';
+    if (line) {
+      this.output += this.prefix + line;
     }
+    this.output += '\n';
   },
 
   getOutput: function () {
@@ -57,6 +57,11 @@ var stringBuilder = {
 
   clearOutput: function () {
     this.output = '';
+  },
+
+  wrap: function (str, width) {
+    let re = '.{1,' + width + '}(\\s|$)|\\S+?(\\s|$)';
+    return str.match(new RegExp(re, 'g')).join('\n' + this.prefix).replace(/\n+/g, '\n ' + this.prefix);
   }
 
 };
@@ -154,12 +159,6 @@ function pad (n) {
   return new Array(n).join(' ');
 }
 
-function wrap (str, width) {
-  'use strict';
-  var re = '.{1,' + width + '}(\\s|$)|\\S+?(\\s|$)';
-  return str.match(new RegExp(re, 'g')).join('\n');
-}
-
 /* print functions */
 
 /* print query string */
@@ -174,7 +173,7 @@ function printQuery (query) {
   } else {
     stringBuilder.appendLine(section('Query String:'));
   }
-  stringBuilder.appendLine(' ' + value(wrap(query, 100).replace(/\n+/g, '\n ', query)));
+  stringBuilder.appendLine(' ' + value(stringBuilder.wrap(query, 100)));
   stringBuilder.appendLine();
 }
 
@@ -248,8 +247,8 @@ function printStats (stats) {
   stats.executionTime = stats.executionTime.toFixed(5);
   stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
                            header('Scan Index') + '   ' + header('Filtered') + '   ' + header('Exec Time [s]'));
-                         
-  stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' + 
+
+  stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' +
   pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + '   ' +
   pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + '   ' +
   pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + '   ' +
@@ -335,7 +334,7 @@ function printIndexes (indexes) {
       var ranges;
       if (indexes[i].hasOwnProperty('condition')) {
         ranges = indexes[i].condition;
-      } else { 
+      } else {
         ranges = '[ ' + indexes[i].ranges + ' ]';
       }
 
@@ -382,7 +381,7 @@ function printFunctions (functions) {
       maxNameLen = l;
     }
   });
-  let line = ' ' + 
+  let line = ' ' +
     header('Name') + pad(1 + maxNameLen - 'Name'.length) + '   ' +
     header('Deterministic') + pad(1 + maxDeterministicLen - 'Deterministic'.length) + '   ' +
     header('Cacheable') + pad(1 + maxCacheableLen - 'Cacheable'.length) + '   ' +
@@ -605,7 +604,7 @@ function printShortestPathDetails (shortestPaths) {
 }
 
 /* analyze and print execution plan */
-function processQuery (query, explain) {
+function processQuery (query, explain, planIndex) {
   'use strict';
   var nodes = { },
     parents = { },
@@ -617,8 +616,12 @@ function processQuery (query, explain) {
     maxCallsLen = String('Calls').length,
     maxItemsLen = String('Items').length,
     maxRuntimeLen = String('Runtime [s]').length,
-    plan = explain.plan,
     stats = explain.stats;
+    
+  let plan = explain.plan;
+  if (planIndex !== undefined) {
+    plan = explain.plans[planIndex];
+  }
 
   /// mode with actual runtime stats per node
   let profileMode = stats && stats.hasOwnProperty('nodes');
@@ -974,7 +977,7 @@ function processQuery (query, explain) {
     }
     return '';
   };
-  
+
   var iterateIndexes = function (idx, i, node, types, variable) {
     var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan' + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? (node.indexCoversProjections ? ', index only' : '') : ', scan only');
     if (types.length === 0 || what !== types[types.length - 1]) {
@@ -1598,8 +1601,23 @@ function explain(data, options, shouldPrint) {
 
   stringBuilder.clearOutput();
   let stmt = db._createStatement(data);
-  let result = stmt.explain(options); // TODO why is this there ?
-  processQuery(data.query, result);
+  let result = stmt.explain(options); 
+  if (options.allPlans) {
+    // multiple plans
+    for (let i = 0; i < result.plans.length; ++i) {
+      if (i > 0) {
+        stringBuilder.appendLine();
+      }
+      stringBuilder.appendLine(section("Plan #" + (i + 1) + " (estimated cost: " + result.plans[i].estimatedCost + ")"));
+      stringBuilder.prefix = ' ';
+      stringBuilder.appendLine();
+      processQuery(data.query, result, i);
+      stringBuilder.prefix = '';
+    }
+  } else {
+    // single plan
+    processQuery(data.query, result, undefined);
+  }
 
   if (shouldPrint === undefined || shouldPrint) {
     print(stringBuilder.getOutput());
@@ -1616,13 +1634,15 @@ function profileQuery(data, shouldPrint) {
     throw 'ArangoStatement needs initial data';
   }
   let options =  data.options || { };
+  options.silent = true;
+  options.allPlans = false; // always turn this off, as it will not work with profiling
   setColors(options.colors === undefined ? true : options.colors);
 
   stringBuilder.clearOutput();
   let stmt = db._createStatement(data);
   let cursor = stmt.execute();
   let extra = cursor.getExtra();
-  processQuery(data.query, extra);
+  processQuery(data.query, extra, undefined);
 
   if (shouldPrint === undefined || shouldPrint) {
     print(stringBuilder.getOutput());
@@ -1719,8 +1739,8 @@ function debug(query, bindVars, options) {
       if (v === null) {
         return;
       }
-      
-      result.views[collection.name] = { 
+
+      result.views[collection.name] = {
         type: v.type(),
         properties: v.properties()
       };
@@ -1729,7 +1749,7 @@ function debug(query, bindVars, options) {
       let examples;
       if (input.options.examples) {
         // include example data from collections
-        let max = 10; // default number of documents 
+        let max = 10; // default number of documents
         if (typeof input.options.examples === 'number') {
           max = input.options.examples;
         }
@@ -1743,7 +1763,7 @@ function debug(query, bindVars, options) {
           examples = examples.map(anonymize);
         }
       }
-      result.collections[collection.name] = { 
+      result.collections[collection.name] = {
         type: c.type(),
         properties: c.properties(),
         indexes: c.getIndexes(true),
@@ -1753,7 +1773,7 @@ function debug(query, bindVars, options) {
       };
     }
   });
-  
+
   result.graphs = graphs;
   return result;
 }
@@ -1808,7 +1828,7 @@ function inspectDump(filename, outfile) {
     print();
   });
   print();
-  
+
   // insert example data
   print("/* example data */");
   Object.keys(data.collections).forEach(function(collection) {
@@ -1837,12 +1857,12 @@ function inspectDump(filename, outfile) {
     print("db._createView(" + JSON.stringify(view) + ", " + JSON.stringify(details.type) + ", " + JSON.stringify(details.properties) + ");");
   });
   print();
-  
-  print("/* explain result */"); 
+
+  print("/* explain result */");
   print(data.fancy.trim().split(/\n/).map(function(line) { return "// " + line; }).join("\n"));
   print();
- 
-  print("/* explain command */"); 
+
+  print("/* explain command */");
   if (data.query.options) {
     delete data.query.options.anonymize;
     delete data.query.options.colors;

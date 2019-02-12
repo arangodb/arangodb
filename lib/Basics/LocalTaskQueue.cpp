@@ -36,7 +36,8 @@ using namespace arangodb::basics;
 /// @brief create a task tied to the specified queue
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalTask::LocalTask(std::shared_ptr<LocalTaskQueue> const& queue) : _queue(queue) {}
+LocalTask::LocalTask(std::shared_ptr<LocalTaskQueue> const& queue)
+    : _queue(queue) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dispatch this task to the scheduler
@@ -44,7 +45,7 @@ LocalTask::LocalTask(std::shared_ptr<LocalTaskQueue> const& queue) : _queue(queu
 
 void LocalTask::dispatch() {
   auto self = shared_from_this();
-  _queue->post([self, this]() {
+  _queue->post([self, this](bool) {
     _queue->startTask();
     try {
       run();
@@ -61,16 +62,16 @@ void LocalTask::dispatch() {
 ////////////////////////////////////////////////////////////////////////////////
 
 LocalCallbackTask::LocalCallbackTask(std::shared_ptr<LocalTaskQueue> const& queue,
-                                     std::function<void()> const& cb)
+                                     std::function<void(bool)> const& cb)
     : _queue(queue), _cb(cb) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run the callback and join
 ////////////////////////////////////////////////////////////////////////////////
 
-void LocalCallbackTask::run() {
+void LocalCallbackTask::run(bool isDirect) {
   try {
-    _cb();
+    _cb(isDirect);
   } catch (...) {
   }
   _queue->join();
@@ -82,7 +83,7 @@ void LocalCallbackTask::run() {
 
 void LocalCallbackTask::dispatch() {
   auto self = shared_from_this();
-  _queue->post([self, this]() { run(); });
+  _queue->post([self, this](bool isDirect) { run(isDirect); });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,9 +140,7 @@ void LocalTaskQueue::enqueueCallback(std::shared_ptr<LocalCallbackTask> task) {
 /// by task dispatch.
 //////////////////////////////////////////////////////////////////////////////
 
-void LocalTaskQueue::post(std::function<void()> fn) {
-  _poster(fn);
-}
+void LocalTaskQueue::post(std::function<void(bool)> fn) { _poster(fn); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief join a single task. reduces the number of waiting tasks and wakes
@@ -184,9 +183,7 @@ void LocalTaskQueue::dispatchAndWait() {
         break;
       }
 
-      if (_missing > 0 &&
-          _started == 0 &&
-          SchedulerFeature::SCHEDULER->isStopping()) {
+      if (_missing > 0 && _started == 0 && SchedulerFeature::SCHEDULER->isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
 
@@ -214,9 +211,7 @@ void LocalTaskQueue::dispatchAndWait() {
         break;
       }
 
-      if (_missing > 0 &&
-          _started == 0 &&
-          SchedulerFeature::SCHEDULER->isStopping()) {
+      if (_missing > 0 && _started == 0 && SchedulerFeature::SCHEDULER->isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
 

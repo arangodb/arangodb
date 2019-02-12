@@ -1,15 +1,21 @@
 Linux Operating System Configuration
 ====================================
 
+{% hint 'tip' %}
+The most important suggestions listed in this section can be
+easily applied by making use of a script. Please refer to the page
+[Linux OS Tuning Script Examples](LinuxOSTuningScripts.md) for
+ready-to-use examples.
+{% endhint %}
+
 File Systems
 ------------
 
-We recommend to **not** use BTRFS on linux, it's known to not work
+We recommend to **not** use BTRFS on linux, as it is known to not work
 well in conjunction with ArangoDB.  We experienced that ArangoDB
 facing latency issues on accessing its database files on BTRFS
 partitions.  In conjunction with BTRFS and AUFS we also saw data loss
 on restart.
-
 
 Virtual Memory Page Sizes
 --------------------------
@@ -24,10 +30,12 @@ high memory use. Therefore, we recommend disabling these features when using
 Jemalloc with ArangoDB. Please consult your operating system's documentation for
 how to do this.
 
-Execute
+Execute:
 
-    sudo bash -c "echo madvise >/sys/kernel/mm/transparent_hugepage/enabled"
-    sudo bash -c "echo madvise >/sys/kernel/mm/transparent_hugepage/defrag"
+```
+sudo bash -c "echo madvise >/sys/kernel/mm/transparent_hugepage/enabled"
+sudo bash -c "echo madvise >/sys/kernel/mm/transparent_hugepage/defrag"
+```
 
 before executing `arangod`.
 
@@ -40,17 +48,14 @@ killing ArangoDB too eagerly on Linux.
 
 ### Over-Commit Memory
 
-For the MMFiles storage engine, execute
+The recommended kernel setting for `overcommit_memory` for both MMFiles and
+RocksDB storage engine is 0 or 1. The kernel default is 0.
 
-    sudo bash -c "echo 0 >/proc/sys/vm/overcommit_memory"
+You can set it as follows before executing `arangod`:
 
-before executing `arangod`.
-
-For the RocksDB storage engine, execute
-    
-    sudo bash -c "echo 2 >/proc/sys/vm/overcommit_memory"
-
-before starting. 
+```
+sudo bash -c "echo 0 >/proc/sys/vm/overcommit_memory"
+```
 
 From [www.kernel.org](https://www.kernel.org/doc/Documentation/sysctl/vm.txt):
 
@@ -63,22 +68,13 @@ From [www.kernel.org](https://www.kernel.org/doc/Documentation/sysctl/vm.txt):
 - When this flag is 2, the kernel uses a "never overcommit"
   policy that attempts to prevent any overcommit of memory.
 
-
-Note that then using an `overcommit_memory` setting of 2, this will by default allow 
-processes to use all swap space but only half of the available RAM. This can be changed 
-by adjusting the value of `overcommit_ratio` as well.
-
-From [www.kernel.org](https://www.kernel.org/doc/Documentation/sysctl/vm.txt):
-
-- When overcommit_memory is set to 2, the committed address
-  space is not permitted to exceed swap plus this percentage
-  of physical RAM. 
-
 ### Zone Reclaim
 
 Execute
 
-    sudo bash -c "echo 0 >/proc/sys/vm/zone_reclaim_mode"
+```
+sudo bash -c "echo 0 >/proc/sys/vm/zone_reclaim_mode"
+```
 
 before executing `arangod`.
 
@@ -96,7 +92,9 @@ NUMA
 Multi-processor systems often have non-uniform Access Memory (NUMA). ArangoDB
 should be started with interleave on such system. This can be achieved using
 
-    numactl --interleave=all arangod ...
+```
+numactl --interleave=all arangod ...
+```
 
 Max Memory Mappings
 -------------------
@@ -120,7 +118,9 @@ value for the number of memory mappings.
 
 To set the value once, use the following command before starting arangod:
 
-    sudo bash -c "sysctl -w 'vm.max_map_count=2048000'"
+```
+sudo bash -c "sysctl -w 'vm.max_map_count=2048000'"
+```
 
 To make the settings durable, it will be necessary to store the adjusted 
 settings in /etc/sysctl.conf or other places that the operating system is
@@ -136,8 +136,9 @@ memory pooling.
 
 Execute
 
-    export GLIBCXX_FORCE_NEW=1
-
+```
+export GLIBCXX_FORCE_NEW=1
+```
 
 before starting `arangod`.
 

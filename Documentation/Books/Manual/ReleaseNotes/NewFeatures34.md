@@ -1,5 +1,5 @@
-Features and Improvements
-=========================
+Features and Improvements in ArangoDB 3.4
+=========================================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 3.4. ArangoDB 3.4 also contains several bug fixes that are not listed
@@ -12,9 +12,9 @@ ArangoSearch is a sophisticated, integrated full-text search solution over
 a user-defined set of attributes and collections. It is the first type of
 view in ArangoDB.
 
-[ArangoSearch tutorial](https://www.arangodb.com/tutorials/arangosearch/)
-[ArangoSearch overview](../Views/ArangoSearch/README.md)
-[ArangoSearch in AQL](../../AQL/Views/ArangoSearch/index.html)
+- [ArangoSearch tutorial](https://www.arangodb.com/tutorials/arangosearch/)
+- [ArangoSearch overview](../Views/ArangoSearch/README.md)
+- [ArangoSearch in AQL](../../AQL/Views/ArangoSearch/index.html)
 
 
 New geo index implementation
@@ -28,8 +28,8 @@ complex geographical objects. The new implementation is much faster than the pre
 the RocksDB engine.
 
 Additionally, several AQL functions have been added to facilitate working with
-geographical data: `GEO_POINT`, `GEO_MULTIPOINT`, `GEO_POLYGON`, `GEO_LINESTRING` and
-`GEO_MULTILINESTRING`. These functions will produce GeoJSON objects.
+geographical data: `GEO_POINT`, `GEO_MULTIPOINT`, `GEO_LINESTRING`, `GEO_MULTILINESTRING`,
+`GEO_POLYGON` and `GEO_MULTIPOLYGON`. These functions will produce GeoJSON objects.
 
 Additionally there are new geo AQL functions `GEO_CONTAINS`, `GEO_INTERSECTS` and `GEO_EQUALS`
 for querying and comparing GeoJSON objects.
@@ -162,7 +162,7 @@ per-query/per-transaction basis.
 For AQL queries, all data-modification operations now support the `exclusive` option, e.g.
 
     FOR doc IN collection
-      UPDATE doc WITH { updated: true } OPTIONS { exclusive: true }
+      UPDATE doc WITH { updated: true } IN collection OPTIONS { exclusive: true }
 
 JavaScript-based transactions can specify which collections to lock exclusively in the
 `exclusive` sub-attribute of their `collections` attribute:
@@ -955,6 +955,10 @@ However, streaming cursors are enabled automatically for the following parts of 
 * when exporting data from collections using the arangoexport binary
 * when using `db.<collection>.toArray()` from the Arango shell
 
+Please note that AQL queries consumed in a streaming fashion have their own, adjustable
+"slow query" threshold. That means the "slow query" threshold can be configured seperately for 
+regular queries and streaming queries.
+
 Native implementations
 ----------------------
 
@@ -1030,6 +1034,16 @@ if possible, by adjusting the value of the `--ssl.protocol` startup option for t
 `arangod` server and all client tools.
 
 
+Distribution Packages
+---------------------
+
+In addition to the OS-specific packages (eg. _rpm_ for Red Hat / CentOS, _deb_ for
+Debian, NSIS installer for Windows etc.) starting from 3.4.0 new `tar.gz` archive packages
+are available for Linux and Mac. They correspond to the `.zip` packages for Windows,
+which can be used for portable installations, and to easily run different ArangoDB
+versions on the same machine (e.g. for testing).
+
+
 Client tools
 ------------
 
@@ -1103,3 +1117,16 @@ often undesired in logs anyway.
 Another positive side effect of turning off the escaping is that it will slightly
 reduce the CPU overhead for logging. However, this will only be noticable when the
 logging is set to a very verbose level (e.g. log levels debug or trace).
+
+
+### Active Failover
+
+The _Active Failover_ mode is now officially supported for multiple slaves.
+
+Additionally you can now send read-only requests to followers, so you can
+use them for read scaling. To make sure only requests that are intended for
+this use-case are served by the follower you need to add a
+`X-Arango-Allow-Dirty-Read: true` header to HTTP requests.
+
+For more information see
+[Active Failover Architecture](../Architecture/DeploymentModes/ActiveFailover/Architecture.md).

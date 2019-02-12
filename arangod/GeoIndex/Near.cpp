@@ -57,8 +57,7 @@ NearUtils<CMP>::NearUtils(geo::QueryParams&& qp) noexcept
   // Level 15 == 474.142m (start with 15 essentially)
   TRI_ASSERT(_params.origin.is_valid());
   TRI_ASSERT(_params.sorted);
-  TRI_ASSERT(_maxAngle >= _minAngle &&
-             _maxAngle <= S1ChordAngle::Straight());
+  TRI_ASSERT(_maxAngle >= _minAngle && _maxAngle <= S1ChordAngle::Straight());
   static_assert(isAscending() || isDescending(), "Invalid template");
   TRI_ASSERT(!isAscending() || _params.ascending);
   TRI_ASSERT(!isDescending() || !_params.ascending);
@@ -75,7 +74,7 @@ NearUtils<CMP>::NearUtils(geo::QueryParams&& qp) noexcept
 
 template <typename CMP>
 NearUtils<CMP>::~NearUtils() {
-  //LOG_TOPIC(ERR, Logger::FIXME) << "Scans: " << _numScans << " Found: " << _found << " Rejections: " << _rejection;
+  // LOG_TOPIC(ERR, Logger::FIXME) << "Scans: " << _numScans << " Found: " << _found << " Rejections: " << _rejection;
 }
 
 template <typename CMP>
@@ -95,17 +94,16 @@ void NearUtils<CMP>::reset() {
   TRI_ASSERT(!_deltaAngle.is_zero());
   TRI_ASSERT(_deltaAngle.radians() * geo::kEarthRadiusInMeters >= 400);
 
-  if (_minAngle == _maxAngle) { // no search area
+  if (_minAngle == _maxAngle) {  // no search area
     _allIntervalsCovered = true;
   }
 }
-
 
 /// aid density estimation by reporting a result close
 /// to the target coordinates
 template <typename CMP>
 void NearUtils<CMP>::estimateDensity(S2Point const& found) {
-  TRI_ASSERT(!_params.fullRange); // don't call in this case
+  TRI_ASSERT(!_params.fullRange);  // don't call in this case
 
   S1ChordAngle minAngle = S1ChordAngle::Radians(250 / geo::kEarthRadiusInMeters);
   S1ChordAngle delta(_origin, found);
@@ -130,20 +128,20 @@ static void GetDifference(std::vector<S2CellId> const& cell_ids, S2CellId id,
   // If they intersect but the difference is non-empty, divide and conquer.
 
   std::vector<S2CellId>::const_iterator i =
-  std::lower_bound(cell_ids.begin(), cell_ids.end(), id);
+      std::lower_bound(cell_ids.begin(), cell_ids.end(), id);
   auto j = i;
   bool intersects = (i != cell_ids.end() && i->range_min() <= id.range_max()) ||
                     (i != cell_ids.begin() && (--i)->range_max() >= id.range_min());
 
-  if (!intersects) { // does not intersect cell_ids, just add to result
+  if (!intersects) {  // does not intersect cell_ids, just add to result
     result->push_back(id);
-  } else { // find child cells of id which might still remain
+  } else {  // find child cells of id which might still remain
     // cell_ids.Intersects(id) == true
     bool contains = (j != cell_ids.end() && j->range_min() <= id) ||
                     (j != cell_ids.begin() && (--j)->range_max() >= id);
     if (!contains) {
       S2CellId child = id.child_begin();
-      for (int i = 0; ; ++i) {
+      for (int i = 0;; ++i) {
         GetDifference(cell_ids, child, result);
         if (i == 3) break;  // Avoid unnecessary next() computation.
         child = child.next();
@@ -156,15 +154,16 @@ template <typename CMP>
 std::vector<geo::Interval> NearUtils<CMP>::intervals() {
   TRI_ASSERT(!hasNearest());
   TRI_ASSERT(!isDone());
-  //TRI_ASSERT(!_params.ascending || _innerAngle != _maxAngle);
-  TRI_ASSERT(_deltaAngle >= S1ChordAngle::Radians(S2::kMaxEdge.GetValue(S2::kMaxCellLevel - 2)));
+  // TRI_ASSERT(!_params.ascending || _innerAngle != _maxAngle);
+  TRI_ASSERT(_deltaAngle >=
+             S1ChordAngle::Radians(S2::kMaxEdge.GetValue(S2::kMaxCellLevel - 2)));
 
   if (_numScans == 0) {
     calculateBounds();
     TRI_ASSERT(_innerAngle <= _outerAngle && _outerAngle <= _maxAngle);
-  }/* else {
-    LOG_TOPIC(WARN, Logger::FIXME) << "Found ("<<_numScans<<"): " << _found;
-  }*/
+  } /* else {
+     LOG_TOPIC(WARN, Logger::FIXME) << "Found ("<<_numScans<<"): " << _found;
+   }*/
   _numScans++;
 
   TRI_ASSERT(_innerAngle <= _outerAngle && _outerAngle <= _maxAngle);
@@ -192,7 +191,7 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
     // create a search ring
 
     if (_scannedCells.size() > 0) {
-      S2Cap ob(_origin, _outerAngle); // outer ring
+      S2Cap ob(_origin, _outerAngle);  // outer ring
       std::vector<S2CellId> tmpCover;
       _coverer.GetCovering(ob, &tmpCover);
       //_coverer.GetFastCovering(ob, &tmpCover);
@@ -202,7 +201,7 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
     } else {
       // expensive exact cover
       std::vector<std::unique_ptr<S2Region>> regions;
-      S2Cap ib(_origin, _innerAngle); // inner ring
+      S2Cap ib(_origin, _innerAngle);  // inner ring
       regions.push_back(std::make_unique<S2Cap>(ib.Complement()));
       regions.push_back(std::make_unique<S2Cap>(_origin, _outerAngle));
       S2RegionIntersection ring(std::move(regions));
@@ -243,15 +242,13 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
 }
 
 template <typename CMP>
-void NearUtils<CMP>::reportFound(LocalDocumentId lid,
-                                 S2Point const& center) {
+void NearUtils<CMP>::reportFound(LocalDocumentId lid, S2Point const& center) {
   S1ChordAngle angle(_origin, center);
 
   // cheap rejections based on distance to target
   if (!isFilterIntersects()) {
-    if ((isAscending() && angle < _innerAngle) ||
-        (isDescending() && angle > _outerAngle) || angle > _maxAngle ||
-        angle < _minAngle) {
+    if ((isAscending() && angle < _innerAngle) || (isDescending() && angle > _outerAngle) ||
+        angle > _maxAngle || angle < _minAngle) {
       /*LOG_TOPIC(ERR, Logger::FIXME) << "Rejecting doc with center " <<
       center.toString();
       LOG_TOPIC(ERR, Logger::FIXME) << "Dist: " << (rad *
@@ -262,12 +259,11 @@ void NearUtils<CMP>::reportFound(LocalDocumentId lid,
   }
 
   if (!_params.pointsOnly) {
-    auto const& it = _seenDocs.find(lid.id());
-    if (it != _seenDocs.end()) {
+    auto result = _seenDocs.insert(lid.id());
+    if (!result.second) {
       _rejection++;
       return;  // ignore repeated documents
     }
-    _seenDocs.emplace(lid.id());
   }
 
   // possibly expensive point rejection, but saves parsing of document
@@ -295,7 +291,8 @@ void NearUtils<CMP>::didScanIntervals() {
 /// @brief adjust the bounds delta
 template <typename CMP>
 void NearUtils<CMP>::estimateDelta() {
-  S1ChordAngle minBound = S1ChordAngle::Radians(S2::kMaxDiag.GetValue(S2::kMaxCellLevel - 3));
+  S1ChordAngle minBound =
+      S1ChordAngle::Radians(S2::kMaxDiag.GetValue(S2::kMaxCellLevel - 3));
   if (_statsFoundLastInterval <= 64) {
     _deltaAngle = S1ChordAngle::FromLength2(_deltaAngle.length2() * 4);
   } else if (_statsFoundLastInterval <= 256) {
@@ -329,7 +326,7 @@ void NearUtils<CMP>::calculateBounds() {
     if (_outerAngle == _minAngle && _innerAngle == _minAngle) {
       _allIntervalsCovered = true;
     }
-  } // TRI_ASSERT(false)
+  }  // TRI_ASSERT(false)
 }
 
 template class NearUtils<DocumentsAscending>;

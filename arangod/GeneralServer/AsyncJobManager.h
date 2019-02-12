@@ -25,8 +25,8 @@
 #define ARANGOD_HTTP_SERVER_ASYNC_JOB_MANAGER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Result.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/Result.h"
 
 namespace arangodb {
 class GeneralResponse;
@@ -68,8 +68,7 @@ class AsyncJobManager {
   AsyncJobManager& operator=(AsyncJobManager const&) = delete;
 
  public:
-  typedef std::unordered_map<AsyncJobResult::IdType,
-                             std::pair<std::string, AsyncJobResult>> JobList;
+  typedef std::unordered_map<AsyncJobResult::IdType, std::pair<std::string, AsyncJobResult>> JobList;
 
  public:
   AsyncJobManager();
@@ -90,8 +89,7 @@ class AsyncJobManager {
 
   std::vector<AsyncJobResult::IdType> pending(size_t maxCount);
   std::vector<AsyncJobResult::IdType> done(size_t maxCount);
-  std::vector<AsyncJobResult::IdType> byStatus(AsyncJobResult::Status,
-                                               size_t maxCount);
+  std::vector<AsyncJobResult::IdType> byStatus(AsyncJobResult::Status, size_t maxCount);
   void initAsyncJob(std::shared_ptr<RestHandler>);
   void finishAsyncJob(RestHandler*);
 
@@ -99,7 +97,7 @@ class AsyncJobManager {
   basics::ReadWriteLock _lock;
   JobList _jobs;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

@@ -1,15 +1,16 @@
 #include "Transactions.h"
 #include <v8.h>
 
-#include "Basics/WriteLocker.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
 #include "Transaction/V8Context.h"
+#include "Utils/CursorRepository.h"
 #include "V8/v8-conv.h"
-#include "V8/v8-vpack.h"
 #include "V8/v8-helper.h"
+#include "V8/v8-vpack.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-vocbaseprivate.h"
@@ -22,14 +23,9 @@
 
 namespace arangodb {
 
-Result executeTransaction(
-    v8::Isolate* isolate,
-    basics::ReadWriteLock& lock,
-    std::atomic<bool>& canceled,
-    VPackSlice slice,
-    std::string portType,
-    VPackBuilder& builder){
-
+Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
+                          std::atomic<bool>& canceled, VPackSlice slice,
+                          std::string portType, VPackBuilder& builder) {
   // YOU NEED A TRY CATCH BLOCK like:
   //    TRI_V8_TRY_CATCH_BEGIN(isolate);
   //    TRI_V8_TRY_CATCH_END
@@ -37,8 +33,8 @@ Result executeTransaction(
 
   READ_LOCKER(readLock, lock);
   Result rv;
-  if(canceled){
-    rv.reset(TRI_ERROR_REQUEST_CANCELED,"handler canceled");
+  if (canceled) {
+    rv.reset(TRI_ERROR_REQUEST_CANCELED, "handler canceled");
     return rv;
   }
 
@@ -49,9 +45,10 @@ Result executeTransaction(
   v8::TryCatch tryCatch;
 
   v8::Handle<v8::Object> request = v8::Object::New(isolate);
-  v8::Handle<v8::Value> jsPortTypeKey= TRI_V8_ASCII_STRING(isolate, "portType");
+  v8::Handle<v8::Value> jsPortTypeKey =
+      TRI_V8_ASCII_STRING(isolate, "portType");
   v8::Handle<v8::Value> jsPortTypeValue = TRI_V8_ASCII_STRING(isolate, portType.c_str());
-  if (!request->Set(jsPortTypeKey, jsPortTypeValue)){
+  if (!request->Set(jsPortTypeKey, jsPortTypeValue)) {
     rv.reset(TRI_ERROR_INTERNAL, "could not set portType");
     return rv;
   }
@@ -59,29 +56,30 @@ Result executeTransaction(
     auto requestVal = v8::Handle<v8::Value>::Cast(request);
     auto responseVal = v8::Handle<v8::Value>::Cast(v8::Undefined(isolate));
     v8gHelper globalVars(isolate, tryCatch, requestVal, responseVal);
-    readLock.unlock(); //unlock
+    readLock.unlock();  // unlock
     rv = executeTransactionJS(isolate, in, result, tryCatch);
     globalVars.cancel(canceled);
   }
 
-  //do not allow the manipulation of the isolate while we are messing here
+  // do not allow the manipulation of the isolate while we are messing here
   READ_LOCKER(readLock2, lock);
 
-  if (canceled) { //if it was ok we would already have committed
-    if(rv.ok()) {
-      rv.reset(TRI_ERROR_REQUEST_CANCELED,"handler canceled - result already committed");
+  if (canceled) {  // if it was ok we would already have committed
+    if (rv.ok()) {
+      rv.reset(TRI_ERROR_REQUEST_CANCELED,
+               "handler canceled - result already committed");
     } else {
-      rv.reset(TRI_ERROR_REQUEST_CANCELED,"handler canceled");
+      rv.reset(TRI_ERROR_REQUEST_CANCELED, "handler canceled");
     }
     return rv;
   }
 
-  if (rv.fail()) { 
-    return rv; 
+  if (rv.fail()) {
+    return rv;
   }
 
   if (tryCatch.HasCaught()) {
-    //we have some javascript error that is not an arangoError
+    // we have some javascript error that is not an arangoError
     std::string msg;
     if (!tryCatch.Message().IsEmpty()) {
       v8::String::Utf8Value m(tryCatch.Message()->Get());
@@ -92,11 +90,11 @@ Result executeTransaction(
     rv.reset(TRI_ERROR_HTTP_SERVER_ERROR, msg);
   }
 
-  if (rv.fail()) { 
-    return rv; 
+  if (rv.fail()) {
+    return rv;
   }
 
-  if(result.IsEmpty() || result->IsUndefined()) {
+  if (result.IsEmpty() || result->IsUndefined()) {
     // turn undefined to none
     builder.add(VPackSlice::noneSlice());
   } else {
@@ -105,11 +103,8 @@ Result executeTransaction(
   return rv;
 }
 
-Result executeTransactionJS(
-    v8::Isolate* isolate,
-    v8::Handle<v8::Value> const& arg,
-    v8::Handle<v8::Value>& result,
-    v8::TryCatch& tryCatch) {
+Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& arg,
+                            v8::Handle<v8::Value>& result, v8::TryCatch& tryCatch) {
   Result rv;
   auto& vocbase = GetContextVocBase(isolate);
 
@@ -119,7 +114,7 @@ Result executeTransactionJS(
   // "waitForSync"
   TRI_GET_GLOBALS();
   TRI_GET_GLOBAL_STRING(WaitForSyncKey);
-  
+
   // do extra sanity checking for user facing APIs, parsing
   // is performed in `transaction::Options::fromVelocyPack`
   if (object->Has(TRI_V8_ASCII_STRING(isolate, "lockTimeout")) &&
@@ -128,14 +123,12 @@ Result executeTransactionJS(
              "<lockTimeout> must be a valid numeric value");
     return rv;
   }
-  if (object->Has(WaitForSyncKey) &&
-      !object->Get(WaitForSyncKey)->IsBoolean() &&
+  if (object->Has(WaitForSyncKey) && !object->Get(WaitForSyncKey)->IsBoolean() &&
       !object->Get(WaitForSyncKey)->IsBooleanObject()) {
-    rv.reset(TRI_ERROR_BAD_PARAMETER,
-             "<waitForSync> must be a boolean value");
+    rv.reset(TRI_ERROR_BAD_PARAMETER, "<waitForSync> must be a boolean value");
     return rv;
   }
-  
+
   // extract the properties from the object
   transaction::Options trxOptions;
   {
@@ -174,8 +167,7 @@ Result executeTransactionJS(
       object->Get(TRI_V8_ASCII_STRING(isolate, "collections")));
 
   if (collections.IsEmpty()) {
-    collectionError =
-      "empty collections definition for transaction";
+    collectionError = "empty collections definition for transaction";
     rv.reset(TRI_ERROR_BAD_PARAMETER, collectionError);
     return rv;
   }
@@ -188,11 +180,10 @@ Result executeTransactionJS(
     trxOptions.allowImplicitCollections = TRI_ObjectToBoolean(
         collections->Get(TRI_V8_ASCII_STRING(isolate, "allowImplicit")));
   }
-  
-  auto getCollections = [&isolate](v8::Handle<v8::Object> obj,
-                                   std::vector<std::string>& collections,
-                                   char const* attributeName,
-                                   std::string &collectionError) -> bool {
+
+  auto getCollections =
+      [&isolate](v8::Handle<v8::Object> obj, std::vector<std::string>& collections,
+                 char const* attributeName, std::string& collectionError) -> bool {
     if (obj->Has(TRI_V8_ASCII_STRING(isolate, attributeName))) {
       if (obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName))->IsArray()) {
         v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(
@@ -202,18 +193,19 @@ Result executeTransactionJS(
           v8::Handle<v8::Value> collection = names->Get(i);
           if (!collection->IsString()) {
             collectionError += std::string(" Collection name #") +
-              std::to_string(i) + " in array '"+ attributeName +
-              std::string("' is not a string");
+                               std::to_string(i) + " in array '" +
+                               attributeName + std::string("' is not a string");
             return false;
           }
 
           collections.emplace_back(TRI_ObjectToString(collection));
         }
       } else if (obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName))->IsString()) {
-        collections.emplace_back(
-          TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName))));
+        collections.emplace_back(TRI_ObjectToString(
+            obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName))));
       } else {
-        collectionError += std::string(" There is no array in '") + attributeName + "'";
+        collectionError +=
+            std::string(" There is no array in '") + attributeName + "'";
         return false;
       }
       // intentionally falls through
@@ -224,9 +216,9 @@ Result executeTransactionJS(
   collectionError = "invalid collection definition for transaction: ";
   // collections.read
   bool isValid =
-    (getCollections(collections, readCollections, "read", collectionError) &&
-     getCollections(collections, writeCollections, "write", collectionError) &&
-     getCollections(collections, exclusiveCollections, "exclusive", collectionError));
+      (getCollections(collections, readCollections, "read", collectionError) &&
+       getCollections(collections, writeCollections, "write", collectionError) &&
+       getCollections(collections, exclusiveCollections, "exclusive", collectionError));
 
   if (!isValid) {
     rv.reset(TRI_ERROR_BAD_PARAMETER, collectionError);
@@ -247,8 +239,8 @@ Result executeTransactionJS(
   v8::Handle<v8::Value> params;
 
   if (object->Has(TRI_V8_ASCII_STRING(isolate, "params"))) {
-    params =
-        v8::Handle<v8::Array>::Cast(object->Get(TRI_V8_ASCII_STRING(isolate, "params")));
+    params = v8::Handle<v8::Array>::Cast(
+        object->Get(TRI_V8_ASCII_STRING(isolate, "params")));
   } else {
     params = v8::Undefined(isolate);
   }
@@ -260,8 +252,8 @@ Result executeTransactionJS(
 
   bool embed = false;
   if (object->Has(TRI_V8_ASCII_STRING(isolate, "embed"))) {
-    v8::Handle<v8::Value> v =
-        v8::Handle<v8::Object>::Cast(object->Get(TRI_V8_ASCII_STRING(isolate, "embed")));
+    v8::Handle<v8::Value> v = v8::Handle<v8::Object>::Cast(
+        object->Get(TRI_V8_ASCII_STRING(isolate, "embed")));
     embed = TRI_ObjectToBoolean(v);
   }
 
@@ -284,9 +276,11 @@ Result executeTransactionJS(
 
     // Invoke Function constructor to create function with the given body and no
     // arguments
-    std::string body = TRI_ObjectToString( object->Get(TRI_V8_ASCII_STRING(isolate, "action"))->ToString());
+    std::string body = TRI_ObjectToString(
+        object->Get(TRI_V8_ASCII_STRING(isolate, "action"))->ToString());
     body = "return (" + body + ")(params);";
-    v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"), TRI_V8_STD_STRING(isolate, body)};
+    v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
+                                     TRI_V8_STD_STRING(isolate, body)};
     v8::Local<v8::Object> function = ctor->NewInstance(2, args);
 
     action = v8::Local<v8::Function>::Cast(function);
@@ -304,7 +298,7 @@ Result executeTransactionJS(
         actionError += *tryCatchStackTrace;
       }
       rv.reset(TRI_ERROR_BAD_PARAMETER, actionError);
-      tryCatch.Reset(); //reset as we have transferred the error message into the Result
+      tryCatch.Reset();  // reset as we have transferred the error message into the Result
       return rv;
     }
     action->SetName(TRI_V8_ASCII_STRING(isolate, "userTransactionSource"));
@@ -321,9 +315,9 @@ Result executeTransactionJS(
   auto ctx = std::make_shared<transaction::V8Context>(vocbase, embed);
 
   // start actual transaction
-  std::unique_ptr<transaction::Methods> trx(new transaction::Methods(ctx, readCollections,
-                                            writeCollections, exclusiveCollections,
-                                            trxOptions));
+  std::unique_ptr<transaction::Methods> trx(
+      new transaction::Methods(ctx, readCollections, writeCollections,
+                               exclusiveCollections, trxOptions));
 
   rv = trx->begin();
 
@@ -339,13 +333,15 @@ Result executeTransactionJS(
     if (tryCatch.HasCaught()) {
       trx->abort();
 
-      std::tuple<bool, bool, Result> rvTuple = extractArangoError(isolate, tryCatch, TRI_ERROR_TRANSACTION_INTERNAL);
+      std::tuple<bool, bool, Result> rvTuple =
+          extractArangoError(isolate, tryCatch, TRI_ERROR_TRANSACTION_INTERNAL);
 
       if (std::get<1>(rvTuple)) {
         rv = std::get<2>(rvTuple);
       } else {
         // some general error we don't know about
-        rv = Result(TRI_ERROR_TRANSACTION_INTERNAL, "an unknown error occured while executing the transaction");  
+        rv = Result(TRI_ERROR_TRANSACTION_INTERNAL,
+                    "an unknown error occured while executing the transaction");
       }
     }
   } catch (arangodb::basics::Exception const& ex) {
@@ -361,8 +357,10 @@ Result executeTransactionJS(
   if (!rv.fail()) {
     rv = trx->commit();
   }
+  // if we do not remove unused V8Cursors, V8Context might not reset global state
+  vocbase.cursorRepository()->garbageCollect(/*force*/ false);
 
   return rv;
 }
 
-} // arangodb
+}  // namespace arangodb

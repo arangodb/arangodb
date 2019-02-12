@@ -31,13 +31,14 @@
 NS_ROOT
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @class directory_reader
 /// @brief interface for an index reader over a directory of segments
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API directory_reader final
-    : public composite_reader,
-      private atomic_shared_ptr_helper<const composite_reader> {
+    : public index_reader,
+      private atomic_shared_ptr_helper<const index_reader> {
  public:
-  typedef atomic_shared_ptr_helper<const composite_reader> atomic_utils;
+  typedef atomic_shared_ptr_helper<const index_reader> atomic_utils;
   typedef directory_reader element_type; // type same as self
   typedef directory_reader ptr; // pointer to self
 
@@ -62,14 +63,6 @@ class IRESEARCH_API directory_reader final
 
   virtual const sub_reader& operator[](size_t i) const override {
     return (*impl_)[i];
-  }
-
-  virtual index_reader::reader_iterator begin() const override {
-    return impl_->begin();
-  }
-
-  virtual index_reader::reader_iterator end() const override {
-    return impl_->end();
   }
 
   virtual uint64_t docs_count() const override {
@@ -114,7 +107,7 @@ class IRESEARCH_API directory_reader final
   }
 
  private:
-  typedef std::shared_ptr<const composite_reader> impl_ptr;
+  typedef std::shared_ptr<const index_reader> impl_ptr;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   impl_ptr impl_;

@@ -26,6 +26,7 @@
 
 #include "utils/crc.hpp"
 #include "utils/std.hpp"
+#include "utils/string_utils.hpp"
 #include "utils/memory.hpp"
 
 NS_ROOT
@@ -423,7 +424,7 @@ void bytes_input::read_from(data_input& in, size_t size) {
     return;
   }
 
-  oversize(buf_, size);
+  string_utils::oversize(buf_, size);
 
 #ifdef IRESEARCH_DEBUG
   const auto read = in.read_bytes(&(buf_[0]), size);

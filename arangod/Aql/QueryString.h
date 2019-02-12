@@ -38,16 +38,16 @@ class QueryString {
   QueryString(QueryString const& other) = default;
   QueryString& operator=(QueryString const& other) = default;
 
-  QueryString(char const* data, size_t length) 
+  QueryString(char const* data, size_t length)
       : _queryString(data, length), _hash(0), _hashed(false) {}
-  
-  explicit QueryString(arangodb::StringRef const& ref) 
+
+  explicit QueryString(arangodb::StringRef const& ref)
       : QueryString(ref.data(), ref.size()) {}
-  
-  explicit QueryString(std::string const& val) 
+
+  explicit QueryString(std::string const& val)
       : QueryString(val.data(), val.size()) {}
-  
-  explicit QueryString(std::string&& val) 
+
+  explicit QueryString(std::string&& val)
       : _queryString(std::move(val)), _hash(0), _hashed(false) {}
 
   QueryString() : QueryString("", 0) {}
@@ -58,20 +58,22 @@ class QueryString {
   char const* data() const { return _queryString.data(); }
   size_t size() const { return _queryString.size(); }
   size_t length() const { return _queryString.size(); }
-  bool empty() const { return (_queryString.empty() || _queryString[0] == '\0'); }
+  bool empty() const {
+    return (_queryString.empty() || _queryString[0] == '\0');
+  }
   void append(std::string& out) const;
   uint64_t hash() const;
   std::string extract(size_t maxLength) const;
   std::string extractRegion(int line, int column) const;
 
  private:
-  std::string const _queryString;
+  std::string _queryString;
   mutable uint64_t _hash;
   mutable bool _hashed;
 };
 
 std::ostream& operator<<(std::ostream&, QueryString const&);
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

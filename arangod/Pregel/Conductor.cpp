@@ -51,14 +51,10 @@ using namespace arangodb::basics;
 const char* arangodb::pregel::ExecutionStateNames[6] = {
     "none", "running", "done", "canceled", "in error", "recovering"};
 
-Conductor::Conductor(
-    uint64_t executionNumber,
-    TRI_vocbase_t& vocbase,
-    std::vector<CollectionID> const& vertexCollections,
-    std::vector<CollectionID> const& edgeCollections,
-    std::string const& algoName,
-    VPackSlice const& config
-)
+Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
+                     std::vector<CollectionID> const& vertexCollections,
+                     std::vector<CollectionID> const& edgeCollections,
+                     std::string const& algoName, VPackSlice const& config)
     : _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
       _algorithm(AlgoRegistry::createAlgorithm(algoName, config)),
@@ -78,12 +74,10 @@ Conductor::Conductor(
   _masterContext.reset(_algorithm->masterContext(config));
   _aggregators.reset(new AggregatorHandler(_algorithm.get()));
 
-  _maxSuperstep =
-      VelocyPackHelper::getNumericValue(config, "maxGSS", _maxSuperstep);
+  _maxSuperstep = VelocyPackHelper::getNumericValue(config, "maxGSS", _maxSuperstep);
   // configure the async mode as off by default
   VPackSlice async = _userParams.slice().get("async");
-  _asyncMode =
-      _algorithm->supportsAsyncMode() && async.isBool() && async.getBoolean();
+  _asyncMode = _algorithm->supportsAsyncMode() && async.isBool() && async.getBoolean();
   if (_asyncMode) {
     LOG_TOPIC(DEBUG, Logger::PREGEL) << "Running in async mode";
   }
@@ -145,13 +139,12 @@ bool Conductor::_startGlobalStep() {
   _totalEdgesCount = 0;
   // we are explicitly expecting an response containing the aggregated
   // values as well as the count of active vertices
-  int res = _sendToAllDBServers(
-      Utils::prepareGSSPath, b, [&](VPackSlice const& payload) {
-        _aggregators->aggregateValues(payload);
-        _statistics.accumulateActiveCounts(payload);
-        _totalVerticesCount += payload.get(Utils::vertexCountKey).getUInt();
-        _totalEdgesCount += payload.get(Utils::edgeCountKey).getUInt();
-      });
+  int res = _sendToAllDBServers(Utils::prepareGSSPath, b, [&](VPackSlice const& payload) {
+    _aggregators->aggregateValues(payload);
+    _statistics.accumulateActiveCounts(payload);
+    _totalVerticesCount += payload.get(Utils::vertexCountKey).getUInt();
+    _totalEdgesCount += payload.get(Utils::edgeCountKey).getUInt();
+  });
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::IN_ERROR;
     LOG_TOPIC(ERR, Logger::PREGEL)
@@ -163,8 +156,7 @@ bool Conductor::_startGlobalStep() {
   // workers are done if all messages were processed and no active vertices
   // are left to process
   bool proceed = true;
-  if (_masterContext &&
-      _globalSuperstep > 0) {  // ask algorithm to evaluate aggregated values
+  if (_masterContext && _globalSuperstep > 0) {  // ask algorithm to evaluate aggregated values
     _masterContext->_globalSuperstep = _globalSuperstep - 1;
     _masterContext->_enterNextGSS = false;
     proceed = _masterContext->postGlobalSuperstep();
@@ -183,8 +175,8 @@ bool Conductor::_startGlobalStep() {
       _finalizeWorkers();
     } else {  // just stop the timer
       _endTimeSecs = TRI_microtime();
-      LOG_TOPIC(INFO, Logger::PREGEL) << "Done execution took"
-                                      << totalRuntimeSecs() << " s";
+      LOG_TOPIC(INFO, Logger::PREGEL)
+          << "Done execution took" << totalRuntimeSecs() << " s";
     }
     return false;
   }
@@ -209,12 +201,10 @@ bool Conductor::_startGlobalStep() {
   res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::IN_ERROR;
-    LOG_TOPIC(ERR, Logger::PREGEL) << "Conductor could not start GSS "
-                                   << _globalSuperstep;
+    LOG_TOPIC(ERR, Logger::PREGEL) << "Conductor could not start GSS " << _globalSuperstep;
     // the recovery mechanisms should take care od this
   } else {
-    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Conductor started new gss "
-                                     << _globalSuperstep;
+    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Conductor started new gss " << _globalSuperstep;
   }
   return res == TRI_ERROR_NO_ERROR;
 }
@@ -235,9 +225,8 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
     return;
   }
 
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Running pregel with "
-                                  << _totalVerticesCount << " vertices, "
-                                  << _totalEdgesCount << " edges";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Running pregel with " << _totalVerticesCount
+                                  << " vertices, " << _totalEdgesCount << " edges";
   if (_masterContext) {
     _masterContext->_globalSuperstep = 0;
     _masterContext->_vertexCount = _totalVerticesCount;
@@ -253,9 +242,7 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
     RecoveryManager* mngr = PregelFeature::instance()->recoveryManager();
 
     if (mngr) {
-      mngr->monitorCollections(
-        _vocbaseGuard.database().name(), _vertexCollections, this
-      );
+      mngr->monitorCollections(_vocbaseGuard.database().name(), _vertexCollections, this);
     }
   }
 }
@@ -269,8 +256,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   // whether we are in the async mode
   uint64_t gss = data.get(Utils::globalSuperstepKey).getUInt();
   if (gss != _globalSuperstep ||
-      !(_state == ExecutionState::RUNNING ||
-        _state == ExecutionState::CANCELED)) {
+      !(_state == ExecutionState::RUNNING || _state == ExecutionState::CANCELED)) {
     LOG_TOPIC(WARN, Logger::PREGEL)
         << "Conductor did received a callback from the wrong superstep";
     return VPackBuilder();
@@ -312,7 +298,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
-  scheduler->queue(RequestPriority::LOW, [this] {
+  scheduler->queue(RequestPriority::LOW, [this](bool) {
     MUTEX_LOCKER(guard, _callbackMutex);
 
     if (_state == ExecutionState::RUNNING) {
@@ -325,7 +311,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
       LOG_TOPIC(WARN, Logger::PREGEL)
           << "No further action taken after receiving all responses";
     }
-    });
+  });
   return VPackBuilder();
 }
 
@@ -395,8 +381,7 @@ void Conductor::cancel() {
 void Conductor::cancelNoLock() {
   _callbackMutex.assertLockedByCurrentThread();
 
-  if (_state == ExecutionState::RUNNING ||
-      _state == ExecutionState::RECOVERING ||
+  if (_state == ExecutionState::RUNNING || _state == ExecutionState::RECOVERING ||
       _state == ExecutionState::IN_ERROR) {
     _state = ExecutionState::CANCELED;
     _finalizeWorkers();
@@ -426,13 +411,11 @@ void Conductor::startRecovery() {
   _steady_timer->async_wait([this](const asio::error_code& error) {
     _steady_timer.reset();
 
-    if (error == asio::error::operation_aborted ||
-        _state != ExecutionState::RECOVERING) {
+    if (error == asio::error::operation_aborted || _state != ExecutionState::RECOVERING) {
       return;  // seems like we are canceled
     }
     std::vector<ServerID> goodServers;
-    int res = PregelFeature::instance()->recoveryManager()->filterGoodServers(
-        _dbServers, goodServers);
+    int res = PregelFeature::instance()->recoveryManager()->filterGoodServers(_dbServers, goodServers);
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(ERR, Logger::PREGEL) << "Recovery proceedings failed";
       cancelNoLock();
@@ -476,18 +459,16 @@ void Conductor::startRecovery() {
 }
 
 // resolves into an ordered list of shards for each collection on each server
-static void resolveInfo(
-    TRI_vocbase_t* vocbase, CollectionID const& collectionID,
-    std::map<CollectionID, std::string>& collectionPlanIdMap,
-    std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>>& serverMap,
-    std::vector<ShardID>& allShards) {
+static void resolveInfo(TRI_vocbase_t* vocbase, CollectionID const& collectionID,
+                        std::map<CollectionID, std::string>& collectionPlanIdMap,
+                        std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>>& serverMap,
+                        std::vector<ShardID>& allShards) {
   ServerState* ss = ServerState::instance();
   if (!ss->isRunningInCluster()) {  // single server mode
     auto lc = vocbase->lookupCollection(collectionID);
 
     if (lc == nullptr || lc->deleted()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                     collectionID);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, collectionID);
     }
 
     collectionPlanIdMap.emplace(collectionID, std::to_string(lc->planId()));
@@ -497,21 +478,18 @@ static void resolveInfo(
   } else if (ss->isCoordinator()) {  // we are in the cluster
 
     ClusterInfo* ci = ClusterInfo::instance();
-    std::shared_ptr<LogicalCollection> lc =
-        ci->getCollection(vocbase->name(), collectionID);
+    std::shared_ptr<LogicalCollection> lc = ci->getCollection(vocbase->name(), collectionID);
     if (lc->deleted()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                     collectionID);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, collectionID);
     }
     collectionPlanIdMap.emplace(collectionID, std::to_string(lc->planId()));
 
     std::shared_ptr<std::vector<ShardID>> shardIDs =
-      ci->getShardList(std::to_string(lc->id()));
+        ci->getShardList(std::to_string(lc->id()));
     allShards.insert(allShards.end(), shardIDs->begin(), shardIDs->end());
 
     for (auto const& shard : *shardIDs) {
-      std::shared_ptr<std::vector<ServerID>> servers =
-          ci->getResponsibleServer(shard);
+      std::shared_ptr<std::vector<ServerID>> servers = ci->getResponsibleServer(shard);
       if (servers->size() > 0) {
         serverMap[(*servers)[0]][lc->name()].push_back(shard);
       }
@@ -523,38 +501,25 @@ static void resolveInfo(
 
 /// should cause workers to start a new execution or begin with recovery
 /// proceedings
-int Conductor::_initializeWorkers(std::string const& suffix,
-                                  VPackSlice additional) {
+int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice additional) {
   _callbackMutex.assertLockedByCurrentThread();
 
   std::string const path =
-    Utils::baseUrl(_vocbaseGuard.database().name(), Utils::workerPrefix) +
-      suffix;
+      Utils::baseUrl(_vocbaseGuard.database().name(), Utils::workerPrefix) + suffix;
 
   // int64_t vertexCount = 0, edgeCount = 0;
   std::map<CollectionID, std::string> collectionPlanIdMap;
-  std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap,
-      edgeMap;
+  std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap, edgeMap;
   std::vector<ShardID> shardList;
 
   // resolve plan id's and shards on the servers
   for (CollectionID const& collectionID : _vertexCollections) {
-    resolveInfo(
-      &(_vocbaseGuard.database()),
-      collectionID,
-      collectionPlanIdMap,
-      vertexMap,
-      shardList
-    );  // store or
+    resolveInfo(&(_vocbaseGuard.database()), collectionID, collectionPlanIdMap, vertexMap,
+                shardList);  // store or
   }
   for (CollectionID const& collectionID : _edgeCollections) {
-    resolveInfo(
-      &(_vocbaseGuard.database()),
-      collectionID,
-      collectionPlanIdMap,
-      edgeMap,
-      shardList
-    );  // store or
+    resolveInfo(&(_vocbaseGuard.database()), collectionID, collectionPlanIdMap, edgeMap,
+                shardList);  // store or
   }
 
   _dbServers.clear();
@@ -571,10 +536,8 @@ int Conductor::_initializeWorkers(std::string const& suffix,
 
   for (auto const& it : vertexMap) {
     ServerID const& server = it.first;
-    std::map<CollectionID, std::vector<ShardID>> const& vertexShardMap =
-        it.second;
-    std::map<CollectionID, std::vector<ShardID>> const& edgeShardMap =
-        edgeMap[it.first];
+    std::map<CollectionID, std::vector<ShardID>> const& vertexShardMap = it.second;
+    std::map<CollectionID, std::vector<ShardID>> const& edgeShardMap = edgeMap[it.first];
 
     VPackBuilder b;
     b.openObject();
@@ -628,24 +591,23 @@ int Conductor::_initializeWorkers(std::string const& suffix,
       std::shared_ptr<IWorker> worker = feature->worker(_executionNumber);
 
       if (worker) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "a worker with this execution number already exists.");
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            "a worker with this execution number already exists.");
       }
 
-      auto created =
-        AlgoRegistry::createWorker(_vocbaseGuard.database(), b.slice());
+      auto created = AlgoRegistry::createWorker(_vocbaseGuard.database(), b.slice());
 
       TRI_ASSERT(created.get() != nullptr);
       PregelFeature::instance()->addWorker(std::move(created), _executionNumber);
       worker = PregelFeature::instance()->worker(_executionNumber);
-      TRI_ASSERT (worker);
+      TRI_ASSERT(worker);
       worker->setupWorker();
 
       return TRI_ERROR_NO_ERROR;
     } else {
       auto body = std::make_shared<std::string const>(b.toJson());
-      requests.emplace_back("server:" + server, rest::RequestType::POST, path,
-                            body);
+      requests.emplace_back("server:" + server, rest::RequestType::POST, path, body);
       LOG_TOPIC(DEBUG, Logger::PREGEL) << "Initializing Server " << server;
     }
   }
@@ -692,14 +654,12 @@ int Conductor::_finalizeWorkers() {
   _aggregators->serializeValues(debugOut);
   debugOut.close();
 
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Done. We did " << _globalSuperstep
-                                  << " rounds";
+  LOG_TOPIC(INFO, Logger::PREGEL) << "Done. We did " << _globalSuperstep << " rounds";
   LOG_TOPIC(DEBUG, Logger::PREGEL)
       << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs << "s";
   LOG_TOPIC(DEBUG, Logger::PREGEL)
       << "Computation Time: " << compEnd - _computationStartTimeSecs << "s";
-  LOG_TOPIC(DEBUG, Logger::PREGEL)
-      << "Storage Time: " << TRI_microtime() - compEnd << "s";
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Storage Time: " << TRI_microtime() - compEnd << "s";
   LOG_TOPIC(INFO, Logger::PREGEL) << "Overall: " << totalRuntimeSecs() << "s";
   LOG_TOPIC(DEBUG, Logger::PREGEL) << "Stats: " << debugOut.toString();
   return res;
@@ -719,12 +679,11 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder) {
 
   // merge results from DBServers
   outBuilder.openArray();
-  int res = _sendToAllDBServers(Utils::aqlResultsPath, b,
-                                [&](VPackSlice const& payload) {
-                                  if (payload.isArray()) {
-                                    outBuilder.add(VPackArrayIterator(payload));
-                                  }
-                                });
+  int res = _sendToAllDBServers(Utils::aqlResultsPath, b, [&](VPackSlice const& payload) {
+    if (payload.isArray()) {
+      outBuilder.add(VPackArrayIterator(payload));
+    }
+  });
   outBuilder.close();
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -738,7 +697,10 @@ VPackBuilder Conductor::toVelocyPack() const {
   result.add("gss", VPackValue(_globalSuperstep));
   result.add("totalRuntime", VPackValue(totalRuntimeSecs()));
   _aggregators->serializeValues(result);
-  _statistics.serializeValues(result);
+  {
+    MUTEX_LOCKER(guard, _callbackMutex);
+    _statistics.serializeValues(result);
+  }
   if (_state != ExecutionState::RUNNING) {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
     result.add("edgeCount", VPackValue(_totalEdgesCount));
@@ -747,13 +709,11 @@ VPackBuilder Conductor::toVelocyPack() const {
   return result;
 }
 
-int Conductor::_sendToAllDBServers(std::string const& path,
-                                   VPackBuilder const& message) {
+int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& message) {
   return _sendToAllDBServers(path, message, std::function<void(VPackSlice)>());
 }
 
-int Conductor::_sendToAllDBServers(std::string const& path,
-                                   VPackBuilder const& message,
+int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& message,
                                    std::function<void(VPackSlice)> handle) {
   _callbackMutex.assertLockedByCurrentThread();
   _respondedServers.clear();
@@ -763,19 +723,17 @@ int Conductor::_sendToAllDBServers(std::string const& path,
     if (handle) {
       VPackBuilder response;
 
-      PregelFeature::handleWorkerRequest(
-        _vocbaseGuard.database(), path, message.slice(), response
-      );
+      PregelFeature::handleWorkerRequest(_vocbaseGuard.database(), path,
+                                         message.slice(), response);
       handle(response.slice());
     } else {
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      scheduler->queue(RequestPriority::LOW, [this, path, message] {
+      scheduler->queue(RequestPriority::LOW, [this, path, message](bool) {
         VPackBuilder response;
 
-        PregelFeature::handleWorkerRequest(
-          _vocbaseGuard.database(), path, message.slice(), response
-        );
+        PregelFeature::handleWorkerRequest(_vocbaseGuard.database(), path,
+                                           message.slice(), response);
       });
     }
     return TRI_ERROR_NO_ERROR;
@@ -789,21 +747,18 @@ int Conductor::_sendToAllDBServers(std::string const& path,
     return TRI_ERROR_FAILED;
   }
 
-  std::string base =
-    Utils::baseUrl(_vocbaseGuard.database().name(), Utils::workerPrefix);
+  std::string base = Utils::baseUrl(_vocbaseGuard.database().name(), Utils::workerPrefix);
   auto body = std::make_shared<std::string const>(message.toJson());
   std::vector<ClusterCommRequest> requests;
 
   for (auto const& server : _dbServers) {
-    requests.emplace_back("server:" + server, rest::RequestType::POST,
-                          base + path, body);
+    requests.emplace_back("server:" + server, rest::RequestType::POST, base + path, body);
   }
 
   size_t nrDone = 0;
   size_t nrGood = cc->performRequests(requests, 5.0 * 60.0, nrDone,
                                       LogTopic("Pregel Conductor"), false);
-  LOG_TOPIC(TRACE, Logger::PREGEL) << "Send " << path << " to " << nrDone
-                                   << " servers";
+  LOG_TOPIC(TRACE, Logger::PREGEL) << "Send " << path << " to " << nrDone << " servers";
   Utils::printResponses(requests);
   if (handle && nrGood == requests.size()) {
     for (ClusterCommRequest const& req : requests) {
@@ -819,8 +774,7 @@ void Conductor::_ensureUniqueResponse(VPackSlice body) {
   // check if this the only time we received this
   ServerID sender = body.get(Utils::senderKey).copyString();
   if (_respondedServers.find(sender) != _respondedServers.end()) {
-    LOG_TOPIC(ERR, Logger::PREGEL) << "Received response already from "
-                                   << sender;
+    LOG_TOPIC(ERR, Logger::PREGEL) << "Received response already from " << sender;
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CONFLICT);
   }
   _respondedServers.insert(sender);

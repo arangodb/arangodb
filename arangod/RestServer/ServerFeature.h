@@ -33,7 +33,7 @@ namespace rest {
 class RestHandlerFactory;
 class AsyncJobManager;
 
-}
+}  // namespace rest
 
 class ServerFeature final : public application_features::ApplicationFeature {
  public:
@@ -56,7 +56,7 @@ class ServerFeature final : public application_features::ApplicationFeature {
 
   std::vector<std::string> const& scripts() const { return _scripts; }
   uint32_t const& vstMaxSize() const { return _vstMaxSize; }
-  
+
   bool isConsoleMode() const {
     return (_operationMode == OperationMode::MODE_CONSOLE);
   }
@@ -75,6 +75,6 @@ class ServerFeature final : public application_features::ApplicationFeature {
   uint16_t _originalCodePage;
 };
 
-}
+}  // namespace arangodb
 
 #endif

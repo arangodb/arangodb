@@ -22,23 +22,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cluster/ServerState.h"
-#include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "StorageEngine/PhysicalCollection.h"
+#include "VocBase/LogicalCollection.h"
 
-#include "IResearchMMFilesLink.h"
+#include "IResearchCommon.h"
 #include "IResearchLinkHelper.h"
+#include "IResearchMMFilesLink.h"
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
-IResearchMMFilesLink::IResearchMMFilesLink(
-    TRI_idx_iid_t iid,
-    arangodb::LogicalCollection& collection
-): Index(iid, collection, IResearchLinkHelper::emptyIndexSlice()),
-   IResearchLink(iid, collection) {
+IResearchMMFilesLink::IResearchMMFilesLink(TRI_idx_iid_t iid,
+                                           arangodb::LogicalCollection& collection)
+    : Index(iid, collection, IResearchLinkHelper::emptyIndexSlice()),
+      IResearchLink(iid, collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  _unique = false; // cannot be unique since multiple fields are indexed
-  _sparse = true;  // always sparse
+  _unique = false;  // cannot be unique since multiple fields are indexed
+  _sparse = true;   // always sparse
 }
 
 IResearchMMFilesLink::~IResearchMMFilesLink() {
@@ -46,56 +48,66 @@ IResearchMMFilesLink::~IResearchMMFilesLink() {
 }
 
 /*static*/ IResearchMMFilesLink::ptr IResearchMMFilesLink::make(
-    arangodb::LogicalCollection& collection,
-    arangodb::velocypack::Slice const& definition,
-    TRI_idx_iid_t id,
-    bool isClusterConstructor
-) noexcept {
+    arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& definition,
+    TRI_idx_iid_t id, bool isClusterConstructor) noexcept {
   try {
     PTR_NAMED(IResearchMMFilesLink, ptr, id, collection);
 
-    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto* link = dynamic_cast<arangodb::iresearch::IResearchMMFilesLink*>(ptr.get());
-    #else
-      auto* link = static_cast<arangodb::iresearch::IResearchMMFilesLink*>(ptr.get());
-    #endif
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* link = dynamic_cast<arangodb::iresearch::IResearchMMFilesLink*>(ptr.get());
+#else
+    auto* link = static_cast<arangodb::iresearch::IResearchMMFilesLink*>(ptr.get());
+#endif
+
+    // ensure loaded so that we have valid data in next check
+    if (TRI_VOC_COL_STATUS_LOADED != collection.status()) {
+      collection.load();
+    }
+    if (!collection.getPhysical()->hasAllPersistentLocalIds()) {
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+          << "mmfiles collection uses pre-3.4 format and cannot be linked to "
+             "an "
+          << "arangosearch view; try recreating collection and moving the "
+          << "contents to the new collection";
+      return nullptr;
+    }
 
     return link && link->init(definition) ? ptr : nullptr;
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, Logger::DEVEL)
-      << "caught exception while creating arangosearch view MMFiles link '" << id << "': " << e.code() << " " << e.what();
+        << "caught exception while creating arangosearch view MMFiles link '"
+        << id << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::DEVEL)
-      << "caught exception while creating arangosearch view MMFiles link '" << id << "': " << e.what();
+        << "caught exception while creating arangosearch view MMFiles link '"
+        << id << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, Logger::DEVEL)
-      << "caught exception while creating arangosearch view MMFiles link '" << id << "'";
+        << "caught exception while creating arangosearch view MMFiles link '"
+        << id << "'";
     IR_LOG_EXCEPTION();
   }
 
   return nullptr;
 }
 
-void IResearchMMFilesLink::toVelocyPack(
-    arangodb::velocypack::Builder& builder,
-    std::underlying_type<arangodb::Index::Serialize>::type flags
-) const {
+void IResearchMMFilesLink::toVelocyPack(arangodb::velocypack::Builder& builder,
+                                        std::underlying_type<arangodb::Index::Serialize>::type flags) const {
   if (builder.isOpenObject()) {
-    THROW_ARANGO_EXCEPTION(arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("failed to generate link definition for arangosearch view MMFiles link '") + std::to_string(arangodb::Index::id()) + "'"
-    ));
+    THROW_ARANGO_EXCEPTION(arangodb::Result(TRI_ERROR_BAD_PARAMETER, std::string("failed to generate link definition for arangosearch view MMFiles link '") +
+                                                                         std::to_string(arangodb::Index::id()) +
+                                                                         "'"));
   }
 
   builder.openObject();
 
   if (!json(builder)) {
-    THROW_ARANGO_EXCEPTION(arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("failed to generate link definition for arangosearch view MMFiles link '") + std::to_string(arangodb::Index::id()) + "'"
-    ));
+    THROW_ARANGO_EXCEPTION(arangodb::Result(TRI_ERROR_INTERNAL, std::
+                                                                        string("failed to generate link definition for arangosearch view MMFiles link '") +
+                                                                    std::to_string(arangodb::Index::id()) +
+                                                                    "'"));
   }
 
   if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
@@ -110,9 +122,9 @@ void IResearchMMFilesLink::toVelocyPack(
   builder.close();
 }
 
-NS_END // iresearch
-NS_END // arangodb
+NS_END      // iresearch
+    NS_END  // arangodb
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
+    // --SECTION-- END-OF-FILE
+    // -----------------------------------------------------------------------------

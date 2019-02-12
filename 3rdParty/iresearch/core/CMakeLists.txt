@@ -77,10 +77,18 @@ source_group("search" ./search/*)
 source_group("store" ./store/*)
 source_group("utils" ./utils/*)
 
-if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+if (USE_SIMDCOMP)
   set(IResearch_core_optimized_sources
     ./store/store_utils_optimized.cpp
   )
+endif()
+
+if (GENERATED_PARSER_SOURCES)
+  message(STATUS "using pre-generated parser")
+  set(PARSER_SRC "${GENERATED_PARSER_SOURCES}")
+else()
+  message(STATUS "generating parser")
+  set(PARSER_SRC "./iql/parser.cc")
 endif()
 
 set(IResearch_core_sources
@@ -107,7 +115,7 @@ set(IResearch_core_sources
   ./index/segment_reader.cpp 
   ./index/segment_writer.cpp 
   ./index/transaction_store.cpp
-  ./iql/parser.cc
+  ${PARSER_SRC}
   ./iql/parser_common.cpp
   ./iql/parser_context.cpp
   ./iql/query_builder.cpp
@@ -301,20 +309,22 @@ if(MSVC)
   )
 endif()
 
-# generate IQL grammar
-# force dependency modification validation by comparing with local copy of the
-# source file to suppress file regeneration by scripts generated for MSVC and to
-# suppress file regeneration by scripts generated for 'make' due to equal
-# dependency and generated file timestamp
-add_custom_command(
-  OUTPUT iql/parser.cc
-  MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
-  COMMAND ${CMAKE_COMMAND} -E make_directory iql
-  COMMAND ${CMAKE_COMMAND} -E md5sum iql/parser.cc || ${CMAKE_COMMAND} -E remove iql/parser.yy
-  COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy iql/parser.yy || bison --graph --report=all -Wnone -o iql/parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
-  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy iql/parser.yy
-)
+if (NOT GENERATED_PARSER_SOURCES)
+  # generate IQL grammar
+  # force dependency modification validation by comparing with local copy of the
+  # source file to suppress file regeneration by scripts generated for MSVC and to
+  # suppress file regeneration by scripts generated for 'make' due to equal
+  # dependency and generated file timestamp
+  add_custom_command(
+    OUTPUT iql/parser.cc
+    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
+    COMMAND ${CMAKE_COMMAND} -E make_directory iql
+    COMMAND ${CMAKE_COMMAND} -E md5sum iql/parser.cc || ${CMAKE_COMMAND} -E remove iql/parser.yy
+    COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy iql/parser.yy || bison --graph --report=all -Wnone -o iql/parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy iql/parser.yy
+    )
+endif()
 
 # trigger generation of BUILD_IDENTIFIER if needed
 add_custom_command(
@@ -478,7 +488,7 @@ else()
   set(MSVC_ONLY_LIBRARIES "")
 endif()
 
-if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+if (USE_SIMDCOMP)
   set(SIMD_LIBRARY_SHARED "simdcomp-shared")
   set(SIMD_LIBRARY_STATIC "simdcomp-static")
 endif()
@@ -892,7 +902,7 @@ endif()
 ### format plugin: format-1_0
 ################################################################################
 
-if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+if (USE_SIMDCOMP)
   set(FORMAT_10_EXTRA_DEFS "IRESEARCH_FORMAT10_CODEC=1")
 else()
   set(FORMAT_10_EXTRA_DEFS "IRESEARCH_FORMAT10_CODEC=0")

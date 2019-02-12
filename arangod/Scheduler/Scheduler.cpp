@@ -28,6 +28,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <thread>
+#include <unordered_set>
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
@@ -40,14 +41,45 @@
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/Task.h"
 #include "Statistics/RequestStatistics.h"
+#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-namespace {
-constexpr double MIN_SECONDS = 60.0;
+std::unordered_set<void*> gActiveStrandMap;
+Mutex gActiveStrandMapMutex;
+
+asio_ns::io_context::strand* Scheduler::newStrand() {
+  asio_ns::io_context::strand* newbie(nullptr);
+  int count(139);
+  std::unordered_set<void*>::iterator it;
+
+  MUTEX_LOCKER(locker, gActiveStrandMapMutex);
+  do {
+    delete newbie;
+    newbie = new asio_ns::io_context::strand(*_ioContext);
+
+    it = gActiveStrandMap.find((void*)(newbie->impl_));
+  } while (gActiveStrandMap.end() != it && --count);
+
+  if (gActiveStrandMap.end() == it) {
+    gActiveStrandMap.insert((void*)(newbie->impl_));
+  }
+
+  return newbie;
 }
+
+void Scheduler::releaseStrand(asio_ns::io_context::strand* strandDone) {
+  MUTEX_LOCKER(locker, gActiveStrandMapMutex);
+  gActiveStrandMap.erase((void*)(strandDone->impl_));
+}
+
+namespace {
+// controls how fast excess threads to io_context get pruned.
+//  60 known to slow down tests that use single client thread (matthewv)
+constexpr double MIN_SECONDS = 30.0;
+}  // namespace
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            SchedulerManagerThread
@@ -57,9 +89,7 @@ namespace {
 class SchedulerManagerThread final : public Thread {
  public:
   SchedulerManagerThread(Scheduler* scheduler, asio_ns::io_context* service)
-      : Thread("SchedulerManager", true),
-        _scheduler(scheduler),
-        _service(service) {}
+      : Thread("SchedulerManager", true), _scheduler(scheduler), _service(service) {}
 
   ~SchedulerManagerThread() { shutdown(); }
 
@@ -98,13 +128,12 @@ class arangodb::SchedulerThread : public Thread {
 
     // when we enter this method,
     // _nrRunning has already been increased for this thread
-    LOG_TOPIC(DEBUG, Logger::THREADS)
-        << "started thread: " << _scheduler->infoStatus();
+    LOG_TOPIC(DEBUG, Logger::THREADS) << "started thread: " << _scheduler->infoStatus();
 
     // some random delay value to avoid all initial threads checking for
     // their deletion at the very same time
-    double const randomWait = static_cast<double>(RandomGenerator::interval(
-        int64_t(0), static_cast<int64_t>(MIN_SECONDS * 0.5)));
+    double const randomWait = static_cast<double>(
+        RandomGenerator::interval(int64_t(0), static_cast<int64_t>(MIN_SECONDS * 0.5)));
 
     double start = TRI_microtime() + randomWait;
     size_t counter = 0;
@@ -147,8 +176,7 @@ class arangodb::SchedulerThread : public Thread {
       }
     }
 
-    LOG_TOPIC(DEBUG, Logger::THREADS)
-        << "stopped (" << _scheduler->infoStatus() << ")";
+    LOG_TOPIC(DEBUG, Logger::THREADS) << "stopped (" << _scheduler->infoStatus() << ")";
 
     if (doDecrement) {
       // only decrement here if this wasn't already done above
@@ -165,19 +193,21 @@ class arangodb::SchedulerThread : public Thread {
 // --SECTION--                                                         Scheduler
 // -----------------------------------------------------------------------------
 
-Scheduler::Scheduler(uint64_t nrMinimum, uint64_t nrMaximum,
-                     uint64_t fifo1Size, uint64_t fifo2Size)
+Scheduler::Scheduler(uint64_t nrMinimum, uint64_t nrMaximum, uint64_t fifo1Size, uint64_t fifo2Size)
     : _counters(0),
-      _maxFifoSize{fifo1Size, fifo2Size},
+      _maxFifoSize{fifo1Size, fifo2Size, fifo2Size},
       _fifo1(_maxFifoSize[FIFO1]),
       _fifo2(_maxFifoSize[FIFO2]),
-      _fifos{&_fifo1, &_fifo2},
+      _fifo3(_maxFifoSize[FIFO3]),
+      _fifos{&_fifo1, &_fifo2, &_fifo3},
       _minThreads(nrMinimum),
       _maxThreads(nrMaximum),
       _lastAllBusyStamp(0.0) {
-  LOG_TOPIC(DEBUG, Logger::THREADS) << "Scheduler configuration min: " << nrMinimum << " max: " << nrMaximum;
+  LOG_TOPIC(DEBUG, Logger::THREADS)
+      << "Scheduler configuration min: " << nrMinimum << " max: " << nrMaximum;
   _fifoSize[FIFO1] = 0;
   _fifoSize[FIFO2] = 0;
+  _fifoSize[FIFO3] = 0;
 
   // setup signal handlers
   initializeSignalHandlers();
@@ -188,9 +218,6 @@ Scheduler::~Scheduler() {
 
   _managerGuard.reset();
   _managerContext.reset();
-
-  _serviceGuard.reset();
-  _ioContext.reset();
 
   FifoJob* job = nullptr;
 
@@ -205,40 +232,50 @@ Scheduler::~Scheduler() {
 }
 
 // do not pass callback by reference, might get deleted before execution
-void Scheduler::post(std::function<void()> const callback) {
+void Scheduler::post(std::function<void(bool)> const callback, bool isHandler) {
   // increment number of queued and guard against exceptions
-  incQueued();
+  uint64_t old = incQueued();
+  old += _fifoSize[FIFO1] + _fifoSize[FIFO2] + _fifoSize[FIFO3];
 
+  // reduce queued at the end
   auto guardQueue = scopeGuard([this]() { decQueued(); });
 
-  // capture without self, ioContext will not live longer than scheduler
-  _ioContext->post([this, callback]() {
-    // start working
+  // if there is a handler, there is also an io task
+  if (isHandler && old < 2) {
     JobGuard jobGuard(this);
     jobGuard.work();
 
-    // reduce number of queued now
-    decQueued();
+    callback(true);
 
-    callback();
-  });
+    drain();
+  } else {
+    // capture without self, ioContext will not live longer than scheduler
+    _ioContext->post([this, callback]() {
+      auto guardQueue = scopeGuard([this]() { decQueued(); });
 
-  // no exception happened, cancel guard
-  guardQueue.cancel();
+      JobGuard jobGuard(this);
+      jobGuard.work();
+
+      callback(false);
+    });
+
+    // no exception happened, cancel guard
+    guardQueue.cancel();
+  }
 }
 
 // do not pass callback by reference, might get deleted before execution
-void Scheduler::post(asio_ns::io_context::strand& strand,
-                     std::function<void()> const callback) {
+void Scheduler::post(asio_ns::io_context::strand& strand, std::function<void()> const callback) {
   incQueued();
 
   auto guardQueue = scopeGuard([this]() { decQueued(); });
 
   strand.post([this, callback]() {
+    auto guardQueue = scopeGuard([this]() { decQueued(); });
+
     JobGuard guard(this);
     guard.work();
 
-    decQueued();
     callback();
   });
 
@@ -247,7 +284,7 @@ void Scheduler::post(asio_ns::io_context::strand& strand,
 }
 
 bool Scheduler::queue(RequestPriority prio,
-                      std::function<void()> const& callback) {
+                      std::function<void(bool)> const& callback, bool isHandler) {
   bool ok = true;
 
   switch (prio) {
@@ -261,7 +298,7 @@ bool Scheduler::queue(RequestPriority prio,
       if (0 < _fifoSize[FIFO1] || !canPostDirectly(prio)) {
         ok = pushToFifo(FIFO1, callback);
       } else {
-        post(callback);
+        post(callback, isHandler);
       }
       break;
 
@@ -269,11 +306,24 @@ bool Scheduler::queue(RequestPriority prio,
     // or if the scheduler queue is already full, then
     // append it to the fifo2. Otherewise directly queue
     // it.
-    case RequestPriority::LOW:
+    case RequestPriority::MED:
       if (0 < _fifoSize[FIFO1] || 0 < _fifoSize[FIFO2] || !canPostDirectly(prio)) {
         ok = pushToFifo(FIFO2, callback);
       } else {
-        post(callback);
+        post(callback, isHandler);
+      }
+      break;
+
+    // If there is anything in the fifo1, fifo2, fifo3
+    // or if the scheduler queue is already full, then
+    // append it to the fifo2. Otherwise directly queue
+    // it.
+    case RequestPriority::LOW:
+      if (0 < _fifoSize[FIFO1] || 0 < _fifoSize[FIFO2] ||
+          0 < _fifoSize[FIFO3] || !canPostDirectly(prio)) {
+        ok = pushToFifo(FIFO3, callback);
+      } else {
+        post(callback, isHandler);
       }
       break;
 
@@ -300,6 +350,10 @@ void Scheduler::drain() {
     if (!found) {
       found = popFifo(FIFO2);
     }
+
+    if (!found) {
+      found = popFifo(FIFO3);
+    }
   }
 }
 
@@ -315,6 +369,8 @@ void Scheduler::addQueueStatistics(velocypack::Builder& b) const {
   b.add("fifo1-size", VPackValue(_maxFifoSize[FIFO1]));
   b.add("current-fifo2", VPackValue(_fifoSize[FIFO2]));
   b.add("fifo2-size", VPackValue(_maxFifoSize[FIFO2]));
+  b.add("current-fifo3", VPackValue(_fifoSize[FIFO3]));
+  b.add("fifo3-size", VPackValue(_maxFifoSize[FIFO3]));
 }
 
 Scheduler::QueueStatistics Scheduler::queueStatistics() const {
@@ -324,7 +380,8 @@ Scheduler::QueueStatistics Scheduler::queueStatistics() const {
                          numWorking(counters),
                          numQueued(counters),
                          static_cast<uint64_t>(_fifoSize[FIFO1]),
-                         static_cast<uint64_t>(_fifoSize[FIFO2])};
+                         static_cast<uint64_t>(_fifoSize[FIFO2]),
+                         static_cast<uint64_t>(_fifoSize[FIFO3])};
 }
 
 std::string Scheduler::infoStatus() {
@@ -333,31 +390,33 @@ std::string Scheduler::infoStatus() {
   return "scheduler " + std::to_string(numRunning(counters)) + " (" +
          std::to_string(_minThreads) + "<" + std::to_string(_maxThreads) +
          ") in-progress " + std::to_string(numWorking(counters)) + " queued " +
-         std::to_string(numQueued(counters)) +
-         " F1 " + std::to_string(_fifoSize[FIFO1]) +
+         std::to_string(numQueued(counters)) + " F1 " + std::to_string(_fifoSize[FIFO1]) +
          " (<=" + std::to_string(_maxFifoSize[FIFO1]) + ") F2 " +
-         std::to_string(_fifoSize[FIFO2]) +
-        " (<=" + std::to_string(_maxFifoSize[FIFO2]) + ")";
+         std::to_string(_fifoSize[FIFO2]) + " (<=" + std::to_string(_maxFifoSize[FIFO2]) +
+         ") F3 " + std::to_string(_fifoSize[FIFO3]) +
+         " (<=" + std::to_string(_maxFifoSize[FIFO3]) + ")";
 }
 
 bool Scheduler::canPostDirectly(RequestPriority prio) const noexcept {
   auto counters = getCounters();
-  auto nrWorking = numWorking(counters);
   auto nrQueued = numQueued(counters);
 
   switch (prio) {
     case RequestPriority::HIGH:
-      return nrWorking + nrQueued < _maxThreads;
+      return nrQueued < _maxThreads;
 
+    // the "/ 2" is an assumption that HIGH is typically responses to our outbound messages
+    //  where MED & LOW are incoming requests.  Keep half the threads processing our work and half their work.
+    case RequestPriority::MED:
     case RequestPriority::LOW:
-      return nrWorking + nrQueued < _maxThreads - _minThreads;
+      return nrQueued < _maxThreads / 2;
   }
 
   return false;
 }
 
-bool Scheduler::pushToFifo(int64_t fifo, std::function<void()> const& callback) {
-  LOG_TOPIC(DEBUG, Logger::THREADS) << "Push element on fifo: " << fifo;
+bool Scheduler::pushToFifo(int64_t fifo, std::function<void(bool)> const& callback) {
+  LOG_TOPIC(TRACE, Logger::THREADS) << "Push element on fifo: " << fifo;
   TRI_ASSERT(0 <= fifo && fifo < NUMBER_FIFOS);
 
   size_t p = static_cast<size_t>(fifo);
@@ -377,14 +436,15 @@ bool Scheduler::pushToFifo(int64_t fifo, std::function<void()> const& callback) 
 
     // then check, otherwise we might miss to wake up a thread
     auto counters = getCounters();
-    auto nrWorking = numRunning(counters);
     auto nrQueued = numQueued(counters);
 
-    if (0 == nrWorking + nrQueued) {
-      post([] {
-          LOG_TOPIC(DEBUG, Logger::THREADS) << "Wakeup alarm";
-          /*wakeup call for scheduler thread*/
-      });
+    if (0 == nrQueued) {
+      post(
+          [](bool) {
+            LOG_TOPIC(DEBUG, Logger::THREADS) << "Wakeup alarm";
+            /*wakeup call for scheduler thread*/
+          },
+          false);
     }
   } catch (...) {
     return false;
@@ -394,7 +454,7 @@ bool Scheduler::pushToFifo(int64_t fifo, std::function<void()> const& callback) 
 }
 
 bool Scheduler::popFifo(int64_t fifo) {
-  LOG_TOPIC(DEBUG, Logger::THREADS) << "Popping a job from fifo: " << fifo;
+  LOG_TOPIC(TRACE, Logger::THREADS) << "Popping a job from fifo: " << fifo;
   TRI_ASSERT(0 <= fifo && fifo < NUMBER_FIFOS);
 
   size_t p = static_cast<size_t>(fifo);
@@ -409,7 +469,7 @@ bool Scheduler::popFifo(int64_t fifo) {
       }
     });
 
-   post(job->_callback);
+    post(job->_callback, false);
 
     --_fifoSize[p];
   }
@@ -444,7 +504,7 @@ bool Scheduler::start() {
   TRI_ASSERT(0 < _minThreads);
   TRI_ASSERT(_minThreads <= _maxThreads);
 
-  for (uint64_t i = 0; i < _maxThreads; ++i) {
+  for (uint64_t i = 0; i < _minThreads; ++i) {
     {
       MUTEX_LOCKER(locker, _threadCreateLock);
       incRunning();
@@ -500,6 +560,9 @@ void Scheduler::shutdown() {
     std::this_thread::sleep_for(std::chrono::microseconds(20000));
   }
 
+  // One has to clean up the ioContext here, because there could a lambda
+  // in its queue, that requires for it finalization some object (for example
+  // vocbase) that would already be destroyed
   _managerContext.reset();
   _ioContext.reset();
 }
@@ -555,17 +618,20 @@ void Scheduler::stopRebalancer() noexcept {
   }
 }
 
+//
+// This routine tries to keep only the most likely needed count of threads running:
+//  - asio io_context runs less efficiently if it has too many threads, but
+//  - there is a latency hit to starting a new thread.
+//
 void Scheduler::rebalanceThreads() {
   static uint64_t count = 0;
 
   ++count;
 
   if (count % 50 == 0) {
-    LOG_TOPIC(DEBUG, Logger::THREADS)
-        << "rebalancing threads: " << infoStatus();
+    LOG_TOPIC(DEBUG, Logger::THREADS) << "rebalancing threads: " << infoStatus();
   } else if (count % 5 == 0) {
-    LOG_TOPIC(TRACE, Logger::THREADS)
-        << "rebalancing threads: " << infoStatus();
+    LOG_TOPIC(TRACE, Logger::THREADS) << "rebalancing threads: " << infoStatus();
   }
 
   while (true) {
@@ -646,16 +712,9 @@ bool Scheduler::threadShouldStop(double now) {
     return false;
   }
 
-  // I reactivated the following at the last hour before 3.4.RC3 without
-  // being able to consult with Matthew. If this breaks things, we find
-  // out in due course. 12.10.2018 Max.
-#if 0
   // decrement nrRunning by one already in here while holding the lock
   decRunning();
   return true;
-#else
-  return false;
-#endif
 }
 
 void Scheduler::startNewThread() {

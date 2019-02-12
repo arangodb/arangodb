@@ -45,7 +45,7 @@ struct WakeupQueryCallback : public ClusterCommCallback {
   std::shared_ptr<SharedQueryState> _sharedState;
 };
 
-} // aql
-} // arangodb
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

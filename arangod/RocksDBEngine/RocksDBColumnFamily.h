@@ -59,12 +59,14 @@ struct RocksDBColumnFamily {
 
   static rocksdb::ColumnFamilyHandle* fulltext() { return _fulltext; }
 
-  static rocksdb::ColumnFamilyHandle* invalid() { return rocksutils::defaultCF(); }
+  static rocksdb::ColumnFamilyHandle* invalid() {
+    return rocksutils::defaultCF();
+  }
 
   static char const* columnFamilyName(rocksdb::ColumnFamilyHandle* cf) {
     if (cf == _definitions) {
       return "definitions";
-    } 
+    }
     if (cf == _documents) {
       return "documents";
     }
@@ -73,7 +75,7 @@ struct RocksDBColumnFamily {
     }
     if (cf == _edge) {
       return "edge";
-    } 
+    }
     if (cf == _vpack) {
       return "vpack";
     }

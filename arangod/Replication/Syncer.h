@@ -54,7 +54,6 @@ class LogicalCollection;
 
 class Syncer : public std::enable_shared_from_this<Syncer> {
  public:
-
   /// @brief a helper object used for synchronization between the
   /// dump apply thread and some helper job posted into the scheduler
   /// for async fetching of the next dump results
@@ -63,16 +62,16 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     JobSynchronizer(JobSynchronizer const&) = delete;
     JobSynchronizer& operator=(JobSynchronizer const&) = delete;
 
-    explicit JobSynchronizer(std::shared_ptr<Syncer const> const& syncer); 
+    explicit JobSynchronizer(std::shared_ptr<Syncer const> const& syncer);
     ~JobSynchronizer();
 
     /// @brief will be called whenever a response for the job comes in
     void gotResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response) noexcept;
-    
+
     /// @brief will be called whenever an error occurred
     /// expects "res" to be an error!
-    void gotResponse(arangodb::Result&& res) noexcept; 
-    
+    void gotResponse(arangodb::Result&& res) noexcept;
+
     /// @brief the calling Syncer will call and block inside this function until
     /// there is a response or the syncer/server is shut down
     arangodb::Result waitForResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response);
@@ -80,10 +79,12 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     /// @brief post an async request to the scheduler
     /// this will increase the number of inflight jobs, and count it down
     /// when the posted request has finished
-    void request(std::function<void()> const& cb);
+    void request(std::function<void(bool)> const& cb);
 
     /// @brief notifies that a job was posted
-    void jobPosted();
+    /// returns false if job counter could not be increased (e.g. because
+    /// the syncer was stopped/aborted already)
+    bool jobPosted();
 
     /// @brief notifies that a job was done
     void jobDone();
@@ -102,8 +103,8 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     /// @brief true if a response was received
     bool _gotResponse;
 
-    /// @brief the processing response of the job (indicates failure if no response
-    /// was received or if something went wrong)
+    /// @brief the processing response of the job (indicates failure if no
+    /// response was received or if something went wrong)
     arangodb::Result _res;
 
     /// @brief the response received by the job (nullptr if no response received)
@@ -180,15 +181,13 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
 
   /// @brief apply a single marker from the collection dump
   // TODO worker-safety
-  Result applyCollectionDumpMarker(transaction::Methods&,
-                                   LogicalCollection* coll,
+  Result applyCollectionDumpMarker(transaction::Methods&, LogicalCollection* coll,
                                    TRI_replication_operation_e,
                                    arangodb::velocypack::Slice const&);
 
   /// @brief creates a collection, based on the VelocyPack provided
   // TODO worker safety - create/drop phase
-  Result createCollection(TRI_vocbase_t& vocbase,
-                          arangodb::velocypack::Slice const& slice,
+  Result createCollection(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice,
                           arangodb::LogicalCollection** dst);
 
   /// @brief drops a collection, based on the VelocyPack provided
@@ -200,21 +199,19 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
 
   /// @brief drops an index, based on the VelocyPack provided
   Result dropIndex(arangodb::velocypack::Slice const&);
-  
+
   /// @brief creates a view, based on the VelocyPack provided
-  Result createView(TRI_vocbase_t& vocbase,
-                    arangodb::velocypack::Slice const& slice);
-  
+  Result createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice);
+
   /// @brief drops a view, based on the VelocyPack provided
   Result dropView(arangodb::velocypack::Slice const&, bool reportError);
-
 
   // TODO worker safety
   virtual TRI_vocbase_t* resolveVocbase(velocypack::Slice const&);
 
   // TODO worker safety
-  std::shared_ptr<LogicalCollection> resolveCollection(
-      TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice);
+  std::shared_ptr<LogicalCollection> resolveCollection(TRI_vocbase_t& vocbase,
+                                                       arangodb::velocypack::Slice const& slice);
 
   // TODO worker safety
   std::unordered_map<std::string, DatabaseGuard> const& vocbases() const {

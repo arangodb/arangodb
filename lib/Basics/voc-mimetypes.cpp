@@ -24,8 +24,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Basics/Common.h"
 
-#include "Basics/mimetypes.h"
 #include "./lib/Basics/voc-mimetypes.h"
+#include "Basics/mimetypes.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize mimetypes
@@ -58,15 +58,32 @@ void TRI_InitializeEntriesMimetypes() {
   TRI_RegisterMimetype("tgz", "application/x-tar", false);
   TRI_RegisterMimetype("zip", "application/x-compressed-zip", false);
   TRI_RegisterMimetype("doc", "application/msword", false);
-  TRI_RegisterMimetype("docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", false);
-  TRI_RegisterMimetype("dotx", "application/vnd.openxmlformats-officedocument.wordprocessingml.template", false);
-  TRI_RegisterMimetype("potx", "application/vnd.openxmlformats-officedocument.presentationml.template", false);
-  TRI_RegisterMimetype("ppsx", "application/vnd.openxmlformats-officedocument.presentationml.slideshow", false);
+  TRI_RegisterMimetype(
+      "docx",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document", false);
+  TRI_RegisterMimetype(
+      "dotx",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.template", false);
+  TRI_RegisterMimetype(
+      "potx",
+      "application/vnd.openxmlformats-officedocument.presentationml.template", false);
+  TRI_RegisterMimetype(
+      "ppsx",
+      "application/vnd.openxmlformats-officedocument.presentationml.slideshow", false);
   TRI_RegisterMimetype("ppt", "application/vnd.ms-powerpoint", false);
-  TRI_RegisterMimetype("pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation", false);
+  TRI_RegisterMimetype(
+      "pptx",
+      "application/"
+      "vnd.openxmlformats-officedocument.presentationml.presentation",
+      false);
   TRI_RegisterMimetype("xls", "application/vnd.ms-excel", false);
-  TRI_RegisterMimetype("xlsb", "application/vnd.ms-excel.sheet.binary.macroEnabled.12", false);
-  TRI_RegisterMimetype("xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", false);
-  TRI_RegisterMimetype("xltx", "application/vnd.openxmlformats-officedocument.spreadsheetml.template", false);
+  TRI_RegisterMimetype("xlsb",
+                       "application/vnd.ms-excel.sheet.binary.macroEnabled.12", false);
+  TRI_RegisterMimetype(
+      "xlsx",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", false);
+  TRI_RegisterMimetype(
+      "xltx",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.template", false);
   TRI_RegisterMimetype("swf", "application/x-shockwave-flash", false);
 }

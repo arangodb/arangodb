@@ -32,8 +32,8 @@
 #include "Statistics/StatisticsWorker.h"
 #include "VocBase/vocbase.h"
 
-#include <thread>
 #include <chrono>
+#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -47,10 +47,13 @@ using namespace arangodb::options;
 namespace arangodb {
 namespace basics {
 
-std::vector<double> const TRI_BytesReceivedDistributionVectorStatistics({ 250, 1000, 2000, 5000, 10000 });
-std::vector<double> const TRI_BytesSentDistributionVectorStatistics({ 250, 1000, 2000, 5000, 10000 });
-std::vector<double> const TRI_ConnectionTimeDistributionVectorStatistics({ 0.1, 1.0, 60.0 });
-std::vector<double> const TRI_RequestTimeDistributionVectorStatistics({ 0.01, 0.05, 0.1, 0.2, 0.5, 1.0 });
+std::vector<double> const TRI_BytesReceivedDistributionVectorStatistics({250, 1000, 2000,
+                                                                         5000, 10000});
+std::vector<double> const TRI_BytesSentDistributionVectorStatistics({250, 1000, 2000,
+                                                                     5000, 10000});
+std::vector<double> const TRI_ConnectionTimeDistributionVectorStatistics({0.1, 1.0, 60.0});
+std::vector<double> const TRI_RequestTimeDistributionVectorStatistics({0.01, 0.05, 0.1,
+                                                                       0.2, 0.5, 1.0});
 
 StatisticsCounter TRI_AsyncRequestsStatistics;
 StatisticsCounter TRI_HttpConnectionsStatistics;
@@ -65,8 +68,8 @@ StatisticsDistribution TRI_IoTimeDistributionStatistics(TRI_RequestTimeDistribut
 StatisticsDistribution TRI_QueueTimeDistributionStatistics(TRI_RequestTimeDistributionVectorStatistics);
 StatisticsDistribution TRI_RequestTimeDistributionStatistics(TRI_RequestTimeDistributionVectorStatistics);
 StatisticsDistribution TRI_TotalTimeDistributionStatistics(TRI_RequestTimeDistributionVectorStatistics);
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  StatisticsThread
@@ -118,9 +121,7 @@ class arangodb::StatisticsThread final : public Thread {
 
 StatisticsFeature* StatisticsFeature::STATISTICS = nullptr;
 
-StatisticsFeature::StatisticsFeature(
-    application_features::ApplicationServer& server
-)
+StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Statistics"),
       _statistics(true),
       _descriptions(new stats::Descriptions()) {
@@ -128,19 +129,18 @@ StatisticsFeature::StatisticsFeature(
   setOptional(true);
 }
 
-void StatisticsFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
+void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("server.disable-statistics", "server.statistics");
 
   options->addSection("server", "Server features");
 
-  options->addHiddenOption("--server.statistics",
-                           "turn statistics gathering on or off",
-                           new BooleanParameter(&_statistics));
+  options->addOption("--server.statistics",
+                     "turn statistics gathering on or off",
+                     new BooleanParameter(&_statistics),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
-void StatisticsFeature::validateOptions(
-    std::shared_ptr<ProgramOptions>) {
+void StatisticsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   if (!_statistics) {
     // turn ourselves off
     disable();
@@ -155,7 +155,7 @@ void StatisticsFeature::prepare() {
     StatisticsCounter c;
     TRI_MethodRequestsStatistics.emplace_back(c);
   }
-  
+
   STATISTICS = this;
 
   ServerStatistics::initialize();
@@ -168,19 +168,20 @@ void StatisticsFeature::start() {
     return;
   }
 
-  auto* sysDbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
-    arangodb::SystemDatabaseFeature
-  >();
+  auto* sysDbFeature =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
 
   if (!sysDbFeature) {
-    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS) << "could not find feature 'SystemDatabase'";
+    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS)
+        << "could not find feature 'SystemDatabase'";
     FATAL_ERROR_EXIT();
   }
 
   auto vocbase = sysDbFeature->use();
 
   if (!vocbase) {
-    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS) << "could not find system database";
+    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS)
+        << "could not find system database";
     FATAL_ERROR_EXIT();
   }
 
@@ -188,12 +189,14 @@ void StatisticsFeature::start() {
   _statisticsWorker.reset(new StatisticsWorker(*vocbase));
 
   if (!_statisticsThread->start()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS) << "could not start statistics thread";
+    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS)
+        << "could not start statistics thread";
     FATAL_ERROR_EXIT();
   }
 
   if (!_statisticsWorker->start()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS) << "could not start statistics worker";
+    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS)
+        << "could not start statistics worker";
     FATAL_ERROR_EXIT();
   }
 }
@@ -217,6 +220,6 @@ void StatisticsFeature::unprepare() {
 
   _statisticsThread.reset();
   _statisticsWorker.reset();
-  
+
   STATISTICS = nullptr;
 }

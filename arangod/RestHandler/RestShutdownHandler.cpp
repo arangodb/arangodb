@@ -36,8 +36,7 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::rest;
 
-RestShutdownHandler::RestShutdownHandler(GeneralRequest* request,
-                                         GeneralResponse* response)
+RestShutdownHandler::RestShutdownHandler(GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -49,27 +48,31 @@ RestStatus RestShutdownHandler::execute() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
     return RestStatus::DONE;
   }
-  
+
   AuthenticationFeature* af = AuthenticationFeature::instance();
-  if (af->isEnabled() && !_request->user().empty()) {
-    auth::Level lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system", /*configured*/true);
+  if (af->isActive() && !_request->user().empty()) {
+    auth::Level lvl = auth::Level::NONE;
+    if (af->userManager() != nullptr) {
+      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system",
+                                                 /*configured*/ true);
+    } else {
+      lvl = auth::Level::RW;
+    }
     if (lvl < auth::Level::RW) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "you need admin rights to trigger shutdown");
       return RestStatus::DONE;
     }
   }
-  
+
   bool removeFromCluster;
-  std::string const& remove =
-      _request->value("remove_from_cluster", removeFromCluster);
+  std::string const& remove = _request->value("remove_from_cluster", removeFromCluster);
   removeFromCluster = removeFromCluster && remove == "1";
 
   bool shutdownClusterFound;
   std::string const& shutdownCluster =
       _request->value("shutdown_cluster", shutdownClusterFound);
-  if (shutdownClusterFound && shutdownCluster == "1" &&
-    AgencyCommManager::isEnabled()) {
+  if (shutdownClusterFound && shutdownCluster == "1" && AgencyCommManager::isEnabled()) {
     AgencyComm agency;
     VPackBuilder builder;
     builder.add(VPackValue(true));
@@ -87,7 +90,7 @@ RestStatus RestShutdownHandler::execute() {
   }
 
   ApplicationServer::server->beginShutdown();
-  
+
   try {
     VPackBuilder result;
     result.add(VPackValue("OK"));

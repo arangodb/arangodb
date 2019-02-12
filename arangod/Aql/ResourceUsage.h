@@ -27,48 +27,60 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 
+#include <algorithm>
+
 namespace arangodb {
 namespace aql {
 
 struct ResourceUsage {
-  constexpr ResourceUsage() : memoryUsage(0) {}
-  explicit ResourceUsage(size_t memoryUsage) : memoryUsage(memoryUsage) {}
+  constexpr ResourceUsage() 
+      : memoryUsage(0), 
+        peakMemoryUsage(0) {}
+  ResourceUsage(ResourceUsage const& other) noexcept
+      : memoryUsage(other.memoryUsage),
+        peakMemoryUsage(other.peakMemoryUsage) {}
 
-  void clear() { memoryUsage = 0; }
-   
+  void clear() { 
+    memoryUsage = 0; 
+    peakMemoryUsage = 0;
+  }
+
   size_t memoryUsage;
+  size_t peakMemoryUsage;
 };
 
 struct ResourceMonitor {
   ResourceMonitor() : currentResources(), maxResources() {}
-  explicit ResourceMonitor(ResourceUsage const& maxResources) : currentResources(), maxResources(maxResources) {}
- 
-  void setMemoryLimit(size_t value) {
-    maxResources.memoryUsage = value;
-  }
-   
+  explicit ResourceMonitor(ResourceUsage const& maxResources)
+      : currentResources(), maxResources(maxResources) {}
+
+  void setMemoryLimit(size_t value) { maxResources.memoryUsage = value; }
+
   inline void increaseMemoryUsage(size_t value) {
-    if (maxResources.memoryUsage > 0 && 
-        currentResources.memoryUsage + value > maxResources.memoryUsage) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT, "query would use more memory than allowed");
-    }
     currentResources.memoryUsage += value;
+
+    if (maxResources.memoryUsage > 0 &&
+        ADB_UNLIKELY(currentResources.memoryUsage > maxResources.memoryUsage)) {
+      currentResources.memoryUsage -= value;
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_RESOURCE_LIMIT, "query would use more memory than allowed");
+    }
+
+    currentResources.peakMemoryUsage = std::max(currentResources.memoryUsage, currentResources.peakMemoryUsage);
   }
-  
+
   inline void decreaseMemoryUsage(size_t value) noexcept {
     TRI_ASSERT(currentResources.memoryUsage >= value);
     currentResources.memoryUsage -= value;
   }
 
-  void clear() {
-    currentResources.clear();
-  }
+  void clear() { currentResources.clear(); }
 
   ResourceUsage currentResources;
   ResourceUsage maxResources;
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

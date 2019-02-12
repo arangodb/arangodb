@@ -25,6 +25,7 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT 1
 
 #include "Aql/FixedVarExpressionContext.h"
+#include "IResearch/IResearchExpressionContext.h"
 
 #include <unordered_map>
 
@@ -36,8 +37,10 @@ struct Variable; // forward decl
 } // aql
 } // arangodb
 
-struct ExpressionContextMock final : arangodb::aql::ExpressionContext {
+struct ExpressionContextMock final : arangodb::iresearch::ViewExpressionContextBase {
   static ExpressionContextMock EMPTY;
+
+  ExpressionContextMock() = default;
 
   virtual ~ExpressionContextMock();
 

@@ -24,11 +24,17 @@
 #ifndef ARANGODB_IRESEARCH__IRESEARCH_VIEW_COORDINATOR_H
 #define ARANGODB_IRESEARCH__IRESEARCH_VIEW_COORDINATOR_H 1
 
-#include "VocBase/LogicalView.h"
 #include "IResearch/IResearchViewMeta.h"
+#include "VocBase/LogicalView.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+
+namespace arangodb {
+
+struct ViewFactory;  // forward declaration
+
+}  // namespace arangodb
 
 namespace arangodb {
 namespace iresearch {
@@ -40,12 +46,15 @@ namespace iresearch {
 ///////////////////////////////////////////////////////////////////////////////
 class IResearchViewCoordinator final : public arangodb::LogicalViewClusterInfo {
  public:
+  using LogicalView::drop;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove all documents matching collection 'cid' from this IResearch
   ///        View
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result drop(TRI_voc_cid_t) noexcept { return arangodb::Result(); } // NOOP since no internal store
+  arangodb::Result drop(TRI_voc_cid_t) noexcept {
+    return arangodb::Result();
+  }  // NOOP since no internal store
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief acquire locks on the specified 'cid' during read-transactions
@@ -57,63 +66,41 @@ class IResearchViewCoordinator final : public arangodb::LogicalViewClusterInfo {
   /// @param value the link definition to use in appendVelocyPack(...)
   /// @return the 'cid' was newly added to the IResearch View
   ////////////////////////////////////////////////////////////////////////////////
-  bool emplace(
-    TRI_voc_cid_t cid,
-    std::string const& key,
-    arangodb::velocypack::Slice const& value
-  );
+  bool emplace(TRI_voc_cid_t cid, std::string const& key,
+               arangodb::velocypack::Slice const& value);
 
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief view factory
-  /// @returns initialized view object
-  ///////////////////////////////////////////////////////////////////////////////
-  static std::shared_ptr<LogicalView> make(
-    TRI_vocbase_t& vocbase,
-    velocypack::Slice const& info,
-    bool isNew,
-    uint64_t planVersion,
-    LogicalView::PreCommitCallback const& preCommit
-  );
-
-  bool visitCollections(CollectionVisitor const& visitor) const override;
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the factory for this type of view
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::ViewFactory const& factory();
 
   void open() override {
     // NOOP
   }
 
-  Result drop() override;
+  using LogicalDataSource::properties;
+  virtual arangodb::Result properties(velocypack::Slice const& properties,
+                                      bool partialUpdate) override;
 
-  virtual Result rename(
-      std::string&& /*newName*/,
-      bool /*doSync*/
-  ) override {
-    // not supported in a cluster
-    return { TRI_ERROR_NOT_IMPLEMENTED };
-  }
-
-  virtual arangodb::Result updateProperties(
-    velocypack::Slice const& properties,
-    bool partialUpdate,
-    bool doSync
-  ) override;
+  bool visitCollections(CollectionVisitor const& visitor) const override;
 
  protected:
-  virtual Result appendVelocyPackDetailed(
-      arangodb::velocypack::Builder& builder,
-      bool forPersistence
-  ) const override;
+  virtual Result appendVelocyPackDetailed(arangodb::velocypack::Builder& builder,
+                                          bool forPersistence) const override;
+
+  virtual arangodb::Result dropImpl() override;
 
  private:
-  IResearchViewCoordinator(
-    TRI_vocbase_t& vocbase, velocypack::Slice info, uint64_t planVersion
-  );
+  struct ViewFactory;  // forward declaration
 
-  std::unordered_map<TRI_voc_cid_t, std::pair<std::string, arangodb::velocypack::Builder>> _collections; // transient member, not persisted
-  mutable irs::async_utils::read_write_mutex _mutex; // for use with '_collections'
+  IResearchViewCoordinator(TRI_vocbase_t& vocbase, velocypack::Slice info, uint64_t planVersion);
+
+  std::unordered_map<TRI_voc_cid_t, std::pair<std::string, arangodb::velocypack::Builder>> _collections;  // transient member, not persisted
+  mutable irs::async_utils::read_write_mutex _mutex;  // for use with '_collections'
   IResearchViewMeta _meta;
-}; // IResearchViewCoordinator
+};  // IResearchViewCoordinator
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-#endif // ARANGODB_IRESEARCH__IRESEARCH_VIEW_COORDINATOR_H
+#endif  // ARANGODB_IRESEARCH__IRESEARCH_VIEW_COORDINATOR_H

@@ -32,8 +32,7 @@ class ShellFeature final : public application_features::ApplicationFeature {
   ShellFeature(application_features::ApplicationServer& server, int* result);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> options) override;
   void start() override;
 
  private:
@@ -60,6 +59,6 @@ class ShellFeature final : public application_features::ApplicationFeature {
   std::string _unitTestFilter;
 };
 
-}
+}  // namespace arangodb
 
 #endif

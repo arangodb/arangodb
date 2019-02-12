@@ -36,8 +36,7 @@
 
 using namespace arangodb::aql;
 
-CalculationBlock::CalculationBlock(ExecutionEngine* engine,
-                                   CalculationNode const* en)
+CalculationBlock::CalculationBlock(ExecutionEngine* engine, CalculationNode const* en)
     : ExecutionBlock(engine, en),
       _expression(en->expression()),
       _inVars(),
@@ -101,9 +100,9 @@ void CalculationBlock::fillBlockWithReference(AqlItemBlock* result) {
 
 /// @brief shared code for executing a simple or a V8 expression
 void CalculationBlock::executeExpression(AqlItemBlock* result) {
-  bool const hasCondition = (ExecutionNode::castTo<CalculationNode const*>(_exeNode)
-                                 ->_conditionVariable != nullptr);
-  TRI_ASSERT(!hasCondition); // currently not implemented
+  bool const hasCondition =
+      (ExecutionNode::castTo<CalculationNode const*>(_exeNode)->_conditionVariable != nullptr);
+  TRI_ASSERT(!hasCondition);  // currently not implemented
 
   size_t const n = result->size();
 
@@ -131,7 +130,7 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     result->setValue(i, _outReg, a);
-    guard.steal(); // itemblock has taken over now
+    guard.steal();    // itemblock has taken over now
     throwIfKilled();  // check if we were aborted
   }
 }
@@ -157,7 +156,8 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
     executeExpression(result);
   } else {
     auto cleanup = [this]() {
-      if (_isRunningInCluster) {
+      if (_isRunningInCluster || 
+          _engine->getQuery()->queryOptions().stream) {
         // must invalidate the expression now as we might be called from
         // different threads
         _expression->invalidate();
@@ -165,7 +165,7 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
         _engine->getQuery()->exitContext();
       }
     };
-    
+
     // must have a V8 context here to protect Expression::execute()
     _engine->getQuery()->enterContext();
     TRI_DEFER(cleanup());
@@ -181,11 +181,11 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
   }
 }
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-CalculationBlock::getSome(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> CalculationBlock::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
 
   if (_done) {
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
     return {ExecutionState::DONE, nullptr};
   }
 

@@ -31,21 +31,15 @@ namespace arangodb {
 class FlushThread;
 class FlushTransaction;
 
-class FlushFeature final
-    : public application_features::ApplicationFeature {
+class FlushFeature final : public application_features::ApplicationFeature {
  public:
-  typedef std::unique_ptr<
-      FlushTransaction, std::function<void(FlushTransaction*)>
-  > FlushTransactionPtr;
+  typedef std::unique_ptr<FlushTransaction, std::function<void(FlushTransaction*)>> FlushTransactionPtr;
 
   typedef std::function<FlushTransactionPtr()> FlushCallback;
 
-  explicit FlushFeature(
-    application_features::ApplicationServer& server
-  );
+  explicit FlushFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions> options) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override;
   void start() override;
@@ -74,6 +68,6 @@ class FlushFeature final
   std::unordered_map<void*, FlushCallback> _callbacks;
 };
 
-}
+}  // namespace arangodb
 
 #endif

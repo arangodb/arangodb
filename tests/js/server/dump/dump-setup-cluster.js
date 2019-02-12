@@ -123,6 +123,8 @@ function setupSatelliteCollections() {
   db._drop("UnitTestsDumpTruncated");
   db._drop("UnitTestsDumpShards");
   db._drop("UnitTestsDumpStrings");
+  db._drop("UnitTestsDumpReplicationFactor1");
+  db._drop("UnitTestsDumpReplicationFactor2");
 
   // this remains empty
   db._create("UnitTestsDumpEmpty", { waitForSync: true, indexBuckets: 256 });
@@ -252,6 +254,16 @@ function setupSatelliteCollections() {
   setupSmartGraph();
   setupSatelliteCollections();
 
+  db._create("UnitTestsDumpReplicationFactor1", { replicationFactor: 1, numberOfShards: 7 });
+  db._create("UnitTestsDumpReplicationFactor2", { replicationFactor: 2, numberOfShards: 6 });
+
+  // Install Foxx
+  const fs = require('fs');
+  const SERVICE_PATH = fs.makeAbsolute(fs.join(
+    require('internal').pathForTesting('common'), 'test-data', 'apps', 'minimal-working-service'
+  ));
+  const FoxxManager = require('@arangodb/foxx/manager');
+  FoxxManager.install(SERVICE_PATH, '/test');
 })();
 
 return {

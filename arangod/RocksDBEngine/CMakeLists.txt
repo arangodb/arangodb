@@ -41,6 +41,7 @@ endif()
 set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBBackgroundThread.cpp
   RocksDBEngine/RocksDBCollection.cpp
+  RocksDBEngine/RocksDBCollectionMeta.cpp
   RocksDBEngine/RocksDBCommon.cpp
   RocksDBEngine/RocksDBComparator.cpp
   RocksDBEngine/RocksDBEdgeIndex.cpp
@@ -64,6 +65,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBReplicationContext.cpp
   RocksDBEngine/RocksDBReplicationManager.cpp
   RocksDBEngine/RocksDBReplicationTailing.cpp
+  RocksDBEngine/RocksDBRestCollectionHandler.cpp
   RocksDBEngine/RocksDBRestExportHandler.cpp
   RocksDBEngine/RocksDBRestHandlers.cpp
   RocksDBEngine/RocksDBRestReplicationHandler.cpp

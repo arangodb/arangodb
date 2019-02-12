@@ -34,19 +34,14 @@ class MMFilesIndexFactory final : public IndexFactory {
   ~MMFilesIndexFactory() = default;
 
   /// @brief create system indexes primary / edge
-  void fillSystemIndexes(
-    LogicalCollection& col,
-    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes
-  ) const override;
+  void fillSystemIndexes(LogicalCollection& col,
+                         std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const override;
 
   /// @brief create indexes from a list of index definitions
-  void prepareIndexes(
-    LogicalCollection& col,
-    arangodb::velocypack::Slice const& indexesSlice,
-    std::vector<std::shared_ptr<arangodb::Index>>& indexes
-  ) const override;
+  void prepareIndexes(LogicalCollection& col, arangodb::velocypack::Slice const& indexesSlice,
+                      std::vector<std::shared_ptr<arangodb::Index>>& indexes) const override;
 };
 
-}
+}  // namespace arangodb
 
 #endif

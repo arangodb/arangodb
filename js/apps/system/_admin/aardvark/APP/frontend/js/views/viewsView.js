@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global $, Joi, arangoHelper, _, Backbone, templateEngine, window */
+/* global $, Joi, frontendConfig, arangoHelper, _, Backbone, templateEngine, window */
 (function () {
   'use strict';
 
@@ -12,6 +12,8 @@
 
     initialize: function () {
     },
+
+    refreshRate: 10000,
 
     sortOptions: {
       desc: false
@@ -30,7 +32,7 @@
     events: {
       'click #createView': 'createView',
       'click #viewsToggle': 'toggleSettingsDropdown',
-      'click .tile': 'gotoView',
+      'click .tile-view': 'gotoView',
       'keyup #viewsSearchInput': 'search',
       'click #viewsSearchSubmit': 'search',
       'click #viewsSortDesc': 'sorting'
@@ -45,6 +47,41 @@
       arangoHelper.setCheckboxStatus('#viewsDropdown');
     },
 
+    checkIfInProgress: function () {
+      if (window.location.hash.search('views') > -1) {
+        var self = this;
+
+        var callback = function (error, lockedViews) {
+          if (error) {
+            console.log('Could not check locked views');
+          } else {
+            if (lockedViews.length > 0) {
+              _.each(lockedViews, function (foundView) {
+                if ($('#' + foundView.collection)) {
+                  // found view html container
+                  $('#' + foundView.collection + ' .collection-type-icon').removeClass('fa-clone');
+                  $('#' + foundView.collection + ' .collection-type-icon').addClass('fa-spinner').addClass('fa-spin');
+                } else {
+                  $('#' + foundView.collection + ' .collection-type-icon').addClass('fa-clone');
+                  $('#' + foundView.collection + ' .collection-type-icon').removeClass('fa-spinner').removeClass('fa-spin');
+                }
+              });
+            } else {
+              // if no view found at all, just reset all to default
+              $('.tile .collection-type-icon').addClass('fa-clone').removeClass('fa-spinner').removeClass('fa-spin');
+            }
+
+            window.setTimeout(function () {
+              self.checkIfInProgress();
+            }, self.refreshRate);
+          }
+        };
+
+        if (!frontendConfig.ldapEnabled) {
+          window.arangoHelper.syncAndReturnUnfinishedAardvarkJobs('view', callback);
+        }
+      }
+    },
     sorting: function () {
       if ($('#viewsSortDesc').is(':checked')) {
         this.setSortingDesc(true);
@@ -151,21 +188,24 @@
     gotoView: function (e) {
       var name = $(e.currentTarget).attr('id');
       if (name) {
-        window.location.hash = window.location.hash.substr(0, window.location.hash.length - 1) + '/' + encodeURIComponent(name);
+        var url = 'view/' + encodeURIComponent(name);
+        window.App.navigate(url, {trigger: true});
       }
     },
 
     getViews: function () {
       var self = this;
 
-      $.ajax({
-        type: 'GET',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_api/view'),
-        contentType: 'application/json',
-        processData: false,
+      this.collection.fetch({
         success: function (data) {
-          self.render(data);
+          var res = {
+            result: []
+          };
+          self.collection.each(function (view) {
+            res.result.push(view.toJSON());
+          });
+          self.render(res);
+          self.checkIfInProgress();
         },
         error: function (error) {
           console.log(error);
@@ -242,6 +282,7 @@
         data: options,
         success: function (data) {
           window.modalView.hide();
+          arangoHelper.arangoNotification('View', 'Creation in progress. This may take a while.');
           self.getViews();
         },
         error: function (error) {

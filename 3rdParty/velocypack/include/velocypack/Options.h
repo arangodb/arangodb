@@ -111,9 +111,18 @@ struct Options {
   // with a Dumper (creates \uxxxx sequences)
   bool escapeUnicode = false;
 
+  // dump Object attributes in index order (true) or in "undefined"
+  // order (false). undefined order may be faster but not deterministic
+  bool dumpAttributesInIndexOrder = true;
+
   // disallow using type External (to prevent injection of arbitrary pointer
-  // values as a security precaution)
+  // values as a security precaution), validated when object-building via
+  // Builder and VelocyPack validation using Validator objects
   bool disallowExternals = false;
+
+  // disallow using type Custom (to prevent injection of arbitrary opaque
+  // values as a security precaution)
+  bool disallowCustom = false;
 
   // default options with the above settings
   static Options Defaults;

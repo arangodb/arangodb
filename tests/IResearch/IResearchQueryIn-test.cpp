@@ -98,6 +98,7 @@ struct IResearchQueryInSetup {
     // setup required application features
     features.emplace_back(new arangodb::ViewTypesFeature(server), true);
     features.emplace_back(new arangodb::AuthenticationFeature(server), true);
+    features.emplace_back(new arangodb::DatabaseFeature(server), false); // required for LogicalViewStorageEngine::modify(...)
     features.emplace_back(new arangodb::DatabasePathFeature(server), false);
     features.emplace_back(new arangodb::ShardingFeature(server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
@@ -262,7 +263,7 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
         "\"testCollection1\": { \"includeAllFields\": true }"
       "}}"
     );
-    CHECK((impl->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((impl->properties(updateJson->slice(), true).ok()));
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((2 == cids.size()));

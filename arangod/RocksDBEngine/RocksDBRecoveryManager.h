@@ -36,12 +36,9 @@ class TransactionDB;
 
 namespace arangodb {
 
-class RocksDBRecoveryManager final
-    : public application_features::ApplicationFeature {
+class RocksDBRecoveryManager final : public application_features::ApplicationFeature {
  public:
-  explicit RocksDBRecoveryManager(
-    application_features::ApplicationServer& server
-  );
+  explicit RocksDBRecoveryManager(application_features::ApplicationServer& server);
 
   static std::string featureName() { return "RocksDBRecoveryManager"; }
   static RocksDBRecoveryManager* instance();
@@ -49,19 +46,20 @@ class RocksDBRecoveryManager final
   void start() override;
 
   void runRecovery();
-  bool inRecovery() const;
+  bool inRecovery() const {
+    return _inRecovery.load(std::memory_order_acquire);
+  }
 
  private:
   Result parseRocksWAL();
 
  protected:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief rocksdb instance
   //////////////////////////////////////////////////////////////////////////////
   rocksdb::TransactionDB* _db;
 
-  bool _inRecovery;
+  std::atomic<bool> _inRecovery;
 };
 
 }  // namespace arangodb

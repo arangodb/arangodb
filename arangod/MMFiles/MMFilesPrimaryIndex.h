@@ -27,9 +27,9 @@
 #include "Basics/AssocUnique.h"
 #include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
-#include "Indexes/IndexLookupContext.h"
 #include "MMFiles/MMFilesIndex.h"
 #include "MMFiles/MMFilesIndexElement.h"
+#include "MMFiles/MMFilesIndexLookupContext.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -57,7 +57,7 @@ struct MMFilesPrimaryIndexHelper {
   /// @brief determines if a key corresponds to an element
   inline bool IsEqualKeyElement(void* userData, uint8_t const* key,
                                 MMFilesSimpleIndexElement const& right) const {
-    IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+    MMFilesIndexLookupContext* context = static_cast<MMFilesIndexLookupContext*>(userData);
     TRI_ASSERT(context != nullptr);
 
     try {
@@ -70,8 +70,7 @@ struct MMFilesPrimaryIndexHelper {
   }
 
   /// @brief determines if two elements are equal
-  inline bool IsEqualElementElement(void*,
-                                    MMFilesSimpleIndexElement const& left,
+  inline bool IsEqualElementElement(void*, MMFilesSimpleIndexElement const& left,
                                     MMFilesSimpleIndexElement const& right) const {
     return (left.localDocumentId() == right.localDocumentId());
   }
@@ -83,7 +82,7 @@ struct MMFilesPrimaryIndexHelper {
       // TODO: check if we have many collisions here
       return false;
     }
-    IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+    MMFilesIndexLookupContext* context = static_cast<MMFilesIndexLookupContext*>(userData);
     TRI_ASSERT(context != nullptr);
 
     VPackSlice l = left.slice(context);
@@ -94,19 +93,39 @@ struct MMFilesPrimaryIndexHelper {
   }
 };
 
-typedef arangodb::basics::AssocUnique<uint8_t, MMFilesSimpleIndexElement, MMFilesPrimaryIndexHelper>
-    MMFilesPrimaryIndexImpl;
+typedef arangodb::basics::AssocUnique<uint8_t, MMFilesSimpleIndexElement, MMFilesPrimaryIndexHelper> MMFilesPrimaryIndexImpl;
 
-class MMFilesPrimaryIndexIterator final : public IndexIterator {
+class MMFilesPrimaryIndexEqIterator final : public IndexIterator {
  public:
-  MMFilesPrimaryIndexIterator(LogicalCollection* collection,
-                              transaction::Methods* trx,
-                              MMFilesPrimaryIndex const* index,
-                              std::unique_ptr<VPackBuilder> keys);
+  MMFilesPrimaryIndexEqIterator(LogicalCollection* collection, transaction::Methods* trx,
+                                MMFilesPrimaryIndex const* index,
+                                std::unique_ptr<VPackBuilder> keys);
 
-  ~MMFilesPrimaryIndexIterator();
+  ~MMFilesPrimaryIndexEqIterator();
 
-  char const* typeName() const override { return "primary-index-iterator"; }
+  char const* typeName() const override { return "primary-index-eq-iterator"; }
+
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
+
+  void reset() override;
+
+ private:
+  MMFilesPrimaryIndex const* _index;
+  std::unique_ptr<VPackBuilder> _key;
+  bool _done;
+};
+
+class MMFilesPrimaryIndexInIterator final : public IndexIterator {
+ public:
+  MMFilesPrimaryIndexInIterator(LogicalCollection* collection, transaction::Methods* trx,
+                                MMFilesPrimaryIndex const* index,
+                                std::unique_ptr<VPackBuilder> keys);
+
+  ~MMFilesPrimaryIndexInIterator();
+
+  char const* typeName() const override { return "primary-index-in-iterator"; }
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
@@ -120,8 +139,7 @@ class MMFilesPrimaryIndexIterator final : public IndexIterator {
 
 class MMFilesAllIndexIterator final : public IndexIterator {
  public:
-  MMFilesAllIndexIterator(LogicalCollection* collection,
-                          transaction::Methods* trx,
+  MMFilesAllIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                           MMFilesPrimaryIndex const* index,
                           MMFilesPrimaryIndexImpl const* indexImpl);
 
@@ -145,8 +163,7 @@ class MMFilesAllIndexIterator final : public IndexIterator {
 
 class MMFilesAnyIndexIterator final : public IndexIterator {
  public:
-  MMFilesAnyIndexIterator(LogicalCollection* collection,
-                          transaction::Methods* trx,
+  MMFilesAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                           MMFilesPrimaryIndex const* index,
                           MMFilesPrimaryIndexImpl const* indexImpl);
 
@@ -192,29 +209,23 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&,
-                    std::underlying_type<Index::Serialize>::type) const override;
+  void toVelocyPack(VPackBuilder&, std::underlying_type<Index::Serialize>::type) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
   Result insert(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&,
-                OperationMode mode) override;
+                arangodb::velocypack::Slice const&, OperationMode mode) override;
 
   Result remove(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&,
-                OperationMode mode) override;
+                arangodb::velocypack::Slice const&, OperationMode mode) override;
 
   void load() override {}
   void unload() override;
 
-  MMFilesSimpleIndexElement lookupKey(transaction::Methods*,
-                                      VPackSlice const&) const;
+  MMFilesSimpleIndexElement lookupKey(transaction::Methods*, VPackSlice const&) const;
   MMFilesSimpleIndexElement lookupKey(transaction::Methods*, VPackSlice const&,
                                       ManagedDocumentResult&) const;
-  MMFilesSimpleIndexElement* lookupKeyRef(transaction::Methods*,
-                                          VPackSlice const&) const;
-  MMFilesSimpleIndexElement* lookupKeyRef(transaction::Methods*,
-                                          VPackSlice const&,
+  MMFilesSimpleIndexElement* lookupKeyRef(transaction::Methods*, VPackSlice const&) const;
+  MMFilesSimpleIndexElement* lookupKeyRef(transaction::Methods*, VPackSlice const&,
                                           ManagedDocumentResult&) const;
 
   /// @brief a method to iterate over all elements in the index in
@@ -222,9 +233,9 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
   ///        Returns nullptr if all documents have been returned.
   ///        Convention: position === 0 indicates a new start.
   ///        DEPRECATED
-  MMFilesSimpleIndexElement lookupSequential(
-      transaction::Methods*, arangodb::basics::BucketPosition& position,
-      uint64_t& total);
+  MMFilesSimpleIndexElement lookupSequential(transaction::Methods*,
+                                             arangodb::basics::BucketPosition& position,
+                                             uint64_t& total);
 
   /// @brief request an iterator over all elements in the index in
   ///        a sequential order.
@@ -240,8 +251,8 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
   ///        Returns nullptr if all documents have been returned.
   ///        Convention: position === UINT64_MAX indicates a new start.
   ///        DEPRECATED
-  MMFilesSimpleIndexElement lookupSequentialReverse(
-      transaction::Methods*, arangodb::basics::BucketPosition& position);
+  MMFilesSimpleIndexElement lookupSequentialReverse(transaction::Methods*,
+                                                    arangodb::basics::BucketPosition& position);
 
   Result insertKey(transaction::Methods*, LocalDocumentId const& documentId,
                    arangodb::velocypack::Slice const&, OperationMode mode);
@@ -258,45 +269,41 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
   int resize(transaction::Methods*, size_t);
 
   void invokeOnAllElements(std::function<bool(LocalDocumentId const&)>);
-  void invokeOnAllElementsForRemoval(
-      std::function<bool(MMFilesSimpleIndexElement const&)>);
+  void invokeOnAllElementsForRemoval(std::function<bool(MMFilesSimpleIndexElement const&)>);
 
   bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
                                arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*,
-                                      ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;
 
-  arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
+                                              arangodb::aql::Variable const*) const override;
 
  private:
   /// @brief create the iterator, for a single attribute, IN operator
-  IndexIterator* createInIterator(transaction::Methods*,
-                                  arangodb::aql::AstNode const*,
+  IndexIterator* createInIterator(transaction::Methods*, arangodb::aql::AstNode const*,
                                   arangodb::aql::AstNode const*) const;
 
   /// @brief create the iterator, for a single attribute, EQ operator
-  IndexIterator* createEqIterator(transaction::Methods*,
-                                  arangodb::aql::AstNode const*,
+  IndexIterator* createEqIterator(transaction::Methods*, arangodb::aql::AstNode const*,
                                   arangodb::aql::AstNode const*) const;
 
   /// @brief add a single value node to the iterator's keys
   void handleValNode(transaction::Methods* trx, VPackBuilder* keys,
                      arangodb::aql::AstNode const* valNode, bool isId) const;
 
-  MMFilesSimpleIndexElement buildKeyElement(
-      LocalDocumentId const& documentId, arangodb::velocypack::Slice const&) const;
+  MMFilesSimpleIndexElement buildKeyElement(LocalDocumentId const& documentId,
+                                            arangodb::velocypack::Slice const&) const;
 
  private:
   /// @brief the actual index
   std::unique_ptr<MMFilesPrimaryIndexImpl> _primaryIndex;
 };
-}
+}  // namespace arangodb
 
 #endif

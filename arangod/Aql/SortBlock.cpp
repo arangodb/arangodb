@@ -34,14 +34,9 @@ namespace {
 /// @brief OurLessThan
 class OurLessThan {
  public:
-  OurLessThan(
-      arangodb::transaction::Methods* trx,
-      std::deque<AqlItemBlock*>& buffer,
-      std::vector<SortRegister>& sortRegisters) noexcept
-    : _trx(trx),
-      _buffer(buffer),
-      _sortRegisters(sortRegisters) {
-  }
+  OurLessThan(arangodb::transaction::Methods* trx, std::deque<AqlItemBlock*>& buffer,
+              std::vector<SortRegister>& sortRegisters) noexcept
+      : _trx(trx), _buffer(buffer), _sortRegisters(sortRegisters) {}
 
   bool operator()(std::pair<uint32_t, uint32_t> const& a,
                   std::pair<uint32_t, uint32_t> const& b) const {
@@ -49,7 +44,7 @@ class OurLessThan {
       auto const& lhs = _buffer[a.first]->getValueReference(a.second, reg.reg);
       auto const& rhs = _buffer[b.first]->getValueReference(b.second, reg.reg);
 
-#ifdef USE_IRESEARCH
+#if 0  // #ifdef USE_IRESEARCH
       TRI_ASSERT(reg.comparator);
       int const cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
 #else
@@ -70,31 +65,23 @@ class OurLessThan {
   arangodb::transaction::Methods* _trx;
   std::deque<AqlItemBlock*>& _buffer;
   std::vector<SortRegister>& _sortRegisters;
-}; // OurLessThan
+};  // OurLessThan
 
-}
+}  // namespace
 
 SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)
-  : ExecutionBlock(engine, en),
-    _stable(en->_stable),
-    _mustFetchAll(true) {
+    : ExecutionBlock(engine, en), _stable(en->_stable), _mustFetchAll(true) {
   TRI_ASSERT(en && en->plan() && en->getRegisterPlan());
-  SortRegister::fill(
-    *en->plan(),
-    *en->getRegisterPlan(),
-    en->elements(),
-    _sortRegisters
-  );
+  SortRegister::fill(*en->plan(), *en->getRegisterPlan(), en->elements(), _sortRegisters);
 }
 
 SortBlock::~SortBlock() {}
 
-std::pair<ExecutionState, arangodb::Result> SortBlock::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, arangodb::Result> SortBlock::initializeCursor(AqlItemBlock* items,
+                                                                        size_t pos) {
   auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res.first == ExecutionState::WAITING ||
-      !res.second.ok()) {
+  if (res.first == ExecutionState::WAITING || !res.second.ok()) {
     // If we need to wait or get an error we return as is.
     return res;
   }
@@ -102,13 +89,13 @@ std::pair<ExecutionState, arangodb::Result> SortBlock::initializeCursor(
   _mustFetchAll = !_done;
   _pos = 0;
 
-  return res; 
+  return res;
 }
 
 std::pair<ExecutionState, arangodb::Result> SortBlock::getOrSkipSome(
     size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) {
   TRI_ASSERT(result == nullptr && skipped == 0);
-  
+
   if (_mustFetchAll) {
     ExecutionState res = ExecutionState::HASMORE;
     // suck all blocks into _buffer
@@ -137,7 +124,7 @@ void SortBlock::doSorting() {
   TRI_IF_FAILURE("SortBlock::doSorting") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  
+
   // coords[i][j] is the <j>th row of the <i>th block
   std::vector<std::pair<uint32_t, uint32_t>> coords;
   coords.reserve(sum);
@@ -149,7 +136,7 @@ void SortBlock::doSorting() {
 
   for (auto const& block : _buffer) {
     uint32_t const n = static_cast<uint32_t>(block->size());
-    
+
     for (uint32_t i = 0; i < n; i++) {
       coords.emplace_back(std::make_pair(count, i));
     }

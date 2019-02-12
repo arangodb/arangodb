@@ -148,20 +148,21 @@ exports.ArangoError = internal.ArangoError;
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.defineModule = function(path, file) {
-  var content;
-  var m;
-  var mc;
-
-  content = fs.read(file);
-
-  mc = internal.db._collection('_modules');
+  let content = fs.read(file);
+  let mc = internal.db._collection('_modules');
 
   if (mc === null) {
-    mc = internal.db._create('_modules', {isSystem: true});
+    const DEFAULT_REPLICATION_FACTOR_SYSTEM = internal.DEFAULT_REPLICATION_FACTOR_SYSTEM;
+    mc = internal.db._create('_modules', {
+      isSystem: true,
+      journalSize: 1024 * 1024,
+      replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
+      distributeShardsLike: '_graphs'
+    });
   }
 
   path = module.normalize(path);
-  m = mc.firstExample({path: path});
+  let m = mc.firstExample({path: path});
 
   if (m === null) {
     mc.save({path: path, content: content});

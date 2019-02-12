@@ -1,11 +1,11 @@
 /*jshint strict: false, sub: true */
-/*global print, assertTrue, assertEqual */
+/*global print, assertTrue, assertEqual, assertNotEqual */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany 
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
@@ -88,11 +88,12 @@ function getClusterEndpoints() {
     url: baseUrl() + "/_api/cluster/endpoints",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 300 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
-  assertTrue(res.statusCode === 200, JSON.stringify(res));
+  assertEqual(res.statusCode, 200, JSON.stringify(res));
   assertTrue(res.hasOwnProperty('json'));
   assertTrue(res.json.hasOwnProperty('endpoints'));
   assertTrue(res.json.endpoints instanceof Array);
@@ -105,7 +106,8 @@ function getLoggerState(endpoint) {
     url: getUrl(endpoint) + "/_db/_system/_api/replication/logger-state",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 300 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
@@ -119,10 +121,12 @@ function getApplierState(endpoint) {
     url: getUrl(endpoint) + "/_db/_system/_api/replication/applier-state?global=true",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 300 
   });
   assertTrue(res instanceof request.Response);
-  assertTrue(res.hasOwnProperty('statusCode') && res.statusCode === 200);
+  assertTrue(res.hasOwnProperty('statusCode'));
+  assertEqual(res.statusCode, 200, JSON.stringify(res));
   assertTrue(res.hasOwnProperty('json'));
   return arangosh.checkRequestResult(res.json);
 }
@@ -161,12 +165,13 @@ function checkData(server) {
     url: getUrl(server) + "/_api/collection/" + cname + "/count",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 300 
   });
 
   assertTrue(res instanceof request.Response);
-  //assertTrue(res.hasOwnProperty('statusCode'));
-  assertTrue(res.statusCode === 200);
+  assertTrue(res.hasOwnProperty('statusCode'));
+  assertEqual(res.statusCode, 200, JSON.stringify(res));
   return res.json.count;
 }
 
@@ -179,7 +184,8 @@ function readAgencyValue(path) {
     auth: {
       bearer: jwtSuperuser,
     },
-    body: JSON.stringify([[path]])
+    body: JSON.stringify([[path]]),
+    timeout: 300 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
@@ -252,10 +258,14 @@ function ActiveFailoverSuite() {
   let currentLead = leaderInAgency();
 
   return {
+    setUpAll: function () {
+      db._create(cname);
+    },
+
     setUp: function () {
-      let col = db._create(cname);
-      print("<setUp>");
       assertTrue(checkInSync(currentLead, servers));
+
+      let col = db._collection(cname);
       for (let i = 0; i < 10000; i++) {
         col.save({ attr: i});
       }
@@ -273,15 +283,20 @@ function ActiveFailoverSuite() {
       currentLead = leaderInAgency();
       print("connecting shell to leader ", currentLead);
       connectToServer(currentLead);
-      if (db._collection(cname)) {
-        db._drop(cname);
-      }
 
       assertTrue(checkInSync(currentLead, servers));
 
       let endpoints = getClusterEndpoints();
-      assertTrue(endpoints.length === servers.length);
-      assertTrue(endpoints[0] === currentLead);
+      assertEqual(endpoints.length, servers.length);
+      assertEqual(endpoints[0], currentLead);
+
+      db._collection(cname).truncate();
+    },
+
+    tearDownAll: function () {
+      if (db._collection(cname)) {
+        db._drop(cname);
+      }
     },
 
     // Basic test if followers get in sync
@@ -310,7 +325,7 @@ function ActiveFailoverSuite() {
       let oldLead = currentLead;
       // await failover and check that follower get in sync
       currentLead = checkForFailover(currentLead);
-      assertTrue(currentLead !== oldLead);
+      assertNotEqual(currentLead, oldLead);
       print("Failover to new leader : ", currentLead);
 
       internal.wait(5); // settle down, heartbeat interval is 1s
@@ -340,8 +355,8 @@ function ActiveFailoverSuite() {
 
       // we assume the second leader is still the leader
       let endpoints = getClusterEndpoints();
-      assertTrue(endpoints.length === servers.length);
-      assertTrue(endpoints[0] === currentLead);
+      assertEqual(endpoints.length, servers.length);
+      assertEqual(endpoints[0], currentLead);
 
       print("Starting data creation task on ", currentLead, " (expect it to fail later)");
       connectToServer(currentLead);
@@ -405,7 +420,7 @@ function ActiveFailoverSuite() {
       // await failover and check that follower get in sync
       let oldLead = currentLead;
       currentLead = checkForFailover(currentLead);
-      assertTrue(currentLead === nextLead, "Did not fail to best in-sync follower");
+      assertEqual(currentLead, nextLead, "Did not fail to best in-sync follower");
 
       internal.wait(5); // settle down, heartbeat interval is 1s
       let cc = checkData(currentLead);
@@ -446,7 +461,7 @@ function ActiveFailoverSuite() {
 
       // await failover and check that follower get in sync
       currentLead = checkForFailover(currentLead);
-      assertTrue(currentLead === firstLeader, "Did not fail to original leader");
+      assertEqual(currentLead, firstLeader, "Did not fail to original leader");
 
       suspended.forEach(arangod => {
         print("Resuming: ", arangod.endpoint);
@@ -462,7 +477,7 @@ function ActiveFailoverSuite() {
     /*testCleanup: function () {
 
       let res = readAgencyValue("/arango/Plan/AsyncReplication/Leader");
-      assertTrue(res !== null);
+      assertNotEqual(res, null);
       let uuid = res[0].arango.Plan.AsyncReplication.Leader;
       res = readAgencyValue("/arango/Supervision/Health");
       let lead = res[0].arango.Supervision.Health[uuid].Endpoint;

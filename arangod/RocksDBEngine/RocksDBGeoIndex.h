@@ -40,12 +40,8 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
  public:
   RocksDBGeoIndex() = delete;
 
-  RocksDBGeoIndex(
-    TRI_idx_iid_t iid,
-    arangodb::LogicalCollection& collection,
-    arangodb::velocypack::Slice const& info,
-    std::string const& typeName
-  );
+  RocksDBGeoIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection,
+                  arangodb::velocypack::Slice const& info, std::string const& typeName);
 
   ~RocksDBGeoIndex() override {}
 
@@ -58,14 +54,11 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
     return TRI_IDX_TYPE_GEO_INDEX;
   }
 
-  bool pointsOnly() const {
-    return (_typeName != "geo");
-  }
+  bool pointsOnly() const { return (_typeName != "geo"); }
 
   char const* typeName() const override { return _typeName.c_str(); }
 
-  IndexIterator* iteratorForCondition(transaction::Methods*,
-                                      ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;
@@ -77,21 +70,19 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
   bool hasSelectivityEstimate() const override { return false; }
 
   void toVelocyPack(velocypack::Builder&,
-    std::underlying_type<arangodb::Index::Serialize>::type) const override;
+                    std::underlying_type<arangodb::Index::Serialize>::type) const override;
 
   bool matchesDefinition(velocypack::Slice const& info) const override;
 
   /// insert index elements into the specified write batch.
   Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
                         LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&,
-                        OperationMode mode) override;
+                        arangodb::velocypack::Slice const&, OperationMode mode) override;
 
   /// remove index elements and put it in the specified write batch.
   Result removeInternal(transaction::Methods*, RocksDBMethods*,
                         LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&,
-                        OperationMode mode) override;
+                        arangodb::velocypack::Slice const&, OperationMode mode) override;
 
  private:
   std::string const _typeName;

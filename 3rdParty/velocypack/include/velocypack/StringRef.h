@@ -29,9 +29,9 @@
 
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <algorithm>
 #include <string>
-#include <functional>
 
 #include "velocypack/velocypack-common.h"
 
@@ -58,14 +58,14 @@ class StringRef {
 #endif
    
   /// @brief create a StringRef from a VPack slice (must be of type String)
-  explicit StringRef(arangodb::velocypack::Slice const& slice);
+  explicit StringRef(Slice slice);
   
   /// @brief create a StringRef from another StringRef
-  StringRef(StringRef const& other) noexcept
+  constexpr StringRef(StringRef const& other) noexcept
       : _data(other._data), _length(other._length) {}
   
   /// @brief move a StringRef from another StringRef
-  StringRef(StringRef&& other) noexcept
+  constexpr StringRef(StringRef&& other) noexcept
       : _data(other._data), _length(other._length) {}
   
   /// @brief create a StringRef from another StringRef
@@ -97,7 +97,7 @@ class StringRef {
   }
   
   /// @brief create a StringRef from a VPack slice of type String
-  StringRef& operator=(arangodb::velocypack::Slice const& slice);
+  StringRef& operator=(Slice slice);
 
   int compare(std::string const& other) const noexcept {
     int res = memcmp(_data, other.data(), (std::min)(_length, other.size()));
@@ -115,19 +115,24 @@ class StringRef {
     return static_cast<int>(_length) - static_cast<int>(other._length);
   }
 
+  bool equals(StringRef const& other) const noexcept {
+    return (size() == other.size() &&
+            (memcmp(data(), other.data(), size()) == 0));
+  }
+
   inline std::string toString() const {
     return std::string(_data, _length);
   }
 
-  inline bool empty() const noexcept {
+  constexpr inline bool empty() const noexcept {
     return (_length == 0);
   }
   
-  inline char const* begin() const noexcept {
+  constexpr inline char const* begin() const noexcept {
     return _data;
   }
   
-  inline char const* end() const noexcept {
+  constexpr inline char const* end() const noexcept {
     return _data + _length;
   }
 
@@ -139,15 +144,15 @@ class StringRef {
     return _data[index];
   }
   
-  inline char const* data() const noexcept {
+  constexpr inline char const* data() const noexcept {
     return _data;
   }
 
-  inline size_t size() const noexcept {
+  constexpr inline size_t size() const noexcept {
     return _length;
   }
 
-  inline size_t length() const noexcept {
+  constexpr inline size_t length() const noexcept {
     return _length;
   }
 

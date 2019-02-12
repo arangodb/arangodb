@@ -75,6 +75,7 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Options.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Parser.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Slice.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/SliceStaticData.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/StringRef.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Utf8Helper.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/ValueType.cpp
@@ -230,6 +231,11 @@ add_library(${LIB_ARANGO} STATIC
   Logger/LoggerBufferFeature.cpp
   Logger/LoggerFeature.cpp
   Logger/LoggerStream.cpp
+  Maskings/AttributeMasking.cpp
+  Maskings/Collection.cpp
+  Maskings/Maskings.cpp
+  Maskings/Path.cpp
+  Maskings/RandomStringMask.cpp
   ProgramOptions/Option.cpp
   ProgramOptions/ProgramOptions.cpp
   ProgramOptions/Section.cpp

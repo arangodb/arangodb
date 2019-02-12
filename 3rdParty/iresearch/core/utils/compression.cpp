@@ -24,6 +24,7 @@
 #include "shared.hpp"
 #include "error/error.hpp"
 #include "compression.hpp"
+#include "utils/string_utils.hpp"
 #include "utils/type_limits.hpp"
 
 #include <lz4.h>
@@ -33,7 +34,7 @@ NS_ROOT
 compressor::compressor(unsigned int chunk_size):
   dict_size_(0),
   stream_(LZ4_createStream(), [](void* ptr)->void { LZ4_freeStream(reinterpret_cast<LZ4_stream_t*>(ptr)); }) {
-  oversize(buf_, LZ4_COMPRESSBOUND(chunk_size));
+  string_utils::oversize(buf_, LZ4_COMPRESSBOUND(chunk_size));
 }
 
 void compressor::compress(const char* src, size_t size) {
@@ -51,7 +52,7 @@ void compressor::compress(const char* src, size_t size) {
       assert(dict_size_ >= 0);
     }
 
-    oversize(buf_, LZ4_compressBound(src_size) + dict_size_);
+    string_utils::oversize(buf_, LZ4_compressBound(src_size) + dict_size_);
 
     // reload the LZ4 dictionary if buf_ has changed
     if (&(buf_[0]) != dict_store) {
@@ -74,7 +75,8 @@ void compressor::compress(const char* src, size_t size) {
 
   if (lz4_size < 0) {
     this->size_ = 0;
-    throw index_error(); // corrupted index
+
+    throw index_error("while compressing, error: LZ4 returned negative size");
   }
 
   this->data_ = reinterpret_cast<const byte_type*>(buf);

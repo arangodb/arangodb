@@ -36,8 +36,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestClusterHandler::RestClusterHandler(GeneralRequest* request,
-                                       GeneralResponse* response)
+RestClusterHandler::RestClusterHandler(GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
 RestStatus RestClusterHandler::execute() {
@@ -46,13 +45,13 @@ RestStatus RestClusterHandler::execute() {
                   "only the GET method is allowed");
     return RestStatus::DONE;
   }
-  
+
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (!suffixes.empty() && suffixes[0] == "endpoints") {
     handleCommandEndpoints();
   } else {
-    generateError(Result(TRI_ERROR_FORBIDDEN,
-                         "expecting _api/cluster/endpoints"));
+    generateError(
+        Result(TRI_ERROR_FORBIDDEN, "expecting _api/cluster/endpoints"));
   }
 
   return RestStatus::DONE;
@@ -63,44 +62,41 @@ void RestClusterHandler::handleCommandEndpoints() {
   ClusterInfo* ci = ClusterInfo::instance();
   TRI_ASSERT(ci != nullptr);
   std::vector<ServerID> endpoints;
-  
+
   if (ServerState::instance()->isCoordinator()) {
     endpoints = ci->getCurrentCoordinators();
   } else if (ServerState::instance()->isSingleServer()) {
-    
     ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-    if (!replication->isActiveFailoverEnabled() ||
-        !AgencyCommManager::isEnabled()) {
-      generateError(Result(TRI_ERROR_FORBIDDEN,
-                           "automatic failover is not enabled"));
+    if (!replication->isActiveFailoverEnabled() || !AgencyCommManager::isEnabled()) {
+      generateError(
+          Result(TRI_ERROR_FORBIDDEN, "automatic failover is not enabled"));
       return;
     }
-  
+
     TRI_ASSERT(AgencyCommManager::isEnabled());
-    
+
     std::string const leaderPath = "Plan/AsyncReplication/Leader";
     std::string const healthPath = "Supervision/Health";
     AgencyComm agency;
-    
-    AgencyReadTransaction trx(std::vector<std::string>({
-      AgencyCommManager::path(healthPath),
-      AgencyCommManager::path(leaderPath)}));
+
+    AgencyReadTransaction trx(std::vector<std::string>(
+        {AgencyCommManager::path(healthPath), AgencyCommManager::path(leaderPath)}));
     AgencyCommResult result = agency.sendTransactionWithFailover(trx, 5.0);
-    
+
     if (!result.successful()) {
-      generateError(ResponseCode::SERVER_ERROR, result.errorCode(),
-                    result.errorMessage());
+      generateError(ResponseCode::SERVER_ERROR, result.errorCode(), result.errorMessage());
       return;
     }
-    
+
     std::vector<std::string> path = AgencyCommManager::slicePath(leaderPath);
     VPackSlice slice = result.slice()[0].get(path);
     ServerID leaderId = slice.isString() ? slice.copyString() : "";
     path = AgencyCommManager::slicePath(healthPath);
     VPackSlice healthMap = result.slice()[0].get(path);
-    
+
     if (leaderId.empty()) {
-      generateError(Result(TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING, "Leadership challenge is ongoing"));
+      generateError(Result(TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING,
+                           "Leadership challenge is ongoing"));
       // intentionally use an empty endpoint here. clients can check for the returned
       // endpoint value, and can tell the following two cases apart:
       // - endpoint value is not empty: there is a leader, and it is known
@@ -108,14 +104,14 @@ void RestClusterHandler::handleCommandEndpoints() {
       _response->setHeaderNC(StaticStrings::LeaderEndpoint, "");
       return;
     }
-      
+
     // {"serverId" : {"Status" : "GOOD", ...}}
     for (VPackObjectIterator::ObjectPair const& pair : VPackObjectIterator(healthMap)) {
       TRI_ASSERT(pair.key.isString() && pair.value.isObject());
       if (pair.key.compareString(leaderId) != 0) {
         VPackSlice status = pair.value.get("Status");
         TRI_ASSERT(status.isString());
-        
+
         if (status.compareString(consensus::Supervision::HEALTH_STATUS_GOOD) == 0) {
           endpoints.insert(endpoints.begin(), pair.key.copyString());
         } else if (status.compareString(consensus::Supervision::HEALTH_STATUS_BAD) == 0) {
@@ -123,7 +119,7 @@ void RestClusterHandler::handleCommandEndpoints() {
         }
       }
     }
-    
+
     // master always in front
     endpoints.insert(endpoints.begin(), leaderId);
 
@@ -131,7 +127,7 @@ void RestClusterHandler::handleCommandEndpoints() {
     generateError(Result(TRI_ERROR_FORBIDDEN, "cannot serve this request"));
     return;
   }
-  
+
   VPackBuilder builder;
   builder.openObject();
   builder.add(StaticStrings::Error, VPackValue(false));
@@ -154,4 +150,3 @@ void RestClusterHandler::handleCommandEndpoints() {
   builder.close();
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
-

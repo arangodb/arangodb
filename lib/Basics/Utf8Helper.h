@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,8 @@
 
 #include "Basics/Common.h"
 
+#include <velocypack/StringRef.h>
+
 #include <unicode/coll.h>
 #include <unicode/regex.h>
 #include <unicode/ustring.h>
@@ -39,10 +41,6 @@ class Utf8Helper {
   Utf8Helper& operator=(Utf8Helper const&) = delete;
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a default helper
-  //////////////////////////////////////////////////////////////////////////////
-
   static Utf8Helper DefaultUtf8Helper;
 
  public:
@@ -52,9 +50,9 @@ class Utf8Helper {
   ///     This parameter can instead be an ICU style C locale (e.g. "en_US")
   //////////////////////////////////////////////////////////////////////////////
 
-  Utf8Helper(std::string const& lang, void *icuDataPtr);
+  Utf8Helper(std::string const& lang, void* icuDataPtr);
 
-  explicit Utf8Helper(void *icuDataPtr);
+  explicit Utf8Helper(void* icuDataPtr);
 
   ~Utf8Helper();
 
@@ -114,8 +112,7 @@ class Utf8Helper {
   /// @brief Lowercase the characters in a UTF-8 string.
   //////////////////////////////////////////////////////////////////////////////
 
-  char* tolower(char const* src, int32_t srcLength,
-                int32_t& dstLength);
+  char* tolower(char const* src, int32_t srcLength, int32_t& dstLength);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Uppercase the characters in a UTF-8 string.
@@ -127,16 +124,14 @@ class Utf8Helper {
   /// @brief Uppercase the characters in a UTF-8 string.
   //////////////////////////////////////////////////////////////////////////////
 
-  char* toupper(char const* src, int32_t srcLength,
-                int32_t& dstLength);
+  char* toupper(char const* src, int32_t srcLength, int32_t& dstLength);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the words of a UTF-8 string.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool tokenize(std::set<std::string>& words, std::string const& text,
-                size_t minimalWordLength, size_t maximalWordLength,
-                bool lowerCase);
+  bool tokenize(std::set<std::string>& words, arangodb::velocypack::StringRef const& text,
+                size_t minimalWordLength, size_t maximalWordLength, bool lowerCase);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief builds a regex matcher for the specified pattern
@@ -148,54 +143,70 @@ class Utf8Helper {
   /// @brief whether or not value matches a regex
   //////////////////////////////////////////////////////////////////////////////
 
-  bool matches(RegexMatcher*, char const* pattern, size_t patternLength, 
+  bool matches(RegexMatcher*, char const* pattern, size_t patternLength,
                bool partial, bool& error);
 
   std::string replace(RegexMatcher*, char const* pattern, size_t patternLength,
                       char const* replacement, size_t replacementLength,
                       bool partial, bool& error);
 
+  // append an UTF8 to a string. This will append 1 to 4 bytes.
+  static void appendUtf8Character(std::string& result, uint32_t ch) {
+    if (ch <= 0x7f) {
+      result.push_back((uint8_t)ch);
+    } else {
+      if (ch <= 0x7ff) {
+        result.push_back((uint8_t)((ch >> 6) | 0xc0));
+      } else {
+        if (ch <= 0xffff) {
+          result.push_back((uint8_t)((ch >> 12) | 0xe0));
+        } else {
+          result.push_back((uint8_t)((ch >> 18) | 0xf0));
+          result.push_back((uint8_t)(((ch >> 12) & 0x3f) | 0x80));
+        }
+        result.push_back((uint8_t)(((ch >> 6) & 0x3f) | 0x80));
+      }
+      result.push_back((uint8_t)((ch & 0x3f) | 0x80));
+    }
+  }
+
  private:
   Collator* _coll;
 };
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a utf-8 string to a uchar (utf-16)
 ////////////////////////////////////////////////////////////////////////////////
 
-UChar* TRI_Utf8ToUChar(char const* utf8,
-                       size_t inLength, size_t* outLength);
+UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uchar (utf-16) to a utf-8 string
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UCharToUtf8(UChar const* uchar,
-                      size_t inLength, size_t* outLength);
+char* TRI_UCharToUtf8(UChar const* uchar, size_t inLength, size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize an utf8 string (NFC)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_normalize_utf8_to_NFC(char const* utf8,
-                                size_t inLength, size_t* outLength);
+char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength, size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize an utf16 string (NFC) and export it to utf8
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16,
-                                 size_t inLength, size_t* outLength);
+char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16, size_t inLength, size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two utf8 strings
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_compare_utf8(char const* left, size_t leftLength, 
+static inline int TRI_compare_utf8(char const* left, size_t leftLength,
                                    char const* right, size_t rightLength) {
-  return arangodb::basics::Utf8Helper::DefaultUtf8Helper.compareUtf8(left, leftLength, 
+  return arangodb::basics::Utf8Helper::DefaultUtf8Helper.compareUtf8(left, leftLength,
                                                                      right, rightLength);
 }
 
@@ -203,7 +214,6 @@ static inline int TRI_compare_utf8(char const* left, size_t leftLength,
 /// @brief Lowercase the characters in a UTF-8 string
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_tolower_utf8(char const* src,
-                       int32_t srcLength, int32_t* dstLength);
+char* TRI_tolower_utf8(char const* src, int32_t srcLength, int32_t* dstLength);
 
 #endif

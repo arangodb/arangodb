@@ -54,13 +54,11 @@ class DatabaseManagerThread final : public Thread {
 
  private:
   // how long will the thread pause between iterations
-  static constexpr unsigned long waitTime() {
-    return 500 * 1000;
-  }
+  static constexpr unsigned long waitTime() { return 500 * 1000; }
 };
 
 class DatabaseFeature : public application_features::ApplicationFeature {
- friend class DatabaseManagerThread;
+  friend class DatabaseManagerThread;
 
  public:
   static DatabaseFeature* DATABASE;
@@ -102,18 +100,16 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   int dropDatabase(std::string const& name, bool waitForDeletion, bool removeAppsDirectory);
   int dropDatabase(TRI_voc_tick_t id, bool waitForDeletion, bool removeAppsDirectory);
 
-  void inventory(arangodb::velocypack::Builder& result,
-                 TRI_voc_tick_t,
+  void inventory(arangodb::velocypack::Builder& result, TRI_voc_tick_t,
                  std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
   TRI_vocbase_t* useDatabase(std::string const& name);
   TRI_vocbase_t* useDatabase(TRI_voc_tick_t id);
 
   TRI_vocbase_t* lookupDatabase(std::string const& name);
-  void enumerateDatabases(
-    std::function<void(TRI_vocbase_t& vocbase)> const& func
-  );
-  std::string translateCollectionName(std::string const& dbName, std::string const& collectionName);
+  void enumerateDatabases(std::function<void(TRI_vocbase_t& vocbase)> const& func);
+  std::string translateCollectionName(std::string const& dbName,
+                                      std::string const& collectionName);
 
   bool ignoreDatafileErrors() const { return _ignoreDatafileErrors; }
   bool isInitiallyEmpty() const { return _isInitiallyEmpty; }
@@ -126,8 +122,12 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
-  bool throwCollectionNotLoadedError() const { return _throwCollectionNotLoadedError.load(std::memory_order_relaxed); }
-  void throwCollectionNotLoadedError(bool value) { _throwCollectionNotLoadedError.store(value); }
+  bool throwCollectionNotLoadedError() const {
+    return _throwCollectionNotLoadedError.load(std::memory_order_relaxed);
+  }
+  void throwCollectionNotLoadedError(bool value) {
+    _throwCollectionNotLoadedError.store(value);
+  }
   void isInitiallyEmpty(bool value) { _isInitiallyEmpty = value; }
 
  private:
@@ -179,10 +179,10 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   /// @brief a simple version tracker for all database objects
   /// maintains a global counter that is increased on every modification
-  /// (addition, removal, change) of database objects  
+  /// (addition, removal, change) of database objects
   VersionTracker _versionTracker;
 };
 
-}
+}  // namespace arangodb
 
 #endif
