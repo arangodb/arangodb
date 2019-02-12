@@ -405,6 +405,10 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
 
   while (true) {
     if (!_input) {
+      if (_state == ExecutionState::DONE) {
+        return {_state, stats};
+      }
+
       std::tie(_state, _input) = _fetcher.fetchRow();
 
       if (_state == ExecutionState::WAITING) {
