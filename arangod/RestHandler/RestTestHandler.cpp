@@ -84,7 +84,7 @@ RestStatus RestTestHandler::execute() {
   auto res = requestLaneFromString(suffixes[0]);
 
   if (res.fail()) {
-    generateError(res);
+    generateError(res.stealResult());
     return RestStatus::DONE;
   }
 

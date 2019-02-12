@@ -209,7 +209,7 @@ OperationResult GraphOperations::editEdgeDefinition(VPackSlice edgeDefinitionSli
                                                     const std::string& edgeDefinitionName) {
   auto maybeEdgeDef = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
   if (!maybeEdgeDef) {
-    return OperationResult{maybeEdgeDef};
+    return OperationResult{maybeEdgeDef.stealResult()};
   }
   EdgeDefinition const& edgeDefinition = maybeEdgeDef.get();
 
@@ -428,7 +428,7 @@ OperationResult GraphOperations::addEdgeDefinition(VPackSlice edgeDefinitionSlic
                                                    bool waitForSync) {
   ResultT<EdgeDefinition const*> defRes = _graph.addEdgeDefinition(edgeDefinitionSlice);
   if (defRes.fail()) {
-    return OperationResult(defRes);
+    return OperationResult(defRes.stealResult());
   }
   // Guaranteed to be non nullptr
   TRI_ASSERT(defRes.get() != nullptr);

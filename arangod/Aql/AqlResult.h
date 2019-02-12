@@ -33,7 +33,7 @@ namespace aql {
 
 class ExecutionEngine;
 
-class ExecutionEngineResult : public Result {
+class ExecutionEngineResult {
  public:
   ExecutionEngineResult();
   explicit ExecutionEngineResult(int errorNumber);
@@ -49,7 +49,14 @@ class ExecutionEngineResult : public Result {
 
   ExecutionEngine* engine() const;
 
+  // forwarded methods
+  bool ok() const;
+  bool fail() const;
+  uint64_t errorNumber() const;
+  std::string errorMessage() const;
+
  private:
+  Result _result;
   ExecutionEngine* _engine;
 };
 

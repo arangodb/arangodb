@@ -58,17 +58,28 @@ namespace transaction {
 class Methods;
 }
 
-class ChecksumResult : public Result {
+class ChecksumResult {
  public:
-  explicit ChecksumResult(Result&& result) : Result(std::move(result)) {}
+  explicit ChecksumResult(Result&& result) : _result(std::move(result)) {}
   explicit ChecksumResult(velocypack::Builder&& builder)
-      : Result(TRI_ERROR_NO_ERROR), _builder(std::move(builder)) {}
+      : _result(TRI_ERROR_NO_ERROR), _builder(std::move(builder)) {}
 
   velocypack::Builder builder() { return _builder; }
 
   velocypack::Slice slice() { return _builder.slice(); }
 
+  // forwarded methods
+  bool ok() const { return _result.ok(); }
+  bool fail() const { return _result.fail(); }
+  uint64_t errorNumber() const { return _result.errorNumber(); }
+  std::string errorMessage() const { return _result.errorMessage(); }
+
+  // access methods
+  Result const& result() { return _result; }
+  Result&& stealResult() { return std::move(_result); }
+
  private:
+  Result _result;
   velocypack::Builder _builder;
 };
 
@@ -289,9 +300,8 @@ class LogicalCollection : public LogicalDataSource {
    */
   Result insert(transaction::Methods* trx, velocypack::Slice slice,
                 ManagedDocumentResult& result, OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock,
-                TRI_voc_rid_t& revisionId, KeyLockInfo* keyLockInfo,
-                std::function<Result(void)> callbackDuringLock);
+                TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& revisionId,
+                KeyLockInfo* keyLockInfo, std::function<Result(void)> callbackDuringLock);
 
   Result update(transaction::Methods*, velocypack::Slice,
                 ManagedDocumentResult& result, OperationOptions&, TRI_voc_tick_t&,

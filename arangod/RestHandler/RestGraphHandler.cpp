@@ -553,7 +553,7 @@ void RestGraphHandler::edgeActionRead(Graph& graph, const std::string& definitio
 std::unique_ptr<Graph> RestGraphHandler::getGraph(const std::string& graphName) {
   auto graphResult = _gmngr.lookupGraphByName(graphName);
   if (graphResult.fail()) {
-    THROW_ARANGO_EXCEPTION(graphResult);
+    THROW_ARANGO_EXCEPTION(graphResult.stealResult());
   }
   TRI_ASSERT(graphResult.get() != nullptr);
   return std::move(graphResult.get());

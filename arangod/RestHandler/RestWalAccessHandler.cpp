@@ -21,7 +21,6 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestWalAccessHandler.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
@@ -31,6 +30,7 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RestWalAccessHandler.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/WalAccess.h"
@@ -309,7 +309,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   }
 
   if (result.fail()) {
-    generateError(result);
+    generateError(result.stealResult());
     return;
   }
 

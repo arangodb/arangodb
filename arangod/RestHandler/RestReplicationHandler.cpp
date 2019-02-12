@@ -1004,11 +1004,11 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
     // drop an existing collection if it exists
     if (dropExisting) {
-      auto result =
-        ci->dropCollectionCoordinator(dbName, std::to_string(col->id()), 0.0);
+      auto result = ci->dropCollectionCoordinator(dbName, std::to_string(col->id()), 0.0);
 
-      if (TRI_ERROR_FORBIDDEN == result.errorNumber() // forbidden
-          || TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE == result.errorNumber()) {
+      if (TRI_ERROR_FORBIDDEN == result.errorNumber()  // forbidden
+          || TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE ==
+                 result.errorNumber()) {
         // some collections must not be dropped
         auto res = truncateCollectionOnCoordinator(dbName, name);
 
@@ -1024,10 +1024,9 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
       }
 
       if (!result.ok()) {
-        return Result( // result
-          result.errorNumber(), // code
-          std::string("unable to drop collection '") + name + "': " + result.errorMessage()
-        );
+        return Result(             // result
+            result.errorNumber(),  // code
+            std::string("unable to drop collection '") + name + "': " + result.errorMessage());
       }
     } else {
       return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
@@ -1732,9 +1731,9 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
 
     VPackBuilder tmp;
 
-    res = ci->ensureIndexCoordinator( // result
-      dbName, std::to_string(col->id()), idxDef, true, tmp, cluster->indexCreationTimeout()
-    );
+    res = ci->ensureIndexCoordinator(  // result
+        dbName, std::to_string(col->id()), idxDef, true, tmp,
+        cluster->indexCreationTimeout());
 
     if (res.fail()) {
       return res.reset(res.errorNumber(), "could not create index: " + res.errorMessage());
@@ -2190,7 +2189,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   ResultT<std::string> referenceChecksum =
       computeCollectionChecksum(readLockId, col.get());
   if (!referenceChecksum.ok()) {
-    generateError(referenceChecksum);
+    generateError(referenceChecksum.stealResult());
     return;
   }
 
@@ -2386,7 +2385,7 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Test if Lock " << id << " is still active.";
   auto res = isLockHeld(id);
   if (!res.ok()) {
-    generateError(res);
+    generateError(res.stealResult());
     return;
   }
 
@@ -2433,7 +2432,7 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
   if (!res.ok()) {
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
         << "Lock " << id << " not canceled because of: " << res.errorMessage();
-    generateError(res);
+    generateError(res.stealResult());
     return;
   }
 
