@@ -91,15 +91,16 @@ arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow& input) {
 
   size_t dRow = _rowsPushed;
 
-  if (_rowsPushed >= _infos._limit) {
+  if (dRow >= _infos._limit) {
     // pop an entry first
     std::pop_heap(_rows.begin(), _rows.end(), *_cmpHeap.get());
     dRow = _rows.back();
     eraseRow(*_heapBuffer, dRow);
-    _rows.pop_back();
+  } else {
+    _rows.emplace_back(dRow);  // add to heap vector
   }
-  TRI_ASSERT(dRow < _infos._limit);
 
+  TRI_ASSERT(dRow < _infos._limit);
   TRI_IF_FAILURE("SortBlock::doSortingInner") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -108,7 +109,6 @@ arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow& input) {
   _heapOutputRow.copyRow(input);
   _heapOutputRow.advanceRow();
 
-  _rows.emplace_back(dRow);  // add to heap vector
   ++_rowsPushed;
 
   // now restore heap condition
