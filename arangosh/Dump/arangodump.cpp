@@ -34,6 +34,7 @@
 #include "Dump/DumpFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Maskings/AttributeMasking.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "Shell/ClientFeature.h"
@@ -41,6 +42,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
+#include "Enterprise/Maskings/AttributeMaskingEE.h"
 #endif
 
 using namespace arangodb;
@@ -52,10 +54,15 @@ int main(int argc, char* argv[]) {
     ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
     context.installHup();
 
+    maskings::InstallMaskings();
+
+#ifdef USE_ENTERPRISE
+    maskings::InstallMaskingsEE();
+#endif
+
     std::shared_ptr<options::ProgramOptions> options(
         new options::ProgramOptions(argv[0], "Usage: arangodump [<options>]",
-                                    "For more information use:",
-                                    BIN_DIRECTORY));
+                                    "For more information use:", BIN_DIRECTORY));
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret;
 
@@ -84,8 +91,7 @@ int main(int argc, char* argv[]) {
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "arangodump terminated because of an unhandled exception: "
-          << ex.what();
+          << "arangodump terminated because of an unhandled exception: " << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)

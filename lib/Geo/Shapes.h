@@ -38,7 +38,8 @@ struct QueryParams;
 struct Coordinate {
  public:
   Coordinate(double lat, double lon) noexcept : latitude(lat), longitude(lon) {}
-  Coordinate(Coordinate&& c) noexcept : latitude(c.latitude), longitude(c.longitude) {}
+  Coordinate(Coordinate&& c) noexcept
+      : latitude(c.latitude), longitude(c.longitude) {}
   Coordinate(Coordinate const& c) noexcept
       : latitude(c.latitude), longitude(c.longitude) {}
 
@@ -65,10 +66,10 @@ struct Coordinate {
   }
 
   std::string toString() const {
-    return "(lat: " + std::to_string(latitude) + ", lon: " +
-           std::to_string(longitude) + ")";
+    return "(lat: " + std::to_string(latitude) +
+           ", lon: " + std::to_string(longitude) + ")";
   }
-  
+
   S2Point toPoint() const noexcept;
 
  public:

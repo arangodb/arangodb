@@ -24,9 +24,10 @@
 #ifndef ARANGOD_AQL_AST_NODE_H
 #define ARANGOD_AQL_AST_NODE_H 1
 
-#include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringRef.h"
 
 #include <velocypack/Slice.h>
 
@@ -36,7 +37,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 namespace basics {
 class StringBuffer;
 }
@@ -52,26 +53,26 @@ typedef uint32_t AstNodeFlagsType;
 /// the flags are used to prevent repeated calculations of node properties
 /// (e.g. is the node value constant, sorted etc.)
 enum AstNodeFlagType : AstNodeFlagsType {
-  DETERMINED_SORTED =            0x0000001,  // node is a list and its members are sorted asc.
-  DETERMINED_CONSTANT =          0x0000002,  // node value is constant (i.e. not dynamic)
-  DETERMINED_SIMPLE =            0x0000004,  // node value is simple (i.e. for use in a simple expression)
-  DETERMINED_NONDETERMINISTIC =  0x0000010,  // node produces non-deterministic result (e.g. function call nodes)
-  DETERMINED_RUNONDBSERVER =     0x0000020,  // node can run on the DB server in a cluster setup
-  DETERMINED_CHECKUNIQUENESS =   0x0000040,  // object's keys must be checked for uniqueness
-  DETERMINED_V8 =                0x0000080,  // node will use V8 internally
+  DETERMINED_SORTED = 0x0000001,  // node is a list and its members are sorted asc.
+  DETERMINED_CONSTANT = 0x0000002,  // node value is constant (i.e. not dynamic)
+  DETERMINED_SIMPLE = 0x0000004,  // node value is simple (i.e. for use in a simple expression)
+  DETERMINED_NONDETERMINISTIC = 0x0000010,  // node produces non-deterministic result (e.g. function call nodes)
+  DETERMINED_RUNONDBSERVER = 0x0000020,  // node can run on the DB server in a cluster setup
+  DETERMINED_CHECKUNIQUENESS = 0x0000040,  // object's keys must be checked for uniqueness
+  DETERMINED_V8 = 0x0000080,               // node will use V8 internally
 
-  VALUE_SORTED =                 0x0000100,  // node is a list and its members are sorted asc.
-  VALUE_CONSTANT =               0x0000200,  // node value is constant (i.e. not dynamic)
-  VALUE_SIMPLE =                 0x0000400,  // node value is simple (i.e. for use in a simple expression)
-  VALUE_NONDETERMINISTIC =       0x0001000,  // node produces non-deterministic result (e.g. function call nodes)
-  VALUE_RUNONDBSERVER =          0x0002000,  // node can run on the DB server in a cluster setup
-  VALUE_CHECKUNIQUENESS =        0x0004000,  // object's keys must be checked for uniqueness
-  VALUE_V8 =                     0x0008000,  // node will use V8 internally
-  FLAG_KEEP_VARIABLENAME =       0x0010000,  // node is a reference to a variable name,  not the variable value (used in KEEP nodes)
-  FLAG_BIND_PARAMETER =          0x0020000,  // node was created from a bind parameter
-  FLAG_FINALIZED =               0x0040000,  // node has been finalized and should not be modified; only set and checked in maintainer mode
+  VALUE_SORTED = 0x0000100,    // node is a list and its members are sorted asc.
+  VALUE_CONSTANT = 0x0000200,  // node value is constant (i.e. not dynamic)
+  VALUE_SIMPLE = 0x0000400,  // node value is simple (i.e. for use in a simple expression)
+  VALUE_NONDETERMINISTIC = 0x0001000,  // node produces non-deterministic result (e.g. function call nodes)
+  VALUE_RUNONDBSERVER = 0x0002000,  // node can run on the DB server in a cluster setup
+  VALUE_CHECKUNIQUENESS = 0x0004000,  // object's keys must be checked for uniqueness
+  VALUE_V8 = 0x0008000,               // node will use V8 internally
+  FLAG_KEEP_VARIABLENAME = 0x0010000,  // node is a reference to a variable name, not the variable value (used in KEEP nodes)
+  FLAG_BIND_PARAMETER = 0x0020000,     // node was created from a bind parameter
+  FLAG_FINALIZED = 0x0040000,  // node has been finalized and should not be modified; only set and checked in maintainer mode
 };
-  
+
 /// @brief enumeration of AST node value types
 /// note: these types must be declared in asc. sort order
 enum AstNodeValueType : uint8_t {
@@ -106,16 +107,20 @@ struct AstNodeValue {
     explicit Value(bool value) : _bool(value) {}
     explicit Value(char const* value) : _string(value) {}
   };
-  
+
   Value value;
   uint32_t length;  // only used for string values
   AstNodeValueType type;
-  
+
   AstNodeValue() : value(int64_t(0)), length(0), type(VALUE_TYPE_NULL) {}
-  explicit AstNodeValue(int64_t value) : value(value), length(0), type(VALUE_TYPE_INT) {}
-  explicit AstNodeValue(double value) : value(value), length(0), type(VALUE_TYPE_DOUBLE) {}
-  explicit AstNodeValue(bool value) : value(value), length(0), type(VALUE_TYPE_BOOL) {}
-  explicit AstNodeValue(char const* value, uint32_t length) : value(value), length(length), type(VALUE_TYPE_STRING) {}
+  explicit AstNodeValue(int64_t value)
+      : value(value), length(0), type(VALUE_TYPE_INT) {}
+  explicit AstNodeValue(double value)
+      : value(value), length(0), type(VALUE_TYPE_DOUBLE) {}
+  explicit AstNodeValue(bool value)
+      : value(value), length(0), type(VALUE_TYPE_BOOL) {}
+  explicit AstNodeValue(char const* value, uint32_t length)
+      : value(value), length(length), type(VALUE_TYPE_STRING) {}
 };
 
 /// @brief enumeration of AST node types
@@ -213,17 +218,19 @@ struct AstNode {
 
   /// @brief helper for building flags
   template <typename... Args>
-  static inline std::underlying_type<AstNodeFlagType>::type makeFlags(AstNodeFlagType flag, Args... args) {
-    return static_cast<std::underlying_type<AstNodeFlagType>::type>(flag) + makeFlags(args...);
+  static inline std::underlying_type<AstNodeFlagType>::type makeFlags(AstNodeFlagType flag,
+                                                                      Args... args) {
+    return static_cast<std::underlying_type<AstNodeFlagType>::type>(flag) +
+           makeFlags(args...);
   }
-    
+
   static inline std::underlying_type<AstNodeFlagType>::type makeFlags() {
     return static_cast<std::underlying_type<AstNodeFlagType>::type>(0);
   }
 
   /// @brief create the node
   explicit AstNode(AstNodeType);
-  
+
   /// @brief create a node, with defining a value
   explicit AstNode(AstNodeValue value);
 
@@ -239,11 +246,13 @@ struct AstNode {
   ~AstNode();
 
  public:
-
   static constexpr size_t SortNumberThreshold = 8;
 
   /// @brief return the string value of a node, as an std::string
   std::string getString() const;
+  
+  /// @brief return the string value of a node, as a StringRef
+  arangodb::StringRef getStringRef() const noexcept;
 
   /// @brief test if all members of a node are equality comparisons
   bool isOnlyEqualityMatch() const;
@@ -312,28 +321,21 @@ struct AstNode {
   }
 
   /// @brief reset flags in case a node is changed drastically
-  inline void clearFlags() {
-    flags = 0;
-  }
+  inline void clearFlags() { flags = 0; }
 
   /// @brief recursively clear flags
   void clearFlagsRecursive();
 
   /// @brief set a flag for the node
-  inline void setFlag(AstNodeFlagType flag) const {
-    flags |= flag;
-  }
+  inline void setFlag(AstNodeFlagType flag) const { flags |= flag; }
 
   /// @brief set two flags for the node
-  inline void setFlag(AstNodeFlagType typeFlag,
-                      AstNodeFlagType valueFlag) const {
+  inline void setFlag(AstNodeFlagType typeFlag, AstNodeFlagType valueFlag) const {
     flags |= (typeFlag | valueFlag);
   }
-  
+
   /// @brief remove a flag for the node
-  inline void removeFlag(AstNodeFlagType flag) const {
-    flags &= ~flag;
-  }
+  inline void removeFlag(AstNodeFlagType flag) const { flags &= ~flag; }
 
   /// @brief whether or not the node value is trueish
   bool isTrue() const;
@@ -386,8 +388,8 @@ struct AstNode {
   /// @brief whether or not a value node is of type attribute access that
   /// refers to a variable reference
   AstNode const* getAttributeAccessForVariable(bool allowIndexedAccess) const {
-    if (type != NODE_TYPE_ATTRIBUTE_ACCESS && type != NODE_TYPE_EXPANSION
-        && !(allowIndexedAccess && type == NODE_TYPE_INDEXED_ACCESS)) {
+    if (type != NODE_TYPE_ATTRIBUTE_ACCESS && type != NODE_TYPE_EXPANSION &&
+        !(allowIndexedAccess && type == NODE_TYPE_INDEXED_ACCESS)) {
       return nullptr;
     }
 
@@ -446,8 +448,7 @@ struct AstNode {
   /// of attribute names in the parameter passed by reference
   bool isAttributeAccessForVariable(
       std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>&,
-                                    bool allowIndexedAccess = false)
-      const;
+      bool allowIndexedAccess = false) const;
 
   /// @brief locate a variable including the direct path vector leading to it.
   void findVariableAccess(std::vector<AstNode const*>& currentPath,
@@ -467,7 +468,7 @@ struct AstNode {
   /// @brief whether or not a node has a constant value
   /// this may also set the FLAG_CONSTANT or the FLAG_DYNAMIC flags for the node
   bool isConstant() const;
-  
+
   /// @brief whether or not a node will use V8 internally
   /// this may also set the FLAG_V8 flag for the node
   bool willUseV8() const;
@@ -552,7 +553,7 @@ struct AstNode {
     TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
     members.erase(members.begin() + i);
   }
-  
+
   /// @brief remove all members from the node at once
   void removeMembers() {
     TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
@@ -573,8 +574,7 @@ struct AstNode {
   }
 
   /// @brief sort members with a custom comparison function
-  void sortMembers(
-      std::function<bool(AstNode const*, AstNode const*)> const& func) {
+  void sortMembers(std::function<bool(AstNode const*, AstNode const*)> const& func) {
     TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
     std::sort(members.begin(), members.end(), func);
   }
@@ -592,21 +592,19 @@ struct AstNode {
     TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
     members.clear();
   }
-  
+
   /// @brief mark a < or <= operator to definitely exclude the "null" value
   /// this is only for optimization purposes
   inline void setExcludesNull(bool v = true) {
-    TRI_ASSERT(type == NODE_TYPE_OPERATOR_BINARY_LT || 
-               type == NODE_TYPE_OPERATOR_BINARY_LE || 
+    TRI_ASSERT(type == NODE_TYPE_OPERATOR_BINARY_LT || type == NODE_TYPE_OPERATOR_BINARY_LE ||
                type == NODE_TYPE_OPERATOR_BINARY_EQ);
     value.value._bool = v;
   }
-  
+
   /// @brief check if an < or <= operator definitely excludes the "null" value
   /// this is only for optimization purposes
   inline bool getExcludesNull() const noexcept {
-    TRI_ASSERT(type == NODE_TYPE_OPERATOR_BINARY_LT || 
-               type == NODE_TYPE_OPERATOR_BINARY_LE || 
+    TRI_ASSERT(type == NODE_TYPE_OPERATOR_BINARY_LT || type == NODE_TYPE_OPERATOR_BINARY_LE ||
                type == NODE_TYPE_OPERATOR_BINARY_EQ);
     return value.value._bool;
   }
@@ -682,7 +680,8 @@ struct AstNode {
 
   /// @brief whether or not a string is equal to another
   inline bool stringEquals(std::string const& other) const {
-    return (other.size() == getStringLength() && memcmp(other.c_str(), getStringValue(), getStringLength()) == 0);
+    return (other.size() == getStringLength() &&
+            memcmp(other.c_str(), getStringValue(), getStringLength()) == 0);
   }
 
   /// @brief return the data value of a node
@@ -702,14 +701,14 @@ struct AstNode {
 
   /// @brief clone a node, recursively
   AstNode* clone(Ast*) const;
-  
+
   /// @brief validate that given node is an object with const-only values
   bool isConstObject() const;
 
   /// @brief append a string representation of the node into a string buffer
   /// the string representation does not need to be JavaScript-compatible
-  /// except for node types NODE_TYPE_VALUE, NODE_TYPE_ARRAY and NODE_TYPE_OBJECT
-  /// (only for objects that do not contain dynamic attributes)
+  /// except for node types NODE_TYPE_VALUE, NODE_TYPE_ARRAY and
+  /// NODE_TYPE_OBJECT (only for objects that do not contain dynamic attributes)
   /// note that this may throw and that the caller is responsible for
   /// catching the error
   void stringify(arangodb::basics::StringBuffer*, bool, bool) const;
@@ -777,8 +776,8 @@ struct AstNodeValueEqual {
     return CompareAstNodes(lhs, rhs, false) == 0;
   }
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 /// @brief append the AstNode to an output stream
 std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const*);
@@ -812,20 +811,35 @@ std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const&);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #define FINALIZE_SUBTREE(n) \
   arangodb::aql::AstNode::markFinalized(const_cast<arangodb::aql::AstNode*>(n))
-#define FINALIZE_SUBTREE_CONDITIONAL(n, b) if (b) { FINALIZE_SUBTREE(n); }
-#define TEMPORARILY_UNLOCK_NODE(n) \
-  bool wasFinalizedAlready = \
-      (n)->hasFlag(arangodb::aql::AstNodeFlagType::FLAG_FINALIZED); \
-  if (wasFinalizedAlready) { \
-    (n)->flags = ((n)->flags & \
-                  ~arangodb::aql::AstNodeFlagType::FLAG_FINALIZED); \
-  } \
+#define FINALIZE_SUBTREE_CONDITIONAL(n, b) \
+  if (b) {                                 \
+    FINALIZE_SUBTREE(n);                   \
+  }
+#define TEMPORARILY_UNLOCK_NODE(n)                                                         \
+  bool wasFinalizedAlready = (n)->hasFlag(arangodb::aql::AstNodeFlagType::FLAG_FINALIZED); \
+  if (wasFinalizedAlready) {                                                               \
+    (n)->flags = ((n)->flags & ~arangodb::aql::AstNodeFlagType::FLAG_FINALIZED);           \
+  }                                                                                        \
   TRI_DEFER(FINALIZE_SUBTREE_CONDITIONAL(n, wasFinalizedAlready));
 #else
-#define FINALIZE_SUBTREE(n) while (0) { (void) (n); } do { } while (0)
-#define FINALIZE_SUBTREE_CONDITIONAL(n, b) while (0) { (void) (n); } do { } while (0)
-#define TEMPORARILY_UNLOCK_NODE(n) while (0) { (void) (n); } do { } while (0)
+#define FINALIZE_SUBTREE(n) \
+  while (0) {               \
+    (void)(n);              \
+  }                         \
+  do {                      \
+  } while (0)
+#define FINALIZE_SUBTREE_CONDITIONAL(n, b) \
+  while (0) {                              \
+    (void)(n);                             \
+  }                                        \
+  do {                                     \
+  } while (0)
+#define TEMPORARILY_UNLOCK_NODE(n) \
+  while (0) {                      \
+    (void)(n);                     \
+  }                                \
+  do {                             \
+  } while (0)
 #endif
-
 
 #endif

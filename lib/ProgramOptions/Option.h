@@ -31,6 +31,26 @@
 namespace arangodb {
 namespace options {
 
+/// @brief option flags. these can be bit-ORed to combine multiple flags
+enum class Flags : uint8_t {
+  Normal = 0,  // nothing special here
+  Hidden = 1,  // the option is hidden by default, only made visible by --help-all or --help-.
+  Obsolete = 2,  // the option is obsolete. setting it does not influence the program behavio
+  Enterprise = 4,  // the option is only available in the Enterprise edition
+  Command = 8,  // the option executes a special command, e.g. --version, --check-configuration, --dump-options
+  Dynamic = 16,  // the option's default value is dynamic and depends on the target host configuration
+};
+
+static constexpr inline std::underlying_type<Flags>::type makeFlags() {
+  return static_cast<std::underlying_type<Flags>::type>(Flags::Normal);
+}
+
+/// @brief helper for building flags
+template <typename... Args>
+static constexpr inline std::underlying_type<Flags>::type makeFlags(Flags flag, Args... args) {
+  return static_cast<std::underlying_type<Flags>::type>(flag) + makeFlags(args...);
+}
+
 struct Parameter;
 
 // a single program option container
@@ -39,9 +59,53 @@ struct Option {
 
   // create an option, consisting of single string
   Option(std::string const& value, std::string const& description,
-         Parameter* parameter, bool hidden, bool obsolete);
+         Parameter* parameter, std::underlying_type<Flags>::type flags);
 
   void toVPack(arangodb::velocypack::Builder& builder) const;
+
+  bool hasFlag(Flags flag) const {
+    return ((static_cast<std::underlying_type<Flags>::type>(flag) & flags) != 0);
+  }
+
+  // format a version string
+  std::string toVersionString(uint32_t version) const;
+  
+  // format multiple version strings, comma-separated
+  std::string toVersionString(std::vector<uint32_t> const& version) const;
+  
+  // specifies in which version the option was introduced. version numbers
+  // should be specified such as 30402 (version 3.4.2)
+  // a version number of 0 means "unknown"
+  Option& setIntroducedIn(uint32_t version) {
+    introducedInVersions.push_back(version);
+    return *this;
+  }
+  
+  // specifies in which version the option was deprecated. version numbers
+  // should be specified such as 30402 (version 3.4.2)
+  // a version number of 0 means "unknown"
+  Option& setDeprecatedIn(uint32_t version) {
+    deprecatedInVersions.push_back(version);
+    return *this;
+  }
+
+  // returns whether or not we know in which version(s) an option was added
+  bool hasIntroducedIn() const {
+    return !introducedInVersions.empty();
+  }
+  
+  // returns whether or not we know in which version(s) an option was added
+  bool hasDeprecatedIn() const {
+    return !deprecatedInVersions.empty();
+  }
+
+  // returns the version in which the option was introduced as a proper
+  // version string - if the version is unknown this will return "-"
+  std::string introducedInString() const;
+
+  // returns the version in which the option was deprecated as a proper
+  // version string - if the version is unknown this will return "-"
+  std::string deprecatedInString() const;
 
   // get display name for the option
   std::string displayName() const { return "--" + fullName(); }
@@ -74,8 +138,7 @@ struct Option {
   // split an option name at the ".", if it exists
   static std::pair<std::string, std::string> splitName(std::string name);
 
-  static std::vector<std::string> wordwrap(std::string const& value,
-                                           size_t size);
+  static std::vector<std::string> wordwrap(std::string const& value, size_t size);
 
   // right-pad a string
   static std::string pad(std::string const& value, size_t length);
@@ -87,21 +150,15 @@ struct Option {
   std::string description;
   std::string shorthand;
   std::shared_ptr<Parameter> parameter;
-  bool hidden;
-  bool obsolete;
-  bool enterpriseOnly;
+
+  /// @brief option flags
+  std::underlying_type<Flags>::type const flags;
+  
+  std::vector<uint32_t> introducedInVersions;
+  std::vector<uint32_t> deprecatedInVersions;
 };
 
-struct EnterpriseOption : public Option {
-  // create an option, consisting of single string
-  EnterpriseOption(std::string const& value, std::string const& description,
-                   Parameter* parameter, bool hidden, bool obsolete)
-    : Option(value, description, parameter, hidden, obsolete) {
-    enterpriseOnly = true;
-  }
-};
-
-}
-}
+}  // namespace options
+}  // namespace arangodb
 
 #endif

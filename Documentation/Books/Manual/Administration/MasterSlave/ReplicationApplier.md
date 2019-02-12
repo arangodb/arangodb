@@ -7,7 +7,7 @@ Replication configuration
 The replication is turned off by default. In order to create a master-slave setup,
 the so-called _replication applier_ needs to be enabled on the _slave_ databases.
 
-Replication is configured on a per-database level, or, starting from 3.3.0 at server level.
+Replication is configured on a per-database level or (starting from v3.3.0) at server level.
 
 The _replication applier_ on the _slave_ can be used to perform a one-time synchronization
 with the _master_ (and then stop), or to perform an ongoing replication of changes. To
@@ -20,7 +20,7 @@ _setupReplication_ Command
 To copy the initial data from the _master_ to the _slave_ and start the
 continuous replication, there is an all-in-one command *setupReplication*.
 
-From _ArangoSH_:
+From _Arangosh_:
 
 ```js
 require("@arangodb/replication").setupReplication(configuration);
@@ -242,7 +242,7 @@ The initial synchronization for the current database is executed with the *sync*
 require("@arangodb/replication").sync({
   endpoint: "tcp://master.domain.org:8529",
   username: "root",
-  password: "secret,
+  password: "secret",
   includeSystem: true
 });
 ```
@@ -259,7 +259,7 @@ The following command only synchronizes collection *foo* and *bar*:
 require("@arangodb/replication").sync({
   endpoint: "tcp://master.domain.org:8529",
   username: "root",
-  password: "secret,
+  password: "secret",
   restrictType: "include",
   restrictCollections: [ "foo", "bar" ]
 });

@@ -110,8 +110,7 @@ class ShortestPathPriorityQueue {
         }
         _heap.push_back(v);
         try {
-          _lookup.insert(std::make_pair(
-              k, static_cast<ssize_t>(_heap.size() - 1 + _popped)));
+          _lookup.insert(std::make_pair(k, static_cast<ssize_t>(_heap.size() - 1 + _popped)));
         } catch (...) {
           _heap.pop_back();
           throw;
@@ -392,6 +391,6 @@ class ShortestPathPriorityQueue {
   std::vector<Value*> _history;
 };
 
-} //namespace graph
-} //namespace arangodb
+}  // namespace graph
+}  // namespace arangodb
 #endif

@@ -29,9 +29,7 @@ namespace arangodb {
 
 size_t PageSizeFeature::PageSize = 0;
 
-PageSizeFeature::PageSizeFeature(
-    application_features::ApplicationServer& server
-)
+PageSizeFeature::PageSizeFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "PageSize") {
   setOptional(false);
   startsAfter("GreetingsPhase");
@@ -42,4 +40,4 @@ void PageSizeFeature::prepare() {
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "page size is " << PageSize;
 }
 
-} // arangodb
+}  // namespace arangodb

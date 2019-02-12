@@ -47,7 +47,10 @@ class JobGuard : public SameThreadAsserter {
     TRI_ASSERT(!_isWorkingFlag);
 
     if (0 == _isWorking++) {
-      _scheduler->incWorking();
+      if (_scheduler) {
+        // scheduler can be a nullptr during tests
+        _scheduler->incWorking();
+      }
     }
 
     _isWorkingFlag = true;
@@ -62,18 +65,22 @@ class JobGuard : public SameThreadAsserter {
       if (0 == --_isWorking) {
         // if this is the last JobGuard we inform the
         // scheduler that the thread is back to idle
-        _scheduler->decWorking();
+        if (_scheduler) {
+          // scheduler can be a nullptr during tests
+          _scheduler->decWorking();
+        }
       }
     }
   }
 
  private:
+  // note that the scheduler can be a nullptr during testing
   rest::Scheduler* _scheduler;
 
   bool _isWorkingFlag = false;
 
   static thread_local size_t _isWorking;
 };
-}
+}  // namespace arangodb
 
 #endif

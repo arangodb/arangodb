@@ -34,13 +34,12 @@ std::string TransactionCollection::collectionName() const {
 }
 
 static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
-              AccessMode::Type::READ < AccessMode::Type::WRITE &&
-              AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE,
-  "AccessMode::Type total order fail");
+                  AccessMode::Type::READ < AccessMode::Type::WRITE &&
+                  AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE,
+              "AccessMode::Type total order fail");
 
 /// @brief check if a collection is locked in a specific mode in a transaction
-bool TransactionCollection::isLocked(AccessMode::Type accessType,
-                                     int nestingLevel) const {
+bool TransactionCollection::isLocked(AccessMode::Type accessType, int nestingLevel) const {
   if (accessType > _accessType) {
     // wrong lock type
     LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
@@ -64,18 +63,17 @@ bool TransactionCollection::isLocked() const {
 
 /// @brief request a main-level lock for a collection
 /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-/// returns any other error code otherwise
+/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and
+/// no other error occurred returns any other error code otherwise
 int TransactionCollection::lockRecursive() {
   return lockRecursive(_accessType, 0);
 }
 
 /// @brief request a lock for a collection
 /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and no other error occurred
-/// returns any other error code otherwise
-int TransactionCollection::lockRecursive(AccessMode::Type accessType,
-                                         int nestingLevel) {
+/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and
+/// no other error occurred returns any other error code otherwise
+int TransactionCollection::lockRecursive(AccessMode::Type accessType, int nestingLevel) {
   if (AccessMode::isWriteOrExclusive(accessType) &&
       !AccessMode::isWriteOrExclusive(_accessType)) {
     // wrong lock type
@@ -91,8 +89,7 @@ int TransactionCollection::lockRecursive(AccessMode::Type accessType,
 }
 
 /// @brief request an unlock for a collection
-int TransactionCollection::unlockRecursive(AccessMode::Type accessType,
-                                           int nestingLevel) {
+int TransactionCollection::unlockRecursive(AccessMode::Type accessType, int nestingLevel) {
   if (AccessMode::isWriteOrExclusive(accessType) &&
       !AccessMode::isWriteOrExclusive(_accessType)) {
     // wrong lock type: write-unlock requested but collection is read-only

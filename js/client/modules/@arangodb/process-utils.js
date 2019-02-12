@@ -107,6 +107,12 @@ class ConfigBuilder {
       this.config['create-database'] = 'false';
     }
   }
+  setMaskings(dir) {
+    if (this.type !== 'dump') {
+      throw '"maskings" is not supported for binary: ' + this.type;
+    }
+    this.config['maskings'] = fs.join(TOP_DIR, "tests/js/common/test-data/maskings", dir);
+  }
   activateEncryption() { this.config['encription.keyfile'] = fs.join(this.rootDir, 'secret-key'); }
   setRootDir(dir) { this.rootDir = dir; }
   restrictToCollection(collection) {
@@ -498,6 +504,14 @@ function runProcdump (options, instanceInfo, rootDir, pid) {
   }
 }
 
+function stopProcdump (options, instanceInfo) {
+  if (instanceInfo.hasOwnProperty('monitor') &&
+      instanceInfo.monitor.pid !== null) {
+    print("wating for procdump to exit");
+    statusExternal(instanceInfo.monitor.pid, true);
+    instanceInfo.monitor.pid = null;
+  }
+}
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
@@ -562,6 +576,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     runProcdump(options, instanceInfo, rootDir, res.pid);
     Object.assign(instanceInfo.exitStatus, 
                   statusExternal(res.pid, true));
+    stopProcdump(options, instanceInfo);
   } else {
     res = executeExternalAndWait(cmd, args);
     instanceInfo.pid = res.pid;
@@ -1072,11 +1087,13 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
           print("shutdownInstance: Marking crashy - " + JSON.stringify(arangod));
           serverCrashedLocal = true;
         }
+        stopProcdump(options, arangod);
       } else {
         if (arangod.role !== 'agent') {
           nonAgenciesCount --;
         }
         print('Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
+        stopProcdump(options, arangod);
         return false;
       }
     });
@@ -1537,6 +1554,7 @@ exports.findFreePort = findFreePort;
 
 exports.executeArangod = executeArangod;
 exports.executeAndWait = executeAndWait;
+exports.stopProcdump = stopProcdump;
 
 exports.createBaseConfig = createBaseConfigBuilder;
 exports.run = {

@@ -23,8 +23,8 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_META_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_META_H 1
 
-#include "Basics/Result.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/Result.h"
 #include "VocBase/voc-types.h"
 
 #include <mutex>
@@ -35,12 +35,12 @@
 #include <velocypack/Slice.h>
 
 namespace rocksdb {
-  class DB;
-  class WriteBatch;
-}
+class DB;
+class WriteBatch;
+}  // namespace rocksdb
 
 namespace arangodb {
-  
+
 class LogicalCollection;
 class RocksDBCollection;
 class RocksDBRecoveryManager;
@@ -49,7 +49,7 @@ class RocksDBRecoveryManager;
 /// transaction to verify
 struct RocksDBCollectionMeta final {
   friend class RocksDBRecoveryManager;
- 
+
   /// @brief collection count
   struct DocCount {
     /// @brief safe sequence number for recovery
@@ -60,19 +60,17 @@ struct RocksDBCollectionMeta final {
     uint64_t _removed;
     /// @brief last used revision id
     TRI_voc_rid_t _revisionId;
-    
-    DocCount(rocksdb::SequenceNumber sq, uint64_t added,
-             uint64_t removed, TRI_voc_rid_t rid)
-    : _committedSeq(sq), _added(added), _removed(removed), _revisionId(rid) {}
-    
+
+    DocCount(rocksdb::SequenceNumber sq, uint64_t added, uint64_t removed, TRI_voc_rid_t rid)
+        : _committedSeq(sq), _added(added), _removed(removed), _revisionId(rid) {}
+
     explicit DocCount(arangodb::velocypack::Slice const&);
     void toVelocyPack(arangodb::velocypack::Builder&) const;
   };
-  
+
  public:
-  
   RocksDBCollectionMeta();
-  
+
  public:
   /**
    * @brief Place a blocker to allow proper commit/serialize semantics
@@ -86,7 +84,7 @@ struct RocksDBCollectionMeta final {
    * @return       May return error if we fail to allocate and place blocker
    */
   Result placeBlocker(uint64_t trxId, rocksdb::SequenceNumber seq);
-  
+
   /**
    * @brief Removes an existing transaction blocker
    *
@@ -98,54 +96,50 @@ struct RocksDBCollectionMeta final {
    *              earlier `placeBlocker` call)
    */
   void removeBlocker(uint64_t trxId);
-  
+
   /// @brief updates and returns the largest safe seq to squash updated against
   rocksdb::SequenceNumber committableSeq() const;
-  
+
   /// @brief get the current count
   DocCount currentCount();
   /// @brief get the current count, ONLY use in recovery
   DocCount& countRefUnsafe() { return _count; }
-  
+
   /// @brief buffer a counter adjustment
-  void adjustNumberDocuments(rocksdb::SequenceNumber seq,
-                             TRI_voc_rid_t revId, int64_t adj);
+  void adjustNumberDocuments(rocksdb::SequenceNumber seq, TRI_voc_rid_t revId, int64_t adj);
 
   /// @brief serialize the collection metadata
   arangodb::Result serializeMeta(rocksdb::WriteBatch&, LogicalCollection&,
                                  bool force, arangodb::velocypack::Builder&,
                                  rocksdb::SequenceNumber& appliedSeq);
-  
+
   /// @brief deserialize collection metadata, only called on startup
   arangodb::Result deserializeMeta(rocksdb::DB*, LogicalCollection&);
-  
+
   /// @brief load collection
   static DocCount loadCollectionCount(rocksdb::DB*, uint64_t objectId);
-  
+
   /// @brief remove collection metadata
   static Result deleteCollectionMeta(rocksdb::DB*, uint64_t objectId);
-  
+
   /// @brief remove collection index estimate
   static Result deleteIndexEstimate(rocksdb::DB*, uint64_t objectId);
 
-private:
-  
+ private:
   /// @brief apply counter adjustments, only call from sync thread
-  rocksdb::SequenceNumber applyAdjustments(rocksdb::SequenceNumber commitSeq,
-                                           bool& didWork);
-  
-private:
+  rocksdb::SequenceNumber applyAdjustments(rocksdb::SequenceNumber commitSeq, bool& didWork);
 
+ private:
   // TODO we should probably use flat_map or abseils Swiss Tables
-  
+
   mutable arangodb::basics::ReadWriteLock _blockerLock;
   /// @brief blocker identifies a transaction being committed
   std::map<uint64_t, rocksdb::SequenceNumber> _blockers;
   std::set<std::pair<rocksdb::SequenceNumber, uint64_t>> _blockersBySeq;
-  
+
   mutable std::mutex _countLock;
-  DocCount _count; /// @brief document count struct
-  
+  DocCount _count;  /// @brief document count struct
+
   /// document counter adjustment
   struct Adjustment {
     /// @brief last used revision id
@@ -153,12 +147,12 @@ private:
     /// @brief number of added / removed documents
     int64_t adjustment;
   };
-  
+
   /// @brief buffered counter adjustments
   std::map<rocksdb::SequenceNumber, Adjustment> _bufferedAdjs;
   /// @brief internal buffer for adjustments
   std::map<rocksdb::SequenceNumber, Adjustment> _stagedAdjs;
 };
-}
+}  // namespace arangodb
 
 #endif

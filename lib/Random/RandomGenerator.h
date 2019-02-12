@@ -60,7 +60,6 @@ class RandomDevice {
   int32_t other(int32_t left, uint32_t right);
 };
 
-
 // -----------------------------------------------------------------------------
 // RandomGenerator
 // -----------------------------------------------------------------------------
@@ -97,6 +96,6 @@ class RandomGenerator {
   static Mutex _lock;
   static std::unique_ptr<RandomDevice> _device;
 };
-}
+}  // namespace arangodb
 
 #endif

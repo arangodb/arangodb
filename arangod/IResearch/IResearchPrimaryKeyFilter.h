@@ -24,8 +24,8 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_PRIMARY_KEY_FILTER_H
 #define ARANGOD_IRESEARCH__IRESEARCH_PRIMARY_KEY_FILTER_H 1
 
-#include "VocBase/voc-types.h"
 #include "IResearchDocument.h"
+#include "VocBase/voc-types.h"
 
 #include "search/filter.hpp"
 #include "utils/type_limits.hpp"
@@ -37,40 +37,35 @@ namespace iresearch {
 /// @class PrimaryKeyFilter
 /// @brief iresearch filter optimized for filtering on primary keys
 ///////////////////////////////////////////////////////////////////////////////
-class PrimaryKeyFilter final
-    : public irs::filter,
-      public irs::filter::prepared {
+class PrimaryKeyFilter final : public irs::filter, public irs::filter::prepared {
  public:
   DECLARE_FILTER_TYPE();
 
   PrimaryKeyFilter(TRI_voc_cid_t cid, TRI_voc_rid_t id) noexcept
-    : irs::filter(PrimaryKeyFilter::type()),
-      _pk(cid, id) { // ensure proper endianness
+      : irs::filter(PrimaryKeyFilter::type()), _pk(cid, id) {  // ensure proper endianness
   }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                            irs::filter::prepared
-// ----------------------------------------------------------------------------
+  // ----------------------------------------------------------------------------
+  // --SECTION-- irs::filter::prepared
+  // ----------------------------------------------------------------------------
 
-  virtual irs::doc_iterator::ptr execute(
-    irs::sub_reader const& segment,
-    irs::order::prepared const& /*order*/,
-    irs::attribute_view const& /*ctx*/
-  ) const override;
+  virtual irs::doc_iterator::ptr execute(irs::sub_reader const& segment,
+                                         irs::order::prepared const& /*order*/,
+                                         irs::attribute_view const& /*ctx*/
+                                         ) const override;
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                      irs::filter
-// ----------------------------------------------------------------------------
+  // ----------------------------------------------------------------------------
+  // --SECTION-- irs::filter
+  // ----------------------------------------------------------------------------
 
   virtual size_t hash() const noexcept override;
 
   using irs::filter::prepare;
-  virtual filter::prepared::ptr prepare(
-    irs::index_reader const& index,
-    irs::order::prepared const& /*ord*/,
-    irs::boost::boost_t /*boost*/,
-    irs::attribute_view const& /*ctx*/
-  ) const override;
+  virtual filter::prepared::ptr prepare(irs::index_reader const& index,
+                                        irs::order::prepared const& /*ord*/,
+                                        irs::boost::boost_t /*boost*/,
+                                        irs::attribute_view const& /*ctx*/
+                                        ) const override;
 
  protected:
   bool equals(filter const& rhs) const noexcept override;
@@ -86,16 +81,12 @@ class PrimaryKeyFilter final
     }
 
     virtual irs::doc_id_t seek(irs::doc_id_t target) noexcept override {
-      _doc = target <= _next
-        ? _next
-        : irs::type_limits<irs::type_t::doc_id_t>::eof();
+      _doc = target <= _next ? _next : irs::type_limits<irs::type_t::doc_id_t>::eof();
 
       return _doc;
     }
 
-    virtual irs::doc_id_t value() const noexcept override {
-      return _doc;
-    }
+    virtual irs::doc_id_t value() const noexcept override { return _doc; }
 
     virtual irs::attribute_view const& attributes() const noexcept override {
       return irs::attribute_view::empty_instance();
@@ -106,13 +97,13 @@ class PrimaryKeyFilter final
       _next = doc;
     }
 
-    mutable irs::doc_id_t _doc{ irs::type_limits<irs::type_t::doc_id_t>::invalid() };
-    mutable irs::doc_id_t _next{ irs::type_limits<irs::type_t::doc_id_t>::eof() };
-  }; // PrimaryKeyIterator
+    mutable irs::doc_id_t _doc{irs::type_limits<irs::type_t::doc_id_t>::invalid()};
+    mutable irs::doc_id_t _next{irs::type_limits<irs::type_t::doc_id_t>::eof()};
+  };  // PrimaryKeyIterator
 
-  mutable DocumentPrimaryKey _pk; // !_pk.first -> do not perform further execution (first-match optimization)
+  mutable DocumentPrimaryKey _pk;  // !_pk.first -> do not perform further execution (first-match optimization)
   mutable PrimaryKeyIterator _pkIterator;
-}; // PrimaryKeyFilter
+};  // PrimaryKeyFilter
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class PrimaryKeyFilterContainer
@@ -132,19 +123,15 @@ class PrimaryKeyFilterContainer final : public irs::empty {
     return _filters.back();
   }
 
-  bool empty() const noexcept {
-    return _filters.empty();
-  }
+  bool empty() const noexcept { return _filters.empty(); }
 
-  void clear() noexcept {
-    _filters.clear();
-  }
+  void clear() noexcept { _filters.clear(); }
 
  private:
-  std::deque<PrimaryKeyFilter> _filters; // pointers remain valid
-}; // PrimaryKeyFilterContainer
+  std::deque<PrimaryKeyFilter> _filters;  // pointers remain valid
+};                                        // PrimaryKeyFilterContainer
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-#endif // ARANGOD_IRESEARCH__IRESEARCH_PRIMARY_KEY_FILTER_H 
+#endif  // ARANGOD_IRESEARCH__IRESEARCH_PRIMARY_KEY_FILTER_H

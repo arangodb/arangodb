@@ -24,31 +24,31 @@
 #include <errno.h>
 
 #include <io.h>
-#include <locale>
-#include <iomanip>
-#include <codecvt>
 #include <sys/stat.h>
-#include <wchar.h>
+#include <sys/types.h>
 #include <unicode/locid.h>
 #include <unicode/uchar.h>
 #include <unicode/unistr.h>
-#include <sys/types.h>
+#include <wchar.h>
+#include <codecvt>
+#include <iomanip>
+#include <locale>
 
 #include "win-utils.h"
 
-#include <windows.h>
-#include <string.h>
-#include <malloc.h>
-#include <crtdbg.h>
-#include <atlstr.h>
 #include <VersionHelpers.h>
+#include <atlstr.h>
+#include <crtdbg.h>
+#include <malloc.h>
+#include <string.h>
+#include <windows.h>
 
-#include "Logger/Logger.h"
-#include "Basics/files.h"
-#include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
-#include "Basics/directories.h"
 #include "Basics/Common.h"
+#include "Basics/StringUtils.h"
+#include "Basics/directories.h"
+#include "Basics/files.h"
+#include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb::basics;
 
@@ -79,12 +79,11 @@ int getpagesize(void) {
 // This is not of much use since no values can be returned. All we can do
 // for now is to ignore error and hope it goes away!
 ////////////////////////////////////////////////////////////////////////////////
-static void InvalidParameterHandler(
-    const wchar_t* expression,  // expression sent to function - NULL
-    const wchar_t* function,    // name of function - NULL
-    const wchar_t* file,        // file where code resides - NULL
-    unsigned int line,          // line within file - NULL
-    uintptr_t pReserved) {      // in case microsoft forget something
+static void InvalidParameterHandler(const wchar_t* expression,  // expression sent to function - NULL
+                                    const wchar_t* function,  // name of function - NULL
+                                    const wchar_t* file,  // file where code resides - NULL
+                                    unsigned int line,  // line within file - NULL
+                                    uintptr_t pReserved) {  // in case microsoft forget something
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::string exp;
@@ -103,21 +102,16 @@ static void InvalidParameterHandler(
   TRI_GetBacktrace(bt);
 #endif
 
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) <<
-    "Invalid handle parameter passed"
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      << "Invalid handle parameter passed"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-                                          <<
-    " Expression: " << exp <<
-    " Function: " << func <<
-    " File: " << fileName <<
-    " Line: " << std::to_string(line) <<
-    " Backtrace: " << bt
+      << " Expression: " << exp << " Function: " << func << " File: " << fileName
+      << " Line: " << std::to_string(line) << " Backtrace: " << bt
 #endif
-  ;
+      ;
 }
 
-int initializeWindows(const TRI_win_initialize_e initializeWhat,
-                      char const* data) {
+int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* data) {
   // ............................................................................
   // The data is used to transport information from the calling function to here
   // it may be NULL (and will be in most cases)
@@ -125,19 +119,17 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
 
   switch (initializeWhat) {
     case TRI_WIN_INITIAL_SET_DEBUG_FLAG: {
-      _CrtSetDbgFlag(_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF) |
-                     _CRTDBG_CHECK_ALWAYS_DF);
+      _CrtSetDbgFlag(_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF) | _CRTDBG_CHECK_ALWAYS_DF);
       return 0;
     }
 
-    // ...........................................................................
-    // Assign a handler for invalid handles
-    // ...........................................................................
+      // ...........................................................................
+      // Assign a handler for invalid handles
+      // ...........................................................................
 
     case TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER: {
       newInvalidHandleHandler = InvalidParameterHandler;
-      oldInvalidHandleHandler =
-          _set_invalid_parameter_handler(newInvalidHandleHandler);
+      oldInvalidHandleHandler = _set_invalid_parameter_handler(newInvalidHandleHandler);
       return 0;
     }
 
@@ -157,14 +149,16 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
       errorCode = WSAStartup(wVersionRequested, &wsaData);
 
       if (errorCode != 0) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not find a usable Winsock DLL. WSAStartup returned "
-                    "an error.";
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+            << "Could not find a usable Winsock DLL. WSAStartup returned "
+               "an error.";
         return -1;
       }
 
       if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not find a usable Winsock DLL. WSAStartup did not "
-                    "return version 2.2.";
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+            << "Could not find a usable Winsock DLL. WSAStartup did not "
+               "return version 2.2.";
         WSACleanup();
         return -1;
       }
@@ -172,7 +166,8 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
     }
 
     default: {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Invalid windows initialization called";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "Invalid windows initialization called";
       return -1;
     }
   }
@@ -186,13 +181,9 @@ int TRI_createFile(char const* filename, int openFlags, int modeFlags) {
   UnicodeString fn(filename);
 
   fileHandle =
-    CreateFileW(fn.getTerminatedBuffer(),
-                GENERIC_READ | GENERIC_WRITE,
-                FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-                NULL,
-                (openFlags & O_APPEND) ? OPEN_ALWAYS : CREATE_NEW,
-                0,
-                NULL);
+      CreateFileW(fn.getTerminatedBuffer(), GENERIC_READ | GENERIC_WRITE,
+                  FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                  (openFlags & O_APPEND) ? OPEN_ALWAYS : CREATE_NEW, 0, NULL);
 
   if (fileHandle == INVALID_HANDLE_VALUE) {
     return -1;
@@ -236,29 +227,24 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
   }
 
   UnicodeString fn(filename);
-  fileHandle = CreateFileW(fn.getTerminatedBuffer(),
-                           mode,
-                           FILE_SHARE_DELETE |
-                           FILE_SHARE_READ |
-                           FILE_SHARE_WRITE,
-      NULL, OPEN_EXISTING, 0, NULL);
+  fileHandle = CreateFileW(fn.getTerminatedBuffer(), mode,
+                           FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                           NULL, OPEN_EXISTING, 0, NULL);
 
   if (fileHandle == INVALID_HANDLE_VALUE) {
     return -1;
   }
 
-  fileDescriptor = _open_osfhandle((intptr_t)(fileHandle),
-                                   (openFlags & O_ACCMODE) | _O_BINARY);
+  fileDescriptor =
+      _open_osfhandle((intptr_t)(fileHandle), (openFlags & O_ACCMODE) | _O_BINARY);
   return fileDescriptor;
 }
-
 
 FILE* TRI_FOPEN(char const* filename, char const* mode) {
   UnicodeString fn(filename);
   UnicodeString umod(mode);
   return _wfopen(fn.getTerminatedBuffer(), umod.getTerminatedBuffer());
 }
-
 
 int TRI_CHDIR(char const* dirname) {
   UnicodeString dn(dirname);
@@ -267,11 +253,11 @@ int TRI_CHDIR(char const* dirname) {
 
 int TRI_STAT(char const* path, TRI_stat_t* buffer) {
   UnicodeString p(path);
-  auto rc =  ::_wstat64(p.getTerminatedBuffer(), buffer);
+  auto rc = ::_wstat64(p.getTerminatedBuffer(), buffer);
   return rc;
 }
 
-char *TRI_GETCWD(char* buffer, int maxlen){
+char* TRI_GETCWD(char* buffer, int maxlen) {
   char* rc = nullptr;
   wchar_t* rcw;
   int wBufLen = maxlen;
@@ -509,27 +495,14 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   DWORD len = _snprintf(buf, sizeof(buf) - 1, "%s", message.c_str());
   buf[sizeof(buf) - 1] = '\0';
 
-  UnicodeString ubufs[]{
-    UnicodeString(buf, len),
-      UnicodeString(file),
-      UnicodeString(func),
-      UnicodeString(linebuf)
-      };
-  LPCWSTR buffers[] = {
-    ubufs[0].getTerminatedBuffer(),
-    ubufs[1].getTerminatedBuffer(),
-    ubufs[2].getTerminatedBuffer(),
-    ubufs[3].getTerminatedBuffer(),
-    nullptr
-  };
+  UnicodeString ubufs[]{UnicodeString(buf, len), UnicodeString(file),
+                        UnicodeString(func), UnicodeString(linebuf)};
+  LPCWSTR buffers[] = {ubufs[0].getTerminatedBuffer(),
+                       ubufs[1].getTerminatedBuffer(), ubufs[2].getTerminatedBuffer(),
+                       ubufs[3].getTerminatedBuffer(), nullptr};
   // Try to get messages through to windows syslog...
-  if (!ReportEventW(hEventLog,
-                    EVENTLOG_ERROR_TYPE,
-                    UI_CATEGORY,
-                    MSG_INVALID_COMMAND,
-                    NULL,
-                    4, 0,
-                    buffers, NULL)) {
+  if (!ReportEventW(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
+                    MSG_INVALID_COMMAND, NULL, 4, 0, buffers, NULL)) {
     // well, fail then...
   }
 }
@@ -547,27 +520,14 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   DWORD len = _vsnprintf(buf, sizeof(buf) - 1, fmt, ap);
   buf[sizeof(buf) - 1] = '\0';
 
-  UnicodeString ubufs[]{
-    UnicodeString(buf, len),
-      UnicodeString(file),
-      UnicodeString(func),
-      UnicodeString(linebuf)
-      };
-  LPCWSTR buffers[] = {
-    ubufs[0].getTerminatedBuffer(),
-    ubufs[1].getTerminatedBuffer(),
-    ubufs[2].getTerminatedBuffer(),
-    ubufs[3].getTerminatedBuffer(),
-    nullptr
-  };
+  UnicodeString ubufs[]{UnicodeString(buf, len), UnicodeString(file),
+                        UnicodeString(func), UnicodeString(linebuf)};
+  LPCWSTR buffers[] = {ubufs[0].getTerminatedBuffer(),
+                       ubufs[1].getTerminatedBuffer(), ubufs[2].getTerminatedBuffer(),
+                       ubufs[3].getTerminatedBuffer(), nullptr};
   // Try to get messages through to windows syslog...
-  if (!ReportEventW(hEventLog,
-                    EVENTLOG_ERROR_TYPE,
-                    UI_CATEGORY,
-                    MSG_INVALID_COMMAND,
-                    NULL,
-                    4, 0,
-                    buffers, NULL)) {
+  if (!ReportEventW(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
+                    MSG_INVALID_COMMAND, NULL, 4, 0, buffers, NULL)) {
     // well, fail then...
   }
 }
@@ -598,8 +558,7 @@ void ADB_WindowsEntryFunction() {
     _exit(EXIT_FAILURE);
   }
 
-  res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,
-                          (char const*)(&maxOpenFiles));
+  res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO, (char const*)(&maxOpenFiles));
 
   if (res != 0) {
     _exit(EXIT_FAILURE);
@@ -631,7 +590,7 @@ void ADB_WindowsExitFunction(int exitCode, void* data) {
 // Detect cygwin ssh / terminals
 int _cyg_isatty(int fd) {
   // detect standard windows ttys:
-  if (_isatty (fd)) {
+  if (_isatty(fd)) {
     return 1;
   }
 
@@ -646,36 +605,34 @@ int _cyg_isatty(int fd) {
 
   HANDLE fh;
 
-  char  buff[sizeof(FILE_NAME_INFO) + sizeof(WCHAR)*MAX_PATH];
-  FILE_NAME_INFO *FileInformation = (FILE_NAME_INFO*) buff;
+  char buff[sizeof(FILE_NAME_INFO) + sizeof(WCHAR) * MAX_PATH];
+  FILE_NAME_INFO* FileInformation = (FILE_NAME_INFO*)buff;
 
   /* get the HANDLE for the filedescriptor. */
-  fh = (HANDLE) _get_osfhandle (fd);
+  fh = (HANDLE)_get_osfhandle(fd);
   if (!fh || fh == INVALID_HANDLE_VALUE) {
     return 0;
   }
 
   /* Cygwin consoles are pipes. If its not, no reason to continue: */
-  if (GetFileType (fh) != FILE_TYPE_PIPE) {
+  if (GetFileType(fh) != FILE_TYPE_PIPE) {
     return 0;
   }
 
-  if (!GetFileInformationByHandleEx(fh, FileNameInfo,
-                                    FileInformation, sizeof(buff))) {
+  if (!GetFileInformationByHandleEx(fh, FileNameInfo, FileInformation, sizeof(buff))) {
     return 0;
   }
 
   // we expect something along the lines of: \cygwin-0eb90a57d5759b7b-pty3-to-master?? - if we find it its a tty.
-  PWCHAR cp = (PWCHAR) FileInformation->FileName;
-  if (!wcsncmp (cp, L"\\cygwin-", 8)
-      && !wcsncmp (cp + 24, L"-pty", 4)) {
-    cp = wcschr (cp + 28, '-');
+  PWCHAR cp = (PWCHAR)FileInformation->FileName;
+  if (!wcsncmp(cp, L"\\cygwin-", 8) && !wcsncmp(cp + 24, L"-pty", 4)) {
+    cp = wcschr(cp + 28, '-');
     if (!cp) {
       return 0;
     }
 
-    if (!wcsncmp (cp, L"-from-master", sizeof("-from-master") - 1) ||
-        !wcsncmp (cp, L"-to-master", sizeof("-to-master") -1)) {
+    if (!wcsncmp(cp, L"-from-master", sizeof("-from-master") - 1) ||
+        !wcsncmp(cp, L"-to-master", sizeof("-to-master") - 1)) {
       return 1;
     }
   }
@@ -684,45 +641,42 @@ int _cyg_isatty(int fd) {
 }
 
 // Detect cygwin ssh / terminals
-int _is_cyg_tty(int fd)
-{
+int _is_cyg_tty(int fd) {
   // detect standard windows ttys:
-  if (_isatty (fd)) {
+  if (_isatty(fd)) {
     return 0;
   }
 
   HANDLE fh;
 
-  char  buff[sizeof(FILE_NAME_INFO) + sizeof(WCHAR)*MAX_PATH];
-  FILE_NAME_INFO *FileInformation = (FILE_NAME_INFO*) buff;
+  char buff[sizeof(FILE_NAME_INFO) + sizeof(WCHAR) * MAX_PATH];
+  FILE_NAME_INFO* FileInformation = (FILE_NAME_INFO*)buff;
 
   /* get the HANDLE for the filedescriptor. */
-  fh = (HANDLE) _get_osfhandle (fd);
+  fh = (HANDLE)_get_osfhandle(fd);
   if (!fh || fh == INVALID_HANDLE_VALUE) {
     return 0;
   }
 
   /* Cygwin consoles are pipes. If its not, no reason to continue: */
-  if (GetFileType (fh) != FILE_TYPE_PIPE) {
+  if (GetFileType(fh) != FILE_TYPE_PIPE) {
     return 0;
   }
 
-  if (!GetFileInformationByHandleEx(fh, FileNameInfo,
-                                    FileInformation, sizeof(buff))) {
+  if (!GetFileInformationByHandleEx(fh, FileNameInfo, FileInformation, sizeof(buff))) {
     return 0;
   }
 
   // we expect something along the lines of: \cygwin-0eb90a57d5759b7b-pty3-to-master?? - if we find it its a tty.
-  PWCHAR cp = (PWCHAR) FileInformation->FileName;
-  if (!wcsncmp (cp, L"\\cygwin-", 8)
-      && !wcsncmp (cp + 24, L"-pty", 4)) {
-    cp = wcschr (cp + 28, '-');
+  PWCHAR cp = (PWCHAR)FileInformation->FileName;
+  if (!wcsncmp(cp, L"\\cygwin-", 8) && !wcsncmp(cp + 24, L"-pty", 4)) {
+    cp = wcschr(cp + 28, '-');
     if (!cp) {
       return 0;
     }
 
-    if (!wcsncmp (cp, L"-from-master", sizeof("-from-master") - 1) ||
-        !wcsncmp (cp, L"-to-master", sizeof("-to-master") -1)) {
+    if (!wcsncmp(cp, L"-from-master", sizeof("-from-master") - 1) ||
+        !wcsncmp(cp, L"-to-master", sizeof("-to-master") - 1)) {
       return 1;
     }
   }
@@ -731,7 +685,7 @@ int _is_cyg_tty(int fd)
 }
 
 bool terminalKnowsANSIColors() {
-  if (_is_cyg_tty (STDOUT_FILENO)) {
+  if (_is_cyg_tty(STDOUT_FILENO)) {
     // Its a cygwin shell, expected to understand ANSI color codes.
     return true;
   }
@@ -741,13 +695,10 @@ bool terminalKnowsANSIColors() {
 }
 
 std::string getFileNameFromHandle(HANDLE fileHandle) {
-  char  buff[sizeof(FILE_NAME_INFO) + sizeof(WCHAR)*MAX_PATH];
-  FILE_NAME_INFO *FileInformation = (FILE_NAME_INFO*) buff;
+  char buff[sizeof(FILE_NAME_INFO) + sizeof(WCHAR) * MAX_PATH];
+  FILE_NAME_INFO* FileInformation = (FILE_NAME_INFO*)buff;
 
-  if (!GetFileInformationByHandleEx(fileHandle,
-                                    FileNameInfo,
-                                    FileInformation, sizeof(buff)
-                                    )) {
+  if (!GetFileInformationByHandleEx(fileHandle, FileNameInfo, FileInformation, sizeof(buff))) {
     return std::string();
   }
   return std::string((LPCTSTR)CString(FileInformation->FileName));
@@ -775,6 +726,6 @@ void TRI_GET_ARGV_WIN(int& argc, char** argv) {
     argVec.push_back(uBuf);
 
     // Now overwrite our original argc entry with the utf8 one:
-    argv[i] = (char*) argVec[i].c_str();
+    argv[i] = (char*)argVec[i].c_str();
   }
 }

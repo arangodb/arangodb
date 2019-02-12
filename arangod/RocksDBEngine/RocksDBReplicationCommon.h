@@ -35,7 +35,9 @@ class RocksDBReplicationResult : public Result {
   RocksDBReplicationResult(int errorNumber, char const* errorMessage, uint64_t lastTick);
   uint64_t maxTick() const;
   uint64_t lastScannedTick() const { return _lastScannedTick; }
-  void lastScannedTick(uint64_t lastScannedTick) { _lastScannedTick = lastScannedTick; }
+  void lastScannedTick(uint64_t lastScannedTick) {
+    _lastScannedTick = lastScannedTick;
+  }
   bool minTickIncluded() const;
   void includeMinTick();
 

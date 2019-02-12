@@ -91,7 +91,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
   masterFunc2(state);
 
   // use lastLogTick as of now
-  state.lastLogTick = replication.logger.state().state.lastLogTick;
+  state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
 
   applierConfiguration = applierConfiguration || {};
   applierConfiguration.endpoint = masterEndpoint;
@@ -165,6 +165,84 @@ function BaseTestConfig () {
   'use strict';
 
   return {
+
+    testIncludeCollection: function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          db._drop(cn);
+          db._drop(cn + '2');
+        },
+
+        function (state) {
+          db._create(cn);
+          db._create(cn + '2');
+          for (var i = 0; i < 100; ++i) {
+            db._collection(cn).save({
+              value: i
+            });
+            db._collection(cn + '2').save({
+              value: i
+            });
+          }
+          internal.wal.flush(true, true);
+        },
+
+        function (state) {
+          return true;
+        },
+
+        function (state) {
+          assertTrue(db._collection(cn).count() === 100);
+          assertNull(db._collection(cn + '2'));
+        },
+
+        {
+          restrictType: 'include',
+          restrictCollections: [cn]
+        }
+      );
+    },
+
+    testExcludeCollection: function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          db._drop(cn);
+          db._drop(cn + '2');
+        },
+
+        function (state) {
+          db._create(cn);
+          db._create(cn + '2');
+          for (var i = 0; i < 100; ++i) {
+            db._collection(cn).save({
+              value: i
+            });
+            db._collection(cn + '2').save({
+              value: i
+            });
+          }
+          internal.wal.flush(true, true);
+        },
+
+        function (state) {
+          return true;
+        },
+
+        function (state) {
+          assertTrue(db._collection(cn).count() === 100);
+          assertNull(db._collection(cn + '2'));
+        },
+
+        {
+          restrictType: 'exclude',
+          restrictCollections: [cn + '2']
+        }
+      );
+    },
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test duplicate _key issue and replacement
@@ -640,7 +718,7 @@ function BaseTestConfig () {
             return 'wait';
           } catch (err) {
             // task does not exist. we're done
-            state.lastLogTick = replication.logger.state().state.lastLogTick;
+            state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
             state.checksum = collectionChecksum(cn);
             state.count = collectionCount(cn);
             assertEqual(20, state.count);
@@ -726,7 +804,7 @@ function BaseTestConfig () {
             return 'wait';
           } catch (err) {
             // task does not exist anymore. we're done
-            state.lastLogTick = replication.logger.state().state.lastLogTick;
+            state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
             state.checksum = collectionChecksum(cn);
             state.count = collectionCount(cn);
             assertEqual(20, state.count);
@@ -1290,7 +1368,7 @@ function ReplicationOtherDBSuite () {
       // Flush wal to trigger replication
       internal.wal.flush(true, true);
 
-      const lastLogTick = replication.logger.state().state.lastLogTick;
+      const lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
 
       // Section - Slave
       connectToSlave();
@@ -1330,7 +1408,7 @@ function ReplicationOtherDBSuite () {
       let dbs = db._databases();
       assertEqual(-1, dbs.indexOf(dbName));
       
-      const lastLogTick = replication.logger.state().state.lastLogTick;
+      const lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
 
       // Section - Slave
       connectToSlave();

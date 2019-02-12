@@ -82,19 +82,16 @@ bool ListenTask::start() {
 
     if (ec) {
       if (ec == asio_ns::error::operation_aborted) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: "
-                                                 << ec.message();
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
         return;
       }
 
       ++_acceptFailures;
 
       if (_acceptFailures < MAX_ACCEPT_ERRORS) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: "
-                                                 << ec.message();
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
       } else if (_acceptFailures == MAX_ACCEPT_ERRORS) {
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: "
-                                                 << ec.message();
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
         LOG_TOPIC(WARN, arangodb::Logger::FIXME)
             << "too many accept failures, stopping to report";
       }

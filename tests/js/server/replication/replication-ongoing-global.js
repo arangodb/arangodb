@@ -91,7 +91,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
     password: '',
     verbose: true,
     includeSystem: false,
-    keepBarrier: false,
+    keepBarrier: true,
     restrictType: applierConfiguration.restrictType,
     restrictCollections: applierConfiguration.restrictCollections
   });
@@ -102,7 +102,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
   masterFunc2(state);
 
   // use lastLogTick as of now
-  state.lastLogTick = replication.logger.state().state.lastLogTick;
+  state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
 
   if (!applierConfiguration.hasOwnProperty('chunkSize')) {
     applierConfiguration.chunkSize = 16384;
@@ -111,7 +111,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
   connectToSlave();
 
   replication.globalApplier.properties(applierConfiguration);
-  replication.globalApplier.start(syncResult.lastLogTick);
+  replication.globalApplier.start(syncResult.lastLogTick, syncResult.barrierId);
 
   var printed = false;
   var handled = false;
@@ -173,6 +173,8 @@ function BaseTestConfig () {
 
       compare(
         function (state) {
+          db._drop(cn);
+          db._drop(cn + '2');
         },
 
         function (state) {
@@ -210,6 +212,8 @@ function BaseTestConfig () {
 
       compare(
         function (state) {
+          db._drop(cn);
+          db._drop(cn + '2');
         },
 
         function (state) {
@@ -497,10 +501,6 @@ function BaseTestConfig () {
 
         function (state) {
           const c = db._collection(cn);
-          let x = 10;
-          while (c.count() > 0 && x-- > 0) {
-            internal.sleep(1);
-          }
           assertEqual(c.count(), 0);
           assertEqual(c.all().toArray().length, 0);
         }
@@ -640,7 +640,7 @@ function BaseTestConfig () {
             return 'wait';
           } catch (err) {
             // task does not exist. we're done
-            state.lastLogTick = replication.logger.state().state.lastLogTick;
+            state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
             state.checksum = collectionChecksum(cn);
             state.count = collectionCount(cn);
             assertEqual(20, state.count);
@@ -726,7 +726,7 @@ function BaseTestConfig () {
             return 'wait';
           } catch (err) {
             // task does not exist anymore. we're done
-            state.lastLogTick = replication.logger.state().state.lastLogTick;
+            state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
             state.checksum = collectionChecksum(cn);
             state.count = collectionCount(cn);
             assertEqual(20, state.count);
@@ -1243,7 +1243,7 @@ function ReplicationOtherDBSuite () {
       const cn2 = cn + 'Test';
       db._create(cn2);
 
-      let lastLogTick = replication.logger.state().state.lastLogTick;
+      let lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
 
       // Section - Follower
       connectToSlave();

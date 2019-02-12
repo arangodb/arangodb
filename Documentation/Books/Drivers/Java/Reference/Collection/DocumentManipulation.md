@@ -6,9 +6,7 @@ These functions implement the
 
 ## ArangoCollection.documentExists
 
-```
-ArangoCollection.documentExists(String key) : Boolean
-```
+`ArangoCollection.documentExists(String key) : Boolean`
 
 Checks if the document exists by reading a single document head
 
@@ -30,9 +28,7 @@ Boolean exists = collection.documentExists("some-key");
 
 ## ArangoCollection.getDocument
 
-```
-ArangoCollection.getDocument(String key, Class<T> type, DocumentReadOptions options) : T
-```
+`ArangoCollection.getDocument(String key, Class<T> type, DocumentReadOptions options) : T`
 
 Retrieves the document with the given \_key from the collection.
 
@@ -44,7 +40,7 @@ Retrieves the document with the given \_key from the collection.
 
 - **type**: `Class<T>`
 
-  The type of the document (POJO class, `VPackSlice` or `String` for Json)
+  The type of the document (POJO class, `VPackSlice` or `String` for JSON)
 
 - **options**: `DocumentReadOptions`
 
@@ -72,9 +68,7 @@ BaseDocument document = collection.getDocument("some-key", BaseDocument.class);
 
 ## ArangoCollection.getDocuments
 
-```
-ArangoCollection.getDocuments(Collection<String> keys, Class<T> type) : MultiDocumentEntity<T>
-```
+`ArangoCollection.getDocuments(Collection<String> keys, Class<T> type) : MultiDocumentEntity<T>`
 
 Retrieves multiple documents with the given \_key from the collection.
 
@@ -86,7 +80,7 @@ Retrieves multiple documents with the given \_key from the collection.
 
 - **type**: `Class<T>`
 
-  The type of the document (POJO class, `VPackSlice` or `String` for Json)
+  The type of the document (POJO class, `VPackSlice` or `String` for JSON)
 
 **Examples**
 
@@ -101,17 +95,17 @@ MultiDocumentEntity<BaseDocument> documents = collection.getDocuments(keys, Base
 
 ## ArangoCollection.insertDocument
 
-```
-ArangoCollection.insertDocument(T value, DocumentCreateOptions options) : DocumentCreateEntity<T>
-```
+`ArangoCollection.insertDocument(T value, DocumentCreateOptions options) : DocumentCreateEntity<T>`
 
-Creates a new document from the given document, unless there is already a document with the \_key given. If no \_key is given, a new unique \_key is generated automatically.
+Creates a new document from the given document, unless there is already a
+document with the \_key given. If no \_key is given, a new unique \_key is
+generated automatically.
 
 **Arguments**
 
 - **value**: `T`
 
-  A representation of a single document (POJO, `VPackSlice` or `String` for Json)
+  A representation of a single document (POJO, `VPackSlice` or `String` for JSON)
 
 - **options**: `DocumentCreateOptions`
 
@@ -125,15 +119,22 @@ Creates a new document from the given document, unless there is already a docume
 
   - **returnOld**: `Boolean`
 
-    Additionally return the complete old document under the attribute old in the result. Only available if the _overwrite_ option is used.
+    This options requires ArangoDB version 3.4.0 or higher. Additionally return
+    the complete old document under the attribute old in the result.
+    Only available if the _overwrite_ option is used.
 
   - **overwrite**: `Boolean`
 
-    If set to true, the insert becomes a replace-insert. If a document with the same \_key already exists the new document is not rejected with unique constraint violated but will replace the old document.
+    This options requires ArangoDB version 3.4.0 or higher. If set to true, the
+    insert becomes a replace-insert. If a document with the same \_key already
+    exists the new document is not rejected with unique constraint violated but
+    will replace the old document.
 
   - **silent**: `Boolean`
 
-    If set to true, an empty object will be returned as response. No meta-data will be returned for the created document. This option can be used to save some network traffic.
+    If set to true, an empty object will be returned as response. No meta-data
+    will be returned for the created document. This option can be used to save
+    some network traffic.
 
 **Examples**
 
@@ -149,17 +150,17 @@ collection.insertDocument(document, new DocumentCreateOptions());
 
 ## ArangoCollection.insertDocuments
 
-```
-ArangoCollection.insertDocuments(Collection<T> values, DocumentCreateOptions options) : MultiDocumentEntity<DocumentCreateEntity<T>>
-```
+`ArangoCollection.insertDocuments(Collection<T> values, DocumentCreateOptions options) : MultiDocumentEntity<DocumentCreateEntity<T>>`
 
-Creates new documents from the given documents, unless there is already a document with the \_key given. If no \_key is given, a new unique \_key is generated automatically.
+Creates new documents from the given documents, unless there is already a
+document with the \_key given. If no \_key is given, a new unique \_key is
+generated automatically.
 
 **Arguments**
 
 - **values**: `Collection<T>`
 
-  A List of documents (POJO, `VPackSlice` or `String` for Json)
+  A List of documents (POJO, `VPackSlice` or `String` for JSON)
 
 - **options**: `DocumentCreateOptions`
 
@@ -173,15 +174,22 @@ Creates new documents from the given documents, unless there is already a docume
 
   - **returnOld**: `Boolean`
 
-    Additionally return the complete old document under the attribute old in the result. Only available if the _overwrite_ option is used.
+    This options requires ArangoDB version 3.4.0 or higher. Additionally return
+    the complete old document under the attribute old in the result.
+    Only available if the _overwrite_ option is used.
 
   - **overwrite**: `Boolean`
 
-    If set to true, the insert becomes a replace-insert. If a document with the same \_key already exists the new document is not rejected with unique constraint violated but will replace the old document.
+    This options requires ArangoDB version 3.4.0 or higher. If set to true, the
+    insert becomes a replace-insert. If a document with the same \_key already
+    exists the new document is not rejected with unique constraint violated but
+    will replace the old document.
 
   - **silent**: `Boolean`
 
-    If set to true, an empty object will be returned as response. No meta-data will be returned for the created document. This option can be used to save some network traffic.
+    If set to true, an empty object will be returned as response. No meta-data
+    will be returned for the created document. This option can be used to save
+    some network traffic.
 
 **Examples**
 
@@ -193,16 +201,18 @@ ArangoCollection collection = db.collection("some-collection");
 BaseDocument doc1 = new BaseDocument();
 BaseDocument doc2 = new BaseDocument();
 BaseDocument doc3 = new BaseDocument();
-collection.insertDocuments(Arrays.asList(doc1, doc2, doc3), new DocumentCreateOptions());
+collection.insertDocuments(
+  Arrays.asList(doc1, doc2, doc3),
+  new DocumentCreateOptions()
+);
 ```
 
 ## ArangoCollection.replaceDocument
 
-```
-ArangoCollection.replaceDocument(String key, T value, DocumentReplaceOptions options) : DocumentUpdateEntity<T>
-```
+`ArangoCollection.replaceDocument(String key, T value, DocumentReplaceOptions options) : DocumentUpdateEntity<T>`
 
-Replaces the document with _key_ with the one in the body, provided there is such a document and no precondition is violated.
+Replaces the document with _key_ with the one in the body, provided there is
+such a document and no precondition is violated.
 
 **Arguments**
 
@@ -212,7 +222,7 @@ Replaces the document with _key_ with the one in the body, provided there is suc
 
 - **value**: `T`
 
-  A representation of a single document (POJO, `VPackSlice` or `String` for Json)
+  A representation of a single document (POJO, `VPackSlice` or `String` for JSON)
 
 - **options**: `DocumentReplaceOptions`
 
@@ -222,7 +232,10 @@ Replaces the document with _key_ with the one in the body, provided there is suc
 
   - **ignoreRevs**: `Boolean`
 
-    By default, or if this is set to true, the \_rev attributes in the given document is ignored. If this is set to false, then the \_rev attribute given in the body document is taken as a precondition. The document is only replaced if the current revision is the one specified.
+    By default, or if this is set to true, the \_rev attributes in the given
+    document is ignored. If this is set to false, then the \_rev attribute
+    given in the body document is taken as a precondition. The document is
+    only replaced if the current revision is the one specified.
 
   - **ifMatch**: `String`
 
@@ -234,11 +247,13 @@ Replaces the document with _key_ with the one in the body, provided there is suc
 
   - **returnOld**: `Boolean`
 
-    Additionally return the complete old document under the attribute old in the result. Only available if the _overwrite_ option is used.
+    Additionally return the complete old document under the attribute old in the result. 
 
   - **silent**: `Boolean`
 
-    If set to true, an empty object will be returned as response. No meta-data will be returned for the created document. This option can be used to save some network traffic.
+    If set to true, an empty object will be returned as response. No meta-data
+    will be returned for the created document. This option can be used to save
+    some network traffic.
 
 **Examples**
 
@@ -260,17 +275,17 @@ assertThat(doc.getAttribute("hello"), is("world2"));
 
 ## ArangoCollection.replaceDocuments
 
-```
-ArangoCollection.replaceDocuments(Collection<T> values, DocumentReplaceOptions options) : MultiDocumentEntity<DocumentUpdateEntity<T>>
-```
+`ArangoCollection.replaceDocuments(Collection<T> values, DocumentReplaceOptions options) : MultiDocumentEntity<DocumentUpdateEntity<T>>`
 
-Replaces multiple documents in the specified collection with the ones in the values, the replaced documents are specified by the \_key attributes in the documents in values.
+Replaces multiple documents in the specified collection with the ones in the
+values, the replaced documents are specified by the \_key attributes in the
+documents in values.
 
 **Arguments**
 
 - **values**: `Collection<T>`
 
-  A List of documents (POJO, `VPackSlice` or `String` for Json)
+  A List of documents (POJO, `VPackSlice` or `String` for JSON)
 
 - **options**: `DocumentReplaceOptions`
 
@@ -280,7 +295,10 @@ Replaces multiple documents in the specified collection with the ones in the val
 
   - **ignoreRevs**: `Boolean`
 
-    By default, or if this is set to true, the \_rev attributes in the given document is ignored. If this is set to false, then the \_rev attribute given in the body document is taken as a precondition. The document is only replaced if the current revision is the one specified.
+    By default, or if this is set to true, the \_rev attributes in the given
+    document is ignored. If this is set to false, then the \_rev attribute
+    given in the body document is taken as a precondition. The document is
+    only replaced if the current revision is the one specified.
 
   - **ifMatch**: `String`
 
@@ -292,11 +310,13 @@ Replaces multiple documents in the specified collection with the ones in the val
 
   - **returnOld**: `Boolean`
 
-    Additionally return the complete old document under the attribute old in the result. Only available if the _overwrite_ option is used.
+    Additionally return the complete old document under the attribute old in the result.
 
   - **silent**: `Boolean`
 
-    If set to true, an empty object will be returned as response. No meta-data will be returned for the created document. This option can be used to save some network traffic.
+    If set to true, an empty object will be returned as response. No meta-data
+    will be returned for the created document. This option can be used to save
+    some network traffic.
 
 **Examples**
 
@@ -312,16 +332,18 @@ collection.insertDocuments(Arrays.asList(doc1, doc2, doc3));
 
 // change values of doc1, doc2, doc3
 
-collection.replaceDocuments(Arrays.asList(doc1, doc2, doc3), new DocumentReplaceOptions());
+collection.replaceDocuments(
+  Arrays.asList(doc1, doc2, doc3),
+  new DocumentReplaceOptions()
+);
 ```
 
 ## ArangoCollection.updateDocument
 
-```
-ArangoCollection.updateDocument(String key, T value, DocumentUpdateOptions options) : DocumentUpdateEntity<T>
-```
+`ArangoCollection.updateDocument(String key, T value, DocumentUpdateOptions options) : DocumentUpdateEntity<T>`
 
-Updates the document with _key_ with the one in the body, provided there is such a document and no precondition is violated.
+Updates the document with _key_ with the one in the body, provided there is
+such a document and no precondition is violated.
 
 **Arguments**
 
@@ -331,7 +353,7 @@ Updates the document with _key_ with the one in the body, provided there is such
 
 - **value**: `T`
 
-  A representation of a single document (POJO, `VPackSlice` or `String` for Json)
+  A representation of a single document (POJO, `VPackSlice` or `String` for JSON)
 
 - **options**: `DocumentUpdateOptions`
 
@@ -341,7 +363,10 @@ Updates the document with _key_ with the one in the body, provided there is such
 
   - **ignoreRevs**: `Boolean`
 
-    By default, or if this is set to true, the \_rev attributes in the given document is ignored. If this is set to false, then the \_rev attribute given in the body document is taken as a precondition. The document is only replaced if the current revision is the one specified.
+    By default, or if this is set to true, the \_rev attributes in the given
+    document is ignored. If this is set to false, then the \_rev attribute
+    given in the body document is taken as a precondition. The document is
+    only replaced if the current revision is the one specified.
 
   - **ifMatch**: `String`
 
@@ -353,11 +378,13 @@ Updates the document with _key_ with the one in the body, provided there is such
 
   - **returnOld**: `Boolean`
 
-    Additionally return the complete old document under the attribute old in the result. Only available if the _overwrite_ option is used.
+    Additionally return the complete old document under the attribute old in the result.
 
   - **silent**: `Boolean`
 
-    If set to true, an empty object will be returned as response. No meta-data will be returned for the created document. This option can be used to save some network traffic.
+    If set to true, an empty object will be returned as response. No meta-data
+    will be returned for the created document. This option can be used to save
+    some network traffic.
 
 **Examples**
 
@@ -379,17 +406,17 @@ assertThat(doc.getAttribute("hello"), is("world2"));
 
 ## ArangoCollection.updateDocuments
 
-```
-ArangoCollection.updateDocuments(Collection<T> values, DocumentUpdateOptions options) : MultiDocumentEntity<DocumentUpdateEntity<T>>
-```
+`ArangoCollection.updateDocuments(Collection<T> values, DocumentUpdateOptions options) : MultiDocumentEntity<DocumentUpdateEntity<T>>`
 
-Updates multiple documents in the specified collection with the ones in the values, the replaced documents are specified by the \_key attributes in the documents in values.
+Updates multiple documents in the specified collection with the ones in the
+values, the replaced documents are specified by the \_key attributes in the
+documents in values.
 
 **Arguments**
 
 - **values**: `Collection<T>`
 
-  A List of documents (POJO, `VPackSlice` or `String` for Json)
+  A List of documents (POJO, `VPackSlice` or `String` for JSON)
 
 - **options**: `DocumentUpdateOptions`
 
@@ -399,7 +426,10 @@ Updates multiple documents in the specified collection with the ones in the valu
 
   - **ignoreRevs**: `Boolean`
 
-    By default, or if this is set to true, the \_rev attributes in the given document is ignored. If this is set to false, then the \_rev attribute given in the body document is taken as a precondition. The document is only replaced if the current revision is the one specified.
+    By default, or if this is set to true, the \_rev attributes in the given
+    document is ignored. If this is set to false, then the \_rev attribute
+    given in the body document is taken as a precondition. The document is
+    only replaced if the current revision is the one specified.
 
   - **ifMatch**: `String`
 
@@ -411,11 +441,13 @@ Updates multiple documents in the specified collection with the ones in the valu
 
   - **returnOld**: `Boolean`
 
-    Additionally return the complete old document under the attribute old in the result. Only available if the _overwrite_ option is used.
+    Additionally return the complete old document under the attribute old in the result.
 
   - **silent**: `Boolean`
 
-    If set to true, an empty object will be returned as response. No meta-data will be returned for the created document. This option can be used to save some network traffic.
+    If set to true, an empty object will be returned as response. No meta-data
+    will be returned for the created document. This option can be used to save
+    some network traffic.
 
 **Examples**
 
@@ -431,14 +463,15 @@ collection.insertDocuments(Arrays.asList(doc1, doc2, doc3));
 
 // change values of doc1, doc2, doc3
 
-collection.updateDocuments(Arrays.asList(doc1, doc2, doc3), new DocumentUpdateOptions());
+collection.updateDocuments(
+  Arrays.asList(doc1, doc2, doc3),
+  new DocumentUpdateOptions()
+);
 ```
 
 ## ArangoCollection.deleteDocument
 
-```
-ArangoCollection.deleteDocument(String key) : DocumentDeleteEntity<Void>
-```
+`ArangoCollection.deleteDocument(String key) : DocumentDeleteEntity<Void>`
 
 Deletes the document with the given _key_ from the collection.
 
@@ -467,9 +500,7 @@ assertThat(exists, is(false));
 
 ## ArangoCollection.deleteDocuments
 
-```
-ArangoCollection.deleteDocuments(Collection<?> values) : MultiDocumentEntity<DocumentDeleteEntity<Void>>
-```
+`ArangoCollection.deleteDocuments(Collection<?> values) : MultiDocumentEntity<DocumentDeleteEntity<Void>>`
 
 Deletes multiple documents from the collection.
 

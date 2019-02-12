@@ -501,9 +501,17 @@ function MovingShardsSuite ({useData}) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSetup : function () {
-      dbservers = getDBServers();
-      assertTrue(waitForSynchronousReplication("_system"));
-      checkCollectionContents();
+      for (var count = 0; count < 120; ++count) {
+        dbservers = getDBServers();
+        if (dbservers.length === 5) {
+          assertTrue(waitForSynchronousReplication("_system"));
+          checkCollectionContents();
+          return;
+        }
+        console.log("Waiting for 5 dbservers to be present:", JSON.stringify(dbservers));
+        wait(1.0);
+      }
+      assertTrue(false, "Timeout waiting for 5 dbservers.");
     },
 
 ////////////////////////////////////////////////////////////////////////////////

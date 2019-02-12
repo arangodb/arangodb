@@ -82,9 +82,9 @@ class MMFilesCollectorThread final : public Thread {
 
  private:
   /// @brief process a single marker in collector step 2
-  void processCollectionMarker(
-      arangodb::SingleCollectionTransaction&,
-      arangodb::LogicalCollection*, MMFilesCollectorCache*, MMFilesCollectorOperation const&);
+  void processCollectionMarker(arangodb::SingleCollectionTransaction&,
+                               arangodb::LogicalCollection*, MMFilesCollectorCache*,
+                               MMFilesCollectorOperation const&);
 
   /// @brief return the number of queued operations
   size_t numQueuedOperations();
@@ -113,8 +113,8 @@ class MMFilesCollectorThread final : public Thread {
 
   void broadcastCollectorResult(int res);
 
-  /// @brief clean up empty elements from the queue, and make the queue available
-  /// for others again
+  /// @brief clean up empty elements from the queue, and make the queue
+  /// available for others again
   void cleanupQueue();
 
  private:
@@ -132,8 +132,7 @@ class MMFilesCollectorThread final : public Thread {
   arangodb::Mutex _operationsQueueLock;
 
   /// @brief operations to collect later
-  std::unordered_map<TRI_voc_cid_t, std::vector<MMFilesCollectorCache*>>
-      _operationsQueue;
+  std::unordered_map<TRI_voc_cid_t, std::vector<MMFilesCollectorCache*>> _operationsQueue;
 
   /// @brief whether or not the queue is currently in use
   bool _operationsQueueInUse;
@@ -151,6 +150,6 @@ class MMFilesCollectorThread final : public Thread {
   static uint64_t const Interval;
 };
 
-}
+}  // namespace arangodb
 
 #endif

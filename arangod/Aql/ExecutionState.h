@@ -55,6 +55,6 @@ inline std::ostream& operator<<(std::ostream& ostream, ExecutionState state) {
   return ostream;
 }
 
-} // aql
-} // arangodb
+}  // namespace aql
+}  // namespace arangodb
 #endif

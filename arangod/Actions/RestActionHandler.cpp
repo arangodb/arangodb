@@ -34,12 +34,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestActionHandler::RestActionHandler(GeneralRequest* request,
-                                     GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response),
-      _action(nullptr),
-      _dataLock(),
-      _data(nullptr) {
+RestActionHandler::RestActionHandler(GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(request, response), _action(nullptr), _dataLock(), _data(nullptr) {
   _action = TRI_LookupActionVocBase(request);
 }
 
@@ -97,9 +93,8 @@ bool RestActionHandler::cancel() {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_action_result_t RestActionHandler::executeAction() {
-  TRI_action_result_t result = _action->execute(
-    &_vocbase, _request.get(), _response.get(), &_dataLock, &_data
-  );
+  TRI_action_result_t result =
+      _action->execute(&_vocbase, _request.get(), _response.get(), &_dataLock, &_data);
 
   if (!result.isValid) {
     if (result.canceled) {

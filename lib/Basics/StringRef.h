@@ -42,46 +42,47 @@ class StringRef {
   constexpr StringRef() : _data(""), _length(0) {}
 
   /// @brief create a StringRef from an std::string
-  explicit StringRef(std::string const& str) : _data(str.c_str()), _length(str.size()) {}
-  
+  explicit StringRef(std::string const& str)
+      : _data(str.c_str()), _length(str.size()) {}
+
   /// @brief create a StringRef from a null-terminated C string
   explicit StringRef(char const* data) : _data(data), _length(strlen(data)) {}
-  
+
   /// @brief create a StringRef from a VPack slice (must be of type String)
   explicit StringRef(arangodb::velocypack::Slice const& slice) : StringRef() {
     arangodb::velocypack::ValueLength l;
     _data = slice.getString(l);
     _length = l;
   }
-  
+
   /// @brief create a StringRef from a C string plus length
   StringRef(char const* data, size_t length) : _data(data), _length(length) {}
-  
+
   /// @brief create a StringRef from another StringRef
-  StringRef(StringRef const& other) 
+  StringRef(StringRef const& other)
       : _data(other._data), _length(other._length) {}
-  
+
   /// @brief create a StringRef from another StringRef
   StringRef& operator=(StringRef const& other) {
     _data = other._data;
     _length = other._length;
     return *this;
   }
-  
+
   /// @brief create a StringRef from an std::string
   StringRef& operator=(std::string const& other) {
     _data = other.c_str();
     _length = other.size();
     return *this;
   }
-  
+
   /// @brief create a StringRef from a null-terminated C string
   StringRef& operator=(char const* other) {
     _data = other;
     _length = strlen(other);
     return *this;
   }
-  
+
   /// @brief create a StringRef from a VPack slice of type String
   StringRef& operator=(arangodb::velocypack::Slice const& slice) {
     arangodb::velocypack::ValueLength l;
@@ -91,7 +92,8 @@ class StringRef {
   }
 
   size_t find(char c) const {
-    char const* p = static_cast<char const*>(memchr(static_cast<void const*>(_data), c, _length));
+    char const* p =
+        static_cast<char const*>(memchr(static_cast<void const*>(_data), c, _length));
 
     if (p == nullptr) {
       return std::string::npos;
@@ -99,7 +101,7 @@ class StringRef {
 
     return (p - _data);
   }
-  
+
   StringRef substr(size_t pos = 0, size_t count = std::string::npos) const {
     if (pos >= _length) {
       throw std::out_of_range("substr index out of bounds");
@@ -117,7 +119,7 @@ class StringRef {
     }
     return static_cast<int>(_length) - static_cast<int>(other.size());
   }
-  
+
   int compare(StringRef const& other) const {
     int res = memcmp(_data, other._data, (std::min)(_length, other._length));
     if (res != 0) {
@@ -126,55 +128,39 @@ class StringRef {
     return static_cast<int>(_length) - static_cast<int>(other._length);
   }
 
-  inline std::string toString() const {
-    return std::string(_data, _length);
-  }
+  inline std::string toString() const { return std::string(_data, _length); }
 
-  inline bool empty() const {
-    return (_length == 0);
-  }
-  
-  char at(size_t index) const { 
+  inline bool empty() const { return (_length == 0); }
+
+  char at(size_t index) const {
     if (index >= _length) {
       throw std::out_of_range("StringRef index out of bounds");
     }
     return operator[](index);
   }
 
-  inline char const* begin() const {
-    return _data;
-  }
-  
-  inline char const* end() const {
-    return _data + _length;
-  }
+  inline char const* begin() const { return _data; }
+
+  inline char const* end() const { return _data + _length; }
 
   inline char front() const { return _data[0]; }
 
   inline char back() const { return _data[_length - 1]; }
-  
-  inline char operator[](size_t index) const noexcept { 
-    return _data[index];
-  }
-  
-  inline char const* data() const noexcept {
-    return _data;
-  }
 
-  inline size_t size() const noexcept {
-    return _length;
-  }
+  inline char operator[](size_t index) const noexcept { return _data[index]; }
 
-  inline size_t length() const noexcept {
-    return _length;
-  }
+  inline char const* data() const noexcept { return _data; }
+
+  inline size_t size() const noexcept { return _length; }
+
+  inline size_t length() const noexcept { return _length; }
 
  private:
   char const* _data;
   size_t _length;
 };
 
-}
+}  // namespace arangodb
 
 std::ostream& operator<<(std::ostream&, arangodb::StringRef const&);
 
@@ -216,20 +202,17 @@ namespace std {
 template <>
 struct hash<arangodb::StringRef> {
   size_t operator()(arangodb::StringRef const& value) const noexcept {
-    return XXH64(value.data(), value.size(), 0xdeadbeef); 
+    return XXH64(value.data(), value.size(), 0xdeadbeef);
   }
 };
 
 template <>
 struct equal_to<arangodb::StringRef> {
-  bool operator()(arangodb::StringRef const& lhs,
-                  arangodb::StringRef const& rhs) const noexcept {
-    return (lhs.size() == rhs.size() &&
-            (memcmp(lhs.data(), rhs.data(), lhs.size()) == 0));
+  bool operator()(arangodb::StringRef const& lhs, arangodb::StringRef const& rhs) const noexcept {
+    return (lhs.size() == rhs.size() && (memcmp(lhs.data(), rhs.data(), lhs.size()) == 0));
   }
 };
 
-}
-
+}  // namespace std
 
 #endif

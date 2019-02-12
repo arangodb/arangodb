@@ -22,13 +22,13 @@
 
 #include "MaxMapCountFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/process-utils.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "Basics/process-utils.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -41,8 +41,8 @@ using namespace arangodb::options;
 
 namespace {
 
-static bool checkMaxMappings = arangodb::MaxMapCountFeature::needsChecking(); 
-static uint64_t maxMappings = UINT64_MAX; 
+static bool checkMaxMappings = arangodb::MaxMapCountFeature::needsChecking();
+static uint64_t maxMappings = UINT64_MAX;
 static std::string mapsFilename;
 
 static StringBuffer fileBuffer(8192, false);
@@ -54,16 +54,14 @@ static double lastStamp = 0.0;
 static bool lastValue = false;
 static bool checkInFlight = false;
 
-static constexpr double cacheLifetime = 7.5; 
+static constexpr double cacheLifetime = 7.5;
 
 static double lastLogStamp = 0.0;
 static constexpr double logFrequency = 10.0;
 
-}
+}  // namespace
 
-MaxMapCountFeature::MaxMapCountFeature(
-    application_features::ApplicationServer& server
-)
+MaxMapCountFeature::MaxMapCountFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "MaxMapCount") {
   setOptional(false);
   startsAfter("GreetingsPhase");
@@ -85,15 +83,19 @@ MaxMapCountFeature::~MaxMapCountFeature() {
   checkInFlight = false;
   lastLogStamp = 0.0;
 }
-  
+
 void MaxMapCountFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("server", "Server Options");
-  
+
   if (needsChecking()) {
-    options->addHiddenOption("--server.check-max-memory-mappings, mappings", "check the maximum number of memory mappings at runtime",
-                             new BooleanParameter(&checkMaxMappings));
+    options->addOption("--server.check-max-memory-mappings, mappings",
+                       "check the maximum number of memory mappings at runtime",
+                       new BooleanParameter(&checkMaxMappings),
+                       arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
   } else {
-    options->addObsoleteOption("--server.check-max-memory-mappings", "check the maximum number of memory mappings at runtime", true);
+    options->addObsoleteOption(
+        "--server.check-max-memory-mappings",
+        "check the maximum number of memory mappings at runtime", true);
   }
 }
 
@@ -115,17 +117,17 @@ void MaxMapCountFeature::prepare() {
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::MEMORY) << "using process maps filename '" << mapsFilename << "'";
+  LOG_TOPIC(DEBUG, Logger::MEMORY)
+      << "using process maps filename '" << mapsFilename << "'";
 
   // in case we cannot determine the number of max_map_count, we will
-  // assume an effectively unlimited number of mappings 
+  // assume an effectively unlimited number of mappings
   TRI_ASSERT(maxMappings == UINT64_MAX);
 
 #ifdef __linux__
   // test max_map_count value in /proc/sys/vm
   try {
-    std::string value =
-        basics::FileUtils::slurp("/proc/sys/vm/max_map_count");
+    std::string value = basics::FileUtils::slurp("/proc/sys/vm/max_map_count");
 
     maxMappings = basics::StringUtils::uint64(value);
   } catch (...) {
@@ -134,17 +136,17 @@ void MaxMapCountFeature::prepare() {
 #endif
 }
 
-uint64_t MaxMapCountFeature::actualMaxMappings() { return maxMappings; } 
-  
+uint64_t MaxMapCountFeature::actualMaxMappings() { return maxMappings; }
+
 uint64_t MaxMapCountFeature::minimumExpectedMaxMappings() {
   TRI_ASSERT(needsChecking());
 
-  uint64_t expected = 65530; // kernel default
+  uint64_t expected = 65530;  // kernel default
 
   uint64_t nproc = TRI_numberProcessors();
 
-  // we expect at most 8 times the number of cores as the effective number of threads,
-  // and we want to allow at least 8000 mmaps per thread
+  // we expect at most 8 times the number of cores as the effective number of
+  // threads, and we want to allow at least 8000 mmaps per thread
   if (nproc * 8 * 8000 > expected) {
     expected = nproc * 8 * 8000;
   }
@@ -173,8 +175,8 @@ bool MaxMapCountFeature::isNearMaxMappings() {
   // check current maps count without holding the mutex
   double cacheTime;
   bool const value = isNearMaxMappingsInternal(cacheTime);
- 
-  { 
+
+  {
     // update cache
     MUTEX_LOCKER(locker, mutex);
     lastValue = value;
@@ -189,7 +191,7 @@ bool MaxMapCountFeature::isNearMaxMappingsInternal(double& suggestedCacheTime) n
   try {
     // recycle the same buffer for reading the maps file
     basics::FileUtils::slurp(mapsFilename, fileBuffer);
-    
+
     size_t const nmaps = std::count(fileBuffer.begin(), fileBuffer.end(), '\n');
     if (nmaps + 1024 < maxMappings) {
       if (nmaps > maxMappings * 0.90) {
@@ -210,13 +212,14 @@ bool MaxMapCountFeature::isNearMaxMappingsInternal(double& suggestedCacheTime) n
     if (lastLogStamp + logFrequency < now) {
       // do not log too often to avoid log spamming
       lastLogStamp = now;
-      LOG_TOPIC(ERR, Logger::MEMORY) << "process is near the maximum number of memory mappings. current: " << nmaps << ", maximum: " << maxMappings 
-                                     << ". it may be sensible to increase the maximum number of mappings per process";
+      LOG_TOPIC(ERR, Logger::MEMORY)
+          << "process is near the maximum number of memory mappings. current: " << nmaps
+          << ", maximum: " << maxMappings << ". it may be sensible to increase the maximum number of mappings per process";
     }
     return true;
   } catch (...) {
     // something went wrong. don't cache for too long
     suggestedCacheTime = 0.001;
     return false;
-  } 
+  }
 }

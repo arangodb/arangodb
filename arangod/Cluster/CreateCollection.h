@@ -34,17 +34,17 @@ namespace arangodb {
 namespace maintenance {
 
 class CreateCollection : public ActionBase {
-
-public:
-
+ public:
   CreateCollection(MaintenanceFeature&, ActionDescription const& d);
 
   virtual ~CreateCollection();
 
   virtual bool first() override final;
 
+  virtual void setState(ActionState state) override final;
 };
 
-}}
+}  // namespace maintenance
+}  // namespace arangodb
 
 #endif

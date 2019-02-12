@@ -50,11 +50,9 @@ static inline MMFilesLogfileManager* GetMMFilesLogfileManager() {
 }
 
 /// @brief transaction type
-MMFilesTransactionState::MMFilesTransactionState(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_tid_t tid,
-    transaction::Options const& options
-): TransactionState(vocbase, tid, options),
+MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+                                                 transaction::Options const& options)
+    : TransactionState(vocbase, tid, options),
       _rocksTransaction(nullptr),
       _beginWritten(false),
       _hasOperations(false) {}
@@ -68,14 +66,15 @@ MMFilesTransactionState::~MMFilesTransactionState() {
 rocksdb::Transaction* MMFilesTransactionState::rocksTransaction() {
   if (_rocksTransaction == nullptr) {
     _rocksTransaction = MMFilesPersistentIndexFeature::instance()->db()->BeginTransaction(
-      rocksdb::WriteOptions(), rocksdb::OptimisticTransactionOptions());
+        rocksdb::WriteOptions(), rocksdb::OptimisticTransactionOptions());
   }
   return _rocksTransaction;
 }
 
 /// @brief start a transaction
 Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
-  LOG_TRX(this, _nestingLevel) << "beginning " << AccessMode::typeString(_type) << " transaction";
+  LOG_TRX(this, _nestingLevel)
+      << "beginning " << AccessMode::typeString(_type) << " transaction";
   Result result;
 
   if (_nestingLevel == 0) {
@@ -84,12 +83,10 @@ Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
     auto logfileManager = MMFilesLogfileManager::instance();
 
     if (!hasHint(transaction::Hints::Hint::NO_THROTTLING) &&
-        AccessMode::isWriteOrExclusive(_type) &&
-        logfileManager->canBeThrottled()) {
+        AccessMode::isWriteOrExclusive(_type) && logfileManager->canBeThrottled()) {
       // write-throttling?
       static uint64_t const WaitTime = 50000;
-      uint64_t const maxIterations =
-          logfileManager->maxThrottleWait() / (WaitTime / 1000);
+      uint64_t const maxIterations = logfileManager->maxThrottleWait() / (WaitTime / 1000);
       uint64_t iterations = 0;
 
       while (logfileManager->isThrottled()) {
@@ -140,7 +137,8 @@ Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
 
 /// @brief commit a transaction
 Result MMFilesTransactionState::commitTransaction(transaction::Methods* activeTrx) {
-  LOG_TRX(this, _nestingLevel) << "committing " << AccessMode::typeString(_type) << " transaction";
+  LOG_TRX(this, _nestingLevel)
+      << "committing " << AccessMode::typeString(_type) << " transaction";
   TRI_ASSERT(_status == transaction::Status::RUNNING);
 
   Result result;
@@ -169,10 +167,8 @@ Result MMFilesTransactionState::commitTransaction(transaction::Methods* activeTr
     updateStatus(transaction::Status::COMMITTED);
 
     // if a write query, clear the query cache for the participating collections
-    if (AccessMode::isWriteOrExclusive(_type) &&
-        !_collections.empty() &&
-        !isSingleOperation() &&
-        arangodb::aql::QueryCache::instance()->mayBeActive()) {
+    if (AccessMode::isWriteOrExclusive(_type) && !_collections.empty() &&
+        !isSingleOperation() && arangodb::aql::QueryCache::instance()->mayBeActive()) {
       clearQueryCache();
     }
 
@@ -216,8 +212,7 @@ Result MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx
 int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
                                           TRI_voc_rid_t revisionId,
                                           MMFilesDocumentOperation& operation,
-                                          MMFilesWalMarker const* marker,
-                                          bool& waitForSync) {
+                                          MMFilesWalMarker const* marker, bool& waitForSync) {
   LogicalCollection* collection = operation.collection();
   bool const isSingleOperationTransaction = isSingleOperation();
 
@@ -261,23 +256,18 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
     bool const localWaitForSync = (isSingleOperationTransaction && waitForSync);
 
     // never wait until our marker was synced, even when an operation was tagged
-    // waitForSync=true. this is still safe because inside a transaction, the final
-    // commit marker will be written with waitForSync=true then, and in a standalone
-    // operation the transaction will wait until everything was synced before returning
-    // to the caller
+    // waitForSync=true. this is still safe because inside a transaction, the
+    // final commit marker will be written with waitForSync=true then, and in a
+    // standalone operation the transaction will wait until everything was
+    // synced before returning to the caller
     bool const waitForTick = false;
 
     // we should wake up the synchronizer in case this is a single operation
     bool const wakeUpSynchronizer = isSingleOperationTransaction;
 
     auto slotInfo = MMFilesLogfileManager::instance()->allocateAndWrite(
-      _vocbase.id(),
-      collection->id(),
-      marker,
-      wakeUpSynchronizer,
-      localWaitForSync,
-      waitForTick
-    );
+        _vocbase.id(), collection->id(), marker, wakeUpSynchronizer,
+        localWaitForSync, waitForTick);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       // some error occurred
@@ -309,10 +299,11 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
       operation.type() == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
       operation.type() == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
     // adjust the data position in the header
-    uint8_t const* vpack = reinterpret_cast<uint8_t const*>(position) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
+    uint8_t const* vpack = reinterpret_cast<uint8_t const*>(position) +
+                           MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
     TRI_ASSERT(fid > 0);
     operation.setVPack(vpack);
-    physical->updateLocalDocumentId(documentId, vpack, fid, true); // always in WAL
+    physical->updateLocalDocumentId(documentId, vpack, fid, true);  // always in WAL
   }
 
   TRI_IF_FAILURE("TransactionOperationAfterAdjust") { return TRI_ERROR_DEBUG; }
@@ -332,7 +323,7 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
   } else {
     // operation is buffered and might be rolled back
     TransactionCollection* trxCollection =
-      this->collection(collection->id(), AccessMode::Type::WRITE);
+        this->collection(collection->id(), AccessMode::Type::WRITE);
     std::unique_ptr<MMFilesDocumentOperation> copy(operation.clone());
 
     TRI_IF_FAILURE("TransactionOperationPushBack") {
@@ -351,7 +342,7 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
     operation.swapped();
     _hasOperations = true;
   }
-  
+
   auto queryCache = arangodb::aql::QueryCache::instance();
   if (queryCache->mayBeActive()) {
     queryCache->invalidate(&_vocbase, collection->name());
@@ -392,9 +383,8 @@ int MMFilesTransactionState::writeBeginMarker() {
   int res;
 
   try {
-    MMFilesTransactionMarker marker(
-      TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION, _vocbase.id(), _id
-    );
+    MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION,
+                                    _vocbase.id(), _id);
 
     res = GetMMFilesLogfileManager()->allocateAndWrite(marker, false).errorCode;
 
@@ -441,9 +431,8 @@ int MMFilesTransactionState::writeAbortMarker() {
   int res;
 
   try {
-    MMFilesTransactionMarker marker(
-      TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, _vocbase.id(), _id
-    );
+    MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_ABORT_TRANSACTION,
+                                    _vocbase.id(), _id);
 
     res = GetMMFilesLogfileManager()->allocateAndWrite(marker, false).errorCode;
 
@@ -484,17 +473,20 @@ int MMFilesTransactionState::writeCommitMarker() {
   int res;
 
   try {
-    MMFilesTransactionMarker marker(
-      TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION, _vocbase.id(), _id
-    );
+    MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION,
+                                    _vocbase.id(), _id);
 
-    res = GetMMFilesLogfileManager()->allocateAndWrite(marker, _options.waitForSync).errorCode;
+    res = GetMMFilesLogfileManager()
+              ->allocateAndWrite(marker, _options.waitForSync)
+              .errorCode;
 
     TRI_IF_FAILURE("TransactionWriteCommitMarkerSegfault") {
       TRI_SegfaultDebugging("crashing on commit");
     }
 
-    TRI_IF_FAILURE("TransactionWriteCommitMarkerNoRocksSync") { return TRI_ERROR_NO_ERROR; }
+    TRI_IF_FAILURE("TransactionWriteCommitMarkerNoRocksSync") {
+      return TRI_ERROR_NO_ERROR;
+    }
 
     if (_options.waitForSync) {
       // also sync RocksDB WAL if required
@@ -504,7 +496,8 @@ int MMFilesTransactionState::writeCommitMarker() {
         auto c = static_cast<MMFilesTransactionCollection*>(collection);
 
         if (c->canAccess(AccessMode::Type::WRITE) &&
-            c->collection()->getPhysical()->hasIndexOfType(arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX)) {
+            c->collection()->getPhysical()->hasIndexOfType(
+                arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX)) {
           hasPersistentIndex = true;
           // abort iteration
           return false;

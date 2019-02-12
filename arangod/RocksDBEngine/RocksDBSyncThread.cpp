@@ -95,7 +95,9 @@ void RocksDBSyncThread::run() {
   TRI_ASSERT(_engine != nullptr);
   auto db = _engine->db()->GetBaseDB();
 
-  LOG_TOPIC(TRACE, Logger::ENGINES) << "starting RocksDB sync thread with interval " << _interval.count() << " milliseconds";
+  LOG_TOPIC(TRACE, Logger::ENGINES)
+      << "starting RocksDB sync thread with interval " << _interval.count()
+      << " milliseconds";
 
   while (!isStopping()) {
     try {
@@ -109,7 +111,8 @@ void RocksDBSyncThread::run() {
         auto const previousLastSyncTime = _lastSyncTime;
         auto const end = _lastSyncTime + _interval;
         if (end > now) {
-          guard.wait(std::chrono::microseconds(std::chrono::duration_cast<std::chrono::microseconds>(end - now)));
+          guard.wait(std::chrono::microseconds(
+              std::chrono::duration_cast<std::chrono::microseconds>(end - now)));
         }
 
         if (_lastSyncTime > previousLastSyncTime) {
@@ -133,12 +136,15 @@ void RocksDBSyncThread::run() {
       Result res = sync(db);
 
       if (res.fail()) {
-        LOG_TOPIC(WARN, Logger::ENGINES) << "could not sync RocksDB WAL: " << res.errorMessage();
+        LOG_TOPIC(WARN, Logger::ENGINES)
+            << "could not sync RocksDB WAL: " << res.errorMessage();
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::ENGINES) << "caught exception in RocksDBSyncThread: " << ex.what();
+      LOG_TOPIC(ERR, Logger::ENGINES)
+          << "caught exception in RocksDBSyncThread: " << ex.what();
     } catch (...) {
-      LOG_TOPIC(ERR, Logger::ENGINES) << "caught unknown exception in RocksDBSyncThread";
+      LOG_TOPIC(ERR, Logger::ENGINES)
+          << "caught unknown exception in RocksDBSyncThread";
     }
   }
 }
