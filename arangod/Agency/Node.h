@@ -87,12 +87,6 @@ class Node {
   /// @brief Construct with name
   explicit Node(std::string const& name);
 
-  /// @brief Construct with node name and value
-  Node(std::string const& name, Buffer<uint8_t> const& vecBuf);
-
-  /// @brief Construct with node name and value
-  Node(std::string const& name, Buffer<uint8_t>&& vecBuf);
-
   /// @brief Copy constructor
   Node(Node const& other);
 

@@ -77,14 +77,6 @@ inline static std::vector<std::string> split(const std::string& str, char separa
 Node::Node(std::string const& name)
     : _nodeName(name), _parent(nullptr), _store(nullptr), _vecBufDirty(true), _isArray(false) {}
 
-/// @brief Construct with node name and value
-Node::Node(std::string const& name, Buffer<uint8_t> const& vecBuf)
-  : _nodeName(name), _parent(nullptr), _store(nullptr), _vecBuf(vecBuf), _vecBufDirty(false), _isArray(false) {}
-
-/// @brief Construct with node name and value
-Node::Node(std::string const& name, Buffer<uint8_t>&& vecBuf)
-  : _nodeName(name), _parent(nullptr), _store(nullptr), _vecBuf(std::move(vecBuf)), _vecBufDirty(false), _isArray(false) {}
-
 /// @brief Construct with node name in tree structure
 Node::Node(std::string const& name, Node* parent)
     : _nodeName(name), _parent(parent), _store(nullptr), _vecBufDirty(true), _isArray(false) {}
@@ -852,21 +844,17 @@ std::vector<std::string> Node::exists(std::vector<std::string> const& rel) const
     if (cur->_isArray) {
       uint64_t nth = 0;
       
-    LOG_DEVEL << __FILE__ << __LINE__;
       try {
         nth = std::stoll(sub);
       } catch (...) {
         break;
       }
-    LOG_DEVEL << __FILE__ << __LINE__;
       if (nth >= cur->_value.size()) {
         break;
       }
 
-    LOG_DEVEL << __FILE__ << __LINE__;
       result.push_back(sub);
     }
-    LOG_DEVEL << __FILE__ << __LINE__;
 
     auto it = cur->children().find(sub);
     if (it != cur->children().end() &&

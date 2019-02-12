@@ -2328,6 +2328,65 @@ SECTION("trying to abort a finished should result in failure") {
   CHECK(result.errorNumber() == TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
 }
 
+SECTION("trying to abort a job, where target is already leader should result in failure") {
+  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&, std::string const&)> createTestStructure = [&](VPackSlice const& s, std::string const& path) {
+    std::unique_ptr<VPackBuilder> builder;
+    builder.reset(new VPackBuilder());
+    if (s.isObject()) {
+      builder->add(VPackValue(VPackValueType::Object));
+      for (auto const& it: VPackObjectIterator(s)) {
+        auto childBuilder = createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+
+      if (path == "/arango/Target/Finished") {
+        builder->add(jobId, createJob(COLLECTION, SHARD_FOLLOWER1, FREE_SERVER).slice());
+      } else if (path == "/arango/Supervision/DBServers") {
+        builder->add(FREE_SERVER, VPackValue("1"));
+      } else if (path == "/arango/Supervision/Shards") {
+        builder->add(SHARD, VPackValue("1"));
+      }
+      builder->close();
+    } else {
+      if (path == "/arango/Current/Collections/" + DATABASE + "/" + COLLECTION + "/" + SHARD + "/servers") {
+        builder->add(VPackValue(VPackValueType::Array));
+        builder->add(VPackValue(SHARD_LEADER));
+        builder->add(VPackValue(SHARD_FOLLOWER1));
+        builder->close();
+      } else if (path == "/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD) {
+        builder->add(VPackValue(VPackValueType::Array));
+        builder->add(VPackValue(SHARD_LEADER));
+        builder->add(VPackValue(SHARD_FOLLOWER1));
+        builder->add(VPackValue(FREE_SERVER));
+        builder->close();
+      } else {
+        builder->add(s);
+      }
+    }
+    return builder;
+  };
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, waitFor)).AlwaysReturn();
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+    return {false, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
+  });
+
+  AgentInterface& agent = mockAgent.get();
+
+  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  REQUIRE(builder);
+  Node agency = createAgencyFromBuilder(*builder);
+
+  INFO("Agency: " << agency);
+  auto moveShard = MoveShard(agency, &agent, FINISHED, jobId);
+  auto result = moveShard.abort();
+  CHECK_FALSE(result.ok());
+  CHECK(result.errorNumber() == TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
+}
+
 SECTION("if the job fails while trying to switch over leadership it should be aborted") {
   std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&, std::string const&)> createTestStructure = [&](VPackSlice const& s, std::string const& path) {
     std::unique_ptr<VPackBuilder> builder;
