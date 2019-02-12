@@ -46,7 +46,7 @@ namespace aql {
 class InputAqlItemRow;
 class ExecutorInfos;
 
-template<bool pass>
+template <bool pass>
 class SingleRowFetcher;
 
 class IndexExecutorInfos : public ExecutorInfos {
@@ -68,26 +68,6 @@ class IndexExecutorInfos : public ExecutorInfos {
   IndexExecutorInfos(IndexExecutorInfos&&) = default;
   IndexExecutorInfos(IndexExecutorInfos const&) = delete;
   ~IndexExecutorInfos() = default;
-
-  void resetCursor() {
-    _cursor->reset();
-  }
-
-  void resetCursor(size_t pos) {
-    _cursors[pos]->reset();
-  };
-
-  void resetCursor(size_t pos, OperationCursor* cursor) {
-    _cursors[pos].reset(cursor);
-  };
-
-  void setIndexesExhausted(bool flag) { _indexesExhausted = flag; };
-  void setDone(bool flag) { _done = flag; };
-  void setLastIndex(bool flag) { _isLastIndex = flag; };
-
-  // getter
-  bool getIndexesExhausted() { return _indexesExhausted; };
-  bool getDone() { return _done; };
 
   ExecutionEngine* getEngine() { return _engine; };
   Collection const* getCollection() { return _collection; };
@@ -114,7 +94,6 @@ class IndexExecutorInfos : public ExecutorInfos {
     return _nonConstExpression;
   };
   bool hasMultipleExpansions() { return _hasMultipleExpansions; };
-  bool isLastIndex() { return _isLastIndex; };
 
   /// @brief whether or not all indexes are accessed in reverse order
   IndexIteratorOptions getOptions() const { return _options; }
@@ -122,35 +101,17 @@ class IndexExecutorInfos : public ExecutorInfos {
 
   Ast* getAst() { return _ast; };
 
-  std::vector<Variable const*> const& getExpInVars() const { return _expInVars; };
+  std::vector<Variable const*> const& getExpInVars() const {
+    return _expInVars;
+  };
   std::vector<RegisterId> const& getExpInRegs() const { return _expInRegs; };
 
-  size_t getCurrentIndex() const noexcept { return _currentIndex; };
-
-  arangodb::OperationCursor* getCursor() { return _cursor; };
-  arangodb::OperationCursor* getCursor(size_t pos) {
-    return _cursors[pos].get();
-  };
-  std::vector<std::unique_ptr<OperationCursor>>& getCursors() {
-    return _cursors;
-  };
-  bool checkCursor (size_t pos) {
-    if (_cursors[pos] == nullptr) {
-      return false;
-    }
-    return true;
-  };
-
   // setter
-void setHasMultipleExpansions(bool flag) { _hasMultipleExpansions = flag; };
+  void setHasMultipleExpansions(bool flag) { _hasMultipleExpansions = flag; };
 
-  void setCurrentIndex(size_t pos) { _currentIndex = pos; };
-  void decrCurrentIndex() { _currentIndex--; };
-  void incrCurrentIndex() { _currentIndex++; };
-
-  void setAllowCoveringIndexOptimization(bool flag) { _allowCoveringIndexOptimization = flag; };
-
-  void setCursor(arangodb::OperationCursor* cursor) { _cursor = cursor; };
+  void setAllowCoveringIndexOptimization(bool flag) {
+    _allowCoveringIndexOptimization = flag;
+  };
 
  private:
   /// @brief _indexes holds all Indexes used in this block
@@ -178,31 +139,8 @@ void setHasMultipleExpansions(bool flag) { _hasMultipleExpansions = flag; };
   /// e.g. the index is on values[*].name and values[*].type
   bool _hasMultipleExpansions;
 
-  /// @brief Flag if the current index pointer is the last of the list.
-  ///        Used in uniqueness checks.
-  bool _isLastIndex;
-
   /// @brief the index sort order - this is the same order for all indexes
   IndexIteratorOptions _options;
-
-  /// @brief current position in _indexes
-  size_t _currentIndex;
-
-  /// @brief _cursor: holds the current index cursor found using
-  /// createCursor (if any) so that it can be read in chunks and not
-  /// necessarily all at once.
-  arangodb::OperationCursor* _cursor;
-
-  /// @brief Flag if all indexes are exhausted to be maintained accross several
-  /// getSome() calls
-  bool _indexesExhausted;
-
-  /// @brief if this is set, we are done, this is reset to false by execute()
-  bool _done;
-
-  /// @brief a vector of cursors for the index block. cursors can be
-  /// reused
-  std::vector<std::unique_ptr<OperationCursor>> _cursors;
 
   RegisterId _outputRegisterId;
   ExecutionEngine* _engine;
@@ -265,14 +203,41 @@ class IndexExecutor {
   /// @brief create an iterator object
   void createCursor();
 
-  /// @brief Forwards _cursor to the next available index
-  void startNextCursor();
-
   /// @brief continue fetching of documents
   bool readIndex(IndexIterator::DocumentCallback const&, bool& hasWritten);
 
+  /// @brief reset the cursor at given position
+  void resetCursor(size_t pos) { _cursors[pos]->reset(); };
+
+  /// @brief reset and initialize the cursor at given position
+  void resetCursor(size_t pos, OperationCursor* cursor) {
+    _cursors[pos].reset(cursor);
+  };
+
   /// @brief order a cursor for the index at the specified position
   OperationCursor* orderCursor(size_t currentIndex);
+
+  /// @brief set a new cursor
+  void setCursor(arangodb::OperationCursor* cursor) { _cursor = cursor; };
+
+  arangodb::OperationCursor* getCursor() { return _cursor; };
+  arangodb::OperationCursor* getCursor(size_t pos) {
+    return _cursors[pos].get();
+  };
+  std::vector<std::unique_ptr<OperationCursor>>& getCursors() {
+    return _cursors;
+  };
+
+  void setIndexesExhausted(bool flag) { _indexesExhausted = flag; };
+  bool getIndexesExhausted() { return _indexesExhausted; };
+
+  void setLastIndex(bool flag) { _isLastIndex = flag; };
+  bool isLastIndex() { return _isLastIndex; };
+
+  void setCurrentIndex(size_t pos) { _currentIndex = pos; };
+  void decrCurrentIndex() { _currentIndex--; };
+  void incrCurrentIndex() { _currentIndex++; };
+  size_t getCurrentIndex() const noexcept { return _currentIndex; };
 
  private:
   Infos& _infos;
@@ -280,13 +245,32 @@ class IndexExecutor {
   DocumentProducingFunction _documentProducer;
   ExecutionState _state;
   InputAqlItemRow _input;
-  bool _initDone = false;
+
+  /// @brief _cursor: holds the current index cursor found using
+  /// createCursor (if any) so that it can be read in chunks and not
+  /// necessarily all at once.
+  arangodb::OperationCursor* _cursor;
+
+  /// @brief a vector of cursors for the index block. cursors can be
+  /// reused
+  std::vector<std::unique_ptr<OperationCursor>> _cursors;
+
+  /// @brief current position in _indexes
+  size_t _currentIndex;
 
   /// @brief set of already returned documents. Used to make the result distinct
   std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
 
   /// @brief A managed document result to temporary hold one document
   std::unique_ptr<ManagedDocumentResult> _mmdr;
+
+  /// @brief Flag if all indexes are exhausted to be maintained accross several
+  /// getSome() calls
+  bool _indexesExhausted;
+
+  /// @brief Flag if the current index pointer is the last of the list.
+  ///        Used in uniqueness checks.
+  bool _isLastIndex;
 };
 
 }  // namespace aql
