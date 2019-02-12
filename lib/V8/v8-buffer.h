@@ -259,8 +259,8 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
   /// Buffer::New requires this
   //////////////////////////////////////////////////////////////////////////////
 
-  void replaceContent(v8::Isolate* isolate, char* data, size_t length,
-                      free_callback_fptr callback, void* hint);
+  void replace(v8::Isolate* isolate, char* data, size_t length,
+               free_callback_fptr callback, void* hint, bool deleteIt = false);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
