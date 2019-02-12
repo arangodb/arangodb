@@ -93,8 +93,10 @@ class RandomGenerator {
   static uint64_t interval(uint64_t);
 
  private:
-  static Mutex _lock;
-  static std::unique_ptr<RandomDevice> _device;
+  static void ensureDeviceIsInitialized();
+
+  static RandomType _type;
+  static thread_local std::unique_ptr<RandomDevice> _device;
 };
 }  // namespace arangodb
 
