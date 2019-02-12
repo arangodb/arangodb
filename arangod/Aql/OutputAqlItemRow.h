@@ -193,6 +193,17 @@ class OutputAqlItemRow {
     _baseIndex = index;
   }
 
+  // This function can be used to restore the row's invariant.
+  // After setting this value numRowsWritten() rather returns
+  // the number of written rows contained in the block than
+  // the number of written rows, that could potentially be more.
+  void setMaxBaseIndex(std::size_t index) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _setBaseIndexNotUsed = true;
+#endif
+    _baseIndex = index;
+  }
+
  private:
   AqlItemBlockShell& blockShell() { return *_blockShell; }
   AqlItemBlockShell const& blockShell() const { return *_blockShell; }
