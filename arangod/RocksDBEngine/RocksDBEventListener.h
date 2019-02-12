@@ -45,12 +45,12 @@ public:
 
   void signalLoop();
 
+  static bool shaCalcFile(std::string const & filename);
+
+  static bool deleteFile(std::string const & filename);
+
 protected:
   void run() override;
-
-  void shaCalcFile(std::string const & filename);
-
-  void deleteFile(std::string const & filename);
 
   struct actionNeeded_t {
     enum { CALC_SHA, DELETE } _action;

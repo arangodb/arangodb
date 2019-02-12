@@ -106,30 +106,38 @@ void RocksDBEventListenerThread::signalLoop() {
 } // RocksDBEventListenerThread::signalLoop
 
 
-void RocksDBEventListenerThread::shaCalcFile(std::string const & filename) {
+bool RocksDBEventListenerThread::shaCalcFile(std::string const & filename) {
   TRI_SHA256Functor sha;
-  bool good;
+  bool good={false};
 
-  good = TRI_ProcessFile(filename.c_str(), sha);
+  if (4<filename.size() && 0 == filename.substr(filename.size() - 4).compare(".sst")) {
+    good = TRI_ProcessFile(filename.c_str(), sha);
 
-  if (good && 4<filename.size() && filename.substr(filename.size() - 4).compare(".sst")) {
-    std::string newfile = filename.substr(0, filename.size() - 4);
-    newfile += ".sha.";
-    newfile += sha.final();
-    int ret_val = TRI_WriteFile(newfile.c_str(), "", 0);
-    if (TRI_ERROR_NO_ERROR != ret_val) {
-      /// log something
-    } // if
-  } else {
-    /// log something
-  } // else
+    if (good) {
+      std::string newfile = filename.substr(0, filename.size() - 4);
+      newfile += ".sha.";
+      newfile += sha.final();
+      int ret_val = TRI_WriteFile(newfile.c_str(), "", 0);
+      if (TRI_ERROR_NO_ERROR != ret_val) {
+        good = false;
+        LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+          << "shaCalcFile: TRI_WriteFile failed with " << ret_val
+          << " for " << newfile.c_str();
+      } // if
+    } else {
+      good = false;
+      LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+        << "shaCalcFile:  TRI_ProcessFile failed for " << filename.c_str();
+    } // else
+  } // if
 
-  return;
+  return good;
 
 } // RocksDBEventListenerThread::shaCalcFile
 
 
-void RocksDBEventListenerThread::deleteFile(std::string const & filename) {
+bool RocksDBEventListenerThread::deleteFile(std::string const & filename) {
+  bool good = {false};
   bool found = {false};
 
   // need filename without ".sst" for matching to ".sha." file
@@ -150,20 +158,23 @@ void RocksDBEventListenerThread::deleteFile(std::string const & filename) {
     for (auto iter = filelist.begin(); !found && filelist.end() != iter; ++iter) {
       // sha265 is 64 characters long.  ".sha." is added 5.  So 69 characters is minimum length
       if (69 < iter->size() && 0 == iter->substr(0, basename.size()).compare(basename)
-          && 0 == iter->substr(basename.size(), basename.size()+5).compare(".sha.")) {
+          && 0 == iter->substr(basename.size(), 5).compare(".sha.")) {
         found = true;
         std::string deletefile = dirname;
         deletefile += TRI_DIR_SEPARATOR_CHAR;
         deletefile += *iter;
-        bool flag = TRI_UnlinkFile(deletefile.c_str());
-        if (!flag) {
-          /// log something
+        int ret_val = TRI_UnlinkFile(deletefile.c_str());
+        good = (TRI_ERROR_NO_ERROR == ret_val);
+        if (!good) {
+          LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+            << "deleteCalcFile:  TRI_UnlinkFile failed with " << ret_val
+            << " for " << deletefile.c_str();
         } // if
       } // if
     } // for
   } // if
 
-  return;
+  return good;
 
 } // RocksDBEventListenerThread::shaCalcFile
 
@@ -212,7 +223,6 @@ void RocksDBEventListener::OnCompactionCompleted(rocksdb::DB* db,
 }  // RocksDBEventListener::OnCompactionCompleted
 
 
-//  LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES) << "ThreadLoop() ended";
 
 
 }  // namespace arangodb
