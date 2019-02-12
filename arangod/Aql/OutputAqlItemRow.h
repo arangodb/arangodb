@@ -164,6 +164,7 @@ class OutputAqlItemRow {
 
   /**
    * @brief Returns the number of rows that were fully written.
+   *        This is only true if the setBaseIndex function was not used.
    */
   size_t numRowsWritten() const noexcept {
     // If the current line was fully written, the number of fully written rows
