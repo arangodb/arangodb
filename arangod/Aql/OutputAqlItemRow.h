@@ -183,6 +183,9 @@ class OutputAqlItemRow {
     //   return lastWrittenIndex + 1;
   }
 
+  // Use this function with caution! We need it only for the ConstrainedSortExecutor
+  void setBaseIndex(std::size_t index) { _baseIndex = index; }
+
  private:
   AqlItemBlockShell& blockShell() { return *_blockShell; }
   AqlItemBlockShell const& blockShell() const { return *_blockShell; }

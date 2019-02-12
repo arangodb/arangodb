@@ -95,7 +95,7 @@ class ConstrainedSortExecutor {
   size_t _rowsPushed;
   std::shared_ptr<arangodb::aql::AqlItemBlockShell> _heapBuffer;
   std::unique_ptr<ConstrainedLessThan> _cmpHeap; //in pointer to avoid
-  OutputAqlItemRow _heapOutPutRow;
+  OutputAqlItemRow _heapOutputRow;
   bool _done;
 };
 }  // namespace aql
