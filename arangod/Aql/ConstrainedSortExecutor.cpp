@@ -169,7 +169,7 @@ ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorI
   TRI_ASSERT(_infos._limit > 0);
   _rows.reserve(infos._limit);
   _cmpHeap->setBuffers(&_heapBuffer->block(), &_heapBuffer->block());
-  LOG_DEVEL << "####################### CREATED EXECUTRO ################################";
+  LOG_DEVEL << "####################### CREATED EXECUTOR ################################";
 };
 
 ConstrainedSortExecutor::~ConstrainedSortExecutor() = default;
@@ -193,7 +193,6 @@ std::pair<ExecutionState, NoStats> ConstrainedSortExecutor::produceRow(OutputAql
   }
 
   TRI_ASSERT( state == ExecutionState::HASMORE && _outputPrepared);
-  std::sort(_rows.begin(), _rows.end(), *_cmpHeap);
 
   std::size_t heapRowPosition = _rows[_returnNext++];
   LOG_DEVEL << "heapRow: " << heapRowPosition
@@ -203,7 +202,7 @@ std::pair<ExecutionState, NoStats> ConstrainedSortExecutor::produceRow(OutputAql
             << " pushed " << _rowsPushed
               ;
 
-  if (_returnNext < _rows.size()) {
+  if (_returnNext >= _rows.size()) {
     LOG_DEVEL << "DONE";
     _done = true;
     return {ExecutionState::DONE, NoStats{}};
@@ -246,6 +245,7 @@ ExecutionState ConstrainedSortExecutor::doSorting() {
   if (state == ExecutionState::DONE) {
     _outputPrepared = true;  // we do not need to re-enter this function
     if (_rowsPushed){
+      std::sort(_rows.begin(), _rows.end(), *_cmpHeap);
       return ExecutionState::HASMORE;
     }
     return ExecutionState::DONE;
