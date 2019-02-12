@@ -179,7 +179,7 @@ Node::Node(Node const& other)
 /// 1. remove any existing time to live entry
 /// 2. clear children map
 /// 3. copy from rhs buffer to my buffer
-/// @brief Must not copy _parent, _ttl, _observers
+//::/ @brief Must not copy _parent, _ttl, _observers
 Node& Node::operator=(VPackSlice const& slice) {
   removeTimeToLive();
   _children.clear();
@@ -188,8 +188,10 @@ Node& Node::operator=(VPackSlice const& slice) {
   if (slice.isArray()) {
     _isArray = true;
     _array.resize(slice.length());
-    for (size_t i = 0; i < slice.length(); ++i) {
-      *(_array.at(i)) = slice[i];
+    size_t j = 0;
+    for (auto const& i : VPackArrayIterator(slice)) {
+      _array.at(j) = std::make_shared<Node>();
+      *(_array.at(j++)) = i;
     }
   } else {
     _isArray = false;
