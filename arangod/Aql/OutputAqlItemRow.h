@@ -140,8 +140,7 @@ class OutputAqlItemRow {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INPUT_REGISTERS_NOT_COPIED);
     }
 #endif
-    _lastBaseIndex = _baseIndex;
-    ++_baseIndex;
+    _lastBaseIndex = _baseIndex++;
     _inputRowCopied = false;
     _numValuesWritten = 0;
   }
@@ -164,9 +163,11 @@ class OutputAqlItemRow {
 
   /**
    * @brief Returns the number of rows that were fully written.
-   *        This is only true if the setBaseIndex function was not used.
    */
   size_t numRowsWritten() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_setBaseIndexNotUsed);
+#endif
     // If the current line was fully written, the number of fully written rows
     // is the index plus one.
     if (produced()) {
@@ -185,7 +186,12 @@ class OutputAqlItemRow {
   }
 
   // Use this function with caution! We need it only for the ConstrainedSortExecutor
-  void setBaseIndex(std::size_t index) { _baseIndex = index; }
+  void setBaseIndex(std::size_t index) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _setBaseIndexNotUsed = false;
+#endif
+    _baseIndex = index;
+  }
 
  private:
   AqlItemBlockShell& blockShell() { return *_blockShell; }
@@ -241,6 +247,10 @@ class OutputAqlItemRow {
 
   std::shared_ptr<std::unordered_set<RegisterId> const> _outputRegisters;
   std::shared_ptr<std::unordered_set<RegisterId> const> _registersToKeep;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool _setBaseIndexNotUsed;
+#endif
 
  private:
   size_t nextUnwrittenIndex() const noexcept { return numRowsWritten(); }

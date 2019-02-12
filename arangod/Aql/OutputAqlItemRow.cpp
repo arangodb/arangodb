@@ -48,7 +48,11 @@ OutputAqlItemRow::OutputAqlItemRow(std::shared_ptr<AqlItemBlockShell> blockShell
       _numValuesWritten(0),
       _doNotCopyInputRow(copyRowBehaviour == CopyRowBehaviour::DoNotCopyInputRows),
       _outputRegisters(std::move(outputRegisters)),
-      _registersToKeep(std::move(registersToKeep)) {
+      _registersToKeep(std::move(registersToKeep))
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      ,_setBaseIndexNotUsed(true)
+#endif
+{
   TRI_ASSERT(_blockShell != nullptr);
 }
 
