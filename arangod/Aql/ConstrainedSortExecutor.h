@@ -87,17 +87,12 @@ class ConstrainedSortExecutor {
 
  private:
   Infos& _infos;
-
   Fetcher& _fetcher;
   std::vector<size_t> _sortedIndexes;
-
   size_t _returnNext;
-
   bool _outputPrepared;
   std::vector<uint32_t> _rows;
   size_t _rowsPushed;
-
-  std::unordered_map<AqlValue, AqlValue> _cache;
   std::shared_ptr<arangodb::aql::AqlItemBlockShell> _heapBuffer;
   std::unique_ptr<ConstrainedLessThan> _cmpHeap; //in pointer to avoid
   OutputAqlItemRow _heapOutPutRow;
