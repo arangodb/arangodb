@@ -137,23 +137,6 @@
   #define MAX_ALIGN_T std::max_align_t
 #endif
 
-// GCC before v5 does not implicitly call the move constructor on local values
-// returned from functions, e.g. std::unique_ptr
-//
-// MSVC2013 doesn't support c++11 in a proper way
-// sometimes it can't choose move constructor for
-// move-only types while returning a value.
-// The following macro tries to avoid potential
-// performance problems on other compilers since
-// 'return std::move(x)' prevents such compiler
-// optimizations like 'copy elision'
-#if (defined(__GNUC__) && (__GNUC__ < 5)) \
-    || (defined(_MSC_VER) && _MSC_VER < 1900)
-  #define IMPLICIT_MOVE_WORKAROUND(x) std::move(x)
-#else
-  #define IMPLICIT_MOVE_WORKAROUND(x) x
-#endif
-
 // hook for GCC 8.1/8.2 optimized code
 // these versions produce incorrect code when inlining optimizations are enabled
 #if defined(__OPTIMIZE__) && defined(__GNUC__) \
@@ -175,7 +158,7 @@
         || ((_MSC_FULL_VER >= 191326128) && (_MSC_FULL_VER <= 191326132)) \
         || ((_MSC_FULL_VER >= 191426430) && (_MSC_FULL_VER <= 191426433)) \
         || ((_MSC_FULL_VER >= 191526726) && (_MSC_FULL_VER <= 191526732)) \
-        || ((_MSC_FULL_VER >= 191627023) && (_MSC_FULL_VER <= 191627023)))
+        || ((_MSC_FULL_VER >= 191627023) && (_MSC_FULL_VER <= 191627025)))
   #define MSVC2017_345678_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
 #else
   #define MSVC2017_345678_OPTIMIZED_WORKAROUND(...)

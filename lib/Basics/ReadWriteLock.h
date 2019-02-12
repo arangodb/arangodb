@@ -27,8 +27,8 @@
 
 #include "Basics/Common.h"
 
-#include <mutex>
 #include <condition_variable>
+#include <mutex>
 #include <thread>
 
 namespace arangodb {
@@ -48,7 +48,7 @@ namespace basics {
 ///      This is necessary to avoid starvation of writers by many readers.
 ///      The current implementation can starve readers, though.
 class ReadWriteLock {
-public:
+ public:
   ReadWriteLock() : _state(0) {}
 
   /// @brief locks for writing
@@ -72,8 +72,7 @@ public:
   /// @brief releases the write-lock
   void unlockWrite();
 
-private:
-
+ private:
   /// @brief mutex for _readers_bell cv
   std::mutex _reader_mutex;
 
@@ -86,8 +85,8 @@ private:
   /// @brief a condition variable to wake up one writer thread
   std::condition_variable _writers_bell;
 
-  /// @brief _state, lowest bit is write_lock, the next 15 bits is the number of queued writers,
-  /// the last 16 bits the number of active readers.  
+  /// @brief _state, lowest bit is write_lock, the next 15 bits is the number of
+  /// queued writers, the last 16 bits the number of active readers.
   std::atomic<uint32_t> _state;
 
   static constexpr uint32_t WRITE_LOCK = 1;
@@ -98,18 +97,20 @@ private:
   static constexpr uint32_t QUEUED_WRITER_INC = 1 << 1;
   static constexpr uint32_t QUEUED_WRITER_MASK = (READER_INC - 1) & ~WRITE_LOCK;
 
-  static_assert((READER_MASK & WRITE_LOCK) == 0, "READER_MASK and WRITE_LOCK conflict");
-  static_assert((READER_MASK & QUEUED_WRITER_MASK) == 0, "READER_MASK and QUEUED_WRITER_MASK conflict");
-  static_assert((QUEUED_WRITER_MASK & WRITE_LOCK) == 0, "QUEUED_WRITER_MASK and WRITE_LOCK conflict");
+  static_assert((READER_MASK & WRITE_LOCK) == 0,
+                "READER_MASK and WRITE_LOCK conflict");
+  static_assert((READER_MASK & QUEUED_WRITER_MASK) == 0,
+                "READER_MASK and QUEUED_WRITER_MASK conflict");
+  static_assert((QUEUED_WRITER_MASK & WRITE_LOCK) == 0,
+                "QUEUED_WRITER_MASK and WRITE_LOCK conflict");
 
-  static_assert((READER_MASK & READER_INC) != 0 &&
-                  (READER_MASK & (READER_INC >> 1)) == 0,
+  static_assert((READER_MASK & READER_INC) != 0 && (READER_MASK & (READER_INC >> 1)) == 0,
                 "READER_INC must be first bit in READER_MASK");
   static_assert((QUEUED_WRITER_MASK & QUEUED_WRITER_INC) != 0 &&
-                  (QUEUED_WRITER_MASK & (QUEUED_WRITER_INC >> 1)) == 0,
+                    (QUEUED_WRITER_MASK & (QUEUED_WRITER_INC >> 1)) == 0,
                 "QUEUED_WRITER_INC must be first bit in QUEUED_WRITER_MASK");
 };
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

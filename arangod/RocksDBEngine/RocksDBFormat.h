@@ -28,18 +28,18 @@
 #include "RocksDBEngine/RocksDBTypes.h"
 
 namespace arangodb {
-  
+
 namespace rocksutils {
-  
+
 /* function pointers to serialization implementation */
 extern uint16_t (*uint16FromPersistent)(char const* p);
 extern uint32_t (*uint32FromPersistent)(char const* p);
 extern uint64_t (*uint64FromPersistent)(char const* p);
-  
+
 extern void (*uint16ToPersistent)(std::string& p, uint16_t value);
 extern void (*uint32ToPersistent)(std::string& p, uint32_t value);
 extern void (*uint64ToPersistent)(std::string& p, uint64_t value);
-  
+
 /// Enable litte endian or big-endian key formats
 void setRocksDBKeyFormatEndianess(RocksDBEndianness);
 
@@ -54,8 +54,8 @@ inline double intToDouble(uint64_t i) {
   std::memcpy(&d, &i, sizeof(i));
   return d;
 }
-  
-template<typename T> 
+
+template <typename T>
 inline T uintFromPersistentLittleEndian(char const* p) {
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
   T value;
@@ -63,24 +63,24 @@ inline T uintFromPersistentLittleEndian(char const* p) {
   return basics::littleToHost<T>(value);
 }
 
-template<typename T>
+template <typename T>
 inline T uintFromPersistentBigEndian(char const* p) {
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
   T value;
   memcpy(&value, p, sizeof(T));
   return basics::bigToHost<T>(value);
 }
-  
-template<typename T>
+
+template <typename T>
 inline void uintToPersistentLittleEndian(std::string& p, T value) {
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
   value = basics::hostToLittle(value);
   p.append(reinterpret_cast<const char*>(&value), sizeof(T));
 }
 
-template<typename T>
+template <typename T>
 inline void uintToPersistentBigEndian(std::string& p, T value) {
-  //uintToPersistentLittleEndian<T>(p, basics::hostToBig(value));
+  // uintToPersistentLittleEndian<T>(p, basics::hostToBig(value));
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
   value = basics::hostToBig(value);
   p.append(reinterpret_cast<const char*>(&value), sizeof(T));

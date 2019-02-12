@@ -25,23 +25,21 @@
 #include "Aql/AstNode.h"
 
 using namespace arangodb::aql;
-  
+
 int64_t const Quantifier::NONE = 1;
-int64_t const Quantifier::ALL =  2;
-int64_t const Quantifier::ANY =  3;
- 
+int64_t const Quantifier::ALL = 2;
+int64_t const Quantifier::ANY = 3;
+
 /// @brief converts a quantifier string into an int equivalent
 int64_t Quantifier::FromString(std::string const& value) {
-  if (value == "all") {  
+  if (value == "all") {
     return ALL;
-  }
-  else if (value == "any") {  
+  } else if (value == "any") {
     return ANY;
-  }
-  else if (value == "none") {  
+  } else if (value == "none") {
     return NONE;
   }
-  
+
   return NONE;
 }
 
@@ -70,7 +68,8 @@ bool Quantifier::IsAllOrNone(AstNode const* quantifier) {
 }
 
 /// @brief determine the min/max number of matches for an array comparison
-std::pair<size_t, size_t> Quantifier::RequiredMatches(size_t inputSize, AstNode const* quantifier) {
+std::pair<size_t, size_t> Quantifier::RequiredMatches(size_t inputSize,
+                                                      AstNode const* quantifier) {
   TRI_ASSERT(quantifier != nullptr);
 
   if (quantifier->type == NODE_TYPE_QUANTIFIER) {
@@ -91,4 +90,3 @@ std::pair<size_t, size_t> Quantifier::RequiredMatches(size_t inputSize, AstNode 
   TRI_ASSERT(false);
   return std::make_pair(SIZE_MAX, SIZE_MAX);
 }
-

@@ -31,8 +31,8 @@ namespace meta {
 namespace details {
 
 template <typename E>
-using enable_enum_t = typename std::enable_if<
-    std::is_enum<E>::value, typename std::underlying_type<E>::type>::type;
+using enable_enum_t =
+    typename std::enable_if<std::is_enum<E>::value, typename std::underlying_type<E>::type>::type;
 }
 
 template <typename E>
@@ -41,19 +41,18 @@ constexpr details::enable_enum_t<E> underlyingValue(E e) noexcept {
 }
 
 template <typename E, typename T>
-constexpr typename std::enable_if<
-    std::is_enum<E>::value && std::is_integral<T>::value, E>::type
-toEnum(T value) noexcept {
+constexpr typename std::enable_if<std::is_enum<E>::value && std::is_integral<T>::value, E>::type toEnum(
+    T value) noexcept {
   return static_cast<E>(value);
 }
 
 template <typename E_OUT, typename E_IN>
-constexpr typename std::enable_if<
-    std::is_enum<E_IN>::value && std::is_enum<E_OUT>::value, E_OUT>::type
-enumToEnum(E_IN value) noexcept {
+constexpr
+    typename std::enable_if<std::is_enum<E_IN>::value && std::is_enum<E_OUT>::value, E_OUT>::type
+    enumToEnum(E_IN value) noexcept {
   return toEnum<E_OUT>(underlyingValue(value));
 }
-}
-}
+}  // namespace meta
+}  // namespace arangodb
 
 #endif

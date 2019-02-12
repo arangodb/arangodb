@@ -24,34 +24,57 @@
 #ifndef ARANGOD_AQL_SORT_BLOCK_H
 #define ARANGOD_AQL_SORT_BLOCK_H 1
 
-#include "Basics/Common.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/SortNode.h"
 #include "Aql/SortRegister.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
-
 class ExecutionEngine;
 
 class SortBlock final : public ExecutionBlock {
  public:
-  SortBlock(ExecutionEngine*, SortNode const*);
+  class Sorter {
+   public:
+    using Fetcher = std::function<std::pair<ExecutionState, bool>(size_t)>;
+    using Allocator = std::function<AqlItemBlock*(size_t, RegisterId)>;
+
+   public:
+    Sorter(arangodb::aql::SortBlock&, transaction::Methods*, std::deque<AqlItemBlock*>&,
+           std::vector<SortRegister>&, Fetcher&&, Allocator&&);
+    virtual ~Sorter();
+    virtual std::pair<ExecutionState, arangodb::Result> fetch() = 0;
+    virtual arangodb::Result sort() = 0;
+    virtual bool empty() const = 0;
+
+   protected:
+    SortBlock& _block;
+    transaction::Methods* _trx;
+    std::deque<AqlItemBlock*>& _buffer;
+    std::vector<SortRegister>& _sortRegisters;
+    Fetcher _fetch;
+    Allocator _allocate;
+  };
+
+ public:
+  SortBlock(ExecutionEngine*, SortNode const*, SortNode::SorterType type, size_t limit);
 
   ~SortBlock();
 
   /// @brief initializeCursor, could be called multiple times
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-  std::pair<ExecutionState, Result> getOrSkipSome(
-      size_t atMost, bool skipping, AqlItemBlock*&,
-      size_t& skipped) override final;
+  std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
+                                                  AqlItemBlock*&,
+                                                  size_t& skipped) override final;
 
-  /// @brief dosorting
+  bool stable() const;
+
  private:
-  void doSorting();
+  void initializeSorter();
 
   /// @brief pairs, consisting of variable and sort direction
   /// (true = ascending | false = descending)
@@ -60,10 +83,20 @@ class SortBlock final : public ExecutionBlock {
   /// @brief whether or not the sort should be stable
   bool _stable;
 
+  /// @brief whether or not results must still be fetched from dependencies
   bool _mustFetchAll;
+
+  /// @brief the type of sorter to use
+  SortNode::SorterType _type;
+
+  /// @brief the maximum number of items to return; unlimited if zero
+  size_t _limit;
+
+  /// @brief the object which actually handles the sorting
+  std::unique_ptr<Sorter> _sorter = nullptr;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

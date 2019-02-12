@@ -23,55 +23,45 @@
 
 #include "Compactor.h"
 
-#include "Basics/ConditionLocker.h"
 #include "Agency/Agent.h"
-
+#include "Basics/ConditionLocker.h"
 
 using namespace arangodb::consensus;
 
-
 // @brief Construct with agent
-Compactor::Compactor(Agent* agent) :
-  Thread("Compactor"), _agent(agent), _wakeupCompactor(false), _waitInterval(1000000) {
-}
-
+Compactor::Compactor(Agent* agent)
+    : Thread("Compactor"), _agent(agent), _wakeupCompactor(false), _waitInterval(1000000) {}
 
 /// Dtor shuts down thread
 Compactor::~Compactor() {
-  if (!isStopping()) {
-    shutdown();
-  }
+  shutdown();
 }
-
 
 // @brief Run
 void Compactor::run() {
-
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting compactor personality";
 
   while (true) {
     {
       CONDITION_LOCKER(guard, _cv);
       if (!_wakeupCompactor) {
-        _cv.wait(5000000);   // just in case we miss a wakeup call!
+        _cv.wait(5000000);  // just in case we miss a wakeup call!
       }
       _wakeupCompactor = false;
     }
-    
+
     if (this->isStopping()) {
       break;
     }
-    
+
     try {
       _agent->compact();  // Note that this checks nextCompactionAfter again!
     } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << "Exception during compaction, details: "
-        << e.what();
+      LOG_TOPIC(ERR, Logger::AGENCY)
+          << "Exception during compaction, details: " << e.what();
     }
   }
-  
 }
-
 
 // @brief Wake up compaction
 void Compactor::wakeUp() {
@@ -80,14 +70,11 @@ void Compactor::wakeUp() {
   _cv.signal();
 }
 
-
 // @brief Begin shutdown
 void Compactor::beginShutdown() {
-
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Shutting down compactor personality";
-    
+
   Thread::beginShutdown();
 
   wakeUp();
-
 }

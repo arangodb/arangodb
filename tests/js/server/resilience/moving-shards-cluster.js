@@ -274,15 +274,17 @@ function MovingShardsSuite ({useData}) {
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
     var body = {"numberOfDBServers":toNum};
+    let res = {};
     try {
-      return request({ method: "PUT",
-                       url: url + "/_admin/cluster/numberOfServers",
-                       body: JSON.stringify(body) });
+      res = request({ method: "PUT",
+                      url: url + "/_admin/cluster/numberOfServers",
+                      body: JSON.stringify(body) });
     } catch (err) {
       console.error(
         "Exception for PUT /_admin/cluster/numberOfServers:", err.stack);
       return false;
     }
+    return res.hasOwnProperty("statusCode") && res.statusCode === 200;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -501,9 +503,17 @@ function MovingShardsSuite ({useData}) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSetup : function () {
-      dbservers = getDBServers();
-      assertTrue(waitForSynchronousReplication("_system"));
-      checkCollectionContents();
+      for (var count = 0; count < 120; ++count) {
+        dbservers = getDBServers();
+        if (dbservers.length === 5) {
+          assertTrue(waitForSynchronousReplication("_system"));
+          checkCollectionContents();
+          return;
+        }
+        console.log("Waiting for 5 dbservers to be present:", JSON.stringify(dbservers));
+        wait(1.0);
+      }
+      assertTrue(false, "Timeout waiting for 5 dbservers.");
     },
 
 ////////////////////////////////////////////////////////////////////////////////

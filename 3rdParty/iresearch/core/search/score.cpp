@@ -36,7 +36,7 @@ NS_ROOT
 // --SECTION--                                                            score
 // ----------------------------------------------------------------------------
 
-DEFINE_ATTRIBUTE_TYPE(iresearch::score);
+DEFINE_ATTRIBUTE_TYPE(iresearch::score)
 
 /*static*/ const irs::score& score::no_score() NOEXCEPT {
   return EMPTY_SCORE;
@@ -47,3 +47,7 @@ score::score() NOEXCEPT
 }
 
 NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

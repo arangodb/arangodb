@@ -27,7 +27,6 @@
 #define ARANGO_ROCKSDB_ROCKSDB_COMMON_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Endian.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
 #include "RocksDBEngine/RocksDBComparator.h"
@@ -37,10 +36,10 @@
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBValue.h"
 
-#include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/iterator.h>
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
+#include <rocksdb/utilities/transaction_db.h>
 
 namespace rocksdb {
 class TransactionDB;
@@ -48,28 +47,26 @@ class DB;
 struct ReadOptions;
 class Comparator;
 class ColumnFamilyHandle;
-}
+}  // namespace rocksdb
 
 namespace arangodb {
 
 class RocksDBMethods;
 class RocksDBKeyBounds;
 class RocksDBEngine;
-  
+
 namespace rocksutils {
-  
+
 rocksdb::TransactionDB* globalRocksDB();
 rocksdb::ColumnFamilyHandle* defaultCF();
 RocksDBEngine* globalRocksEngine();
-arangodb::Result globalRocksDBPut(
-    rocksdb::ColumnFamilyHandle *cf,
-    rocksdb::Slice const& key, rocksdb::Slice const& value,
-    rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
+arangodb::Result globalRocksDBPut(rocksdb::ColumnFamilyHandle* cf,
+                                  rocksdb::Slice const& key, rocksdb::Slice const& value,
+                                  rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
 
-arangodb::Result globalRocksDBRemove(
-    rocksdb::ColumnFamilyHandle *cf,
-    rocksdb::Slice const& key,
-    rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
+arangodb::Result globalRocksDBRemove(rocksdb::ColumnFamilyHandle* cf,
+                                     rocksdb::Slice const& key,
+                                     rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
 
 uint64_t latestSequenceNumber();
 
@@ -80,15 +77,12 @@ std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> mapObjectToIndex(uint64
 std::size_t countKeys(rocksdb::DB*, rocksdb::ColumnFamilyHandle* cf);
 
 /// @brief iterate over all keys in range and count them
-std::size_t countKeyRange(rocksdb::DB*, RocksDBKeyBounds const&, 
-                          bool prefix_same_as_start);
+std::size_t countKeyRange(rocksdb::DB*, RocksDBKeyBounds const&, bool prefix_same_as_start);
 
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
-Result removeLargeRange(rocksdb::DB* db,
-                        RocksDBKeyBounds const& bounds,
-                        bool prefixSameAsStart,
-                        bool useRangeDelete);
+Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
+                        bool prefixSameAsStart, bool useRangeDelete);
 
 // optional switch to std::function to reduce amount of includes and
 // to avoid template

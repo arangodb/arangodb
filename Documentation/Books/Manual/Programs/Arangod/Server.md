@@ -48,21 +48,21 @@ Given an IPv6 address:
 
 On one specific ethernet interface each port can only be bound **exactly
 once**. You can look up your available interfaces using the *ifconfig* command
-on Linux / MacOSX - the Windows equivalent is *ipconfig* ([See Wikipedia for
-more details](http://en.wikipedia.org/wiki/Ifconfig)). The general names of the
-interfaces differ on OS's and hardwares they run on. However, typically every
-host has a so called
+on Linux / macOS - the Windows equivalent is *ipconfig* (see
+[Wikipedia for more details](http://en.wikipedia.org/wiki/Ifconfig)).
+The general names of the interfaces differ on OS's and hardwares they run on.
+However, typically every host has a so called
 [loopback interface](http://en.wikipedia.org/wiki/Loop_device),
 which is a virtual interface. By convention it always has the address
 *127.0.0.1* or *::1* (ipv6), and can only be reached from exactly the very same
-host.  Ethernet interfaces usually have names like *eth0*, *wlan0*, *eth1:17*,
+host. Ethernet interfaces usually have names like *eth0*, *wlan0*, *eth1:17*,
 *le0* or a plain text name in Windows.
 
 To find out which services already use ports (so ArangoDB can't bind them
 anymore), you can use the
 [netstat command](http://en.wikipedia.org/wiki/Netstat)
 (it behaves a little different on each platform, run it with *-lnpt* on Linux,
-*-p tcp* on MacOSX or with *-an* on windows for valuable information).
+*-p tcp* on macOS or with *-an* on windows for valuable information).
 
 ArangoDB can also do a so called *broadcast bind* using
 *tcp://0.0.0.0:8529*. This way it will be reachable on all interfaces of the

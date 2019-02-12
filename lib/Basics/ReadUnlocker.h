@@ -61,11 +61,11 @@ class ReadUnlocker {
   ReadUnlocker& operator=(ReadUnlocker const&) = delete;
 
  public:
-//////////////////////////////////////////////////////////////////////////////
-/// @brief unlocks the lock
-///
-/// The constructor unlocks the lock, the destructors acquires a read-lock.
-//////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief unlocks the lock
+  ///
+  /// The constructor unlocks the lock, the destructors acquires a read-lock.
+  //////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_SHOW_LOCK_TIME
 
@@ -78,8 +78,8 @@ class ReadUnlocker {
 
   explicit ReadUnlocker(ReadWriteLock* readWriteLock)
       : _readWriteLock(readWriteLock) {
-        _readWriteLock->unlockRead();
-      }
+    _readWriteLock->unlockRead();
+  }
 
 #endif
 
@@ -119,7 +119,7 @@ class ReadUnlocker {
 
 #endif
 };
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

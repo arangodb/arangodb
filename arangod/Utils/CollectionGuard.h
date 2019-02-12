@@ -47,8 +47,7 @@ class CollectionGuard {
   }
 
   /// @brief create the guard, using a collection id
-  CollectionGuard(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
-                  bool restoreOriginalStatus = false)
+  CollectionGuard(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid, bool restoreOriginalStatus = false)
       : _vocbase(vocbase),
         _collection(nullptr),
         _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
@@ -60,8 +59,7 @@ class CollectionGuard {
     }
   }
 
-  CollectionGuard(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                  std::string const& name)
+  CollectionGuard(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, std::string const& name)
       : _vocbase(vocbase),
         _collection(nullptr),
         _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
@@ -83,7 +81,8 @@ class CollectionGuard {
         _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
         _restoreOriginalStatus(restoreOriginalStatus) {
     if (!name.empty() && name[0] >= '0' && name[0] <= '9') {
-      TRI_voc_cid_t id = NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
+      TRI_voc_cid_t id =
+          NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
       _collection = _vocbase->useCollection(id, _originalStatus);
     } else {
       _collection = _vocbase->useCollection(name, _originalStatus);
@@ -94,8 +93,7 @@ class CollectionGuard {
     }
   }
 
-  CollectionGuard(TRI_vocbase_t* vocbase,
-                  std::shared_ptr<LogicalCollection> const& collection)
+  CollectionGuard(TRI_vocbase_t* vocbase, std::shared_ptr<LogicalCollection> const& collection)
       : _vocbase(vocbase),
         _collection(collection),
         _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
@@ -111,9 +109,8 @@ class CollectionGuard {
     if (_collection != nullptr) {
       _vocbase->releaseCollection(_collection.get());
 
-      if (_restoreOriginalStatus &&
-          (_originalStatus == TRI_VOC_COL_STATUS_UNLOADING ||
-           _originalStatus == TRI_VOC_COL_STATUS_UNLOADED)) {
+      if (_restoreOriginalStatus && (_originalStatus == TRI_VOC_COL_STATUS_UNLOADING ||
+                                     _originalStatus == TRI_VOC_COL_STATUS_UNLOADED)) {
         // re-unload the collection
         _vocbase->unloadCollection(_collection.get(), false);
       }
@@ -130,7 +127,9 @@ class CollectionGuard {
   }
 
   /// @brief return the collection pointer
-  inline arangodb::LogicalCollection* collection() const { return _collection.get(); }
+  inline arangodb::LogicalCollection* collection() const {
+    return _collection.get();
+  }
 
   /// @brief return the status of the collection at the time of using the guard
   inline TRI_vocbase_col_status_e originalStatus() const {
@@ -150,6 +149,6 @@ class CollectionGuard {
   /// @brief whether or not to restore the original collection status
   bool _restoreOriginalStatus;
 };
-}
+}  // namespace arangodb
 
 #endif

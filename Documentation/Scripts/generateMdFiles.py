@@ -685,7 +685,7 @@ def loadProgramOptionBlocks():
 
     global dokuBlocks
 
-    # Allows to test if a group will be empty with hidden options ignored
+    # Allows to test if a group will be empty with obsolete options ignored
     def peekIterator(iterable, condition):
         try:
             while True:
@@ -731,10 +731,10 @@ def loadProgramOptionBlocks():
                 sorted(optionsRaw.items(), key=sortBySection),
                 key=groupBySection):
 
-            # Use some trickery to skip hidden options without consuming items from iterator
-            groupPeek = peekIterator(group, lambda elem: elem[1]["hidden"] is False)
+            # Use some trickery to skip obsolete options without consuming items from iterator
+            groupPeek = peekIterator(group, lambda elem: elem[1].setdefault("obsolete", False) is False)
             if groupPeek is None:
-                # Skip empty section to avoid useless headline (all options are hidden)
+                # Skip empty section to avoid useless headline (all options are obsolete)
                 continue
 
             # Output table header with column labels (one table per section)
@@ -748,12 +748,20 @@ def loadProgramOptionBlocks():
             # Sort options by name and output table rows
             for optionName, option in sorted(groupPeek[1], key=lambda elem: elem[0]):
 
-                # Skip options marked as hidden
-                if option["hidden"]:
+                # Skip options marked as obsolete, eventhough they are not dumped at the moment
+                if option.setdefault("obsolete", False):
                     continue
 
                 # Recover JSON syntax, because the Python representation uses [u'this format']
                 default = json.dumps(option["default"])
+
+                # Whether the default value depends on the target host capabilities or configuration
+                dynamic = option.setdefault("dynamic", False)
+
+                if dynamic:
+                    defaultDynamic = '<br/>Default: <em>dynamic</em> (e.g. <code>{}</code>)'.format(default)
+                else:
+                    defaultDynamic = '<br/>Default: <code>{}</code>'.format(default)
 
                 # Parse and re-format the optional field for possible values
                 # (not fully safe, but ', ' is unlikely to occur in strings)
@@ -771,6 +779,27 @@ def loadProgramOptionBlocks():
                 if option.setdefault("enterpriseOnly", False):
                     enterprise = "<em>Enterprise Edition only</em><br/>"
 
+                # Beside option there are also flag-like commands (like --version)
+                isCommand = ""
+                category = option.setdefault("category", "option")
+                if category == "command":
+                    isCommand = '<br/>This is a command, no value needs to be specified. The process terminates after executing the command.'
+
+                # Some Boolean options can be used like flags (also true for commands)
+                isFlag = ""
+                requiresValue = option.setdefault("requiresValue", True)
+                if not requiresValue and category != "command":
+                    isFlag = '<br/>This option can be specified without value to enable it.'
+
+                # Versions since the option is available or when it was marked as deprecated
+                versionInfo = ""
+                introducedIn = option.setdefault("introducedIn", None)
+                deprecatedIn = option.setdefault("deprecatedIn", None)
+                if introducedIn:
+                    versionInfo += '<br/><small>Introduced in: {}</small>'.format(", ".join(introducedIn))
+                if deprecatedIn:
+                    versionInfo += '<br/><small>Deprecated in: {}</small>'.format(", ".join(deprecatedIn))
+
                 # Upper-case first letter, period at the end, HTML entities
                 description = option["description"].strip()
                 description = description[0].upper() + description[1:]
@@ -779,7 +808,7 @@ def loadProgramOptionBlocks():
                 description = escape(description)
 
                 # Description, default value and possible values separated by line breaks
-                descriptionCombined = '\n'.join([enterprise, description, '<br/>Default: <code>{}</code>'.format(default), values])
+                descriptionCombined = '\n'.join([enterprise, description, isFlag, isCommand, defaultDynamic, values, versionInfo])
 
                 output.append('<tr><td><code>{}</code></td><td>{}</td><td>{}</td></tr>'.format(optionName, valueType, descriptionCombined))
 

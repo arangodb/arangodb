@@ -75,8 +75,7 @@ struct SSSPGraphFormat : public InitGraphFormat<int64_t, int64_t> {
   SSSPGraphFormat(std::string const& source, std::string const& result)
       : InitGraphFormat<int64_t, int64_t>(result, 0, 1), _sourceDocId(source) {}
 
-  size_t copyVertexData(std::string const& documentId,
-                        arangodb::velocypack::Slice document,
+  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
                         int64_t* targetPtr, size_t maxSize) override {
     *targetPtr = documentId == _sourceDocId ? 0 : INT64_MAX;
     return sizeof(int64_t);
@@ -103,7 +102,7 @@ struct SSSPCompensation : public VertexCompensation<int64_t, int64_t, int64_t> {
   }
 };
 
-VertexCompensation<int64_t, int64_t, int64_t>*
-SSSPAlgorithm::createCompensation(WorkerConfig const* config) const {
+VertexCompensation<int64_t, int64_t, int64_t>* SSSPAlgorithm::createCompensation(
+    WorkerConfig const* config) const {
   return new SSSPCompensation();
 }

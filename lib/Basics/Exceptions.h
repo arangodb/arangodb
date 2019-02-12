@@ -39,19 +39,18 @@
 
 /// @brief throws an arango exception with an error code and arbitrary
 /// arguments (to be inserted in printf-style manner)
-#define THROW_ARANGO_EXCEPTION_PARAMS(code, ...)                           \
-  throw arangodb::basics::Exception(                                       \
-      code,                                                                \
-      arangodb::basics::Exception::FillExceptionString(code, __VA_ARGS__), \
-      __FILE__, __LINE__)
+#define THROW_ARANGO_EXCEPTION_PARAMS(code, ...)                                                         \
+  throw arangodb::basics::Exception(code,                                                                \
+                                    arangodb::basics::Exception::FillExceptionString(code, __VA_ARGS__), \
+                                    __FILE__, __LINE__)
 
 /// @brief throws an arango exception with an error code and arbitrary
 /// arguments (to be inserted in printf-style manner)
-#define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...)             \
-  throw arangodb::basics::Exception(                                 \
-      code, arangodb::basics::Exception::FillFormatExceptionString(  \
-                "%s: " format, TRI_errno_string(code), __VA_ARGS__), \
-      __FILE__, __LINE__)
+#define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...)                                     \
+  throw arangodb::basics::Exception(code,                                                    \
+                                    arangodb::basics::Exception::FillFormatExceptionString(  \
+                                        "%s: " format, TRI_errno_string(code), __VA_ARGS__), \
+                                    __FILE__, __LINE__)
 
 /// @brief throws an arango exception with an error code and an already-built
 /// error message
@@ -59,12 +58,12 @@
   throw arangodb::basics::Exception(code, message, __FILE__, __LINE__)
 
 /// @brief throws an arango result if the result fails
-#define THROW_ARANGO_EXCEPTION_IF_FAIL(reSUlt) \
-  do { \
-    if ((reSUlt).fail()) { \
+#define THROW_ARANGO_EXCEPTION_IF_FAIL(reSUlt)                         \
+  do {                                                                 \
+    if ((reSUlt).fail()) {                                             \
       throw arangodb::basics::Exception((reSUlt), __FILE__, __LINE__); \
-    } \
-  } while(0);
+    }                                                                  \
+  } while (0);
 
 namespace arangodb {
 namespace basics {
@@ -81,11 +80,9 @@ class Exception final : public virtual std::exception {
   Exception(Result const&, char const* file, int line);
   Exception(Result&&, char const* file, int line);
 
-  Exception(int code, std::string const& errorMessage, char const* file,
-            int line);
+  Exception(int code, std::string const& errorMessage, char const* file, int line);
 
-  Exception(int code, std::string&& errorMessage, char const* file,
-            int line);
+  Exception(int code, std::string&& errorMessage, char const* file, int line);
 
   Exception(int code, char const* errorMessage, char const* file, int line);
 
@@ -93,9 +90,10 @@ class Exception final : public virtual std::exception {
 
  public:
   char const* what() const noexcept override;
-  std::string message() const;
+  std::string const& message() const noexcept;
   int code() const noexcept;
   void addToMessage(std::string const&);
+
  private:
   void appendLocation() noexcept;
 
@@ -106,7 +104,7 @@ class Exception final : public virtual std::exception {
   int const _code;
 };
 
-template<typename F>
+template <typename F>
 Result catchToResult(F&& fn, int defaultError = TRI_ERROR_INTERNAL) {
   // TODO check whether there are other specific exceptions we should catch
   Result result{TRI_ERROR_NO_ERROR};
@@ -124,7 +122,7 @@ Result catchToResult(F&& fn, int defaultError = TRI_ERROR_INTERNAL) {
   return result;
 }
 
-template<typename F>
+template <typename F>
 Result catchVoidToResult(F&& fn, int defaultError = TRI_ERROR_INTERNAL) {
   auto wrapped = [&fn]() -> Result {
     std::forward<F>(fn)();
@@ -133,7 +131,7 @@ Result catchVoidToResult(F&& fn, int defaultError = TRI_ERROR_INTERNAL) {
   return catchToResult(wrapped, defaultError);
 }
 
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

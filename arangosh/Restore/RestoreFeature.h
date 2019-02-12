@@ -36,22 +36,17 @@ namespace arangodb {
 namespace httpclient {
 
 class SimpleHttpResult;
-
 }
 
 class ManagedDirectory;
 
 class RestoreFeature final : public application_features::ApplicationFeature {
  public:
-  RestoreFeature(
-    application_features::ApplicationServer& server,
-    int& exitCode
-  );
+  RestoreFeature(application_features::ApplicationServer& server, int& exitCode);
 
   // for documentation of virtual methods, see `ApplicationFeature`
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> options) override;
   void prepare() override;
   void start() override;
 
@@ -79,8 +74,10 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     std::vector<std::string> views{};
     std::string inputPath{};
     uint64_t chunkSize{1024 * 1024 * 8};
-    uint64_t defaultNumberOfShards{1};
-    uint64_t defaultReplicationFactor{1};
+    uint64_t defaultNumberOfShards{1};     // deprecated
+    uint64_t defaultReplicationFactor{1};  // deprecated
+    std::vector<std::string> numberOfShards;
+    std::vector<std::string> replicationFactor;
     uint32_t threadCount{2};
     bool clusterMode{false};
     bool createDatabase{false};
@@ -92,6 +89,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     bool includeSystemCollections{false};
     bool indexesFirst{false};
     bool overwrite{true};
+    bool cleanupDuplicateAttributes{false};
     bool progress{true};
   };
 
@@ -113,8 +111,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
 
     VPackSlice collection;
 
-    JobData(ManagedDirectory&, RestoreFeature&, Options const&, Stats&,
-            VPackSlice const&);
+    JobData(ManagedDirectory&, RestoreFeature&, Options const&, Stats&, VPackSlice const&);
   };
 
  private:

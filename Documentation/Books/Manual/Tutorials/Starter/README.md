@@ -1,11 +1,11 @@
 <!-- don't edit here, it's from https://@github.com/arangodb-helper/arangodb.git / docs/Manual/ -->
 # Starting an ArangoDB cluster or database the easy way
 
-Starting an ArangoDB cluster is complex. It involves starting various servers with
+Starting an ArangoDB cluster involves starting various servers with
 different roles (agents, dbservers & coordinators).
 
-The ArangoDB Starter is designed to make it easy to start and maintain an ArangoDB cluster
-or single server database.
+The ArangoDB Starter is designed to make it easy to start and
+maintain an ArangoDB cluster or single server database.
 
 Besides starting and maintaining ArangoDB deployments, the starter also provides
 various commands to create TLS certificates & JWT token secrets to secure your
@@ -15,7 +15,8 @@ ArangoDB deployment.
 
 The ArangoDB starter (`arangodb`) comes with all current distributions of ArangoDB.
 
-If you want a specific version, download the precompiled binary via [the github releases page](https://github.com/arangodb-helper/arangodb/releases).
+If you want a specific version, download the precompiled binary via the
+[GitHub releases page](https://github.com/arangodb-helper/arangodb/releases).
 
 ## Starting a cluster
 
@@ -31,13 +32,13 @@ arangodb
 ```
 
 This will use port 8528 to wait for colleagues (3 are needed for a
-resilient agency). On host B: (can be the same as A):
+resilient agency). On host B (can be the same as A):
 
 ```bash
 arangodb --starter.join A
 ```
 
-This will contact A on port 8528 and register. On host C: (can be same
+This will contact A on port 8528 and register. On host C (can be same
 as A or B):
 
 ```bash
@@ -87,17 +88,63 @@ docker run -it --name=adb1 --rm -p 8528:8528 \
     --starter.address=$IP
 ```
 
+
 The executable will show the commands needed to run the other instances.
 
 Note that the commands above create a docker volume. If you're running on Linux
-it is also possible to use a host mapped volume. Make sure to map it on `/data`.
+it is also possible to use a host mapped volume. Make sure to map it
+on `/data`.
+
+**TLS verified Docker services**
+
+Oftentimes, one needs to harden Docker services using client certificate 
+and TLS verification. The Docker API allows subsequently only
+certified access. As the ArangoDB starter starts the ArangoDB cluster
+instances using this Docker API, it is mandatory that the ArangoDB
+starter is deployed with the proper certificates handed to it, so that
+the above command is modified as follows: 
+
+```bash
+export IP=<IP of docker host>
+export DOCKER_CERT_PATH=/path/to/certificate
+docker volume create arangodb
+docker run -it --name=adb --rm -p 8528:8528 \
+    -v arangodb:/data \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v $DOCKER_CERT_PATH:$DOCKER_CERT_PATH
+    -e DOCKER_TLS_VERIFY=1
+    -e DOCKER_CERT_PATH=$DOCKER_CERT_PATH
+    arangodb/arangodb-starter \
+    --starter.address=$IP \
+    --starter.join=A,B,C
+```
+
+Note that the enviroment variables `DOCKER_TLS_VERIFY` and `DOCKER_CERT_PATH` 
+as well as the additional mountpoint containing the certificate have been added above. 
+directory. The assignment of `DOCKER_CERT_PATH` is optional, in which case it 
+is mandatory that the certificates are stored in `$HOME/.docker`. So
+the command would then be as follows
+
+```bash
+export IP=<IP of docker host>
+docker volume create arangodb
+docker run -it --name=adb --rm -p 8528:8528 \
+    -v arangodb:/data \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /path/to/cert:/root/.docker \
+    -e DOCKER_TLS_VERIFY=1 \
+    arangodb/arangodb-starter \
+    --starter.address=$IP \
+    --starter.join=A,B,C
+```
+
+
+The TLS verification above applies equally to all below deployment modes.
 
 ## Using multiple join arguments
 
 It is allowed to use multiple `--starter.join` arguments.
-This eases scripting.
-
-For example:
+This eases scripting. For example:
 
 On host A:
 

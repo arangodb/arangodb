@@ -26,27 +26,26 @@
 
 #include "IResearchLink.h"
 
-#include "Indexes/Index.h"
+#include "MMFiles/MMFilesIndex.h"
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
 
-class IResearchMMFilesLink final
-  : public arangodb::Index, public IResearchLink {
+struct IndexTypeFactory;  // forward declaration
+}
+
+namespace arangodb {
+namespace iresearch {
+
+class IResearchMMFilesLink final : public arangodb::MMFilesIndex, public IResearchLink {
  public:
-  DECLARE_SHARED_PTR(Index);
-
-  virtual ~IResearchMMFilesLink();
-
   void afterTruncate(TRI_voc_tick_t /*tick*/) override {
     IResearchLink::afterTruncate();
   };
 
   virtual void batchInsert(
-    transaction::Methods* trx,
-    std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
-    std::shared_ptr<arangodb::basics::LocalTaskQueue> queue
-  ) override {
+      arangodb::transaction::Methods& trx,
+      std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
+      std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override {
     IResearchLink::batchInsert(trx, documents, queue);
   }
 
@@ -54,9 +53,12 @@ class IResearchMMFilesLink final
     return IResearchLink::canBeDropped();
   }
 
-  virtual int drop() override {
-    return IResearchLink::drop().errorNumber();
-  }
+  virtual arangodb::Result drop() override { return IResearchLink::drop(); }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the factory for this type of index
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::IndexTypeFactory const& factory();
 
   virtual bool hasBatchInsert() const override {
     return IResearchLink::hasBatchInsert();
@@ -66,54 +68,38 @@ class IResearchMMFilesLink final
     return IResearchLink::hasSelectivityEstimate();
   }
 
-  virtual arangodb::Result insert(
-    transaction::Methods* trx,
-    LocalDocumentId const& documentId,
-    VPackSlice const& doc,
-    OperationMode mode
-  ) override {
+  virtual arangodb::Result insert(arangodb::transaction::Methods& trx,
+                                  arangodb::LocalDocumentId const& documentId,
+                                  arangodb::velocypack::Slice const& doc,
+                                  arangodb::Index::OperationMode mode) override {
     return IResearchLink::insert(trx, documentId, doc, mode);
   }
 
-  virtual bool isPersistent() const override {
-    return IResearchLink::isPersistent();
+  bool isPersistent() const override;
+
+  virtual bool isSorted() const override { return IResearchLink::isSorted(); }
+
+  bool isHidden() const override { return IResearchLink::isHidden(); }
+
+  virtual arangodb::IndexIterator* iteratorForCondition(
+      arangodb::transaction::Methods* trx, arangodb::ManagedDocumentResult* result,
+      arangodb::aql::AstNode const* condNode, arangodb::aql::Variable const* var,
+      arangodb::IndexIteratorOptions const& opts) override {
+    TRI_ASSERT(false);  // should not be called
+    return nullptr;
   }
 
-  virtual bool isSorted() const override {
-    return IResearchLink::isSorted();
-  }
+  virtual void load() override { IResearchLink::load(); }
 
-  virtual void load() override {
-    IResearchLink::load();
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief create and initialize an iResearch View Link instance
-  /// @return nullptr on failure
-  ////////////////////////////////////////////////////////////////////////////////
-  static ptr make(
-    arangodb::LogicalCollection& collection,
-    arangodb::velocypack::Slice const& definition,
-    TRI_idx_iid_t id,
-    bool isClusterConstructor
-  ) noexcept;
-
-  virtual bool matchesDefinition(
-    arangodb::velocypack::Slice const& slice
-  ) const override {
+  virtual bool matchesDefinition(arangodb::velocypack::Slice const& slice) const override {
     return IResearchLink::matchesDefinition(slice);
   }
 
-  virtual size_t memory() const override {
-    return IResearchLink::memory();
-  }
+  virtual size_t memory() const override { return IResearchLink::memory(); }
 
-  arangodb::Result remove(
-    transaction::Methods* trx,
-    LocalDocumentId const& documentId,
-    VPackSlice const& doc,
-    OperationMode mode
-  ) override {
+  arangodb::Result remove(transaction::Methods& trx,
+                          arangodb::LocalDocumentId const& documentId,
+                          VPackSlice const& doc, OperationMode mode) override {
     return IResearchLink::remove(trx, documentId, doc, mode);
   }
 
@@ -121,15 +107,11 @@ class IResearchMMFilesLink final
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
-  using Index::toVelocyPack; // for Index::toVelocyPack(bool, unsigned)
-  virtual void toVelocyPack(
-    arangodb::velocypack::Builder& builder,
-    std::underlying_type<arangodb::Index::Serialize>::type
-  ) const override;
+  using Index::toVelocyPack;  // for Index::toVelocyPack(bool, unsigned)
+  virtual void toVelocyPack(arangodb::velocypack::Builder& builder,
+                            std::underlying_type<arangodb::Index::Serialize>::type) const override;
 
-  virtual IndexType type() const override {
-    return IResearchLink::type();
-  }
+  virtual IndexType type() const override { return IResearchLink::type(); }
 
   virtual char const* typeName() const override {
     return IResearchLink::typeName();
@@ -144,13 +126,12 @@ class IResearchMMFilesLink final
   }
 
  private:
-  IResearchMMFilesLink(
-    TRI_idx_iid_t iid,
-    arangodb::LogicalCollection& collection
-  );
+  struct IndexFactory;  // forward declaration
+
+  IResearchMMFilesLink(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection);
 };
 
-NS_END // iresearch
-NS_END // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif

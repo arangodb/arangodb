@@ -29,9 +29,7 @@
 
 #include "GeneralServer/GeneralDefinitions.h"
 #include "GeneralServer/GeneralServer.h"
-
-#include "Scheduler/ListenTask.h"
-
+#include "GeneralServer/ListenTask.h"
 
 namespace arangodb {
 class Endpoint;
@@ -44,18 +42,17 @@ class GeneralListenTask final : public ListenTask {
   GeneralListenTask& operator=(GeneralListenTask const&) = delete;
 
  public:
-  GeneralListenTask(GeneralServer &server, GeneralServer::IoContext&, Endpoint*,
+  GeneralListenTask(GeneralServer& server, GeneralServer::IoContext&, Endpoint*,
                     ProtocolType connectionType);
 
  protected:
-  void handleConnected(std::unique_ptr<Socket>,
-                       ConnectionInfo&&) override;
+  void handleConnected(std::unique_ptr<Socket>, ConnectionInfo&&) override;
 
  private:
   ProtocolType const _connectionType;
   double _keepAliveTimeout = 300.0;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

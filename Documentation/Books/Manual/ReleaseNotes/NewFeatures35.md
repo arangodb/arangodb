@@ -1,9 +1,19 @@
-Features and Improvements
-=========================
+Features and Improvements in ArangoDB 3.5
+=========================================
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 3.5. ArangoDB 3.5 also contains several bug fixes that are not listed
 here.
+
+Customer Relevant
+-----------------
+
+* The optimizer can now make use of the sorted-ness of primary indexes if the
+  RocksDB engine is used. This means the primary index can be utilized for
+  sorting by `_key` or `_id` attribute as well as for range queries (note that
+  the document key is still a string).
+* The optimizer can now make a *SortNode* aware of a following *LimitNode* to
+  enable node-internal optimizations to save memory and execution time.
 
 Internal
 --------

@@ -41,7 +41,7 @@ struct ExecutionStats {
 
   /// @brief instantiate the statistics from VelocyPack
   explicit ExecutionStats(arangodb::velocypack::Slice const& slice);
-  
+
   /// @brief statistics per ExecutionNode
   struct Node {
     size_t calls = 0;
@@ -54,16 +54,19 @@ struct ExecutionStats {
       return *this;
     }
   };
-  
+
  public:
   /// @brief convert the statistics to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, bool reportFullCount) const;
 
   /// @brief create empty statistics for VelocyPack
   static void toVelocyPackStatic(arangodb::velocypack::Builder&);
-  
+
   /// @brief sets query execution time from the outside
   void setExecutionTime(double value) { executionTime = value; }
+  
+  /// @brief sets the peak memory usage from the outside
+  void setPeakMemoryUsage(size_t value) { peakMemoryUsage = value; }
 
   /// @brief sumarize two sets of ExecutionStats
   void add(ExecutionStats const& summand);
@@ -78,6 +81,7 @@ struct ExecutionStats {
     fullCount = 0;
     count = 0;
     executionTime = 0.0;
+    peakMemoryUsage = 0;
   }
 
   /// @brief number of successfully executed write operations
@@ -94,24 +98,27 @@ struct ExecutionStats {
 
   /// @brief number of documents filtered away
   int64_t filtered;
-  
+
   /// @brief total number of requests made
   int64_t requests;
 
   /// @brief total number of results, before applying last limit
   int64_t fullCount;
-  
+
   /// @brief total number of results
   int64_t count;
-  
-  /// @brief query execution time (wall-clock time). value will be set from 
+
+  /// @brief query execution time (wall-clock time). value will be set from
   /// the outside
   double executionTime;
-  
+
+  /// @brief peak memory usage of the query
+  size_t peakMemoryUsage;
+
   ///  @brief statistics per ExecutionNodes
   std::map<size_t, ExecutionStats::Node> nodes;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

@@ -90,6 +90,8 @@ If the same edge collection is specified multiple times, it will behave as if it
 were specified only once. Specifying the same edge collection is only allowed when
 the collections do not have conflicting traversal directions.
 
+ArangoSearch Views cannot be used as edge collections.
+
 ### Traversing in mixed directions
 
 For traversals with a list of edge collections you can optionally specify the
@@ -277,7 +279,7 @@ the vertex IDs:
     @startDocuBlockInline GRAPHTRAV_02_traverse_all_a
     @EXAMPLE_AQL{GRAPHTRAV_02_traverse_all_a}
     @DATASET{traversalGraph}
-	FOR v IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+    FOR v IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
       RETURN v._key
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_02_traverse_all_a

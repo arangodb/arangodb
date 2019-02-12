@@ -38,15 +38,14 @@
 
 using namespace arangodb::aql;
 
-EnumerateCollectionBlock::EnumerateCollectionBlock(
-    ExecutionEngine* engine, EnumerateCollectionNode const* ep)
-    : ExecutionBlock(engine, ep), 
+EnumerateCollectionBlock::EnumerateCollectionBlock(ExecutionEngine* engine,
+                                                   EnumerateCollectionNode const* ep)
+    : ExecutionBlock(engine, ep),
       DocumentProducingBlock(ep, _trx),
       _collection(ep->collection()),
-      _cursor(
-          _trx->indexScan(_collection->name(),
-                          (ep->_random ? transaction::Methods::CursorType::ANY
-                                       : transaction::Methods::CursorType::ALL))),
+      _cursor(_trx->indexScan(_collection->name(),
+                              (ep->_random ? transaction::Methods::CursorType::ANY
+                                           : transaction::Methods::CursorType::ALL))),
       _inflight(0) {
   TRI_ASSERT(_cursor->ok());
 
@@ -64,8 +63,8 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
     double endTime = startTime + maxWait;
 
     while (!inSync) {
-      auto collectionInfoCurrent = ClusterInfo::instance()->getCollectionCurrent(
-        dbName, std::to_string(cid));
+      auto collectionInfoCurrent =
+          ClusterInfo::instance()->getCollectionCurrent(dbName, std::to_string(cid));
       auto followers = collectionInfoCurrent->servers(_collection->name());
       inSync = std::find(followers.begin(), followers.end(),
                          ServerState::instance()->getId()) != followers.end();
@@ -82,9 +81,10 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
     }
 
     if (!inSync) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-          "collection " + _collection->name() + " did not come into sync in time (" + std::to_string(maxWait) +")");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
+                                     "collection " + _collection->name() +
+                                         " did not come into sync in time (" +
+                                         std::to_string(maxWait) + ")");
     }
   }
 }
@@ -93,8 +93,7 @@ std::pair<ExecutionState, arangodb::Result> EnumerateCollectionBlock::initialize
     AqlItemBlock* items, size_t pos) {
   auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res.first == ExecutionState::WAITING ||
-      !res.second.ok()) {
+  if (res.first == ExecutionState::WAITING || !res.second.ok()) {
     // If we need to wait or get an error we return as is.
     return res;
   }
@@ -105,8 +104,7 @@ std::pair<ExecutionState, arangodb::Result> EnumerateCollectionBlock::initialize
 }
 
 /// @brief getSome
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-EnumerateCollectionBlock::getSome(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> EnumerateCollectionBlock::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
 
   TRI_ASSERT(_cursor != nullptr);
@@ -167,20 +165,18 @@ EnumerateCollectionBlock::getSome(size_t atMost) {
         // properly build up results by fetching the actual documents
         // using nextDocument()
         cursorHasMore = _cursor->nextDocument(
-          [&](LocalDocumentId const &, VPackSlice slice) {
-            _documentProducer(res.get(), slice, nrInRegs, _inflight, 0);
-          }, atMost
-        );
+            [&](LocalDocumentId const&, VPackSlice slice) {
+              _documentProducer(res.get(), slice, nrInRegs, _inflight, 0);
+            },
+            atMost);
       } else {
         // performance optimization: we do not need the documents at all,
         // so just call next()
         cursorHasMore = _cursor->next(
-          [&](LocalDocumentId const &) {
-            _documentProducer(
-              res.get(), VPackSlice::nullSlice(), nrInRegs, _inflight, 0
-            );
-          }, atMost
-        );
+            [&](LocalDocumentId const&) {
+              _documentProducer(res.get(), VPackSlice::nullSlice(), nrInRegs, _inflight, 0);
+            },
+            atMost);
       }
       if (!cursorHasMore) {
         TRI_ASSERT(!_cursor->hasMore());

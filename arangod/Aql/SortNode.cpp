@@ -21,23 +21,45 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SortNode.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/SortBlock.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/VelocyPackHelper.h"
+#include "SortNode.h"
+
+namespace {
+std::string const ConstrainedHeap = "constrained-heap";
+std::string const Standard = "standard";
+}  // namespace
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
+std::string const& SortNode::sorterTypeName(SorterType type) {
+  switch (type) {
+    case SorterType::Standard:
+      return ::Standard;
+    case SorterType::ConstrainedHeap:
+      return ::ConstrainedHeap;
+    default:
+      return ::Standard;
+  }
+}
+
 SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
                    SortElementVector const& elements, bool stable)
-    : ExecutionNode(plan, base), _reinsertInCluster(true),  _elements(elements), _stable(stable){}
+    : ExecutionNode(plan, base),
+      _reinsertInCluster(true),
+      _elements(elements),
+      _stable(stable),
+      _limit(VelocyPackHelper::getNumericValue<size_t>(base, "limit", 0)) {}
 
 /// @brief toVelocyPack, for SortNode
 void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes,
+                                           flags);  // call base class method
 
   nodes.add(VPackValue("elements"));
   {
@@ -57,6 +79,8 @@ void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
     }
   }
   nodes.add("stable", VPackValue(_stable));
+  nodes.add("limit", VPackValue(_limit));
+  nodes.add("strategy", VPackValue(sorterTypeName(sorterType())));
 
   // And close it:
   nodes.close();
@@ -128,7 +152,7 @@ bool SortNode::simplify(ExecutionPlan* plan) {
 
   return _elements.empty();
 }
-  
+
 void SortNode::removeConditions(size_t count) {
   TRI_ASSERT(_elements.size() > count);
   TRI_ASSERT(count > 0);
@@ -136,8 +160,8 @@ void SortNode::removeConditions(size_t count) {
 }
 
 /// @brief returns all sort information
-SortInformation SortNode::getSortInformation(
-    ExecutionPlan* plan, arangodb::basics::StringBuffer* buffer) const {
+SortInformation SortNode::getSortInformation(ExecutionPlan* plan,
+                                             arangodb::basics::StringBuffer* buffer) const {
   SortInformation result;
 
   auto const& elms = elements();
@@ -172,14 +196,16 @@ SortInformation SortNode::getSortInformation(
         return result;
       }
       result.criteria.emplace_back(
-          std::make_tuple(const_cast<ExecutionNode const*>(setter), std::string(buffer->c_str(), buffer->length()), (*it).ascending));
+          std::make_tuple(const_cast<ExecutionNode const*>(setter),
+                          std::string(buffer->c_str(), buffer->length()), (*it).ascending));
       buffer->reset();
     } else {
       // use variable only. note that we cannot use the variable's name as it is
       // not
       // necessarily unique in one query (yes, COLLECT, you are to blame!)
       result.criteria.emplace_back(
-          std::make_tuple(const_cast<ExecutionNode const*>(setter), std::to_string(variable->id), (*it).ascending));
+          std::make_tuple(const_cast<ExecutionNode const*>(setter),
+                          std::to_string(variable->id), (*it).ascending));
     }
   }
 
@@ -188,10 +214,8 @@ SortInformation SortNode::getSortInformation(
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SortNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-) const {
-  return std::make_unique<SortBlock>(&engine, this);
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+  return std::make_unique<SortBlock>(&engine, this, sorterType(), _limit);
 }
 
 /// @brief estimateCost
@@ -200,8 +224,12 @@ CostEstimate SortNode::estimateCost() const {
   if (estimate.estimatedNrItems <= 3) {
     estimate.estimatedCost += estimate.estimatedNrItems;
   } else {
-    estimate.estimatedCost += estimate.estimatedNrItems * std::log2(static_cast<double>(estimate.estimatedNrItems));
+    estimate.estimatedCost += estimate.estimatedNrItems *
+                              std::log2(static_cast<double>(estimate.estimatedNrItems));
   }
   return estimate;
 }
 
+SortNode::SorterType SortNode::sorterType() const {
+  return (!isStable() && _limit > 0) ? SorterType::ConstrainedHeap : SorterType::Standard;
+}

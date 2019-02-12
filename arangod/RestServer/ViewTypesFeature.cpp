@@ -22,98 +22,87 @@
 
 #include "ViewTypesFeature.h"
 
-#include "BootstrapFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "BootstrapFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
 namespace {
 
-struct InvalidViewFactory: public arangodb::ViewFactory {
-  virtual arangodb::Result create(
-      arangodb::LogicalView::ptr&,
-      TRI_vocbase_t&,
-      arangodb::velocypack::Slice const& definition
-  ) const override {
+struct InvalidViewFactory : public arangodb::ViewFactory {
+  virtual arangodb::Result create(arangodb::LogicalView::ptr&, TRI_vocbase_t&,
+                                  arangodb::velocypack::Slice const& definition) const override {
     return arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("failure to create view without a factory for definition: ") + definition.toString()
-    );
+        TRI_ERROR_BAD_PARAMETER,
+        std::string(
+            "failure to create view without a factory for definition: ") +
+            definition.toString());
   }
 
-  virtual arangodb::Result instantiate(
-      arangodb::LogicalView::ptr&,
-    TRI_vocbase_t&,
-    arangodb::velocypack::Slice const& definition,
-    uint64_t
-  ) const override {
+  virtual arangodb::Result instantiate(arangodb::LogicalView::ptr&, TRI_vocbase_t&,
+                                       arangodb::velocypack::Slice const& definition,
+                                       uint64_t) const override {
     return arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("failure to instantiate view without a factory for definition: ") + definition.toString()
-    );
+        TRI_ERROR_BAD_PARAMETER,
+        std::string(
+            "failure to instantiate view without a factory for definition: ") +
+            definition.toString());
   }
 };
 
 std::string const FEATURE_NAME("ViewTypes");
 InvalidViewFactory const INVALID;
 
-} // namespace
+}  // namespace
 
 namespace arangodb {
 
-ViewTypesFeature::ViewTypesFeature(
-  application_features::ApplicationServer& server
-): application_features::ApplicationFeature(server, ViewTypesFeature::name()) {
+ViewTypesFeature::ViewTypesFeature(application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature(server, ViewTypesFeature::name()) {
   setOptional(false);
   startsAfter("BasicsPhase");
 }
 
-arangodb::Result ViewTypesFeature::emplace(
-    LogicalDataSource::Type const& type,
-    ViewFactory const& factory
-) {
-  auto* feature =
-    arangodb::application_features::ApplicationServer::lookupFeature("Bootstrap");
+Result ViewTypesFeature::emplace(LogicalDataSource::Type const& type,
+                                 ViewFactory const& factory) {
+  auto* feature = arangodb::application_features::ApplicationServer::lookupFeature(
+      "Bootstrap");
   auto* bootstrapFeature = dynamic_cast<BootstrapFeature*>(feature);
 
-  // ensure new factories are not added at runtime since that would require additional locks
+  // ensure new factories are not added at runtime since that would require
+  // additional locks
   if (bootstrapFeature && bootstrapFeature->isReady()) {
     return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("view factory registration is only allowed during server startup")
-    );
+        TRI_ERROR_INTERNAL,
+        std::string(
+            "view factory registration is only allowed during server startup"));
   }
 
   if (!_factories.emplace(&type, &factory).second) {
-    return arangodb::Result(
-      TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
-      std::string("view factory previously registered during view factory registration for view type '") + type.name() + "'"
-    );
+    return arangodb::Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, std::string("view factory previously registered during view factory "
+                                                                               "registration for view type '") +
+                                                                       type.name() +
+                                                                       "'");
   }
 
   return arangodb::Result();
 }
 
-ViewFactory const& ViewTypesFeature::factory(
-    LogicalDataSource::Type const& type
-) const noexcept {
+ViewFactory const& ViewTypesFeature::factory(LogicalDataSource::Type const& type) const noexcept {
   auto itr = _factories.find(&type);
-  TRI_ASSERT(itr == _factories.end() || false == !(itr->second)); // ViewTypesFeature::emplace(...) inserts non-nullptr
+  TRI_ASSERT(itr == _factories.end() || false == !(itr->second));  // ViewTypesFeature::emplace(...)
+                                                                   // inserts non-nullptr
 
   return itr == _factories.end() ? INVALID : *(itr->second);
 }
 
-/*static*/ std::string const& ViewTypesFeature::name() {
-  return FEATURE_NAME;
-}
+/*static*/ std::string const& ViewTypesFeature::name() { return FEATURE_NAME; }
 
-void ViewTypesFeature::prepare() { }
+void ViewTypesFeature::prepare() {}
 
-void ViewTypesFeature::unprepare() {
-  _factories.clear();
-}
+void ViewTypesFeature::unprepare() { _factories.clear(); }
 
-} // arangodb
+}  // namespace arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

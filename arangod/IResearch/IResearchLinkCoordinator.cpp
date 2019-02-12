@@ -22,18 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchLinkCoordinator.h"
-#include "IResearchCommon.h"
-#include "IResearchLinkHelper.h"
-#include "IResearchFeature.h"
-#include "IResearchViewCoordinator.h"
-#include "VelocyPackHelper.h"
-#include "ClusterEngine/ClusterEngine.h"
-#include "Cluster/ClusterInfo.h"
 #include "Basics/StringUtils.h"
+#include "Cluster/ClusterInfo.h"
+#include "ClusterEngine/ClusterEngine.h"
+#include "IResearchCommon.h"
+#include "IResearchFeature.h"
+#include "IResearchLinkHelper.h"
+#include "IResearchViewCoordinator.h"
+#include "Indexes/IndexFactory.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "VelocyPackHelper.h"
 #include "VocBase/LogicalCollection.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Slice.h"
@@ -41,169 +42,108 @@
 namespace arangodb {
 namespace iresearch {
 
-/*static*/ std::shared_ptr<IResearchLinkCoordinator> IResearchLinkCoordinator::find(
-    LogicalCollection const& collection,
-    LogicalView const& view
-) {
-  for (auto& index : collection.getIndexes()) {
-    if (!index || arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
-      continue; // not an iresearch Link
-    }
-
-    // TODO FIXME find a better way to retrieve an iResearch Link
-    // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
-    auto link = std::dynamic_pointer_cast<IResearchLinkCoordinator>(index);
-
-    if (link && *link == view) {
-      return link; // found required link
-    }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief IResearchLinkCoordinator-specific implementation of an
+///        IndexTypeFactory
+////////////////////////////////////////////////////////////////////////////////
+struct IResearchLinkCoordinator::IndexFactory : public arangodb::IndexTypeFactory {
+  virtual bool equal(arangodb::velocypack::Slice const& lhs,
+                     arangodb::velocypack::Slice const& rhs) const override {
+    return arangodb::iresearch::IResearchLinkHelper::equal(lhs, rhs);
   }
 
-  return nullptr;
+  virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
+                                       arangodb::LogicalCollection& collection,
+                                       arangodb::velocypack::Slice const& definition,
+                                       TRI_idx_iid_t id,
+                                       bool isClusterConstructor) const override {
+    try {
+      auto link = std::shared_ptr<IResearchLinkCoordinator>(
+          new IResearchLinkCoordinator(id, collection));
+      auto res = link->init(definition);
+
+      if (!res.ok()) {
+        return res;
+      }
+
+      index = link;
+    } catch (arangodb::basics::Exception const& e) {
+      IR_LOG_EXCEPTION();
+
+      return arangodb::Result(
+          e.code(), std::string("caught exception while creating arangosearch "
+                                "view Coordinator link '") +
+                        std::to_string(id) + "': " + e.what());
+    } catch (std::exception const& e) {
+      IR_LOG_EXCEPTION();
+
+      return arangodb::Result(
+          TRI_ERROR_INTERNAL,
+          std::string("caught exception while creating arangosearch view "
+                      "Coordinator link '") +
+              std::to_string(id) + "': " + e.what());
+    } catch (...) {
+      IR_LOG_EXCEPTION();
+
+      return arangodb::Result(
+          TRI_ERROR_INTERNAL,
+          std::string("caught exception while creating arangosearch view "
+                      "Coordinator link '") +
+              std::to_string(id) + "'");
+    }
+
+    return arangodb::Result();
+  }
+
+  virtual arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
+                                     arangodb::velocypack::Slice definition,
+                                     bool isCreation) const override {
+    return IResearchLinkHelper::normalize(normalized, definition, isCreation);
+  }
+};
+
+/*static*/ arangodb::IndexTypeFactory const& IResearchLinkCoordinator::factory() {
+  static const IndexFactory factory;
+
+  return factory;
 }
 
-IResearchLinkCoordinator::IResearchLinkCoordinator(
-    TRI_idx_iid_t id,
-    LogicalCollection& collection
-): arangodb::ClusterIndex(id, collection, static_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE)->engineType(), arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK, IResearchLinkHelper::emptyIndexSlice()) {
+IResearchLinkCoordinator::IResearchLinkCoordinator(TRI_idx_iid_t id, LogicalCollection& collection)
+    : arangodb::ClusterIndex(id, collection,
+                             static_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE)
+                                 ->engineType(),
+                             arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK,
+                             IResearchLinkHelper::emptyIndexSlice()),
+      IResearchLink(id, collection) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  _unique = false; // cannot be unique since multiple fields are indexed
-  _sparse = true;  // always sparse
-}
-
-bool IResearchLinkCoordinator::operator==(LogicalView const& view) const noexcept {
-  return _view && _view->id() == view.id();
-}
-
-bool IResearchLinkCoordinator::init(VPackSlice definition) {
-  std::string error;
-
-  if (!_meta.init(definition, error)) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "error parsing view link parameters from json: " << error;
-    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-
-    return false; // failed to parse metadata
-  }
-
-  if (!definition.isObject()
-      || !(definition.get(StaticStrings::ViewIdField).isString() ||
-           definition.get(StaticStrings::ViewIdField).isNumber())) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "error finding view for link '" << id() << "'";
-    TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-
-    return false;
-  }
-
-  auto idSlice = definition.get(StaticStrings::ViewIdField);
-  std::string viewId = idSlice.isString() ? idSlice.copyString() : std::to_string(idSlice.getUInt());
-  auto& vocbase = _collection.vocbase();
-
-  TRI_ASSERT(ClusterInfo::instance());
-  auto logicalView  = ClusterInfo::instance()->getView(vocbase.name(), viewId);
-
-  if (!logicalView
-      || arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "error looking up view '" << viewId << "': no such view";
-    return false; // no such view
-  }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto view = std::dynamic_pointer_cast<IResearchViewCoordinator>(logicalView);
-#else
-  auto view = std::static_pointer_cast<IResearchViewCoordinator>(logicalView);
-#endif
-
-  if (!view) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "error finding view '" << viewId << "' for link '" << id() << "'";
-
-    return false;
-  }
-
-  if (!view->emplace(_collection.id(), _collection.name(), definition)) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "error emplacing link to collection '" << _collection.name() << "' into arangosearch view '" << viewId << "' link '" << id() << "'";
-
-    return false;
-  }
-
-  _view = view;
-
-  return true;
-}
-
-/*static*/ IResearchLinkCoordinator::ptr IResearchLinkCoordinator::make(
-  arangodb::LogicalCollection& collection,
-  arangodb::velocypack::Slice const& definition,
-  TRI_idx_iid_t id,
-  bool // isClusterConstructor
-) noexcept {
-  try {
-    PTR_NAMED(IResearchLinkCoordinator, ptr, id, collection);
-
-    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto* link = dynamic_cast<IResearchLinkCoordinator*>(ptr.get());
-    #else
-      auto* link = static_cast<IResearchLinkCoordinator*>(ptr.get());
-    #endif
-
-    return link && link->init(definition) ? ptr : nullptr;
-  } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while creating arangosearch view Coordinator link '" << id << "': " << e.code() << " "  << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while creating arangosearch view Coordinator link '" << id << "': " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (...) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while creating arangosearch view Coordinator link '" << id << "'";
-    IR_LOG_EXCEPTION();
-  }
-
-  return nullptr;
-}
-
-bool IResearchLinkCoordinator::matchesDefinition(VPackSlice const& slice) const {
-  IResearchLinkMeta rhs;
-  std::string errorField;
-
-  return rhs.init(slice, errorField) && _meta == rhs;
+  _unique = false;  // cannot be unique since multiple fields are indexed
+  _sparse = true;   // always sparse
 }
 
 void IResearchLinkCoordinator::toVelocyPack(
     arangodb::velocypack::Builder& builder,
-    std::underlying_type<arangodb::Index::Serialize>::type flags
-) const {
-  TRI_ASSERT(_view);
-  TRI_ASSERT(!builder.isOpenObject());
+    std::underlying_type<arangodb::Index::Serialize>::type flags) const {
+  if (builder.isOpenObject()) {
+    THROW_ARANGO_EXCEPTION(
+        arangodb::Result(TRI_ERROR_BAD_PARAMETER,
+                         std::string("failed to generate link definition for "
+                                     "arangosearch view Cluster link '") +
+                             std::to_string(arangodb::Index::id()) + "'"));
+  }
+
   builder.openObject();
 
-  bool success = _meta.json(builder);
-
-  TRI_ASSERT(success);
-  builder.add(
-    arangodb::StaticStrings::IndexId,
-    arangodb::velocypack::Value(std::to_string(id()))
-  );
-  builder.add(
-    arangodb::StaticStrings::IndexType,
-    arangodb::velocypack::Value(IResearchLinkHelper::type())
-  );
-  builder.add(
-    StaticStrings::ViewIdField,
-    arangodb::velocypack::Value(_view->guid())
-  );
+  if (!json(builder)) {
+    THROW_ARANGO_EXCEPTION(
+        arangodb::Result(TRI_ERROR_INTERNAL,
+                         std::string("failed to generate link definition for "
+                                     "arangosearch view Cluster link '") +
+                             std::to_string(arangodb::Index::id()) + "'"));
+  }
 
   if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
-    builder.add(
-      "figures",
-      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
-    );
+    builder.add("figures",
+                arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object));
     toVelocyPackFigures(builder);
     builder.close();
   }
@@ -211,12 +151,8 @@ void IResearchLinkCoordinator::toVelocyPack(
   builder.close();
 }
 
-char const* IResearchLinkCoordinator::typeName() const {
-  return IResearchLinkHelper::type().c_str();
-}
-
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

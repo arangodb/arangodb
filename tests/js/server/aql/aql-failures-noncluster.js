@@ -388,7 +388,7 @@ function ahuacatlFailureSuite () {
 
     testExecutionBlock3 : function () {
       internal.debugSetFailAt("ExecutionBlock::getOrSkipSome1");
-      assertFailingQuery("FOR u in " + c.name() + " SORT u.id DESC LIMIT 0,4 RETURN u");
+      assertFailingQuery("FOR u in " + c.name() + " SORT u.id DESC LIMIT 0,4 RETURN u", ['-sort-limit']);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -397,7 +397,7 @@ function ahuacatlFailureSuite () {
 
     testExecutionBlock4 : function () {
       internal.debugSetFailAt("ExecutionBlock::getOrSkipSome2");
-      assertFailingQuery("FOR u in " + c.name() + " SORT u.id DESC LIMIT " + (count - 1) + ",100 RETURN u");
+      assertFailingQuery("FOR u in " + c.name() + " SORT u.id DESC LIMIT " + (count - 1) + ",100 RETURN u", ['-sort-limit']);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -415,7 +415,7 @@ function ahuacatlFailureSuite () {
 
     testEnumerateCollectionBlock : function () {
       internal.debugSetFailAt("EnumerateCollectionBlock::moreDocuments");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value2 == 9 COLLECT key = i._key RETURN key");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value2 == 9 COLLECT key = i.value2 RETURN key");
     },
 
 ////////////////////////////////////////////////////////////////////////////////

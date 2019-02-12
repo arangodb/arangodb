@@ -21,11 +21,12 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-// LoggerStream is just a helper, the LoggerStream.h cannot be included standalone
+// LoggerStream is just a helper, the LoggerStream.h cannot be included
+// standalone
 #include "Logger.h"
 
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 
 using namespace arangodb;
 
@@ -34,7 +35,8 @@ LoggerStream::~LoggerStream() {
     Logger::log(_function, _file, _line, _level, _topicId, _out.str());
   } catch (...) {
     try {
-      // logging the error may fail as well, and we should never throw in the dtor
+      // logging the error may fail as well, and we should never throw in the
+      // dtor
       std::cerr << "failed to log: " << _out.str() << std::endl;
     } catch (...) {
     }
@@ -45,18 +47,17 @@ LoggerStream::~LoggerStream() {
 LoggerStream& LoggerStream::operator<<(Logger::BINARY const& binary) {
   try {
     std::ostringstream tmp;
-  
+
     uint8_t const* ptr = static_cast<uint8_t const*>(binary.baseAddress);
     uint8_t const* end = ptr + binary.size;
-    
+
     while (ptr < end) {
       uint8_t n = *ptr;
-      
+
       uint8_t n1 = n >> 4;
       uint8_t n2 = n & 0x0F;
-      
-      tmp << "\\x" 
-          << static_cast<char>((n1 < 10) ? ('0' + n1) : ('A' + n1 - 10)) 
+
+      tmp << "\\x" << static_cast<char>((n1 < 10) ? ('0' + n1) : ('A' + n1 - 10))
           << static_cast<char>((n2 < 10) ? ('0' + n2) : ('A' + n2 - 10));
       ++ptr;
     }
@@ -97,8 +98,7 @@ LoggerStream& LoggerStream::operator<<(Logger::RANGE const& range) {
 LoggerStream& LoggerStream::operator<<(Logger::FIXED const& value) {
   try {
     std::ostringstream tmp;
-    tmp << std::setprecision(value._precision) << std::fixed
-        << value._value;
+    tmp << std::setprecision(value._precision) << std::fixed << value._value;
     _out << tmp.str();
   } catch (...) {
     // ignore any errors here. logging should not have side effects

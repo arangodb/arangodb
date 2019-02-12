@@ -45,19 +45,17 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-ServerFeature::ServerFeature(
-    application_features::ApplicationServer& server,
-    int* res
-)
+ServerFeature::ServerFeature(application_features::ApplicationServer& server, int* res)
     : ApplicationFeature(server, "Server"),
       _vstMaxSize(1024 * 30),
       _result(res),
       _operationMode(OperationMode::MODE_SERVER)
 #if _WIN32
-      ,_codePage(65001), // default to UTF8
+      ,
+      _codePage(65001),  // default to UTF8
       _originalCodePage(UINT16_MAX)
 #endif
-  {
+{
   setOptional(true);
 
   startsAfter("AQLPhase");
@@ -71,12 +69,13 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addSection("server", "Server features");
 
-  options->addHiddenOption("--server.rest-server", "start a rest-server",
-                           new BooleanParameter(&_restServer));
+  options->addOption("--server.rest-server", "start a rest-server",
+                     new BooleanParameter(&_restServer),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
-  options->addObsoleteOption("--server.session-timeout",
-                             "timeout of web interface server sessions (in seconds)",
-                             true);
+  options->addObsoleteOption(
+      "--server.session-timeout",
+      "timeout of web interface server sessions (in seconds)", true);
 
   options->addSection("javascript", "Configure the Javascript engine");
 
@@ -89,8 +88,10 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "maximal size (in bytes) for a VelocyPack chunk",
                      new UInt32Parameter(&_vstMaxSize));
 #if _WIN32
-  options->addHiddenOption("--console.code-page", "Windows code page to use; defaults to UTF8",
-                           new UInt16Parameter(&_codePage));
+  options->addOption("--console.code-page",
+                     "Windows code page to use; defaults to UTF8",
+                     new UInt16Parameter(&_codePage),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 #endif
 }
 
@@ -108,20 +109,22 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (1 < count) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot combine '--console', '--javascript.unit-tests' and "
-               << "'--javascript.script'";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "cannot combine '--console', '--javascript.unit-tests' and "
+        << "'--javascript.script'";
     FATAL_ERROR_EXIT();
   }
 
   if (_operationMode == OperationMode::MODE_SERVER && !_restServer) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "need at least '--console', '--javascript.unit-tests' or"
-               << "'--javascript.script if rest-server is disabled";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "need at least '--console', '--javascript.unit-tests' or"
+        << "'--javascript.script if rest-server is disabled";
     FATAL_ERROR_EXIT();
   }
-  
+
   V8DealerFeature* v8dealer =
-    ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-  
+      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+
   if (v8dealer->isEnabled()) {
     if (_operationMode == OperationMode::MODE_SCRIPT) {
       v8dealer->setMinimumContexts(2);
@@ -129,14 +132,16 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       v8dealer->setMinimumContexts(1);
     }
   } else if (_operationMode != OperationMode::MODE_SERVER) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Options '--console', '--javascript.unit-tests'"
-       << " or '--javascript.script' are not supported without V8";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "Options '--console', '--javascript.unit-tests'"
+        << " or '--javascript.script' are not supported without V8";
     FATAL_ERROR_EXIT();
   }
 
   if (!_restServer) {
     ApplicationServer::disableFeatures({"Daemon", "Endpoint", "GeneralServer",
-                                        "SslServer", "Statistics", "Supervisor"});
+                                        "SslServer", "Statistics",
+                                        "Supervisor"});
 
     if (!options->processingResult().touched("replication.auto-start")) {
       // turn off replication applier when we do not have a rest server
@@ -180,19 +185,18 @@ void ServerFeature::start() {
       LOG_TOPIC(TRACE, Logger::STARTUP) << "server operation mode: SERVER";
       break;
   }
-  
+
   // flush all log output before we go on... this is sensible because any
   // of the following options may print or prompt, and pending log entries
   // might overwrite that
   Logger::flush();
- 
+
   if (!isConsoleMode()) {
     // install CTRL-C handlers
     server()->registerStartupCallback([]() {
       ApplicationServer::getFeature<SchedulerFeature>("Scheduler")->buildControlCHandler();
     });
   }
-
 }
 
 void ServerFeature::stop() {
@@ -237,4 +241,4 @@ std::string ServerFeature::operationModeString(OperationMode mode) {
   }
 }
 
-} // arangodb
+}  // namespace arangodb

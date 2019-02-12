@@ -31,9 +31,9 @@
 
 using namespace arangodb;
 
-RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine* eng,
-                                                 double interval)
-    : Thread("RocksDBThread"), _engine(eng), _interval(interval) {}
+RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine* eng, double interval)
+    : Thread("RocksDBThread"), _engine(eng), _interval(interval),
+      _disableWalFilePruning(0) {}
 
 RocksDBBackgroundThread::~RocksDBBackgroundThread() { shutdown(); }
 
@@ -57,7 +57,7 @@ void RocksDBBackgroundThread::run() {
     if (_engine->inRecovery()) {
       continue;
     }
-    
+
     TRI_IF_FAILURE("RocksDBBackgroundThread::run") { continue; }
 
     try {
@@ -66,13 +66,14 @@ void RocksDBBackgroundThread::run() {
         Result res = _engine->settingsManager()->sync(false);
         if (res.fail()) {
           LOG_TOPIC(WARN, Logger::ENGINES)
-            << "background settings sync failed: " << res.errorMessage();
+              << "background settings sync failed: " << res.errorMessage();
         }
 
         double end = TRI_microtime();
         if ((end - start) > 0.75) {
           LOG_TOPIC(WARN, Logger::ENGINES)
-            << "slow background settings sync: " << Logger::FIXED(end - start, 6) << " s";
+              << "slow background settings sync: " << Logger::FIXED(end - start, 6)
+              << " s";
         }
       }
 
@@ -87,28 +88,28 @@ void RocksDBBackgroundThread::run() {
       }
 
       if (DatabaseFeature::DATABASE != nullptr) {
-        DatabaseFeature::DATABASE->enumerateDatabases(
-          [&minTick](TRI_vocbase_t& vocbase)->void {
-              auto clients = vocbase.getReplicationClients();
-              for (auto c : clients) {
-                if (std::get<3>(c) < minTick) {
-                  minTick = std::get<3>(c);
-                }
-              }
+        DatabaseFeature::DATABASE->enumerateDatabases([&minTick](TRI_vocbase_t& vocbase) -> void {
+          auto clients = vocbase.getReplicationClients();
+          for (auto c : clients) {
+            if (std::get<3>(c) < minTick) {
+              minTick = std::get<3>(c);
+            }
           }
-        );
+        });
       }
 
-      // only start pruning of obsolete WAL files a few minutes after
-      // server start. if we start pruning too early, replication slaves
-      // will not have a chance to reconnect to a restarted master in
-      // time so the master may purge WAL files that replication slaves
-      // would still like to peek into
-      if (TRI_microtime() >= startTime + _engine->pruneWaitTimeInitial()) {
-        // determine which WAL files can be pruned
-        _engine->determinePrunableWalFiles(minTick);
-        // and then prune them when they expired
-        _engine->pruneWalFiles();
+      if (!disableWalFilePruning()) {
+        // only start pruning of obsolete WAL files a few minutes after
+        // server start. if we start pruning too early, replication slaves
+        // will not have a chance to reconnect to a restarted master in
+        // time so the master may purge WAL files that replication slaves
+        // would still like to peek into
+        if (TRI_microtime() >= startTime + _engine->pruneWaitTimeInitial()) {
+          // determine which WAL files can be pruned
+          _engine->determinePrunableWalFiles(minTick);
+          // and then prune them when they expired
+          _engine->pruneWalFiles();
+        }
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC(WARN, Logger::ENGINES)

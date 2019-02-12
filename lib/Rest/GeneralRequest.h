@@ -41,15 +41,15 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 struct Options;
-}
+}  // namespace velocypack
 
 namespace basics {
 class StringBuffer;
 }
 
-using rest::RequestType;
 using rest::ContentType;
 using rest::ProtocolVersion;
+using rest::RequestType;
 
 class GeneralRequest {
   GeneralRequest(GeneralRequest const&) = delete;
@@ -118,7 +118,9 @@ class GeneralRequest {
   void setUser(std::string&& user) { _user = std::move(user); }
 
   /// @brief the request context depends on the application
-  TEST_VIRTUAL RequestContext* requestContext() const { return _requestContext; }
+  TEST_VIRTUAL RequestContext* requestContext() const {
+    return _requestContext;
+  }
 
   /// @brief set request context and whether this requests is allowed
   ///        to delete it
@@ -148,7 +150,9 @@ class GeneralRequest {
   void setPrefix(std::string const& prefix) { _prefix = prefix; }
 
   // Returns the request path suffixes in non-URL-decoded form
-  TEST_VIRTUAL std::vector<std::string> const& suffixes() const { return _suffixes; }
+  TEST_VIRTUAL std::vector<std::string> const& suffixes() const {
+    return _suffixes;
+  }
 
   // Returns the request path suffixes in URL-decoded form. Note: this will
   // re-compute the suffix list on every call!
@@ -161,26 +165,27 @@ class GeneralRequest {
   // do not care about message ids
   virtual uint64_t messageId() const { return 1; }
   virtual arangodb::Endpoint::TransportType transportType() = 0;
-  
+
   // get value from headers map. The key must be lowercase.
   std::string const& header(std::string const& key) const;
   std::string const& header(std::string const& key, bool& found) const;
   std::unordered_map<std::string, std::string> const& headers() const {
     return _headers;
   }
-  
+
   // the value functions give access to to query string parameters
   std::string const& value(std::string const& key) const;
   std::string const& value(std::string const& key, bool& found) const;
   std::unordered_map<std::string, std::string> const& values() const {
     return _values;
   }
-  
+
   std::unordered_map<std::string, std::vector<std::string>> const& arrayValues() const {
     return _arrayValues;
   }
-  
-  /// @brief returns parsed value, returns valueNotFound if parameter was not found
+
+  /// @brief returns parsed value, returns valueNotFound if parameter was not
+  /// found
   template <typename T>
   T parsedValue(std::string const& key, T valueNotFound);
 
@@ -189,13 +194,13 @@ class GeneralRequest {
   /// @brief unprocessed request payload
   virtual arangodb::StringRef rawPayload() const = 0;
   /// @brief parsed request payload
-  virtual VPackSlice payload(arangodb::velocypack::Options const* options =
-                             &VPackOptions::Defaults) = 0;
+  virtual VPackSlice payload(arangodb::velocypack::Options const* options = &VPackOptions::Defaults) = 0;
 
   TEST_VIRTUAL std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr() {
     VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
     optionsWithUniquenessCheck.checkAttributeUniqueness = true;
-    return std::make_shared<VPackBuilder>(payload(&optionsWithUniquenessCheck), &optionsWithUniquenessCheck);
+    return std::make_shared<VPackBuilder>(payload(&optionsWithUniquenessCheck),
+                                          &optionsWithUniquenessCheck);
   };
 
   std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtrNoUniquenessChecks() {
@@ -230,8 +235,7 @@ class GeneralRequest {
   bool _isRequestContextOwner;
   bool _authenticated;
 
-  rest::AuthenticationMethod _authenticationMethod =
-      rest::AuthenticationMethod::NONE;
+  rest::AuthenticationMethod _authenticationMethod = rest::AuthenticationMethod::NONE;
 
   // information about the payload
   RequestType _type;  // GET, POST, ..
@@ -241,11 +245,11 @@ class GeneralRequest {
   std::vector<std::string> _suffixes;
   ContentType _contentType;  // UNSET, VPACK, JSON
   ContentType _contentTypeResponse;
-  
+
   std::unordered_map<std::string, std::string> _headers;
   std::unordered_map<std::string, std::string> _values;
   std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
 };
-}
+}  // namespace arangodb
 
 #endif

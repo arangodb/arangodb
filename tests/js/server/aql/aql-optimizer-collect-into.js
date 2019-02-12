@@ -234,8 +234,34 @@ function optimizerCollectExpressionTestSuite () {
       query = "LET values = [ {time:1}, {time:1}, {time:2}, {time:2}, {time:3}, {time:4}, {time:2}, {time:3}, {time:6} ] FOR p1 IN values COLLECT t = FLOOR(p1.time / 2) AGGREGATE m = MAX(p1.time) FOR p2 IN values FILTER m == p2.time COLLECT q = 0 INTO qs = p2 RETURN {q}"; 
       results = AQL_EXECUTE(query);
       assertEqual([ { q: 0 } ], results.json);
+    },
+
+    testCollectWithEmptyInput : function () {
+      let query = "FOR v IN [] COLLECT w = 1 INTO x RETURN w";
+      let results = AQL_EXECUTE(query);
+      assertEqual([ ], results.json);
+      
+      query = "FOR v IN [] COLLECT w = 1 INTO x RETURN {x}";
+      results = AQL_EXECUTE(query);
+      assertEqual([ ], results.json);
+      
+      query = "FOR v IN [] COLLECT w = 1 INTO x RETURN x";
+      results = AQL_EXECUTE(query);
+      assertEqual([ ], results.json);
+      
+      query = "FOR v IN 1..3 FILTER v > 9 COLLECT w = 1 INTO x RETURN w";
+      results = AQL_EXECUTE(query);
+      assertEqual([ ], results.json);
+      
+      query = "FOR v IN 1..3 FILTER v > 9 COLLECT w = v INTO x RETURN w";
+      results = AQL_EXECUTE(query);
+      assertEqual([ ], results.json);
+      
+      query = "FOR v IN 1..3 COLLECT w = v INTO x RETURN w";
+      results = AQL_EXECUTE(query);
+      assertEqual([ 1, 2, 3 ], results.json);
     }
-    
+     
   };
 }
 

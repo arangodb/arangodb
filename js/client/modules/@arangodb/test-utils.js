@@ -242,6 +242,8 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             continue;
           }
           let delta = diffArray(collectionsBefore, collectionsAfter).filter(function(name) {
+            return ! ((name[0] === '_') || (name === "compact") || (name === "election")
+                     || (name === "log")); // exclude system/agency collections from the comparison
             return (name[0] !== '_'); // exclude system collections from the comparison
           });
 
@@ -643,6 +645,7 @@ function readTestResult(path, rc) {
     let msg = 'failed to read ' + jsonFN + " - " + x;
     print(RED + msg + RESET);
     return {
+      failed: 1,
       status: false,
       message: msg,
       duration: -1
@@ -684,6 +687,12 @@ function readTestResult(path, rc) {
     return rc;
   }    
 }
+
+function writeTestResult(path, data) {
+  const jsonFN = fs.join(path, 'testresult.json');
+  fs.write(jsonFN, JSON.stringify(data));
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a local unittest file using arangosh
 // //////////////////////////////////////////////////////////////////////////////
@@ -886,6 +895,7 @@ exports.makePathUnix = makePathUnix;
 exports.makePathGeneric = makePathGeneric;
 exports.performTests = performTests;
 exports.readTestResult = readTestResult;
+exports.writeTestResult = writeTestResult;
 exports.filterTestcaseByOptions = filterTestcaseByOptions;
 exports.splitBuckets = splitBuckets;
 exports.doOnePathInner = doOnePathInner;

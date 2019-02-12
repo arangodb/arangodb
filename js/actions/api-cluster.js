@@ -1,5 +1,5 @@
 /* jshint strict: false, unused: false */
-/* global AQL_EXECUTE, ArangoServerState, ArangoClusterComm, ArangoClusterInfo, ArangoAgency */
+/* global ArangoServerState, ArangoClusterComm, ArangoClusterInfo, ArangoAgency */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief cluster actions
@@ -29,12 +29,11 @@
 // / @author Copyright 2013-2014, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var actions = require('@arangodb/actions');
-var cluster = require('@arangodb/cluster');
-var wait = require("internal").wait;
-
-// var internal = require('internal');
-var _ = require('lodash');
+const actions = require('@arangodb/actions');
+const cluster = require('@arangodb/cluster');
+const users = require('@arangodb/users');
+const wait = require("internal").wait;
+const _ = require('lodash');
 
 actions.defineHttp({
   url: '_admin/cluster/removeServer',
@@ -42,10 +41,15 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
-    if (req.requestType !== actions.POST ||
-      !require('@arangodb/cluster').isCoordinator()) {
+    if (req.requestType !== actions.POST || !cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only DELETE requests are allowed and only to coordinators');
+      return;
+    }
+
+    if (req.database !== '_system' || !req.isAdminUser) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only allowed for admins on the _system database');
       return;
     }
 
@@ -139,16 +143,17 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
-    if (req.requestType !== actions.PUT) {
+    let role = global.ArangoServerState.role();
+    if (req.requestType !== actions.PUT || 
+        (role !== 'COORDINATOR' && role !== 'SINGLE')) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET and PUT requests are allowed');
+        'only GET and PUT requests are allowed and only to coordinators or singles');
       return;
     }
 
-    let role = global.ArangoServerState.role();
-    if (role !== 'COORDINATOR' && role !== 'SINGLE') {
+    if (req.database !== '_system' || !req.isAdminUser) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET requests are allowed and only to coordinators or singles');
+        'only allowed for admins on the _system database');
       return;
     }
 
@@ -228,7 +233,7 @@ actions.defineHttp({
 
   callback: function (req, res) {
     if (req.requestType !== actions.GET ||
-      !require('@arangodb/cluster').isCoordinator()) {
+      !cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only GET requests are allowed and only on coordinator');
       return;
@@ -287,7 +292,7 @@ actions.defineHttp({
 
   callback: function (req, res) {
     if (req.requestType !== actions.GET ||
-      !require('@arangodb/cluster').isCoordinator()) {
+      !cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only GET requests are allowed and only on coordinator');
       return;
@@ -346,7 +351,7 @@ actions.defineHttp({
 
   callback: function (req, res) {
     if (req.requestType !== actions.GET ||
-      !require('@arangodb/cluster').isCoordinator()) {
+      !cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only GET requests are allowed and only on coordinator');
       return;
@@ -409,7 +414,7 @@ actions.defineHttp({
         'only GET requests are allowed');
       return;
     }
-    if (!require('@arangodb/cluster').isCoordinator()) {
+    if (!cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only allowed on coordinator');
       return;
@@ -540,8 +545,50 @@ actions.defineHttp({
       return Health;
     }, Health);
 
-    Object.entries(agency[0]['.agency'].pool).forEach(([key, value]) => {
-      Health[key] = {Endpoint: value, Role: 'Agent', CanBeDeleted: false};
+    Object.entries(agency.configuration.pool).forEach(([key, value]) => {
+
+      if (Health.hasOwnProperty(key)) {
+        Health[key].Endpoint = value;
+        Health[key].Role = 'Agent';
+        Health[key].CanBeDeleted = false;
+      } else {
+        Health[key] = {Endpoint: value, Role: 'Agent', CanBeDeleted: false};
+      }
+
+      var options = { timeout: 5 };
+      var op = ArangoClusterComm.asyncRequest(
+        'GET', value, req.database, '/_api/agency/config', '', {}, options);
+      var r = ArangoClusterComm.wait(op);
+
+      if (r.status === 'RECEIVED') {
+        var record = JSON.parse(r.body);
+        Health[key].Version = record.version;
+        Health[key].Engine = record.engine;
+        Health[key].Leader = record.leaderId;
+        if (record.hasOwnProperty("lastAcked")) {
+          Health[key].Leading = true;
+          Object.entries(record.lastAcked).forEach(([k,v]) => {
+            if (Health.hasOwnProperty(k)) {
+              Health[k].LastAckedTime = v.lastAckedTime;
+            } else {
+              Health[k] = {LastAckedTime: v.lastAckedTime};
+            }
+          });
+        }
+        Health[key].Status = "GOOD";
+      } else {
+        Health[key].Status = "BAD";
+        if (r.status === 'TIMEOUT') {
+          Health[key].Error = "TIMEOUT";
+        } else {
+          try {
+            Health[key].Error = JSON.parse(r.body);
+          } catch (err) {
+            Health[key].Error = "UNKNOWN";
+          }
+        }
+      }
+
     });
 
     actions.resultOk(req, res, actions.HTTP_OK, {Health, ClusterId: clusterId});
@@ -654,13 +701,13 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
-    if (!require('@arangodb/cluster').isCoordinator()) {
+    if (!cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only coordinators can serve this request');
       return;
     }
     if (req.requestType !== actions.GET &&
-      req.requestType !== actions.PUT) {
+        req.requestType !== actions.PUT) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only GET and PUT methods are allowed');
       return;
@@ -689,6 +736,13 @@ actions.defineHttp({
         cleanedServers
       });
     } else { // PUT
+
+      if (!req.isAdminUser) {
+        actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+          'only allowed for admins users');
+        return;
+      }
+
       var body = actions.getJsonBody(req, res);
       if (body === undefined) {
         return;
@@ -772,7 +826,7 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
-    if (!require('@arangodb/cluster').isCoordinator()) {
+    if (!cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only coordinators can serve this request');
       return;
@@ -780,6 +834,12 @@ actions.defineHttp({
     if (req.requestType !== actions.POST) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only the POST method is allowed');
+      return;
+    }
+
+    if (!req.isAdminUser) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only allowed for admins on the _system database');
       return;
     }
 
@@ -867,7 +927,7 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
-    if (!require('@arangodb/cluster').isCoordinator()) {
+    if (!cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only coordinators can serve this request');
       return;
@@ -877,6 +937,13 @@ actions.defineHttp({
         'only the GET method is allowed');
       return;
     }
+
+    // simon: maybe an information leak, but usage is unclear to me
+    /*if (req.database !== '_system') {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only allowed on the _system database');
+      return;
+    }*/
 
     // Now get to work:
     let id;
@@ -896,7 +963,7 @@ actions.defineHttp({
     var ok = true;
     var job;
     try {
-      job = require('@arangodb/cluster').queryAgencyJob(id);
+      job = cluster.queryAgencyJob(id);
     } catch (e1) {
       ok = false;
     }
@@ -948,7 +1015,7 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
-    if (!require('@arangodb/cluster').isCoordinator()) {
+    if (!cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only coordinators can serve this request');
       return;
@@ -979,9 +1046,18 @@ actions.defineHttp({
         "body must be an object with string attributes 'database', 'collection', 'shard', 'fromServer' and 'toServer'");
       return;
     }
+
+    // at least RW rights on db to move a shard
+    if (!req.isAdminUser && 
+        users.permission(req.user, body.database) !== 'rw') {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'insufficent permissions on database to move shard');
+      return;
+    }
+
     body.shards = [body.shard];
     body.collections = [body.collection];
-    var r = require('@arangodb/cluster').moveShard(body);
+    var r = cluster.moveShard(body);
     if (r.error) {
       actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE, r);
       return;
@@ -1029,7 +1105,7 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
-    if (!require('@arangodb/cluster').isCoordinator()) {
+    if (!cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only coordinators can serve this request');
       return;
@@ -1057,7 +1133,7 @@ actions.defineHttp({
       return;
     }
 
-    var result = require('@arangodb/cluster').collectionShardDistribution(body.collection);
+    var result = cluster.collectionShardDistribution(body.collection);
     actions.resultOk(req, res, actions.HTTP_OK, result);
   }
 });
@@ -1097,7 +1173,7 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
-    if (!require('@arangodb/cluster').isCoordinator()) {
+    if (!cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only coordinators can serve this request');
       return;
@@ -1108,7 +1184,7 @@ actions.defineHttp({
       return;
     }
 
-    var result = require('@arangodb/cluster').shardDistribution();
+    var result = cluster.shardDistribution();
     actions.resultOk(req, res, actions.HTTP_OK, result);
   }
 });
@@ -1142,7 +1218,7 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
-    if (!require('@arangodb/cluster').isCoordinator()) {
+    if (!cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only coordinators can serve this request');
       return;
@@ -1150,6 +1226,13 @@ actions.defineHttp({
     if (req.requestType !== actions.POST) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only the POST method is allowed');
+      return;
+    }
+
+    // simon: RO is sufficient to rebalance shards for current db
+    if (req.database !== '_system'/* || !req.isAdminUser*/) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only allowed for admins on the _system database');
       return;
     }
 
@@ -1163,7 +1246,7 @@ actions.defineHttp({
         'body must be an object.');
       return;
     }
-    var ok = require('@arangodb/cluster').rebalanceShards();
+    var ok = cluster.rebalanceShards();
     if (!ok) {
       actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
         'Cannot write to agency.');
@@ -1201,7 +1284,7 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
-    if (!require('@arangodb/cluster').isCoordinator()) {
+    if (!cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only coordinators can serve this request');
       return;
@@ -1212,7 +1295,7 @@ actions.defineHttp({
       return;
     }
 
-    var result = require('@arangodb/cluster').supervisionState();
+    var result = cluster.supervisionState();
     if (result.error) {
       actions.resultError(req, res, actions.HTTP_BAD, result);
       return;

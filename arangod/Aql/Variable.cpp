@@ -47,8 +47,9 @@ Variable::Variable(std::string const& name, VariableId id)
 Variable::Variable(arangodb::velocypack::Slice const& slice)
     : Variable(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
                    slice, "name"),
-               arangodb::basics::VelocyPackHelper::checkAndGetNumericValue<
-                   VariableId>(slice, "id")) {}
+               arangodb::basics::VelocyPackHelper::checkAndGetNumericValue<VariableId>(slice,
+                                                                                       "id")) {
+}
 
 /// @brief destroy the variable
 Variable::~Variable() {}
@@ -61,9 +62,8 @@ void Variable::toVelocyPack(VPackBuilder& builder) const {
 }
 
 /// @brief replace a variable by another
-Variable const* Variable::replace(
-    Variable const* variable,
-    std::unordered_map<VariableId, Variable const*> const& replacements) {
+Variable const* Variable::replace(Variable const* variable,
+                                  std::unordered_map<VariableId, Variable const*> const& replacements) {
   while (variable != nullptr) {
     auto it = replacements.find(variable->id);
     if (it != replacements.end()) {
@@ -77,8 +77,7 @@ Variable const* Variable::replace(
 }
 
 /// @brief factory for (optional) variables from VPack
-Variable* Variable::varFromVPack(Ast* ast,
-                                 arangodb::velocypack::Slice const& base,
+Variable* Variable::varFromVPack(Ast* ast, arangodb::velocypack::Slice const& base,
                                  char const* variableName, bool optional) {
   VPackSlice variable = base.get(variableName);
 
@@ -88,10 +87,8 @@ Variable* Variable::varFromVPack(Ast* ast,
     }
 
     std::string msg;
-    msg +=
-        "mandatory variable \"" + std::string(variableName) + "\" not found.";
+    msg += "mandatory variable \"" + std::string(variableName) + "\" not found.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
   }
   return ast->variables()->createVariable(variable);
 }
-

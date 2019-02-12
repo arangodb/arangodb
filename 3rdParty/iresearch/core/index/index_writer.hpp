@@ -55,15 +55,33 @@ class directory_reader;
 
 class readers_cache final : util::noncopyable {
  public:
+  struct key_t {
+    std::string name;
+    uint64_t version;
+    key_t(const segment_meta& meta); // implicit constructor
+    bool operator<(const key_t& other) const NOEXCEPT {
+      return name < other.name
+        || (name == other.name && version < other.version);
+    }
+    bool operator==(const key_t& other) const NOEXCEPT {
+      return name == other.name && version == other.version;
+    }
+  };
+  struct key_hash_t {
+    size_t operator()(const key_t& key) const NOEXCEPT {
+      return std::hash<std::string>()(key.name);
+    }
+  };
+
   readers_cache(directory& dir): dir_(dir) {}
 
-  segment_reader emplace(const segment_meta& meta);
   void clear() NOEXCEPT;
-  size_t purge(const std::unordered_set<std::string>& segments) NOEXCEPT;
+  segment_reader emplace(const segment_meta& meta);
+  size_t purge(const std::unordered_set<key_t, key_hash_t>& segments) NOEXCEPT;
 
  private:
   std::mutex lock_;
-  std::unordered_map<std::string, segment_reader> cache_;
+  std::unordered_map<key_t, segment_reader, key_hash_t> cache_;
   directory& dir_;
 }; // readers_cache
 
@@ -132,7 +150,7 @@ class IRESEARCH_API index_writer:
 
    private:
     friend struct flush_context; // for flush_context::emplace(...)
-    segment_context_ptr ctx_{};
+    segment_context_ptr ctx_{nullptr};
     flush_context* flush_ctx_{nullptr}; // nullptr will not match any flush_context
     size_t pending_segment_context_offset_; // segment offset in flush_ctx_->pending_segment_contexts_
     std::atomic<size_t>* segments_active_; // reference to index_writer::segments_active_
@@ -375,21 +393,9 @@ class IRESEARCH_API index_writer:
   };
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief options the the writer should use after creation
+  /// @brief options the the writer should use for segments
   //////////////////////////////////////////////////////////////////////////////
-  struct options {
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief aquire an exclusive lock on the repository to guard against index
-    ///        corruption from multiple index_writers
-    ////////////////////////////////////////////////////////////////////////////
-    bool lock_repository{true};
-
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief number of memory blocks to cache by the internal memory pool
-    ///        0 == use default from memory_allocator::global()
-    ////////////////////////////////////////////////////////////////////////////
-    size_t memory_pool_size{0};
-
+  struct segment_options {
     ////////////////////////////////////////////////////////////////////////////
     /// @brief segment aquisition requests will block and wait for free segments
     ///        after this many segments have been aquired e.g. via documents()
@@ -412,6 +418,23 @@ class IRESEARCH_API index_writer:
     ///        0 == unlimited
     ////////////////////////////////////////////////////////////////////////////
     size_t segment_memory_max{0};
+  };
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief options the the writer should use after creation
+  //////////////////////////////////////////////////////////////////////////////
+  struct init_options: public segment_options {
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief aquire an exclusive lock on the repository to guard against index
+    ///        corruption from multiple index_writers
+    ////////////////////////////////////////////////////////////////////////////
+    bool lock_repository{true};
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief number of memory blocks to cache by the internal memory pool
+    ///        0 == use default from memory_allocator::global()
+    ////////////////////////////////////////////////////////////////////////////
+    size_t memory_pool_size{0};
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief number of free segments cached in the segment pool for reuse
@@ -419,7 +442,7 @@ class IRESEARCH_API index_writer:
     ////////////////////////////////////////////////////////////////////////////
     size_t segment_pool_size{128}; // arbitrary size
 
-    options() {}; // GCC5 requires non-default definition
+    init_options() {}; // GCC5 requires non-default definition
   };
 
   struct segment_hash {
@@ -541,8 +564,14 @@ class IRESEARCH_API index_writer:
     directory& dir,
     format::ptr codec,
     OpenMode mode,
-    const options& opts = options()
+    const init_options& opts = init_options()
   );
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @brief modify the runtime segment options as per the specified values
+  ///        options will apply no later than after the next commit()
+  ////////////////////////////////////////////////////////////////////////////
+  void options(const segment_options& opts);
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief begins the two-phase transaction
@@ -736,18 +765,18 @@ class IRESEARCH_API index_writer:
     format::ptr codec_; // the codec to used for flushing a segment writer
     bool dirty_; // true if flush_all() started processing this segment (this segment should not be used for any new operations), guarded by the flush_context::flush_mutex_
     ref_tracking_directory dir_; // ref tracking for segment_writer to allow for easy ref removal on segment_writer reset
-    std::mutex flush_mutex_; // guard 'uncomitted_*' and 'writer_' from concurrent flush
+    std::recursive_mutex flush_mutex_; // guard 'flushed_', 'uncomitted_*' and 'writer_' from concurrent flush
     std::vector<flushed_t> flushed_; // all of the previously flushed versions of this segment, guarded by the flush_context::flush_mutex_
     std::vector<segment_writer::update_context> flushed_update_contexts_; // update_contexts to use with 'flushed_' sequentially increasing through all offsets (sequential doc_id in 'flushed_' == offset + type_limits<type_t::doc_id_t>::min(), size() == sum of all 'flushed_'.'docs_count')
     segment_meta_generator_t meta_generator_; // function to get new segment_meta from
     std::vector<modification_context> modification_queries_; // sequential list of pending modification requests (remove/update)
     size_t uncomitted_doc_id_begin_; // starting doc_id that is not part of the current flush_context (doc_id sequentially increasing through all 'flushed_' offsets and into 'segment_writer::doc_contexts' hence value may be greater than doc_id_t::max)
-    size_t uncomitted_generation_offset_; // current modification/update generation offset for asignment to uncommited operations
+    size_t uncomitted_generation_offset_; // current modification/update generation offset for asignment to uncommited operations (same as modification_queries_.size() - uncomitted_modification_queries_) FIXME TODO consider removing
     size_t uncomitted_modification_queries_; // staring offset in 'modification_queries_' that is not part of the current flush_context
     segment_writer::ptr writer_;
     index_meta::index_segment_t writer_meta_; // the segment_meta this writer was initialized with
 
-    DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator)
+    DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator);
     segment_context(directory& dir, segment_meta_generator_t&& meta_generator);
 
     ////////////////////////////////////////////////////////////////////////////
@@ -781,13 +810,19 @@ class IRESEARCH_API index_writer:
   };
 
   struct segment_limits {
-    size_t segment_count_max; // @see options::max_segment_count
-    size_t segment_docs_max; // @see options::max_segment_docs
-    size_t segment_memory_max; // @see options::max_segment_memory
-    segment_limits(const options& opts) NOEXCEPT
+    std::atomic<size_t> segment_count_max; // @see segment_options::max_segment_count
+    std::atomic<size_t> segment_docs_max; // @see segment_options::max_segment_docs
+    std::atomic<size_t> segment_memory_max; // @see segment_options::max_segment_memory
+    segment_limits(const segment_options& opts) NOEXCEPT
       : segment_count_max(opts.segment_count_max),
         segment_docs_max(opts.segment_docs_max),
         segment_memory_max(opts.segment_memory_max) {
+    }
+    segment_limits& operator=(const segment_options& opts) NOEXCEPT {
+      segment_count_max.store(opts.segment_count_max);
+      segment_docs_max.store(opts.segment_docs_max);
+      segment_memory_max.store(opts.segment_memory_max);
+      return *this;
     }
   };
 
@@ -839,7 +874,7 @@ class IRESEARCH_API index_writer:
     std::condition_variable pending_segment_context_cond_; // notified when a segment has been freed (guarded by mutex_)
     std::deque<pending_segment_context> pending_segment_contexts_; // segment writers with data pending for next commit (all segments that have been used by this flush_context) must be std::deque to garantee that element memory location does not change for use with 'pending_segment_contexts_freelist_'
     freelist_t pending_segment_contexts_freelist_; // entries from 'pending_segment_contexts_' that are available for reuse
-    std::unordered_set<std::string> segment_mask_; // set of segment names to be removed from the index upon commit
+    std::unordered_set<readers_cache::key_t, readers_cache::key_hash_t> segment_mask_; // set of segment names to be removed from the index upon commit
 
     flush_context() = default;
 
@@ -949,7 +984,7 @@ class IRESEARCH_API index_writer:
     directory& dir, 
     format::ptr codec,
     size_t segment_pool_size,
-    const segment_limits& segment_limits,
+    const segment_options& segment_limits,
     index_meta&& meta, 
     committed_state_t&& committed_state
   ) NOEXCEPT;

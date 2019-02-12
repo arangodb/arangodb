@@ -63,7 +63,7 @@ filter::prepared::ptr filter::prepared::empty() {
   );
 }
 
-filter::prepared::prepared(attribute_store&& attrs)
+filter::prepared::prepared(attribute_store&& attrs) NOEXCEPT
   : attrs_(std::move(attrs)) {
 }
 
@@ -73,8 +73,8 @@ filter::prepared::~prepared() {}
 // --SECTION--                                                             empty
 // -----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(irs::empty);
-DEFINE_FACTORY_DEFAULT(irs::empty);
+DEFINE_FILTER_TYPE(irs::empty)
+DEFINE_FACTORY_DEFAULT(irs::empty)
 
 empty::empty(): filter(empty::type()) {
 }

@@ -31,18 +31,17 @@
 
 namespace arangodb {
 namespace rocksdb {
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the active journals for the collection on all DBServers
 ////////////////////////////////////////////////////////////////////////////////
 
-Result recalculateCountsOnAllDBServers(std::string const& dbname,
-                                       std::string const& collname) {
+Result recalculateCountsOnAllDBServers(std::string const& dbname, std::string const& collname) {
   ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
   if (!ce->isRocksDB()) {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
-  
+
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
@@ -50,15 +49,15 @@ Result recalculateCountsOnAllDBServers(std::string const& dbname,
     // nullptr happens only during controlled shutdown
     return TRI_ERROR_SHUTTING_DOWN;
   }
-  
+
   // First determine the collection ID from the name:
   auto collinfo = ci->getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  
-  std::string const baseUrl = "/_db/" + basics::StringUtils::urlEncode(dbname)
-                              + "/_api/collection/";
+
+  std::string const baseUrl =
+      "/_db/" + basics::StringUtils::urlEncode(dbname) + "/_api/collection/";
   std::shared_ptr<std::string> body;
 
   // now we notify all leader and follower shards
@@ -66,7 +65,8 @@ Result recalculateCountsOnAllDBServers(std::string const& dbname,
   std::vector<ClusterCommRequest> requests;
   for (auto const& shard : *shardList) {
     for (ServerID const& server : shard.second) {
-      std::string uri = baseUrl + basics::StringUtils::urlEncode(shard.first) + "/recalculateCount";
+      std::string uri = baseUrl + basics::StringUtils::urlEncode(shard.first) +
+                        "/recalculateCount";
       requests.emplace_back("server:" + server, arangodb::rest::RequestType::PUT,
                             std::move(uri), body);
     }
@@ -74,11 +74,12 @@ Result recalculateCountsOnAllDBServers(std::string const& dbname,
 
   size_t nrDone = 0;
   size_t nrGood = cc->performRequests(requests, 600.0, nrDone, Logger::ENGINES, false);
-  
+
   if (nrGood < requests.size()) {
     return TRI_ERROR_FAILED;
   }
   return TRI_ERROR_NO_ERROR;
 }
 
-}}
+}  // namespace rocksdb
+}  // namespace arangodb

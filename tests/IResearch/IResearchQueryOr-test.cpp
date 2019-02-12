@@ -70,7 +70,7 @@
 
 extern const char* ARGV0; // defined in main.cpp
 
-NS_LOCAL
+namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -174,7 +174,7 @@ struct IResearchQueryOrSetup {
   }
 }; // IResearchQuerySetup
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -283,7 +283,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
     }
 
     CHECK((trx.commit().ok()));
-    CHECK(view->commit().ok());
+    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").code)); // commit
   }
 
   // d.name == 'A' OR d.name == 'Q', d.seq DESC
@@ -525,6 +525,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
     for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
+
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     CHECK(expectedDoc == expectedDocs.end());
@@ -563,6 +564,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
     for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
+
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     CHECK(expectedDoc == expectedDocs.end());
@@ -596,6 +598,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
     for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
+
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     CHECK(expectedDoc == expectedDocs.end());
@@ -606,11 +609,13 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
     std::vector<arangodb::velocypack::Slice> expected = {
       arangodb::velocypack::Slice(insertedDocs[25].vpack()), // {"name":"Z","seq":25,"same":"xyz", "prefix":"abcdrer" ,
       arangodb::velocypack::Slice(insertedDocs[26].vpack()), // {"name":"~","seq":26,"same":"xyz", "duplicated":"abcd"}
+
       arangodb::velocypack::Slice(insertedDocs[20].vpack()), // {"name":"U","seq":20,"same":"xyz", "prefix":"abc", "duplicated":"abcd"}
       arangodb::velocypack::Slice(insertedDocs[3].vpack()),  // {"name":"D","seq":3,"same":"xyz", "value":12, "prefix":"abcde"}
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),  // {"name":"A","seq":0,"same":"xyz", "value":100, "duplicated":"abcd", "prefix":"abcd" }
       arangodb::velocypack::Slice(insertedDocs[31].vpack()), // {"name":"%","seq":31,"same":"xyz", "prefix":"abcy"}
       arangodb::velocypack::Slice(insertedDocs[30].vpack()), // {"name":"$","seq":30,"same":"xyz", "duplicated":"abcd", "prefix":"abcy" }
+
       arangodb::velocypack::Slice(insertedDocs[23].vpack()), // {"name":"X","seq":23,"same":"xyz", "duplicated":"vczc", "prefix":"bateradsfsfasdf" }
       arangodb::velocypack::Slice(insertedDocs[18].vpack()), // {"name":"S","seq":18,"same":"xyz", "duplicated":"vczc"}
       arangodb::velocypack::Slice(insertedDocs[16].vpack()), // {"name":"Q","seq":16,"same":"xyz", "value":-32.5, "duplicated":"vczc"}
@@ -638,6 +643,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
+
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
@@ -656,11 +662,13 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       arangodb::velocypack::Slice(insertedDocs[7].vpack()),  // {"name":"H","seq":7,"same":"xyz", "value":123, "duplicated":"vczc"},
       arangodb::velocypack::Slice(insertedDocs[2].vpack()),  // {"name":"C","seq":2,"same":"xyz", "value":123, "duplicated":"vczc"}
       arangodb::velocypack::Slice(insertedDocs[1].vpack()),  // {"name":"B","seq":1,"same":"xyz", "value":101, "duplicated":"vczc"}
+
       arangodb::velocypack::Slice(insertedDocs[20].vpack()), // {"name":"U","seq":20,"same":"xyz", "prefix":"abc", "duplicated":"abcd"}
       arangodb::velocypack::Slice(insertedDocs[3].vpack()),  // {"name":"D","seq":3,"same":"xyz", "value":12, "prefix":"abcde"}
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),  // {"name":"A","seq":0,"same":"xyz", "value":100, "duplicated":"abcd", "prefix":"abcd" }
       arangodb::velocypack::Slice(insertedDocs[31].vpack()), // {"name":"%","seq":31,"same":"xyz", "prefix":"abcy"}
       arangodb::velocypack::Slice(insertedDocs[30].vpack()), // {"name":"$","seq":30,"same":"xyz", "duplicated":"abcd", "prefix":"abcy" }
+
       arangodb::velocypack::Slice(insertedDocs[15].vpack()), // {"name":"P","seq":15,"same":"xyz","value":50, "prefix":"abde"},
       arangodb::velocypack::Slice(insertedDocs[14].vpack()), // {"name":"O","seq":14,"same":"xyz","value":0 },
       arangodb::velocypack::Slice(insertedDocs[12].vpack()), // {"name":"M","seq":12,"same":"xyz","value":90.564 },
@@ -680,6 +688,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
+
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
     CHECK((i == expected.size()));

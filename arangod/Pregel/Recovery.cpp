@@ -64,9 +64,9 @@ void RecoveryManager::stopMonitoring(Conductor* listener) {
   }
 }
 
-void RecoveryManager::monitorCollections(
-    DatabaseID const& database, std::vector<CollectionID> const& collections,
-    Conductor* listener) {
+void RecoveryManager::monitorCollections(DatabaseID const& database,
+                                         std::vector<CollectionID> const& collections,
+                                         Conductor* listener) {
   MUTEX_LOCKER(guard, _lock);
   if (ServerState::instance()->isCoordinator() == false) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
@@ -74,8 +74,7 @@ void RecoveryManager::monitorCollections(
   ClusterInfo* ci = ClusterInfo::instance();
 
   for (CollectionID const& collname : collections) {
-    std::shared_ptr<LogicalCollection> coll =
-        ci->getCollection(database, collname);
+    std::shared_ptr<LogicalCollection> coll = ci->getCollection(database, collname);
     CollectionID cid = std::to_string(coll->id());
     std::shared_ptr<std::vector<ShardID>> shards =
         ClusterInfo::instance()->getShardList(cid);
@@ -107,12 +106,10 @@ int RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
   // TODO I could also use ClusterInfo::failedServers
   AgencyCommResult result = _agency.getValues("Supervision/Health");
   if (result.successful()) {
-    VPackSlice serversRegistered =
-        result.slice()[0].get(std::vector<std::string>(
-            {AgencyCommManager::path(), "Supervision", "Health"}));
+    VPackSlice serversRegistered = result.slice()[0].get(std::vector<std::string>(
+        {AgencyCommManager::path(), "Supervision", "Health"}));
 
-    LOG_TOPIC(INFO, Logger::PREGEL) << "Server Status: "
-                                    << serversRegistered.toJson();
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Server Status: " << serversRegistered.toJson();
 
     if (serversRegistered.isObject()) {
       for (auto const& res : VPackObjectIterator(serversRegistered)) {
@@ -120,11 +117,9 @@ int RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
         VPackSlice slice = res.value;
         if (slice.isObject() && slice.hasKey("Status")) {
           VPackSlice status = slice.get("Status");
-          if (status.compareString(
-                  consensus::Supervision::HEALTH_STATUS_GOOD) == 0) {
+          if (status.compareString(consensus::Supervision::HEALTH_STATUS_GOOD) == 0) {
             ServerID name = serverId.copyString();
-            if (std::find(servers.begin(), servers.end(), name) !=
-                servers.end()) {
+            if (std::find(servers.begin(), servers.end(), name) != servers.end()) {
               goodServers.push_back(name);
             }
           }
@@ -147,8 +142,9 @@ void RecoveryManager::updatedFailedServers(std::vector<ServerID> const& failed) 
       ShardID const& shard = pair.first;
 
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-      rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      scheduler->queue(RequestPriority::LOW, [this, shard] { _renewPrimaryServer(shard); });
+      Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+      scheduler->queue(RequestLane::INTERNAL_LOW,
+                       [this, shard] { _renewPrimaryServer(shard); });
     }
   }
 }
@@ -163,16 +159,14 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
   ClusterInfo* ci = ClusterInfo::instance();
   auto const& conductors = _listeners.find(shard);
   auto const& currentPrimary = _primaryServers.find(shard);
-  if (conductors == _listeners.end() ||
-      currentPrimary == _primaryServers.end()) {
+  if (conductors == _listeners.end() || currentPrimary == _primaryServers.end()) {
     LOG_TOPIC(ERR, Logger::PREGEL) << "Shard is not properly registered";
     return;
   }
 
   int tries = 0;
   do {
-    std::shared_ptr<std::vector<ServerID>> servers =
-        ci->getResponsibleServer(shard);
+    std::shared_ptr<std::vector<ServerID>> servers = ci->getResponsibleServer(shard);
     if (servers && !servers->empty()) {
       ServerID const& nextPrimary = servers->front();
       if (currentPrimary->second != nextPrimary) {

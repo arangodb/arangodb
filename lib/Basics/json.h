@@ -57,8 +57,7 @@ int TRI_CopyToBlob(TRI_blob_t* dst, TRI_blob_t const* src);
 /// @brief assigns a blob value by reference into given destination
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AssignToBlob(TRI_blob_t* dst,
-                     TRI_blob_t const* src);
+int TRI_AssignToBlob(TRI_blob_t* dst, TRI_blob_t const* src);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json type
@@ -130,8 +129,7 @@ void TRI_InitNumberJson(TRI_json_t*, double);
 /// @brief creates a string object with given length
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_CreateStringJson(char* value,
-                                 size_t length);
+TRI_json_t* TRI_CreateStringJson(char* value, size_t length);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a string object with given length, copying the string
@@ -149,8 +147,7 @@ void TRI_InitStringJson(TRI_json_t*, char*, size_t);
 /// @brief initializes a string object
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitStringCopyJson(TRI_json_t*, char const*,
-                           size_t);
+int TRI_InitStringCopyJson(TRI_json_t*, char const*, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a string reference object
@@ -250,8 +247,7 @@ bool TRI_IsStringJson(TRI_json_t const* json);
 /// @brief adds a new sub-object to an array, copying it
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_PushBackArrayJson(TRI_json_t* array,
-                          TRI_json_t const* object);
+int TRI_PushBackArrayJson(TRI_json_t* array, TRI_json_t const* object);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new sub-object to an array, not copying it
@@ -263,8 +259,7 @@ int TRI_PushBack2ArrayJson(TRI_json_t* array, TRI_json_t const* object);
 /// @brief adds a new sub-object, not copying it but freeing the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_PushBack3ArrayJson(TRI_json_t* array,
-                           TRI_json_t* object);
+int TRI_PushBack3ArrayJson(TRI_json_t* array, TRI_json_t* object);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a value in a json array
@@ -276,15 +271,13 @@ TRI_json_t* TRI_LookupArrayJson(TRI_json_t const*, size_t);
 /// @brief adds a new attribute  to an object, not copying it
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_Insert2ObjectJson(TRI_json_t* object,
-                           char const* name, TRI_json_t const* subobject);
+void TRI_Insert2ObjectJson(TRI_json_t* object, char const* name, TRI_json_t const* subobject);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new attribute, not copying it but freeing the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_Insert3ObjectJson(TRI_json_t* object,
-                           char const* name, TRI_json_t* subobject);
+void TRI_Insert3ObjectJson(TRI_json_t* object, char const* name, TRI_json_t* subobject);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an attribute in a json object
@@ -296,15 +289,13 @@ TRI_json_t* TRI_LookupObjectJson(TRI_json_t const* object, char const* name);
 /// @brief deletes an element from a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_DeleteObjectJson(TRI_json_t* object,
-                          char const* name);
+bool TRI_DeleteObjectJson(TRI_json_t* object, char const* name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces an element in a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReplaceObjectJson(TRI_json_t* object,
-                           char const* name, TRI_json_t const* replacement);
+bool TRI_ReplaceObjectJson(TRI_json_t* object, char const* name, TRI_json_t const* replacement);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringifies a json object
@@ -340,6 +331,6 @@ class default_delete<TRI_json_t> {
     }
   }
 };
-}
+}  // namespace std
 
 #endif

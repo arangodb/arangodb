@@ -31,14 +31,15 @@ constexpr char const* COLLECTIONS = "Collections";
 constexpr char const* RECONFIGURE = ".agency";
 constexpr char const* VERSION = "Version";
 
-constexpr char const* CURRENT = "Current"; 
+constexpr char const* CURRENT = "Current";
 constexpr char const* CURRENT_VERSION = "Current/Version";
 constexpr char const* CURRENT_COLLECTIONS = "Current/Collections/";
 constexpr char const* CURRENT_DATABASES = "Current/Databases/";
 
-constexpr char const* PLAN = "Plan"; 
+constexpr char const* PLAN = "Plan";
 constexpr char const* PLAN_VERSION = "Plan/Version";
 constexpr char const* PLAN_COLLECTIONS = "Plan/Collections/";
 constexpr char const* PLAN_DATABASES = "Plan/Databases/";
 
-}}
+}  // namespace consensus
+}  // namespace arangodb

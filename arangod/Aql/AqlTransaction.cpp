@@ -42,20 +42,17 @@ AqlTransaction* AqlTransaction::create(
     std::unordered_set<std::string> inaccessibleCollections) {
 #ifdef USE_ENTERPRISE
   if (options.skipInaccessibleCollections) {
-    return new transaction::IgnoreNoAccessAqlTransaction(
-        transactionContext, collections, options, isMainTransaction,
-        inaccessibleCollections);
+    return new transaction::IgnoreNoAccessAqlTransaction(transactionContext, collections,
+                                                         options, isMainTransaction,
+                                                         inaccessibleCollections);
   }
 #endif
-  return new AqlTransaction(transactionContext, collections, options,
-                            isMainTransaction);
+  return new AqlTransaction(transactionContext, collections, options, isMainTransaction);
 }
 
 /// @brief clone, used to make daughter transactions for parts of a
 /// distributed AQL query running on the coordinator
-transaction::Methods* AqlTransaction::clone(
-    transaction::Options const& options) const {
-  
+transaction::Methods* AqlTransaction::clone(transaction::Options const& options) const {
   auto ctx = transaction::StandaloneContext::Create(vocbase());
   return new AqlTransaction(ctx, &_collections, options, false);
 }
@@ -77,8 +74,7 @@ Result AqlTransaction::processCollection(aql::Collection* collection) {
     cid = resolver()->getCollectionId(collection->name());
   }
 
-  Result res =
-      addCollection(cid, collection->name(), collection->accessType());
+  Result res = addCollection(cid, collection->name(), collection->accessType());
 
   if (res.ok() && col != nullptr) {
     collection->setCollection(col.get());
@@ -90,7 +86,7 @@ Result AqlTransaction::processCollection(aql::Collection* collection) {
 LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
   TransactionCollection* trxColl = this->trxCollection(cid);
   TRI_ASSERT(trxColl != nullptr);
-  return trxColl->collection();
+  return trxColl->collection().get();
 }
 
 /// @brief lockCollections, this is needed in a corner case in AQL: we need

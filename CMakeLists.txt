@@ -41,9 +41,6 @@ if (NOT CMAKE_OSX_DEPLOYMENT_TARGET)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your sysem")
 endif ()
 
-# required for clang completion in editors
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
 # where to find CMAKE modules
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
@@ -52,9 +49,10 @@ option(SKIP_PACKAGING "" OFF)
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
 
-# use standalone boost asio
-add_definitions("-DARANGODB_STANDALONE_ASIO=1")
-add_definitions("-DFUERTE_STANDALONE_ASIO=1")
+# don't use standalone boost asio
+# use this when asio is included outside of Boost
+# add_definitions("-DARANGODB_STANDALONE_ASIO=0")
+# add_definitions("-DFUERTE_STANDALONE_ASIO=0")
 
 # ------------------------------------------------------------------------------
 # VERSION information
@@ -119,15 +117,13 @@ set(ARANGODB_PLAIN_VERSION "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.
 if (DEFINED ARANGODB_VERSION_RELEASE_TYPE)
   if (DEFINED ARANGODB_VERSION_RELEASE_NUMBER)
     set(ARANGODB_VERSION "${ARANGODB_PLAIN_VERSION}-${ARANGODB_VERSION_RELEASE_TYPE}.${ARANGODB_VERSION_RELEASE_NUMBER}")
-    set(ARANGODB_JS_VERSION "js/${ARANGODB_PLAIN_VERSION}")
   else()
     set(ARANGODB_VERSION "${ARANGODB_PLAIN_VERSION}-${ARANGODB_VERSION_RELEASE_TYPE}")
-    set(ARANGODB_JS_VERSION "js/${ARANGODB_PLAIN_VERSION}")
   endif()
 else()
   set(ARANGODB_VERSION "${ARANGODB_PLAIN_VERSION}")
-  set(ARANGODB_JS_VERSION "js/${ARANGODB_PLAIN_VERSION}")
 endif()
+set(ARANGODB_JS_VERSION "js")
 
 message(STATUS "ARANGODB PLAIN VERSION: ${ARANGODB_PLAIN_VERSION}")
 message(STATUS "ARANGODB VERSION: ${ARANGODB_VERSION}")
@@ -264,6 +260,9 @@ if (WIN32)
 else ()
   project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 endif ()
+
+# required for clang completion in editors - must be set after creating project
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Static executables:
 option(STATIC_EXECUTABLES "produce static executables" OFF)
@@ -603,7 +602,8 @@ if (MSVC)
   # http://lists.boost.org/boost-users/2016/04/85968.php
   add_definitions("-D_ENABLE_ATOMIC_ALIGNMENT_FIX")
 
-  set(MSVC_LIBS Shlwapi.lib;crypt32.lib;WINMM.LIB;Ws2_32.lib;Psapi.lib)
+  # bcrypt is needed for SSL
+  set(MSVC_LIBS Shlwapi.lib;crypt32.lib;bcrypt.lib;WINMM.LIB;Ws2_32.lib;Psapi.lib)
 
   set(CMAKE_EXE_LINKER_FLAGS
     "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /SAFESEH:NO /MACHINE:x64 /ignore:4099 ${BASE_LD_FLAGS}"
@@ -1065,8 +1065,6 @@ if (USE_JEMALLOC)
   add_dependencies(rocksdb jemalloc)
 endif ()
 
-include_directories(SYSTEM ${ASIO_INCLUDES})
-
 ################################################################################
 ## VELOCYPACK
 ################################################################################
@@ -1273,21 +1271,6 @@ if (NOT USE_PRECOMPILED_V8)
     add_dependencies(arangodbtests v8_build)
   endif()
 endif ()
-
-# This copies the compile commands to the source dir.
-# There they can be used to repeat parts of compile
-# steps generating an AST. This AST can in turn be used
-# for meaningful auto-completion in editors without
-# heuristics, dice rolling and other guessing.
-
-if( EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
-  message(STATUS "copy compile_commands.json")
-
-  execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
-      ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
-      ${CMAKE_CURRENT_SOURCE_DIR}/compile_commands.json
-  )
-endif()
 
 add_custom_target(packages
   DEPENDS ${PACKAGES_LIST}

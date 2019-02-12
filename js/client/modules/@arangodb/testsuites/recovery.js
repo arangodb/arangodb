@@ -53,6 +53,8 @@ const testPaths = {
 function runArangodRecovery (params) {
   let argv = [];
 
+  let binary = pu.ARANGOD_BIN;
+
   if (params.setup) {
     params.options.disableMonitor = true;
     params.testDir = fs.join(params.tempDir, `${params.count}`);
@@ -94,13 +96,18 @@ function runArangodRecovery (params) {
                     {
                       'log.foreground-tty': 'true',
                       'wal.ignore-logfile-errors': 'true',
+                      'database.ignore-datafile-errors': 'false', // intentionally false!
                       'javascript.script-parameter': 'recovery'
                     }
                    )
     );
+    if (params.options.rr) {
+      binary = 'rr';
+      argv.unshift(pu.ARANGOD_BIN);
+    }
   }
   params.instanceInfo.pid = pu.executeAndWait(
-    pu.ARANGOD_BIN,
+    binary,
     argv,
     params.options,
     'recovery',
@@ -161,6 +168,14 @@ function recovery (options) {
       print(BLUE + "running recovery of test " + count + " - " + test + RESET);
       params.options.disableMonitor = options.disableMonitor;
       params.setup = false;
+      try {
+        tu.writeTestResult(params.args['temp.path'], {
+          failed: 1,
+          status: false, 
+          message: "unable to run recovery test " + test,
+          duration: -1
+        });
+      } catch (er) {}
       runArangodRecovery(params);
 
       results[test] = tu.readTestResult(

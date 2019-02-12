@@ -44,12 +44,11 @@ namespace methods {
 /// Common code for collection REST handler and v8-collections
 struct Collections {
   struct Context {
+    Context(Context const&) = delete;
+    Context& operator=(Context const&) = delete;
+
     Context(TRI_vocbase_t& vocbase, LogicalCollection& coll);
-    Context(
-      TRI_vocbase_t& vocbase,
-      LogicalCollection& coll,
-      transaction::Methods* trx
-    );
+    Context(TRI_vocbase_t& vocbase, LogicalCollection& coll, transaction::Methods* trx);
 
     ~Context();
 
@@ -71,31 +70,22 @@ struct Collections {
   static void enumerate(TRI_vocbase_t* vocbase, FuncCallback);
 
   /// @brief lookup a collection in vocbase or clusterinfo.
-  static Result lookup(TRI_vocbase_t* vocbase, std::string const& collection,
-                       FuncCallback);
+  static Result lookup(TRI_vocbase_t* vocbase, std::string const& collection, FuncCallback);
   /// Create collection, ownership of collection in callback is
   /// transferred to callee
-  static Result create(TRI_vocbase_t*, std::string const& name,
-                       TRI_col_type_e collectionType,
-                       velocypack::Slice const& properties,
-                       bool createWaitsForSyncReplication,
+  static Result create(TRI_vocbase_t*, std::string const& name, TRI_col_type_e collectionType,
+                       velocypack::Slice const& properties, bool createWaitsForSyncReplication,
                        bool enforceReplicationFactor, FuncCallback);
 
   static Result load(TRI_vocbase_t& vocbase, LogicalCollection* coll);
   static Result unload(TRI_vocbase_t* vocbase, LogicalCollection* coll);
 
   static Result properties(Context& ctxt, velocypack::Builder&);
-  static Result updateProperties(
-    LogicalCollection& collection,
-    velocypack::Slice const& props,
-    bool partialUpdate
-  );
+  static Result updateProperties(LogicalCollection& collection,
+                                 velocypack::Slice const& props, bool partialUpdate);
 
-  static Result rename(
-    LogicalCollection& collection,
-    std::string const& newName,
-    bool doOverride
-  );
+  static Result rename(LogicalCollection& collection,
+                       std::string const& newName, bool doOverride);
 
   static Result drop(TRI_vocbase_t*, LogicalCollection* coll,
                      bool allowDropSystem, double timeout);
@@ -105,18 +95,16 @@ struct Collections {
   static Result revisionId(Context& ctxt, TRI_voc_rid_t& rid);
 
   /// @brief Helper implementation similar to ArangoCollection.all() in v8
-  static arangodb::Result all(TRI_vocbase_t& vocbase, std::string const& cname,
-                              DocCallback cb);
+  static arangodb::Result all(TRI_vocbase_t& vocbase, std::string const& cname, DocCallback cb);
 };
 #ifdef USE_ENTERPRISE
 Result ULColCoordinatorEnterprise(std::string const& databaseName,
                                   std::string const& collectionCID,
                                   TRI_vocbase_col_status_e status);
 
-Result DropColCoordinatorEnterprise(LogicalCollection* collection,
-                                    bool allowDropSystem);
+Result DropColCoordinatorEnterprise(LogicalCollection* collection, bool allowDropSystem);
 #endif
-}
-}
+}  // namespace methods
+}  // namespace arangodb
 
 #endif

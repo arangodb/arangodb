@@ -39,8 +39,7 @@ inline std::string timepointToString(std::chrono::system_clock::duration const& 
   return timepointToString(std::chrono::system_clock::time_point() + d);
 }
 
-
-  inline std::chrono::system_clock::time_point stringToTimepoint(std::string const& s) {
+inline std::chrono::system_clock::time_point stringToTimepoint(std::string const& s) {
   if (!s.empty()) {
     try {
       std::tm tt;
@@ -53,7 +52,8 @@ inline std::string timepointToString(std::chrono::system_clock::duration const& 
       tt.tm_isdst = 0;
       auto time_c = TRI_timegm(&tt);
       return std::chrono::system_clock::from_time_t(time_c);
-    } catch (...) {}
+    } catch (...) {
+    }
   }
   return std::chrono::time_point<std::chrono::system_clock>();
 }

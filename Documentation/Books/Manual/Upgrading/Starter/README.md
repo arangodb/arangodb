@@ -10,8 +10,28 @@ upgrade to a new hotfix, or to perform an upgrade to a new minor version of Aran
 Please refer to the [Upgrade Paths](../GeneralInfo/README.md#upgrade-paths) section
 for detailed information.
 
-**Important:** rolling upgrades of Cluster setups from 3.2 to 3.3 are only supported
-from versions 3.2.15 and 3.3.9.
+**Important:** 
+
+- Rolling upgrades of Cluster setups from 3.2 to 3.3 are only supported
+  from versions 3.2.15 and 3.3.9.
+- Rolling upgrades of Cluster setups from 3.3 to 3.4 are only supported
+  from versions 3.3.20 and 3.4.0.
+
+## Upgrade Scenarios
+
+The following four cases are possible:
+
+1. You have installed via an installation package (e.g. a `.deb` or `.rpm` package)
+   and you will upgrade this installation using again an installation package
+   (e.g. a `.deb` or `.rpm`).
+2. You have installed via the `.tar.gz` distribution and you will upgrade this
+   installation using again a `.tar.gz` distribution.
+3. You have installed via an installation package (e.g. a `.deb` or `.rpm` package)
+   and you will upgrade this installation using a `.tar.gz` distribution.
+4. You have installed via the `.tar.gz` distribution and you will upgrade this
+   installation using an installation package (e.g. a `.deb` or `.rpm` package).
+
+Cases 1. and 2. are more common, though cases 3. and 4. are also possible.
 
 ## Upgrade Procedure
 
@@ -41,7 +61,13 @@ install a specific package using
 dpkg -i arangodb3-3.3.14-1_amd64.deb
 ```
 
-after you have downloaded the corresponding file from https://download.arangodb.com/.
+after you have downloaded the corresponding file from https://www.arangodb.com/download/.
+
+If you are using the `.tar.gz` distribution (only available from v3.4.0),
+you can simply extract the new archive in a different
+location and keep the old installation where it is. Note that
+this does not launch a standalone instance, so the following section can
+be skipped in this case.
 
 #### Stop the Standalone Instance
 
@@ -105,6 +131,15 @@ When using a supervisor like _SystemD_, this will happens automatically. In case
 the _Starter_ was initiated manually, the _arangodb_ processes have to be restarted
 manually with the same command that has been used before.
 
+If you are using the `.tar.gz` distribution (only available from v3.4.0),
+your new version of the executable might be located in a
+different directory. Make sure that you now start the new _Starter_
+executable (`bin/arangodb`) in the new installation place. If you are
+using a supervisor like _SystemD_, you might have to adjust the path to
+the executable in the service description to the new location. Do this
+before you `kill -9` the _Starter_ or else the old version will be
+restarted in this case. If you forgot, simply do the `kill -9` again.
+
 After you have restarted the _Starter_ you will find yourself in the following
 situation:
 
@@ -158,7 +193,27 @@ The `arangodb upgrade` command will show the progress of the upgrade
 and stop when the upgrade has either finished successfully or finished
 with an error.
 
-### Retrying a failed upgrade
+### Uninstall old package
+
+{% hint 'info' %}
+This step is required in the cases 2., 3. and 4. only. It is not required
+in case 1., see [Upgrade Scenarios](#upgrade-scenarios) above.
+{% endhint %}
+
+After verifying your upgraded ArangoDB system is working, you can remove
+the old package. This can be done in different ways, depending on the case
+you are:
+
+- Cases 2. and 4.: just remove the old directory created by the `.tar.gz`
+  (assumes your `--starter.data-dir` is located outside of this 
+  directory - which is a recommended approach).
+- Case 3.: just remove the old package by running the corresponding
+  uninstallation command (the exact command depends on whether you are
+  using a `.deb` or `.rmp` package and it is assumed that your 
+  `--starter.data-dir` is located outside of the standard directories
+  created by the installation package - which is a recommended approach).
+
+## Retrying a failed upgrade
 
 Starting with 3.3.14 and 3.2.17, when an upgrade _plan_ (in deployment
 mode `activefailover` or `cluster`) has failed, it can be retried.
@@ -172,7 +227,7 @@ arangodb retry upgrade --starter.endpoint=<endpoint-of-a-starter>
 The `--starter.endpoint` option can be set to the endpoint of any
 of the starters. E.g. `http://localhost:8528`.
 
-### Aborting an upgrade
+## Aborting an upgrade
 
 Starting with 3.3.14 and 3.2.17, when an upgrade _plan_ (in deployment
 mode `activefailover` or `cluster`) is in progress or has failed, it can

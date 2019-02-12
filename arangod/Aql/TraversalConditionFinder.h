@@ -43,15 +43,15 @@ class TraversalConditionFinder : public WalkerWorker<ExecutionNode> {
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final;
 
  private:
-  bool isTrueOnNull(AstNode* condition, Variable const* pathVar) const; 
+  bool isTrueOnNull(AstNode* condition, Variable const* pathVar) const;
 
  private:
   ExecutionPlan* _plan;
   std::unique_ptr<Condition> _condition;
-  std::unordered_set<VariableId> _filterVariables;
+  arangodb::HashSet<VariableId> _filterVariables;
   bool* _planAltered;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

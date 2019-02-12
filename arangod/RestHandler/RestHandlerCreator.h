@@ -45,6 +45,6 @@ class RestHandlerCreator : public H {
     return new H(request, response);
   }
 };
-}
+}  // namespace arangodb
 
 #endif

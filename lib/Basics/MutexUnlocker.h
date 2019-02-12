@@ -35,7 +35,7 @@
 #include <thread>
 
 #define MUTEX_UNLOCKER(obj, lock) \
-  arangodb::basics::MutexUnlocker<typename std::decay<decltype (lock)>::type> obj(&(lock), __FILE__, __LINE__)
+  arangodb::basics::MutexUnlocker<typename std::decay<decltype(lock)>::type> obj(&(lock), __FILE__, __LINE__)
 
 namespace arangodb {
 namespace basics {
@@ -43,7 +43,7 @@ namespace basics {
 /// @brief mutex locker
 /// A MutexUnlocker unlocks a mutex during its lifetime und locks the mutex
 /// when it is destroyed.
-template<class LockType>
+template <class LockType>
 class MutexUnlocker {
   MutexUnlocker(MutexUnlocker const&) = delete;
   MutexUnlocker& operator=(MutexUnlocker const&) = delete;
@@ -52,8 +52,7 @@ class MutexUnlocker {
   /// The constructor unlocks the mutex, the destructor locks the mutex.
   MutexUnlocker(LockType* mutex, char const* file, int line)
       : _mutex(mutex), _file(file), _line(line), _isLocked(true) {
-
-    unlock(); 
+    unlock();
   }
 
   /// @brief releases the read-lock
@@ -62,16 +61,16 @@ class MutexUnlocker {
       lock();
     }
   }
-  
+
   bool isLocked() const { return _isLocked; }
-  
+
   /// @brief acquire the mutex, blocking
-  void lock() { 
+  void lock() {
     TRI_ASSERT(!_isLocked);
     _mutex->lock();
     _isLocked = true;
   }
-  
+
   /// @brief unlocks the mutex if we own it
   bool unlock() {
     if (_isLocked) {
@@ -85,18 +84,18 @@ class MutexUnlocker {
  private:
   /// @brief the mutex
   LockType* _mutex;
-  
+
   /// @brief file
   char const* _file;
 
   /// @brief line number
   int _line;
-  
+
   /// @brief whether or not the mutex is locked
   bool _isLocked;
 };
-  
-}
-}
+
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

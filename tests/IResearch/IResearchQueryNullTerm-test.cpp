@@ -69,7 +69,7 @@
 
 extern const char* ARGV0; // defined in main.cpp
 
-NS_LOCAL
+namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -163,7 +163,7 @@ struct IResearchQueryNullTermSetup {
   }
 }; // IResearchQuerySetup
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -272,7 +272,7 @@ TEST_CASE("IResearchQueryTestNullTerm", "[iresearch][iresearch-query]") {
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((2 == cids.size()));
-    CHECK(impl->commit().ok());
+    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").code)); // commit
   }
 
   // -----------------------------------------------------------------------------

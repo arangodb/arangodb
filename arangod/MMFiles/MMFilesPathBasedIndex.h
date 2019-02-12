@@ -26,8 +26,8 @@
 
 #include "Basics/Common.h"
 #include "MMFiles/MMFilesIndex.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb {
 namespace aql {
@@ -37,17 +37,12 @@ enum AstNodeType : uint32_t;
 class FixedSizeAllocator;
 
 class MMFilesPathBasedIndex : public MMFilesIndex {
-
  public:
   MMFilesPathBasedIndex() = delete;
 
-  MMFilesPathBasedIndex(
-    TRI_idx_iid_t iid,
-    arangodb::LogicalCollection& collection,
-    arangodb::velocypack::Slice const& info,
-    size_t baseSize,
-    bool allowPartialIndex
-  );
+  MMFilesPathBasedIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection,
+                        arangodb::velocypack::Slice const& info,
+                        size_t baseSize, bool allowPartialIndex);
 
   ~MMFilesPathBasedIndex();
 
@@ -57,34 +52,26 @@ class MMFilesPathBasedIndex : public MMFilesIndex {
                     std::underlying_type<Index::Serialize>::type) const override;
 
   /// @brief return the attribute paths
-  std::vector<std::vector<std::string>> const& paths()
-      const {
-    return _paths;
-  }
+  std::vector<std::vector<std::string>> const& paths() const { return _paths; }
 
   /// @brief return the attribute paths, a -1 entry means none is expanding,
   /// otherwise the non-negative number is the index of the expanding one.
-  std::vector<int> const& expanding() const {
-    return _expanding;
-  }
+  std::vector<int> const& expanding() const { return _expanding; }
 
-  bool implicitlyUnique() const override;
   void load() override {}
 
  protected:
   /// @brief helper function to insert a document into any index type
-  template<typename T>
-  int fillElement(std::vector<T*>& elements, 
-          LocalDocumentId const& documentId, arangodb::velocypack::Slice const&);
+  template <typename T>
+  int fillElement(std::vector<T*>& elements, LocalDocumentId const& documentId,
+                  arangodb::velocypack::Slice const&);
 
   /// @brief return the number of paths
   inline size_t numPaths() const { return _paths.size(); }
 
  private:
-
   /// @brief helper function to transform AttributeNames into string lists
-  void fillPaths(std::vector<std::vector<std::string>>& paths,
-                 std::vector<int>& expanding);
+  void fillPaths(std::vector<std::vector<std::string>>& paths, std::vector<int>& expanding);
 
   /// @brief helper function to create a set of index combinations to insert
   std::vector<std::pair<velocypack::Slice, uint32_t>> buildIndexValue(velocypack::Slice const documentSlice);
@@ -109,6 +96,6 @@ class MMFilesPathBasedIndex : public MMFilesIndex {
   /// @brief whether or not partial indexing is allowed
   bool _allowPartialIndex;
 };
-}
+}  // namespace arangodb
 
 #endif

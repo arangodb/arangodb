@@ -118,6 +118,31 @@ details, including the index-identifier, is returned.
     @endDocuBlock ensureHashIndexArray
 
 
+Creating Hash Index in Background
+---------------------------------
+
+{% hint 'info' %}
+This section only applies to the *rocksdb* storage engine
+{% endhint %}
+
+Creating new indexes is by default done under an exclusive collection lock. This means
+that the collection (or the respective shards) are not available as long as the index
+is created. This "foreground" index creation can be undesirable, if you have to perform it
+on a live system without a dedicated maintenance window.
+
+Indexes can also be created in "background", not using an exclusive lock during the creation. 
+The collection remains available, other CRUD operations can run on the collection while the index is created.
+This can be achieved by using the *inBackground* option.
+
+To create an hash index in the background in *arangosh* just specify `inBackground: true`:
+
+```js
+db.collection.ensureIndex({ type: "hash", fields: [ "value" ], inBackground: true });
+```
+
+For more information see "Creating Indexes in Background" in the [Index basics](IndexBasics.md) page.
+
+
 Ensure uniqueness of relations in edge collections
 --------------------------------------------------
 

@@ -46,12 +46,10 @@ class ShardingStrategyNone final : public ShardingStrategy {
   /// @brief does not really matter here
   bool usesDefaultShardKeys() override { return true; }
 
-  int getResponsibleShard(arangodb::velocypack::Slice,
-                          bool docComplete, ShardID& shardID,
-                          bool& usesDefaultShardKeys,
+  int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
+                          ShardID& shardID, bool& usesDefaultShardKeys,
                           std::string const& key = "") override;
 };
-
 
 /// @brief a sharding class used to indicate that the selected sharding strategy
 /// is only available in the enterprise edition of ArangoDB
@@ -66,12 +64,12 @@ class ShardingStrategyOnlyInEnterprise final : public ShardingStrategy {
   /// @brief does not really matter here
   bool usesDefaultShardKeys() override { return true; }
 
-  /// @brief will always throw an exception telling the user the selected sharding is only
-  /// available in the enterprise edition 
-  int getResponsibleShard(arangodb::velocypack::Slice,
-                          bool docComplete, ShardID& shardID,
-                          bool& usesDefaultShardKeys,
+  /// @brief will always throw an exception telling the user the selected
+  /// sharding is only available in the enterprise edition
+  int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
+                          ShardID& shardID, bool& usesDefaultShardKeys,
                           std::string const& key = "") override;
+
  private:
   /// @brief name of the sharding strategy we are replacing
   std::string const _name;
@@ -82,17 +80,16 @@ class ShardingStrategyHashBase : public ShardingStrategy {
  public:
   explicit ShardingStrategyHashBase(ShardingInfo* sharding);
 
-  virtual int getResponsibleShard(arangodb::velocypack::Slice,
-                                  bool docComplete, ShardID& shardID,
-                                  bool& usesDefaultShardKeys,
+  virtual int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
+                                  ShardID& shardID, bool& usesDefaultShardKeys,
                                   std::string const& key = "") override;
 
   /// @brief does not really matter here
   bool usesDefaultShardKeys() override { return _usesDefaultShardKeys; }
 
-  virtual uint64_t hashByAttributes(
-    arangodb::velocypack::Slice slice, std::vector<std::string> const& attributes,
-    bool docComplete, int& error, std::string const& key);
+  virtual uint64_t hashByAttributes(arangodb::velocypack::Slice slice,
+                                    std::vector<std::string> const& attributes,
+                                    bool docComplete, int& error, std::string const& key);
 
  private:
   void determineShards();
@@ -128,9 +125,8 @@ class ShardingStrategyEnterpriseBase : public ShardingStrategyHashBase {
   /// we leave the differences in place, because making any changes here
   /// will affect the data distribution, which we want to avoid
   uint64_t hashByAttributes(arangodb::velocypack::Slice slice,
-                            std::vector<std::string> const& attributes,
-                            bool docComplete, int& error,
-                            std::string const& key) override final;
+                            std::vector<std::string> const& attributes, bool docComplete,
+                            int& error, std::string const& key) override final;
 };
 
 /// @brief old version of the sharding used in the enterprise edition
@@ -144,7 +140,6 @@ class ShardingStrategyEnterpriseCompat : public ShardingStrategyEnterpriseBase {
   static std::string const NAME;
 };
 
-
 /// @brief default hash-based sharding strategy
 /// used for new collections from 3.4 onwards
 class ShardingStrategyHash final : public ShardingStrategyHashBase {
@@ -156,6 +151,6 @@ class ShardingStrategyHash final : public ShardingStrategyHashBase {
   static std::string const NAME;
 };
 
-}
+}  // namespace arangodb
 
 #endif

@@ -44,9 +44,9 @@ using namespace arangodb::options;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief portably and safely reads a number
 ////////////////////////////////////////////////////////////////////////////////
- 
+
 namespace {
-   
+
 template <typename T>
 static inline T readNumber(uint8_t const* source, uint32_t length) {
   T value = 0;
@@ -96,10 +96,9 @@ static std::string convertFromHex(std::string const& value) {
 // custom type value handler, used for deciphering the _id attribute
 struct CustomTypeHandler : public VPackCustomTypeHandler {
   CustomTypeHandler() = default;
-  ~CustomTypeHandler() = default; 
+  ~CustomTypeHandler() = default;
 
-  void dump(VPackSlice const& value, VPackDumper* dumper,
-            VPackSlice const& base) override final {
+  void dump(VPackSlice const& value, VPackDumper* dumper, VPackSlice const& base) override final {
     dumper->appendString(toString(value, nullptr, base));
   }
 
@@ -110,12 +109,9 @@ struct CustomTypeHandler : public VPackCustomTypeHandler {
   }
 };
 
-}
+}  // namespace
 
-VPackFeature::VPackFeature(
-    application_features::ApplicationServer& server,
-    int* result
-)
+VPackFeature::VPackFeature(application_features::ApplicationServer& server, int* result)
     : ApplicationFeature(server, "VPack"),
       _result(result),
       _prettyPrint(true),
@@ -126,38 +122,26 @@ VPackFeature::VPackFeature(
   setOptional(false);
 }
 
-void VPackFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  options->addOption(
-      "--input-file", "input filename",
-      new StringParameter(&_inputFile));
-  options->addOption(
-      "--output-file", "output filename",
-      new StringParameter(&_outputFile));
-  options->addOption(
-      "--pretty", "pretty print result",
-      new BooleanParameter(&_prettyPrint));
-  options->addOption(
-      "--hex", "read hex-encoded input",
-      new BooleanParameter(&_hexInput));
-  options->addOption(
-      "--json", "treat input as JSON",
-      new BooleanParameter(&_jsonInput));
-  options->addOption(
-      "--print-non-json", "print non-JSON types",
-      new BooleanParameter(&_printNonJson));
+void VPackFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
+  options->addOption("--input-file", "input filename", new StringParameter(&_inputFile));
+  options->addOption("--output-file", "output filename", new StringParameter(&_outputFile));
+  options->addOption("--pretty", "pretty print result", new BooleanParameter(&_prettyPrint));
+  options->addOption("--hex", "read hex-encoded input", new BooleanParameter(&_hexInput));
+  options->addOption("--json", "treat input as JSON", new BooleanParameter(&_jsonInput));
+  options->addOption("--print-non-json", "print non-JSON types",
+                     new BooleanParameter(&_printNonJson));
 }
 
 void VPackFeature::start() {
   *_result = EXIT_SUCCESS;
 
-  bool toStdOut = false; 
+  bool toStdOut = false;
 #ifdef __linux__
   // treat "-" as stdin. quick hack for linux
   if (_inputFile.empty() || _inputFile == "-") {
     _inputFile = "/proc/self/fd/0";
   }
-  
+
   // treat missing outfile as stdout
   if (_outputFile.empty() || _outputFile == "+") {
     _outputFile = "/proc/self/fd/1";
@@ -172,11 +156,11 @@ void VPackFeature::start() {
   }
 
   ::CustomTypeHandler customTypeHandler;
-  
+
   VPackOptions options;
   options.prettyPrint = _prettyPrint;
-  options.unsupportedTypeBehavior = 
-    (_printNonJson ? VPackOptions::ConvertUnsupportedType : VPackOptions::FailOnUnsupportedType);
+  options.unsupportedTypeBehavior =
+      (_printNonJson ? VPackOptions::ConvertUnsupportedType : VPackOptions::FailOnUnsupportedType);
   options.customTypeHandler = &customTypeHandler;
 
   VPackSlice slice;
@@ -187,8 +171,9 @@ void VPackFeature::start() {
       builder = VPackParser::fromJson(s);
       slice = builder->slice();
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "invalid JSON input while processing infile '" << _inputFile
-                << "': " << ex.what();
+      LOG_TOPIC(ERR, Logger::FIXME)
+          << "invalid JSON input while processing infile '" << _inputFile
+          << "': " << ex.what();
       *_result = TRI_ERROR_INTERNAL;
       return;
     }
@@ -197,8 +182,9 @@ void VPackFeature::start() {
       VPackValidator validator(&options);
       validator.validate(s.c_str(), s.size(), false);
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "invalid VPack input while processing infile '" << _inputFile
-                << "': " << ex.what();
+      LOG_TOPIC(ERR, Logger::FIXME)
+          << "invalid VPack input while processing infile '" << _inputFile
+          << "': " << ex.what();
       *_result = TRI_ERROR_INTERNAL;
       return;
     }
@@ -213,12 +199,15 @@ void VPackFeature::start() {
   try {
     dumper.dump(slice);
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception while processing infile '" << _inputFile << "': " << ex.what();
+    LOG_TOPIC(ERR, Logger::FIXME)
+        << "caught exception while processing infile '" << _inputFile
+        << "': " << ex.what();
     *_result = TRI_ERROR_INTERNAL;
     return;
   } catch (...) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "caught unknown exception occurred while processing infile '"
-              << _inputFile << "'";
+    LOG_TOPIC(ERR, Logger::FIXME)
+        << "caught unknown exception occurred while processing infile '"
+        << _inputFile << "'";
     *_result = TRI_ERROR_INTERNAL;
     return;
   }
@@ -230,13 +219,13 @@ void VPackFeature::start() {
     *_result = TRI_ERROR_INTERNAL;
     return;
   }
-  
+
   // reset stream
   // cppcheck-suppress *
   if (!toStdOut) {
     ofs.seekp(0);
   }
-  
+
   // write into stream
   char const* start = buffer.data();
   ofs.write(start, buffer.size());
@@ -244,7 +233,8 @@ void VPackFeature::start() {
 
   // cppcheck-suppress *
   if (!toStdOut) {
-    LOG_TOPIC(INFO, Logger::FIXME) << "successfully processed infile '" << _inputFile << "'";
+    LOG_TOPIC(INFO, Logger::FIXME)
+        << "successfully processed infile '" << _inputFile << "'";
     LOG_TOPIC(INFO, Logger::FIXME) << "infile size: " << s.size();
     LOG_TOPIC(INFO, Logger::FIXME) << "outfile size: " << buffer.size();
   }

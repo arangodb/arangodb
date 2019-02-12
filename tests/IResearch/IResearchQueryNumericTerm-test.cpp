@@ -70,7 +70,7 @@
 
 extern const char* ARGV0; // defined in main.cpp
 
-NS_LOCAL
+namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -164,7 +164,7 @@ struct IResearchQueryNumericTermSetup {
   }
 }; // IResearchQuerySetup
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -282,7 +282,7 @@ TEST_CASE("IResearchQueryTestNumericTerm", "[iresearch][iresearch-query]") {
     }
 
     CHECK((trx.commit().ok()));
-    CHECK(view->commit().ok());
+    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").code)); // commit
   }
 
   // -----------------------------------------------------------------------------
