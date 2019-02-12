@@ -865,7 +865,6 @@ static void ClientConnection_httpSendFile(v8::FunctionCallbackInfo<v8::Value> co
   }
 
   v8::TryCatch tryCatch(isolate);
-  ;
 
   // check header fields
   std::unordered_map<std::string, std::string> headerFields;
