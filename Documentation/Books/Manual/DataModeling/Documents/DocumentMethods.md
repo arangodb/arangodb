@@ -530,15 +530,14 @@ This method is deprecated in favour of the array variant of *document*.
     @endDocuBlock collectionLookupByKeys
 
 
-Insert/Save
-------
+Insert / Save
+-------------
 
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 Note: since ArangoDB 2.2, _insert_ is an alias for _save_.
 
-`collection.insert(data)`
-
+`collection.insert(data)`<br/>
 `collection.save(data)`
 
 Creates a new document in the *collection* from the given *data*. The
@@ -552,8 +551,7 @@ The method returns a document with the attributes *_id*, *_key* and
 created document, the attribute *_key* the document key and the
 attribute *_rev* contains the document revision.
 
-`collection.insert(data, options)`
-
+`collection.insert(data, options)`<br/>
 `collection.save(data, options)`
 
 Creates a new document in the *collection* from the given *data* as
