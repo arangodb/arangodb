@@ -63,8 +63,8 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
 #define _FOR_BLOCK(name, v, block) \
   { constexpr bool name = v; block; }
 #define FOR_BOOLS(name, block) \
-  _FOR_BLOCK(name, true, block) \
-  _FOR_BLOCK(name, false, block)
+  _FOR_BLOCK(name, true, block); \
+  _FOR_BLOCK(name, false, block);
   // clang-format on
 
   FOR_BOOLS(
