@@ -495,7 +495,7 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
       myGraph.addVertex("1");
       myGraph.addVertex("2");
       myGraph.addVertex("3");
-      auto input = VPackParser::fromJson(R"([ [\"v/1\"], [\"v/2\"], [\"v/3\"] ])");
+      auto input = VPackParser::fromJson(R"([ ["v/1"], ["v/2"], ["v/3"] ])");
 
       WHEN("the producer does not wait") {
         SingleRowFetcherHelper<false> fetcher(input->steal(), false);
