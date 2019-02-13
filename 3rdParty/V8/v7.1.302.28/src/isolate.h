@@ -627,7 +627,7 @@ class Isolate : private HiddenFactory {
     DCHECK_EQ(base::Relaxed_Load(&isolate_key_created_), 1);
     Isolate* isolate = reinterpret_cast<Isolate*>(
         base::Thread::GetExistingThreadLocal(isolate_key_));
-    DCHECK_NOT_NULL(isolate);
+    /// There is no other way to check whether we already have an isolate than this call. DCHECK_NOT_NULL(isolate);
     return isolate;
   }
 
