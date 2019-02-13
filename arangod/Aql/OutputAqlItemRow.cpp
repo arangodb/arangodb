@@ -1,5 +1,3 @@
-#include <utility>
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -100,7 +98,7 @@ void OutputAqlItemRow::doCopyRow(const InputAqlItemRow& sourceRow, bool ignoreMi
     TRI_ASSERT(sourceRow.internalBlockIs(blockShell()));
 #endif
     for (auto itemId : registersToClear()) {
-      block().eraseValue(_baseIndex, itemId);
+      block().destroyValue(_baseIndex, itemId);
     }
   }
   _lastBaseIndex = _baseIndex;
