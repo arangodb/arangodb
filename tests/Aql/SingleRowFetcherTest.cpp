@@ -65,14 +65,15 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
  * ATTENTION: The following tests are duplicated this way!
  */
 // clang-format off
+#define BLOCK(...) __VA_ARGS__
 #define _FOR_BLOCK(name, v, block) \
-  { constexpr bool name = v; block; }
+  { constexpr bool name = v; block }
 #define FOR_BOOLS(name, block) \
-  _FOR_BLOCK(name, true, block); \
-  _FOR_BLOCK(name, false, block);
+  _FOR_BLOCK(name, true, block) \
+  _FOR_BLOCK(name, false, block)
 // clang-format on
 
-  FOR_BOOLS(passBlocksThrough, ({
+  FOR_BOOLS(passBlocksThrough, BLOCK({
     // This is necessary so the internal catch name stays unique!
     GIVEN(std::string{"there are no blocks upstream, passBlocksThrough="} + std::string{passBlocksThrough}) {
       VPackBuilder input;
@@ -366,7 +367,7 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
       }
     }
 
-  }));
+  }))
 }
 
 }  // namespace aql
