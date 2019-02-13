@@ -1251,7 +1251,11 @@ TEST_CASE("IResearchViewNodeTest", "[iresearch][iresearch-view-node]") {
       CHECK(res.ok());
 
       CHECK((trx.commit().ok()));
-      CHECK(view->commit().ok());
+      CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(
+                                       vocbase,
+                                       "FOR d IN testView SEARCH 1 ==1 OPTIONS "
+                                       "{ waitForSync: true } RETURN d")
+                                       .code));  // commit
     }
 
     // dummy query
@@ -1264,8 +1268,6 @@ TEST_CASE("IResearchViewNodeTest", "[iresearch][iresearch-view-node]") {
     arangodb::aql::ExecutionEngine engine(&query);
 
     arangodb::aql::Variable const outVariable("variable", 0);
-
-    // prepare view snapshot
 
     // no filter condition, no sort condition
     {

@@ -397,7 +397,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
         arangodb::iresearch::IResearchViewMeta meta;
         std::string error;
 
-        CHECK((14U == slice.length()));
+        CHECK((15U == slice.length()));
         CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() &&
                false == slice.get("globallyUniqueId").copyString().empty()));
         CHECK((slice.get("id").copyString() == "1"));
@@ -423,7 +423,7 @@ TEST_CASE("IResearchViewCoordinatorTest",
         arangodb::iresearch::IResearchViewMeta meta;
         std::string error;
 
-        CHECK((11U == slice.length()));
+        CHECK((12U == slice.length()));
         CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() &&
                false == slice.get("globallyUniqueId").copyString().empty()));
         CHECK((slice.get("id").copyString() == "1"));
