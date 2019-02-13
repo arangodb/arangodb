@@ -225,11 +225,7 @@ bool TraversalExecutor::resetTraverser() {
         _traverser.setStartVertex(_traverser.options()->trx()->extractIdString(in.slice()));
         return true;
       } catch (...) {
-        _traverser.options()->query()->registerWarning(
-            TRI_ERROR_BAD_PARAMETER,
-            "Invalid input for traversal: Only "
-            "id strings or objects with _id are "
-            "allowed");
+        // on purpose ignore this error.
         return false;
       }
       // _id or _key not present we cannot start here, register warning take next
