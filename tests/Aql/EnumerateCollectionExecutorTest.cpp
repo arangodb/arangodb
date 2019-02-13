@@ -106,7 +106,8 @@ SCENARIO("EnumerateCollectionExecutor",
                                            useRawPointers, random);
 
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
-    auto outputBlockShell = std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
+    auto outputBlockShell =
+        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
@@ -118,7 +119,8 @@ SCENARIO("EnumerateCollectionExecutor",
       EnumerateCollectionStats stats{};
 
       THEN("the executor should return DONE") {
-        OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(), infos.registersToKeep());
+        OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+                                infos.registersToKeep(), infos.registersToClear());
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -134,7 +136,8 @@ SCENARIO("EnumerateCollectionExecutor",
       EnumerateCollectionStats stats{};
 
       THEN("the executor should first return WAIT") {
-        OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(), infos.registersToKeep());
+        OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+                                infos.registersToKeep(), infos.registersToClear());
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());

@@ -36,10 +36,12 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-OutputAqlItemRow::OutputAqlItemRow(std::shared_ptr<AqlItemBlockShell> blockShell,
-                                   std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
-                                   std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
-                                   CopyRowBehaviour copyRowBehaviour)
+OutputAqlItemRow::OutputAqlItemRow(
+    std::shared_ptr<AqlItemBlockShell> blockShell,
+    std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
+    std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
+    std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
+    CopyRowBehaviour copyRowBehaviour)
     : _blockShell(std::move(blockShell)),
       _baseIndex(0),
       _inputRowCopied(false),
@@ -47,40 +49,53 @@ OutputAqlItemRow::OutputAqlItemRow(std::shared_ptr<AqlItemBlockShell> blockShell
       _numValuesWritten(0),
       _doNotCopyInputRow(copyRowBehaviour == CopyRowBehaviour::DoNotCopyInputRows),
       _outputRegisters(std::move(outputRegisters)),
-      _registersToKeep(std::move(registersToKeep)) {
+      _registersToKeep(std::move(registersToKeep)),
+      _registersToClear(std::move(registersToClear)) {
   TRI_ASSERT(_blockShell != nullptr);
 }
 
 void OutputAqlItemRow::doCopyRow(const InputAqlItemRow& sourceRow, bool ignoreMissing) {
-  // Note that _lastSourceRow is invalid right after construction. However, when
-  // _baseIndex > 0, then we must have seen one row already.
-  TRI_ASSERT(_baseIndex == 0 || _lastSourceRow.isInitialized());
-  bool mustClone = _baseIndex == 0 || _lastSourceRow != sourceRow;
+  if (!_doNotCopyInputRow) {
+    // Note that _lastSourceRow is invalid right after construction. However,
+    // when _baseIndex > 0, then we must have seen one row already.
+    TRI_ASSERT(_baseIndex == 0 || _lastSourceRow.isInitialized());
+    bool mustClone = _baseIndex == 0 || _lastSourceRow != sourceRow;
 
-  if (mustClone) {
-    for (auto itemId : registersToKeep()) {
-      if (ignoreMissing && itemId >= sourceRow.getNrRegisters()) {
-        continue;
-      }
-      auto const& value = sourceRow.getValue(itemId);
-      if (!value.isEmpty()) {
-        AqlValue clonedValue = value.clone();
-        AqlValueGuard guard(clonedValue, true);
-
-        TRI_IF_FAILURE("OutputAqlItemRow::copyRow") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    if (mustClone) {
+      for (auto itemId : registersToKeep()) {
+        if (ignoreMissing && itemId >= sourceRow.getNrRegisters()) {
+          continue;
         }
-        TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
+        auto const& value = sourceRow.getValue(itemId);
+        if (!value.isEmpty()) {
+          AqlValue clonedValue = value.clone();
+          AqlValueGuard guard(clonedValue, true);
 
-        block().setValue(_baseIndex, itemId, clonedValue);
-        guard.steal();
+          TRI_IF_FAILURE("OutputAqlItemRow::copyRow") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+          TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+
+          block().setValue(_baseIndex, itemId, clonedValue);
+          guard.steal();
+        }
       }
+    } else {
+      TRI_ASSERT(_baseIndex > 0);
+      block().copyValuesFromRow(_baseIndex, registersToKeep(), _baseIndex - 1);
     }
   } else {
-    TRI_ASSERT(_baseIndex > 0);
-    block().copyValuesFromRow(_baseIndex, registersToKeep(), _baseIndex - 1);
+    // This may only be set if the input block is the same as the output block,
+    // because it is passed through.
+    // We need to clear registers no longer needed
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(sourceRow.internalBlockIs(blockShell()));
+#endif
+    for (auto itemId : registersToClear()) {
+      block().eraseValue(_baseIndex, itemId);
+    }
   }
 
   _inputRowCopied = true;

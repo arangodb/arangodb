@@ -60,7 +60,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos),
       _outputItemRow(nullptr),
-      _query(*engine->getQuery()){}
+      _query(*engine->getQuery()) {}
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
@@ -172,10 +172,12 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
   if /* constexpr */ (Executor::Properties::allowsBlockPassthrough) {
     return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
                                               infos().registersToKeep(),
+                                              infos().registersToClear(),
                                               OutputAqlItemRow::CopyRowBehaviour::DoNotCopyInputRows);
   } else {
     return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
-                                              infos().registersToKeep());
+                                              infos().registersToKeep(),
+                                              infos().registersToClear());
   }
 }
 
@@ -307,9 +309,9 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // Check that all output registers are empty.
     if (!std::is_same<Executor, ReturnExecutor<true>>::value) {
-      for (auto const &reg : *infos().getOutputRegisters()) {
+      for (auto const& reg : *infos().getOutputRegisters()) {
         for (size_t row = 0; row < blockShell->block().size(); row++) {
-          AqlValue const &val = blockShell->block().getValueReference(row, reg);
+          AqlValue const& val = blockShell->block().getValueReference(row, reg);
           TRI_ASSERT(val.isEmpty());
         }
       }

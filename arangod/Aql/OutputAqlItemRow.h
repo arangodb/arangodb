@@ -50,6 +50,7 @@ class OutputAqlItemRow {
   explicit OutputAqlItemRow(std::shared_ptr<AqlItemBlockShell> blockShell,
                             std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
                             std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
+                            std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
                             CopyRowBehaviour = CopyRowBehaviour::CopyInputRows);
 
   // Clones the given AqlValue
@@ -66,7 +67,8 @@ class OutputAqlItemRow {
   // Note that there is no real move happening here, just a trivial copy of
   // the passed AqlValue. However, that means the output block will take
   // responsibility of possibly referenced external memory.
-  void moveValueInto(RegisterId registerId, InputAqlItemRow const &sourceRow, AqlValueGuard& guard) {
+  void moveValueInto(RegisterId registerId, InputAqlItemRow const& sourceRow,
+                     AqlValueGuard& guard) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (!isOutputRegister(registerId)) {
       TRI_ASSERT(false);
@@ -97,25 +99,13 @@ class OutputAqlItemRow {
   void copyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing = false) {
     TRI_ASSERT(sourceRow.isInitialized());
     // While violating the following asserted states would do no harm, the
-    // implementation as planned should only copy a row after all values have been
-    // set, and copyRow should only be called once.
+    // implementation as planned should only copy a row after all values have
+    // been set, and copyRow should only be called once.
     TRI_ASSERT(!_inputRowCopied);
     TRI_ASSERT(allValuesWritten());
     if (_inputRowCopied) {
       return;
     }
-
-    // This may only be set if the input block is the same as the output block,
-    // because it is passed through.
-    if (_doNotCopyInputRow) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      TRI_ASSERT(sourceRow.internalBlockIs(blockShell()));
-#endif
-      _inputRowCopied = true;
-      _lastSourceRow = sourceRow;
-      return;
-    }
-
     doCopyRow(sourceRow, ignoreMissing);
   }
 
@@ -192,10 +182,13 @@ class OutputAqlItemRow {
     return *_registersToKeep;
   };
 
+  std::unordered_set<RegisterId> const& registersToClear() const {
+    return *_registersToClear;
+  };
+
   bool isOutputRegister(RegisterId registerId) const {
     return outputRegisters().find(registerId) != outputRegisters().end();
   }
-
 
  private:
   /**
@@ -233,13 +226,12 @@ class OutputAqlItemRow {
 
   std::shared_ptr<std::unordered_set<RegisterId> const> _outputRegisters;
   std::shared_ptr<std::unordered_set<RegisterId> const> _registersToKeep;
+  std::shared_ptr<std::unordered_set<RegisterId> const> _registersToClear;
 
  private:
   size_t nextUnwrittenIndex() const noexcept { return numRowsWritten(); }
 
-  size_t numRegistersToWrite() const {
-    return outputRegisters().size();
-  }
+  size_t numRegistersToWrite() const { return outputRegisters().size(); }
 
   bool allValuesWritten() const {
     return _numValuesWritten == numRegistersToWrite();

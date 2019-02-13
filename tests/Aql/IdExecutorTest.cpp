@@ -55,9 +55,9 @@ SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
   auto blockShell =
       std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
 
-  OutputAqlItemRow row{std::move(blockShell), outputRegisters, registersToKeep};
   IdExecutorInfos infos(1 /*nrRegs*/, *registersToKeep /*toKeep*/, {} /*toClear*/);
-
+  OutputAqlItemRow row{std::move(blockShell), outputRegisters, registersToKeep,
+                       infos.registersToClear()};
   GIVEN("there are no rows upstream") {
     WHEN("the producer does not wait") {
       ConstFetcherHelper fetcher(nullptr);

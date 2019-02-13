@@ -128,7 +128,7 @@ class ExecutorInfos {
     return _registersToKeep;
   }
 
-  std::unordered_set<RegisterId> const& registersToClear() const {
+  std::shared_ptr<const std::unordered_set<RegisterId>> const& registersToClear() const {
     return _registersToClear;
   }
 
@@ -143,7 +143,7 @@ class ExecutorInfos {
 
   std::shared_ptr<const std::unordered_set<RegisterId>> _registersToKeep;
 
-  std::unordered_set<RegisterId> const _registersToClear;
+  std::shared_ptr<const std::unordered_set<RegisterId>> const _registersToClear;
 };
 
 }  // namespace aql
