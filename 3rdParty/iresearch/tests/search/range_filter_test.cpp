@@ -919,16 +919,24 @@ class range_filter_test_case : public filter_test_case_base {
       costs_t costs{ docs.size() };
       irs::order order;
 
-      size_t collect_count = 0;
+      size_t collect_field_count = 0;
+      size_t collect_term_count = 0;
       size_t finish_count = 0;
       auto& scorer = order.add<sort::custom_sort>(false);
-      scorer.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
-        ++collect_count;
+
+      scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+        ++collect_field_count;
       };
-      scorer.collector_finish = [&finish_count](irs::attribute_store&, const irs::index_reader&)->void{
+      scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+        ++collect_term_count;
+      };
+      scorer.collectors_collect_ = [&finish_count](irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++finish_count;
       };
-      scorer.prepare_collector = [&scorer]()->irs::sort::collector::ptr{
+      scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
+        return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer);
+      };
+      scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
         return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer);
       };
       check_query(
@@ -938,7 +946,8 @@ class range_filter_test_case : public filter_test_case_base {
           .term<irs::Bound::MAX>(irs::numeric_utils::numeric_traits<double_t>::inf())
         , order, docs, rdr
       );
-      ASSERT_EQ(11, collect_count);
+      ASSERT_EQ(11, collect_field_count); // 1 field in 1 segment
+      ASSERT_EQ(11, collect_term_count); // 11 different terms
       ASSERT_EQ(11, finish_count); // 11 different terms
     }
 

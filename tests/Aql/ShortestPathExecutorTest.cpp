@@ -220,13 +220,13 @@ static void TestExecutor(ShortestPathExecutorInfos& infos,
   NoStats stats{};
   ExecutionState state = ExecutionState::HASMORE;
   auto outputBlockShell =
-      std::make_unique<OutputAqlItemBlockShell>(itemBlockManager, std::move(block),
-                                                infos.getOutputRegisters(),
-                                                infos.registersToKeep());
-  OutputAqlItemRow result(std::move(outputBlockShell));
+      std::make_unique<AqlItemBlockShell>(itemBlockManager, std::move(block));
+
+  OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
   FakePathFinder& finder = static_cast<FakePathFinder&>(infos.finder());
   WHEN("not waiting") {
-    SingleRowFetcherHelper fetcher(input->steal(), false);
+    SingleRowFetcherHelper<false> fetcher(input->steal(), false);
     ShortestPathExecutor testee(fetcher, infos);
     // Fetch fullPath
     for (size_t i = 0; i < resultPaths.size(); ++i) {
@@ -252,7 +252,7 @@ static void TestExecutor(ShortestPathExecutorInfos& infos,
     ValidateResult(infos, result, resultPaths);
   }
   WHEN("waiting") {
-    SingleRowFetcherHelper fetcher(input->steal(), true);
+    SingleRowFetcherHelper<false> fetcher(input->steal(), true);
     ShortestPathExecutor testee(fetcher, infos);
     // Fetch fullPath
     for (size_t i = 0; i < resultPaths.size(); ++i) {
@@ -330,7 +330,7 @@ static void RunTestWithFullCombination(ShortestPathExecutorInfos::InputVertex&& 
     TestExecutor(infos, input, resultPaths);
   }
   WHEN("there are rows upstream") {
-    input = VPackParser::fromJson("[[\"vertex/source\",\"vertex/target\"]]");
+    input = VPackParser::fromJson(R"([["vertex/source","vertex/target"]])");
     WHEN("there are no paths") { TestExecutor(infos, input, resultPaths); }
     WHEN("there is one path") {
       finder.addPath(std::vector<std::string>{"vertex/source", "vertex/intermed",
@@ -342,8 +342,7 @@ static void RunTestWithFullCombination(ShortestPathExecutorInfos::InputVertex&& 
   }
   WHEN("there are multiple rows upstream") {
     input = VPackParser::fromJson(
-        "[[\"vertex/source\",\"vertex/target\"], [\"vertex/a\", "
-        "\"vertex/d\"]]");
+        R"([["vertex/source","vertex/target"], ["vertex/a", "vertex/d"]])");
     // We add enough paths for all combinations
     // Otherwise waiting / more / done is getting complicated
     finder.addPath(std::vector<std::string>{"vertex/source", "vertex/intermed",

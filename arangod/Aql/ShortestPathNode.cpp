@@ -27,7 +27,7 @@
 #include "ShortestPathNode.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionBlockShutdownableImpl.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Aql/ShortestPathExecutor.h"
@@ -286,7 +286,7 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
                                   getRegsToClear(), std::move(finder),
                                   std::move(outputRegisterMapping),
                                   std::move(sourceInput), std::move(targetInput));
-  return std::make_unique<ExecutionBlockShutdownableImpl<ShortestPathExecutor>>(
+  return std::make_unique<ExecutionBlockImpl<ShortestPathExecutor>>(
       &engine, this, std::move(infos));
 }
 

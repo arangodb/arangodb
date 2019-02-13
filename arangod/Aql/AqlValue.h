@@ -549,7 +549,7 @@ struct AqlValue final {
   AqlValue clone() const;
 
   /// @brief invalidates/resets a value to None, not freeing any memory
-  void erase() noexcept {
+  inline void erase() noexcept {
     _data.internal[0] = '\x00';
     setType(AqlValueType::VPACK_INLINE);
   }
@@ -646,17 +646,19 @@ class AqlValueGuard {
   AqlValueGuard& operator=(AqlValueGuard const&) = delete;
 
   AqlValueGuard(AqlValue& value, bool destroy)
-      : value(value), destroy(destroy) {}
+      : _value(value), _destroy(destroy) {}
   ~AqlValueGuard() {
-    if (destroy) {
-      value.destroy();
+    if (_destroy) {
+      _value.destroy();
     }
   }
-  void steal() { destroy = false; }
+  void steal() { _destroy = false; }
+
+  AqlValue& value() { return _value; }
 
  private:
-  AqlValue& value;
-  bool destroy;
+  AqlValue& _value;
+  bool _destroy;
 };
 
 struct AqlValueMaterializer {

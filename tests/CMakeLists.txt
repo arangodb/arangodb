@@ -1,4 +1,6 @@
-foreach(LINK_DIR ${V8_LINK_DIRECTORIES})
+include_directories(.)
+
+foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
   link_directories("${LINK_DIR}")
 endforeach()
 
@@ -59,6 +61,7 @@ if (USE_IRESEARCH)
     IResearch/VelocyPackHelper-test.cpp
     RestHandler/RestUsersHandler-test.cpp
     RestHandler/RestViewHandler-test.cpp
+    RestServer/FlushFeature-test.cpp
     Utils/CollectionNameResolver-test.cpp
     V8Server/v8-users-test.cpp
     V8Server/v8-views-test.cpp
@@ -87,6 +90,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/CalculationExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
+  Aql/EnumerateCollectionExecutorTest.cpp
   Aql/EnumerateListExecutorTest.cpp
   Aql/ExecutionBlockImplTest.cpp
   Aql/ExecutionBlockImplTestInstances.cpp
@@ -99,6 +103,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/ShortestPathExecutorTest.cpp
   Aql/SingleRowFetcherTest.cpp
   Aql/SortExecutorTest.cpp
+  Aql/SortLimit-test.cpp
   Aql/TestEmptyExecutorHelper.cpp
   Aql/TestExecutorHelper.cpp
   Aql/TraversalExecutorTest.cpp
@@ -169,12 +174,13 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/IndexEstimatorTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
+  VocBase/VersionTest.cpp
   ${IRESEARCH_TESTS_SOURCES}
 )
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
-  # this speeds up the compilation with optimizations and newer g++ versions 
+  # this speeds up the compilation with optimizations and newer g++ versions
   # and prevents the "variable tracking size limit exceeded warnings" from
   # occurring
   if (CMAKE_COMPILER_IS_GNUCC)
@@ -190,6 +196,11 @@ add_executable(
   ${ARANGODB_TESTS_SOURCES}
   main.cpp
 )
+
+#required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
+if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
+    target_compile_options(arangodbtests PRIVATE -fno-devirtualize)
+endif()
 
 SET_TARGET_PROPERTIES(arangodbtests PROPERTIES COMPILE_FLAGS "-DCATCH_CONFIG_FAST_COMPILE")
 

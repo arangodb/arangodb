@@ -26,13 +26,16 @@
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionState.h"
 
+#include <Basics/Exceptions.h>
+
 #include <memory>
 
 namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
-class InputAqlItemBlockShell;
+class AqlItemBlockShell;
+template <bool>
 class BlockFetcher;
 
 /**
@@ -41,7 +44,7 @@ class BlockFetcher;
  */
 class AllRowsFetcher {
  public:
-  explicit AllRowsFetcher(BlockFetcher& executionBlock);
+  explicit AllRowsFetcher(BlockFetcher<false>& executionBlock);
 
   TEST_VIRTUAL ~AllRowsFetcher() = default;
 
@@ -69,8 +72,16 @@ class AllRowsFetcher {
    */
   TEST_VIRTUAL std::pair<ExecutionState, AqlItemMatrix const*> fetchAllRows();
 
+  // AllRowsFetcher cannot pass through. Could be implemented, but currently
+  // there are no executors that could use this and not better use
+  // SingleRowFetcher instead.
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t) {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  };
+
  private:
-  BlockFetcher* _blockFetcher;
+  BlockFetcher<false>* _blockFetcher;
 
   std::unique_ptr<AqlItemMatrix> _aqlItemMatrix;
 
@@ -85,8 +96,7 @@ class AllRowsFetcher {
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
-  std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
-  fetchBlock();
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock();
 };
 
 }  // namespace aql

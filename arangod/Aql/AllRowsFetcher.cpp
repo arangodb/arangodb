@@ -41,9 +41,9 @@ std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcher::fetchAllRows() {
   }
 
   ExecutionState state = ExecutionState::HASMORE;
-  std::shared_ptr<InputAqlItemBlockShell> block;
+  std::shared_ptr<AqlItemBlockShell> block;
 
-  while(state == ExecutionState::HASMORE) {
+  while (state == ExecutionState::HASMORE) {
     std::tie(state, block) = fetchBlock();
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(block == nullptr);
@@ -61,7 +61,7 @@ std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcher::fetchAllRows() {
   return {ExecutionState::DONE, _aqlItemMatrix.get()};
 }
 
-AllRowsFetcher::AllRowsFetcher(BlockFetcher& executionBlock)
+AllRowsFetcher::AllRowsFetcher(BlockFetcher<false>& executionBlock)
     : _blockFetcher(&executionBlock),
       _aqlItemMatrix(nullptr),
       _upstreamState(ExecutionState::HASMORE) {}
@@ -70,8 +70,7 @@ RegisterId AllRowsFetcher::getNrInputRegisters() const {
   return _blockFetcher->getNrInputRegisters();
 }
 
-std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
-AllRowsFetcher::fetchBlock() {
+std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> AllRowsFetcher::fetchBlock() {
   auto res = _blockFetcher->fetchBlock();
 
   _upstreamState = res.first;

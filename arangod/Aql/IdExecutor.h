@@ -58,10 +58,11 @@ class IdExecutorInfos : public ExecutorInfos {
 };
 
 class IdExecutor {
-  template <typename T>
-  friend class ExecutionBlockImpl;
-
  public:
+  struct Properties {
+    static const bool preservesOrder = true;
+    static const bool allowsBlockPassthrough = true;
+  };
   using Fetcher = ConstFetcher;
   using Infos = IdExecutorInfos;
   using Stats = NoStats;
@@ -78,9 +79,7 @@ class IdExecutor {
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
  private:
-  Infos& _infos;
   Fetcher& _fetcher;
-  bool _done;
   std::unique_ptr<AqlItemBlock> _inputRegisterValues;
 };
 }  // namespace aql

@@ -118,7 +118,6 @@ details, including the index-identifier, is returned.
     @endDocuBlock ensureHashIndexArray
 
 
-{###
 Creating Hash Index in Background
 ---------------------------------
 
@@ -142,7 +141,7 @@ db.collection.ensureIndex({ type: "hash", fields: [ "value" ], inBackground: tru
 ```
 
 For more information see "Creating Indexes in Background" in the [Index basics](IndexBasics.md) page.
-###}
+
 
 Ensure uniqueness of relations in edge collections
 --------------------------------------------------

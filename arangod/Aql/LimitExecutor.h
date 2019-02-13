@@ -26,6 +26,7 @@
 #ifndef ARANGOD_AQL_LIMIT_EXECUTOR_H
 #define ARANGOD_AQL_LIMIT_EXECUTOR_H
 
+#include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
@@ -40,42 +41,34 @@ namespace aql {
 
 class InputAqlItemRow;
 class ExecutorInfos;
+template<bool>
 class SingleRowFetcher;
 
 class LimitExecutorInfos : public ExecutorInfos {
  public:
   LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                     std::unordered_set<RegisterId> registersToClear,
-                     size_t offset, size_t limit, bool fullCount, size_t queryDepth);
+                     std::unordered_set<RegisterId> registersToClear, size_t offset,
+                     size_t limit, bool fullCount);
 
   LimitExecutorInfos() = delete;
   LimitExecutorInfos(LimitExecutorInfos&&) = default;
   LimitExecutorInfos(LimitExecutorInfos const&) = delete;
   ~LimitExecutorInfos() = default;
 
-  RegisterId getInputRegister() const noexcept { return _inputRegister; };
-  size_t getLimit() { return _limit; };
-  size_t getRemainingOffset() { return _remainingOffset; };
-  void decrRemainingOffset() { _remainingOffset--; };
-  size_t getQueryDepth() { return _queryDepth; };
-  bool isFullCountEnabled() { return _fullCount; };
+  size_t getLimit() const noexcept { return _limit; };
+  size_t getOffset() const noexcept { return _offset; };
+  size_t getLimitPlusOffset() const noexcept { return _offset + _limit; };
+  bool isFullCountEnabled() const noexcept { return _fullCount; };
 
  private:
-  // This is exactly the value in the parent member ExecutorInfo::_inRegs,
-  // respectively getInputRegisters().
-  RegisterId _inputRegister;
-
   /// @brief the remaining offset
-  size_t _remainingOffset;
+  size_t const _offset;
 
   /// @brief the limit
-  size_t _limit;
-
-  /// @brief the depth of the query (e.g. subquery)
-  size_t _queryDepth;
+  size_t const _limit;
 
   /// @brief whether or not the node should fully count what it limits
-  bool _fullCount;
+  bool const _fullCount;
 };
 
 /**
@@ -84,7 +77,11 @@ class LimitExecutorInfos : public ExecutorInfos {
 
 class LimitExecutor {
  public:
-  using Fetcher = SingleRowFetcher;
+  struct Properties {
+    static const bool preservesOrder = true;
+    static const bool allowsBlockPassthrough = false;
+  };
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = LimitExecutorInfos;
   using Stats = LimitStats;
 
@@ -102,8 +99,60 @@ class LimitExecutor {
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
  private:
-  Infos& _infos;
+  Infos const& infos() const noexcept { return _infos; };
+
+  size_t maxRowsLeftToFetch() const noexcept {
+    if (infos().isFullCountEnabled()) {
+      return ExecutionBlock::DefaultBatchSize();
+    } else {
+      return infos().getLimitPlusOffset() - _counter;
+    }
+  }
+
+  enum class LimitState {
+    // state is SKIPPING until the offset is reached
+    SKIPPING,
+    // state is RETURNING until the limit is reached
+    RETURNING,
+    // state is RETURNING_LAST_ROW only if fullCount is disabled, and we've seen
+    // the second to last row until the limit is reached
+    RETURNING_LAST_ROW,
+    // state is COUNTING when the limit is reached and fullcount is enabled
+    COUNTING,
+    // state is LIMIT_REACHED only if fullCount is disabled, and we've seen all
+    // rows up to limit
+    LIMIT_REACHED,
+  };
+
+  /**
+  * @brief Returns the current state of the executor, based on _counter (i.e.
+  * number of lines seen), limit, offset and fullCount.
+  * @return See LimitState comments for a description.
+  */
+  LimitState currentState() const noexcept {
+    // Note that not only offset, but also limit can be zero. Thus the order
+    // of all following checks is important, even the first two!
+
+    if (_counter < infos().getOffset()) {
+      return LimitState::SKIPPING;
+    }
+    if (!infos().isFullCountEnabled() && _counter + 1 == infos().getLimitPlusOffset()) {
+      return LimitState::RETURNING_LAST_ROW;
+    }
+    if (_counter < infos().getLimitPlusOffset()) {
+      return LimitState::RETURNING;
+    }
+    if (infos().isFullCountEnabled()) {
+      return LimitState::COUNTING;
+    }
+
+    return LimitState::LIMIT_REACHED;
+  }
+
+ private:
+  Infos const& _infos;
   Fetcher& _fetcher;
+  // Number of input lines seen
   uint64_t _counter = 0;
 };
 

@@ -29,7 +29,7 @@ Background:
   However, the files for the released states/snapshots are left on disk, and
   only removed by "cleanup" operation.
 
-@RESTSTRUCT{consolidationIntervalMsec,post_api_view_props,integer,optional,uint64}
+@RESTSTRUCT{commitIntervalMsec,post_api_view_props,integer,optional,uint64}
 Wait at least this many milliseconds between committing view data store
 changes and making documents visible to queries (default: 60000, to disable
 use: 0).
@@ -50,6 +50,23 @@ Background:
   the start of the "commit" operation will be reflected by queries invoked in
   subsequent ArangoDB transactions, in-progress ArangoDB transactions will
   still continue to return a repeatable-read state.
+
+
+@RESTSTRUCT{consolidationIntervalMsec,post_api_view_props,integer,optional,uint64}
+Wait at least this many milliseconds between applying 'consolidationPolicy' to
+consolidate view data store and possibly release space on the filesystem
+(default: 60000, to disable use: 0).
+For the case where there are a lot of data modification operations, a higher
+value could potentially have the data store consume more space and file handles.
+For the case where there are a few data modification operations, a lower value
+will impact performance due to no segment candidates available for
+consolidation.
+Background:
+  For data modification ArangoSearch views follow the concept of a
+  "versioned data store". Thus old versions of data may be removed once there
+  are no longer any users of the old data. The frequency of the cleanup and
+  compaction operations are governed by 'consolidationIntervalMsec' and the
+  candidates for compaction are selected via 'consolidationPolicy'.
 
 
 @RESTSTRUCT{consolidationPolicy,post_api_view_props,object,optional,post_api_view_props_consolidation}

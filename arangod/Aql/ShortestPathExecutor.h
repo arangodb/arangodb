@@ -45,6 +45,7 @@ class TraverserCache;
 
 namespace aql {
 
+template <bool>
 class SingleRowFetcher;
 class OutputAqlItemRow;
 class NoStats;
@@ -133,7 +134,11 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
  */
 class ShortestPathExecutor {
  public:
-  using Fetcher = SingleRowFetcher;
+  struct Properties {
+    static const bool preservesOrder = true;
+    static const bool allowsBlockPassthrough = false;
+  };
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = ShortestPathExecutorInfos;
   using Stats = NoStats;
 

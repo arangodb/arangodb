@@ -99,6 +99,7 @@ Agent::~Agent() {
   // multiple times, and we do it just in case the Agent object was
   // created but never really started. Here, we exit with a fatal error
   // if the threads do not stop in time.
+  shutdown();  // wait for the main Agent thread to terminate
 }
 
 /// Wait until threads are terminated:
@@ -117,7 +118,9 @@ void Agent::waitForThreadsStop() {
       FATAL_ERROR_EXIT();
     }
   }
-  shutdown();  // wait for the main Agent thread to terminate
+  // initiate shutdown of main Agent thread, but do not wait for it yet
+  // -> this happens in the destructor
+  beginShutdown();
 }
 
 /// State machine

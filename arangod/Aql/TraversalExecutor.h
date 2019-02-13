@@ -39,6 +39,7 @@ namespace aql {
 class Query;
 class OutputAqlItemRow;
 class ExecutorInfos;
+template <bool>
 class SingleRowFetcher;
 
 class TraversalExecutorInfos : public ExecutorInfos {
@@ -95,7 +96,11 @@ class TraversalExecutorInfos : public ExecutorInfos {
  */
 class TraversalExecutor {
  public:
-  using Fetcher = SingleRowFetcher;
+  struct Properties {
+    static const bool preservesOrder = true;
+    static const bool allowsBlockPassthrough = false;
+  };
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = TraversalExecutorInfos;
   using Stats = TraversalStats;
 
@@ -126,7 +131,7 @@ class TraversalExecutor {
    */
   ExecutionState computeState() const;
 
-  void resetTraverser();
+  bool resetTraverser();
 
  private:
   Infos& _infos;

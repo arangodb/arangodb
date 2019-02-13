@@ -23,12 +23,12 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #ifndef ARANGOD_AQL_SORT_EXECUTOR_H
 #define ARANGOD_AQL_SORT_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
+#include "AqlItemBlockManager.h"
 
 #include <memory>
 
@@ -44,26 +44,29 @@ class AqlItemMatrix;
 class ExecutorInfos;
 class NoStats;
 class OutputAqlItemRow;
+class AqlItemBlockManager;
 struct SortRegister;
 
 class SortExecutorInfos : public ExecutorInfos {
  public:
-  SortExecutorInfos(std::vector<SortRegister> sortRegisters,
-                    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                    std::unordered_set<RegisterId> registersToClear,
+  SortExecutorInfos(std::vector<SortRegister> sortRegisters, std::size_t limit,
+                    AqlItemBlockManager& manager, RegisterId nrInputRegisters,
+                    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
                     transaction::Methods* trx, bool stable);
 
   SortExecutorInfos() = delete;
-  SortExecutorInfos(SortExecutorInfos &&) = default;
+  SortExecutorInfos(SortExecutorInfos&&) = default;
   SortExecutorInfos(SortExecutorInfos const&) = delete;
   ~SortExecutorInfos() = default;
 
   arangodb::transaction::Methods* trx() const;
 
-  std::vector<SortRegister> const& sortRegisters() const;
+  std::vector<SortRegister>& sortRegisters();
 
   bool stable() const;
 
+  std::size_t _limit;
+  AqlItemBlockManager& _manager;
  private:
   arangodb::transaction::Methods* _trx;
   std::vector<SortRegister> _sortRegisters;
@@ -75,11 +78,15 @@ class SortExecutorInfos : public ExecutorInfos {
  */
 class SortExecutor {
  public:
+  struct Properties {
+    static const bool preservesOrder = false;
+    static const bool allowsBlockPassthrough = false;
+  };
   using Fetcher = AllRowsFetcher;
   using Infos = SortExecutorInfos;
   using Stats = NoStats;
 
-  SortExecutor(Fetcher& fetcher, SortExecutorInfos&);
+  SortExecutor(Fetcher& fetcher, Infos&);
   ~SortExecutor();
 
   /**
@@ -94,7 +101,7 @@ class SortExecutor {
   void doSorting();
 
  private:
-  SortExecutorInfos& _infos;
+  Infos& _infos;
 
   Fetcher& _fetcher;
 

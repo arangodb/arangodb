@@ -139,12 +139,12 @@ std::pair<ExecutionState, NoStats> ShortestPathExecutor::produceRow(OutputAqlIte
   while (true) {
     if (_posInPath < _path->length()) {
       if (_infos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
-        output.setValue(_infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX),
-                        _input, _path->vertexToAqlValue(_infos.cache(), _posInPath));
+        output.cloneValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX),
+                              _input, _path->vertexToAqlValue(_infos.cache(), _posInPath));
       }
       if (_infos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
-        output.setValue(_infos.getOutputRegister(ShortestPathExecutorInfos::EDGE),
-                        _input, _path->edgeToAqlValue(_infos.cache(), _posInPath));
+        output.cloneValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::EDGE),
+                              _input, _path->edgeToAqlValue(_infos.cache(), _posInPath));
       }
       _posInPath++;
       return {computeState(), s};

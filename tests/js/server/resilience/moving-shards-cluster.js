@@ -267,15 +267,17 @@ function MovingShardsSuite () {
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
     var body = {"numberOfDBServers":toNum};
+    let res = {};
     try {
-      return request({ method: "PUT",
-                       url: url + "/_admin/cluster/numberOfServers",
-                       body: JSON.stringify(body) });
+      res = request({ method: "PUT",
+                      url: url + "/_admin/cluster/numberOfServers",
+                      body: JSON.stringify(body) });
     } catch (err) {
       console.error(
         "Exception for PUT /_admin/cluster/numberOfServers:", err.stack);
       return false;
     }
+    return res.hasOwnProperty("statusCode") && res.statusCode === 200;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
