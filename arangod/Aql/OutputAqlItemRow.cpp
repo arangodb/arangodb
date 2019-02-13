@@ -42,12 +42,17 @@ OutputAqlItemRow::OutputAqlItemRow(std::shared_ptr<AqlItemBlockShell> blockShell
                                    CopyRowBehaviour copyRowBehaviour)
     : _blockShell(std::move(blockShell)),
       _baseIndex(0),
+      _lastBaseIndex(0),
       _inputRowCopied(false),
       _lastSourceRow{CreateInvalidInputRowHint{}},
       _numValuesWritten(0),
       _doNotCopyInputRow(copyRowBehaviour == CopyRowBehaviour::DoNotCopyInputRows),
       _outputRegisters(std::move(outputRegisters)),
-      _registersToKeep(std::move(registersToKeep)) {
+      _registersToKeep(std::move(registersToKeep))
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      ,_setBaseIndexNotUsed(true)
+#endif
+{
   TRI_ASSERT(_blockShell != nullptr);
 }
 
@@ -55,6 +60,7 @@ void OutputAqlItemRow::doCopyRow(const InputAqlItemRow& sourceRow, bool ignoreMi
   // Note that _lastSourceRow is invalid right after construction. However, when
   // _baseIndex > 0, then we must have seen one row already.
   TRI_ASSERT(_baseIndex == 0 || _lastSourceRow.isInitialized());
+
   bool mustClone = _baseIndex == 0 || _lastSourceRow != sourceRow;
 
   if (mustClone) {
@@ -80,9 +86,9 @@ void OutputAqlItemRow::doCopyRow(const InputAqlItemRow& sourceRow, bool ignoreMi
     }
   } else {
     TRI_ASSERT(_baseIndex > 0);
-    block().copyValuesFromRow(_baseIndex, registersToKeep(), _baseIndex - 1);
+    block().copyValuesFromRow(_baseIndex, registersToKeep(), _lastBaseIndex);
   }
-
+  _lastBaseIndex = _baseIndex;
   _inputRowCopied = true;
   _lastSourceRow = sourceRow;
 }

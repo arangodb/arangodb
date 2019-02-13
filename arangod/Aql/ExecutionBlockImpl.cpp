@@ -34,6 +34,7 @@
 #include "Aql/InputAqlItemRow.h"
 
 #include "Aql/CalculationExecutor.h"
+#include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/FilterExecutor.h"
@@ -333,6 +334,7 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ConstrainedSortExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
