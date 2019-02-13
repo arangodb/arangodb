@@ -136,9 +136,6 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   /// @brief the index
   std::vector<transaction::Methods::IndexHandle> _indexes;
 
-  /// @brief current position in _indexes
-  size_t _currentIndex;
-
   /// @brief the index(es) condition
   std::unique_ptr<Condition> _condition;
 

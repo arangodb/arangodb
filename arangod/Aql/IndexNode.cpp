@@ -219,7 +219,11 @@ arangodb::aql::AstNode* IndexNode::makeUnique(arangodb::aql::AstNode* node,
     array->addMember(node);
     bool isSorted = false;
     bool isSparse = false;
-    auto unused = trx->getIndexFeatures(_indexes[_currentIndex], isSorted, isSparse);
+    TRI_ASSERT(trx != nullptr);
+
+    // Here it does not matter which index we choose for the isSorted/isSparse check, we need them
+    // all sorted here.
+    auto unused = trx->getIndexFeatures(_indexes.at(0), isSorted, isSparse);
     if (isSparse || isSorted) {
       // the index is sorted. we need to use SORTED_UNIQUE to get the
       // result back in index order
