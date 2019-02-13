@@ -28,7 +28,7 @@
 #include "TraversalNode.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionBlockShutdownableImpl.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
@@ -462,8 +462,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
                                outputRegisterMapping, getStartVertex(),
                                inputRegister, std::move(filterConditionVariables));
 
-  return std::make_unique<ExecutionBlockShutdownableImpl<TraversalExecutor>>(&engine, this,
-                                                                             std::move(infos));
+  return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(&engine, this,
+                                                                 std::move(infos));
 }
 
 /// @brief clone ExecutionNode recursively

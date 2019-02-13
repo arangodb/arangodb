@@ -177,6 +177,12 @@ class ExecutionBlockImpl : public ExecutionBlock {
 
   Infos const& infos() const { return _infos; }
 
+  /// @brief shutdown, will be called exactly once for the whole query
+  /// Special implementation for all Executors that need to implement Shutdown
+  /// Most do not, we might be able to move their shutdown logic to a more
+  /// central place.
+  std::pair<ExecutionState, Result> shutdown(int) override;
+
  private:
   /**
    * @brief Wrapper for ExecutionBlock::traceGetSomeEnd() that returns its
@@ -218,8 +224,9 @@ class ExecutionBlockImpl : public ExecutionBlock {
 
   Query const& getQuery() const { return _query; }
 
-protected:
+ protected:
   Executor& executor() { return _executor; }
+
  private:
   /**
    * @brief Used to allow the row Fetcher to access selected methods of this

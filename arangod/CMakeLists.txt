@@ -209,7 +209,6 @@ SET(ARANGOD_SOURCES
   Aql/EnumerateListExecutor.cpp
   Aql/ExecutionBlock.cpp
   Aql/ExecutionBlockImpl.cpp
-  Aql/ExecutionBlockShutdownableImpl.cpp
   Aql/ExecutionEngine.cpp
   Aql/ExecutionNode.cpp
   Aql/ExecutionPlan.cpp

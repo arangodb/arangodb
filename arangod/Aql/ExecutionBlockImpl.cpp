@@ -243,6 +243,11 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   return ExecutionBlock::initializeCursor(items, pos);
 }
 
+template <class Executor>
+std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::shutdown(int errorCode) {
+  return ExecutionBlock::shutdown(errorCode);
+}
+
 // Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
 // Without the namespaces it fails with
 // error: specialization of 'template<class Executor> std::pair<arangodb::aql::ExecutionState, arangodb::Result> arangodb::aql::ExecutionBlockImpl<Executor>::initializeCursor(arangodb::aql::AqlItemBlock*, size_t)' in different namespace
@@ -279,6 +284,18 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor>::initializeCurs
   new (&_executor) IdExecutor(_rowFetcher, _infos);
 
   return ExecutionBlock::initializeCursor(items, pos);
+}
+
+template <>
+std::pair<ExecutionState, Result> ExecutionBlockImpl<TraversalExecutor>::shutdown(int errorCode) {
+  ExecutionState state;
+  Result result;
+
+  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
+  if (state == ExecutionState::WAITING) {
+    return {state, result};
+  }
+  return this->executor().shutdown(errorCode);
 }
 }  // namespace aql
 }  // namespace arangodb
