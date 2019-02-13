@@ -21,15 +21,22 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SortNode.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/SortRegister.h"
 #include "Aql/SortExecutor.h"
+#include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/VelocyPackHelper.h"
+#include "SortNode.h"
+
+namespace {
+std::string const ConstrainedHeap = "constrained-heap";
+std::string const Standard = "standard";
+}  // namespace
 
 #ifdef USE_IRESEARCH
 #include "IResearch/IResearchViewNode.h"
@@ -74,12 +81,24 @@ int compareAqlValues(
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
+std::string const& SortNode::sorterTypeName(SorterType type) {
+  switch (type) {
+    case SorterType::Standard:
+      return ::Standard;
+    case SorterType::ConstrainedHeap:
+      return ::ConstrainedHeap;
+    default:
+      return ::Standard;
+  }
+}
+
 SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
                    SortElementVector const& elements, bool stable)
     : ExecutionNode(plan, base),
       _reinsertInCluster(true),
       _elements(elements),
-      _stable(stable) {}
+      _stable(stable),
+      _limit(VelocyPackHelper::getNumericValue<size_t>(base, "limit", 0)) {}
 
 /// @brief toVelocyPack, for SortNode
 void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
@@ -104,6 +123,8 @@ void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
     }
   }
   nodes.add("stable", VPackValue(_stable));
+  nodes.add("limit", VPackValue(_limit));
+  nodes.add("strategy", VPackValue(sorterTypeName(sorterType())));
 
   // And close it:
   nodes.close();
@@ -275,15 +296,15 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     sortRegs.push_back(SortRegister{id, element});
 #endif
   }
-
-  SortExecutorInfos infos( std::move(sortRegs)
-                         , getRegisterPlan()->nrRegs[previousNode->getDepth()]
-                         , getRegisterPlan()->nrRegs[getDepth()]
-                         , getRegsToClear()
-                         , engine.getQuery()->trx()
-                         , _stable);
-
-  return std::make_unique<ExecutionBlockImpl<SortExecutor>>(&engine, this, std::move(infos));
+  SortExecutorInfos infos(std::move(sortRegs), _limit, engine.itemBlockManager(),
+                          getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                          getRegisterPlan()->nrRegs[getDepth()],
+                          getRegsToClear(), engine.getQuery()->trx(), _stable);
+  if (sorterType() == SorterType::Standard){
+    return std::make_unique<ExecutionBlockImpl<SortExecutor>>(&engine, this, std::move(infos));
+  } else {
+    return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor>>(&engine, this, std::move(infos));
+  }
 }
 
 /// @brief estimateCost
@@ -296,4 +317,8 @@ CostEstimate SortNode::estimateCost() const {
                               std::log2(static_cast<double>(estimate.estimatedNrItems));
   }
   return estimate;
+}
+
+SortNode::SorterType SortNode::sorterType() const {
+  return (!isStable() && _limit > 0) ? SorterType::ConstrainedHeap : SorterType::Standard;
 }

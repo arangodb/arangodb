@@ -549,7 +549,7 @@ struct AqlValue final {
   AqlValue clone() const;
 
   /// @brief invalidates/resets a value to None, not freeing any memory
-  void erase() noexcept {
+  inline void erase() noexcept {
     _data.internal[0] = '\x00';
     setType(AqlValueType::VPACK_INLINE);
   }

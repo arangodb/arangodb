@@ -56,7 +56,7 @@ SCENARIO("NoResultsExecutor", "[AQL][EXECUTOR][NORESULTS]") {
   RegisterId inputRegister(0);
   ExecutorInfos infos(make_shared_unordered_set({inputRegister}), outputRegisters,
                       1 /*nr in*/, 1 /*nr out*/, std::unordered_set<RegisterId>{});
-  OutputAqlItemRow result{std::move(blockShell), outputRegisters, registersToKeep};
+  OutputAqlItemRow result{std::move(blockShell), outputRegisters, registersToKeep, infos.registersToClear()};
 
   GIVEN("there are no rows upstream") {
     VPackBuilder input;

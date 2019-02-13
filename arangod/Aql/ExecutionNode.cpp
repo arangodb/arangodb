@@ -110,10 +110,12 @@ std::unordered_map<int, std::string const> const typeNames{
 // that shows the subquery depth and if filled
 // during register planning
 bool isInSubQuery(ExecutionNode const* node) {
-  while (node->hasParent()) {
-    node = node->getFirstParent();
+  auto current = node;
+  while (current->hasDependency()){
+    current = current->getFirstDependency();
   }
-  return node->plan()->root() != node;
+  TRI_ASSERT(current->getType() == ExecutionNode::NodeType::SINGLETON);
+  return current->id() != 1;
 }
 
 }  // namespace
@@ -1439,16 +1441,12 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  // this is currently required to check weather we're in a subquery
-  // or not. We do not count fullCounts inside a subquery.
-  size_t queryDepth = 0;
-  if (isInSubQuery(this)) {
-    queryDepth = 1;
-  }
+  // Fullcount must only be enabled on the last limit node on the main level
+  TRI_ASSERT(!_fullCount || !isInSubQuery(this));
 
   LimitExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                           getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                           _offset, _limit, _fullCount, queryDepth);
+                           getRegisterPlan()->nrRegs[getDepth()],
+                           getRegsToClear(), _offset, _limit, _fullCount);
 
   return std::make_unique<ExecutionBlockImpl<LimitExecutor>>(&engine, this,
                                                              std::move(infos));
@@ -1971,7 +1969,11 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
   //}
   // LOG_DEVEL << "registersToClear:  " << ss.rdbuf();
 
-  bool returnInheritedResults = plan()->root() == this;
+  bool const isRoot = plan()->root() == this;
+
+  bool const isDBServer = arangodb::ServerState::instance()->isDBServer();
+
+  bool const returnInheritedResults = isRoot && !isDBServer;
 
   ReturnExecutorInfos infos(inputRegister,
                             getRegisterPlan()->nrRegs[previousNode->getDepth()],
@@ -2026,7 +2028,9 @@ std::unique_ptr<ExecutionBlock> NoResultsNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  ExecutorInfos infos(0, 0, getRegisterPlan()->nrRegs[previousNode->getDepth()],
+  ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
+                      arangodb::aql::make_shared_unordered_set(),
+                      getRegisterPlan()->nrRegs[previousNode->getDepth()],
                       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
   return std::make_unique<ExecutionBlockImpl<NoResultsExecutor>>(&engine, this,
                                                                  std::move(infos));

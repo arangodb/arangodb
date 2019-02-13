@@ -47,8 +47,10 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager(&monitor);
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
-  auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(std::initializer_list<RegisterId>{});
-  auto registersToKeep = std::make_shared<const std::unordered_set<RegisterId>>(std::initializer_list<RegisterId>{0});
+  auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(
+      std::initializer_list<RegisterId>{});
+  auto registersToKeep = std::make_shared<const std::unordered_set<RegisterId>>(
+      std::initializer_list<RegisterId>{0});
   auto blockShell =
       std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
 
@@ -59,7 +61,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
   // 7th queryDepth
 
   GIVEN("there are no rows upstream") {
-    LimitExecutorInfos infos(1, 1, {}, 0, 1, true, 0);
+    LimitExecutorInfos infos(1, 1, {}, 0, 1, true);
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
@@ -68,7 +70,8 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       LimitStats stats{};
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result{std::move(blockShell), outputRegisters, registersToKeep};
+        OutputAqlItemRow result{std::move(blockShell), outputRegisters,
+                                registersToKeep, infos.registersToClear()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -82,7 +85,8 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       LimitStats stats{};
 
       THEN("the executor should first return WAIT") {
-        OutputAqlItemRow result{std::move(blockShell), outputRegisters, registersToKeep};
+        OutputAqlItemRow result{std::move(blockShell), outputRegisters,
+                                registersToKeep, infos.registersToClear()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -99,17 +103,16 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
   }
 
   GIVEN("there are rows in the upstream, no filter or offset defined") {
-
     WHEN("the producer does not wait: limit 1, offset 0, fullcount false") {
-      auto input = VPackParser::fromJson(
-              "[ [1], [2], [3], [4] ]");
-      LimitExecutorInfos infos(1, 1, {}, 0, 1, false, 0);
+      auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
+      LimitExecutorInfos infos(1, 1, {}, 0, 1, false);
       SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 
       THEN("the executor should return one row") {
-        OutputAqlItemRow row{std::move(blockShell), outputRegisters, registersToKeep};
+        OutputAqlItemRow row{std::move(blockShell), outputRegisters,
+                             registersToKeep, infos.registersToClear()};
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(row.produced());
@@ -124,15 +127,15 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
     }
 
     WHEN("the producer does not wait: limit 1, offset 0, fullcount true") {
-      auto input = VPackParser::fromJson(
-              "[ [1], [2], [3], [4] ]");
-      LimitExecutorInfos infos(1, 1, {}, 0, 1, true, 0);
+      auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
+      LimitExecutorInfos infos(1, 1, {}, 0, 1, true);
       SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 
       THEN("the executor should return one row") {
-        OutputAqlItemRow row{std::move(blockShell), outputRegisters, registersToKeep};
+        OutputAqlItemRow row{std::move(blockShell), outputRegisters,
+                             registersToKeep, infos.registersToClear()};
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
@@ -155,15 +158,15 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
     }
 
     WHEN("the producer does not wait: limit 1, offset 1, fullcount true") {
-      auto input = VPackParser::fromJson(
-              "[ [1], [2], [3], [4] ]");
-      LimitExecutorInfos infos(1, 1, {}, 1, 1, true, 0);
+      auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
+      LimitExecutorInfos infos(1, 1, {}, 1, 1, true);
       SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 
       THEN("the executor should return one row") {
-        OutputAqlItemRow row{std::move(blockShell), outputRegisters, registersToKeep};
+        OutputAqlItemRow row{std::move(blockShell), outputRegisters,
+                             registersToKeep, infos.registersToClear()};
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
@@ -186,15 +189,15 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
     }
 
     WHEN("the producer does wait: limit 1, offset 0, fullcount false") {
-      auto input = VPackParser::fromJson(
-              "[ [1], [2], [3], [4] ]");
-      LimitExecutorInfos infos(1, 1, {}, 0, 1, false, 0);
+      auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
+      LimitExecutorInfos infos(1, 1, {}, 0, 1, false);
       SingleRowFetcherHelper<false> fetcher(input->steal(), true);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 
       THEN("the executor should return one row") {
-        OutputAqlItemRow row{std::move(blockShell), outputRegisters, registersToKeep};
+        OutputAqlItemRow row{std::move(blockShell), outputRegisters,
+                             registersToKeep, infos.registersToClear()};
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
@@ -220,15 +223,15 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
     }
 
     WHEN("the producer does wait: limit 1, offset 0, fullcount true") {
-      auto input = VPackParser::fromJson(
-              "[ [1], [2], [3], [4] ]");
-      LimitExecutorInfos infos(1, 1, {}, 0, 1, true, 0);
+      auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
+      LimitExecutorInfos infos(1, 1, {}, 0, 1, true);
       SingleRowFetcherHelper<false> fetcher(input->steal(), true);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
 
       THEN("the executor should return one row") {
-        OutputAqlItemRow row{std::move(blockShell), outputRegisters, registersToKeep};
+        OutputAqlItemRow row{std::move(blockShell), outputRegisters,
+                             registersToKeep, infos.registersToClear()};
 
         std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
@@ -266,7 +269,6 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
       }
     }
   }
-
 }
 
 }  // namespace aql

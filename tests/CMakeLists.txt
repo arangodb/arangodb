@@ -1,4 +1,6 @@
-foreach(LINK_DIR ${V8_LINK_DIRECTORIES})
+include_directories(.)
+
+foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
   link_directories("${LINK_DIR}")
 endforeach()
 
@@ -59,6 +61,7 @@ if (USE_IRESEARCH)
     IResearch/VelocyPackHelper-test.cpp
     RestHandler/RestUsersHandler-test.cpp
     RestHandler/RestViewHandler-test.cpp
+    RestServer/FlushFeature-test.cpp
     Utils/CollectionNameResolver-test.cpp
     V8Server/v8-users-test.cpp
     V8Server/v8-views-test.cpp
@@ -99,6 +102,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/ReturnExecutorTest.cpp
   Aql/SingleRowFetcherTest.cpp
   Aql/SortExecutorTest.cpp
+  Aql/SortLimit-test.cpp
   Aql/TestEmptyExecutorHelper.cpp
   Aql/TestExecutorHelper.cpp
   Aql/TraversalExecutorTest.cpp

@@ -377,7 +377,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
       VPackBuilder builder;
       builder.openObject();
       for (auto const& pair : VPackObjectIterator(VPackSlice(value.data()))) {
-        if (pair.key.isEqualString("indexes")) {
+        if (pair.key.isEqualString("indexes")) {  // append new index 
           VPackArrayBuilder arrGuard(&builder, "indexes");
           builder.add(VPackArrayIterator(pair.value));
           buildIdx->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Internals));
@@ -401,11 +401,12 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
       _indexes.emplace_back(buildIdx);
       res = buildIdx->fillIndexBackground(locker);
     } else {
-      res = buildIdx->fillIndexForeground();  // will lock again internally
+      res = buildIdx->fillIndexForeground();
     }
   }
-  locker.lock(); // always lock to avoid inconsistencies
-
+  TRI_ASSERT(res.fail() || locker.isLocked());  // always lock to avoid inconsistencies
+  locker.lock();
+  
   // Step 5. cleanup
   if (res.ok()) {
     {
@@ -1205,10 +1206,11 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
+  TRI_ASSERT(key->containsLocalDocumentId(documentId));
   rocksdb::Status s =
-      mthds->Put(RocksDBColumnFamily::documents(), key.ref(),
-                 rocksdb::Slice(reinterpret_cast<char const*>(doc.begin()),
-                                static_cast<size_t>(doc.byteSize())));
+      mthds->PutUntracked(RocksDBColumnFamily::documents(), key.ref(),
+                          rocksdb::Slice(doc.startAs<char>(),
+                                         static_cast<size_t>(doc.byteSize())));
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
@@ -1297,9 +1299,10 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
 
   key->constructDocument(_objectId, newDocumentId);
   // simon: we do not need to blacklist the new documentId
-  s = mthd->Put(RocksDBColumnFamily::documents(), key.ref(),
-                rocksdb::Slice(reinterpret_cast<char const*>(newDoc.begin()),
-                               static_cast<size_t>(newDoc.byteSize())));
+  TRI_ASSERT(key->containsLocalDocumentId(newDocumentId));
+  s = mthd->PutUntracked(RocksDBColumnFamily::documents(), key.ref(),
+                         rocksdb::Slice(newDoc.startAs<char>(),
+                                        static_cast<size_t>(newDoc.byteSize())));
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }

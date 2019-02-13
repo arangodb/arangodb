@@ -182,6 +182,10 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
     THROW_ARANGO_EXCEPTION(res);
   }
 
+  TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") {
+    FATAL_ERROR_EXIT();
+  }
+  
   uint64_t numDocsWritten = 0;
   auto state = RocksDBTransactionState::toState(&trx);
   RocksDBTransactionCollection* trxColl = trx.resolveTrxCollection();
@@ -559,12 +563,12 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
   rootDB->ReleaseSnapshot(snap);
   snap = nullptr;
 
+  int maxCatchups = 3;
   rocksdb::SequenceNumber lastScanned = 0;
   uint64_t numScanned = 0;
-  
-  int maxCatchups = 4;
-  while(true) {
+  do {
     lastScanned = 0;
+    numScanned = 0;
     if (internal->unique()) {
       const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
       // unique index. we need to keep track of all our changes because we need to
@@ -586,14 +590,10 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
       return res;
     }
     
-    if (numScanned < 5000 || maxCatchups-- == 0) {
-      TRI_ASSERT(lastScanned > scanFrom);
-      std::this_thread::yield();
-      break;
-    }
-  }
+    scanFrom = lastScanned;
+  } while (maxCatchups-- > 0 && numScanned > 5000);
 
-  if (!locker.lock()) {
+  if (!locker.lock()) {  // acquire exclusive collection lock
     return res.reset(TRI_ERROR_LOCK_TIMEOUT);
   }
   

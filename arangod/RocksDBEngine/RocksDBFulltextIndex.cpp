@@ -190,10 +190,10 @@ Result RocksDBFulltextIndex::insert(transaction::Methods& trx, RocksDBMethods* m
   // size_t const count = words.size();
   for (std::string const& word : words) {
     RocksDBKeyLeaser key(&trx);
-
     key->constructFulltextIndexValue(_objectId, StringRef(word), documentId);
+    TRI_ASSERT(key->containsLocalDocumentId(documentId));
 
-    rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string());
+    rocksdb::Status s = mthd->PutUntracked(_cf, key.ref(), value.string());
 
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));

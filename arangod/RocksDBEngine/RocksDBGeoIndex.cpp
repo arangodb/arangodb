@@ -378,17 +378,14 @@ Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                LocalDocumentId const& documentId,
                                velocypack::Slice const& doc,
                                arangodb::Index::OperationMode mode) {
-  Result res;
-
   // covering and centroid of coordinate / polygon / ...
   size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
   std::vector<S2CellId> cells;
-
   cells.reserve(reserve);
 
   S2Point centroid;
 
-  res = geo_index::Index::indexCells(doc, cells, centroid);
+  Result res = geo_index::Index::indexCells(doc, cells, centroid);
 
   if (res.fail()) {
     if (res.is(TRI_ERROR_BAD_PARAMETER)) {
@@ -404,9 +401,13 @@ Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   RocksDBValue val = RocksDBValue::S2Value(centroid);
   RocksDBKeyLeaser key(&trx);
 
+  TRI_ASSERT(!_unique);
+
   for (S2CellId cell : cells) {
     key->constructGeoIndexValue(_objectId, cell.id(), documentId);
-    rocksdb::Status s = mthd->Put(RocksDBColumnFamily::geo(), key.ref(), val.string());
+    TRI_ASSERT(key->containsLocalDocumentId(documentId));
+ 
+    rocksdb::Status s = mthd->PutUntracked(RocksDBColumnFamily::geo(), key.ref(), val.string());
 
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));

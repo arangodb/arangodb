@@ -574,16 +574,16 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry* queryRegist
       // in short: this avoids copying the return values
 
       bool const returnInheritedResults = !isDBServer;
-
       if (returnInheritedResults) {
         auto returnNode = dynamic_cast<ExecutionBlockImpl<ReturnExecutor<true>>*>(root);
+        TRI_ASSERT(returnNode != nullptr);
         engine->resultRegister(returnNode->infos().getInputRegisterId());
         TRI_ASSERT(returnNode->infos().returnInheritedResults() == returnInheritedResults);
       } else {
         auto returnNode = dynamic_cast<ExecutionBlockImpl<ReturnExecutor<false>>*>(root);
+        TRI_ASSERT(returnNode != nullptr);
         TRI_ASSERT(returnNode->infos().returnInheritedResults() == returnInheritedResults);
       }
-
     }
 
     engine->_root = root;

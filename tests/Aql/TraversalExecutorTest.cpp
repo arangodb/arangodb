@@ -270,8 +270,8 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
         TraversalStats stats{};
 
         THEN("the executor should return DONE and no result") {
-          OutputAqlItemRow result(std::move(outputBlockShell),
-                                  infos.getOutputRegisters(), infos.registersToKeep());
+          OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+                                  infos.registersToKeep(), infos.registersToClear());
           std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!result.produced());
@@ -284,8 +284,8 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
         TraversalStats stats{};
 
         THEN("the executor should first return WAIT and no result") {
-          OutputAqlItemRow result(std::move(outputBlockShell),
-                                  infos.getOutputRegisters(), infos.registersToKeep());
+          OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+                                  infos.registersToKeep(), infos.registersToClear());
           std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::WAITING);
           REQUIRE(!result.produced());
@@ -314,8 +314,8 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
 
         WHEN("no edges are connected to vertices") {
           THEN("the executor should fetch all rows, but not return") {
-            OutputAqlItemRow row(std::move(outputBlockShell),
-                                 infos.getOutputRegisters(), infos.registersToKeep());
+            OutputAqlItemRow row(std::move(outputBlockShell), infos.getOutputRegisters(),
+                                 infos.registersToKeep(), infos.registersToClear());
 
             std::tie(state, stats) = testee.produceRow(row);
             REQUIRE(state == ExecutionState::DONE);
@@ -347,8 +347,8 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
 
         WHEN("no edges are connected to vertices") {
           THEN("the executor should fetch all rows, but not return") {
-            OutputAqlItemRow row(std::move(outputBlockShell),
-                                 infos.getOutputRegisters(), infos.registersToKeep());
+            OutputAqlItemRow row(std::move(outputBlockShell), infos.getOutputRegisters(),
+                                 infos.registersToKeep(), infos.registersToClear());
 
             for (size_t i = 0; i < 3; ++i) {
               // We expect to wait 3 times
@@ -384,8 +384,8 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
           myGraph.addEdge("3", "1", "3->1");
           ExecutionStats total;
           THEN("the executor should fetch all rows, but not return") {
-            OutputAqlItemRow row(std::move(outputBlockShell),
-                                 infos.getOutputRegisters(), infos.registersToKeep());
+            OutputAqlItemRow row(std::move(outputBlockShell), infos.getOutputRegisters(),
+                                 infos.registersToKeep(), infos.registersToClear());
 
             for (int64_t i = 0; i < 3; ++i) {
               // We expect to wait 3 times
@@ -455,8 +455,8 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
         TraversalStats stats{};
 
         THEN("the executor should return DONE and no result") {
-          OutputAqlItemRow result(std::move(outputBlockShell),
-                                  infos.getOutputRegisters(), infos.registersToKeep());
+          OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+                                  infos.registersToKeep(), infos.registersToClear());
           std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!result.produced());
@@ -469,8 +469,8 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
         TraversalStats stats{};
 
         THEN("the executor should first return WAIT and no result") {
-          OutputAqlItemRow result(std::move(outputBlockShell),
-                                  infos.getOutputRegisters(), infos.registersToKeep());
+          OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+                                  infos.registersToKeep(), infos.registersToClear());
           std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::WAITING);
           REQUIRE(!result.produced());
@@ -499,8 +499,8 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
 
         WHEN("no edges are connected to vertices") {
           THEN("the executor should fetch all rows, but not return") {
-            OutputAqlItemRow row(std::move(outputBlockShell),
-                                 infos.getOutputRegisters(), infos.registersToKeep());
+            OutputAqlItemRow row(std::move(outputBlockShell), infos.getOutputRegisters(),
+                                 infos.registersToKeep(), infos.registersToClear());
 
             std::tie(state, stats) = testee.produceRow(row);
             REQUIRE(state == ExecutionState::DONE);
@@ -532,8 +532,8 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
 
         WHEN("no edges are connected to vertices") {
           THEN("the executor should fetch all rows, but not return") {
-            OutputAqlItemRow row(std::move(outputBlockShell),
-                                 infos.getOutputRegisters(), infos.registersToKeep());
+            OutputAqlItemRow row(std::move(outputBlockShell), infos.getOutputRegisters(),
+                                 infos.registersToKeep(), infos.registersToClear());
 
             for (size_t i = 0; i < 3; ++i) {
               // We expect to wait 3 times
@@ -569,8 +569,8 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
           myGraph.addEdge("3", "1", "3->1");
           ExecutionStats total;
           THEN("the executor should fetch all rows, but not return") {
-            OutputAqlItemRow row(std::move(outputBlockShell),
-                                 infos.getOutputRegisters(), infos.registersToKeep());
+            OutputAqlItemRow row(std::move(outputBlockShell), infos.getOutputRegisters(),
+                                 infos.registersToKeep(), infos.registersToClear());
 
             for (int64_t i = 0; i < 3; ++i) {
               // We expect to wait 3 times

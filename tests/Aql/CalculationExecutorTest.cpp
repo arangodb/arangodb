@@ -111,7 +111,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
 
       THEN("the executor should return DONE with nullptr") {
         OutputAqlItemRow result{std::move(blockShell), infos.getOutputRegisters(),
-                                infos.registersToKeep()};
+                                infos.registersToKeep(), infos.registersToClear()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -128,7 +128,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
 
       THEN("the executor should first return WAIT with nullptr") {
         OutputAqlItemRow result{std::move(blockShell), infos.getOutputRegisters(),
-                                infos.registersToKeep()};
+                                infos.registersToKeep(), infos.registersToClear()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -157,7 +157,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
 
       THEN("the executor should return the rows") {
         OutputAqlItemRow row{std::move(blockShell), infos.getOutputRegisters(),
-                             infos.registersToKeep()};
+                             infos.registersToKeep(), infos.registersToClear()};
 
         // 1
         std::tie(state, stats) = testee.produceRow(row);
@@ -202,7 +202,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
 
       THEN("the executor should return the rows") {
         OutputAqlItemRow row{std::move(blockShell), infos.getOutputRegisters(),
-                             infos.registersToKeep()};
+                             infos.registersToKeep(), infos.registersToClear()};
 
         // waiting
         std::tie(state, stats) = testee.produceRow(row);

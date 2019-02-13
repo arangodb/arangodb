@@ -191,8 +191,6 @@ char const* arangodb::rocksDBLogTypeName(arangodb::RocksDBLogType type) {
       return "TrackedDocumentRemove";
     case arangodb::RocksDBLogType::Invalid:
       return "Invalid";
-    default:
-      return "Invalid";
   }
   return "Invalid";
 }

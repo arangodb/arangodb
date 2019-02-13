@@ -88,6 +88,9 @@ class RocksDBMethods {
                               rocksdb::Slice const&, rocksdb::PinnableSlice*) = 0;
   virtual rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const&,
                               rocksdb::Slice const&) = 0;
+  /// Like Put, but will not perform any write-write conflict checks
+  virtual rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const&,
+                                       rocksdb::Slice const&) = 0;
 
   virtual rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) = 0;
   /// contrary to Delete, a SingleDelete may only be used
@@ -122,6 +125,8 @@ class RocksDBReadOnlyMethods final : public RocksDBMethods {
                       rocksdb::PinnableSlice* val) override;
   rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
                       rocksdb::Slice const& val) override;
+  rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+                               rocksdb::Slice const& val) override;
   rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
   rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
   void PutLogData(rocksdb::Slice const&) override;
@@ -155,6 +160,8 @@ class RocksDBTrxMethods : public RocksDBMethods {
                       rocksdb::PinnableSlice* val) override;
   rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
                       rocksdb::Slice const& val) override;
+  rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+                               rocksdb::Slice const& val) override;
   rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
   rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
   void PutLogData(rocksdb::Slice const&) override;
@@ -169,17 +176,6 @@ class RocksDBTrxMethods : public RocksDBMethods {
   bool _indexingDisabled;
 };
 
-/// transaction wrapper, uses the current rocksdb transaction and non-tracking
-/// methods
-class RocksDBTrxUntrackedMethods final : public RocksDBTrxMethods {
- public:
-  explicit RocksDBTrxUntrackedMethods(RocksDBTransactionState* state);
-
-  rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
-                      rocksdb::Slice const& val) override;
-  rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
-  rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
-};
 
 /// wraps a writebatch - non transactional
 class RocksDBBatchedMethods final : public RocksDBMethods {
@@ -192,6 +188,8 @@ class RocksDBBatchedMethods final : public RocksDBMethods {
                       rocksdb::PinnableSlice* val) override;
   rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
                       rocksdb::Slice const& val) override;
+  rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+                               rocksdb::Slice const& val) override;
   rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
   rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
   void PutLogData(rocksdb::Slice const&) override;
@@ -220,6 +218,8 @@ class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
                       rocksdb::PinnableSlice* val) override;
   rocksdb::Status Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
                       rocksdb::Slice const& val) override;
+  rocksdb::Status PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+                               rocksdb::Slice const& val) override;
   rocksdb::Status Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
   rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
   void PutLogData(rocksdb::Slice const&) override;
