@@ -68,11 +68,11 @@ int Utf8Helper::compareUtf8(char const* left, size_t leftLength,
   TRI_ASSERT(_coll);
 
   UErrorCode status = U_ZERO_ERROR;
+
   int result = _coll->compareUTF8(icu::StringPiece(left, (int32_t)leftLength),
                                   icu::StringPiece(right, (int32_t)rightLength), status);
-  if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "error in Collator::compareUTF8(...): " << u_errorName(status);
+  if (ADB_UNLIKELY(U_FAILURE(status))) {
+    TRI_ASSERT(false);
     return (strncmp(left, right, leftLength < rightLength ? leftLength : rightLength));
   }
 
@@ -83,27 +83,8 @@ int Utf8Helper::compareUtf16(uint16_t const* left, size_t leftLength,
                              uint16_t const* right, size_t rightLength) const {
   TRI_ASSERT(left != nullptr);
   TRI_ASSERT(right != nullptr);
+  TRI_ASSERT(_coll);
 
-  if (!_coll) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "no Collator in Utf8Helper::compareUtf16()!";
-
-    if (leftLength == rightLength) {
-      return memcmp((const void*)left, (const void*)right, leftLength * 2);
-    }
-
-    int result = memcmp((const void*)left, (const void*)right,
-                        leftLength < rightLength ? leftLength * 2 : rightLength * 2);
-
-    if (result == 0) {
-      if (leftLength < rightLength) {
-        return -1;
-      }
-      return 1;
-    }
-
-    return result;
-  }
   // ..........................................................................
   // Take note here: we are assuming that the ICU type UChar is two bytes.
   // There is no guarantee that this will be the case on all platforms and

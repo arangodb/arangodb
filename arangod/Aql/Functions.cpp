@@ -1446,7 +1446,7 @@ AqlValue Functions::Length(ExpressionContext*, transaction::Methods* trx,
     }
   } else if (value.isString()) {
     VPackValueLength l;
-    char const* p = value.slice().getString(l);
+    char const* p = value.slice().getStringUnchecked(l);
     length = TRI_CharLengthUtf8String(p, l);
   } else if (value.isObject()) {
     length = static_cast<size_t>(value.length());
@@ -1915,7 +1915,7 @@ AqlValue Functions::CharLength(ExpressionContext*, transaction::Methods* trx,
 
   } else if (value.isString()) {
     VPackValueLength l;
-    char const* p = value.slice().getString(l);
+    char const* p = value.slice().getStringUnchecked(l);
     length = TRI_CharLengthUtf8String(p, l);
   }
 
@@ -2021,12 +2021,18 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
       arangodb::velocypack::ValueLength length;
       char const* str = it.key.getString(length);
       matchPatterns.push_back(icu::UnicodeString(str, static_cast<int32_t>(length)));
-      if (!it.value.isString()) {
+      if (it.value.isNull()) {
+        // null replacement value => replace with an empty string
+        replacePatterns.push_back(icu::UnicodeString("", int32_t(0)));
+      } else if (it.value.isString()) {
+        // string case
+        str = it.value.getStringUnchecked(length);
+        replacePatterns.push_back(icu::UnicodeString(str, static_cast<int32_t>(length)));
+      } else {
+        // non strings
         ::registerInvalidArgumentWarning(expressionContext, AFN);
         return AqlValue(AqlValueHintNull());
       }
-      str = it.value.getStringUnchecked(length);
-      replacePatterns.push_back(icu::UnicodeString(str, static_cast<int32_t>(length)));
     }
   } else {
     if (parameters.size() < 2) {
@@ -2040,13 +2046,14 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
     VPackSlice slice = materializer.slice(search, false);
     if (search.isArray()) {
       for (auto const& it : VPackArrayIterator(slice)) {
-        if (!it.isString()) {
+        if (it.isString()) {
+          arangodb::velocypack::ValueLength length;
+          char const* str = it.getStringUnchecked(length);
+          matchPatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
+        } else {
           ::registerInvalidArgumentWarning(expressionContext, AFN);
           return AqlValue(AqlValueHintNull());
         }
-        arangodb::velocypack::ValueLength length;
-        char const* str = it.getStringUnchecked(length);
-        matchPatterns.push_back(icu::UnicodeString(str, static_cast<int32_t>(length)));
       }
     } else {
       if (!search.isString()) {
@@ -2054,7 +2061,8 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
         return AqlValue(AqlValueHintNull());
       }
       arangodb::velocypack::ValueLength length;
-      char const* str = slice.getString(length);
+
+      char const* str = slice.getStringUnchecked(length);
       matchPatterns.push_back(icu::UnicodeString(str, static_cast<int32_t>(length)));
     }
     if (parameters.size() > 2) {
@@ -2063,13 +2071,17 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
       VPackSlice rslice = materializer2.slice(replace, false);
       if (replace.isArray()) {
         for (auto const& it : VPackArrayIterator(rslice)) {
-          if (!it.isString()) {
+          if (it.isNull()) {
+            // null replacement value => replace with an empty string
+            replacePatterns.push_back(icu::UnicodeString("", int32_t(0)));
+          } else if (it.isString()) {
+            arangodb::velocypack::ValueLength length;
+            char const* str = it.getStringUnchecked(length);
+            replacePatterns.push_back(icu::UnicodeString(str, static_cast<int32_t>(length)));
+          } else {
             ::registerInvalidArgumentWarning(expressionContext, AFN);
             return AqlValue(AqlValueHintNull());
           }
-          arangodb::velocypack::ValueLength length;
-          char const* str = it.getString(length);
-          replacePatterns.push_back(icu::UnicodeString(str, static_cast<int32_t>(length)));
         }
       } else if (replace.isString()) {
         // If we have a string as replacement,

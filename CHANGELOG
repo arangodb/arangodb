@@ -12,6 +12,9 @@ devel
     new semantics, following ChakraCore and SpiderMonkey (though JSC
     implements V8's previous semantics).
  
+
+* fixed JS AQL query objects with empty query strings not being recognized as AQL queries
+
 * report run-time openssl version (for dynamically linked executables)
 
 * added greeting warning about maintainer mode
