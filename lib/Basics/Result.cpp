@@ -20,18 +20,14 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Result.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Result.h"
 
 using namespace arangodb;
 
 Result::Result() : _errorNumber(TRI_ERROR_NO_ERROR) {}
 
-Result::Result(int errorNumber) : _errorNumber(errorNumber) {
-  if (errorNumber != TRI_ERROR_NO_ERROR) {
-    _errorMessage = TRI_errno_string(errorNumber);
-  }
-}
+Result::Result(int errorNumber) : _errorNumber(errorNumber) {}
 
 Result::Result(int errorNumber, std::string const& errorMessage)
     : _errorNumber(errorNumber), _errorMessage(errorMessage) {}
@@ -75,11 +71,10 @@ bool Result::isNot(int errorNumber) const { return !is(errorNumber); }
 Result& Result::reset(int errorNumber) {
   _errorNumber = errorNumber;
 
-  if (errorNumber != TRI_ERROR_NO_ERROR) {
-    _errorMessage = TRI_errno_string(errorNumber);
-  } else {
+  if (!_errorMessage.empty()) {
     _errorMessage.clear();
   }
+
   return *this;
 }
 
@@ -107,9 +102,19 @@ Result& Result::reset(Result&& other) noexcept {
   return *this;
 }
 
-std::string Result::errorMessage() const& { return _errorMessage; }
+std::string Result::errorMessage() const& {
+  if (!_errorMessage.empty()) {
+    return _errorMessage;
+  }
+  return TRI_errno_string(_errorNumber);
+}
 
-std::string Result::errorMessage() && { return std::move(_errorMessage); }
+std::string Result::errorMessage() && {
+  if (!_errorMessage.empty()) {
+    return std::move(_errorMessage);
+  }
+  return TRI_errno_string(_errorNumber);
+}
 
 std::ostream& operator<<(std::ostream& out, arangodb::Result const& result) {
   VPackBuilder dump;
