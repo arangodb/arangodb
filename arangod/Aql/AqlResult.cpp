@@ -50,9 +50,7 @@ bool ExecutionEngineResult::ok() const { return _result.ok(); }
 
 bool ExecutionEngineResult::fail() const { return _result.fail(); }
 
-uint64_t ExecutionEngineResult::errorNumber() const {
-  return _result.errorNumber();
-}
+int ExecutionEngineResult::errorNumber() const { return _result.errorNumber(); }
 
 std::string ExecutionEngineResult::errorMessage() const {
   return _result.errorMessage();

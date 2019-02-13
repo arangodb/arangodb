@@ -52,7 +52,7 @@ class ExecutionEngineResult {
   // forwarded methods
   bool ok() const;
   bool fail() const;
-  uint64_t errorNumber() const;
+  int errorNumber() const;
   std::string errorMessage() const;
 
  private:

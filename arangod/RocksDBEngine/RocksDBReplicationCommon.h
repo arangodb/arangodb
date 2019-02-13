@@ -45,7 +45,7 @@ class RocksDBReplicationResult {
   // forwarded methods
   bool ok() const { return _result.ok(); }
   bool fail() const { return _result.fail(); }
-  uint64_t errorNumber() const { return _result.errorNumber(); }
+  int errorNumber() const { return _result.errorNumber(); }
   std::string errorMessage() const { return _result.errorMessage(); }
 
   // access methods
