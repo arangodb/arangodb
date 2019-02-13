@@ -119,6 +119,11 @@ class TestGraph {
   std::unordered_map<StringRef, std::vector<VPackSlice>> _inEdges;
 };
 
+// @brief
+// A graph enumerator fakes a PathEnumerator that is inderectly used by the
+// TraversalExecutor.
+// It mostly does a breath first enumeration on the given TestGraph
+// instance originating from the given startVertex.
 class GraphEnumerator : public PathEnumerator {
  public:
   GraphEnumerator(Traverser* traverser, std::string const& startVertex,
@@ -237,7 +242,7 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
 
   TraverserOptions traversalOptions(fakedQuery.get());
-  traversalOptions.minDepth = 0;
+  traversalOptions.minDepth = 1;
   traversalOptions.maxDepth = 1;
   arangodb::transaction::Methods* trx = fakedQuery->trx();
   std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables{};
@@ -305,7 +310,7 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
       myGraph.addVertex("1");
       myGraph.addVertex("2");
       myGraph.addVertex("3");
-      auto input = VPackParser::fromJson("[ [\"v/1\"], [\"v/2\"], [\"v/3\"] ]");
+      auto input = VPackParser::fromJson(R"([["v/1"], ["v/2"], ["v/3"]])");
 
       WHEN("the producer does not wait") {
         SingleRowFetcherHelper<false> fetcher(input->steal(), false);
@@ -383,7 +388,7 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
           myGraph.addEdge("2", "3", "2->3");
           myGraph.addEdge("3", "1", "3->1");
           ExecutionStats total;
-          THEN("the executor should fetch all rows, but not return") {
+          THEN("the executor should fetch all rows") {
             OutputAqlItemRow row(std::move(outputBlockShell), infos.getOutputRegisters(),
                                  infos.registersToKeep(), infos.registersToClear());
 
@@ -490,7 +495,7 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
       myGraph.addVertex("1");
       myGraph.addVertex("2");
       myGraph.addVertex("3");
-      auto input = VPackParser::fromJson("[ [\"v/1\"], [\"v/2\"], [\"v/3\"] ]");
+      auto input = VPackParser::fromJson(R"([ [\"v/1\"], [\"v/2\"], [\"v/3\"] ])");
 
       WHEN("the producer does not wait") {
         SingleRowFetcherHelper<false> fetcher(input->steal(), false);

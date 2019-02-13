@@ -149,7 +149,12 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
         return {_rowState, s};
       }
 
-      resetTraverser();
+      if (!resetTraverser()) {
+        // Could not start here, (invalid)
+        // Go to next
+        _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+        continue;
+      }
     }
     if (!_traverser.hasMore() || !_traverser.next()) {
       // Nothing more to read, reset input to refetch
@@ -188,7 +193,7 @@ ExecutionState TraversalExecutor::computeState() const {
   return ExecutionState::HASMORE;
 }
 
-void TraversalExecutor::resetTraverser() {
+bool TraversalExecutor::resetTraverser() {
   // Initialize the Expressions within the options.
   // We need to find the variable and read its value here. Everything is
   // computed right now.
@@ -207,26 +212,37 @@ void TraversalExecutor::resetTraverser() {
           "Invalid input for traversal: "
           "Only id strings or objects with "
           "_id are allowed");
+      return false;
     } else {
       // Use constant value
       _traverser.setStartVertex(_infos.getFixedSource());
+      return true;
     }
   } else {
     AqlValue const& in = _input.getValue(_infos.getInputRegister());
     if (in.isObject()) {
       try {
         _traverser.setStartVertex(_traverser.options()->trx()->extractIdString(in.slice()));
+        return true;
       } catch (...) {
-        // _id or _key not present... ignore this error and fall through
+        _traverser.options()->query()->registerWarning(
+            TRI_ERROR_BAD_PARAMETER,
+            "Invalid input for traversal: Only "
+            "id strings or objects with _id are "
+            "allowed");
+        return false;
       }
+      // _id or _key not present we cannot start here, register warning take next
     } else if (in.isString()) {
       _traverser.setStartVertex(in.slice().copyString());
+      return true;
     } else {
       _traverser.options()->query()->registerWarning(
           TRI_ERROR_BAD_PARAMETER,
           "Invalid input for traversal: Only "
           "id strings or objects with _id are "
           "allowed");
+      return false;
     }
   }
 }

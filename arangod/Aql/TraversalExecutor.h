@@ -132,7 +132,7 @@ class TraversalExecutor {
    */
   ExecutionState computeState() const;
 
-  void resetTraverser();
+  bool resetTraverser();
 
  private:
   Infos& _infos;
