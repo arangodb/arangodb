@@ -91,16 +91,36 @@ struct CFilesSetup {
     return filename;
   }
 
+  StringBuffer * writeFile (const char * name, const char * blob) {
+    StringBuffer* filename = new StringBuffer(true);
+    filename->appendText(_directory);
+    filename->appendChar(TRI_DIR_SEPARATOR_CHAR);
+    filename->appendText(name);
+
+    FILE* fd = fopen(filename->c_str(), "wb");
+
+    if (fd) {
+      size_t numWritten = fwrite(blob, strlen(blob), 1, fd);
+      (void) numWritten;
+      fclose(fd);
+    }
+    else {
+      CHECK(false == true);
+    }
+
+    return filename;
+  }
+
   StringBuffer _directory;
 };
 
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
+// --SECTION--                                                        action tests
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief setup
+/// @brief test actions
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_CASE("RocksDBEventListenerThread statics", "[rocks][devel]") {
@@ -146,16 +166,58 @@ SECTION("delete matching sha") {
   CHECK(true == good);
 
 }
+} // TEST_CASE
 
-
-
-}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate tests
+/// @brief test checkMissingShaFiles scenarios
 ////////////////////////////////////////////////////////////////////////////////
+class TestRocksDBEventListenerThread : public arangodb::RocksDBEventListenerThread {
+public:
+  TestRocksDBEventListenerThread() : arangodb::RocksDBEventListenerThread("testListener") {
+    // sample sha values are simulated, not real
+    setup.writeFile("MANIFEST-000004", "some manifest data");
+    setup.writeFile("CURRENT","MANIFEST-000004\n");
+    setup.writeFile("IDENTITY","no idea what goes here");
+    setup.writeFile("037793.sst","raw data 1");
+    setup.writeFile("037793.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","");
+    setup.writeFile("037684.sst","raw data 2");
+    setup.writeFile("086218.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","");
+    setup.writeFile("086219.sst","raw data 3");
+  };
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:
+  CFilesSetup setup;
+
+  virtual std::string getRocksDBPath() {return setup._directory.c_str();}
+
+  std::string pathName(const char * name) {
+    std::string retpath;
+    retpath = setup._directory.c_str();
+    retpath += TRI_DIR_SEPARATOR_CHAR;
+    retpath += name;
+    return retpath;
+  };
+};
+
+
+TEST_CASE("checkMissingShaFiles simple", "[rocks][devel]") {
+SECTION("verify common situations") {
+  TestRocksDBEventListenerThread tr;
+
+  tr.checkMissingShaFiles(tr.setup._directory.c_str());
+
+  CHECK( TRI_ExistsFile(tr.pathName("MANIFEST-000004").c_str()));
+  CHECK( TRI_ExistsFile(tr.pathName("CURRENT").c_str()));
+  CHECK( TRI_ExistsFile(tr.pathName("IDENTITY").c_str()));
+  CHECK( TRI_ExistsFile(tr.pathName("037793.sst").c_str()));
+  CHECK( TRI_ExistsFile(tr.pathName("037793.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855").c_str()));
+  CHECK( TRI_ExistsFile(tr.pathName("037684.sst").c_str()));
+  CHECK( TRI_ExistsFile(tr.pathName("037684.sha.2db3c4a7da801356e4efda0d65229d0baadf6950b366418e96abb7ece9c56c12").c_str()));
+  CHECK( TRI_ExistsFile(tr.pathName("086219.sst").c_str()));
+  CHECK( TRI_ExistsFile(tr.pathName("086219.sha.5d3cfa346c3852c0c108d720d580cf99910749f17c8429c07c1c2d714be2b7ff").c_str()));
+
+  CHECK( !TRI_ExistsFile(tr.pathName("086218.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855").c_str()));
+
+
+} // SECTION
+} // TEST_CASE

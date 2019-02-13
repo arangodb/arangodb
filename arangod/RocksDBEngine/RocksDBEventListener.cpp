@@ -21,10 +21,13 @@
 
 #include "RocksDBEventListener.h"
 
+#include <algorithm>
+
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
+#include "RestServer/DatabasePathFeature.h"
 
 namespace arangodb {
 
@@ -42,20 +45,25 @@ void RocksDBEventListenerThread::run() {
           mutexLock.unlock();
           switch(next._action) {
             case actionNeeded_t::CALC_SHA:
-
+              shaCalcFile(next._path);
               break;
 
             case actionNeeded_t::DELETE:
+              deleteFile(next._path);
               break;
 
             default:
+              LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+                << "RocksDBEventListenerThread::run encountered unknown _action";
+              TRI_ASSERT(false);
               break;
           } // switch
           mutexLock.lock();
         } // while
       }
 
-      /// ??? manual scan of directory for missing sha files?
+      // we could find files that subsequently post to _pendingQueue ... no worries.
+      checkMissingShaFiles(getRocksDBPath());
 
       // no need for fast retry, hotbackups do not happen often
       {
@@ -63,11 +71,13 @@ void RocksDBEventListenerThread::run() {
         condLock.wait(std::chrono::minutes(5));
       }
     } catch(...) {
-      /// log something but keep on looping
-    }
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "RocksDBEventListenerThread::run caught an exception";
+    } // catch
   } // while
 
 } // RocksDBEventListenerThread::run()
+
 
 void RocksDBEventListenerThread::queueShaCalcFile(std::string const & pathName) {
 
@@ -111,7 +121,7 @@ bool RocksDBEventListenerThread::shaCalcFile(std::string const & filename) {
   bool good={false};
 
   if (4<filename.size() && 0 == filename.substr(filename.size() - 4).compare(".sst")) {
-    good = TRI_ProcessFile(filename.c_str(), sha);
+    good = TRI_ProcessFile(filename.c_str(), std::ref(sha));
 
     if (good) {
       std::string newfile = filename.substr(0, filename.size() - 4);
@@ -178,6 +188,69 @@ bool RocksDBEventListenerThread::deleteFile(std::string const & filename) {
 
 } // RocksDBEventListenerThread::shaCalcFile
 
+
+//
+// @brief Wrapper for getFeature<DatabasePathFeature> to simplify
+//        unit testing
+//
+std::string RocksDBEventListenerThread::getRocksDBPath() {
+  // get base path from DatabaseServerFeature
+  std::string rockspath;
+  auto databasePathFeature =
+      application_features::ApplicationServer::getFeature<DatabasePathFeature>(
+          "DatabasePath");
+  rockspath = databasePathFeature->directory();
+  rockspath += TRI_DIR_SEPARATOR_CHAR;
+  rockspath += "engine-rocksdb";
+
+  return rockspath;
+
+} // RocksDBEventListenerThread::getRocksDBPath
+
+///
+/// @brief Double check the active directory to see that all .sst files
+///        have a matching .sha. (and delete any none matched .sha. files)
+void RocksDBEventListenerThread::checkMissingShaFiles(std::string const & pathname) {
+  std::string temppath, tempname;
+  std::vector<std::string> filelist = TRI_FilesDirectory(pathname.c_str());
+
+  // sorting will put xxxxxx.sha.yyy just before xxxxxx.sst
+  std::sort(filelist.begin(), filelist.end());
+
+  for (auto iter = filelist.begin(); filelist.end() != iter; ++iter) {
+    std::string::size_type shaIdx;
+    shaIdx = iter->find(".sha.");
+    if (std::string::npos != shaIdx) {
+      // two cases: 1. its .sst follows so skip both, 2. no matching .sst, so delete
+      bool match = {false};
+      auto next = iter + 1;
+      if (filelist.end() != next) {
+        tempname = iter->substr(0, shaIdx);
+        tempname += ".sst";
+        if (0 == next->compare(tempname)) {
+          match = true;
+          iter = next;
+        } // if
+      } // if
+
+      if (!match) {
+        temppath = pathname;
+        temppath += TRI_DIR_SEPARATOR_CHAR;
+        temppath += *iter;
+        TRI_UnlinkFile(temppath.c_str());
+      } // if
+    } else if (0 == iter->substr(iter->size() - 4).compare(".sst")) {
+      // reaching this point means no .sha. preceeded.
+      temppath = pathname;
+      temppath += TRI_DIR_SEPARATOR_CHAR;
+      temppath += *iter;
+      shaCalcFile(temppath);
+    } // else
+  } // for
+
+  return;
+
+} // RocksDBEventListenerThread::checkMissingShaFiles
 
 
 //

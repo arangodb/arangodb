@@ -49,6 +49,7 @@ public:
 
   static bool deleteFile(std::string const & filename);
 
+  static void checkMissingShaFiles(std::string const & pathname);
 protected:
   void run() override;
 
@@ -61,6 +62,11 @@ protected:
 
   Mutex _pendingMutex;
   std::queue<actionNeeded_t> _pendingQueue;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief The following wrapper routines simplify unit testing
+  ////////////////////////////////////////////////////////////////////////////////
+  virtual std::string getRocksDBPath();
 
 };// class RocksDBEventListenerThread
 

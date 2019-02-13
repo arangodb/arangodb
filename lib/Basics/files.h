@@ -377,7 +377,8 @@ void TRI_ShutdownFiles();
 bool TRI_GETENV(char const* which, std::string& value);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief functor for generating a SHA256.  Use with TRI_ProcessFiles
+/// @brief functor for generating a SHA256.  Use with TRI_ProcessFiles.
+///        you need to wrap your TRI_SHA256Functor object within std::ref().
 ////////////////////////////////////////////////////////////////////////////////
 struct TRI_SHA256Functor {
   SHA256_CTX _context;
