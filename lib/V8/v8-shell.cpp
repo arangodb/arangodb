@@ -114,6 +114,7 @@ static void ProcessCsvEnd(TRI_csv_parser_t* parser, char const* field, size_t,
 static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
   if (args.Length() < 2) {
     TRI_V8_THROW_EXCEPTION_USAGE(
@@ -139,10 +140,10 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string quote = "\"";
 
   if (3 <= args.Length()) {
-    v8::Handle<v8::Object> options = TRI_GET_OBJECT(args[2]);
+    v8::Handle<v8::Object> options = TRI_GetObject(context, args[2]);
 
     // separator
-    if (TRI_OBJECT_HAS_V8_PROPERTY(options, separatorKey)) {
+    if (TRI_HasProperty(context, isolate, options, separatorKey)) {
       separator = TRI_ObjectToString(isolate, options->Get(separatorKey));
 
       if (separator.size() != 1) {
@@ -152,7 +153,7 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     // quote
-    if (TRI_OBJECT_HAS_V8_PROPERTY(options, quoteKey)) {
+    if (TRI_HasProperty(context, isolate, options, quoteKey)) {
       quote = TRI_ObjectToString(isolate, options->Get(quoteKey));
 
       if (quote.length() > 1) {

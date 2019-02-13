@@ -594,6 +594,7 @@ v8::Handle<v8::Value> TRI_ObjectJson(v8::Isolate* isolate, TRI_json_t const* jso
 static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
                         v8::Handle<v8::Value> const parameter, std::set<int>& seenHashes,
                         std::vector<v8::Handle<v8::Object>>& seenObjects) {
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
   if (parameter->IsNull()) {
@@ -709,7 +710,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
 
     // first check if the object has a "toJSON" function
     v8::Handle<v8::String> toJsonString = TRI_V8_PAIR_STRING(isolate, "toJSON", 6);
-    if (TRI_OBJECT_HAS_V8_PROPERTY(o, toJsonString)) {
+    if (TRI_HasProperty(context, isolate, o, toJsonString)) {
       // call it if yes
       v8::Handle<v8::Value> func =
           o->Get(TRI_IGETC, toJsonString).FromMaybe(v8::Local<v8::Value>());

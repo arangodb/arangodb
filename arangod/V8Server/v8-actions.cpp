@@ -224,9 +224,10 @@ class v8_action_t final : public TRI_action_t {
 
 static void ParseActionOptions(v8::Isolate* isolate, TRI_v8_global_t* v8g,
                                TRI_action_t* action, v8::Handle<v8::Object> options) {
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   TRI_GET_GLOBAL_STRING(PrefixKey);
   // check the "prefix" field
-  if (TRI_OBJECT_HAS_V8_PROPERTY(options, PrefixKey)) {
+  if (TRI_HasProperty(context, isolate, options, PrefixKey)) {
     action->_isPrefix = TRI_ObjectToBoolean(isolate, options->Get(PrefixKey));
   } else {
     action->_isPrefix = false;
@@ -234,7 +235,7 @@ static void ParseActionOptions(v8::Isolate* isolate, TRI_v8_global_t* v8g,
 
   // check the "allowUseDatabase" field
   TRI_GET_GLOBAL_STRING(AllowUseDatabaseKey);
-  if (TRI_OBJECT_HAS_V8_PROPERTY(options, AllowUseDatabaseKey)) {
+  if (TRI_HasProperty(context, isolate, options, AllowUseDatabaseKey)) {
     action->_allowUseDatabase =
         TRI_ObjectToBoolean(isolate, options->Get(AllowUseDatabaseKey));
   } else {
@@ -248,6 +249,7 @@ static void ParseActionOptions(v8::Isolate* isolate, TRI_v8_global_t* v8g,
 
 static void AddCookie(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
                       HttpResponse* response, v8::Handle<v8::Object> data) {
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   std::string name;
   std::string value;
   int lifeTimeSeconds = 0;
@@ -257,7 +259,7 @@ static void AddCookie(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   bool httpOnly = false;
 
   TRI_GET_GLOBAL_STRING(NameKey);
-  if (TRI_OBJECT_HAS_V8_PROPERTY(data, NameKey)) {
+  if (TRI_HasProperty(context, isolate, data, NameKey)) {
     v8::Handle<v8::Value> v = data->Get(NameKey);
     name = TRI_ObjectToString(isolate, v);
   } else {
@@ -265,7 +267,7 @@ static void AddCookie(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
     return;
   }
   TRI_GET_GLOBAL_STRING(ValueKey);
-  if (TRI_OBJECT_HAS_V8_PROPERTY(data, ValueKey)) {
+  if (TRI_HasProperty(context, isolate, data, ValueKey)) {
     v8::Handle<v8::Value> v = data->Get(ValueKey);
     value = TRI_ObjectToString(isolate, v);
   } else {
@@ -273,27 +275,27 @@ static void AddCookie(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
     return;
   }
   TRI_GET_GLOBAL_STRING(LifeTimeKey);
-  if (TRI_OBJECT_HAS_V8_PROPERTY(data, LifeTimeKey)) {
+  if (TRI_HasProperty(context, isolate, data, LifeTimeKey)) {
     v8::Handle<v8::Value> v = data->Get(LifeTimeKey);
     lifeTimeSeconds = (int)TRI_ObjectToInt64(isolate, v);
   }
   TRI_GET_GLOBAL_STRING(PathKey);
-  if (TRI_OBJECT_HAS_V8_PROPERTY(data, PathKey) && !data->Get(PathKey)->IsUndefined()) {
+  if (TRI_HasProperty(context, isolate, data, PathKey) && !data->Get(PathKey)->IsUndefined()) {
     v8::Handle<v8::Value> v = data->Get(PathKey);
     path = TRI_ObjectToString(isolate, v);
   }
   TRI_GET_GLOBAL_STRING(DomainKey);
-  if (TRI_OBJECT_HAS_V8_PROPERTY(data, DomainKey) && !data->Get(DomainKey)->IsUndefined()) {
+  if (TRI_HasProperty(context, isolate, data, DomainKey) && !data->Get(DomainKey)->IsUndefined()) {
     v8::Handle<v8::Value> v = data->Get(DomainKey);
     domain = TRI_ObjectToString(isolate, v);
   }
   TRI_GET_GLOBAL_STRING(SecureKey);
-  if (TRI_OBJECT_HAS_V8_PROPERTY(data, SecureKey)) {
+  if (TRI_HasProperty(context, isolate, data, SecureKey)) {
     v8::Handle<v8::Value> v = data->Get(SecureKey);
     secure = TRI_ObjectToBoolean(isolate, v);
   }
   TRI_GET_GLOBAL_STRING(HttpOnlyKey);
-  if (TRI_OBJECT_HAS_V8_PROPERTY(data, HttpOnlyKey)) {
+  if (TRI_HasProperty(context, isolate, data, HttpOnlyKey)) {
     v8::Handle<v8::Value> v = data->Get(HttpOnlyKey);
     httpOnly = TRI_ObjectToBoolean(isolate, v);
   }
@@ -571,6 +573,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
 static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
                             GeneralRequest* request, v8::Handle<v8::Object> const res,
                             GeneralResponse* response) {
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   TRI_ASSERT(request != nullptr);
 
   rest::ResponseCode code = rest::ResponseCode::OK;
@@ -579,7 +582,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
   // set response code
   TRI_GET_GLOBAL_STRING(ResponseCodeKey);
-  if (TRI_OBJECT_HAS_V8_PROPERTY(res, ResponseCodeKey)) {
+  if (TRI_HasProperty(context, isolate, res, ResponseCodeKey)) {
     // Windows has issues with converting from a double to an enumeration type
     code = (rest::ResponseCode)(
         (int)(TRI_ObjectToDouble(isolate, res->Get(ResponseCodeKey))));
@@ -590,7 +593,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   std::string contentType = "application/json";
   bool autoContent = true;
   TRI_GET_GLOBAL_STRING(ContentTypeKey);
-  if (TRI_OBJECT_HAS_V8_PROPERTY(res, ContentTypeKey)) {
+  if (TRI_HasProperty(context, isolate, res, ContentTypeKey)) {
     contentType = TRI_ObjectToString(isolate, res->Get(ContentTypeKey));
 
     if (contentType.find("application/json") == std::string::npos) {
@@ -621,7 +624,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
   bool bodySet = false;
   TRI_GET_GLOBAL_STRING(BodyKey);
-  if (TRI_OBJECT_HAS_V8_PROPERTY(res, BodyKey)) {
+  if (TRI_HasProperty(context, isolate, res, BodyKey)) {
     // check if we should apply result transformations
     // transformations turn the result from one type into another
     // a Javascript action can request transformations by
@@ -772,7 +775,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   // body from file
   // .........................................................................
   TRI_GET_GLOBAL_STRING(BodyFromFileKey);
-  if (!bodySet && TRI_OBJECT_HAS_V8_PROPERTY(res, BodyFromFileKey)) {
+  if (!bodySet && TRI_HasProperty(context, isolate, res, BodyFromFileKey)) {
     TRI_Utf8ValueNFC filename(isolate, res->Get(BodyFromFileKey));
     size_t length;
     char* content = TRI_SlurpFile(*filename, &length);
@@ -813,7 +816,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
   TRI_GET_GLOBAL_STRING(HeadersKey);
 
-  if (TRI_OBJECT_HAS_V8_PROPERTY(res, HeadersKey)) {
+  if (TRI_HasProperty(context, isolate, res, HeadersKey)) {
     v8::Handle<v8::Value> val = res->Get(HeadersKey);
     v8::Handle<v8::Object> v8Headers = val.As<v8::Object>();
 
@@ -833,7 +836,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   // .........................................................................
 
   TRI_GET_GLOBAL_STRING(CookiesKey);
-  if (TRI_OBJECT_HAS_V8_PROPERTY(res, CookiesKey)) {
+  if (TRI_HasProperty(context, isolate, res, CookiesKey)) {
     v8::Handle<v8::Value> val = res->Get(CookiesKey);
     v8::Handle<v8::Object> v8Cookies = val.As<v8::Object>();
 

@@ -59,10 +59,11 @@ using namespace arangodb::rest;
 // -----------------------------------------------------------------------------
 
 static std::string GetTaskId(v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   if (arg->IsObject()) {
     // extract "id" from object
     v8::Handle<v8::Object> obj = arg.As<v8::Object>();
-    if (TRI_OBJECT_HAS_PROPERTY(obj, "id")) {
+    if (TRI_HasProperty(context, isolate, obj, "id")) {
       return TRI_ObjectToString(isolate,
                                 obj->Get(TRI_IGETC,
                                          TRI_V8_ASCII_STRING(isolate, "id"))
@@ -81,6 +82,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   using arangodb::Task;
 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
   if (SchedulerFeature::SCHEDULER == nullptr) {
@@ -106,7 +108,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // job id
   std::string id;
 
-  if (TRI_OBJECT_HAS_OWN_PROPERTY(obj, "id")) {
+  if (TRI_HasProperty(context, isolate, obj, "id")) {
     // user-specified id
     id =
         TRI_ObjectToString(isolate, obj->Get(TRI_IGETC,
@@ -120,7 +122,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // job name
   std::string name;
 
-  if (TRI_OBJECT_HAS_OWN_PROPERTY(obj, "name")) {
+  if (TRI_HasProperty(context, isolate, obj, "name")) {
     name = TRI_ObjectToString(isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate,
                                                                                "name"))
                                            .FromMaybe(v8::Local<v8::Value>()));
@@ -130,7 +132,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   bool isSystem = false;
 
-  if (TRI_OBJECT_HAS_OWN_PROPERTY(obj, "isSystem")) {
+  if (TRI_HasProperty(context, isolate, obj, "isSystem")) {
     isSystem = TRI_ObjectToBoolean(
         isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "isSystem"))
                      .FromMaybe(v8::Local<v8::Value>()));
@@ -139,7 +141,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // offset in seconds into period or from now on if no period
   double offset = 0.0;
 
-  if (TRI_OBJECT_HAS_OWN_PROPERTY(obj, "offset")) {
+  if (TRI_HasProperty(context, isolate, obj, "offset")) {
     offset = TRI_ObjectToDouble(isolate,
                                 obj->Get(TRI_IGETC,
                                          TRI_V8_ASCII_STRING(isolate, "offset"))
@@ -149,7 +151,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // period in seconds & count
   double period = 0.0;
 
-  if (TRI_OBJECT_HAS_OWN_PROPERTY(obj, "period")) {
+  if (TRI_HasProperty(context, isolate, obj, "period")) {
     period = TRI_ObjectToDouble(isolate,
                                 obj->Get(TRI_IGETC,
                                          TRI_V8_ASCII_STRING(isolate, "period"))
@@ -162,7 +164,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string runAsUser;
-  if (TRI_OBJECT_HAS_OWN_PROPERTY(obj, "runAsUser")) {
+  if (TRI_HasProperty(context, isolate, obj, "runAsUser")) {
     runAsUser = TRI_ObjectToString(
         isolate, obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "runAsUser"))
                      .FromMaybe(v8::Local<v8::Value>()));
@@ -179,7 +181,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // extract the command
-  if (!TRI_OBJECT_HAS_OWN_PROPERTY(obj, "command")) {
+  if (!TRI_HasProperty(context, isolate, obj, "command")) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("command must be specified");
   }
 
@@ -206,7 +208,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // extract the parameters
   auto parameters = std::make_shared<VPackBuilder>();
 
-  if (TRI_OBJECT_HAS_OWN_PROPERTY(obj, "params")) {
+  if (TRI_HasProperty(context, isolate, obj, "params")) {
     int res = TRI_V8ToVPack(isolate, *parameters,
                             obj->Get(TRI_IGETC,
                                      TRI_V8_ASCII_STRING(isolate, "params"))

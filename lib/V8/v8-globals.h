@@ -112,6 +112,10 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
   do {                                                              \
   } while (0)
 
+#define TRI_CONTEXT                                                 \
+  auto context = isolate->GetCurrentContext();
+
+
 /// @brief shortcut for throwing an exception with an error code
 #define TRI_V8_SET_EXCEPTION(code)        \
   do {                                    \
@@ -336,40 +340,49 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
 #define TRI_GET_STRING(VAL) \
   VAL->ToString(TRI_IGETC).FromMaybe(v8::Local<v8::String>())
 
-#define TRI_GET_OBJECT(VAL) \
-  VAL->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>())
 
-#define TRI_OBJECT_HAS_PROPERTY(OBJECT, PROPERTYSTRING) \
-  OBJECT->Has(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, PROPERTYSTRING)).FromMaybe(false)
 
-#define TRI_OBJECT_HAS_V8_PROPERTY(OBJECT, PROPERTYSTRING) \
-  OBJECT->Has(TRI_IGETC, PROPERTYSTRING).FromMaybe(false)
+inline v8::Local<v8::Object> TRI_GetObject(v8::Local<v8::Context> &context, v8::Handle<v8::Value> const &val) {
+  return val->ToObject(context).FromMaybe(v8::Local<v8::Object>());
+}
 
-#define TRI_OBJECT_HAS_OWN_V8_PROPERTY(OBJECT, PROPERTYSTRING) \
-  OBJECT->HasOwnProperty(TRI_IGETC, PROPERTYSTRING).FromMaybe(false)
+inline bool TRI_HasProperty(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::Object> const& obj, char const *key) {
+  return obj->Has(context, TRI_V8_ASCII_STRING(isolate, key)).FromMaybe(false);
+}
 
-#define TRI_OBJECT_HAS_OWN_PROPERTY(OBJECT, PROPERTYSTRING)                       \
-  OBJECT->HasOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, PROPERTYSTRING)) \
-      .FromMaybe(false)
+inline bool TRI_HasProperty(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::Object> const& obj, v8::Local<v8::String> const& key) {
+  return obj->Has(context, key).FromMaybe(false);
+}
 
-#define TRI_OBJECT_GET_PROPERTY(OBJECT, PROPERTYSTRING)                \
-  OBJECT->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, PROPERTYSTRING)) \
-      .FromMaybe(v8::Local<v8::Value>())
+inline bool TRI_HasOwnProperty(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::Object> &obj, char const *key) {
+  return obj->HasOwnProperty(context, TRI_V8_ASCII_STRING(isolate, key)).FromMaybe(false);
+}
+inline bool TRI_HasOwnProperty(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::Object> &obj, v8::Local<v8::String> &key) {
+  return obj->HasOwnProperty(context, key).FromMaybe(false);
+}
 
-#define TRI_OBJECT_GET_V8_PROPERTY(OBJECT, PROPERTY) \
-  OBJECT->Get(TRI_IGETC, PROPERTY).FromMaybe(v8::Local<v8::Value>())
+inline v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::Object> const& obj, char const *key) {
+  return obj->Get(context, TRI_V8_ASCII_STRING(isolate, key)).FromMaybe(v8::Local<v8::Value>());
+}
+inline v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::Object> const& obj, v8::Local<v8::String> const& key) {
+  return obj->Get(context, key).FromMaybe(v8::Local<v8::Value>());
+}
 
-#define TRI_OBJECT_DELETE_PROPERTY(OBJECT, PROPERTYSTRING) \
-  OBJECT->Delete(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, PROPERTYSTRING)).FromMaybe(false)
+inline bool TRI_DeleteProperty(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::Object> &obj, char const *key) {
+  return obj->Delete(context, TRI_V8_ASCII_STRING(isolate, key)).FromMaybe(false);
+}
+inline bool TRI_DeleteProperty(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::Object> &obj, v8::Local<v8::Value> const& key) {
+  return obj->Delete(context, key).FromMaybe(false);
+}
 
-#define TRI_OBJECT_DELETE_V8_PROPERTY(OBJECT, PROPERTY) \
-  OBJECT->Delete(TRI_IGETC, PROPERTY).FromMaybe(false)
 
-#define TRI_OBJECT_TO_V8_STRING(OBJECT) \
-  OBJECT->ToString(TRI_IGETC).FromMaybe(v8::Local<v8::String>())
+inline v8::Local<v8::Object> TRI_ToObject(v8::Local<v8::Context> &context, v8::Handle<v8::Value> const& val) {
+  return val->ToObject(context).FromMaybe(v8::Local<v8::Object>());
+}
 
-#define TRI_TO_OBJECT(VAL) \
-  VAL->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>())
+inline v8::Local<v8::String> TRI_ObjectToString(v8::Local<v8::Context> &context, v8::Handle<v8::Value> const &val) {
+  return val->ToString(context).FromMaybe(v8::Local<v8::String>());
+}
 
 /// @brief retrieve the instance of the TRI_v8_global of the current thread
 ///   implicitly creates a variable 'v8g' with a pointer to it.

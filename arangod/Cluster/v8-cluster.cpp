@@ -1298,6 +1298,7 @@ static void PrepareClusterCommRequest(v8::FunctionCallbackInfo<v8::Value> const&
                                       CoordTransactionID& coordTransactionID, double& timeout,
                                       bool& singleRequest, double& initTimeout) {
   v8::Isolate* isolate = args.GetIsolate();
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
   ONLY_IN_CLUSTER
@@ -1360,20 +1361,20 @@ static void PrepareClusterCommRequest(v8::FunctionCallbackInfo<v8::Value> const&
   if (args.Length() > 6 && args[6]->IsObject()) {
     v8::Handle<v8::Object> opt = args[6].As<v8::Object>();
     TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
-    if (TRI_OBJECT_HAS_V8_PROPERTY(opt, CoordTransactionIDKey)) {
+    if (TRI_HasProperty(context, isolate, opt, CoordTransactionIDKey)) {
       coordTransactionID =
           TRI_ObjectToUInt64(isolate, opt->Get(CoordTransactionIDKey), true);
     }
     TRI_GET_GLOBAL_STRING(TimeoutKey);
-    if (TRI_OBJECT_HAS_V8_PROPERTY(opt, TimeoutKey)) {
+    if (TRI_HasProperty(context, isolate, opt, TimeoutKey)) {
       timeout = TRI_ObjectToDouble(isolate, opt->Get(TimeoutKey));
     }
     TRI_GET_GLOBAL_STRING(SingleRequestKey);
-    if (TRI_OBJECT_HAS_V8_PROPERTY(opt, SingleRequestKey)) {
+    if (TRI_HasProperty(context, isolate, opt, SingleRequestKey)) {
       singleRequest = TRI_ObjectToBoolean(isolate, opt->Get(SingleRequestKey));
     }
     TRI_GET_GLOBAL_STRING(InitTimeoutKey);
-    if (TRI_OBJECT_HAS_V8_PROPERTY(opt, InitTimeoutKey)) {
+    if (TRI_HasProperty(context, isolate, opt, InitTimeoutKey)) {
       initTimeout = TRI_ObjectToDouble(isolate, opt->Get(InitTimeoutKey));
     }
   }
@@ -1685,6 +1686,7 @@ static void JS_Enquire(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
   ONLY_IN_CLUSTER
 
@@ -1713,20 +1715,20 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args[0]->IsObject()) {
     v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
     TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
-    if (TRI_OBJECT_HAS_V8_PROPERTY(obj, CoordTransactionIDKey)) {
+    if (TRI_HasProperty(context, isolate, obj, CoordTransactionIDKey)) {
       mycoordTransactionID =
           TRI_ObjectToUInt64(isolate, obj->Get(CoordTransactionIDKey), true);
     }
     TRI_GET_GLOBAL_STRING(OperationIDKey);
-    if (TRI_OBJECT_HAS_V8_PROPERTY(obj, OperationIDKey)) {
+    if (TRI_HasProperty(context, isolate, obj, OperationIDKey)) {
       myoperationID = TRI_ObjectToUInt64(isolate, obj->Get(OperationIDKey), true);
     }
     TRI_GET_GLOBAL_STRING(ShardIDKey);
-    if (TRI_OBJECT_HAS_V8_PROPERTY(obj, ShardIDKey)) {
+    if (TRI_HasProperty(context, isolate, obj, ShardIDKey)) {
       myshardID = TRI_ObjectToString(isolate, obj->Get(ShardIDKey));
     }
     TRI_GET_GLOBAL_STRING(TimeoutKey);
-    if (TRI_OBJECT_HAS_V8_PROPERTY(obj, TimeoutKey)) {
+    if (TRI_HasProperty(context, isolate, obj, TimeoutKey)) {
       mytimeout = TRI_ObjectToDouble(isolate, obj->Get(TimeoutKey));
       if (mytimeout == 0.0) {
         mytimeout = 24 * 3600.0;
@@ -1749,6 +1751,7 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
   ONLY_IN_CLUSTER
 
@@ -1774,16 +1777,16 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args[0]->IsObject()) {
     v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
     TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
-    if (TRI_OBJECT_HAS_V8_PROPERTY(obj, CoordTransactionIDKey)) {
+    if (TRI_HasProperty(context, isolate, obj, CoordTransactionIDKey)) {
       mycoordTransactionID =
           TRI_ObjectToUInt64(isolate, obj->Get(CoordTransactionIDKey), true);
     }
     TRI_GET_GLOBAL_STRING(OperationIDKey);
-    if (TRI_OBJECT_HAS_V8_PROPERTY(obj, OperationIDKey)) {
+    if (TRI_HasProperty(context, isolate, obj, OperationIDKey)) {
       myoperationID = TRI_ObjectToUInt64(isolate, obj->Get(OperationIDKey), true);
     }
     TRI_GET_GLOBAL_STRING(ShardIDKey);
-    if (TRI_OBJECT_HAS_V8_PROPERTY(obj, ShardIDKey)) {
+    if (TRI_HasProperty(context, isolate, obj, ShardIDKey)) {
       myshardID = TRI_ObjectToString(isolate, obj->Get(ShardIDKey));
     }
   }
@@ -1817,6 +1820,7 @@ static void JS_GetId(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_ClusterDownload(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af != nullptr && af->isActive()) {
@@ -1826,7 +1830,7 @@ static void JS_ClusterDownload(v8::FunctionCallbackInfo<v8::Value> const& args) 
     if (args.Length() > 2) {
       if (args[2]->IsObject()) {
         options = v8::Handle<v8::Object>::Cast(args[2]);
-        if (TRI_OBJECT_HAS_PROPERTY(options, "headers")) {
+        if (TRI_HasProperty(context, isolate, options, "headers")) {
           headers = v8::Handle<v8::Object>::Cast(
               options->Get(TRI_V8_ASCII_STRING(isolate, "headers")));
         }

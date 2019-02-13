@@ -105,6 +105,7 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
 
 Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& arg,
                             v8::Handle<v8::Value>& result, v8::TryCatch& tryCatch) {
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   Result rv;
   auto& vocbase = GetContextVocBase(isolate);
 
@@ -117,13 +118,13 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
 
   // do extra sanity checking for user facing APIs, parsing
   // is performed in `transaction::Options::fromVelocyPack`
-  if (TRI_OBJECT_HAS_PROPERTY(object, "lockTimeout") &&
+  if (TRI_HasProperty(context, isolate, object, "lockTimeout") &&
       !object->Get(TRI_V8_ASCII_STRING(isolate, "lockTimeout"))->IsNumber()) {
     rv.reset(TRI_ERROR_BAD_PARAMETER,
              "<lockTimeout> must be a valid numeric value");
     return rv;
   }
-  if (TRI_OBJECT_HAS_V8_PROPERTY(object, WaitForSyncKey) && !object->Get(WaitForSyncKey)->IsBoolean() &&
+  if (TRI_HasProperty(context, isolate, object, WaitForSyncKey) && !object->Get(WaitForSyncKey)->IsBoolean() &&
       !object->Get(WaitForSyncKey)->IsBooleanObject()) {
     rv.reset(TRI_ERROR_BAD_PARAMETER, "<waitForSync> must be a boolean value");
     return rv;
@@ -156,7 +157,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   // "collections"
   std::string collectionError;
 
-  if (!TRI_OBJECT_HAS_PROPERTY(object, "collections") ||
+  if (!TRI_HasProperty(context, isolate, object, "collections") ||
       !object->Get(TRI_V8_ASCII_STRING(isolate, "collections"))->IsObject()) {
     collectionError = "missing/invalid collections definition for transaction";
     rv.reset(TRI_ERROR_BAD_PARAMETER, collectionError);
@@ -177,15 +178,15 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   std::vector<std::string> writeCollections;
   std::vector<std::string> exclusiveCollections;
 
-  if (TRI_OBJECT_HAS_PROPERTY(collections, "allowImplicit")) {
+  if (TRI_HasProperty(context, isolate, collections, "allowImplicit")) {
     trxOptions.allowImplicitCollections = TRI_ObjectToBoolean(isolate, 
         collections->Get(TRI_V8_ASCII_STRING(isolate, "allowImplicit")));
   }
 
   auto getCollections =
-      [&isolate](v8::Handle<v8::Object> obj, std::vector<std::string>& collections,
+    [&isolate, &context](v8::Handle<v8::Object> obj, std::vector<std::string>& collections,
                  char const* attributeName, std::string& collectionError) -> bool {
-    if (TRI_OBJECT_HAS_PROPERTY(obj, attributeName)) {
+    if (TRI_HasProperty(context, isolate, obj, attributeName)) {
       if (obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName))->IsArray()) {
         v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(
             obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName)));
@@ -231,7 +232,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
       "missing/invalid action definition for transaction";
   std::string actionError = actionErrorPrototype;
 
-  if (!TRI_OBJECT_HAS_PROPERTY(object, "action")) {
+  if (!TRI_HasProperty(context, isolate, object, "action")) {
     rv.reset(TRI_ERROR_BAD_PARAMETER, actionError);
     return rv;
   }
@@ -239,7 +240,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   // function parameters
   v8::Handle<v8::Value> params;
 
-  if (TRI_OBJECT_HAS_PROPERTY(object, "params")) {
+  if (TRI_HasProperty(context, isolate, object, "params")) {
     params = v8::Handle<v8::Array>::Cast(
         object->Get(TRI_V8_ASCII_STRING(isolate, "params")));
   } else {
@@ -252,7 +253,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   }
 
   bool embed = false;
-  if (TRI_OBJECT_HAS_PROPERTY(object, "embed")) {
+  if (TRI_HasProperty(context, isolate, object, "embed")) {
     v8::Handle<v8::Value> v = v8::Handle<v8::Object>::Cast(
         object->Get(TRI_V8_ASCII_STRING(isolate, "embed")));
     embed = TRI_ObjectToBoolean(isolate, v);
@@ -278,7 +279,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
     // Invoke Function constructor to create function with the given body and no
     // arguments
     std::string body = TRI_ObjectToString(isolate, 
-                                          TRI_OBJECT_GET_PROPERTY(object, "action"));
+                                          TRI_GetProperty(context, isolate, object, "action"));
     body = "return (" + body + ")(params);";
     v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
                                      TRI_V8_STD_STRING(isolate, body)};

@@ -863,6 +863,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_QueriesPropertiesAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
   auto* queryList = vocbase.queryList();
@@ -879,34 +880,34 @@ static void JS_QueriesPropertiesAql(v8::FunctionCallbackInfo<v8::Value> const& a
     }
 
     auto obj = args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Handle<v8::Object>());
-    if (TRI_OBJECT_HAS_PROPERTY(obj, "enabled")) {
+    if (TRI_HasProperty(context, isolate, obj, "enabled")) {
       queryList->enabled(TRI_ObjectToBoolean(
           isolate, obj->Get(TRI_V8_ASCII_STRING(isolate, "enabled"))));
     }
-    if (TRI_OBJECT_HAS_PROPERTY(obj, "trackSlowQueries")) {
+    if (TRI_HasProperty(context, isolate, obj, "trackSlowQueries")) {
       queryList->trackSlowQueries(TRI_ObjectToBoolean(
           isolate, obj->Get(TRI_V8_ASCII_STRING(isolate, "trackSlowQueries"))));
     }
-    if (TRI_OBJECT_HAS_PROPERTY(obj, "trackBindVars")) {
+    if (TRI_HasProperty(context, isolate, obj, "trackBindVars")) {
       queryList->trackBindVars(TRI_ObjectToBoolean(
           isolate, obj->Get(TRI_V8_ASCII_STRING(isolate, "trackBindVars"))));
     }
-    if (TRI_OBJECT_HAS_PROPERTY(obj, "maxSlowQueries")) {
+    if (TRI_HasProperty(context, isolate, obj, "maxSlowQueries")) {
       queryList->maxSlowQueries(static_cast<size_t>(TRI_ObjectToInt64(
           isolate, obj->Get(TRI_V8_ASCII_STRING(isolate, "maxSlowQueries")))));
     }
-    if (TRI_OBJECT_HAS_PROPERTY(obj, "slowQueryThreshold")) {
+    if (TRI_HasProperty(context, isolate, obj, "slowQueryThreshold")) {
       queryList->slowQueryThreshold(TRI_ObjectToDouble(
           isolate,
           obj->Get(TRI_V8_ASCII_STRING(isolate, "slowQueryThreshold"))));
     }
-    if (TRI_OBJECT_HAS_PROPERTY(obj, "slowStreamingQueryThreshold")) {
+    if (TRI_HasProperty(context, isolate, obj, "slowStreamingQueryThreshold")) {
       queryList->slowStreamingQueryThreshold(
           TRI_ObjectToDouble(isolate,
                              obj->Get(TRI_V8_ASCII_STRING(
                                  isolate, "slowStreamingQueryThreshold"))));
     }
-    if (TRI_OBJECT_HAS_PROPERTY(obj, "maxQueryStringLength")) {
+    if (TRI_HasProperty(context, isolate, obj, "maxQueryStringLength")) {
       queryList->maxQueryStringLength(static_cast<size_t>(TRI_ObjectToInt64(
           isolate,
           obj->Get(TRI_V8_ASCII_STRING(isolate, "maxQueryStringLength")))));
@@ -1264,6 +1265,7 @@ static v8::Handle<v8::Object> WrapVocBase(v8::Isolate* isolate, TRI_vocbase_t* d
 static void MapGetVocBase(v8::Local<v8::Name> const name,
                           v8::PropertyCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
 
@@ -1324,7 +1326,7 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
 
   v8::Handle<v8::Object> cacheObject;
   TRI_GET_GLOBAL_STRING(_DbCacheKey);
-  if (TRI_OBJECT_HAS_V8_PROPERTY(globals, _DbCacheKey)) {
+  if (TRI_HasProperty(context, isolate, globals, _DbCacheKey)) {
     cacheObject =
         globals->Get(_DbCacheKey)->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   }
@@ -1353,7 +1355,7 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
           !ServerState::instance()->isCoordinator()) {
         TRI_GET_GLOBAL_STRING(_IdKey);
         TRI_GET_GLOBAL_STRING(VersionKeyHidden);
-        if (TRI_OBJECT_HAS_V8_PROPERTY(value, _IdKey)) {
+        if (TRI_HasProperty(context, isolate, value, _IdKey)) {
           auto cachedCid = static_cast<TRI_voc_cid_t>(
               TRI_ObjectToUInt64(isolate, value->Get(_IdKey), true));
           uint32_t cachedVersion =

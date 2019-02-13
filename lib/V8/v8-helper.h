@@ -94,6 +94,7 @@ inline bool isContextCanceled(v8::Isolate* isolate) {
 inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
                                                          v8::TryCatch& tryCatch,
                                                          int errorCode) {
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   // function tries to receive arango error form tryCatch Object
   // return tuple:
   //   bool - can continue
@@ -142,16 +143,16 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
 
   int errorNum = -1;
 
-  if (TRI_OBJECT_HAS_PROPERTY(object, "errorNum")) {
+  if (TRI_HasProperty(context, isolate, object, "errorNum")) {
     errorNum = static_cast<int>(TRI_ObjectToInt64(
         isolate, object->Get(TRI_V8_ASCII_STRING(isolate, "errorNum"))));
   }
 
   try {
-    if ((errorNum != -1) && (TRI_OBJECT_HAS_PROPERTY(object, "errorMessage") ||
-                             TRI_OBJECT_HAS_PROPERTY(object, "message"))) {
+    if ((errorNum != -1) && (TRI_HasProperty(context, isolate, object, "errorMessage") ||
+                             TRI_HasProperty(context, isolate, object, "message"))) {
       std::string errorMessage;
-      if (TRI_OBJECT_HAS_PROPERTY(object, "errorMessage")) {
+      if (TRI_HasProperty(context, isolate, object, "errorMessage")) {
         v8::String::Utf8Value msg(
             isolate, object->Get(TRI_V8_ASCII_STRING(isolate, "errorMessage")));
         if (*msg != nullptr) {
@@ -171,8 +172,8 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
       return rv;
     }
 
-    if (TRI_OBJECT_HAS_PROPERTY(object, "name") &&
-        TRI_OBJECT_HAS_PROPERTY(object, "message")) {
+    if (TRI_HasProperty(context, isolate, object, "name") &&
+        TRI_HasProperty(context, isolate, object, "message")) {
       std::string name;
       v8::String::Utf8Value nameString(isolate, object->Get(TRI_V8_ASCII_STRING(isolate,
                                                                                 "name")));

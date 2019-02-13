@@ -192,7 +192,7 @@ void V8ShellFeature::unprepare() {
     v8::Handle<v8::Array> names = globals->GetOwnPropertyNames();
     uint32_t const n = names->Length();
     for (uint32_t i = 0; i < n; ++i) {
-      TRI_OBJECT_DELETE_V8_PROPERTY(globals, names->Get(i));
+      TRI_DeleteProperty(context, isolate, globals, names->Get(i));
     }
 
     TRI_RunGarbageCollectionV8(_isolate, 2500.0);
@@ -603,13 +603,13 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
 
       // restore old values for __dirname and __filename
       if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
-        TRI_OBJECT_DELETE_PROPERTY(current, "__filename");
+        TRI_DeleteProperty(context, isolate, current, "__filename");
       } else {
         current->Set(TRI_V8_ASCII_STRING(_isolate, "__filename"), oldFilename);
       }
 
       if (oldDirname.IsEmpty() || oldDirname->IsUndefined()) {
-        TRI_OBJECT_DELETE_PROPERTY(current, "__dirname");
+        TRI_DeleteProperty(context, isolate, current, "__dirname");
       } else {
         current->Set(TRI_V8_ASCII_STRING(_isolate, "__dirname"), oldDirname);
       }
@@ -724,7 +724,7 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
   } else {
     bool res =
         TRI_ObjectToBoolean(isolate,
-                            TRI_OBJECT_GET_PROPERTY(context->Global(),
+                            TRI_GetProperty(context, isolate, context->Global(),
                                                     "SYS_UNIT_TESTS_RESULT"));
 
     ok = ok && res;
@@ -793,7 +793,7 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
   } else {
     bool res =
         TRI_ObjectToBoolean(isolate,
-                            TRI_OBJECT_GET_PROPERTY(context->Global(),
+                            TRI_GetProperty(context, isolate, context->Global(),
                                                     "SYS_UNIT_TESTS_RESULT"));
 
     ok = ok && res;

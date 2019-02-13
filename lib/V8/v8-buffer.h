@@ -102,14 +102,15 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 
   static inline char* data(v8::Isolate* isolate, v8::Handle<v8::Value> val) {
     TRI_ASSERT(val->IsObject());
-    auto o = TRI_GET_OBJECT(val);
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
+    auto o = TRI_GetObject(context, val);
     int32_t offsetValue = 0;
 
     if (o->InternalFieldCount() == 0) {
       // seems object has become a FastBuffer already
       ISOLATE;
 
-      if (TRI_OBJECT_HAS_PROPERTY(o, "offset")) {
+      if (TRI_HasProperty(context, isolate, o, "offset")) {
         v8::Handle<v8::Value> offset =
             o->Get(TRI_V8_ASCII_STRING(isolate, "offset"));
         if (offset->IsNumber()) {
@@ -117,13 +118,13 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
         }
       }
 
-      if (TRI_OBJECT_HAS_PROPERTY(o, "parent")) {
+      if (TRI_HasProperty(context, isolate, o, "parent")) {
         v8::Handle<v8::Value> parent =
             o->Get(TRI_V8_ASCII_STRING(isolate, "parent"));
         if (!parent->IsObject()) {
           return nullptr;
         }
-        o = TRI_TO_OBJECT(parent);
+        o = TRI_ToObject(context, parent);
         // intentionally falls through
       }
     }
@@ -156,14 +157,15 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 
   static inline size_t length(v8::Isolate* isolate, v8::Handle<v8::Value> val) {
     TRI_ASSERT(val->IsObject());
-    auto o = TRI_GET_OBJECT(val);
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
+    auto o = TRI_GetObject(context, val);
     int32_t lengthValue = -1;
 
     if (o->InternalFieldCount() == 0) {
       // seems object has become a FastBuffer already
       ISOLATE;
 
-      if (TRI_OBJECT_HAS_PROPERTY(o, "length")) {
+      if (TRI_HasProperty(context, isolate, o, "length")) {
         v8::Handle<v8::Value> length =
             o->Get(TRI_V8_ASCII_STRING(isolate, "length"));
         if (length->IsNumber()) {
@@ -171,13 +173,13 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
         }
       }
 
-      if (TRI_OBJECT_HAS_PROPERTY(o, "parent")) {
+      if (TRI_HasProperty(context, isolate, o, "parent")) {
         v8::Handle<v8::Value> parent =
             o->Get(TRI_V8_ASCII_STRING(isolate, "parent"));
         if (!parent->IsObject()) {
           return 0;
         }
-        o = TRI_TO_OBJECT(parent);
+        o = TRI_ToObject(context, parent);
         // intentionally falls through
       }
     }

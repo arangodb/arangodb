@@ -917,6 +917,7 @@ static uint64_t DefaultChunkSize = 1024 * 1024 * 4;
 
 static void ClientConnection_importCsv(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
   if (args.Length() < 2) {
@@ -946,9 +947,9 @@ static void ClientConnection_importCsv(v8::FunctionCallbackInfo<v8::Value> const
   std::string quote = "\"";
 
   if (3 <= args.Length()) {
-    v8::Local<v8::Object> options = TRI_TO_OBJECT(args[2]);
+    v8::Local<v8::Object> options = TRI_ToObject(context, args[2]);
     // separator
-    if (TRI_OBJECT_HAS_V8_PROPERTY(options, separatorKey)) {
+    if (TRI_HasProperty(context, isolate, options, separatorKey)) {
       separator = TRI_ObjectToString(isolate, options->Get(separatorKey));
 
       if (separator.length() < 1) {
@@ -958,7 +959,7 @@ static void ClientConnection_importCsv(v8::FunctionCallbackInfo<v8::Value> const
     }
 
     // quote
-    if (TRI_OBJECT_HAS_V8_PROPERTY(options, quoteKey)) {
+    if (TRI_HasProperty(context, isolate, options, quoteKey)) {
       quote = TRI_ObjectToString(isolate, options->Get(quoteKey));
 
       if (quote.length() > 1) {

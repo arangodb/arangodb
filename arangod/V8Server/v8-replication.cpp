@@ -174,6 +174,7 @@ enum ApplierType { APPLIER_DATABASE, APPLIER_GLOBAL };
 static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& args,
                                    ApplierType applierType) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1 || !args[0]->IsObject()) {
@@ -198,7 +199,7 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
 
   bool keepBarrier = false;
 
-  if (TRI_OBJECT_HAS_PROPERTY(object, "keepBarrier")) {
+  if (TRI_HasProperty(context, isolate, object, "keepBarrier")) {
     keepBarrier = TRI_ObjectToBoolean(
         isolate,
         object->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "keepBarrier"))
@@ -216,7 +217,7 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
     // database-specific synchronization
     syncer.reset(new DatabaseInitialSyncer(vocbase, configuration));
 
-    if (TRI_OBJECT_HAS_PROPERTY(object, "leaderId")) {
+    if (TRI_HasProperty(context, isolate, object, "leaderId")) {
       syncer->setLeaderId(TRI_ObjectToString(
           isolate,
           object->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "leaderId"))
@@ -304,6 +305,7 @@ static void JS_SynchronizeGlobalReplication(v8::FunctionCallbackInfo<v8::Value> 
 /// and filtering on the collection name until no more data is available
 static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1 || !args[0]->IsObject()) {
@@ -321,7 +323,7 @@ static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value
   }
 
   std::string database;
-  if (TRI_OBJECT_HAS_PROPERTY(object, "database")) {
+  if (TRI_HasProperty(context, isolate, object, "database")) {
     database = TRI_ObjectToString(
         isolate,
         object->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "database"))
@@ -333,7 +335,7 @@ static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value
   }
 
   std::string collection;
-  if (TRI_OBJECT_HAS_PROPERTY(object, "collection")) {
+  if (TRI_HasProperty(context, isolate, object, "collection")) {
     collection = TRI_ObjectToString(
         isolate,
         object->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "collection"))
@@ -345,7 +347,7 @@ static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value
   }
 
   TRI_voc_tick_t fromTick = 0;
-  if (TRI_OBJECT_HAS_PROPERTY(object, "from")) {
+  if (TRI_HasProperty(context, isolate, object, "from")) {
     fromTick = TRI_ObjectToUInt64(
         isolate,
         object->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "from")).FromMaybe(v8::Local<v8::Value>()),
@@ -364,7 +366,7 @@ static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value
 
   DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, true, 0);
 
-  if (TRI_OBJECT_HAS_PROPERTY(object, "leaderId")) {
+  if (TRI_HasProperty(context, isolate, object, "leaderId")) {
     syncer.setLeaderId(TRI_ObjectToString(
         isolate,
         object->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "leaderId"))

@@ -744,6 +744,7 @@ V8Buffer::V8Buffer(v8::Isolate* isolate, v8::Handle<v8::Object> wrapper, size_t 
 
 bool V8Buffer::hasInstance(v8::Isolate* isolate, v8::Handle<v8::Value> val) {
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
   if (!val->IsObject()) {
     return false;
@@ -758,7 +759,7 @@ bool V8Buffer::hasInstance(v8::Isolate* isolate, v8::Handle<v8::Value> val) {
     return true;
   }
 
-  if (TRI_OBJECT_HAS_PROPERTY(obj, "__buffer__")) {
+  if (TRI_HasProperty(context, isolate, obj, "__buffer__")) {
     return true;
   }
 
@@ -1552,19 +1553,20 @@ static void JS_ByteLength(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void MapGetIndexedBuffer(uint32_t idx,
                                 const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
   v8::Handle<v8::Object> self = args.Holder();
 
   if (self->InternalFieldCount() == 0) {
     // seems object has become a FastBuffer already
-    if (TRI_OBJECT_HAS_PROPERTY(self, "parent")) {
+    if (TRI_HasProperty(context, isolate, self, "parent")) {
       v8::Handle<v8::Value> parent =
           self->Get(TRI_V8_ASCII_STRING(isolate, "parent"));
       if (!parent->IsObject()) {
         TRI_V8_RETURN(v8::Handle<v8::Value>());
       }
-      self = TRI_GET_OBJECT(parent);
+      self = TRI_GetObject(context, parent);
       // intentionally falls through
     }
   }
@@ -1585,19 +1587,20 @@ static void MapGetIndexedBuffer(uint32_t idx,
 static void MapSetIndexedBuffer(uint32_t idx, v8::Local<v8::Value> value,
                                 const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
   v8::Handle<v8::Object> self = args.Holder();
 
   if (self->InternalFieldCount() == 0) {
     // seems object has become a FastBuffer already
-    if (TRI_OBJECT_HAS_PROPERTY(self, "parent")) {
+    if (TRI_HasProperty(context, isolate, self, "parent")) {
       v8::Handle<v8::Value> parent =
           self->Get(TRI_V8_ASCII_STRING(isolate, "parent"));
       if (!parent->IsObject()) {
         TRI_V8_RETURN(v8::Handle<v8::Value>());
       }
-      self = TRI_GET_OBJECT(parent);
+      self = TRI_GetObject(context, parent);
       // intentionally falls through
     }
   }

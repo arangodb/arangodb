@@ -41,6 +41,7 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch, v8::Handle<v8::Value>& re
                                arangodb::basics::StringBuffer* const buffer,
                                bool duringCompile) {
   ISOLATE;
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
   bool failed = false;
 
@@ -67,8 +68,8 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch, v8::Handle<v8::Value>& re
 
       TRI_Utf8ValueNFC stacktrace(isolate, tryCatch.StackTrace(TRI_IGETC).FromMaybe(v8::Local<v8::Value>()));
 
-      if (TRI_OBJECT_HAS_OWN_V8_PROPERTY(objValue, errorNum) &&
-          TRI_OBJECT_HAS_OWN_V8_PROPERTY(objValue, errorMessage)) {
+      if (TRI_HasProperty(context, isolate, objValue, errorNum) &&
+          TRI_HasProperty(context, isolate, objValue, errorMessage)) {
         v8::Handle<v8::Value> errorNumValue = objValue->Get(errorNum);
         v8::Handle<v8::Value> errorMessageValue = objValue->Get(errorMessage);
 
