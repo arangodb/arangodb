@@ -37,6 +37,14 @@ inline std::shared_ptr<std::unordered_set<RegisterId>> make_shared_unordered_set
   return std::make_shared<std::unordered_set<RegisterId>>(list);
 }
 
+inline std::shared_ptr<std::unordered_set<RegisterId>> make_shared_unordered_set(RegisterId size) {
+  auto set = make_shared_unordered_set();
+  for(RegisterId i = 0; i < size; i++){
+    set->insert(i);
+  }
+  return set;
+}
+
 template <typename Iterator>
 inline std::shared_ptr<std::unordered_set<RegisterId>> make_shared_unordered_set(Iterator begin,
                                                                                  Iterator end) {

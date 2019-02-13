@@ -154,7 +154,7 @@ class AqlItemMatrix {
             << " iterations.";
 #endif
         // Got it
-        return std::move(InputAqlItemRow{candidate.second, index - candidate.first});
+        return InputAqlItemRow{candidate.second, index - candidate.first};
       }
     }
 

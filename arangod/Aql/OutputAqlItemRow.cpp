@@ -44,13 +44,19 @@ OutputAqlItemRow::OutputAqlItemRow(
     CopyRowBehaviour copyRowBehaviour)
     : _blockShell(std::move(blockShell)),
       _baseIndex(0),
+      _lastBaseIndex(0),
       _inputRowCopied(false),
       _lastSourceRow{CreateInvalidInputRowHint{}},
       _numValuesWritten(0),
       _doNotCopyInputRow(copyRowBehaviour == CopyRowBehaviour::DoNotCopyInputRows),
       _outputRegisters(std::move(outputRegisters)),
       _registersToKeep(std::move(registersToKeep)),
-      _registersToClear(std::move(registersToClear)) {
+      _registersToClear(std::move(registersToClear))
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      ,
+      _setBaseIndexNotUsed(true)
+#endif
+{
   TRI_ASSERT(_blockShell != nullptr);
 }
 
@@ -84,7 +90,7 @@ void OutputAqlItemRow::doCopyRow(const InputAqlItemRow& sourceRow, bool ignoreMi
       }
     } else {
       TRI_ASSERT(_baseIndex > 0);
-      block().copyValuesFromRow(_baseIndex, registersToKeep(), _baseIndex - 1);
+      block().copyValuesFromRow(_baseIndex, registersToKeep(), _lastBaseIndex);
     }
   } else {
     // This may only be set if the input block is the same as the output block,
@@ -97,7 +103,7 @@ void OutputAqlItemRow::doCopyRow(const InputAqlItemRow& sourceRow, bool ignoreMi
       block().eraseValue(_baseIndex, itemId);
     }
   }
-
+  _lastBaseIndex = _baseIndex;
   _inputRowCopied = true;
   _lastSourceRow = sourceRow;
 }

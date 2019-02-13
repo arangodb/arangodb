@@ -104,6 +104,7 @@ class OutputAqlItemRow {
     TRI_ASSERT(!_inputRowCopied);
     TRI_ASSERT(allValuesWritten());
     if (_inputRowCopied) {
+      _lastBaseIndex = _baseIndex;
       return;
     }
     doCopyRow(sourceRow, ignoreMissing);
@@ -128,7 +129,7 @@ class OutputAqlItemRow {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INPUT_REGISTERS_NOT_COPIED);
     }
 #endif
-    ++_baseIndex;
+    _lastBaseIndex = _baseIndex++;
     _inputRowCopied = false;
     _numValuesWritten = 0;
   }
@@ -153,6 +154,9 @@ class OutputAqlItemRow {
    * @brief Returns the number of rows that were fully written.
    */
   size_t numRowsWritten() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_setBaseIndexNotUsed);
+#endif
     // If the current line was fully written, the number of fully written rows
     // is the index plus one.
     if (produced()) {
@@ -168,6 +172,25 @@ class OutputAqlItemRow {
     //     ? _baseIndex
     //     : _baseIndex - 1;
     //   return lastWrittenIndex + 1;
+  }
+
+  // Use this function with caution! We need it only for the ConstrainedSortExecutor
+  void setBaseIndex(std::size_t index) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _setBaseIndexNotUsed = false;
+#endif
+    _baseIndex = index;
+  }
+
+  // This function can be used to restore the row's invariant.
+  // After setting this value numRowsWritten() rather returns
+  // the number of written rows contained in the block than
+  // the number of written rows, that could potentially be more.
+  void setMaxBaseIndex(std::size_t index) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _setBaseIndexNotUsed = true;
+#endif
+    _baseIndex = index;
   }
 
  private:
@@ -200,6 +223,7 @@ class OutputAqlItemRow {
    * @brief The offset into the AqlItemBlock. In other words, the row's index.
    */
   size_t _baseIndex;
+  size_t _lastBaseIndex;
 
   /**
    * @brief Whether the input registers were copied from a source row.
@@ -227,6 +251,10 @@ class OutputAqlItemRow {
   std::shared_ptr<std::unordered_set<RegisterId> const> _outputRegisters;
   std::shared_ptr<std::unordered_set<RegisterId> const> _registersToKeep;
   std::shared_ptr<std::unordered_set<RegisterId> const> _registersToClear;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool _setBaseIndexNotUsed;
+#endif
 
  private:
   size_t nextUnwrittenIndex() const noexcept { return numRowsWritten(); }
