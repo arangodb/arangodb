@@ -81,7 +81,7 @@ static DocumentProducingFunction buildCallback(
     DocumentProducingFunction documentProducer, Variable const* outVariable,
     bool produceResult, std::vector<std::string> const& projections,
     transaction::Methods* trxPtr, std::vector<size_t> const& coveringIndexAttributePositions,
-    bool allowCoveringIndexOptimization, bool useRawDocumentPointers) {
+    bool& allowCoveringIndexOptimization, bool useRawDocumentPointers) {
   if (!produceResult) {
     // no result needed
     documentProducer = [](InputAqlItemRow& input, OutputAqlItemRow& output,
@@ -97,7 +97,7 @@ static DocumentProducingFunction buildCallback(
     if (!coveringIndexAttributePositions.empty()) {
       // projections from an index value (covering index)
       documentProducer = [trxPtr, projections, coveringIndexAttributePositions,
-                          allowCoveringIndexOptimization,
+                          &allowCoveringIndexOptimization,
                           useRawDocumentPointers](InputAqlItemRow& input,
                                                   OutputAqlItemRow& output,
                                                   VPackSlice slice, RegisterId registerId) {

@@ -57,7 +57,7 @@ class IndexExecutorInfos : public ExecutorInfos {
       Collection const* collection, Variable const* outVariable, bool produceResult,
       std::vector<std::string> const& projections, transaction::Methods* trxPtr,
       std::vector<size_t> const& coveringIndexAttributePositions,
-      bool allowCoveringIndexOptimization, bool useRawDocumentPointers,
+      bool useRawDocumentPointers,
       std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
       std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
       bool hasV8Expression, AstNode const* condition,
@@ -80,9 +80,6 @@ class IndexExecutorInfos : public ExecutorInfos {
   std::vector<std::vector<Variable const*>> getInVars() { return _inVars; };
   std::vector<std::vector<RegisterId>> getInRegs() { return _inRegs; };
   bool getProduceResult() { return _produceResult; };
-  bool getAllowCoveringIndexOptimization() {
-    return _allowCoveringIndexOptimization;
-  };
   bool getUseRawDocumentPointers() { return _useRawDocumentPointers; };
   std::vector<transaction::Methods::IndexHandle> const& getIndexes() {
     return _indexes;
@@ -109,10 +106,6 @@ class IndexExecutorInfos : public ExecutorInfos {
   // setter
   void setHasMultipleExpansions(bool flag) { _hasMultipleExpansions = flag; };
 
-  void setAllowCoveringIndexOptimization(bool flag) {
-    _allowCoveringIndexOptimization = flag;
-  };
-
  private:
   /// @brief _indexes holds all Indexes used in this block
   std::vector<transaction::Methods::IndexHandle> _indexes;
@@ -123,10 +116,6 @@ class IndexExecutorInfos : public ExecutorInfos {
 
   /// @brief _condition: holds the complete condition this Block can serve for
   AstNode const* _condition;
-
-  /// @brief whether or not we are allowed to use the covering index
-  /// optimization in a callback
-  bool _allowCoveringIndexOptimization;
 
   /// @brief _ast: holds the ast of the _plan
   Ast* _ast;
@@ -188,6 +177,7 @@ class IndexExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
+ public:
   typedef std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
 
   void setProducingFunction(DocumentProducingFunction documentProducer) {
@@ -245,6 +235,10 @@ class IndexExecutor {
   DocumentProducingFunction _documentProducer;
   ExecutionState _state;
   InputAqlItemRow _input;
+
+  /// @brief whether or not we are allowed to use the covering index
+  /// optimization in a callback
+  bool _allowCoveringIndexOptimization;
 
   /// @brief _cursor: holds the current index cursor found using
   /// createCursor (if any) so that it can be read in chunks and not

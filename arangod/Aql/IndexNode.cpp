@@ -369,7 +369,6 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   RegisterId outputRegister = it->second.registerId;
 
   transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
-  bool allowCoveringIndexOptimization = true;  // TODO check bool
 
   trxPtr->pinData(_collection->id());
 
@@ -394,7 +393,6 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                            &engine, this->_collection, _outVariable,
                            this->isVarUsedLater(_outVariable), this->projections(),
                            trxPtr, this->coveringIndexAttributePositions(),
-                           allowCoveringIndexOptimization,
                            EngineSelectorFeature::ENGINE->useRawDocumentPointers(),
                            std::move(nonConstExpressions), std::move(inVars),
                            std::move(inRegs), hasV8Expression, _condition->root(),

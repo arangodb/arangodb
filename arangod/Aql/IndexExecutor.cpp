@@ -71,7 +71,7 @@ IndexExecutorInfos::IndexExecutorInfos(
     Collection const* collection, Variable const* outVariable, bool produceResult,
     std::vector<std::string> const& projections, transaction::Methods* trxPtr,
     std::vector<size_t> const& coveringIndexAttributePositions,
-    bool allowCoveringIndexOptimization, bool useRawDocumentPointers,
+    bool useRawDocumentPointers,
     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
     bool hasV8Expression, AstNode const* condition,
@@ -82,7 +82,6 @@ IndexExecutorInfos::IndexExecutorInfos(
                     nrOutputRegisters, std::move(registersToClear)),
       _indexes(indexes),
       _condition(condition),
-      _allowCoveringIndexOptimization(false),
       _ast(ast),
       _hasMultipleExpansions(false),
       _options(options),
@@ -105,6 +104,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       _fetcher(fetcher),
       _state(ExecutionState::HASMORE),
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
+      _allowCoveringIndexOptimization(false),
       _cursor(nullptr),
       _cursors(_infos.getIndexes().size()),
       _indexesExhausted(false),
@@ -170,7 +170,8 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       buildCallback(_documentProducer, _infos.getOutVariable(),
                     _infos.getProduceResult(), _infos.getProjections(),
                     _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
-                    true, _infos.getUseRawDocumentPointers()));  // remove true flag later, it is always true in any case (?)
+                    _allowCoveringIndexOptimization, // reference here is important
+                    _infos.getUseRawDocumentPointers()));  // remove true flag later, it is always true in any case (?)
 };
 
 IndexExecutor::~IndexExecutor() = default;
@@ -242,9 +243,9 @@ bool IndexExecutor::readIndex(IndexIterator::DocumentCallback const& callback, b
       // DocumentProducingBlock can access the flag
 
       TRI_ASSERT(getCursor() != nullptr);
-      _infos.setAllowCoveringIndexOptimization(getCursor()->hasCovering());
+      _allowCoveringIndexOptimization = getCursor()->hasCovering();
 
-      if (_infos.getAllowCoveringIndexOptimization() &&
+      if (_allowCoveringIndexOptimization &&
           !_infos.getCoveringIndexAttributePositions().empty()) {
         // index covers all projections
         res = getCursor()->nextCovering(callback, 1);

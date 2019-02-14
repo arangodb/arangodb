@@ -1268,13 +1268,12 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   RegisterId outputRegister = it->second.registerId;
 
   transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
-  bool allowCoveringIndexOptimization = true;
 
   EnumerateCollectionExecutorInfos infos(
       outputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), &engine, this->_collection,
       _outVariable, this->isVarUsedLater(_outVariable), this->projections(), trxPtr,
-      this->coveringIndexAttributePositions(), allowCoveringIndexOptimization,
+      this->coveringIndexAttributePositions(),
       EngineSelectorFeature::ENGINE->useRawDocumentPointers(), this->_random);
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(&engine, this,
                                                                            std::move(infos));
