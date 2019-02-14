@@ -59,10 +59,14 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
  *
  * ATTENTION: The following tests are duplicated this way!
  */
-// clang-format off
+#ifdef _WIN32
 #define BLOCK(...) __VA_ARGS__
+#else
+#define BLOCK
+#endif
+// clang-format off
 #define _FOR_BLOCK(name, v, block) \
-  { constexpr bool name = v; block }
+  { constexpr bool name = v; block; }
 #define FOR_BOOLS(name, block) \
   _FOR_BLOCK(name, true, block) \
   _FOR_BLOCK(name, false, block)
