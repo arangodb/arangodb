@@ -1,4 +1,4 @@
-v3.4.3 (XXXX-XX-XX)
+v3.4.3 (2019-02-19)
 -------------------
 
 * fixed JS AQL query objects with empty query strings not being recognized as AQL queries

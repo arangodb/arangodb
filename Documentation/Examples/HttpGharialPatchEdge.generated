@@ -1,4 +1,4 @@
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PATCH --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge/relation/102331</span> &lt;&lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PATCH --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge/relation/102340</span> &lt;&lt;EOF
 { 
   <span class="hljs-string">"since"</span> : <span class="hljs-string">"01.01.2001"</span> 
 }
@@ -6,16 +6,16 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> Accepted
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _YDCrT06--B
+etag: _YMrdsX2--_
 x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span>, 
   <span class="hljs-string">"edge"</span> : { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/102331"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"102331"</span>, 
-    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_YDCrT02--H"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YDCrT06--B"</span> 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/102340"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"102340"</span>, 
+    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_YMrdsXu--D"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YMrdsX2--_"</span> 
   } 
 }
