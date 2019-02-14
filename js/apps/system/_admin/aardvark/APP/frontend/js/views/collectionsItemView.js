@@ -139,8 +139,8 @@
     deleteCollection: function () {
       this.model.destroy(
         {
-          error: function () {
-            arangoHelper.arangoError('Could not delete collection.');
+          error: function (error, data) {
+            arangoHelper.arangoError('Could not drop collection: ' + data.responseJSON.errorMessage);
           },
           success: function () {
             window.modalView.hide();
