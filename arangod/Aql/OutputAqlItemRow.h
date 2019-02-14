@@ -272,6 +272,7 @@ class OutputAqlItemRow {
 };
 
 }  // namespace aql
+
 }  // namespace arangodb
 
 #endif  // ARANGOD_AQL_OUTPUT_AQL_ITEM_ROW_H

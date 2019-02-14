@@ -113,6 +113,7 @@ class ExecutionBlockImpl : public ExecutionBlock {
    */
   ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node,
                      typename Executor::Infos&&);
+
   ~ExecutionBlockImpl();
 
   /**
@@ -139,6 +140,7 @@ class ExecutionBlockImpl : public ExecutionBlock {
    *         AqlItemBlock:
    *           A matrix of result rows.
    *           Guaranteed to be non nullptr in HASMORE cas, maybe a nullptr in
+
    *           DONE. Is a nullptr in WAITING
    *
    * TODO When there are no more other blocks using getSome, we should replace
@@ -174,6 +176,12 @@ class ExecutionBlockImpl : public ExecutionBlock {
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   Infos const& infos() const { return _infos; }
+
+  /// @brief shutdown, will be called exactly once for the whole query
+  /// Special implementation for all Executors that need to implement Shutdown
+  /// Most do not, we might be able to move their shutdown logic to a more
+  /// central place.
+  std::pair<ExecutionState, Result> shutdown(int) override;
 
  private:
   /**
@@ -215,6 +223,9 @@ class ExecutionBlockImpl : public ExecutionBlock {
   std::unique_ptr<OutputAqlItemRow> createOutputRow(std::shared_ptr<AqlItemBlockShell>& newBlock) const;
 
   Query const& getQuery() const { return _query; }
+
+ protected:
+  Executor& executor() { return _executor; }
 
  private:
   /**

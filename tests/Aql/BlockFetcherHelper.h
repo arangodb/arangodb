@@ -56,18 +56,23 @@ namespace aql {
  * @brief Mock for SingleRowFetcher
  */
 template <bool passBlocksThrough>
-class SingleRowFetcherHelper : public ::arangodb::aql::SingleRowFetcher<passBlocksThrough> {
+class SingleRowFetcherHelper
+    : public ::arangodb::aql::SingleRowFetcher<passBlocksThrough> {
  public:
   SingleRowFetcherHelper(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer,
                          bool returnsWaiting);
   virtual ~SingleRowFetcherHelper();
 
-// NOLINTNEXTLINE google-default-arguments
+  // NOLINTNEXTLINE google-default-arguments
   std::pair<::arangodb::aql::ExecutionState, ::arangodb::aql::InputAqlItemRow> fetchRow(
       size_t atMost = ::arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
-  uint64_t nrCalled(){ return _nrCalled; }
+  uint64_t nrCalled() { return _nrCalled; }
 
-  std::shared_ptr<arangodb::aql::AqlItemBlockShell> getItemBlockShell() { return _itemBlock; }
+  std::shared_ptr<arangodb::aql::AqlItemBlockShell> getItemBlockShell() {
+    return _itemBlock;
+  }
+
+  bool isDone() const { return _returnedDone; }
 
  private:
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _vPackBuffer;

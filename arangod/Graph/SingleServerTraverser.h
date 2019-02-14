@@ -43,7 +43,7 @@ class PathEnumerator;
 
 class SingleServerTraverser final : public Traverser {
  public:
-  SingleServerTraverser(TraverserOptions*, transaction::Methods*, ManagedDocumentResult*);
+  SingleServerTraverser(TraverserOptions*, transaction::Methods*);
 
   ~SingleServerTraverser();
 
@@ -52,6 +52,11 @@ class SingleServerTraverser final : public Traverser {
   //////////////////////////////////////////////////////////////////////////////
 
   void setStartVertex(std::string const& v) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief No eingines on single server
+  //////////////////////////////////////////////////////////////////////////////
+  void destroyEngines() override {}
 
  protected:
   /// @brief Function to load the other sides vertex of an edge

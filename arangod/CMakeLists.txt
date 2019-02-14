@@ -267,7 +267,7 @@ SET(ARANGOD_SOURCES
   Aql/SortNode.cpp
   Aql/SortRegister.cpp
   Aql/SubqueryBlock.cpp
-  Aql/TraversalBlock.cpp
+  Aql/TraversalExecutor.cpp
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalNode.cpp
   Aql/V8Executor.cpp

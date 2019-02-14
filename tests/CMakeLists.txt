@@ -57,7 +57,6 @@ if (USE_IRESEARCH)
     IResearch/IResearchQueryTraversal-test.cpp
     IResearch/IResearchQueryOptions-test.cpp
     IResearch/RestHandlerMock.cpp
-    IResearch/StorageEngineMock.cpp
     IResearch/IResearchViewNode-test.cpp
     IResearch/VelocyPackHelper-test.cpp
     RestHandler/RestUsersHandler-test.cpp
@@ -106,6 +105,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SortLimit-test.cpp
   Aql/TestEmptyExecutorHelper.cpp
   Aql/TestExecutorHelper.cpp
+  Aql/TraversalExecutorTest.cpp
   Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
   Auth/UserManagerTest.cpp
@@ -165,6 +165,8 @@ set(ARANGODB_TESTS_SOURCES
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp
+  Mocks/StorageEngineMock.cpp
+  Mocks/Servers.cpp
   Pregel/typedbuffer.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
