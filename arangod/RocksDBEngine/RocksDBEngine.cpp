@@ -50,6 +50,7 @@
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBEventListener.h"
 #include "RocksDBEngine/RocksDBIncrementalSync.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
@@ -147,6 +148,11 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _syncInterval(100),
 #endif
       _useThrottle(true),
+#ifdef USE_ENTERPRISE
+      _createShaFiles(true),
+#else
+      _createShaFiles(false),
+#endif
       _debugLogging(false) {
 
   startsAfter("BasicsPhase");
@@ -249,6 +255,9 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
 
   options->addOption("--rocksdb.throttle", "enable write-throttling",
                      new BooleanParameter(&_useThrottle));
+
+  options->addOption("--rocksdb.create-sha-files", "enable generation of sha256 files for each .sst file",
+                     new BooleanParameter(&_createShaFiles));
 
   options->addOption("--rocksdb.debug-logging",
                      "true to enable rocksdb debug logging",
@@ -489,7 +498,12 @@ void RocksDBEngine::start() {
   if (_useThrottle) {
     _listener.reset(new RocksDBThrottle);
     _options.listeners.push_back(_listener);
-  }
+  } // if
+
+  if (_createShaFiles) {
+    _shaListener.reset(new RocksDBEventListener);
+    _options.listeners.push_back(_shaListener);
+  } // if
 
   if (opts->_totalWriteBufferSize > 0) {
     _options.db_write_buffer_size = opts->_totalWriteBufferSize;

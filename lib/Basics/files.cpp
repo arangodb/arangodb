@@ -993,11 +993,10 @@ bool TRI_ProcessFile(char const* filename,
       return false;
     }
 
-    TRI_IncreaseLengthStringBuffer(&result, (size_t)n);
-
     good=reader(result._buffer, n);
   }
 
+  TRI_DestroyStringBuffer(&result);
   TRI_TRACKED_CLOSE_FILE(fd);
   return good;
 }

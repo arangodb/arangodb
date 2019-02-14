@@ -358,6 +358,20 @@ void RocksDBHotBackupCreate::execute() {
 } // RocksDBHotBackupCreate::execute
 
 
+/// @brief local function to identify SHA files that need hard link to backup directory
+static basics::FileUtils::TRI_copy_recursive_e linkShaFiles(std::string const & name) {
+  basics::FileUtils::TRI_copy_recursive_e ret_code(basics::FileUtils::TRI_COPY_IGNORE);
+
+  if (name.length() > 64 && std::string::npos != name.find(".sha."))
+  {
+    ret_code = basics::FileUtils::TRI_COPY_LINK;
+  } // if
+
+  return ret_code;
+
+} // linkShaFiles
+
+
 void RocksDBHotBackupCreate::executeCreate() {
 
   // note current time
@@ -390,6 +404,17 @@ void RocksDBHotBackupCreate::executeCreate() {
 
     delete ptr;
     ptr = nullptr;
+
+    if (_success) {
+      std::string engineDir, errors;
+
+      engineDir = getDatabasePath();
+      engineDir += TRI_DIR_SEPARATOR_CHAR;
+      engineDir += "engine-rocksdb";
+      std::function<basics::FileUtils::TRI_copy_recursive_e(std::string const&)>  filter=linkShaFiles;
+      /*_success =*/ basics::FileUtils::copyRecursive(engineDir, dirPath,
+                                                  filter, errors);
+    } // if
   } // if
 
   // set response codes
@@ -414,6 +439,7 @@ void RocksDBHotBackupCreate::executeCreate() {
   return;
 
 } // RocksDBHotBackupCreate::executeCreate
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
