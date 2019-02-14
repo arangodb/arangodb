@@ -66,7 +66,7 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
 };
 
 struct EdgeIndexFactory : public DefaultIndexFactory {
-  EdgeIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit EdgeIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
   virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
                                        arangodb::LogicalCollection& collection,
@@ -100,7 +100,7 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
 };
 
 struct FulltextIndexFactory : public DefaultIndexFactory {
-  FulltextIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit FulltextIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
   virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
                                        arangodb::LogicalCollection& collection,
@@ -125,7 +125,7 @@ struct FulltextIndexFactory : public DefaultIndexFactory {
 };
 
 struct GeoIndexFactory : public DefaultIndexFactory {
-  GeoIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit GeoIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
   virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
                                        arangodb::LogicalCollection& collection,
@@ -150,7 +150,7 @@ struct GeoIndexFactory : public DefaultIndexFactory {
 };
 
 struct Geo1IndexFactory : public DefaultIndexFactory {
-  Geo1IndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit Geo1IndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
   virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
                                        arangodb::LogicalCollection& collection,
@@ -175,7 +175,7 @@ struct Geo1IndexFactory : public DefaultIndexFactory {
 };
 
 struct Geo2IndexFactory : public DefaultIndexFactory {
-  Geo2IndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit Geo2IndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
   virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
                                        arangodb::LogicalCollection& collection,
@@ -200,7 +200,7 @@ struct Geo2IndexFactory : public DefaultIndexFactory {
 };
 
 struct HashIndexFactory : public DefaultIndexFactory {
-  HashIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit HashIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
   virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
                                        arangodb::LogicalCollection& collection,
@@ -224,7 +224,7 @@ struct HashIndexFactory : public DefaultIndexFactory {
 };
 
 struct PersistentIndexFactory : public DefaultIndexFactory {
-  PersistentIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit PersistentIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
   virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
                                        arangodb::LogicalCollection& collection,
@@ -249,7 +249,7 @@ struct PersistentIndexFactory : public DefaultIndexFactory {
 };
 
 struct TtlIndexFactory : public DefaultIndexFactory {
-  TtlIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit TtlIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
   virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
                                        arangodb::LogicalCollection& collection,
@@ -273,7 +273,7 @@ struct TtlIndexFactory : public DefaultIndexFactory {
 };
 
 struct PrimaryIndexFactory : public DefaultIndexFactory {
-  PrimaryIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit PrimaryIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
   virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
                                        arangodb::LogicalCollection& collection,
@@ -309,7 +309,7 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 };
 
 struct SkiplistIndexFactory : public DefaultIndexFactory {
-  SkiplistIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit SkiplistIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
   virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
                                        arangodb::LogicalCollection& collection,
