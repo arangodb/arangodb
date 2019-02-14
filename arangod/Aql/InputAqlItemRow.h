@@ -120,9 +120,7 @@ class InputAqlItemRow {
 
  private:
   AqlItemBlockShell& blockShell() { return *_blockShell; }
-  AqlItemBlockShell const& blockShell() const {
-    return *_blockShell;
-  }
+  AqlItemBlockShell const& blockShell() const { return *_blockShell; }
   AqlItemBlock& block() { return blockShell().block(); }
   AqlItemBlock const& block() const { return blockShell().block(); }
 
@@ -139,5 +137,6 @@ class InputAqlItemRow {
 };
 
 }  // namespace aql
+
 }  // namespace arangodb
 #endif

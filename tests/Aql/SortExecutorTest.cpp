@@ -90,7 +90,9 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
 
   sortRegisters.emplace_back(std::move(sortReg));
 
-  SortExecutorInfos infos(std::move(sortRegisters), 1, 1, {}, &trx, false);
+  SortExecutorInfos infos(std::move(sortRegisters),
+                          /*limit (ignored for default sort)*/ 0,
+                          itemBlockManager, 1, 1, {}, &trx, false);
   auto blockShell =
       std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
 
@@ -107,7 +109,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
 
       THEN("the executor should return DONE with nullptr") {
         OutputAqlItemRow result{std::move(blockShell), infos.getOutputRegisters(),
-                                infos.registersToKeep()};
+                                infos.registersToKeep(), infos.registersToClear()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -124,7 +126,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
 
       THEN("the executor should first return WAIT with nullptr") {
         OutputAqlItemRow result{std::move(blockShell), infos.getOutputRegisters(),
-                                infos.registersToKeep()};
+                                infos.registersToKeep(), infos.registersToClear()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -152,7 +154,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
 
       THEN("we will hit waiting 5 times") {
         OutputAqlItemRow result{std::move(blockShell), infos.getOutputRegisters(),
-                                infos.registersToKeep()};
+                                infos.registersToKeep(), infos.registersToClear()};
         // Wait, 5, Wait, 3, Wait, 1, Wait, 2, Wait, 4, HASMORE
         for (size_t i = 0; i < 5; ++i) {
           std::tie(state, stats) = testee.produceRow(result);

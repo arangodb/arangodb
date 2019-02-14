@@ -34,6 +34,7 @@
 #include "Aql/InputAqlItemRow.h"
 
 #include "Aql/CalculationExecutor.h"
+#include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/FilterExecutor.h"
@@ -42,8 +43,10 @@
 #include "Aql/LimitExecutor.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/ReturnExecutor.h"
+#include "Aql/ShortestPathExecutor.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
+#include "Aql/TraversalExecutor.h"
 
 #include <type_traits>
 
@@ -61,7 +64,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos),
       _outputItemRow(nullptr),
-      _query(*engine->getQuery()){}
+      _query(*engine->getQuery()) {}
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
@@ -173,10 +176,12 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
   if /* constexpr */ (Executor::Properties::allowsBlockPassthrough) {
     return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
                                               infos().registersToKeep(),
+                                              infos().registersToClear(),
                                               OutputAqlItemRow::CopyRowBehaviour::DoNotCopyInputRows);
   } else {
     return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
-                                              infos().registersToKeep());
+                                              infos().registersToKeep(),
+                                              infos().registersToClear());
   }
 }
 
@@ -240,6 +245,11 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   return ExecutionBlock::initializeCursor(items, pos);
 }
 
+template <class Executor>
+std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::shutdown(int errorCode) {
+  return ExecutionBlock::shutdown(errorCode);
+}
+
 // Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
 // Without the namespaces it fails with
 // error: specialization of 'template<class Executor> std::pair<arangodb::aql::ExecutionState, arangodb::Result> arangodb::aql::ExecutionBlockImpl<Executor>::initializeCursor(arangodb::aql::AqlItemBlock*, size_t)' in different namespace
@@ -277,6 +287,31 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor>::initializeCurs
 
   return ExecutionBlock::initializeCursor(items, pos);
 }
+
+template <>
+std::pair<ExecutionState, Result> ExecutionBlockImpl<TraversalExecutor>::shutdown(int errorCode) {
+  ExecutionState state;
+  Result result;
+
+  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
+  if (state == ExecutionState::WAITING) {
+    return {state, result};
+  }
+  return this->executor().shutdown(errorCode);
+}
+
+template <>
+std::pair<ExecutionState, Result> ExecutionBlockImpl<ShortestPathExecutor>::shutdown(int errorCode) {
+  ExecutionState state;
+  Result result;
+
+  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
+  if (state == ExecutionState::WAITING) {
+    return {state, result};
+  }
+  return this->executor().shutdown(errorCode);
+}
+
 }  // namespace aql
 }  // namespace arangodb
 
@@ -308,9 +343,9 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // Check that all output registers are empty.
     if (!std::is_same<Executor, ReturnExecutor<true>>::value) {
-      for (auto const &reg : *infos().getOutputRegisters()) {
+      for (auto const& reg : *infos().getOutputRegisters()) {
         for (size_t row = 0; row < blockShell->block().size(); row++) {
-          AqlValue const &val = blockShell->block().getValueReference(row, reg);
+          AqlValue const& val = blockShell->block().getValueReference(row, reg);
           TRI_ASSERT(val.isEmpty());
         }
       }
@@ -334,13 +369,17 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ConstrainedSortExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<true>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;

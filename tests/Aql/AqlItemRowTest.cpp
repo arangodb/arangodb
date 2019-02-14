@@ -90,7 +90,8 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
     auto outputRegisters = executorInfos.getOutputRegisters();
     auto registersToKeep = executorInfos.registersToKeep();
 
-    OutputAqlItemRow testee(std::move(blockShell), outputRegisters, registersToKeep);
+    OutputAqlItemRow testee(std::move(blockShell), outputRegisters,
+                            registersToKeep, executorInfos.registersToClear());
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
@@ -174,7 +175,8 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
     auto outputRegisters = executorInfos.getOutputRegisters();
     auto registersToKeep = executorInfos.registersToKeep();
 
-    OutputAqlItemRow testee(std::move(blockShell), outputRegisters, registersToKeep);
+    OutputAqlItemRow testee(std::move(blockShell), outputRegisters,
+                            registersToKeep, executorInfos.registersToClear());
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
@@ -225,7 +227,8 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
     auto outputRegisters = executorInfos.getOutputRegisters();
     auto registersToKeep = executorInfos.registersToKeep();
 
-    OutputAqlItemRow testee(std::move(blockShell), outputRegisters, registersToKeep);
+    OutputAqlItemRow testee(std::move(blockShell), outputRegisters,
+                            registersToKeep, executorInfos.registersToClear());
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
@@ -289,7 +292,8 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
     auto registersToKeep = executorInfos.registersToKeep();
     std::unordered_set<RegisterId> regsToKeep = *registersToKeep;
 
-    OutputAqlItemRow testee(std::move(blockShell), outputRegisters, registersToKeep);
+    OutputAqlItemRow testee(std::move(blockShell), outputRegisters,
+                            registersToKeep, executorInfos.registersToClear());
     {
       // Make sure this data is cleared before the assertions
       auto inputBlock = buildBlock<3>(&monitor, {{{{1}, {2}, {3}}},

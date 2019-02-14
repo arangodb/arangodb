@@ -274,7 +274,7 @@ bool RocksDBPrimaryIndexInIterator::next(LocalDocumentIdCallback const& cb, size
     if (!_iterator.valid()) {
       return false;
     }
-  } 
+  }
   return true;
 }
 
@@ -591,7 +591,7 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
     }
     // fall-through intentional here
   }
-  
+
   auto removeCollectionFromString =
       [this, &trx](bool isId, std::string& value) -> int {
     if (isId) {
@@ -605,7 +605,7 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
         if (_isRunningInCluster) {
           // translate from our own shard name to "real" collection name
           return value.compare(trx->resolver()->getCollectionName(_collection.id()));
-        } 
+        }
         return value.compare(_collection.name());
       }
 
@@ -618,7 +618,7 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
       } else if (_isRunningInCluster && collection->planId() != _collection.planId()) {
         // using a different collection
         // translate from our own shard name to "real" collection name
-        return value.compare(trx->resolver()->getCollectionName(_collection.id())); 
+        return value.compare(trx->resolver()->getCollectionName(_collection.id()));
       }
 
       // strip collection name prefix
@@ -636,7 +636,7 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
 
   for (size_t i = 0; i < n; ++i) {
     aql::AstNode const* comp = node->getMemberUnchecked(i);
-    
+
     if (comp == nullptr) {
       continue;
     }
@@ -758,7 +758,7 @@ arangodb::aql::AstNode* RocksDBPrimaryIndex::specializeCondition(
 /// @brief create the iterator, for a single attribute, IN operator
 IndexIterator* RocksDBPrimaryIndex::createInIterator(transaction::Methods* trx,
                                                      arangodb::aql::AstNode const* attrNode,
-                                                     arangodb::aql::AstNode const* valNode, 
+                                                     arangodb::aql::AstNode const* valNode,
                                                      bool ascending) {
   // _key or _id?
   bool const isId = (attrNode->stringEquals(StaticStrings::IdString));
@@ -796,7 +796,7 @@ IndexIterator* RocksDBPrimaryIndex::createInIterator(transaction::Methods* trx,
   }
 
   keys->close();
-        
+
   return new RocksDBPrimaryIndexInIterator(&_collection, trx, this, std::move(keys), !isId);
 }
 

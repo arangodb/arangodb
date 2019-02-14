@@ -70,7 +70,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
 
       THEN("the executor should return DONE with nullptr") {
         OutputAqlItemRow result{std::move(blockShell), infos.getOutputRegisters(),
-                                infos.registersToKeep()};
+                                infos.registersToKeep(), infos.registersToClear()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -87,7 +87,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
 
       THEN("the executor should first return WAIT with nullptr") {
         OutputAqlItemRow result{std::move(blockShell), infos.getOutputRegisters(),
-                                infos.registersToKeep()};
+                                infos.registersToKeep(), infos.registersToClear()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -118,7 +118,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
 
       THEN("the executor should return DONE with nullptr") {
         OutputAqlItemRow result{std::move(blockShell), infos.getOutputRegisters(),
-                                infos.registersToKeep()};
+                                infos.registersToKeep(), infos.registersToClear()};
 
         /*
          * Here we are not waiting after every row produce, because the fetcher
@@ -209,7 +209,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
 
       THEN("the executor should return DONE with nullptr") {
         OutputAqlItemRow result{std::move(blockShell), infos.getOutputRegisters(),
-                                infos.registersToKeep()};
+                                infos.registersToKeep(), infos.registersToClear()};
 
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
@@ -243,7 +243,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
 
       THEN("the executor should return DONE with nullptr") {
         OutputAqlItemRow result{std::move(blockShell), infos.getOutputRegisters(),
-                                infos.registersToKeep()};
+                                infos.registersToKeep(), infos.registersToClear()};
 
         // like the test above, except now two rows of input
         // are available

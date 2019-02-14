@@ -200,6 +200,7 @@ SET(ARANGOD_SOURCES
   Aql/Condition.cpp
   Aql/ConditionFinder.cpp
   Aql/ConstFetcher.cpp
+  Aql/ConstrainedSortExecutor.cpp
   Aql/DocumentProducingBlock.cpp
   Aql/DocumentProducingNode.cpp
   Aql/EngineInfoContainerCoordinator.cpp
@@ -216,7 +217,6 @@ SET(ARANGOD_SOURCES
   Aql/ExecutorInfos.cpp
   Aql/Expression.cpp
   Aql/FilterExecutor.cpp
-  Aql/LimitExecutor.cpp
   Aql/FixedVarExpressionContext.cpp
   Aql/Function.cpp
   Aql/Functions.cpp
@@ -226,6 +226,7 @@ SET(ARANGOD_SOURCES
   Aql/IndexExecutor.cpp
   Aql/IndexNode.cpp
   Aql/InputAqlItemRow.cpp
+  Aql/LimitExecutor.cpp
   Aql/ModificationBlocks.cpp
   Aql/ModificationNodes.cpp
   Aql/ModificationOptions.cpp
@@ -258,7 +259,7 @@ SET(ARANGOD_SOURCES
   Aql/Scopes.cpp
   Aql/SharedQueryState.cpp
   Aql/ShortStringStorage.cpp
-  Aql/ShortestPathBlock.cpp
+  Aql/ShortestPathExecutor.cpp
   Aql/ShortestPathNode.cpp
   Aql/SingleRowFetcher.cpp
   Aql/SortCondition.cpp
@@ -266,7 +267,7 @@ SET(ARANGOD_SOURCES
   Aql/SortNode.cpp
   Aql/SortRegister.cpp
   Aql/SubqueryBlock.cpp
-  Aql/TraversalBlock.cpp
+  Aql/TraversalExecutor.cpp
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalNode.cpp
   Aql/V8Executor.cpp
@@ -366,6 +367,7 @@ SET(ARANGOD_SOURCES
   Graph/GraphOperations.cpp
   Graph/NeighborsEnumerator.cpp
   Graph/PathEnumerator.cpp
+  Graph/ShortestPathFinder.cpp
   Graph/ShortestPathOptions.cpp
   Graph/ShortestPathResult.cpp
   Graph/SingleServerEdgeCursor.cpp

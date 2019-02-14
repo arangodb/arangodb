@@ -116,7 +116,6 @@ typedef std::vector<SortElement> SortElementVector;
 class ExecutionNode {
   /// @brief node type
   friend class ExecutionBlock;
-  friend class TraversalBlock;
 
  public:
   enum NodeType : int {

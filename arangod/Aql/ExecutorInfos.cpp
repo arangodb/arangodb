@@ -33,7 +33,8 @@ ExecutorInfos::ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> rea
       _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
       _registersToKeep(nullptr),
-      _registersToClear(std::move(registersToClear)) {
+      _registersToClear(std::make_shared<std::unordered_set<RegisterId>>(
+          std::move(registersToClear))) {
   // We allow these to be passed as nullptr for ease of use, but do NOT allow
   // the members to be null for simplicity and safety.
   if (_inRegs == nullptr) {
@@ -46,7 +47,7 @@ ExecutorInfos::ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> rea
   {
     auto registersToKeep = std::make_shared<std::unordered_set<RegisterId>>();
     for (RegisterId i = 0; i < nrInputRegisters; i++) {
-      if (_registersToClear.find(i) == _registersToClear.end()) {
+      if (_registersToClear->find(i) == _registersToClear->end()) {
         registersToKeep->emplace(i);
       }
     }
@@ -63,11 +64,12 @@ ExecutorInfos::ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> rea
   size_t nrThrowAwayRegisters = 0;
   for (RegisterId const outReg : *_outRegs) {
     TRI_ASSERT(outReg < nrOutputRegisters);
-          if (_registersToClear.find(outReg) != _registersToClear.end()) {
-        nrThrowAwayRegisters++;
-      }
+    if (_registersToClear->find(outReg) != _registersToClear->end()) {
+      nrThrowAwayRegisters++;
+    }
   }
-  TRI_ASSERT(_registersToClear.size() + _registersToKeep->size() == nrInputRegisters + nrThrowAwayRegisters);
+  TRI_ASSERT(_registersToClear->size() + _registersToKeep->size() ==
+             nrInputRegisters + nrThrowAwayRegisters);
 #endif
 }
 
@@ -82,7 +84,8 @@ ExecutorInfos::ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inp
       _numOutRegs(nrOutputRegisters),
       _registersToKeep(std::make_shared<std::unordered_set<RegisterId>>(
           std::move(registersToKeep))),
-      _registersToClear(std::move(registersToClear)) {
+      _registersToClear(std::make_shared<std::unordered_set<RegisterId>>(
+          std::move(registersToClear))) {
   // We allow these to be passed as nullptr for ease of use, but do NOT allow
   // the members to be null for simplicity and safety.
   if (_inRegs == nullptr) {

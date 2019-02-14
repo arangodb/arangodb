@@ -41,13 +41,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-// required for VocbaseSetup, that will allow to create a vocbase
-#include "../IResearch/StorageEngineMock.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/ViewTypesFeature.h"
-#include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+// required for QuerySetup
+#include "../Mocks/Servers.h"
 
 // Query
 #include "RestServer/AqlFeature.h"
@@ -55,60 +50,6 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
-
-namespace {
-
-struct FeatureSetup {
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
-
-  FeatureSetup() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-
-    // setup required application features
-    features.emplace_back(new arangodb::DatabaseFeature(server),
-                          false);  // required for TRI_vocbase_t::dropCollection(...)
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // required for TRI_vocbase_t instantiation
-    features.emplace_back(new arangodb::ViewTypesFeature(server),
-                          false);  // required for TRI_vocbase_t::createView(...)
-    features.emplace_back(new arangodb::ShardingFeature(server), false);
-    features.emplace_back(new arangodb::AqlFeature(server), true);  // required to create query
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // required by aql feature
-
-    for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
-    }
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->start();
-      }
-    }
-  }
-
-  ~FeatureSetup() {
-    arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
-
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->stop();
-      }
-    }
-
-    for (auto& f : features) {
-      f.first->unprepare();
-    }
-  }
-};
-
-}  // namespace
 
 namespace arangodb {
 namespace tests {
@@ -125,27 +66,11 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager{&monitor};
 
-  //// Mock of the Transaction
-  // Enough for this test, will only be passed through and accessed
-  // on documents alone.
-  fakeit::Mock<transaction::Methods> mockTrx;
-  transaction::Methods& trx = mockTrx.get();
-
-  fakeit::Mock<transaction::Context> mockContext;
-  transaction::Context& ctxt = mockContext.get();
-
-  fakeit::Fake(Dtor(mockTrx));
-  fakeit::When(Method(mockTrx, transactionContextPtr)).AlwaysReturn(&ctxt);
-  fakeit::When(Method(mockContext, getVPackOptions)).AlwaysReturn(&arangodb::velocypack::Options::Defaults);
-
-  FeatureSetup setup;  // provides features used by code below
-  (void)setup;
-
   //// create query and expression
-  TRI_vocbase_t voc{TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 42, "ulf"};
-  Query query{false, voc, QueryString("RETURN 1+1"), nullptr /*bind params*/, nullptr /*options*/, QueryPart::PART_MAIN};
-  query.injectTransaction(&trx);
-  Ast ast{&query};
+  mocks::MockAqlServer server{};
+  std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
+
+  Ast ast{fakedQuery.get()};
   // build expression to evaluate
   AstNode* one = ast.createNodeValueInt(1);
   Variable var{"a", 0};
@@ -165,7 +90,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
   CalculationExecutorInfos infos(outRegID /*out reg*/, RegisterId(1) /*in width*/,
                                  RegisterId(2) /*out width*/,
                                  std::unordered_set<RegisterId>{} /*to clear*/,
-                                 query /*query*/, expr /*expression*/,
+                                 *fakedQuery.get() /*query*/, expr /*expression*/,
                                  std::vector<Variable const*>{&var} /*expression in variables*/,
                                  std::vector<RegisterId>{inRegID} /*expression in registers*/
   );
@@ -186,7 +111,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
 
       THEN("the executor should return DONE with nullptr") {
         OutputAqlItemRow result{std::move(blockShell), infos.getOutputRegisters(),
-                                infos.registersToKeep()};
+                                infos.registersToKeep(), infos.registersToClear()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -203,7 +128,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
 
       THEN("the executor should first return WAIT with nullptr") {
         OutputAqlItemRow result{std::move(blockShell), infos.getOutputRegisters(),
-                                infos.registersToKeep()};
+                                infos.registersToKeep(), infos.registersToClear()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -232,7 +157,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
 
       THEN("the executor should return the rows") {
         OutputAqlItemRow row{std::move(blockShell), infos.getOutputRegisters(),
-                             infos.registersToKeep()};
+                             infos.registersToKeep(), infos.registersToClear()};
 
         // 1
         std::tie(state, stats) = testee.produceRow(row);
@@ -277,7 +202,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
 
       THEN("the executor should return the rows") {
         OutputAqlItemRow row{std::move(blockShell), infos.getOutputRegisters(),
-                             infos.registersToKeep()};
+                             infos.registersToKeep(), infos.registersToClear()};
 
         // waiting
         std::tie(state, stats) = testee.produceRow(row);

@@ -198,10 +198,9 @@ size_t AqlValue::length() const {
   TRI_ASSERT(false);
   return 0;
 }
-  
-/// @brief get the (array) element at position 
-AqlValue AqlValue::at(int64_t position, bool& mustDestroy, 
-                      bool doCopy) const {
+
+/// @brief get the (array) element at position
+AqlValue AqlValue::at(int64_t position, bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
     case VPACK_SLICE_POINTER:
@@ -278,8 +277,7 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy,
 }
 
 /// @brief get the (array) element at position
-AqlValue AqlValue::at(int64_t position, size_t n,
-                      bool& mustDestroy, bool doCopy) const {
+AqlValue AqlValue::at(int64_t position, size_t n, bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
     case VPACK_SLICE_POINTER:
@@ -512,8 +510,7 @@ AqlValue AqlValue::getToAttribute(bool& mustDestroy, bool doCopy) const {
 
 /// @brief get the (object) element by name
 AqlValue AqlValue::get(CollectionNameResolver const& resolver,
-                       std::string const& name, bool& mustDestroy,
-                       bool doCopy) const {
+                       std::string const& name, bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
     case VPACK_SLICE_POINTER:
@@ -557,8 +554,8 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
 
 /// @brief get the (object) element(s) by name
 AqlValue AqlValue::get(CollectionNameResolver const& resolver,
-                       std::vector<std::string> const& names, 
-                       bool& mustDestroy, bool doCopy) const {
+                       std::vector<std::string> const& names, bool& mustDestroy,
+                       bool doCopy) const {
   mustDestroy = false;
   if (names.empty()) {
     return AqlValue(AqlValueHintNull());
@@ -650,7 +647,7 @@ bool AqlValue::hasKey(std::string const& name) const {
 
 /// @brief get the numeric value of an AqlValue
 double AqlValue::toDouble() const {
-  bool failed; // will be ignored
+  bool failed;  // will be ignored
   return toDouble(failed);
 }
 

@@ -26,6 +26,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/SortRegister.h"
 #include "Aql/SortExecutor.h"
+#include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/StringBuffer.h"
@@ -295,15 +296,15 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     sortRegs.push_back(SortRegister{id, element});
 #endif
   }
-
-  SortExecutorInfos infos( std::move(sortRegs)
-                         , getRegisterPlan()->nrRegs[previousNode->getDepth()]
-                         , getRegisterPlan()->nrRegs[getDepth()]
-                         , getRegsToClear()
-                         , engine.getQuery()->trx()
-                         , _stable);
-
-  return std::make_unique<ExecutionBlockImpl<SortExecutor>>(&engine, this, std::move(infos));
+  SortExecutorInfos infos(std::move(sortRegs), _limit, engine.itemBlockManager(),
+                          getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                          getRegisterPlan()->nrRegs[getDepth()],
+                          getRegsToClear(), engine.getQuery()->trx(), _stable);
+  if (sorterType() == SorterType::Standard){
+    return std::make_unique<ExecutionBlockImpl<SortExecutor>>(&engine, this, std::move(infos));
+  } else {
+    return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor>>(&engine, this, std::move(infos));
+  }
 }
 
 /// @brief estimateCost
