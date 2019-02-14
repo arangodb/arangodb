@@ -54,7 +54,8 @@ class EnumerateListExecutorInfos : public ExecutorInfos {
                              RegisterId outputRegister,
                              RegisterId nrInputRegisters,
                              RegisterId nrOutputRegisters,
-                             std::unordered_set<RegisterId> registersToClear);
+                             std::unordered_set<RegisterId> registersToClear,
+                             std::unordered_set<RegisterId> registersToKeep);
 
   EnumerateListExecutorInfos() = delete;
   EnumerateListExecutorInfos(EnumerateListExecutorInfos &&) = default;

@@ -83,7 +83,7 @@ class InputAqlItemRow {
    *
    * @return The AqlValue stored in that variable. It is invalidated in source.
    */
-  inline AqlValue&& stealValue(RegisterId registerId) {
+  inline AqlValue stealValue(RegisterId registerId) {
     TRI_ASSERT(isInitialized());
     TRI_ASSERT(registerId < getNrRegisters());
     AqlValue a = block().getValueReference(_baseIndex, registerId);
@@ -92,7 +92,7 @@ class InputAqlItemRow {
       block().steal(a);
     }
     // This cannot fail, caller needs to take immediate owner shops.
-    return std::move(a);
+    return a;
   }
 
   std::size_t getNrRegisters() const { return block().getNrRegs(); }

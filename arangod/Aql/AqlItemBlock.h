@@ -252,6 +252,7 @@ class AqlItemBlock {
     TRI_ASSERT(currentRow != fromRow);
 
     for (auto const reg : regs) {
+      TRI_ASSERT(reg < getNrRegs());
       if (getValueReference(currentRow, reg).isEmpty()) {
         // First update the reference count, if this fails, the value is empty
         if (getValueReference(fromRow, reg).requiresDestruction()) {

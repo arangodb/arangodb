@@ -50,9 +50,10 @@ class TraversalExecutorInfos : public ExecutorInfos {
                          std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
                          RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                          std::unordered_set<RegisterId> registersToClear,
+                         std::unordered_set<RegisterId> registersToKeep,
                          std::unique_ptr<traverser::Traverser>&& traverser,
                          std::unordered_map<OutputName, RegisterId> registerMapping,
-                         std::string const& fixedSource, RegisterId inputRegister,
+                         std::string fixedSource, RegisterId inputRegister,
                          std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables);
 
   TraversalExecutorInfos() = delete;

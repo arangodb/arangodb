@@ -61,7 +61,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
   // 7th queryDepth
 
   GIVEN("there are no rows upstream") {
-    LimitExecutorInfos infos(1, 1, {}, 0, 1, true);
+    LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
@@ -105,7 +105,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
   GIVEN("there are rows in the upstream, no filter or offset defined") {
     WHEN("the producer does not wait: limit 1, offset 0, fullcount false") {
       auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-      LimitExecutorInfos infos(1, 1, {}, 0, 1, false);
+      LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, false);
       SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
@@ -128,7 +128,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
 
     WHEN("the producer does not wait: limit 1, offset 0, fullcount true") {
       auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-      LimitExecutorInfos infos(1, 1, {}, 0, 1, true);
+      LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
       SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
@@ -159,7 +159,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
 
     WHEN("the producer does not wait: limit 1, offset 1, fullcount true") {
       auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-      LimitExecutorInfos infos(1, 1, {}, 1, 1, true);
+      LimitExecutorInfos infos(1, 1, {}, {0}, 1, 1, true);
       SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
@@ -190,7 +190,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
 
     WHEN("the producer does wait: limit 1, offset 0, fullcount false") {
       auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-      LimitExecutorInfos infos(1, 1, {}, 0, 1, false);
+      LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, false);
       SingleRowFetcherHelper<false> fetcher(input->steal(), true);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};
@@ -224,7 +224,7 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
 
     WHEN("the producer does wait: limit 1, offset 0, fullcount true") {
       auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-      LimitExecutorInfos infos(1, 1, {}, 0, 1, true);
+      LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
       SingleRowFetcherHelper<false> fetcher(input->steal(), true);
       LimitExecutor testee(fetcher, infos);
       LimitStats stats{};

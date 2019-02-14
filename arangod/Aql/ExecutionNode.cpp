@@ -1197,23 +1197,48 @@ void ExecutionNode::removeDependencies() {
   _dependencies.clear();
 }
 
+std::unordered_set<RegisterId> ExecutionNode::calcRegsToKeep() const {
+  std::unordered_set<RegisterId> regsToKeep{};
+  regsToKeep.reserve(getVarsUsedLater().size());
+  ExecutionNode const* const previousNode = getFirstDependency();
+  // Only the Singleton has no previousNode, and it does not call this method.
+  TRI_ASSERT(previousNode != nullptr);
+  RegisterId const nrInRegs = getRegisterPlan()->nrRegs[previousNode->getDepth()];
+  std::unordered_map<VariableId, VarInfo> const& varInfo = getRegisterPlan()->varInfo;
+  for (auto const var : getVarsUsedLater()) {
+    auto const it = varInfo.find(var->id);
+    TRI_ASSERT(it != varInfo.end());
+    RegisterId const reg = it->second.registerId;
+    if (reg < nrInRegs) {
+      bool inserted;
+      std::tie(std::ignore, inserted) = regsToKeep.emplace(reg);
+      TRI_ASSERT(inserted);
+    }
+  }
+
+  return regsToKeep;
+};
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   std::unordered_set<RegisterId> toKeep;
+  RegisterId const nrRegs = getRegisterPlan()->nrRegs[getDepth()];
+
   if (isInSubQuery(this)) {
     auto const& varinfo = this->getRegisterPlan()->varInfo;
     for (auto const& var : this->getVarsUsedLater()) {
       auto it2 = varinfo.find(var->id);
       if (it2 != varinfo.end()) {
         auto val = (*it2).second.registerId;
-        toKeep.insert(val);
+        if (val < nrRegs) {
+          toKeep.insert(val);
+        }
       }
     }
   }
 
-  IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
-                        std::move(toKeep), getRegsToClear());
+  IdExecutorInfos infos(nrRegs, std::move(toKeep), getRegsToClear());
 
   return std::make_unique<ExecutionBlockImpl<IdExecutor>>(&engine, this, std::move(infos));
 }
@@ -1276,8 +1301,9 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
 
   EnumerateCollectionExecutorInfos infos(
       outputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
-      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), &engine, this->_collection,
-      _outVariable, this->isVarUsedLater(_outVariable), this->projections(), trxPtr,
+      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
+      &engine, this->_collection, _outVariable,
+      this->isVarUsedLater(_outVariable), this->projections(), trxPtr,
       this->coveringIndexAttributePositions(), allowCoveringIndexOptimization,
       EngineSelectorFeature::ENGINE->useRawDocumentPointers(), this->_random);
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(&engine, this,
@@ -1357,7 +1383,7 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
   EnumerateListExecutorInfos infos(inputRegister, outRegister,
                                    getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                    getRegisterPlan()->nrRegs[getDepth()],
-                                   getRegsToClear());
+                                   getRegsToClear(), calcRegsToKeep());
   return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(&engine, this,
                                                                      std::move(infos));
 }
@@ -1445,8 +1471,8 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
   TRI_ASSERT(!_fullCount || !isInSubQuery(this));
 
   LimitExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                           getRegisterPlan()->nrRegs[getDepth()],
-                           getRegsToClear(), _offset, _limit, _fullCount);
+                           getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                           calcRegsToKeep(), _offset, _limit, _fullCount);
 
   return std::make_unique<ExecutionBlockImpl<LimitExecutor>>(&engine, this,
                                                              std::move(infos));
@@ -1585,7 +1611,7 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
 
   CalculationExecutorInfos infos(
       outputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
-      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
       *engine.getQuery() /* used for v8 contexts and in expression */,
       *expression(), std::move(expInVars) /* required by expression.execute */,
       std::move(expInRegs) /* required by expression.execute */
@@ -1893,7 +1919,8 @@ std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
 
   FilterExecutorInfos infos(inputRegister,
                             getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                            getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
+                            getRegisterPlan()->nrRegs[getDepth()],
+                            getRegsToClear(), calcRegsToKeep());
   return std::make_unique<ExecutionBlockImpl<FilterExecutor>>(&engine, this,
                                                               std::move(infos));
 }
@@ -2031,7 +2058,8 @@ std::unique_ptr<ExecutionBlock> NoResultsNode::createBlock(
   ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
                       arangodb::aql::make_shared_unordered_set(),
                       getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
+                      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                      calcRegsToKeep());
   return std::make_unique<ExecutionBlockImpl<NoResultsExecutor>>(&engine, this,
                                                                  std::move(infos));
 }

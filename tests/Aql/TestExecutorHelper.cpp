@@ -72,12 +72,12 @@ std::pair<ExecutionState, FilterStats> TestExecutorHelper::produceRow(OutputAqlI
   }
 }
 
-TestExecutorHelperInfos::TestExecutorHelperInfos(
-    RegisterId inputRegister_, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear)
-    : ExecutorInfos(
-          std::make_shared<std::unordered_set<RegisterId>>(inputRegister_),
-          nullptr, nrInputRegisters, nrOutputRegisters,
-          std::move(registersToClear)),
+TestExecutorHelperInfos::TestExecutorHelperInfos(RegisterId inputRegister_,
+                                                 RegisterId nrInputRegisters,
+                                                 RegisterId nrOutputRegisters,
+                                                 std::unordered_set<RegisterId> registersToClear,
+                                                 std::unordered_set<RegisterId> registersToKeep)
+    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(inputRegister_),
+                    nullptr, nrInputRegisters, nrOutputRegisters,
+                    std::move(registersToClear), std::move(registersToKeep)),
       _inputRegister(inputRegister_) {}

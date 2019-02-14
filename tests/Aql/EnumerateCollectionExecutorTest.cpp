@@ -88,7 +88,8 @@ SCENARIO("EnumerateCollectionExecutor",
     // parameters for infos in order of ctor
     Variable outVariable("name", 1);
     bool varUsedLater = false;
-    std::unordered_set<RegisterId> const regToClear;
+    std::unordered_set<RegisterId> const regToClear{};
+    std::unordered_set<RegisterId> const regToKeep{};
     ExecutionEngine& engine = mockEngine.get();
     Collection const abc("blabli", &vocbase, arangodb::AccessMode::Type::READ);
     std::vector<std::string> const projections;
@@ -99,9 +100,9 @@ SCENARIO("EnumerateCollectionExecutor",
     bool random = false;
 
     EnumerateCollectionExecutorInfos infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/,
-                                           regToClear, &engine, &abc, &outVariable,
-                                           varUsedLater, projections, &trx,
-                                           coveringIndexAttributePositions,
+                                           regToClear, regToKeep, &engine, &abc,
+                                           &outVariable, varUsedLater, projections,
+                                           &trx, coveringIndexAttributePositions,
                                            allowCoveringIndexOptimization,
                                            useRawPointers, random);
 
