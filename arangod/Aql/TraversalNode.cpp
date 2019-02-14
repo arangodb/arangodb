@@ -28,12 +28,19 @@
 #include "TraversalNode.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
-#include "Aql/TraversalBlock.h"
+#include "Aql/TraversalExecutor.h"
 #include "Aql/Variable.h"
+#include "Cluster/ClusterTraverser.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Cluster/SmartGraphTraverser.h"
+#endif
 #include "Graph/BaseOptions.h"
+#include "Graph/SingleServerTraverser.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
@@ -379,7 +386,87 @@ void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) cons
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<TraversalBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto& varInfo = getRegisterPlan()->varInfo;
+  RegisterId inputRegister = MaxRegisterId;
+  if (usesInVariable()) {
+    auto it = varInfo.find(inVariable()->id);
+    TRI_ASSERT(it != varInfo.end());
+    inputRegisters->emplace(it->second.registerId);
+    inputRegister = it->second.registerId;
+    TRI_ASSERT(getStartVertex().empty());
+  }
+  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId> outputRegisterMapping;
+
+  if (usesVertexOutVariable()) {
+    auto it = varInfo.find(vertexOutVariable()->id);
+    TRI_ASSERT(it != varInfo.end());
+    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+    outputRegisters->emplace(it->second.registerId);
+    outputRegisterMapping.emplace(TraversalExecutorInfos::OutputName::VERTEX,
+                                  it->second.registerId);
+  }
+  if (usesEdgeOutVariable()) {
+    auto it = varInfo.find(edgeOutVariable()->id);
+    TRI_ASSERT(it != varInfo.end());
+    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+    outputRegisters->emplace(it->second.registerId);
+    outputRegisterMapping.emplace(TraversalExecutorInfos::OutputName::EDGE,
+                                  it->second.registerId);
+  }
+  if (usesPathOutVariable()) {
+    auto it = varInfo.find(pathOutVariable()->id);
+    TRI_ASSERT(it != varInfo.end());
+    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+    outputRegisters->emplace(it->second.registerId);
+    outputRegisterMapping.emplace(TraversalExecutorInfos::OutputName::PATH,
+                                  it->second.registerId);
+  }
+  auto opts = static_cast<TraverserOptions*>(options());
+  std::unique_ptr<Traverser> traverser;
+  auto trx = engine.getQuery()->trx();
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+#ifdef USE_ENTERPRISE
+    if (isSmart()) {
+      traverser.reset(
+          new arangodb::traverser::SmartGraphTraverser(opts, engines(),
+                                                       trx->vocbase().name(), trx));
+    } else {
+#endif
+      traverser.reset(new arangodb::traverser::ClusterTraverser(opts, engines(),
+                                                                trx->vocbase().name(), trx));
+#ifdef USE_ENTERPRISE
+    }
+#endif
+  } else {
+    traverser.reset(new arangodb::traverser::SingleServerTraverser(opts, trx));
+  }
+
+  // Optimized condition
+  std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables;
+  filterConditionVariables.reserve(_conditionVariables.size());
+  for (auto const& it : _conditionVariables) {
+    if (it != _tmpObjVariable) {
+      auto idIt = varInfo.find(it->id);
+      TRI_ASSERT(idIt != varInfo.end());
+      filterConditionVariables.emplace_back(std::make_pair(it, idIt->second.registerId));
+      inputRegisters->emplace(idIt->second.registerId);
+    }
+  }
+
+  TRI_ASSERT(traverser != nullptr);
+  TraversalExecutorInfos infos(inputRegisters, outputRegisters,
+                               getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                               getRegisterPlan()->nrRegs[getDepth()],
+                               getRegsToClear(), std::move(traverser),
+                               outputRegisterMapping, getStartVertex(),
+                               inputRegister, std::move(filterConditionVariables));
+
+  return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(&engine, this,
+                                                                 std::move(infos));
 }
 
 /// @brief clone ExecutionNode recursively
