@@ -59,55 +59,44 @@ OutputAqlItemRow::OutputAqlItemRow(
 }
 
 void OutputAqlItemRow::doCopyRow(const InputAqlItemRow& sourceRow, bool ignoreMissing) {
-  if (!_doNotCopyInputRow) {
-    // Note that _lastSourceRow is invalid right after construction. However,
-    // when _baseIndex > 0, then we must have seen one row already.
-    TRI_ASSERT(_baseIndex == 0 || _lastSourceRow.isInitialized());
-    bool mustClone = _baseIndex == 0 || _lastSourceRow != sourceRow;
+  // Note that _lastSourceRow is invalid right after construction. However, when
+  // _baseIndex > 0, then we must have seen one row already.
+  TRI_ASSERT(_baseIndex == 0 || _lastSourceRow.isInitialized());
+  bool mustClone = _baseIndex == 0 || _lastSourceRow != sourceRow;
 
-    if (mustClone) {
-      for (auto itemId : registersToKeep()) {
-        if (ignoreMissing && itemId >= sourceRow.getNrRegisters()) {
-          continue;
-        }
-        auto const& value = sourceRow.getValue(itemId);
-        if (!value.isEmpty()) {
-          AqlValue clonedValue = value.clone();
-          AqlValueGuard guard(clonedValue, true);
-
-          TRI_IF_FAILURE("OutputAqlItemRow::copyRow") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-          TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-
-          block().setValue(_baseIndex, itemId, clonedValue);
-          guard.steal();
-        }
+  if (mustClone) {
+    for (auto itemId : registersToKeep()) {
+      if (ignoreMissing && itemId >= sourceRow.getNrRegisters()) {
+        continue;
       }
-    } else {
-      TRI_ASSERT(_baseIndex > 0);
-      block().copyValuesFromRow(_baseIndex, registersToKeep(), _lastBaseIndex);
+      auto const& value = sourceRow.getValue(itemId);
+      if (!value.isEmpty()) {
+        AqlValue clonedValue = value.clone();
+        AqlValueGuard guard(clonedValue, true);
+
+        TRI_IF_FAILURE("OutputAqlItemRow::copyRow") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        block().setValue(_baseIndex, itemId, clonedValue);
+        guard.steal();
+      }
     }
   } else {
-    // This may only be set if the input block is the same as the output block,
-    // because it is passed through.
-    // We need to clear registers no longer needed
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(sourceRow.internalBlockIs(blockShell()));
-#endif
-    for (auto itemId : registersToClear()) {
-      block().destroyValue(_baseIndex, itemId);
-    }
+    TRI_ASSERT(_baseIndex > 0);
+    block().copyValuesFromRow(_baseIndex, registersToKeep(), _lastBaseIndex);
   }
+
   _lastBaseIndex = _baseIndex;
   _inputRowCopied = true;
   _lastSourceRow = sourceRow;
 }
 
 std::unique_ptr<AqlItemBlock> OutputAqlItemRow::stealBlock() {
-  auto block = blockShell().stealBlockCompat();
+  std::unique_ptr<AqlItemBlock> block = blockShell().stealBlockCompat();
   if (numRowsWritten() == 0) {
     // blocks may not be empty
     block.reset(nullptr);
@@ -115,6 +104,10 @@ std::unique_ptr<AqlItemBlock> OutputAqlItemRow::stealBlock() {
     // numRowsWritten() returns the exact number of rows that were fully
     // written and takes into account whether the current row was written.
     block->shrink(numRowsWritten());
+
+    if (_doNotCopyInputRow) {
+      block->clearRegisters(registersToClear());
+    }
   }
   return block;
 }
