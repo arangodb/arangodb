@@ -24,6 +24,8 @@
 #include "CollectNode.h"
 #include "Aql/Ast.h"
 #include "Aql/CollectBlock.h"
+#include "Aql/CountCollectExecutor.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/VariableGenerator.h"
 #include "Aql/WalkerWorker.h"
@@ -128,8 +130,21 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       return std::make_unique<SortedCollectBlock>(&engine, this);
     case CollectOptions::CollectMethod::DISTINCT:
       return std::make_unique<DistinctCollectBlock>(&engine, this);
-    case CollectOptions::CollectMethod::COUNT:
-      return std::make_unique<CountCollectBlock>(&engine, this);
+    case CollectOptions::CollectMethod::COUNT: {
+      ExecutionNode const* previousNode = getFirstDependency();
+      TRI_ASSERT(previousNode != nullptr);
+
+      auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
+      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+      RegisterId collectRegister = (*it).second.registerId;
+
+      CountCollectExecutorInfos infos(collectRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                                      getRegisterPlan()->nrRegs[getDepth()],
+                                      getRegsToClear());
+
+      return std::make_unique<ExecutionBlockImpl<CountCollectExecutor>>(&engine, this,
+                                                                        std::move(infos));
+    }
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "cannot instantiate CollectBlock with "
