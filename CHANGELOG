@@ -3,6 +3,8 @@ devel
 
 * added "random" masking to mask any data type, added wildcard masking
 
+* fixed JS AQL query objects with empty query strings not being recognized as AQL queries
+
 * report run-time openssl version (for dynamically linked executables)
 
 * added greeting warning about maintainer mode
