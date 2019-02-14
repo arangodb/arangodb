@@ -444,3 +444,8 @@ void BaseOptions::activateCache(bool enableDocumentCache,
   TRI_ASSERT(_cache == nullptr);
   _cache.reset(cacheFactory::CreateCache(_query, enableDocumentCache, engines));
 }
+
+void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {
+  TRI_ASSERT(_cache == nullptr);
+  _cache = std::move(testCache);
+}

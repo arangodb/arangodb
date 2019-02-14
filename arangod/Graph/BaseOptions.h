@@ -152,6 +152,8 @@ struct BaseOptions {
   EdgeCursor* nextCursorLocal(ManagedDocumentResult*, StringRef vid,
                               std::vector<LookupInfo>&);
 
+  void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
+
  protected:
   aql::Query* _query;
 

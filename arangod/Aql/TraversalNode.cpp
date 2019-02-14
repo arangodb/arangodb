@@ -399,28 +399,31 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     TRI_ASSERT(getStartVertex().empty());
   }
   auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-  std::unordered_map<OutputName, RegisterId> outputRegisterMapping;
+  std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId> outputRegisterMapping;
 
   if (usesVertexOutVariable()) {
     auto it = varInfo.find(vertexOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     outputRegisters->emplace(it->second.registerId);
-    outputRegisterMapping.emplace(OutputName::VERTEX, it->second.registerId);
+    outputRegisterMapping.emplace(TraversalExecutorInfos::OutputName::VERTEX,
+                                  it->second.registerId);
   }
   if (usesEdgeOutVariable()) {
     auto it = varInfo.find(edgeOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     outputRegisters->emplace(it->second.registerId);
-    outputRegisterMapping.emplace(OutputName::EDGE, it->second.registerId);
+    outputRegisterMapping.emplace(TraversalExecutorInfos::OutputName::EDGE,
+                                  it->second.registerId);
   }
   if (usesPathOutVariable()) {
     auto it = varInfo.find(pathOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     outputRegisters->emplace(it->second.registerId);
-    outputRegisterMapping.emplace(OutputName::PATH, it->second.registerId);
+    outputRegisterMapping.emplace(TraversalExecutorInfos::OutputName::PATH,
+                                  it->second.registerId);
   }
   auto opts = static_cast<TraverserOptions*>(options());
   std::unique_ptr<Traverser> traverser;
