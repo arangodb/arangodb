@@ -49,9 +49,6 @@ devel
   Now the length of the millisecond part is unrestricted, but the 
   millisecond precision is still limited to up to 3 digits.
 
-* fix issue #7900: Bind values of `null` are not replaced by empty string 
-  anymore, when toggling between JSON and table view in the web UI
-
 * the RocksDB primary index can now be used by the optimizer to optimize queries
   that use `_key` or `_id` for sorting or for range queries.
 
@@ -71,9 +68,6 @@ devel
 * upgraded bundled boost library to version 1.69.0
 
 * upgraded bundled curl library to version 7.63
-
-* fix issue #7900: Bind values of `null` are not replaced by empty string anymore, 
-  when toggling between JSON and table view in the web UI.
 
 * Use base64url to encode and decode JWT parts.
 
