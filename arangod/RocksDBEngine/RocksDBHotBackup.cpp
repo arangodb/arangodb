@@ -33,6 +33,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/TransactionManagerFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionManager.h"
 
 #if USE_ENTERPRISE
@@ -147,6 +148,12 @@ std::string RocksDBHotBackup::rebuildPath(const std::string & suffix) {
   ret_string = getDatabasePath();
   ret_string += TRI_DIR_SEPARATOR_CHAR;
   ret_string += "hotbackups";
+
+  // This prefix path must exist, ignore errors
+  long sysError;
+  std::string errorStr;
+  TRI_CreateRecursiveDirectory(ret_string.c_str(), sysError, errorStr);
+
   ret_string += TRI_DIR_SEPARATOR_CHAR;
   ret_string += suffix;
 
@@ -397,6 +404,7 @@ void RocksDBHotBackupCreate::executeCreate() {
       gotLock = TransactionManagerFeature::manager()->holdTransactions(_timeoutMS * 1000);
 
       if (gotLock || _forceBackup) {
+        EngineSelectorFeature::ENGINE->flushWal(true, true);
         stat = ptr->CreateCheckpoint(dirPath);
         _success = stat.ok();
       } // if

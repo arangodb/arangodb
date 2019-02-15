@@ -268,7 +268,7 @@ RocksDBEventListener::RocksDBEventListener()
 //
 RocksDBEventListener::~RocksDBEventListener() {
 
-  if (_shaThread.isRunning()) {
+  if (!_shaThread.isStopping()) {
     _shaThread.beginShutdown();
     _shaThread.signalLoop();
     _threadDone.wait();
