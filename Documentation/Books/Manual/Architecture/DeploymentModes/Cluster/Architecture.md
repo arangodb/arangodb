@@ -105,7 +105,7 @@ As you can see, the _Coordinator_ layer can be scaled and deployed independently
 from the _DBServer_ layer.
 
 {% hint 'warning' %}
-It is a best practice and a recommended approach to not run _Agent_ instances
+It is a best practice and a recommended approach to run _Agent_ instances
 on different machines than _DBServer_ instances.
 
 When deploying using the tool [_Starter_](../../../Deployment/ArangoDBStarter/README.md)
