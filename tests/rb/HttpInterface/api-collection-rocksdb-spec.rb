@@ -187,7 +187,7 @@ describe ArangoDB do
 
         cmd2 = api + "/" + @cn + "/unload"
         doc = ArangoDB.put(cmd2)
-
+        sleep(3)
         doc = ArangoDB.log_get("#{prefix}-get-collection-identifier", cmd)
 
         doc.code.should eq(200)
@@ -196,7 +196,7 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should eq(@cid)
         doc.parsed_response['name'].should eq(@cn)
-        [2, 4].should include(doc.parsed_response['status'])
+        doc.parsed_response['status'].should eq(3)
       end
 
       # get
@@ -214,7 +214,7 @@ describe ArangoDB do
 
         cmd2 = api + "/" + @cn + "/unload"
         doc = ArangoDB.put(cmd2)
-
+        sleep(3)
         doc = ArangoDB.log_get("#{prefix}-get-collection-name", cmd)
 
         doc.code.should eq(200)
@@ -223,7 +223,7 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should eq(@cid)
         doc.parsed_response['name'].should eq(@cn)
-        [2, 4].should include(doc.parsed_response['status'])
+        doc.parsed_response['status'].should eq(3)
       end
 
       # get count
