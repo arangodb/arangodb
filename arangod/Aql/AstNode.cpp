@@ -800,20 +800,20 @@ uint64_t AstNode::hashValue(uint64_t hash) const noexcept {
   if (type == NODE_TYPE_VALUE) {
     switch (value.type) {
       case VALUE_TYPE_NULL:
-        return fasthash64(static_cast<const void*>("null"), 4, hash);
+        return fasthash64(static_cast<void const*>("null"), 4, hash);
       case VALUE_TYPE_BOOL:
         if (value.value._bool) {
-          return fasthash64(static_cast<const void*>("true"), 4, hash);
+          return fasthash64(static_cast<void const*>("true"), 4, hash);
         }
-        return fasthash64(static_cast<const void*>("false"), 5, hash);
+        return fasthash64(static_cast<void const*>("false"), 5, hash);
       case VALUE_TYPE_INT:
-        return fasthash64(static_cast<const void*>(&value.value._int),
+        return fasthash64(static_cast<void const*>(&value.value._int),
                           sizeof(value.value._int), hash);
       case VALUE_TYPE_DOUBLE:
-        return fasthash64(static_cast<const void*>(&value.value._double),
+        return fasthash64(static_cast<void const*>(&value.value._double),
                           sizeof(value.value._double), hash);
       case VALUE_TYPE_STRING:
-        return fasthash64(static_cast<const void*>(getStringValue()),
+        return fasthash64(static_cast<void const*>(getStringValue()),
                           getStringLength(), hash);
     }
   }
@@ -821,7 +821,7 @@ uint64_t AstNode::hashValue(uint64_t hash) const noexcept {
   size_t const n = numMembers();
 
   if (type == NODE_TYPE_ARRAY) {
-    hash = fasthash64(static_cast<const void*>("array"), 5, hash);
+    hash = fasthash64(static_cast<void const*>("array"), 5, hash);
     for (size_t i = 0; i < n; ++i) {
       hash = getMemberUnchecked(i)->hashValue(hash);
     }
@@ -829,11 +829,11 @@ uint64_t AstNode::hashValue(uint64_t hash) const noexcept {
   }
 
   if (type == NODE_TYPE_OBJECT) {
-    hash = fasthash64(static_cast<const void*>("object"), 6, hash);
+    hash = fasthash64(static_cast<void const*>("object"), 6, hash);
     for (size_t i = 0; i < n; ++i) {
       auto sub = getMemberUnchecked(i);
       if (sub != nullptr) {
-        hash = fasthash64(static_cast<const void*>(sub->getStringValue()),
+        hash = fasthash64(static_cast<void const*>(sub->getStringValue()),
                           sub->getStringLength(), hash);
         TRI_ASSERT(sub->numMembers() > 0);
         hash = sub->getMemberUnchecked(0)->hashValue(hash);

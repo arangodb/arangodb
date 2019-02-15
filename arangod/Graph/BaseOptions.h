@@ -109,6 +109,8 @@ struct BaseOptions {
 
   transaction::Methods* trx() const;
 
+  aql::Query* query() const;
+
   TraverserCache* cache() const;
 
   /// @brief Build a velocypack for cloning in the plan.
@@ -149,6 +151,8 @@ struct BaseOptions {
 
   EdgeCursor* nextCursorLocal(ManagedDocumentResult*, StringRef vid,
                               std::vector<LookupInfo>&);
+
+  void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
 
  protected:
   aql::Query* _query;

@@ -23,15 +23,16 @@
 
 #include "IResearchViewNode.h"
 #include "Aql/Ast.h"
-#include "Aql/BasicBlocks.h"
 #include "Aql/Condition.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/NoResultsExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "AqlHelper.h"
-#include "Basics/StringUtils.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "IResearchCommon.h"
 #include "IResearchView.h"
@@ -71,8 +72,7 @@ void toVelocyPack(velocypack::Builder& builder,
   }
 }
 
-std::vector<Scorer> fromVelocyPack(
-    aql::ExecutionPlan& plan, velocypack::Slice const& slice) {
+std::vector<Scorer> fromVelocyPack(aql::ExecutionPlan& plan, velocypack::Slice const& slice) {
   if (!slice.isArray()) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "invalid json format detected while building IResearchViewNode "
@@ -121,8 +121,7 @@ std::vector<Scorer> fromVelocyPack(
 // --SECTION--                            helpers for IResearchViewNode::Options
 // -----------------------------------------------------------------------------
 
-void toVelocyPack(velocypack::Builder& builder,
-                  IResearchViewNode::Options const& options) {
+void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const& options) {
   VPackObjectBuilder objectScope(&builder);
   builder.add("waitForSync", VPackValue(options.forceSync));
 
@@ -136,8 +135,7 @@ void toVelocyPack(velocypack::Builder& builder,
   }
 }
 
-bool fromVelocyPack(velocypack::Slice optionsSlice,
-                    IResearchViewNode::Options& options) {
+bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& options) {
   if (optionsSlice.isNone()) {
     // no options specified
     return true;
@@ -191,107 +189,100 @@ bool fromVelocyPack(velocypack::Slice optionsSlice,
   return true;
 }
 
-bool parseOptions(aql::Query& query,
-                  LogicalView const& view,
-                  aql::AstNode const* optionsNode,
-                  IResearchViewNode::Options& options,
-                  std::string& error) {
-  typedef bool (*OptionHandler)(aql::Query&,
-                                LogicalView const& view,
-                                aql::AstNode const&,
-                                IResearchViewNode::Options&,
-                                std::string&);
+bool parseOptions(aql::Query& query, LogicalView const& view, aql::AstNode const* optionsNode,
+                  IResearchViewNode::Options& options, std::string& error) {
+  typedef bool (*OptionHandler)(aql::Query&, LogicalView const& view, aql::AstNode const&,
+                                IResearchViewNode::Options&, std::string&);
 
   static std::map<irs::string_ref, OptionHandler> const Handlers{
-      {"collections", [](aql::Query& query,
-                         LogicalView const& view,
-                         aql::AstNode const& value,
-                         IResearchViewNode::Options& options,
-                         std::string& error) {
-        if (value.isNullValue()) {
-          // have nothing to restrict
-          return true;
-        }
+      {"collections",
+       [](aql::Query& query, LogicalView const& view, aql::AstNode const& value,
+          IResearchViewNode::Options& options, std::string& error) {
+         if (value.isNullValue()) {
+           // have nothing to restrict
+           return true;
+         }
 
-        if (!value.isArray()) {
-           error = "null value or array of strings or numbers"
-                   " is expected for option 'collections'";
+         if (!value.isArray()) {
+           error =
+               "null value or array of strings or numbers"
+               " is expected for option 'collections'";
            return false;
-        }
+         }
 
-        auto& resolver = query.resolver();
-        arangodb::HashSet<TRI_voc_cid_t> sources;
+         auto& resolver = query.resolver();
+         arangodb::HashSet<TRI_voc_cid_t> sources;
 
-        // get list of CIDs for restricted collections
-        for (size_t i = 0, n = value.numMembers(); i < n; ++i) {
-          auto const* sub = value.getMemberUnchecked(i);
-          TRI_ASSERT(sub);
+         // get list of CIDs for restricted collections
+         for (size_t i = 0, n = value.numMembers(); i < n; ++i) {
+           auto const* sub = value.getMemberUnchecked(i);
+           TRI_ASSERT(sub);
 
-          switch (sub->value.type) {
-            case aql::VALUE_TYPE_INT: {
-              sources.insert(TRI_voc_cid_t(sub->getIntValue(true)));
-              break;
-            }
+           switch (sub->value.type) {
+             case aql::VALUE_TYPE_INT: {
+               sources.insert(TRI_voc_cid_t(sub->getIntValue(true)));
+               break;
+             }
 
-            case aql::VALUE_TYPE_STRING: {
-              auto name = sub->getString();
+             case aql::VALUE_TYPE_STRING: {
+               auto name = sub->getString();
 
-              auto collection = resolver.getCollection(name);
+               auto collection = resolver.getCollection(name);
 
-              if (!collection) {
-                // check if TRI_voc_cid_t is passed as string
-                auto const cid = NumberUtils::atoi_zero<TRI_voc_cid_t>(
-                  name.data(), name.data() + name.size()
-                );
+               if (!collection) {
+                 // check if TRI_voc_cid_t is passed as string
+                 auto const cid =
+                     NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(),
+                                                           name.data() + name.size());
 
-                collection = resolver.getCollection(cid);
+                 collection = resolver.getCollection(cid);
 
-                if (!collection) {
-                  error = "invalid data source name '" + name
-                          + "' while parsing option 'collections'";
-                  return false;
-                }
-              }
+                 if (!collection) {
+                   error = "invalid data source name '" + name +
+                           "' while parsing option 'collections'";
+                   return false;
+                 }
+               }
 
-              sources.insert(collection->id());
-              break;
-            }
+               sources.insert(collection->id());
+               break;
+             }
 
-            default: {
-              error = "null value or array of strings or numbers"
-                      " is expected for option 'collections'";
-              return false;
-            }
-          }
-        }
+             default: {
+               error =
+                   "null value or array of strings or numbers"
+                   " is expected for option 'collections'";
+               return false;
+             }
+           }
+         }
 
-        // check if CIDs are valid
-        size_t sourcesFound = 0;
-        auto checkCids = [&sources, &sourcesFound](TRI_voc_cid_t cid) {
-          sourcesFound += size_t(sources.contains(cid));
-          return true;
-        };
-        view.visitCollections(checkCids);
+         // check if CIDs are valid
+         size_t sourcesFound = 0;
+         auto checkCids = [&sources, &sourcesFound](TRI_voc_cid_t cid) {
+           sourcesFound += size_t(sources.contains(cid));
+           return true;
+         };
+         view.visitCollections(checkCids);
 
-        if (sourcesFound != sources.size()) {
-          error = "only " + basics::StringUtils::itoa(sourcesFound)
-                  + " out of " + basics::StringUtils::itoa(sources.size())
-                  + " provided collection(s) in option 'collections' are registered with the view '"
-                  + view.name() + "'";
-          return false;
-        }
+         if (sourcesFound != sources.size()) {
+           error = "only " + basics::StringUtils::itoa(sourcesFound) +
+                   " out of " + basics::StringUtils::itoa(sources.size()) +
+                   " provided collection(s) in option 'collections' are "
+                   "registered with the view '" +
+                   view.name() + "'";
+           return false;
+         }
 
-        // parsing is done
-        options.sources = std::move(sources);
-        options.restrictSources = true;
+         // parsing is done
+         options.sources = std::move(sources);
+         options.restrictSources = true;
 
-        return true;
-      }},
-      {"waitForSync", [](aql::Query& /*query*/,
-                         LogicalView const& /*view*/,
+         return true;
+       }},
+      {"waitForSync", [](aql::Query& /*query*/, LogicalView const& /*view*/,
                          aql::AstNode const& value,
-                         IResearchViewNode::Options& options,
-                         std::string& error) {
+                         IResearchViewNode::Options& options, std::string& error) {
          if (!value.isValueType(aql::VALUE_TYPE_BOOL)) {
            error = "boolean value expected for option 'waitForSync'";
            return false;
@@ -450,26 +441,19 @@ std::function<bool(TRI_voc_cid_t)> const viewIsEmpty = [](TRI_voc_cid_t) {
 ///       TransactionState as the IResearchView ViewState, therefore a separate
 ///       lock is not required to be held
 ////////////////////////////////////////////////////////////////////////////////
-class Snapshot : public IResearchView::Snapshot,
-                 private irs::util::noncopyable {
+class Snapshot : public IResearchView::Snapshot, private irs::util::noncopyable {
  public:
   typedef std::vector<std::pair<TRI_voc_cid_t, irs::sub_reader const*>> readers_t;
 
-  Snapshot(
-      readers_t&& readers,
-      uint64_t docs_count,
-      uint64_t live_docs_count
-  ) NOEXCEPT
-    : _readers(std::move(readers)),
-      _docs_count(docs_count),
-      _live_docs_count(live_docs_count) {
-  }
+  Snapshot(readers_t&& readers, uint64_t docs_count, uint64_t live_docs_count) NOEXCEPT
+      : _readers(std::move(readers)),
+        _docs_count(docs_count),
+        _live_docs_count(live_docs_count) {}
 
   /// @brief constructs snapshot from a given snapshot
   ///        according to specified set of collections
-  Snapshot(
-    const IResearchView::Snapshot& rhs,
-    arangodb::HashSet<TRI_voc_cid_t> const& collections);
+  Snapshot(const IResearchView::Snapshot& rhs,
+           arangodb::HashSet<TRI_voc_cid_t> const& collections);
 
   /// @returns corresponding sub-reader
   virtual const irs::sub_reader& operator[](size_t i) const NOEXCEPT override {
@@ -483,9 +467,7 @@ class Snapshot : public IResearchView::Snapshot,
   }
 
   /// @returns number of documents
-  virtual uint64_t docs_count() const NOEXCEPT override {
-    return _docs_count;
-  }
+  virtual uint64_t docs_count() const NOEXCEPT override { return _docs_count; }
 
   /// @returns number of live documents
   virtual uint64_t live_docs_count() const NOEXCEPT override {
@@ -493,21 +475,17 @@ class Snapshot : public IResearchView::Snapshot,
   }
 
   /// @returns total number of opened writers
-  virtual size_t size() const NOEXCEPT override {
-    return _readers.size();
-  }
+  virtual size_t size() const NOEXCEPT override { return _readers.size(); }
 
  private:
   readers_t _readers;
   uint64_t _docs_count;
   uint64_t _live_docs_count;
-}; // Snapshot
+};  // Snapshot
 
-Snapshot::Snapshot(
-    const IResearchView::Snapshot& rhs,
-    arangodb::HashSet<TRI_voc_cid_t> const& collections)
-  : _docs_count(0),
-    _live_docs_count(0) {
+Snapshot::Snapshot(const IResearchView::Snapshot& rhs,
+                   arangodb::HashSet<TRI_voc_cid_t> const& collections)
+    : _docs_count(0), _live_docs_count(0) {
   for (size_t i = 0, size = rhs.size(); i < size; ++i) {
     auto const cid = rhs.cid(i);
 
@@ -549,14 +527,11 @@ typedef std::shared_ptr<IResearchView::Snapshot const> SnapshotPtr;
 /// 		FOR x IN view OPTIONS { collections : [ 'c2' ] }
 /// 		RETURN {d, x}
 ///
-SnapshotPtr snapshotDBServer(
-    IResearchViewNode const& node,
-    transaction::Methods& trx) {
+SnapshotPtr snapshotDBServer(IResearchViewNode const& node, transaction::Methods& trx) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
-  static IResearchView::SnapshotMode const SNAPSHOT[]{
-    IResearchView::SnapshotMode::FindOrCreate,
-    IResearchView::SnapshotMode::SyncAndReplace};
+  static IResearchView::SnapshotMode const SNAPSHOT[]{IResearchView::SnapshotMode::FindOrCreate,
+                                                      IResearchView::SnapshotMode::SyncAndReplace};
 
   auto& view = LogicalView::cast<IResearchView>(*node.view());
   auto& options = node.options();
@@ -589,10 +564,8 @@ SnapshotPtr snapshotDBServer(
   }
 
   // use aliasing ctor
-  return {
-    SnapshotPtr(),
-    view.snapshot(trx, SNAPSHOT[size_t(options.forceSync)], &collections, snapshotKey)
-  };
+  return {SnapshotPtr(), view.snapshot(trx, SNAPSHOT[size_t(options.forceSync)],
+                                       &collections, snapshotKey)};
 }
 
 /// @brief Since single-server is transactional we do the following:
@@ -607,23 +580,18 @@ SnapshotPtr snapshotDBServer(
 ///      otherwise we reassemble restricted snapshot based on the
 ///      original one taken in (1) and return it
 ///
-SnapshotPtr snapshotSingleServer(
-    IResearchViewNode const& node,
-    transaction::Methods& trx) {
+SnapshotPtr snapshotSingleServer(IResearchViewNode const& node, transaction::Methods& trx) {
   TRI_ASSERT(ServerState::instance()->isSingleServer());
 
-  static IResearchView::SnapshotMode const SNAPSHOT[]{
-    IResearchView::SnapshotMode::Find,
-    IResearchView::SnapshotMode::SyncAndReplace};
+  static IResearchView::SnapshotMode const SNAPSHOT[]{IResearchView::SnapshotMode::Find,
+                                                      IResearchView::SnapshotMode::SyncAndReplace};
 
   auto& view = LogicalView::cast<IResearchView>(*node.view());
   auto& options = node.options();
 
   // use aliasing ctor
-  auto reader = SnapshotPtr(
-    SnapshotPtr(),
-    view.snapshot(trx, SNAPSHOT[size_t(options.forceSync)])
-  );
+  auto reader = SnapshotPtr(SnapshotPtr(),
+                            view.snapshot(trx, SNAPSHOT[size_t(options.forceSync)]));
 
   if (options.restrictSources && reader) {
     // reassemble reader
@@ -647,8 +615,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, size_t id,
                                      std::shared_ptr<const LogicalView> const& view,
                                      aql::Variable const& outVariable,
                                      aql::AstNode* filterCondition,
-                                     aql::AstNode* options,
-                                     std::vector<Scorer>&& scorers)
+                                     aql::AstNode* options, std::vector<Scorer>&& scorers)
     : aql::ExecutionNode(&plan, id),
       _vocbase(vocbase),
       _view(view),
@@ -940,8 +907,18 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(ServerState::instance()->isCoordinator());
 #endif
+    aql::ExecutionNode const* previousNode = getFirstDependency();
+    TRI_ASSERT(previousNode != nullptr);
+    auto it = getRegisterPlan()->varInfo.find(outVariable().id);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    aql::RegisterId outputRegister = it->second.registerId;
+    aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
+                             arangodb::aql::make_shared_unordered_set({outputRegister}),
+                             getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                             getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
 
-    return std::make_unique<aql::NoResultsBlock>(&engine, this);
+    return std::make_unique<aql::ExecutionBlockImpl<aql::NoResultsExecutor>>(&engine, this,
+                                                                             std::move(infos));
   }
 
   auto* trx = engine.getQuery()->trx();
@@ -984,7 +961,18 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   if (0 == reader->size()) {
     // nothing to query
-    return std::make_unique<aql::NoResultsBlock>(&engine, this);
+    aql::ExecutionNode const* previousNode = getFirstDependency();
+    TRI_ASSERT(previousNode != nullptr);
+    auto it = getRegisterPlan()->varInfo.find(outVariable().id);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    aql::RegisterId outputRegister = it->second.registerId;
+    aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
+                             arangodb::aql::make_shared_unordered_set({outputRegister}),
+                             getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                             getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
+
+    return std::make_unique<aql::ExecutionBlockImpl<aql::NoResultsExecutor>>(&engine, this,
+                                                                             std::move(infos));
   }
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)

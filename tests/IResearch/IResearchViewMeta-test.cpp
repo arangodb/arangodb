@@ -23,7 +23,7 @@
 
 #include "catch.hpp"
 
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #include "utils/locale_utils.hpp"
 
