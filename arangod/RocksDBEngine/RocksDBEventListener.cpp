@@ -33,7 +33,7 @@ namespace arangodb {
 
 void RocksDBEventListenerThread::run() {
 
-  while(isRunning()) {
+  while(!isStopping()) {
     try {
       {
         MUTEX_LOCKER(mutexLock, _pendingMutex);
@@ -68,7 +68,9 @@ void RocksDBEventListenerThread::run() {
       // no need for fast retry, hotbackups do not happen often
       {
         CONDITION_LOCKER(condLock, _loopingCondvar);
-        condLock.wait(std::chrono::minutes(5));
+        if (!isStopping()) {
+          condLock.wait(std::chrono::minutes(5));
+        } // if
       }
     } catch(...) {
       LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
