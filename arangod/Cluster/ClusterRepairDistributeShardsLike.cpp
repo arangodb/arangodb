@@ -412,7 +412,7 @@ ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixShard(
       createFixServerOrderOperation(collection, proto, shardId, protoShardId);
 
   if (maybeFixServerOrderOperationResult.fail()) {
-    return std::move(maybeFixServerOrderOperationResult.stealResult());
+    return std::move(maybeFixServerOrderOperationResult).result();
   }
 
   if (auto const& maybeFixServerOrderOperation =
@@ -436,7 +436,7 @@ ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> DistributeS
 
   auto collectionMapResult = readCollections(planCollections);
   if (collectionMapResult.fail()) {
-    return std::move(collectionMapResult.stealResult());
+    return std::move(collectionMapResult).result();
   }
   std::map<CollectionID, struct Collection> collectionMap = collectionMapResult.get();
   DBServers const availableDbServers = readDatabases(supervisionHealth);
@@ -490,7 +490,7 @@ ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> DistributeS
     auto beginRepairsOperation = createBeginRepairsOperation(collection, proto);
     if (beginRepairsOperation.fail()) {
       repairOperationsByCollection.emplace(collection.id,
-                                           std::move(beginRepairsOperation.stealResult()));
+                                           std::move(beginRepairsOperation).result());
       continue;
     }
     std::list<RepairOperation> repairOperations;
@@ -500,8 +500,8 @@ ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> DistributeS
         fixAllShardsOfCollection(collection, proto, availableDbServers);
 
     if (shardRepairOperationsResult.fail()) {
-      repairOperationsByCollection.emplace(collection.id,
-                                           std::move(shardRepairOperationsResult.stealResult()));
+      repairOperationsByCollection.emplace(
+          collection.id, std::move(shardRepairOperationsResult).result());
       continue;
     }
 
@@ -510,7 +510,7 @@ ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> DistributeS
     auto finishRepairsOperation = createFinishRepairsOperation(collection, proto);
     if (finishRepairsOperation.fail()) {
       repairOperationsByCollection.emplace(collection.id,
-                                           std::move(finishRepairsOperation.stealResult()));
+                                           std::move(finishRepairsOperation).result());
       continue;
     }
     repairOperations.emplace_back(std::move(finishRepairsOperation.get()));

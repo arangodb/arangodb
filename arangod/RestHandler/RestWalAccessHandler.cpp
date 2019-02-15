@@ -309,7 +309,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   }
 
   if (result.fail()) {
-    generateError(result.stealResult());
+    generateError(std::move(result).result());
     return;
   }
 

@@ -286,7 +286,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
   if (upgradeRes.fail()) {
     LOG_TOPIC(ERR, Logger::FIXME)
         << "Could not create database: " << upgradeRes.errorMessage();
-    return std::move(upgradeRes.stealResult());
+    return std::move(upgradeRes).result();
   }
 
   // Entirely Foxx related:

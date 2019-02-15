@@ -352,7 +352,7 @@ static void JS_ChecksumCollection(v8::FunctionCallbackInfo<v8::Value> const& arg
   auto result = col->checksum(withRevisions, withData);
 
   if (!result.ok()) {
-    TRI_V8_THROW_EXCEPTION(result.stealResult());
+    TRI_V8_THROW_EXCEPTION(std::move(result).result());
   }
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, result.builder().slice()));

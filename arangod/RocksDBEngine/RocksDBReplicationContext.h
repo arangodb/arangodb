@@ -151,8 +151,8 @@ class RocksDBReplicationContext {
     bool is(uint64_t code) const { return _result.is(code); }
 
     // access methods
-    Result const& result() { return _result; }
-    Result&& stealResult() { return std::move(_result); }
+    Result const& result() const& { return _result; }
+    Result&& result() && { return std::move(_result); }
 
    private:
     Result _result;

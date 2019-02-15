@@ -350,7 +350,7 @@ OperationResult GraphManager::createGraph(VPackSlice document, bool waitForSync)
 
   auto graphRes = buildGraphFromInput(graphName, document);
   if (graphRes.fail()) {
-    return OperationResult{graphRes.stealResult()};
+    return OperationResult{std::move(graphRes).result()};
   }
   // Guaranteed to not be nullptr
   std::unique_ptr<Graph> graph = std::move(graphRes.get());

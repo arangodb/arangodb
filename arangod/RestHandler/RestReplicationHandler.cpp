@@ -2189,7 +2189,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   ResultT<std::string> referenceChecksum =
       computeCollectionChecksum(readLockId, col.get());
   if (!referenceChecksum.ok()) {
-    generateError(referenceChecksum.stealResult());
+    generateError(std::move(referenceChecksum).result());
     return;
   }
 
@@ -2385,7 +2385,7 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Test if Lock " << id << " is still active.";
   auto res = isLockHeld(id);
   if (!res.ok()) {
-    generateError(res.stealResult());
+    generateError(std::move(res).result());
     return;
   }
 
@@ -2432,7 +2432,7 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
   if (!res.ok()) {
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
         << "Lock " << id << " not canceled because of: " << res.errorMessage();
-    generateError(res.stealResult());
+    generateError(std::move(res).result());
     return;
   }
 

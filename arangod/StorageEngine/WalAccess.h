@@ -72,8 +72,8 @@ struct WalAccessResult {
   void reset(Result const& other) { _result.reset(); }
 
   // access methods
-  Result const& result() { return _result; }
-  Result&& stealResult() { return std::move(_result); }
+  Result const& result() const& { return _result; }
+  Result&& result() && { return std::move(_result); }
 
  private:
   Result _result;

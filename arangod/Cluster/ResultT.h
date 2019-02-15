@@ -168,8 +168,8 @@ class ResultT {
   std::string errorMessage() const { return _result.errorMessage(); }
 
   // access methods
-  Result const& result() { return _result; }
-  Result&& stealResult() { return std::move(_result); }
+  Result const& result() const& { return _result; }
+  Result&& result() && { return std::move(_result); }
 
  protected:
   Result _result;
