@@ -61,8 +61,8 @@ different usage scenarios:
   do not need to be rebuilt in-memory so they don't influence the loading time of
   collections as other in-memory indexes do.
 
-- ttl index: the TTL index provided by ArangoDB is used for removing expired documents
-  from a collection. 
+- ttl index: the TTL index provided by ArangoDB can be used for automatically removing 
+  expired documents from a collection. 
 
   The TTL index is set up by setting an "expireAfter" value and by picking a single 
   document attribute which contains the documents' creation date and time. Documents 
