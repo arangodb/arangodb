@@ -73,7 +73,7 @@ struct WalAccessResult {
 
   // access methods
   Result const& result() const& { return _result; }
-  Result&& result() && { return std::move(_result); }
+  Result result() && { return std::move(_result); }
 
  private:
   Result _result;

@@ -169,7 +169,7 @@ class ResultT {
 
   // access methods
   Result const& result() const& { return _result; }
-  Result&& result() && { return std::move(_result); }
+  Result result() && { return std::move(_result); }
 
  protected:
   Result _result;
