@@ -352,6 +352,15 @@ std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost
 
   while (_inflight < atMost) {
     if (_buffer.empty()) {
+      if (_upstreamState == ExecutionState::DONE) {
+        _done = true;
+        // aggregate stats
+        _engine->_stats.scannedIndex += static_cast<int64_t>(_inflight);
+        size_t skipped = _inflight;
+        _inflight = 0;
+        traceSkipSomeEnd(skipped, ExecutionState::DONE);
+        return {ExecutionState::DONE, skipped};
+      }
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
       auto upstreamRes = getBlock(toFetch);
       if (upstreamRes.first == ExecutionState::WAITING) {
