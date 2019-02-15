@@ -27,7 +27,7 @@
 
 #include "catch.hpp"
 #include "../IResearch/common.h"
-#include "../IResearch/StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
 

@@ -23,7 +23,7 @@
 
 #include "catch.hpp"
 #include "common.h"
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
@@ -1235,7 +1235,7 @@ SECTION("test_tokens") {
 
     for (int64_t i = 0; i < 26; ++i) {
       bool mustDestroy;
-      auto entry = result->at(nullptr, i, mustDestroy, false);
+      auto entry = result->at(i, mustDestroy, false);
       CHECK((entry.isString()));
       auto value = arangodb::iresearch::getStringRef(entry.slice());
       CHECK((1 == value.size()));

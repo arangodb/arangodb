@@ -22,7 +22,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBEngine.h"
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
@@ -45,6 +44,7 @@
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
@@ -905,10 +905,10 @@ int RocksDBEngine::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builde
   auto bounds = RocksDBKeyBounds::DatabaseViews(vocbase.id());
   rocksdb::Slice upper = bounds.end();
   rocksdb::ColumnFamilyHandle* cf = RocksDBColumnFamily::definitions();
-  
+
   rocksdb::ReadOptions ro;
   ro.iterate_upper_bound = &upper;
-  
+
   std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(ro, cf));
   result.openArray();
   for (iter->Seek(bounds.start()); iter->Valid(); iter->Next()) {
@@ -1571,7 +1571,7 @@ void RocksDBEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
 }
-  
+
 void RocksDBEngine::disableWalFilePruning(bool disable) {
   _backgroundThread->disableWalFilePruning(disable);
 }
@@ -2142,7 +2142,7 @@ Result RocksDBEngine::lastLogger(TRI_vocbase_t& vocbase,
   builder->close();
   builderSPtr = std::move(builder);
 
-  return std::move(rep);
+  return std::move(rep).result();
 }
 
 WalAccess const* RocksDBEngine::walAccess() const {

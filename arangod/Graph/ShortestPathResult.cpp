@@ -63,3 +63,12 @@ AqlValue ShortestPathResult::vertexToAqlValue(TraverserCache* cache, size_t posi
   TRI_ASSERT(position < _vertices.size());
   return cache->fetchVertexAqlResult(_vertices[position]);
 }
+
+void ShortestPathResult::addVertex(arangodb::StringRef v) {
+  TRI_ASSERT(_edges.size() == _vertices.size());
+  _vertices.emplace_back(v);
+}
+void ShortestPathResult::addEdge(arangodb::graph::EdgeDocumentToken e) {
+  TRI_ASSERT(_edges.size() + 1 == _vertices.size());
+  _edges.emplace_back(e);
+}

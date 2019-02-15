@@ -54,8 +54,6 @@ Result& Result::operator=(Result&& other) noexcept {
   return *this;
 }
 
-Result::~Result() {}
-
 bool Result::ok() const noexcept { return _errorNumber == TRI_ERROR_NO_ERROR; }
 
 bool Result::fail() const noexcept { return !ok(); }

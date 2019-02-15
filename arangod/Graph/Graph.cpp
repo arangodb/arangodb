@@ -148,7 +148,7 @@ void Graph::parseEdgeDefinitions(VPackSlice edgeDefs) {
   for (auto const& def : VPackArrayIterator(edgeDefs)) {
     auto edgeDefRes = addEdgeDefinition(def);
     if (edgeDefRes.fail()) {
-      THROW_ARANGO_EXCEPTION(edgeDefRes.copy_result());
+      THROW_ARANGO_EXCEPTION(std::move(edgeDefRes).result());
     }
   }
 }
@@ -496,7 +496,7 @@ bool Graph::removeEdgeDefinition(std::string const& edgeDefinitionName) {
 
 Result Graph::replaceEdgeDefinition(EdgeDefinition const& edgeDefinition) {
   if (removeEdgeDefinition(edgeDefinition.getName())) {
-    return addEdgeDefinition(edgeDefinition);
+    return addEdgeDefinition(edgeDefinition).result();
   }
   // Graph doesn't contain this edge definition, no need to do anything.
   return TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST;
@@ -527,7 +527,7 @@ ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(VPackSlice const& edgeDe
   auto res = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
 
   if (res.fail()) {
-    return res.copy_result();
+    return std::move(res).result();
   }
   TRI_ASSERT(res.ok());
 
