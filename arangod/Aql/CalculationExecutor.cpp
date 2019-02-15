@@ -47,12 +47,14 @@ void executeExpression(CalculationExecutorInfos& info, InputAqlItemRow& input,
 }  // namespace _detail
 
 CalculationExecutorInfos::CalculationExecutorInfos(
-    RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear, Query& query, Expression& expression,
+    RegisterId outputRegister, RegisterId nrInputRegisters,
+    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+    std::unordered_set<RegisterId> registersToKeep, Query& query, Expression& expression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs)
     : ExecutorInfos(make_shared_unordered_set(expInRegs.begin(), expInRegs.end()),
-                    make_shared_unordered_set({outputRegister}), nrInputRegisters,
-                    nrOutputRegisters, std::move(registersToClear)),
+                    make_shared_unordered_set({outputRegister}),
+                    nrInputRegisters, nrOutputRegisters,
+                    std::move(registersToClear), std::move(registersToKeep)),
       _outputRegisterId(outputRegister),
       _query(query),
       _expression(expression),

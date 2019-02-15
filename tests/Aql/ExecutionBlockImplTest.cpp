@@ -98,8 +98,8 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
   ExecutionNode const* node = nullptr;
 
   // Executor Infos
-  TestExecutorHelperInfos infos(0, 1, 1, {});
-  TestEmptyExecutorHelperInfos emptyInfos(0, 1, 1, {});
+  TestExecutorHelperInfos infos(0, 1, 1, {}, {0});
+  TestEmptyExecutorHelperInfos emptyInfos(0, 1, 1, {}, {0});
 
   GIVEN("there is a block in the upstream with no rows inside") {
     VPackBuilder input;

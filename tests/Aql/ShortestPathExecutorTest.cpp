@@ -317,6 +317,7 @@ static void RunTestWithFullCombination(ShortestPathExecutorInfos::InputVertex&& 
                                   2,
                                   4,
                                   {},
+                                  {0, 1},
                                   std::move(finderPtr),
                                   std::move(registerMapping),
                                   std::move(source),

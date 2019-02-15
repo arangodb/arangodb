@@ -461,7 +461,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   TraversalExecutorInfos infos(inputRegisters, outputRegisters,
                                getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                getRegisterPlan()->nrRegs[getDepth()],
-                               getRegsToClear(), std::move(traverser),
+                               getRegsToClear(), calcRegsToKeep(), std::move(traverser),
                                outputRegisterMapping, getStartVertex(),
                                inputRegister, std::move(filterConditionVariables));
 

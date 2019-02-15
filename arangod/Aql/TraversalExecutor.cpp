@@ -33,17 +33,18 @@ using namespace arangodb::traverser;
 
 TraversalExecutorInfos::TraversalExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear, std::unique_ptr<Traverser>&& traverser,
+    std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
+    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+    std::unordered_set<RegisterId> registersToKeep, std::unique_ptr<Traverser>&& traverser,
     std::unordered_map<OutputName, RegisterId> registerMapping,
-    std::string const& fixedSource, RegisterId inputRegister,
+    std::string fixedSource, RegisterId inputRegister,
     std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables)
-    : ExecutorInfos(inputRegisters, outputRegisters, nrInputRegisters,
-                    nrOutputRegisters, registersToClear),
+    : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
+                    nrInputRegisters, nrOutputRegisters,
+                    std::move(registersToClear), std::move(registersToKeep)),
       _traverser(std::move(traverser)),
-      _registerMapping(registerMapping),
-      _fixedSource(fixedSource),
+      _registerMapping(std::move(registerMapping)),
+      _fixedSource(std::move(fixedSource)),
       _inputRegister(inputRegister),
       _filterConditionVariables(std::move(filterConditionVariables)) {
   TRI_ASSERT(_traverser != nullptr);

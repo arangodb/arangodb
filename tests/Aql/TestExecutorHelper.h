@@ -45,8 +45,9 @@ class SingleRowFetcher;
 class TestExecutorHelperInfos : public ExecutorInfos {
  public:
   TestExecutorHelperInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
-                      RegisterId nrOutputRegisters,
-                      std::unordered_set<RegisterId> registersToClear);
+                          RegisterId nrOutputRegisters,
+                          std::unordered_set<RegisterId> registersToClear,
+                          std::unordered_set<RegisterId> registersToKeep);
 
   TestExecutorHelperInfos() = delete;
   TestExecutorHelperInfos(TestExecutorHelperInfos &&) = default;

@@ -55,7 +55,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
   auto blockShell =
       std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
 
-  FilterExecutorInfos infos(0, 1, 1, {});
+  FilterExecutorInfos infos(0, 1, 1, {}, {});
 
   GIVEN("there are no rows upstream") {
     VPackBuilder input;

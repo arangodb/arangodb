@@ -47,8 +47,9 @@ class SingleRowFetcher;
 class LimitExecutorInfos : public ExecutorInfos {
  public:
   LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                     std::unordered_set<RegisterId> registersToClear, size_t offset,
-                     size_t limit, bool fullCount);
+                     std::unordered_set<RegisterId> registersToClear,
+                     std::unordered_set<RegisterId> registersToKeep,
+                     size_t offset, size_t limit, bool fullCount);
 
   LimitExecutorInfos() = delete;
   LimitExecutorInfos(LimitExecutorInfos&&) = default;

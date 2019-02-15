@@ -92,7 +92,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
 
   SortExecutorInfos infos(std::move(sortRegisters),
                           /*limit (ignored for default sort)*/ 0,
-                          itemBlockManager, 1, 1, {}, &trx, false);
+                          itemBlockManager, 1, 1, {}, {0}, &trx, false);
   auto blockShell =
       std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
 
