@@ -106,7 +106,7 @@ from the _DBServer_ layer.
 
 {% hint 'warning' %}
 It is a best practice and a recommended approach to not run _Agent_ instances
-on the same machines where _DBServer_ instances are running.
+on different machines than _DBServer_ instances.
 
 When deploying using the tool [_Starter_](../../../Deployment/ArangoDBStarter/README.md)
 this can be achieved by using the options `--cluster.start-dbserver=false` and
