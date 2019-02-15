@@ -105,3 +105,35 @@ exports.deriveTestSuite = function (deriveFrom, deriveTo, namespace) {
     deriveTo[targetTestCase] = deriveFrom[testcase];
   }
 };
+
+exports.deriveTestSuiteWithamespace = function (deriveFrom, deriveTo, namespace) {
+    let rc = {};
+    for (let testcase in deriveTo) {
+	let targetTestCase = testcase + namespace;
+	if (testcase === "setUp" ||
+            testcase === "tearDown" ||
+            testcase === "setUpAll" ||
+            testcase === "tearDownAll") {
+	    targetTestCase = testcase;
+	}
+	if (rc.hasOwnProperty(targetTestCase)) {
+	    throw("Duplicate testname - rc already has the property " + targetTestCase);
+	}
+	rc[targetTestCase] = deriveTo[testcase];
+    }
+
+    for (let testcase in deriveFrom) {
+	let targetTestCase = testcase + namespace;
+	if (testcase === "setUp" ||
+            testcase === "tearDown" ||
+            testcase === "setUpAll" ||
+            testcase === "tearDownAll") {
+	    targetTestCase = testcase;
+	}
+	if (rc.hasOwnProperty(targetTestCase)) {
+	    throw("Duplicate testname - rc already has the property " + targetTestCase);
+	}
+	rc[targetTestCase] = deriveFrom[testcase];
+    }
+    return rc;
+};
