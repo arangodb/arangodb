@@ -30,7 +30,10 @@
 
 'use strict';
 var jsunity = require('jsunity');
-const expect = require('chai').expect;
+const testHelper = require('@arangodb/test-helper');
+const isEqual = testHelper.isEqual;
+const deriveTestSuite = testHelper.deriveTestSuite;
+const deriveTestSuiteWithamespace = testHelper.deriveTestSuiteWithamespace;
 const users = require('@arangodb/users');
 const helper = require('@arangodb/user-helper');
 const tasks = require('@arangodb/tasks');
@@ -47,8 +50,6 @@ const testViewType = "arangosearch";
 const testCol1Name = `${namePrefix}Col1New`;
 const testCol2Name = `${namePrefix}Col2New`;
 const keySpaceId = 'task_update_view_keyspace';
-const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
-const deriveTestSuiteWithamespace = require('@arangodb/test-helper').deriveTestSuiteWithamespace;
 const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
 const dbLevel = helper.dbLevel;
@@ -446,8 +447,8 @@ if (hasIResearch(db)) {
 			    tasks.register(task);
 			    wait(keySpaceId, name);
 			    assertTrue(getKey(keySpaceId, `${name}_status`), `${name} could not update the view with sufficient rights`);
-			    assertEqual(rootGetViewProps(testViewName), rootGetDefaultViewProps(), 'View properties update reported success, but properties were not updated');
-			} else {
+                assertTrue(isEqual(rootGetViewProps(testViewName, true), rootGetDefaultViewProps()),
+			   'View properties update reported success, but properties were not updated')			} else {
 			    tasks.register(task);
 			    wait(keySpaceId, name);
 			    assertFalse(getKey(keySpaceId, `${name}_status`), `${name} could update the view with insufficient rights`);
@@ -461,7 +462,7 @@ if (hasIResearch(db)) {
 			    checkError(e);
 			    return;
 			} finally {
-			    expect(getKey(keySpaceId, `${name}_status`)).to.equal(false, `${name} could update the view with insufficient rights`);
+			    assertFalse(getKey(keySpaceId, `${name}_status`), `${name} could update the view with insufficient rights`);
 			}
 		    }
 		},
