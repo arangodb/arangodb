@@ -22,7 +22,6 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBReplicationContext.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -36,6 +35,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBReplicationContext.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Utils/DatabaseGuard.h"
@@ -166,7 +166,7 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
     }
     numberDocuments = rcoll->numberDocuments();
     lazyCreateSnapshot();
-  } else {             // fetch non-exclusive
+  } else {  // fetch non-exclusive
     numberDocuments = rcoll->numberDocuments();
   }
   TRI_ASSERT(_snapshot != nullptr);
@@ -333,13 +333,13 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
   Result rv;
   {
     if (0 == cid || _snapshot == nullptr) {
-      return RocksDBReplicationResult{TRI_ERROR_BAD_PARAMETER, _snapshotTick};
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
 
     MUTEX_LOCKER(writeLocker, _contextLock);
     cIter = getCollectionIterator(vocbase, cid, /*sorted*/ true, /*create*/ true);
     if (!cIter || !cIter->sorted() || !cIter->iter) {
-      return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _snapshotTick);
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
   }
 
@@ -453,13 +453,13 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
   Result rv;
   {
     if (0 == cid || _snapshot == nullptr) {
-      return RocksDBReplicationResult{TRI_ERROR_BAD_PARAMETER, _snapshotTick};
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
 
     MUTEX_LOCKER(writeLocker, _contextLock);
     cIter = getCollectionIterator(vocbase, cid, /*sorted*/ true, /*create*/ false);
     if (!cIter || !cIter->sorted() || !cIter->iter) {
-      return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _snapshotTick);
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
   }
 
@@ -567,13 +567,13 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   Result rv;
   {
     if (0 == cid || _snapshot == nullptr) {
-      return RocksDBReplicationResult{TRI_ERROR_BAD_PARAMETER, _snapshotTick};
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
 
     MUTEX_LOCKER(writeLocker, _contextLock);
     cIter = getCollectionIterator(vocbase, cid, /*sorted*/ true, /*create*/ true);
     if (!cIter || !cIter->sorted() || !cIter->iter) {
-      return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _snapshotTick);
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
   }
 
