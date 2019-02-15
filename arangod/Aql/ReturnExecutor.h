@@ -25,6 +25,8 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
 
 namespace arangodb {
@@ -36,11 +38,8 @@ namespace aql {
 
 template <bool>
 class SingleRowFetcher;
-class AqlItemMatrix;
 class ExecutorInfos;
 class NoStats;
-class OutputAqlItemRow;
-struct SortRegister;
 
 class ReturnExecutorInfos : public ExecutorInfos {
  public:
@@ -78,7 +77,7 @@ class ReturnExecutorInfos : public ExecutorInfos {
 /**
  * @brief Implementation of Return Node
  */
-template<bool passBlocksThrough>
+template <bool passBlocksThrough>
 class ReturnExecutor {
  public:
   struct Properties {
@@ -98,7 +97,39 @@ class ReturnExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  inline std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output) {
+    ExecutionState state;
+    ReturnExecutor::Stats stats;
+    InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+    std::tie(state, inputRow) = _fetcher.fetchRow();
+
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(!inputRow);
+      return {state, stats};
+    }
+
+    if (!inputRow) {
+      TRI_ASSERT(state == ExecutionState::DONE);
+      return {state, stats};
+    }
+
+    TRI_ASSERT(passBlocksThrough == _infos.returnInheritedResults());
+    if (_infos.returnInheritedResults()) {
+      output.copyRow(inputRow);
+    } else {
+      AqlValue val = inputRow.stealValue(_infos.getInputRegisterId());
+      AqlValueGuard guard(val, true);
+      TRI_IF_FAILURE("ReturnBlock::getSome") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+      output.moveValueInto(_infos.getOutputRegisterId(), inputRow, guard);
+    }
+
+    if (_infos.doCount()) {
+      stats.incrCounted();
+    }
+    return {state, stats};
+  }
 
  private:
   ReturnExecutorInfos& _infos;
