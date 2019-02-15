@@ -31,18 +31,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-// Missing functionality
-//
-// RegisterId ReturnBlock::returnInheritedResults() {
-//   _returnInheritedResults = true;
-//
-//   auto ep = ExecutionNode::castTo<ReturnNode const*>(getPlanNode());
-//   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
-//   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
-//
-//   return it->second.registerId;
-// }
-
 ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
                                          RegisterId nrOutputRegisters,
                                          bool doCount, bool returnInheritedResults)
@@ -63,43 +51,6 @@ ReturnExecutor<passBlocksThrough>::ReturnExecutor(Fetcher& fetcher, ReturnExecut
 
 template <bool passBlocksThrough>
 ReturnExecutor<passBlocksThrough>::~ReturnExecutor() = default;
-
-template <bool passBlocksThrough>
-std::pair<ExecutionState, typename ReturnExecutor<passBlocksThrough>::Stats>
-ReturnExecutor<passBlocksThrough>::produceRow(OutputAqlItemRow& output) {
-  ExecutionState state;
-  ReturnExecutor::Stats stats;
-  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  std::tie(state, inputRow) = _fetcher.fetchRow();
-
-  if (state == ExecutionState::WAITING) {
-    TRI_ASSERT(!inputRow);
-    return {state, stats};
-  }
-
-  if (!inputRow) {
-    TRI_ASSERT(state == ExecutionState::DONE);
-    return {state, stats};
-  }
-
-  TRI_ASSERT(passBlocksThrough == _infos.returnInheritedResults());
-  if (_infos.returnInheritedResults()) {
-    output.copyRow(inputRow);
-  } else {
-    AqlValue val = inputRow.stealValue(_infos.getInputRegisterId());
-    AqlValueGuard guard(val, true);
-    TRI_IF_FAILURE("ReturnBlock::getSome") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    output.cloneValueInto(_infos.getOutputRegisterId(), inputRow, val);
-    guard.steal();
-  }
-
-  if (_infos.doCount()) {
-    stats.incrCounted();
-  }
-  return {state, stats};
-}
 
 template class ::arangodb::aql::ReturnExecutor<true>;
 template class ::arangodb::aql::ReturnExecutor<false>;
