@@ -72,7 +72,6 @@ class TraversalNode : public GraphNode {
   };
 
   friend class ExecutionBlock;
-  friend class TraversalBlock;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
