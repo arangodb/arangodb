@@ -3,8 +3,8 @@ arangosh&gt; <span class="hljs-keyword">var</span> stmt = db._createStatement(
 arangosh&gt; stmt.parse();
 { 
   <span class="hljs-string">"bindVars"</span> : [ 
-    <span class="hljs-string">"@collection"</span>, 
-    <span class="hljs-string">"bar"</span> 
+    <span class="hljs-string">"bar"</span>, 
+    <span class="hljs-string">"@collection"</span> 
   ], 
   <span class="hljs-string">"collections"</span> : [ ], 
   <span class="hljs-string">"ast"</span> : [ 
