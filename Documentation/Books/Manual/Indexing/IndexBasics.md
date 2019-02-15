@@ -257,12 +257,12 @@ TTL (time-to-live) Index
 The TTL index provided by ArangoDB can be used for automatically removing expired documents 
 from a collection. 
 
-A TTL index is set up by setting an "expireAfter" value and by picking a single 
+A TTL index is set up by setting an `expireAfter` value and by picking a single 
 document attribute which contains the documents' creation date and time. Documents 
-are expired after "expireAfter" seconds after their creation time. The creation time
+are expired after `expireAfter` seconds after their creation time. The creation time
 is specified as a numeric timestamp with millisecond precision.
 
-For example, if "expireAfter" is set to 600 seconds (10 minutes) and the index
+For example, if `expireAfter` is set to 600 seconds (10 minutes) and the index
 attribute is "creationDate" and there is the following document:
 
     { "creationDate" : 1550165973964 }
