@@ -173,7 +173,7 @@ Synchronous replication works on a per-shard basis. Using the option _replicatio
 one configures for each _collection_ how many copies of each _shard_ are kept in the Cluster.
 
 {% hint 'danger' %}
-If a collection have a _replication factor_ equal to 1, its data is **not**
+If a collection has a _replication factor_ of 1, its data is **not**
 replicated in other _DBServers_. This exposes you to a risk of data loss, if
 the machine where the _DBServer_ that is storing this collection permanently
 fails.
