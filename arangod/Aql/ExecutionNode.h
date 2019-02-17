@@ -116,7 +116,6 @@ typedef std::vector<SortElement> SortElementVector;
 class ExecutionNode {
   /// @brief node type
   friend class ExecutionBlock;
-  friend class TraversalBlock;
 
  public:
   enum NodeType : int {
@@ -540,6 +539,8 @@ class ExecutionNode {
     _regsToClear = std::move(toClear);
   }
 
+  std::unordered_set<RegisterId> calcRegsToKeep() const;
+
  protected:
   /// @brief node id
   size_t _id;
@@ -681,7 +682,6 @@ class EnumerateCollectionNode : public ExecutionNode,
 class EnumerateListNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class EnumerateListBlock;
   friend class RedundantCalculationsReplacer;
 
  public:
@@ -951,7 +951,6 @@ class SubqueryNode : public ExecutionNode {
 /// @brief class FilterNode
 class FilterNode : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class FilterBlock;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructors for various arguments, always with offset and limit
@@ -1049,7 +1048,6 @@ struct SortInformation {
 /// @brief class ReturnNode
 class ReturnNode : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class ReturnBlock;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructors for various arguments, always with offset and limit
@@ -1101,7 +1099,6 @@ class ReturnNode : public ExecutionNode {
 /// @brief class NoResultsNode
 class NoResultsNode : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class NoResultsBlock;
 
   /// @brief constructor with an id
  public:

@@ -290,10 +290,6 @@
 
 #define TRI_SC_NPROCESSORS_ONLN 1
 
-#if __llvm__ == 1
-#define thread_local __thread
-#endif
-
 // alignment and limits
 
 #if __WORDSIZE == 64
@@ -788,8 +784,6 @@ typedef unsigned char bool;
 // windows uses _alloca instead of alloca
 
 #define alloca _alloca
-
-#define thread_local __declspec(thread)
 
 // alignment and limits
 

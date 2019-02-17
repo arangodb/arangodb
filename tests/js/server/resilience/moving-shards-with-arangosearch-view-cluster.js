@@ -1041,14 +1041,6 @@ function MovingShardsWithViewSuite (options) {
       waitAndAssertViewEqualCollectionServers();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief just to allow a trailing comma at the end of the last test
-////////////////////////////////////////////////////////////////////////////////
-
-    testDummy : function () {
-      assertEqual(12, 12);
-    }
-
   };
 }
 

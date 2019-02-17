@@ -24,7 +24,7 @@
 #include "catch.hpp"
 #include "common.h"
 
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"
@@ -283,7 +283,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
     }
 
     CHECK((trx.commit().ok()));
-    CHECK(view->commit().ok());
+    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").code)); // commit
   }
 
   // d.name == 'A' OR d.name == 'Q', d.seq DESC

@@ -26,8 +26,8 @@
 #include <velocypack/velocypack-aliases.h>
 
 // test setup
-#include "IResearch/StorageEngineMock.h"
 #include "IResearch/common.h"
+#include "Mocks/StorageEngineMock.h"
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExecutionPlan.h"

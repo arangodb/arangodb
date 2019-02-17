@@ -92,16 +92,6 @@ class VelocyPackHelper {
     size_t operator()(arangodb::velocypack::Slice const&) const noexcept;
   };
 
-  struct VPackKeyHash {
-    size_t operator()(arangodb::velocypack::Slice const&) const;
-  };
-
-  struct VPackHashedStringHash {
-    size_t operator()(VPackHashedSlice const& slice) const noexcept {
-      return static_cast<size_t>(slice.hash);
-    }
-  };
-
   /// @brief equality comparator for VelocyPack values
   struct VPackEqual {
    private:
@@ -121,16 +111,6 @@ class VelocyPackHelper {
                     arangodb::velocypack::Slice const&) const noexcept;
   };
 
-  /// @brief Comparator that only takes _id/_key into account.
-  struct VPackIdEqual {
-    bool operator()(arangodb::velocypack::Slice const&,
-                    arangodb::velocypack::Slice const&) const;
-  };
-
-  struct VPackHashedStringEqual {
-    bool operator()(VPackHashedSlice const&, VPackHashedSlice const&) const noexcept;
-  };
-
   /// @brief less comparator for VelocyPack values
   template <bool useUtf8>
   struct VPackLess {
@@ -142,23 +122,6 @@ class VelocyPackHelper {
     inline bool operator()(arangodb::velocypack::Slice const& lhs,
                            arangodb::velocypack::Slice const& rhs) const {
       return VelocyPackHelper::compare(lhs, rhs, useUtf8, options, lhsBase, rhsBase) < 0;
-    }
-
-    arangodb::velocypack::Options const* options;
-    arangodb::velocypack::Slice const* lhsBase;
-    arangodb::velocypack::Slice const* rhsBase;
-  };
-
-  template <bool useUtf8>
-  struct VPackGreater {
-    VPackGreater(arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults,
-                 arangodb::velocypack::Slice const* lhsBase = nullptr,
-                 arangodb::velocypack::Slice const* rhsBase = nullptr)
-        : options(options), lhsBase(lhsBase), rhsBase(rhsBase) {}
-
-    inline bool operator()(arangodb::velocypack::Slice const& lhs,
-                           arangodb::velocypack::Slice const& rhs) const {
-      return VelocyPackHelper::compare(lhs, rhs, useUtf8, options, lhsBase, rhsBase) > 0;
     }
 
     arangodb::velocypack::Options const* options;

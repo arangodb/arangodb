@@ -148,7 +148,7 @@ class SupervisedScheduler : public Scheduler {
   void startOneThread();
   void stopOneThread();
 
-  void cleanupAbandonedThreads();
+  bool cleanupAbandonedThreads();
   void sortoutLongRunningThreads();
 };
 }  // namespace arangodb

@@ -45,7 +45,6 @@
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/FlushThread.h"
-#include "Utils/FlushTransaction.h"
 
 namespace arangodb {
 
@@ -58,21 +57,24 @@ namespace arangodb {
   class FlushFeature::FlushSubscriptionBase
       : public FlushFeature::FlushSubscription {
    public:
-    TRI_voc_tick_t currentTick() const noexcept { return _currentTick; }
+    /// @brief earliest tick that can be released
+    virtual TRI_voc_tick_t tick() const = 0;
 
    protected:
-    TRI_voc_tick_t _currentTick;
     TRI_voc_tick_t const _databaseId;
     arangodb::StorageEngine const& _engine;
+    TRI_voc_tick_t _tickCurrent; // last successful tick, should be replayed
+    TRI_voc_tick_t _tickPrevious; // previous successful tick, should be replayed
     std::string const _type;
 
     FlushSubscriptionBase(
         std::string const& type, // subscription type
         TRI_voc_tick_t databaseId, // vocbase id
         arangodb::StorageEngine const& engine // vocbase engine
-    ): _currentTick(0), // default (smallest) tick for StorageEngine
-       _databaseId(databaseId),
+    ): _databaseId(databaseId),
        _engine(engine),
+       _tickCurrent(0), // default (smallest) tick for StorageEngine
+       _tickPrevious(0), // default (smallest) tick for StorageEngine
        _type(type) {
     }
   };
@@ -255,6 +257,11 @@ class MMFilesFlushMarker final: public arangodb::MMFilesWalMarker {
   arangodb::velocypack::Slice _slice;
 };
 
+/// @note0 in MMFiles WAL file removal is based on:
+///        min(releaseTick(...), addLogfileBarrier(...))
+/// @note1 releaseTick(...) also controls WAL collection/compaction/flush, thus
+///        it must always be released up to the currentTick() or the
+///        aforementioned will wait indefinitely
 class MMFilesFlushSubscription final
     : public arangodb::FlushFeature::FlushSubscriptionBase {
  public:
@@ -264,7 +271,18 @@ class MMFilesFlushSubscription final
     arangodb::StorageEngine const& engine, // vocbase engine
     arangodb::MMFilesLogfileManager& wal // marker write destination
   ): arangodb::FlushFeature::FlushSubscriptionBase(type, databaseId, engine),
+     _barrier(wal.addLogfileBarrier( // earliest possible barrier
+       databaseId, 0, std::numeric_limits<double>::infinity() // args
+     )),
      _wal(wal) {
+  }
+
+  ~MMFilesFlushSubscription() {
+    try {
+      _wal.removeLogfileBarrier(_barrier);
+    } catch (...) {
+      // NOOP
+    }
   }
 
   arangodb::Result commit(arangodb::velocypack::Slice const& data) override {
@@ -276,16 +294,34 @@ class MMFilesFlushSubscription final
     builder.close();
 
     MMFilesFlushMarker marker(_databaseId, builder.slice());
+    auto tick = _engine.currentTick(); // get before writing marker to ensure nothing between tick and marker
     auto res = arangodb::Result(_wal.allocateAndWrite(marker, true).errorCode);
 
     if (res.ok()) {
-      _currentTick = _engine.currentTick();
+      auto barrier = _wal.addLogfileBarrier( // barier starting from previous marker
+        _databaseId, _tickPrevious, std::numeric_limits<double>::infinity() // args
+      );
+
+      try {
+        _wal.removeLogfileBarrier(_barrier);
+        _barrier = barrier;
+      } catch (...) {
+        _wal.removeLogfileBarrier(barrier);
+      }
+
+      _tickPrevious = _tickCurrent;
+      _tickCurrent = tick;
     }
 
     return res;
   }
 
+  virtual TRI_voc_tick_t tick() const override {
+    return _engine.currentTick(); // must always be currentTick() or WAL collection/compaction/flush will wait indefinitely
+  }
+
  private:
+  TRI_voc_tick_t _barrier;
   arangodb::MMFilesLogfileManager& _wal;
 };
 
@@ -380,6 +416,8 @@ class RocksDBFlushMarker {
   arangodb::velocypack::Slice _slice;
 };
 
+/// @note in RocksDB WAL file removal is based on:
+///       min(releaseTick(...)) only (contrary to MMFiles)
 class RocksDBFlushSubscription final
     : public arangodb::FlushFeature::FlushSubscriptionBase {
  public:
@@ -408,13 +446,19 @@ class RocksDBFlushSubscription final
     batch.PutLogData(rocksdb::Slice(buf));
 
     static const rocksdb::WriteOptions op;
+    auto tick = _engine.currentTick(); // get before writing marker to ensure nothing between tick and marker
     auto res = arangodb::rocksutils::convertStatus(_wal.Write(op, &batch));
 
     if (res.ok()) {
-      _currentTick = _engine.currentTick();
+      _tickPrevious = _tickCurrent;
+      _tickCurrent = tick;
     }
 
     return res;
+  }
+
+  virtual TRI_voc_tick_t tick() const override {
+    return _tickPrevious;
   }
 
  private:
@@ -594,6 +638,9 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
         Result commit(velocypack::Slice const& data) override {
           return _delegate(_type, _vocbase, data);
         }
+        virtual TRI_voc_tick_t tick() const override {
+          return 0; // default (smallest) tick for StorageEngine
+        }
       };
       auto subscription = std::make_shared<DelegatingFlushSubscription>( // wrapper
         type, vocbase, _defaultFlushSubscription // args
@@ -637,7 +684,7 @@ arangodb::Result FlushFeature::releaseUnusedTicks() {
       if (!entry || entry.use_count() == 1) {
         itr = _flushSubscriptions.erase(itr); // remove stale
       } else {
-        minTick = std::min(minTick, entry->currentTick());
+        minTick = std::min(minTick, entry->tick());
         ++itr;
       }
     }
@@ -722,59 +769,6 @@ void FlushFeature::stop() {
 }
 
 void FlushFeature::unprepare() {
-  WRITE_LOCKER(locker, _callbacksLock);
-  _callbacks.clear();
-}
-
-void FlushFeature::registerCallback(void* ptr, FlushFeature::FlushCallback const& cb) {
-  WRITE_LOCKER(locker, _callbacksLock);
-  _callbacks.emplace(ptr, std::move(cb));
-  LOG_TOPIC(TRACE, arangodb::Logger::FLUSH) << "registered new flush callback";
-}
-
-bool FlushFeature::unregisterCallback(void* ptr) {
-  WRITE_LOCKER(locker, _callbacksLock);
-
-  auto it = _callbacks.find(ptr);
-  if (it == _callbacks.end()) {
-    return false;
-  }
-
-  _callbacks.erase(it);
-  LOG_TOPIC(TRACE, arangodb::Logger::FLUSH) << "unregistered flush callback";
-  return true;
-}
-
-void FlushFeature::executeCallbacks() {
-  std::vector<FlushTransactionPtr> transactions;
-
-  {
-    READ_LOCKER(locker, _callbacksLock);
-    transactions.reserve(_callbacks.size());
-
-    // execute all callbacks. this will create as many transactions as
-    // there are callbacks
-    for (auto const& cb : _callbacks) {
-      // copy elision, std::move(..) not required
-      LOG_TOPIC(TRACE, arangodb::Logger::FLUSH) << "executing flush callback";
-      transactions.emplace_back(cb.second());
-    }
-  }
-
-  // TODO: make sure all data is synced
-
-  // commit all transactions
-  for (auto const& trx : transactions) {
-    LOG_TOPIC(DEBUG, Logger::FLUSH)
-        << "commiting flush transaction '" << trx->name() << "'";
-
-    Result res = trx->commit();
-
-    LOG_TOPIC_IF(ERR, Logger::FLUSH, res.fail())
-        << "could not commit flush transaction '" << trx->name()
-        << "': " << res.errorMessage();
-    // TODO: honor the commit results here
-  }
 }
 
 }  // namespace arangodb

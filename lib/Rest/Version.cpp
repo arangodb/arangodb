@@ -120,7 +120,8 @@ void Version::initialize() {
   Values["fd-setsize"] = arangodb::basics::StringUtils::itoa(FD_SETSIZE);
   Values["full-version-string"] = getVerboseVersionString();
   Values["icu-version"] = getICUVersion();
-  Values["openssl-version"] = getOpenSSLVersion();
+  Values["openssl-version-compile-time"] = getOpenSSLVersion(true);
+  Values["openssl-version-run-time"] = getOpenSSLVersion(false);
   Values["platform"] = TRI_PLATFORM;
   Values["reactor-type"] = getBoostReactorType();
   Values["server-version"] = getServerVersion();
@@ -305,14 +306,24 @@ std::string Version::getV8Version() {
 }
 
 /// @brief get OpenSSL version
-std::string Version::getOpenSSLVersion() {
+std::string Version::getOpenSSLVersion(bool compileTime) {
+  if (compileTime) {
 #ifdef OPENSSL_VERSION_TEXT
-  return std::string(OPENSSL_VERSION_TEXT);
+    return std::string(OPENSSL_VERSION_TEXT);
 #elif defined(ARANGODB_OPENSSL_VERSION)
-  return std::string(ARANGODB_OPENSSL_VERSION);
+    return std::string(ARANGODB_OPENSSL_VERSION);
 #else
-  return std::string();
+    return std::string("openssl (unknown version)");
 #endif
+  } else {
+    char const* v = SSLeay_version(SSLEAY_VERSION);
+
+    if (v == nullptr) {
+      return std::string("openssl (unknown version)");
+    }
+
+    return std::string(v);
+  }
 }
 
 /// @brief get vpack version
@@ -419,7 +430,7 @@ std::string Version::getVerboseVersionString() {
           << "VPack " << getVPackVersion() << ", "
           << "RocksDB " << getRocksDBVersion() << ", "
           << "ICU " << getICUVersion() << ", "
-          << "V8 " << getV8Version() << ", " << getOpenSSLVersion();
+          << "V8 " << getV8Version() << ", " << getOpenSSLVersion(false);
 
   return version.str();
 }
