@@ -116,7 +116,7 @@ if the desired _Agency_ _size_ is 5.
 {% endhint %}
 
 {% hint 'info' %}
-The difference instances part of a single Cluster are supposed to be run in the same
+The different instances that form a Cluster are supposed to be run in the same
 _Data Center_ (DC), with reliable and high-speed network connection between
 all the machines participating to the Cluster.
 
