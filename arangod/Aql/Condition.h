@@ -181,7 +181,7 @@ class Condition {
   /// @brief: note: index may be a nullptr
   static void collectOverlappingMembers(ExecutionPlan const* plan, Variable const* variable,
                                         AstNode const* andNode, AstNode const* otherAndNode,
-                                        std::unordered_set<size_t>& toRemove,
+                                        arangodb::HashSet<size_t>& toRemove,
                                         Index const* index, bool isFromTraverser);
 
   /// @brief return the condition root

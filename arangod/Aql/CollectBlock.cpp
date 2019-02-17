@@ -148,7 +148,8 @@ SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine, CollectNode cons
       _lastBlock(nullptr),
       _expressionRegister(ExecutionNode::MaxRegisterId),
       _collectRegister(ExecutionNode::MaxRegisterId),
-      _variableNames() {
+      _variableNames(),
+      _registersInherited(false) {
   for (auto const& p : en->_groupVariables) {
     // We know that planRegisters() has been run, so
     // getPlanNode()->_registerPlan is set up
@@ -257,6 +258,10 @@ std::pair<ExecutionState, arangodb::Result> SortedCollectBlock::initializeCursor
   _currentGroup.reset();
   _pos = 0;
   _lastBlock = nullptr;
+  if (_result != nullptr) {
+    auto r = _result.release();
+    returnBlock(r);
+  }
 
   return res;
 }
@@ -354,6 +359,8 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     // group.
     size_t maxBlockSize = _groupRegisters.empty() ? 1 : atMost;
     _result.reset(requestBlock(maxBlockSize, nrOutRegs));
+    // We got a new block, we need to inherit registers for it
+    _registersInherited = false;
 
     TRI_ASSERT(nrInRegs <= _result->getNrRegs());
   }
@@ -386,12 +393,9 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     AqlItemBlock* cur = _buffer.front();
     TRI_ASSERT(cur != nullptr);
 
-    // TODO this is dirty. if you have an idea how to improve this, please do.
-    // Can't we omit this?
-    if (_lastBlock == nullptr) {
-      // call only on the first row of the first block
-      TRI_ASSERT(_pos == 0);
+    if (!skipping && !_registersInherited) {
       inheritRegisters(cur, _result.get(), 0);
+      _registersInherited = true;
     }
 
     // if the current block changed, move the last block's infos into the
@@ -478,9 +482,9 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
                                    size_t row, bool skipping) {
   TRI_ASSERT(res != nullptr);
 
-  // TODO removing this block doesn't seem to have any effect.
-  // find out if it's necessary, and why, and what it has to do with
-  // the inheritRegisters call in getOrSkipSome.
+  // Copy input registers from the first row. Note that the input variables that
+  // are still available after the block can only be constant over all input
+  // rows.
   if (row > 0 && !skipping) {
     // re-use already copied AqlValues
     TRI_ASSERT(cur != nullptr);

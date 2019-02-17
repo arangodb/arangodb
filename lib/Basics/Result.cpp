@@ -20,8 +20,8 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Result.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Result.h"
 
 using namespace arangodb;
 
@@ -57,8 +57,6 @@ Result& Result::operator=(Result&& other) noexcept {
   _errorMessage = std::move(other._errorMessage);
   return *this;
 }
-
-Result::~Result() {}
 
 bool Result::ok() const noexcept { return _errorNumber == TRI_ERROR_NO_ERROR; }
 

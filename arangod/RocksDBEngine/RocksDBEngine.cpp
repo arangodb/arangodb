@@ -22,7 +22,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBEngine.h"
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
@@ -45,6 +44,7 @@
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
@@ -902,16 +902,17 @@ int RocksDBEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
 }
 
 int RocksDBEngine::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) {
-  rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(
-      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
-
-  result.openArray();
-
   auto bounds = RocksDBKeyBounds::DatabaseViews(vocbase.id());
+  rocksdb::Slice upper = bounds.end();
+  rocksdb::ColumnFamilyHandle* cf = RocksDBColumnFamily::definitions();
 
-  for (iter->Seek(bounds.start());
-       iter->Valid() && iter->key().compare(bounds.end()) < 0; iter->Next()) {
+  rocksdb::ReadOptions ro;
+  ro.iterate_upper_bound = &upper;
+
+  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(ro, cf));
+  result.openArray();
+  for (iter->Seek(bounds.start()); iter->Valid(); iter->Next()) {
+    TRI_ASSERT(iter->key().compare(bounds.end()) < 0);
     auto slice = VPackSlice(iter->value().data());
 
     LOG_TOPIC(TRACE, Logger::VIEWS) << "got view slice: " << slice.toJson();
@@ -1571,6 +1572,14 @@ void RocksDBEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) 
   }
 }
 
+void RocksDBEngine::disableWalFilePruning(bool disable) {
+  _backgroundThread->disableWalFilePruning(disable);
+}
+
+bool RocksDBEngine::disableWalFilePruning() const {
+  return _backgroundThread->disableWalFilePruning();
+}
+
 Result RocksDBEngine::registerRecoveryHelper(std::shared_ptr<RocksDBRecoveryHelper> helper) {
   try {
     _recoveryHelpers.emplace_back(helper);
@@ -2133,7 +2142,7 @@ Result RocksDBEngine::lastLogger(TRI_vocbase_t& vocbase,
   builder->close();
   builderSPtr = std::move(builder);
 
-  return std::move(rep);
+  return std::move(rep).result();
 }
 
 WalAccess const* RocksDBEngine::walAccess() const {
@@ -2175,10 +2184,6 @@ void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
   if (tick > _releasedTick) {
     _releasedTick = tick;
   }
-}
-
-bool RocksDBEngine::canUseRangeDeleteInWal() const {
-  return ServerState::instance()->isSingleServer();
 }
 
 }  // namespace arangodb

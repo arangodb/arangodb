@@ -23,13 +23,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ExecutionBlock.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
+#include "ExecutionBlock.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -64,11 +64,11 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _shutdownResult(TRI_ERROR_NO_ERROR),
       _pos(0),
       _done(false),
-      _profile(engine->getQuery()->queryOptions().profile),
+      _profile(engine->getQuery()->queryOptions().getProfileLevel()),
       _getSomeBegin(0.0),
       _upstreamState(ExecutionState::HASMORE),
       _skipped(0),
-      _collector(&engine->_itemBlockManager) {
+      _collector(&engine->itemBlockManager()) {
   TRI_ASSERT(_trx != nullptr);
 
   // already insert ourselves into the statistics results
@@ -315,18 +315,18 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlock::getSome
 
 /// @brief request an AqlItemBlock from the memory manager
 AqlItemBlock* ExecutionBlock::requestBlock(size_t nrItems, RegisterId nrRegs) {
-  return _engine->_itemBlockManager.requestBlock(nrItems, nrRegs);
+  return _engine->itemBlockManager().requestBlock(nrItems, nrRegs);
 }
 
 /// @brief return an AqlItemBlock to the memory manager
-void ExecutionBlock::returnBlock(AqlItemBlock*& block) {
-  _engine->_itemBlockManager.returnBlock(block);
+void ExecutionBlock::returnBlock(AqlItemBlock*& block) noexcept {
+  _engine->itemBlockManager().returnBlock(block);
 }
 
 /// @brief return an AqlItemBlock to the memory manager, but ignore nullptr
-void ExecutionBlock::returnBlockUnlessNull(AqlItemBlock*& block) {
+void ExecutionBlock::returnBlockUnlessNull(AqlItemBlock*& block) noexcept {
   if (block != nullptr) {
-    _engine->_itemBlockManager.returnBlock(block);
+    _engine->itemBlockManager().returnBlock(block);
   }
 }
 
@@ -617,6 +617,9 @@ ExecutionState ExecutionBlock::getHasMoreState() {
 
 RegisterId ExecutionBlock::getNrInputRegisters() const {
   ExecutionNode const* previousNode = getPlanNode()->getFirstDependency();
+  if (previousNode == nullptr) {
+    return 0;
+  }
   TRI_ASSERT(previousNode != nullptr);
   RegisterId const inputNrRegs =
       previousNode->getRegisterPlan()->nrRegs[previousNode->getDepth()];
@@ -632,3 +635,4 @@ RegisterId ExecutionBlock::getNrOutputRegisters() const {
 
   return outputNrRegs;
 }
+

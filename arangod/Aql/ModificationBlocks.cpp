@@ -231,7 +231,9 @@ std::pair<ExecutionState, arangodb::Result> ModificationBlock::initializeCursor(
 int ModificationBlock::extractKey(AqlValue const& value, std::string& key) {
   if (value.isObject()) {
     bool mustDestroy;
-    AqlValue sub = value.get(_trx, StaticStrings::KeyString, mustDestroy, false);
+    auto resolver = _trx->resolver();
+    TRI_ASSERT(resolver != nullptr);
+    AqlValue sub = value.get(*resolver, StaticStrings::KeyString, mustDestroy, false);
     AqlValueGuard guard(sub, mustDestroy);
 
     if (sub.isString()) {
@@ -250,14 +252,16 @@ int ModificationBlock::extractKeyAndRev(AqlValue const& value, std::string& key,
                                         std::string& rev) {
   if (value.isObject()) {
     bool mustDestroy;
-    AqlValue sub = value.get(_trx, StaticStrings::KeyString, mustDestroy, false);
+    auto resolver = _trx->resolver();
+    TRI_ASSERT(resolver != nullptr);
+    AqlValue sub = value.get(*resolver, StaticStrings::KeyString, mustDestroy, false);
     AqlValueGuard guard(sub, mustDestroy);
 
     if (sub.isString()) {
       key.assign(sub.slice().copyString());
 
       bool mustDestroyToo;
-      AqlValue subTwo = value.get(_trx, StaticStrings::RevString, mustDestroyToo, false);
+      AqlValue subTwo = value.get(*resolver, StaticStrings::RevString, mustDestroyToo, false);
       AqlValueGuard guard(subTwo, mustDestroyToo);
       if (subTwo.isString()) {
         rev.assign(subTwo.slice().copyString());

@@ -55,7 +55,7 @@ class SupervisedSchedulerThread : virtual public Thread {
  public:
   explicit SupervisedSchedulerThread(SupervisedScheduler& scheduler)
       : Thread("Scheduler"), _scheduler(scheduler) {}
-  ~SupervisedSchedulerThread() { shutdown(); }
+  ~SupervisedSchedulerThread() {} // shutdown is called by derived implementation!
 
  protected:
   SupervisedScheduler& _scheduler;
@@ -65,6 +65,7 @@ class SupervisedSchedulerManagerThread final : public SupervisedSchedulerThread 
  public:
   explicit SupervisedSchedulerManagerThread(SupervisedScheduler& scheduler)
       : Thread("SchedMan"), SupervisedSchedulerThread(scheduler) {}
+  ~SupervisedSchedulerManagerThread() { shutdown(); }
   void run() override { _scheduler.runSupervisor(); };
 };
 
@@ -72,6 +73,7 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
  public:
   explicit SupervisedSchedulerWorkerThread(SupervisedScheduler& scheduler)
       : Thread("SchedWorker"), SupervisedSchedulerThread(scheduler) {}
+  ~SupervisedSchedulerWorkerThread() { shutdown(); }
   void run() override { _scheduler.runWorker(); };
 };
 
@@ -168,9 +170,8 @@ void SupervisedScheduler::shutdown() {
     }
 
     LOG_TOPIC(ERR, Logger::THREADS)
-        << "Schduler received shutdown, but there are still tasks on the "
-           "queue: "
-        << "jobsSubmitted=" << jobsSubmitted << " jobsDone=" << jobsDone;
+        << "Scheduler received shutdown, but there are still tasks on the "
+        << "queue: jobsSubmitted=" << jobsSubmitted << " jobsDone=" << jobsDone;
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
@@ -179,6 +180,16 @@ void SupervisedScheduler::shutdown() {
 
   while (_numWorker > 0) {
     stopOneThread();
+  }
+  
+  int tries = 0;
+  while (!cleanupAbandonedThreads()) {
+    if (++tries > 5 * 5) {
+      // spam only after some time (5 seconds here)
+      LOG_TOPIC(WARN, Logger::THREADS)
+      << "Scheduler received shutdown, but there are still abandoned threads";
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
 }
 
@@ -279,7 +290,7 @@ void SupervisedScheduler::runSupervisor() {
   }
 }
 
-void SupervisedScheduler::cleanupAbandonedThreads() {
+bool SupervisedScheduler::cleanupAbandonedThreads() {
   auto i = _abandonedWorkerStates.begin();
 
   while (i != _abandonedWorkerStates.end()) {
@@ -290,6 +301,8 @@ void SupervisedScheduler::cleanupAbandonedThreads() {
       i++;
     }
   }
+  
+  return _abandonedWorkerStates.empty();
 }
 
 void SupervisedScheduler::sortoutLongRunningThreads() {

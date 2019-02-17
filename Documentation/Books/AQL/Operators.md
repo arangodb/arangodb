@@ -30,7 +30,7 @@ otherwise.
 
 The comparison operators accept any data types for the first and second operands. 
 However, *IN* and *NOT IN* will only return a meaningful result if their right-hand 
-operand is a string, and *LIKE* will only execute if both operands are string values.
+operand is an array, and *LIKE* will only execute if both operands are string values.
 The comparison operators will not perform any implicit type casts if the compared 
 operands have different or non-sensible types.
 

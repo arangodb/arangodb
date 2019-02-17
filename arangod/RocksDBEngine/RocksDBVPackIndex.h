@@ -200,18 +200,18 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void afterTruncate(TRI_voc_tick_t tick) override;
 
  protected:
-  Result insertInternal(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& documentId,
-                        velocypack::Slice const& doc, Index::OperationMode mode) override;
+  Result insert(transaction::Methods& trx, RocksDBMethods* methods,
+                LocalDocumentId const& documentId,
+                velocypack::Slice const& doc, Index::OperationMode mode) override;
 
-  Result removeInternal(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& documentId,
-                        velocypack::Slice const& doc, Index::OperationMode mode) override;
+  Result remove(transaction::Methods& trx, RocksDBMethods* methods,
+                LocalDocumentId const& documentId,
+                velocypack::Slice const& doc, Index::OperationMode mode) override;
 
-  Result updateInternal(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& oldDocumentId,
-                        velocypack::Slice const& oldDoc, LocalDocumentId const& newDocumentId,
-                        velocypack::Slice const& newDoc, Index::OperationMode mode) override;
+  Result update(transaction::Methods& trx, RocksDBMethods* methods,
+                LocalDocumentId const& oldDocumentId,
+                velocypack::Slice const& oldDoc, LocalDocumentId const& newDocumentId,
+                velocypack::Slice const& newDoc, Index::OperationMode mode) override;
 
  private:
   /// @brief return the number of paths

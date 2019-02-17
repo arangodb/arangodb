@@ -237,7 +237,8 @@ arangodb::Result dumpJsonObjects(arangodb::DumpFeature::JobData& jobData,
   file.write(result->c_str(), result->length());
 
   if (file.status().fail()) {
-    return {TRI_ERROR_CANNOT_WRITE_FILE};
+    return {TRI_ERROR_CANNOT_WRITE_FILE, std::string("cannot write file '") + file.path() +
+                                             "': " + file.status().errorMessage()};
   }
 
   jobData.stats.totalWritten += static_cast<uint64_t>(result->length());
@@ -476,15 +477,16 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
       dumpData = jobData.maskings->shouldDumpData(jobData.name);
     }
 
-    if (dumpData) {
-      // save the actual data
-      auto file = jobData.directory.writableFile(jobData.name + "_" +
-                                                     hexString + ".data.json",
+    // always create the file so that arangorestore does not complain
+    auto file = jobData.directory.writableFile(jobData.name + "_" + hexString +
+                                                   ".data.json",
                                                  true);
       if (!::fileOk(file.get())) {
         return ::fileError(file.get(), true);
       }
 
+    if (dumpData) {
+      // save the actual data
       if (jobData.options.clusterMode) {
         result = ::handleCollectionCluster(client, jobData, *file);
       } else {
@@ -588,7 +590,8 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
                      new UInt64Parameter(&_options.tickEnd));
 
   options->addOption("--maskings", "file with maskings definition",
-                     new StringParameter(&_options.maskingsFile));
+                     new StringParameter(&_options.maskingsFile))
+                     .setIntroducedIn(30322).setIntroducedIn(30402);
 }
 
 void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -610,7 +613,7 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
   _options.maxChunkSize =
       boost::algorithm::clamp(_options.maxChunkSize, _options.initialChunkSize, ::MaxChunkSize);
 
-  if (_options.tickStart < _options.tickEnd) {
+  if (_options.tickEnd < _options.tickStart) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid values for --tick-start or --tick-end";
     FATAL_ERROR_EXIT();
@@ -668,6 +671,12 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client, std::string co
   VPackSlice const body = parsedBody->slice();
   if (!body.isObject()) {
     return ::ErrorMalformedJsonResponse;
+  }
+  
+  // use tick provided by server if user did not specify one
+  if (_options.tickEnd == 0 && !_options.clusterMode) {
+    uint64_t tick = basics::VelocyPackHelper::stringUInt64(body, "tick");
+    _options.tickEnd = tick;
   }
 
   // get the collections list
@@ -982,7 +991,8 @@ void DumpFeature::start() {
     maskings::MaskingsResult m = maskings::Maskings::fromFile(_options.maskingsFile);
 
     if (m.status != maskings::MaskingsResult::VALID) {
-      LOG_TOPIC(FATAL, Logger::CONFIG) << m.message;
+      LOG_TOPIC(FATAL, Logger::CONFIG)
+          << m.message << " in maskings file '" << _options.maskingsFile << "'";
       FATAL_ERROR_EXIT();
     }
 
