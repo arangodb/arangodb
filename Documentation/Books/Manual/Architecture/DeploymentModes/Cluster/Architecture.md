@@ -177,18 +177,14 @@ one configures for each _collection_ how many copies of each _shard_ are kept in
 If a collection has a _replication factor_ of 1, its data is **not**
 replicated to other _DBServers_. This exposes you to a risk of data loss, if
 the machine running the _DBServer_ with the only copy of the data fails permanently.
-{% endhint %}
 
-{% hint 'warning' %} 
 The _replication factor_ has to be set to a value equals or higher than 2
 to achieve minimal data redundancy via the synchronous replication.
 
 An equal-or-higher-than 2 _replication factor_ has to be set **explicitly**
 when the collection is created, or can be set later at run time if you forgot
 to set it at creation time.
-{% endhint %}
 
-{% hint 'tip' %}
 When using a Cluster, please make sure all the collections that are important
 (and should not be lost in any case) have a _replication factor_ equal or higher
 than 2.
