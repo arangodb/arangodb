@@ -238,7 +238,7 @@ replicate it to the _follower_.
    }
    ```
 
-Obviously, synchronous replication involves a certain increased latency for
+Obviously, synchronous replication comes at the cost of an increased latency for
 write operations, simply because there is one more network hop within the
 Cluster for every request. Therefore the user can set the _replicationFactor_
 to 1, which means that only one copy of each shard is kept, thereby
