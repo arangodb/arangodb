@@ -181,9 +181,7 @@ the machine running the _DBServer_ with the only copy of the data fails permanen
 {% hint 'warning' %} 
 The _replication factor_ has to be set to a value equals or higher than 2
 to achieve minimal data redundancy via the synchronous replication.
-{% endhint %}
 
-{% hint 'warning' %}
 An equal-or-higher-than 2 _replication factor_ has to be set **explicitly**
 when the collection is created, or can be set later at run time if you forgot
 to set it at creation time.
