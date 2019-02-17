@@ -4,7 +4,8 @@ Cluster Architecture
 The Cluster architecture of ArangoDB is a _CP_ master/master model with no
 single point of failure. 
 
-With "CP" we mean that in the presence of a
+With "CP" in terms of the [CAP theorem](https://en.wikipedia.org/wiki/CAP_theorem)
+we mean that in the presence of a
 network partition, the database prefers internal consistency over
 availability. With "master/master" we mean that clients can send their
 requests to an arbitrary node, and experience the same view on the
