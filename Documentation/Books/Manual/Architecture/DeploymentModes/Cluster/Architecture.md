@@ -175,7 +175,7 @@ one configures for each _collection_ how many copies of each _shard_ are kept in
 {% hint 'danger' %}
 If a collection has a _replication factor_ of 1, its data is **not**
 replicated to other _DBServers_. This exposes you to a risk of data loss, if
-the machine where the _DBServer_ that is storing this collection permanently
+the machine running the _DBServer_ with the only copy of the data fails permanently.
 fails.
 {% endhint %}
 
