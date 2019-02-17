@@ -75,7 +75,7 @@ They should not be accessed from the outside but indirectly through the
 _Coordinators_. They may also execute queries in part or as a whole when
 asked by a _Coordinator_.
 
-See [below](#sharding) for more information on sharding.
+See [Sharding](#sharding) below for more information.
 
 Many sensible configurations
 ----------------------------
