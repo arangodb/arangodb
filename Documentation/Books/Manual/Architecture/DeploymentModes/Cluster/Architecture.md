@@ -393,4 +393,4 @@ starting all the needed instances, by using the tool
 Docker, in Mesos or DC/OS, and in Kubernetes.
 
 See the [Cluster Deployment](../../../Deployment/Cluster/README.md)
-for instructions.
+chapter for instructions.
