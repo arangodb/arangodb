@@ -115,7 +115,7 @@ bool isInSubQuery(ExecutionNode const* node) {
   while (current != nullptr && current->hasDependency()) {
     current = current->getFirstDependency();
   }
-  if (current == nullptr) {
+  if (ADB_UNLIKELY(current == nullptr)) {
     // shouldn't happen in reality, just to please the compiler
     return false;
   }
