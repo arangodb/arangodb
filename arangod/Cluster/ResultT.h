@@ -58,7 +58,7 @@ namespace arangodb {
 //   return result;
 // .
 template <typename T>
-class ResultT : public arangodb::Result {
+class ResultT {
  public:
   ResultT static success(T const& val) {
     return ResultT(val, TRI_ERROR_NO_ERROR);
@@ -89,7 +89,7 @@ class ResultT : public arangodb::Result {
   template <typename U = T, typename = typename std::enable_if<!std::is_convertible<U, decltype(ResultT<U>::_errorNumber)>::value>::type>
   // These are not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ResultT(Result const& other) : Result(other) {
+  ResultT(Result const& other) : _result(other) {
     // .ok() is not allowed here, as _val should be expected to be initialized
     // iff .ok() is true.
     TRI_ASSERT(other.fail());
@@ -97,7 +97,7 @@ class ResultT : public arangodb::Result {
 
   template <typename U = T, typename = typename std::enable_if<!std::is_convertible<U, decltype(ResultT<U>::_errorNumber)>::value>::type>
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ResultT(Result&& other) : Result(std::move(other)) {
+  ResultT(Result&& other) : _result(std::move(other)) {
     // .ok() is not allowed here, as _val should be expected to be initialized
     // iff .ok() is true.
     TRI_ASSERT(other.fail());
@@ -173,26 +173,48 @@ class ResultT : public arangodb::Result {
     return false;
   }
 
+  template <typename U>
+  bool operator==(ResultT<U> const& other) const {
+    if (this->fail() && other.fail()) {
+      return this->errorNumber() == other.errorNumber() &&
+             this->errorMessage() == other.errorMessage();
+    }
+
+    return false;
+  }
+
+  // forwarded methods
+  bool ok() const { return _result.ok(); }
+  bool fail() const { return _result.fail(); }
+  bool is(uint64_t code) { return _result.is(code); }
+  int errorNumber() const { return _result.errorNumber(); }
+  std::string errorMessage() const { return _result.errorMessage(); }
+
+  // access methods
+  Result const& result() const& { return _result; }
+  Result result() && { return std::move(_result); }
+
  protected:
+  Result _result;
   boost::optional<T> _val;
 
   ResultT(boost::optional<T>&& val_, int errorNumber)
-      : Result(errorNumber), _val(std::move(val_)) {}
+      : _result(errorNumber), _val(std::move(val_)) {}
 
   ResultT(boost::optional<T>&& val_, int errorNumber, std::string const& errorMessage)
-      : Result(errorNumber, errorMessage), _val(val_) {}
+      : _result(errorNumber, errorMessage), _val(val_) {}
 
   ResultT(boost::optional<T> const& val_, int errorNumber)
-      : Result(errorNumber), _val(std::move(val_)) {}
+      : _result(errorNumber), _val(std::move(val_)) {}
 
   ResultT(boost::optional<T> const& val_, int errorNumber, std::string const& errorMessage)
-      : Result(errorNumber, errorMessage), _val(val_) {}
+      : _result(errorNumber, errorMessage), _val(val_) {}
 
   ResultT(boost::optional<T>&& val_, Result const& result)
-      : Result(result), _val(std::move(val_)) {}
+      : _result(result), _val(std::move(val_)) {}
 
   ResultT(boost::optional<T>&& val_, Result&& result)
-      : Result(std::move(result)), _val(std::move(val_)) {}
+      : _result(std::move(result)), _val(std::move(val_)) {}
 };
 
 }  // namespace arangodb

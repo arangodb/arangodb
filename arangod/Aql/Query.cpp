@@ -673,7 +673,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
             }
           }
 
-          _engine->_itemBlockManager.returnBlock(std::move(res.second));
+          _engine->itemBlockManager().returnBlock(std::move(res.second));
 
           if (res.first == ExecutionState::DONE) {
             break;
@@ -896,7 +896,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
           }
         }
 
-        _engine->_itemBlockManager.returnBlock(std::move(value));
+        _engine->itemBlockManager().returnBlock(std::move(value));
       }
 
       builder->close();

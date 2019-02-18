@@ -314,7 +314,7 @@ ResultT<bool> RestRepairHandler::jobFinished(std::string const& jobId) {
         << "Failed to get job status: "
         << "[" << jobStatus.errorNumber() << "] " << jobStatus.errorMessage();
 
-    return ResultT<bool>::error(std::move(jobStatus));
+    return ResultT<bool>::error(std::move(jobStatus.result()));
   }
 
   return ResultT<bool>::success(false);
@@ -375,7 +375,7 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
       while (!previousJobFinished) {
         ResultT<bool> jobFinishedResult = jobFinished(jobId);
         if (jobFinishedResult.fail()) {
-          return std::move(jobFinishedResult);
+          return std::move(jobFinishedResult).result();
         }
         previousJobFinished = jobFinishedResult.get();
 
@@ -396,7 +396,7 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
             checkReplicationFactor(databaseId, collectionId);
 
         if (checkReplicationFactorResult.fail()) {
-          return std::move(checkReplicationFactorResult);
+          return std::move(checkReplicationFactorResult).result();
         }
         replicationFactorMatches = checkReplicationFactorResult.get();
 
@@ -465,7 +465,7 @@ ResultT<VPackBufferPtr> RestRepairHandler::getFromAgency(std::string const& agen
   if (rv.ok()) {
     return ResultT<VPackBufferPtr>::success(rv.get()[0]);
   } else {
-    return ResultT<VPackBufferPtr>(rv);
+    return ResultT<VPackBufferPtr>(std::move(rv).result());
   }
 }
 
@@ -478,7 +478,7 @@ ResultT<JobStatus> RestRepairHandler::getJobStatusFromAgency(std::string const& 
                                "Target/Finished/" + jobId, "Target/Failed/" + jobId}});
 
   if (rv.fail()) {
-    return ResultT<JobStatus>(rv);
+    return ResultT<JobStatus>(std::move(rv).result());
   }
 
   VPackSlice todo(rv.get()[0]->data());

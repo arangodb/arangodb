@@ -150,15 +150,15 @@ bool AttributeWeightShortestPathFinder::Searcher::oneStep() {
   return true;
 }
 
-AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(ShortestPathOptions* options)
-    : _highscoreSet(false),
+AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(ShortestPathOptions& options)
+    : ShortestPathFinder(options),
+      _highscoreSet(false),
       _highscore(0),
       _bingo(false),
       _resultCode(TRI_ERROR_NO_ERROR),
       _intermediateSet(false),
       _intermediate(),
-      _mmdr(new ManagedDocumentResult{}),
-      _options(options) {}
+      _mmdr(new ManagedDocumentResult{}) {}
 
 AttributeWeightShortestPathFinder::~AttributeWeightShortestPathFinder() {}
 
@@ -172,8 +172,8 @@ bool AttributeWeightShortestPathFinder::shortestPath(
   _bingo = false;
   _intermediateSet = false;
 
-  StringRef start = _options->cache()->persistString(StringRef(st));
-  StringRef target = _options->cache()->persistString(StringRef(ta));
+  StringRef start = _options.cache()->persistString(StringRef(st));
+  StringRef target = _options.cache()->persistString(StringRef(ta));
 
   // Forward with initialization:
   arangodb::StringRef emptyVertex;
@@ -187,7 +187,7 @@ bool AttributeWeightShortestPathFinder::shortestPath(
   // Now the searcher threads:
   Searcher forwardSearcher(this, forward, backward, start, false);
   std::unique_ptr<Searcher> backwardSearcher;
-  if (_options->bidirectional) {
+  if (_options.bidirectional) {
     backwardSearcher.reset(new Searcher(this, backward, forward, target, true));
   }
 
@@ -201,7 +201,7 @@ bool AttributeWeightShortestPathFinder::shortestPath(
     if (!forwardSearcher.oneStep()) {
       break;
     }
-    if (_options->bidirectional && !backwardSearcher->oneStep()) {
+    if (_options.bidirectional && !backwardSearcher->oneStep()) {
       break;
     }
 
@@ -262,7 +262,7 @@ bool AttributeWeightShortestPathFinder::shortestPath(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  _options->fetchVerticesCoordinator(result._vertices);
+  _options.fetchVerticesCoordinator(result._vertices);
   return true;
 }
 
@@ -293,17 +293,17 @@ void AttributeWeightShortestPathFinder::expandVertex(bool isBackward,
                                                      std::vector<Step*>& result) {
   std::unique_ptr<EdgeCursor> edgeCursor;
   if (isBackward) {
-    edgeCursor.reset(_options->nextReverseCursor(_mmdr.get(), vertex));
+    edgeCursor.reset(_options.nextReverseCursor(_mmdr.get(), vertex));
   } else {
-    edgeCursor.reset(_options->nextCursor(_mmdr.get(), vertex));
+    edgeCursor.reset(_options.nextCursor(_mmdr.get(), vertex));
   }
 
   std::unordered_map<StringRef, size_t> candidates;
   auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
     if (edge.isString()) {
-      VPackSlice doc = _options->cache()->lookupToken(eid);
-      double currentWeight = _options->weightEdge(doc);
-      StringRef other = _options->cache()->persistString(StringRef(edge));
+      VPackSlice doc = _options.cache()->lookupToken(eid);
+      double currentWeight = _options.weightEdge(doc);
+      StringRef other = _options.cache()->persistString(StringRef(edge));
       if (other.compare(vertex) != 0) {
         inserter(candidates, result, vertex, other, currentWeight, std::move(eid));
       } else {
@@ -312,9 +312,9 @@ void AttributeWeightShortestPathFinder::expandVertex(bool isBackward,
     } else {
       StringRef fromTmp(transaction::helpers::extractFromFromDocument(edge));
       StringRef toTmp(transaction::helpers::extractToFromDocument(edge));
-      StringRef from = _options->cache()->persistString(fromTmp);
-      StringRef to = _options->cache()->persistString(toTmp);
-      double currentWeight = _options->weightEdge(edge);
+      StringRef from = _options.cache()->persistString(fromTmp);
+      StringRef to = _options.cache()->persistString(toTmp);
+      double currentWeight = _options.weightEdge(edge);
       if (from == vertex) {
         inserter(candidates, result, from, to, currentWeight, std::move(eid));
       } else {

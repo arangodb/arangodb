@@ -90,6 +90,9 @@ class ShortestPathResult {
 
   size_t length() { return _vertices.size(); };
 
+  void addVertex(arangodb::StringRef v);
+  void addEdge(arangodb::graph::EdgeDocumentToken e);
+
  private:
   /// @brief Count how many documents have been read
   size_t _readDocuments;
