@@ -25,9 +25,9 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemBlockShell.h"
+#include "Aql/CountCollectExecutor.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/CountCollectExecutor.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
 
@@ -47,19 +47,17 @@ SCENARIO("CountCollectExecutor", "[AQL][EXECUTOR][COUNTCOLLECTEXECUTOR]") {
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager(&monitor);
 
-
   RegisterId nrOutputReg = 2;
 
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, nrOutputReg);
   auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(
       std::initializer_list<RegisterId>{1});
-  auto registersToKeep = std::make_shared<const std::unordered_set<RegisterId>>(
-      std::initializer_list<RegisterId>{0});
   auto blockShell =
       std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(block));
 
   GIVEN("there are no rows upstream") {
-    CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */, nrOutputReg, {}, {});
+    CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */,
+                                    nrOutputReg, {}, {});
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
@@ -67,129 +65,92 @@ SCENARIO("CountCollectExecutor", "[AQL][EXECUTOR][COUNTCOLLECTEXECUTOR]") {
       CountCollectExecutor testee(fetcher, infos);
       NoStats stats{};
 
-      THEN("the executor should return DONE with nullptr") {
+      THEN("the executor should return 0") {
         OutputAqlItemRow result{std::move(blockShell), outputRegisters,
                                 infos.registersToKeep(), infos.registersToClear()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!result.produced());
+        REQUIRE(result.produced());
+
+        auto block = result.stealBlock();
+        AqlValue x = block->getValue(0, 1);
+        REQUIRE(x.isNumber());
+        REQUIRE(x.toInt64() == 0);
       }
     }
 
-    /*
-    WHEN("the producer waits") {
+    WHEN("the producer does wait") {
       SingleRowFetcherHelper<false> fetcher(input.steal(), true);
       CountCollectExecutor testee(fetcher, infos);
       NoStats stats{};
 
-      THEN("the executor should first return WAIT") {
+      THEN("the executor should return 0") {
         OutputAqlItemRow result{std::move(blockShell), outputRegisters,
-                                registersToKeep, infos.registersToClear()};
+                                infos.registersToKeep(), infos.registersToClear()};
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
 
-        AND_THEN("the executor should return DONE") {
-          std::tie(state, stats) = testee.produceRow(result);
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(!result.produced());
-        }
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::DONE);
+        REQUIRE(result.produced());
+
+        auto block = result.stealBlock();
+        AqlValue x = block->getValue(0, 1);
+        REQUIRE(x.isNumber());
+        REQUIRE(x.toInt64() == 0);
       }
-    }*/
+    }
   }
 
-  /*
   GIVEN("there are rows in the upstream") {
+    CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */,
+                                    nrOutputReg, {}, {});
+
     WHEN("the producer does not wait") {
-      auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-      CountCollectExecutorInfos infos(2, 2, 2, {}, {});
+      auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
       SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       CountCollectExecutor testee(fetcher, infos);
       NoStats stats{};
 
-      THEN("the executor should return one row") {
-        OutputAqlItemRow row{std::move(blockShell), outputRegisters,
-                             registersToKeep, infos.registersToClear()};
-
-        std::tie(state, stats) = testee.produceRow(row);
-        REQUIRE(row.produced());
-        row.advanceRow();
-
-        AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRow(row);
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(!row.produced());
-        }
-      }
-    }
-
-    WHEN("the producer does not wait") {
-      auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-      CountCollectExecutorInfos infos(2, 2, 2, {}, {});
-      SingleRowFetcherHelper<false> fetcher(input->steal(), false);
-      CountCollectExecutor testee(fetcher, infos);
-      NoStats stats{};
-
-      THEN("the executor should return one row") {
-        OutputAqlItemRow row{std::move(blockShell), outputRegisters,
-                             registersToKeep, infos.registersToClear()};
-
-        std::tie(state, stats) = testee.produceRow(row);
+      THEN("the executor should return 3") {
+        OutputAqlItemRow result{std::move(blockShell), outputRegisters,
+                                infos.registersToKeep(), infos.registersToClear()};
+        std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(row.produced());
+        REQUIRE(result.produced());
 
-        row.advanceRow();
-
-        AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRow(row);
-          REQUIRE(!row.produced());
-          REQUIRE(state == ExecutionState::DONE);
-        }
-
-        auto block = row.stealBlock();
-        AqlValue value = block->getValue(0, 0);
-        REQUIRE(value.isNumber());
-        REQUIRE(value.toInt64() == 4);
+        auto block = result.stealBlock();
+        AqlValue x = block->getValue(0, 1);
+        REQUIRE(x.isNumber());
+        REQUIRE(x.toInt64() == 3);
       }
     }
-
 
     WHEN("the producer does wait") {
-      auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-      CountCollectExecutorInfos infos(2, 2, 2, {}, {});
+      auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
       SingleRowFetcherHelper<false> fetcher(input->steal(), true);
       CountCollectExecutor testee(fetcher, infos);
       NoStats stats{};
+      THEN("the executor should return 3") {
+        OutputAqlItemRow result{std::move(blockShell), outputRegisters,
+                                infos.registersToKeep(), infos.registersToClear()};
 
-      THEN("the executor should return one row") {
-        OutputAqlItemRow row{std::move(blockShell), outputRegisters,
-                             registersToKeep, infos.registersToClear()};
-
-        std::tie(state, stats) = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!row.produced());
+        REQUIRE(!result.produced());
 
-        std::tie(state, stats) = testee.produceRow(row);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(row.produced());
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::DONE); // <-- TODO: currently WAITING! Should be Done.
+        REQUIRE(result.produced());
 
-        row.advanceRow();
-
-        AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRow(row);
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(!row.produced());
-        }
-
-        auto block = row.stealBlock();
-        AqlValue value = block->getValue(0, 0);
-        REQUIRE(value.isNumber());
-        REQUIRE(value.toInt64() == 4);
+        auto block = result.stealBlock();
+        AqlValue x = block->getValue(0, 1);
+        REQUIRE(x.isNumber());
+        REQUIRE(x.toInt64() == 3);
       }
     }
-
   }
-  */
 }
 
 }  // namespace aql
