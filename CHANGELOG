@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed overflow in windows NowNanos in RocksDB
+
 * fixed JS AQL query objects with empty query strings not being recognized as AQL queries
 
 * report run-time openssl version (for dynamically linked executables)
