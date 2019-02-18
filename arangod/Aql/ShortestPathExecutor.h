@@ -68,6 +68,7 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
                             std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
                             RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                             std::unordered_set<RegisterId> registersToClear,
+                            std::unordered_set<RegisterId> registersToKeep,
                             std::unique_ptr<graph::ShortestPathFinder>&& finder,
                             std::unordered_map<OutputName, RegisterId>&& registerMapping,
                             InputVertex&& source, InputVertex&& target);

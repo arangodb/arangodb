@@ -541,6 +541,8 @@ class ExecutionNode {
     _regsToClear = std::move(toClear);
   }
 
+  std::unordered_set<RegisterId> calcRegsToKeep() const;
+
  protected:
   /// @brief node id
   size_t _id;

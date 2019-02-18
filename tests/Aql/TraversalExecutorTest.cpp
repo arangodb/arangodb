@@ -261,7 +261,7 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
         {TraversalExecutorInfos::OutputName::VERTEX, outReg}};
 
     std::string const noFixed = "";
-    TraversalExecutorInfos infos(inputRegisters, outputRegisters, 1, 2, {},
+    TraversalExecutorInfos infos(inputRegisters, outputRegisters, 1, 2, {}, {0},
                                  std::move(traverserPtr), registerMapping,
                                  noFixed, inReg, filterConditionVariables);
     auto outputBlockShell =
@@ -447,7 +447,7 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
         {TraversalExecutorInfos::OutputName::VERTEX, outReg}};
 
     std::string const fixed = "v/1";
-    TraversalExecutorInfos infos(inputRegisters, outputRegisters, 1, 2, {},
+    TraversalExecutorInfos infos(inputRegisters, outputRegisters, 1, 2, {}, {0},
                                  std::move(traverserPtr), registerMapping, fixed,
                                  ExecutionNode::MaxRegisterId, filterConditionVariables);
     auto outputBlockShell =

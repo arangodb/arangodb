@@ -915,7 +915,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
                              arangodb::aql::make_shared_unordered_set({outputRegister}),
                              getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                             getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
+                             getRegisterPlan()->nrRegs[getDepth()],
+                             getRegsToClear(), calcRegsToKeep());
 
     return std::make_unique<aql::ExecutionBlockImpl<aql::NoResultsExecutor>>(&engine, this,
                                                                              std::move(infos));
@@ -969,7 +970,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
                              arangodb::aql::make_shared_unordered_set({outputRegister}),
                              getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                             getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
+                             getRegisterPlan()->nrRegs[getDepth()],
+                             getRegsToClear(), calcRegsToKeep());
 
     return std::make_unique<aql::ExecutionBlockImpl<aql::NoResultsExecutor>>(&engine, this,
                                                                              std::move(infos));

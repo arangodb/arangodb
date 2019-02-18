@@ -78,7 +78,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
   WHEN("only copying from source to target") {
     auto outputBlock = std::make_unique<AqlItemBlock>(&monitor, 3, 3);
-    ExecutorInfos executorInfos{{}, {}, 3, 3, {}};
+    ExecutorInfos executorInfos{{}, {}, 3, 3, {}, {0, 1, 2}};
     auto blockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
     auto outputRegisters = executorInfos.getOutputRegisters();
@@ -163,7 +163,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
   WHEN("only copying from source to target but multiplying rows") {
     auto outputBlock = std::make_unique<AqlItemBlock>(&monitor, 9, 3);
-    ExecutorInfos executorInfos{{}, {}, 3, 3, {}};
+    ExecutorInfos executorInfos{{}, {}, 3, 3, {}, {0, 1, 2}};
     auto blockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
     auto outputRegisters = executorInfos.getOutputRegisters();
@@ -215,7 +215,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
   WHEN("dropping a register from source while writing to target") {
     auto outputBlock = std::make_unique<AqlItemBlock>(&monitor, 3, 3);
-    ExecutorInfos executorInfos{{}, {}, 3, 3, {1}};
+    ExecutorInfos executorInfos{{}, {}, 3, 3, {1}, {0, 2}};
     auto blockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
     auto outputRegisters = executorInfos.getOutputRegisters();
@@ -260,31 +260,33 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
   WHEN("writing rows to target") {
     auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
     auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-    std::unordered_set<RegisterId> registersToClear{};
+    std::shared_ptr<std::unordered_set<RegisterId>> registersToClear = make_shared_unordered_set();
+    std::shared_ptr<std::unordered_set<RegisterId>> registersToKeep = make_shared_unordered_set();
     RegisterId nrInputRegisters = 0;
     RegisterId nrOutputRegisters = 0;
 
     THEN("should keep all registers and add new values") {
       *inputRegisters = {};
       *outputRegisters = {3, 4};
-      registersToClear = {};
+      *registersToClear = {};
+      *registersToKeep = {0, 1, 2};
       nrInputRegisters = 3;
       nrOutputRegisters = 5;
     }
     THEN("should be able to drop registers and write new values") {
       *inputRegisters = {};
       *outputRegisters = {3, 4};
-      registersToClear = {1, 2};
+      *registersToClear = {1, 2};
+      *registersToKeep = {0};
       nrInputRegisters = 3;
       nrOutputRegisters = 5;
     }
     auto outputBlock = std::make_unique<AqlItemBlock>(&monitor, 3, 5);
     ExecutorInfos executorInfos{inputRegisters, outputRegisters, nrInputRegisters,
-                                nrOutputRegisters, registersToClear};
+                                nrOutputRegisters, *registersToClear, *registersToKeep};
     auto blockShell =
         std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
-    auto registersToKeep = executorInfos.registersToKeep();
-    std::unordered_set<RegisterId> regsToKeep = *registersToKeep;
+    std::unordered_set<RegisterId> &regsToKeep = *registersToKeep;
 
     OutputAqlItemRow testee(std::move(blockShell), outputRegisters,
                             registersToKeep, executorInfos.registersToClear());

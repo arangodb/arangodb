@@ -40,10 +40,12 @@ using namespace arangodb::aql;
 
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
     RegisterId inputRegister, RegisterId outputRegister, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear)
+    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+    std::unordered_set<RegisterId> registersToKeep)
     : ExecutorInfos(make_shared_unordered_set({inputRegister}),
-                    make_shared_unordered_set({outputRegister}), nrInputRegisters,
-                    nrOutputRegisters, std::move(registersToClear)),
+                    make_shared_unordered_set({outputRegister}),
+                    nrInputRegisters, nrOutputRegisters,
+                    std::move(registersToClear), std::move(registersToKeep)),
       _inputRegister(inputRegister),
       _outputRegister(outputRegister) {}
 
