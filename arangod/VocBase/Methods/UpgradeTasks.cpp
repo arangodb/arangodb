@@ -251,6 +251,7 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
   
     res = um->updateUser(user, [&](auth::User& entry) {
       entry.grantDatabase(vocbase.name(), auth::Level::RW);
+      entry.grantCollection(vocbase.name(), "*", auth::Level::RW);
       return TRI_ERROR_NO_ERROR;
     });
     if (res.fail()) {
