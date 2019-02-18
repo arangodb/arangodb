@@ -585,11 +585,11 @@ bool Node::handle<REPLACE>(VPackSlice const& slice) {
 
   _type = ARRAY;
   if (!_array.empty()) {
-    VPackSlice valToRepl = slice.get("val");
+    VPackSlice valToRepl = ;
     for (auto const& i : _array) {
       auto tmp = i->toBuilder();
-      if (VelocyPackHelper::compare(tmp.slice(), valToRepl, true) == 0) {
-        *i = valToRepl;
+      if (VelocyPackHelper::compare(tmp.slice(), slice.get("val"), true) == 0) {
+        *i = slice.get("new");
       }
     }
   }
