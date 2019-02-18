@@ -86,7 +86,7 @@ const waitForReplication = function() {
   const wasOnMaster = onMaster;
   connectToMaster();
   // use lastLogTick as of now
-  const lastLogTick = replication.logger.state().state.lastLogTick;
+  const lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
   // We only wait a defined time.
   const timeOut = time() + delay * 1000;
   connectToSlave();

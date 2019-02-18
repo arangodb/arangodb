@@ -21,8 +21,8 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_TRAVERSER_H
-#define ARANGOD_VOC_BASE_TRAVERSER_H 1
+#ifndef ARANGOD_GRAPH_TRAVERSER_H
+#define ARANGOD_GRAPH_TRAVERSER_H 1
 
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
@@ -170,13 +170,13 @@ class Traverser {
   /// @brief Constructor. This is an abstract only class.
   //////////////////////////////////////////////////////////////////////////////
 
-  Traverser(TraverserOptions* opts, transaction::Methods* trx, ManagedDocumentResult*);
+  Traverser(TraverserOptions* opts, transaction::Methods* trx);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Destructor
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual ~Traverser() {}
+  virtual ~Traverser();
 
   void done() { _done = true; }
 
@@ -265,7 +265,7 @@ class Traverser {
 
   TraverserOptions* options() { return _opts; }
 
-  ManagedDocumentResult* mmdr() const { return _mmdr; }
+  ManagedDocumentResult* mmdr() const { return _mmdr.get(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Simple check if there are potentially more paths.
@@ -282,11 +282,19 @@ class Traverser {
 
   void allowOptimizedNeighbors();
 
+  transaction::Methods* trx() const { return _trx; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Destroy DBServer Traverser Engines
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual void destroyEngines() = 0;
+
  protected:
   /// @brief Outer top level transaction
   transaction::Methods* _trx;
 
-  ManagedDocumentResult* _mmdr;
+  std::unique_ptr<ManagedDocumentResult> _mmdr;
 
   /// @brief internal cursor to enumerate the paths of a graph
   std::unique_ptr<traverser::PathEnumerator> _enumerator;
@@ -295,7 +303,7 @@ class Traverser {
   std::unique_ptr<VertexGetter> _vertexGetter;
 
   /// @brief Builder for the start value slice. Leased from transaction
-  transaction::BuilderLeaser _startIdBuilder;
+  velocypack::Builder _startIdBuilder;
 
   /// @brief toggle if this path should be pruned on next step
   bool _pruneNext;

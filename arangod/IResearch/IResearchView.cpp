@@ -32,7 +32,6 @@
 #include "Aql/QueryCache.h"
 #include "Basics/StaticStrings.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/FlushFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -80,6 +79,8 @@ class ViewTrxState final : public arangodb::TransactionState::Cookie,
     _collections.clear();
     _subReaders.clear();
     _snapshots.clear();
+    _live_docs_count = 0;
+    _docs_count = 0;
   }
 
   template <typename Itr>
@@ -96,11 +97,13 @@ class ViewTrxState final : public arangodb::TransactionState::Cookie,
     return _collections.size() == count;
   }
 
-  virtual uint64_t docs_count() const override;
-  virtual uint64_t live_docs_count() const override;
+  virtual uint64_t docs_count() const noexcept override { return _docs_count; }
+  virtual uint64_t live_docs_count() const noexcept override { return _live_docs_count; }
   virtual size_t size() const noexcept override { return _subReaders.size(); }
 
  private:
+  size_t _docs_count{};
+  size_t _live_docs_count{};
   std::unordered_set<TRI_voc_cid_t> _collections;
   std::vector<arangodb::iresearch::IResearchLink::Snapshot> _snapshots;  // prevent data-store deallocation (lock @ AsyncSelf)
   std::vector<std::pair<TRI_voc_cid_t, irs::sub_reader const*>> _subReaders;
@@ -108,58 +111,19 @@ class ViewTrxState final : public arangodb::TransactionState::Cookie,
 
 void ViewTrxState::add(TRI_voc_cid_t cid,
                        arangodb::iresearch::IResearchLink::Snapshot&& snapshot) {
-  for (auto& entry : static_cast<irs::index_reader const&>(snapshot)) {
+  auto& reader = static_cast<irs::index_reader const&>(snapshot);
+  for (auto& entry : reader) {
     _subReaders.emplace_back(std::piecewise_construct, std::forward_as_tuple(cid),
                              std::forward_as_tuple(&entry));
   }
 
+  _docs_count += reader.docs_count();
+  _live_docs_count += reader.live_docs_count();
   _collections.emplace(cid);
   _snapshots.emplace_back(std::move(snapshot));
 }
 
-uint64_t ViewTrxState::docs_count() const {
-  uint64_t count = 0;
-
-  for (auto& entry : _subReaders) {
-    TRI_ASSERT(entry.second);  // non-nullptr ensured by add(...)
-    count += entry.second->docs_count();
-  }
-
-  return count;
 }
-
-uint64_t ViewTrxState::live_docs_count() const {
-  uint64_t count = 0;
-
-  for (auto& entry : _subReaders) {
-    TRI_ASSERT(entry.second);  // non-nullptr ensured by add(...)
-    count += entry.second->live_docs_count();
-  }
-
-  return count;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates user-friendly description of the specified view
-////////////////////////////////////////////////////////////////////////////////
-std::string toString(arangodb::iresearch::IResearchView const& view) {
-  std::string str(arangodb::iresearch::DATA_SOURCE_TYPE.name());
-
-  str += ":";
-  str += std::to_string(view.id());
-
-  return str;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @returns 'Flush' feature from AppicationServer
-////////////////////////////////////////////////////////////////////////////////
-inline arangodb::FlushFeature* getFlushFeature() noexcept {
-  return arangodb::application_features::ApplicationServer::lookupFeature<arangodb::FlushFeature>(
-      "Flush");
-}
-
-}  // namespace
 
 namespace arangodb {
 namespace iresearch {
@@ -292,24 +256,20 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
 IResearchView::IResearchView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& info,
                              uint64_t planVersion, IResearchViewMeta&& meta)
     : LogicalView(vocbase, info, planVersion),
-      FlushTransaction(toString(*this)),
-      _asyncFeature(nullptr),
       _asyncSelf(irs::memory::make_unique<AsyncViewPtr::element_type>(this)),
       _meta(std::move(meta)),
-      _asyncTerminate(false),
       _inRecovery(false) {
   // set up in-recovery insertion hooks
-  auto* databaseFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
-          "Database");
+  auto* databaseFeature = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
+    arangodb::DatabaseFeature // type
+  >("Database");
 
   if (databaseFeature) {
-    auto view = _asyncSelf;  // create copy for lambda
+    auto view = _asyncSelf; // create copy for lambda
 
-    databaseFeature->registerPostRecoveryCallback([view]() -> arangodb::Result {
+    databaseFeature->registerPostRecoveryCallback([view]()->arangodb::Result {
       auto& viewMutex = view->mutex();
-      SCOPED_LOCK(viewMutex);  // ensure view does not get deallocated before
-                               // call back finishes
+      SCOPED_LOCK(viewMutex); // ensure view does not get deallocated before call back finishes
       auto* viewPtr = view->get();
 
       if (viewPtr) {
@@ -320,102 +280,21 @@ IResearchView::IResearchView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice
     });
   }
 
-  _asyncFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchFeature>();
-
-  // add asynchronous commit tasks
-  if (_asyncFeature) {
-    struct State : public IResearchViewMeta {
-      size_t _cleanupIntervalCount{0};
-      std::chrono::system_clock::time_point _last{std::chrono::system_clock::now()};
-      decltype(IResearchView::_links) _links;
-      irs::merge_writer::flush_progress_t _progress;
-    } state;
-
-    state._progress = [this]() -> bool { return !_asyncTerminate.load(); };
-    _asyncFeature->async(_asyncSelf, [this, state](size_t& timeoutMsec, bool) mutable -> bool {
-      if (_asyncTerminate.load()) {
-        return false;  // termination requested
-      }
-
-      // reload meta and metaState
-      {
-        ReadMutex mutex(_mutex);  // '_meta'/'_links' can be asynchronously modified
-        SCOPED_LOCK(mutex);
-        auto& stateMeta = static_cast<IResearchViewMeta&>(state);
-
-        if (stateMeta != _meta) {
-          stateMeta = _meta;
-        }
-
-        state._links = _links;
-      }
-
-      if (!state._consolidationIntervalMsec) {
-        timeoutMsec = 0;  // task not enabled
-
-        return true;  // reschedule
-      }
-
-      size_t usedMsec = std::chrono::duration_cast<std::chrono::milliseconds>(
-                            std::chrono::system_clock::now() - state._last)
-                            .count();
-
-      if (usedMsec < state._consolidationIntervalMsec) {
-        timeoutMsec = state._consolidationIntervalMsec - usedMsec;  // still need to sleep
-
-        return true;  // reschedule (with possibly updated
-                      // '_consolidationIntervalMsec')
-      }
-
-      state._last = std::chrono::system_clock::now();  // remember last task
-                                                       // start time
-      timeoutMsec = state._consolidationIntervalMsec;
-
-      auto const runCleanupAfterConsolidation =
-          state._cleanupIntervalCount > state._cleanupIntervalStep;
-
-      // invoke consolidation on all known links
-      for (auto& entry : state._links) {
-        if (!entry.second) {
-          continue;  // skip link placeholders
-        }
-
-        SCOPED_LOCK(entry.second->mutex());  // ensure link is not deallocated for
-                                             // the duration of the operation
-        auto* link = entry.second->get();
-
-        if (!link) {
-          continue;  // skip missing links
-        }
-
-        auto res = link->consolidate(state._consolidationPolicy, state._progress,
-                                     runCleanupAfterConsolidation);
-
-        if (res.ok() && state._cleanupIntervalStep &&
-            state._cleanupIntervalCount++ > state._cleanupIntervalStep) {
-          state._cleanupIntervalCount = 0;
-        }
-      }
-
-      return true;  // reschedule
-    });
-  }
-
   auto self = _asyncSelf;
 
   // initialize transaction read callback
-  _trxCallback = [self](arangodb::transaction::Methods& trx,
-                        arangodb::transaction::Status status) -> void {
+  _trxCallback = [self]( // callback
+      arangodb::transaction::Methods& trx, // transaction
+      arangodb::transaction::Status status // transaction status
+  )->void {
     if (arangodb::transaction::Status::RUNNING != status) {
-      return;  // NOOP
+      return; // NOOP
     }
 
     SCOPED_LOCK(self->mutex());
     auto* view = self->get();
 
-    // populate snapshot when view is registred with a transaction on
-    // single-server
+    // populate snapshot when view is registred with a transaction on single-server
     if (view && arangodb::ServerState::instance()->isSingleServer()) {
       view->snapshot(trx, IResearchView::SnapshotMode::FindOrCreate);
     }
@@ -423,26 +302,22 @@ IResearchView::IResearchView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice
 }
 
 IResearchView::~IResearchView() {
-  _asyncTerminate.store(true);  // mark long-running async jobs for terminatation
-
-  if (_asyncFeature) {
-    _asyncFeature->asyncNotify();  // trigger reload of settings for async jobs
-  }
-
-  _asyncSelf->reset();  // the view is being deallocated, its use is no longer
-                        // valid (wait for all the view users to finish)
-  _flushCallback.reset();  // unregister flush callback from flush thread
+  _asyncSelf->reset(); // the view is being deallocated, its use is no longer valid (wait for all the view users to finish)
 
   if (arangodb::ServerState::instance()->isSingleServer()) {
-    arangodb::LogicalViewHelperStorageEngine::destruct(*this);  // cleanup of the storage engine
+    arangodb::LogicalViewHelperStorageEngine::destruct(*this); // cleanup of the storage engine
   }
 }
 
-arangodb::Result IResearchView::appendVelocyPackImpl(arangodb::velocypack::Builder& builder,
-                                                     bool detailed,
-                                                     bool forPersistence) const {
+arangodb::Result IResearchView::appendVelocyPackImpl( // append JSON
+    arangodb::velocypack::Builder& builder, // destrination
+    bool detailed, // detail flag
+    bool forPersistence // persistence flag
+) const {
   if (forPersistence && arangodb::ServerState::instance()->isSingleServer()) {
-    auto res = arangodb::LogicalViewHelperStorageEngine::properties(builder, *this);
+    auto res = arangodb::LogicalViewHelperStorageEngine::properties( // storage engine properties
+      builder, *this // args
+    );
 
     if (!res.ok()) {
       return res;
@@ -690,17 +565,9 @@ arangodb::Result IResearchView::dropImpl() {
     }
   }
 
-  _asyncTerminate.store(true);  // mark long-running async jobs for terminatation
+  _asyncSelf->reset(); // the view data-stores are being deallocated, view use is no longer valid (wait for all the view users to finish)
 
-  if (_asyncFeature) {
-    _asyncFeature->asyncNotify();  // trigger reload of settings for async jobs
-  }
-
-  _asyncSelf->reset();  // the view data-stores are being deallocated, view use is no
-                        // longer valid (wait for all the view users to finish)
-  _flushCallback.reset();  // unregister flush callback from flush thread
-
-  WriteMutex mutex(_mutex);  // members can be asynchronously updated
+  WriteMutex mutex(_mutex); // members can be asynchronously updated
   SCOPED_LOCK(mutex);
 
   for (auto& entry : _links) {
@@ -740,56 +607,51 @@ arangodb::Result IResearchView::dropImpl() {
 
 bool IResearchView::link(AsyncLinkPtr const& link) {
   if (!link) {
-    return false;  // invalid link
+    return false; // invalid link
   }
 
-  SCOPED_LOCK(link->mutex());  // prevent the link from being deallocated
+  SCOPED_LOCK(link->mutex()); // prevent the link from being deallocated
 
   if (!link->get()) {
-    return false;  // invalid link
+    return false; // invalid link
   }
 
   auto cid = link->get()->collection().id();
-  WriteMutex mutex(_mutex);  // '_meta'/'_links' can be asynchronously read
+  WriteMutex mutex(_mutex); // '_meta'/'_links' can be asynchronously read
   SCOPED_LOCK(mutex);
   auto itr = _links.find(cid);
 
-  irs::index_writer::segment_options properties;
-  properties.segment_count_max = _meta._writebufferActive;
-  properties.segment_memory_max = _meta._writebufferSizeMax;
-
   if (itr == _links.end()) {
     _links.emplace(cid, link);
-  } else if (arangodb::ServerState::instance()->isSingleServer() && !itr->second) {
+  } else if (arangodb::ServerState::instance()->isSingleServer() // single server
+             && !itr->second) {
     _links[cid] = link;
-    link->get()->properties(properties);
+    link->get()->properties(_meta);
 
-    return true;  // single-server persisted cid placeholder substituted with
-                  // actual link
+    return true; // single-server persisted cid placeholder substituted with actual link
   } else if (itr->second && !itr->second->get()) {
     _links[cid] = link;
-    link->get()->properties(properties);
+    link->get()->properties(_meta);
 
-    return true;  // a previous link instance was unload()ed and a new instance
-                  // is linking
+    return true; // a previous link instance was unload()ed and a new instance is linking
   } else {
-    return false;  // link already present
+    return false; // link already present
   }
 
   auto res = arangodb::ServerState::instance()->isSingleServer()
-                 ? arangodb::LogicalViewHelperStorageEngine::properties(*this)
-                 : arangodb::Result();
+    ? arangodb::LogicalViewHelperStorageEngine::properties(*this)
+    : arangodb::Result()
+    ;
 
   if (!res.ok()) {
-    _links.erase(cid);  // undo meta modification
+    _links.erase(cid); // undo meta modification
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failed to persist logical view while emplacing collection '" << cid
-        << "' into arangosearch View '" << name() << "': " << res.errorMessage();
+      << "failed to persist logical view while emplacing collection '" << cid << "' into arangosearch View '" << name() << "': " << res.errorMessage();
 
     return false;
   }
 
-  link->get()->properties(properties);
+  link->get()->properties(_meta);
 
   return true;
 }
@@ -867,55 +729,15 @@ void IResearchView::open() {
     _inRecovery = engine->inRecovery();
   } else {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failure to get storage engine while opening arangosearch view: " << name();
+      << "failure to get storage engine while opening arangosearch view: " << name();
     // assume not inRecovery()
   }
-
-  WriteMutex mutex(_mutex);  // '_meta' can be asynchronously updated
-  SCOPED_LOCK(mutex);
-
-  if (_flushCallback) {
-    return;  // done
-  }
-
-  auto* flushFeature = getFlushFeature();
-
-  if (!flushFeature) {
-    return;  // feature not available
-  }
-
-  auto viewSelf = _asyncSelf;
-
-  flushFeature->registerCallback(this, [viewSelf]() {
-    static struct NoopFlushTransaction : arangodb::FlushTransaction {
-      NoopFlushTransaction() : FlushTransaction("ArangoSearchNoop") {}
-      virtual arangodb::Result commit() override {
-        return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-      }
-    } noopFlushTransaction;
-    SCOPED_LOCK_NAMED(viewSelf->mutex(), lock);
-
-    if (!*viewSelf) {
-      return arangodb::FlushFeature::FlushTransactionPtr(
-          &noopFlushTransaction, [](arangodb::FlushTransaction*) -> void {});
-    }
-
-    auto trx = arangodb::FlushFeature::FlushTransactionPtr(
-        viewSelf->get(), [](arangodb::FlushTransaction* trx) -> void {
-          ADOPT_SCOPED_LOCK_NAMED(static_cast<IResearchView*>(trx)->_asyncSelf->mutex(), lock);
-        });
-
-    lock.release();  // unlocked in distructor above
-
-    return trx;
-  });
-
-  // noexcept
-  _flushCallback.reset(this);  // track for unregistration
 }
 
-arangodb::Result IResearchView::properties(arangodb::velocypack::Slice const& properties,
-                                           bool partialUpdate) {
+arangodb::Result IResearchView::properties( // update properties
+  arangodb::velocypack::Slice const& properties, // properties definition
+  bool partialUpdate // delta or full update flag
+) {
   auto res = updateProperties(properties, partialUpdate);
 
   if (!res.ok()) {
@@ -941,8 +763,8 @@ arangodb::Result IResearchView::renameImpl(std::string const& oldName) {
 IResearchView::Snapshot const* IResearchView::snapshot(
     transaction::Methods& trx,
     IResearchView::SnapshotMode mode /*= IResearchView::SnapshotMode::Find*/,
-    std::unordered_set<TRI_voc_cid_t> const* shards /*= nullptr*/
-    ) const {
+    arangodb::HashSet<TRI_voc_cid_t> const* shards /*= nullptr*/,
+    void const* key /*= nullptr*/) const {
   if (!trx.state()) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "failed to get transaction state while creating arangosearch view "
@@ -951,18 +773,22 @@ IResearchView::Snapshot const* IResearchView::snapshot(
     return nullptr;
   }
 
-  std::unordered_set<TRI_voc_cid_t> collections;  // use set to avoid duplicate iteration of same link
+  arangodb::HashSet<TRI_voc_cid_t> restrictedCollections;  // use set to avoid duplicate iteration of same link
+  auto const* collections = &restrictedCollections;
 
-  if (shards) {  // add requested shards
-    collections = *shards;
+  if (shards) {  // set requested shards
+    collections = shards;
   } else {  // add all known shards
     for (auto& entry : _links) {
-      collections.emplace(entry.first);
+      restrictedCollections.emplace(entry.first);
     }
   }
 
+  if (!key) {
+    key = this;
+  }
+
   auto& state = *(trx.state());
-  auto* key = this;
 
 // TODO FIXME find a better way to look up a ViewState
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -973,13 +799,17 @@ IResearchView::Snapshot const* IResearchView::snapshot(
 
   switch (mode) {
     case SnapshotMode::Find:
-      return ctx && ctx->equalCollections(collections.begin(),
-                                          collections.end())
+      return ctx && ctx->equalCollections(collections->begin(),
+                                          collections->end())
                  ? ctx
                  : nullptr;  // ensure same collections
     case SnapshotMode::FindOrCreate:
-      if (ctx && ctx->equalCollections(collections.begin(), collections.end())) {
-        return ctx;  // ensure same collections
+      if (ctx) {
+        if (ctx->equalCollections(collections->begin(), collections->end())) {
+          return ctx;  // ensure same collections
+        }
+
+        ctx->clear(); // reassemble snapshot
       }
       break;
     case SnapshotMode::SyncAndReplace: {
@@ -1023,7 +853,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
 
   try {
     // collect snapshots from all requested links
-    for (auto& cid : collections) {
+    for (auto const cid : *collections) {
       auto itr = _links.find(cid);
       auto* link = itr != _links.end() && itr->second
                        ? itr->second->get()
@@ -1184,15 +1014,23 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
 
     _meta = std::move(meta);
 
-    if (_asyncFeature) {
-      _asyncFeature->asyncNotify();  // trigger reload of settings for async jobs
+    mutex.unlock(true); // downgrade to a read-lock
+
+    // update properties of links
+    for (auto& entry: _links) {
+      auto& link = entry.second;
+      SCOPED_LOCK(link->mutex()); // prevent the link from being deallocated
+
+      if (link->get()) {
+        auto result = link->get()->properties(_meta);
+
+        if (!result.ok()) {
+          res = result;
+        }
+      }
     }
 
-    mutex.unlock(true);  // downgrade to a read-lock
-
-    if (links.isEmptyObject() &&
-        (partialUpdate || _inRecovery.load())) {  // ignore missing links coming
-                                                  // from WAL (inRecovery)
+    if (links.isEmptyObject() && (partialUpdate || _inRecovery.load())) { // ignore missing links coming from WAL (inRecovery)
       return res;
     }
 
@@ -1269,20 +1107,6 @@ bool IResearchView::visitCollections(LogicalView::CollectionVisitor const& visit
   }
 
   return true;
-}
-
-void IResearchView::FlushCallbackUnregisterer::operator()(IResearchView* view) const noexcept {
-  arangodb::FlushFeature* flush = nullptr;
-
-  if (!view || !(flush = getFlushFeature())) {
-    return;
-  }
-
-  try {
-    flush->unregisterCallback(view);
-  } catch (...) {
-    // suppress all errors
-  }
 }
 
 void IResearchView::verifyKnownCollections() {

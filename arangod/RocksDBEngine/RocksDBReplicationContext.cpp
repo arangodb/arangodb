@@ -22,7 +22,6 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBReplicationContext.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -36,6 +35,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBReplicationContext.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Utils/DatabaseGuard.h"
@@ -154,22 +154,20 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
   bool isNumberDocsExclusive = false;
   auto* rcoll = static_cast<RocksDBCollection*>(logical->getPhysical());
   if (_snapshot == nullptr) {
-    // fetch number docs and snapshot under exclusive lock
-    // this should enable us to correct the count later
+    // only DBServers require a corrected document count
+    const double to = ServerState::instance()->isDBServer() ? 10.0 : 1.0;
     auto lockGuard = scopeGuard([rcoll] { rcoll->unlockWrite(); });
-    int res = rcoll->lockWrite(transaction::Options::defaultLockTimeout);
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (rcoll->lockWrite(to) == TRI_ERROR_NO_ERROR) {
+      // fetch number docs and snapshot under exclusive lock
+      // this should enable us to correct the count later
+      isNumberDocsExclusive = true;
+    } else {
       lockGuard.cancel();
-      return std::make_tuple(res, 0, 0);
     }
-
-    numberDocuments = rcoll->numberDocuments();
-    isNumberDocsExclusive = true;
-    lazyCreateSnapshot();
-    lockGuard.fire();  // release exclusive lock
-  } else {             // fetch non-exclusive
     numberDocuments = rcoll->numberDocuments();
     lazyCreateSnapshot();
+  } else {  // fetch non-exclusive
+    numberDocuments = rcoll->numberDocuments();
   }
   TRI_ASSERT(_snapshot != nullptr);
 
@@ -335,13 +333,13 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
   Result rv;
   {
     if (0 == cid || _snapshot == nullptr) {
-      return RocksDBReplicationResult{TRI_ERROR_BAD_PARAMETER, _snapshotTick};
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
 
     MUTEX_LOCKER(writeLocker, _contextLock);
     cIter = getCollectionIterator(vocbase, cid, /*sorted*/ true, /*create*/ true);
     if (!cIter || !cIter->sorted() || !cIter->iter) {
-      return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _snapshotTick);
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
   }
 
@@ -455,13 +453,13 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
   Result rv;
   {
     if (0 == cid || _snapshot == nullptr) {
-      return RocksDBReplicationResult{TRI_ERROR_BAD_PARAMETER, _snapshotTick};
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
 
     MUTEX_LOCKER(writeLocker, _contextLock);
     cIter = getCollectionIterator(vocbase, cid, /*sorted*/ true, /*create*/ false);
     if (!cIter || !cIter->sorted() || !cIter->iter) {
-      return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _snapshotTick);
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
   }
 
@@ -569,13 +567,13 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   Result rv;
   {
     if (0 == cid || _snapshot == nullptr) {
-      return RocksDBReplicationResult{TRI_ERROR_BAD_PARAMETER, _snapshotTick};
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
 
     MUTEX_LOCKER(writeLocker, _contextLock);
     cIter = getCollectionIterator(vocbase, cid, /*sorted*/ true, /*create*/ true);
     if (!cIter || !cIter->sorted() || !cIter->iter) {
-      return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _snapshotTick);
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
   }
 

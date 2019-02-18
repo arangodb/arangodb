@@ -97,14 +97,12 @@ void ProgramOptions::printHelp(std::string const& search) const {
 
 // prints the names for all section help options
 void ProgramOptions::printSectionsHelp() const {
-  char const* colorStart;
-  char const* colorEnd;
+  char const* colorStart = "";
+  char const* colorEnd = "";
 
   if (isatty(STDOUT_FILENO)) {
     colorStart = ShellColorsFeature::SHELL_COLOR_BRIGHT;
     colorEnd = ShellColorsFeature::SHELL_COLOR_RESET;
-  } else {
-    colorStart = colorEnd = "";
   }
 
   // print names of sections
@@ -275,7 +273,16 @@ bool ProgramOptions::setValue(std::string const& name, std::string const& value)
 
   if (!result.empty()) {
     // parameter validation failed
-    return fail("error setting value for option '--" + name + "': " + result);
+    char const* colorStart1 = "";
+    char const* colorStart2 = "";
+    char const* colorEnd = "";
+
+    if (isatty(STDERR_FILENO)) {
+      colorStart1 = ShellColorsFeature::SHELL_COLOR_RED;
+      colorStart2 = ShellColorsFeature::SHELL_COLOR_BOLD_RED;
+      colorEnd = ShellColorsFeature::SHELL_COLOR_RESET;
+    }
+    return fail(std::string("error setting value for option '") + colorStart2 + "--" + name + colorEnd + "': " + colorStart1 + result + colorEnd);
   }
 
   _processingResult.touch(name);
@@ -355,18 +362,19 @@ std::string ProgramOptions::getDescription(std::string const& name) {
 
 // handle an unknown option
 bool ProgramOptions::unknownOption(std::string const& name) {
-  char const* colorStart;
-  char const* colorEnd;
+  char const* colorStart1 = "";
+  char const* colorStart2 = "";
+  char const* colorStart3 = "";
+  char const* colorEnd = "";
 
   if (isatty(STDERR_FILENO)) {
-    colorStart = ShellColorsFeature::SHELL_COLOR_BRIGHT;
+    colorStart1 = ShellColorsFeature::SHELL_COLOR_RED;
+    colorStart2 = ShellColorsFeature::SHELL_COLOR_BOLD_RED;
+    colorStart3 = ShellColorsFeature::SHELL_COLOR_BRIGHT;
     colorEnd = ShellColorsFeature::SHELL_COLOR_RESET;
-  } else {
-    colorStart = colorEnd = "";
   }
 
-  fail(std::string("unknown option '") + colorStart + "--" + name + colorEnd +
-       "'");
+  fail(std::string(colorStart1) + "unknown option '" + colorStart2 + "--" + name + colorStart1 + "'" + colorEnd);
 
   auto similarOptions = similar(name, 8, 4);
   if (!similarOptions.empty()) {
@@ -382,7 +390,7 @@ bool ProgramOptions::unknownOption(std::string const& name) {
     }
 
     for (auto const& it : similarOptions) {
-      std::cerr << "  " << colorStart << Option::pad(it, maxWidth) << colorEnd
+      std::cerr << "  " << colorStart3 << Option::pad(it, maxWidth) << colorEnd
                 << "    " << getDescription(it) << std::endl;
     }
     std::cerr << std::endl;
@@ -393,12 +401,12 @@ bool ProgramOptions::unknownOption(std::string const& name) {
     // a now removed or renamed option was specified...
     auto& now = (*it).second;
     if (now.empty()) {
-      std::cerr << "Please note that the specified option '" << colorStart << "--"
+      std::cerr << "Please note that the specified option '" << colorStart3 << "--"
                 << name << colorEnd << "' has been removed in this ArangoDB version";
     } else {
-      std::cerr << "Please note that the specified option '" << colorStart
-                << "--" << name << colorEnd << "' has been renamed to '--"
-                << colorStart << now << colorEnd << "' in this ArangoDB version";
+      std::cerr << "Please note that the specified option '" << colorStart3
+                << "--" << name << colorEnd << "' has been renamed to '" << colorStart3
+                << "--" << now << colorEnd << "' in this ArangoDB version";
     }
 
     std::cerr
@@ -407,8 +415,8 @@ bool ProgramOptions::unknownOption(std::string const& name) {
         << std::endl;
   }
 
-  std::cerr << "Use " << colorStart << "--help" << colorEnd << " or "
-            << colorStart << "--help-all" << colorEnd
+  std::cerr << "Use " << colorStart3 << "--help" << colorEnd << " or "
+            << colorStart3 << "--help-all" << colorEnd
             << " to get an overview of available options" << std::endl
             << std::endl;
 
@@ -418,8 +426,16 @@ bool ProgramOptions::unknownOption(std::string const& name) {
 // report an error (callback from parser)
 bool ProgramOptions::fail(std::string const& message) {
   _processingResult.failed(true);
-  std::cerr << "Error while processing " << _context << " for "
-            << TRI_Basename(_progname.c_str()) << ":" << std::endl;
+  
+  char const* colorStart = "";
+  char const* colorEnd = "";
+
+  if (isatty(STDERR_FILENO)) {
+    colorStart = ShellColorsFeature::SHELL_COLOR_RED;
+    colorEnd = ShellColorsFeature::SHELL_COLOR_RESET;
+  }
+  std::cerr << colorStart << "Error while processing " << _context << " for "
+            << TRI_Basename(_progname.c_str()) << ":" << colorEnd << std::endl;
   failNotice(message);
   std::cerr << std::endl;
 #ifdef _WIN32

@@ -29,6 +29,7 @@
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/Query.h"
+#include "Basics/HashSet.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/TraverserCache.h"
@@ -284,7 +285,8 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
       continue;
     }
   }
-  std::unordered_set<size_t> toRemove;
+
+  arangodb::HashSet<size_t> toRemove;
   aql::Condition::collectOverlappingMembers(plan, _tmpVar, condition, info.indexCondition,
                                             toRemove, nullptr, false);
   size_t n = condition->numMembers();
@@ -317,6 +319,8 @@ void BaseOptions::serializeVariables(VPackBuilder& builder) const {
 }
 
 arangodb::transaction::Methods* BaseOptions::trx() const { return _trx; }
+
+arangodb::aql::Query* BaseOptions::query() const { return _query; }
 
 arangodb::graph::TraverserCache* BaseOptions::cache() const {
   return _cache.get();
@@ -441,4 +445,9 @@ void BaseOptions::activateCache(bool enableDocumentCache,
   // Do not call this twice.
   TRI_ASSERT(_cache == nullptr);
   _cache.reset(cacheFactory::CreateCache(_query, enableDocumentCache, engines));
+}
+
+void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {
+  TRI_ASSERT(_cache == nullptr);
+  _cache = std::move(testCache);
 }

@@ -152,6 +152,14 @@ function optimizerRuleTestSuite () {
       });
     },
 
+    testIssue8108 : function () {
+      let query = "FOR i IN 1..10 LET x = { y : i } COLLECT z = x.y._id INTO out RETURN 1";
+      let result = AQL_EXECUTE(query).json;
+      // the main thing here is that the query can be executed successfully and 
+      // does not throw a runtime error "variable not found"
+      assertEqual([ 1 ], result);
+    },
+
   };
 }
 

@@ -444,6 +444,32 @@ bool MMFilesWalRecoverState::InitialScanMarker(MMFilesMarker const* marker, void
 bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
                                           void* data, MMFilesDatafile* datafile) {
   MMFilesWalRecoverState* state = reinterpret_cast<MMFilesWalRecoverState*>(data);
+  auto visitRecoveryHelpers = arangodb::scopeGuard([marker, state]()->void { // ensure recovery helpers are called
+    if (!state || (!state->canContinue() && state->errorCount) || !marker) {
+        return; // ignore invalid state or unset marker
+      }
+
+      auto visitor = [marker](MMFilesRecoveryHelper const& helper)->bool {
+        auto res = helper.replayMarker(*marker);
+
+        if (!res.ok()) {
+          LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+            << "failure during recovery helper invocation: " << res.errorNumber() << " " << res.errorMessage();
+
+          return false;
+        }
+
+        return true;
+      };
+
+      try {
+        if (!MMFilesEngine::visitRecoveryHelpers(visitor)) {
+          ++state->errorCount;
+        }
+      } catch(...) {
+        ++state->errorCount;
+      }
+  });
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)

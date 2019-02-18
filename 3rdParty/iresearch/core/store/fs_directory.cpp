@@ -232,7 +232,7 @@ class fs_index_output : public buffered_index_output {
   }
 
  private:
-  DEFINE_FACTORY_INLINE(index_output);
+  DEFINE_FACTORY_INLINE(index_output)
 
   fs_index_output(file_utils::handle_t&& handle, size_t buf_size) NOEXCEPT
     : buffered_index_output(buf_size),
@@ -396,7 +396,7 @@ class fs_index_input : public buffered_index_input {
     size_t pos{}; /* current file position*/
   }; // file_handle
 
-  DEFINE_FACTORY_INLINE(index_input);
+  DEFINE_FACTORY_INLINE(index_input)
 
   fs_index_input(
       file_handle::ptr&& handle,
@@ -417,7 +417,7 @@ class fs_index_input : public buffered_index_input {
   size_t pos_; // current input stream position
 }; // fs_index_input
 
-DEFINE_FACTORY_DEFAULT(fs_index_input::file_handle);
+DEFINE_FACTORY_DEFAULT(fs_index_input::file_handle)
 
 class pooled_fs_index_input final : public fs_index_input {
  public:

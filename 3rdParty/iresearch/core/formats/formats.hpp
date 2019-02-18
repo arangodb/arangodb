@@ -74,7 +74,7 @@ struct IRESEARCH_API term_meta : attribute {
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API postings_writer : util::const_attribute_view_provider {
   DECLARE_UNIQUE_PTR(postings_writer);
-  DEFINE_FACTORY_INLINE(postings_writer);
+  DEFINE_FACTORY_INLINE(postings_writer)
 
   class releaser {
    public:
@@ -123,7 +123,7 @@ void postings_writer::releaser::operator()(term_meta* meta) const NOEXCEPT {
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API field_writer {
   DECLARE_UNIQUE_PTR(field_writer);
-  DEFINE_FACTORY_INLINE(field_writer);
+  DEFINE_FACTORY_INLINE(field_writer)
 
   virtual ~field_writer();
   virtual void prepare(const flush_state& state) = 0;
@@ -136,7 +136,7 @@ struct IRESEARCH_API field_writer {
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API postings_reader {
   DECLARE_UNIQUE_PTR(postings_reader);
-  DEFINE_FACTORY_INLINE(postings_reader);
+  DEFINE_FACTORY_INLINE(postings_reader)
 
   virtual ~postings_reader();
   
@@ -187,7 +187,7 @@ struct IRESEARCH_API basic_term_reader: public util::const_attribute_view_provid
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
   DECLARE_UNIQUE_PTR( term_reader);
-  DEFINE_FACTORY_INLINE(term_reader);
+  DEFINE_FACTORY_INLINE(term_reader)
 
   virtual ~term_reader();
 
@@ -214,7 +214,7 @@ struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API field_reader {
   DECLARE_UNIQUE_PTR(field_reader);
-  DEFINE_FACTORY_INLINE(field_reader);
+  DEFINE_FACTORY_INLINE(field_reader)
 
   virtual ~field_reader();
 
@@ -254,8 +254,8 @@ struct IRESEARCH_API columnstore_writer {
 
 NS_END
 
-MSVC_ONLY(template class IRESEARCH_API std::function<bool(irs::doc_id_t, irs::bytes_ref&)>); // columnstore_reader::values_reader_f
-MSVC_ONLY(template class IRESEARCH_API std::function<iresearch::columnstore_writer::column_output&(iresearch::doc_id_t)>); // columnstore_writer::values_writer_f
+MSVC_ONLY(template class IRESEARCH_API std::function<bool(irs::doc_id_t, irs::bytes_ref&)>;) // columnstore_reader::values_reader_f
+MSVC_ONLY(template class IRESEARCH_API std::function<iresearch::columnstore_writer::column_output&(iresearch::doc_id_t)>;) // columnstore_writer::values_writer_f
 
 NS_ROOT
 
@@ -342,7 +342,7 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API document_mask_writer {
   DECLARE_MANAGED_PTR(document_mask_writer);
-  DEFINE_FACTORY_INLINE(document_mask_writer);
+  DEFINE_FACTORY_INLINE(document_mask_writer)
 
   virtual ~document_mask_writer();
 
@@ -362,7 +362,7 @@ struct IRESEARCH_API document_mask_writer {
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API document_mask_reader {
   DECLARE_MANAGED_PTR(document_mask_reader);
-  DEFINE_FACTORY_INLINE(document_mask_reader);
+  DEFINE_FACTORY_INLINE(document_mask_reader)
 
   virtual ~document_mask_reader();
 
@@ -412,7 +412,7 @@ struct IRESEARCH_API segment_meta_reader {
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API index_meta_writer {
   DECLARE_UNIQUE_PTR(index_meta_writer);
-  DEFINE_FACTORY_INLINE(index_meta_writer);
+  DEFINE_FACTORY_INLINE(index_meta_writer)
 
   virtual ~index_meta_writer();
   virtual std::string filename(const index_meta& meta) const = 0;
@@ -500,7 +500,7 @@ class IRESEARCH_API format {
 
 NS_END
 
-MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<iresearch::format>); // format::ptr
+MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<iresearch::format>;) // format::ptr
 
 NS_ROOT
 

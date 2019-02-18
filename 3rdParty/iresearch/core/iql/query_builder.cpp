@@ -247,12 +247,12 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
       return result;
     }
    private:
-    friend parse_context;
+    friend class parse_context;
     std::string sError;
     DECLARE_FILTER_TYPE();
   };
 
-  DEFINE_FILTER_TYPE(ErrorNode);
+  DEFINE_FILTER_TYPE(ErrorNode)
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief proxy_filter specialized for iresearch::filter::ptr
@@ -276,18 +276,18 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     DECLARE_FILTER_TYPE();
   };
 
-  DEFINE_FILTER_TYPE(LinkNode);
+  DEFINE_FILTER_TYPE(LinkNode)
 
   class RootNode: public iresearch::Or {
    public:
     DECLARE_FACTORY();
 
    private:
-    friend parse_context;
+    friend class parse_context;
     iresearch::order order;
     size_t nLimit;
   };
-  DEFINE_FACTORY_DEFAULT(RootNode);
+  DEFINE_FACTORY_DEFAULT(RootNode)
 
   class parse_context: public irs::iql::parser_context {
    public:
@@ -958,8 +958,8 @@ query query_builder::build(
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(proxy_filter);
-DEFINE_FACTORY_DEFAULT(proxy_filter);
+DEFINE_FILTER_TYPE(proxy_filter)
+DEFINE_FACTORY_DEFAULT(proxy_filter)
 
 NS_END // iql
 NS_END // NS_ROOT

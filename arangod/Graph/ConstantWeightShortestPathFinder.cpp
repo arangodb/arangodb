@@ -23,11 +23,11 @@
 
 #include "ConstantWeightShortestPathFinder.h"
 
-#include "Aql/ShortestPathBlock.h"
 #include "Basics/StringRef.h"
 #include "Cluster/ServerState.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
+#include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Graph/TraverserCache.h"
 #include "Transaction/Helpers.h"
@@ -46,8 +46,8 @@ ConstantWeightShortestPathFinder::PathSnippet::PathSnippet(StringRef& pred,
                                                            EdgeDocumentToken&& path)
     : _pred(pred), _path(std::move(path)) {}
 
-ConstantWeightShortestPathFinder::ConstantWeightShortestPathFinder(ShortestPathOptions* options)
-    : _options(options), _mmdr(new ManagedDocumentResult{}) {}
+ConstantWeightShortestPathFinder::ConstantWeightShortestPathFinder(ShortestPathOptions& options)
+    : ShortestPathFinder(options), _mmdr(new ManagedDocumentResult{}) {}
 
 ConstantWeightShortestPathFinder::~ConstantWeightShortestPathFinder() {
   clearVisited();
@@ -64,7 +64,7 @@ bool ConstantWeightShortestPathFinder::shortestPath(
   // Init
   if (start == end) {
     result._vertices.emplace_back(start);
-    _options->fetchVerticesCoordinator(result._vertices);
+    _options.fetchVerticesCoordinator(result._vertices);
     return true;
   }
   _leftClosure.clear();
@@ -159,22 +159,22 @@ void ConstantWeightShortestPathFinder::fillResult(StringRef& n,
   TRI_IF_FAILURE("TraversalOOMPath") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  _options->fetchVerticesCoordinator(result._vertices);
+  _options.fetchVerticesCoordinator(result._vertices);
   clearVisited();
 }
 
 void ConstantWeightShortestPathFinder::expandVertex(bool backward, StringRef vertex) {
   std::unique_ptr<EdgeCursor> edgeCursor;
   if (backward) {
-    edgeCursor.reset(_options->nextReverseCursor(_mmdr.get(), vertex));
+    edgeCursor.reset(_options.nextReverseCursor(_mmdr.get(), vertex));
   } else {
-    edgeCursor.reset(_options->nextCursor(_mmdr.get(), vertex));
+    edgeCursor.reset(_options.nextCursor(_mmdr.get(), vertex));
   }
 
   auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
     if (edge.isString()) {
       if (edge.compareString(vertex.data(), vertex.length()) != 0) {
-        StringRef id = _options->cache()->persistString(StringRef(edge));
+        StringRef id = _options.cache()->persistString(StringRef(edge));
         _edges.emplace_back(std::move(eid));
         _neighbors.emplace_back(id);
       }
@@ -184,7 +184,7 @@ void ConstantWeightShortestPathFinder::expandVertex(bool backward, StringRef ver
         other = StringRef(transaction::helpers::extractToFromDocument(edge));
       }
       if (other != vertex) {
-        StringRef id = _options->cache()->persistString(other);
+        StringRef id = _options.cache()->persistString(other);
         _edges.emplace_back(std::move(eid));
         _neighbors.emplace_back(id);
       }

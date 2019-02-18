@@ -34,10 +34,8 @@ using namespace arangodb;
 using namespace arangodb::traverser;
 using namespace arangodb::graph;
 
-SingleServerTraverser::SingleServerTraverser(TraverserOptions* opts,
-                                             transaction::Methods* trx,
-                                             ManagedDocumentResult* mmdr)
-    : Traverser(opts, trx, mmdr) {}
+SingleServerTraverser::SingleServerTraverser(TraverserOptions* opts, transaction::Methods* trx)
+    : Traverser(opts, trx) {}
 
 SingleServerTraverser::~SingleServerTraverser() {}
 
@@ -50,9 +48,9 @@ aql::AqlValue SingleServerTraverser::fetchVertexData(StringRef vid) {
 }
 
 void SingleServerTraverser::setStartVertex(std::string const& vid) {
-  _startIdBuilder->clear();
-  _startIdBuilder->add(VPackValue(vid));
-  VPackSlice idSlice = _startIdBuilder->slice();
+  _startIdBuilder.clear();
+  _startIdBuilder.add(VPackValue(vid));
+  VPackSlice idSlice = _startIdBuilder.slice();
 
   if (!vertexMatchesConditions(StringRef(vid), 0)) {
     // Start vertex invalid

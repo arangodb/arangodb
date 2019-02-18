@@ -39,7 +39,7 @@ class Slice;
 }  // namespace velocypack
 namespace graph {
 
-struct ShortestPathOptions final : public BaseOptions {
+struct ShortestPathOptions : public BaseOptions {
  public:
   std::string start;
   std::string direction;

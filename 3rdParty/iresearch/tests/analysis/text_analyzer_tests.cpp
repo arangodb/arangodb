@@ -62,12 +62,14 @@ using namespace iresearch::analysis;
 // -----------------------------------------------------------------------------
 
 TEST_F(TextAnalyzerParserTestSuite, test_nbsp_whitespace) {
-  std::unordered_set<std::string> emptySet;
-  auto locale = irs::locale_utils::locale("C.UTF-8"); // utf8 encoding used bellow
+  irs::analysis::text_token_stream::options_t options;
+
+  options.locale = irs::locale_utils::locale("C.UTF-8"); // utf8 encoding used bellow
+
   std::string sField = "test field";
   std::wstring sDataUCS2 = L"1,24\u00A0prosenttia"; // 00A0 == non-breaking whitespace
   std::string data(boost::locale::conv::utf_to_utf<char>(sDataUCS2));
-  text_token_stream stream(locale, emptySet);
+  irs::analysis::text_token_stream stream(options);
 
   ASSERT_TRUE(stream.reset(data));
 
@@ -90,11 +92,15 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
   std::unordered_set<std::string> emptySet;
   std::string sField = "test field";
 
+  // default behaviour
   {
-    auto locale = irs::locale_utils::locale("en_US.UTF-8");
+    irs::analysis::text_token_stream::options_t options;
+
+    options.locale = irs::locale_utils::locale("en_US.UTF-8");
+
     std::string sDataASCII = " A  hErd of   quIck brown  foXes ran    and Jumped over  a     runninG dog";
     std::string data(sDataASCII);
-    text_token_stream stream(locale, emptySet);
+    irs::analysis::text_token_stream stream(options);
 
     ASSERT_TRUE(stream.reset(data));
 
@@ -135,12 +141,94 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     ASSERT_FALSE(pStream->next());
   }
 
+  // case convert (lower)
   {
-    std::unordered_set<std::string> stopwordSet = { "a", "of", "and" };
-    auto locale = irs::locale_utils::locale("en_US.UTF-8");
+    irs::analysis::text_token_stream::options_t options;
+
+    options.case_convert = irs::analysis::text_token_stream::options_t::case_convert_t::LOWER;
+    options.locale = irs::locale_utils::locale("en_US.UTF-8");
+
+    std::string dataASCII = "A qUiCk brOwn FoX";
+    std::string data(dataASCII);
+    irs::analysis::text_token_stream stream(options);
+
+    ASSERT_TRUE(stream.reset(data));
+
+    auto& value = stream.attributes().get<irs::term_attribute>();
+
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ("a", irs::ref_cast<char>(value->value()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ("quick", irs::ref_cast<char>(value->value()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ("brown", irs::ref_cast<char>(value->value()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ("fox", irs::ref_cast<char>(value->value()));
+    ASSERT_FALSE(stream.next());
+  }
+
+  // case convert (upper)
+  {
+    irs::analysis::text_token_stream::options_t options;
+
+    options.case_convert = irs::analysis::text_token_stream::options_t::case_convert_t::UPPER;
+    options.locale = irs::locale_utils::locale("en_US.UTF-8");
+
+    std::string dataASCII = "A qUiCk brOwn FoX";
+    std::string data(dataASCII);
+    irs::analysis::text_token_stream stream(options);
+
+    ASSERT_TRUE(stream.reset(data));
+
+    auto& value = stream.attributes().get<irs::term_attribute>();
+
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ("A", irs::ref_cast<char>(value->value()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ("QUICK", irs::ref_cast<char>(value->value()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ("BROWN", irs::ref_cast<char>(value->value()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ("FOX", irs::ref_cast<char>(value->value()));
+    ASSERT_FALSE(stream.next());
+  }
+
+  // case convert (none)
+  {
+    irs::analysis::text_token_stream::options_t options;
+
+    options.case_convert = irs::analysis::text_token_stream::options_t::case_convert_t::NONE;
+    options.locale = irs::locale_utils::locale("en_US.UTF-8");
+
+    std::string dataASCII = "A qUiCk brOwn FoX";
+    std::string data(dataASCII);
+    irs::analysis::text_token_stream stream(options);
+
+    ASSERT_TRUE(stream.reset(data));
+
+    auto& value = stream.attributes().get<irs::term_attribute>();
+
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ("A", irs::ref_cast<char>(value->value()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ("qUiCk", irs::ref_cast<char>(value->value()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ("brOwn", irs::ref_cast<char>(value->value()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ("FoX", irs::ref_cast<char>(value->value()));
+    ASSERT_FALSE(stream.next());
+  }
+
+  // ignored words
+  {
+    irs::analysis::text_token_stream::options_t options;
+
+    options.ignored_words = std::unordered_set<std::string>({ "a", "of", "and" });
+    options.locale = irs::locale_utils::locale("en_US.UTF-8");
+
     std::string sDataASCII = " A thing of some KIND and ANoTher ";
     std::string data(sDataASCII);
-    text_token_stream stream(locale, stopwordSet);
+    irs::analysis::text_token_stream stream(options);
 
     ASSERT_TRUE(stream.reset(data));
 
@@ -163,11 +251,15 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     ASSERT_FALSE(pStream->next());
   }
 
+  // alternate locale
   {
-    auto locale = irs::locale_utils::locale("ru_RU.UTF-8");
+    irs::analysis::text_token_stream::options_t options;
+
+    options.locale = irs::locale_utils::locale("ru_RU.UTF-8");
+
     std::wstring sDataUCS2 = L"\u041F\u043E \u0432\u0435\u0447\u0435\u0440\u0430\u043C \u0401\u0436\u0438\u043A \u0445\u043E\u0434\u0438\u043B \u043A \u041C\u0435\u0434\u0432\u0435\u0436\u043E\u043D\u043A\u0443 \u0441\u0447\u0438\u0442\u0430\u0442\u044C \u0437\u0432\u0451\u0437\u0434\u044B";
     std::string data(boost::locale::conv::utf_to_utf<char>(sDataUCS2));
-    text_token_stream stream(locale, emptySet);
+    irs::analysis::text_token_stream stream(options);
 
     ASSERT_TRUE(stream.reset(data));
 
@@ -198,11 +290,83 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     ASSERT_FALSE(pStream->next());
   }
 
+  // skip accent removal
   {
-    auto locale = irs::locale_utils::locale("tr-TR.UTF-8");
+    irs::analysis::text_token_stream::options_t options;
+
+    options.locale = irs::locale_utils::locale("ru_RU.UTF-8");
+    options.no_accent = false;
+
+    std::wstring sDataUCS2 = L"\u041F\u043E \u0432\u0435\u0447\u0435\u0440\u0430\u043C \u0401\u0436\u0438\u043A \u0445\u043E\u0434\u0438\u043B \u043A \u041C\u0435\u0434\u0432\u0435\u0436\u043E\u043D\u043A\u0443 \u0441\u0447\u0438\u0442\u0430\u0442\u044C \u0437\u0432\u0451\u0437\u0434\u044B";
+    std::string data(boost::locale::conv::utf_to_utf<char>(sDataUCS2));
+    irs::analysis::text_token_stream stream(options);
+
+    ASSERT_TRUE(stream.reset(data));
+
+    auto& value = stream.attributes().get<iresearch::term_attribute>();
+
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ(L"\u043F\u043E", boost::locale::conv::utf_to_utf<wchar_t>(value->value().c_str(), value->value().c_str() + value->value().size()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ(L"\u0432\u0435\u0447\u0435\u0440", boost::locale::conv::utf_to_utf<wchar_t>(value->value().c_str(), value->value().c_str() + value->value().size()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ(L"\u0451\u0436\u0438\u043A", boost::locale::conv::utf_to_utf<wchar_t>(value->value().c_str(), value->value().c_str() + value->value().size()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ(L"\u0445\u043E\u0434", boost::locale::conv::utf_to_utf<wchar_t>(value->value().c_str(), value->value().c_str() + value->value().size()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ(L"\u043A", boost::locale::conv::utf_to_utf<wchar_t>(value->value().c_str(), value->value().c_str() + value->value().size()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ(L"\u043C\u0435\u0434\u0432\u0435\u0436\u043E\u043D\u043A", boost::locale::conv::utf_to_utf<wchar_t>(value->value().c_str(), value->value().c_str() + value->value().size()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ(L"\u0441\u0447\u0438\u0442\u0430", boost::locale::conv::utf_to_utf<wchar_t>(value->value().c_str(), value->value().c_str() + value->value().size()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ(L"\u0437\u0432\u0451\u0437\u0434\u044B", boost::locale::conv::utf_to_utf<wchar_t>(value->value().c_str(), value->value().c_str() + value->value().size())); // for some reason snowball doesn't remove the last letter if accents were not removed
+    ASSERT_FALSE(stream.next());
+  }
+
+  // skip stemming
+  {
+    irs::analysis::text_token_stream::options_t options;
+
+    options.locale = irs::locale_utils::locale("ru_RU.UTF-8");
+    options.no_stem = true;
+
+    std::wstring sDataUCS2 = L"\u041F\u043E \u0432\u0435\u0447\u0435\u0440\u0430\u043C \u0401\u0436\u0438\u043A \u0445\u043E\u0434\u0438\u043B \u043A \u041C\u0435\u0434\u0432\u0435\u0436\u043E\u043D\u043A\u0443 \u0441\u0447\u0438\u0442\u0430\u0442\u044C \u0437\u0432\u0451\u0437\u0434\u044B";
+    std::string data(boost::locale::conv::utf_to_utf<char>(sDataUCS2));
+    irs::analysis::text_token_stream stream(options);
+
+    ASSERT_TRUE(stream.reset(data));
+
+    auto& value = stream.attributes().get<iresearch::term_attribute>();
+
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ(L"\u043F\u043E", boost::locale::conv::utf_to_utf<wchar_t>(value->value().c_str(), value->value().c_str() + value->value().size()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ(L"\u0432\u0435\u0447\u0435\u0440\u0430\u043C", boost::locale::conv::utf_to_utf<wchar_t>(value->value().c_str(), value->value().c_str() + value->value().size()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ(L"\u0435\u0436\u0438\u043A", boost::locale::conv::utf_to_utf<wchar_t>(value->value().c_str(), value->value().c_str() + value->value().size()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ(L"\u0445\u043E\u0434\u0438\u043B", boost::locale::conv::utf_to_utf<wchar_t>(value->value().c_str(), value->value().c_str() + value->value().size()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ(L"\u043A", boost::locale::conv::utf_to_utf<wchar_t>(value->value().c_str(), value->value().c_str() + value->value().size()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ(L"\u043C\u0435\u0434\u0432\u0435\u0436\u043E\u043D\u043A\u0443", boost::locale::conv::utf_to_utf<wchar_t>(value->value().c_str(), value->value().c_str() + value->value().size()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ(L"\u0441\u0447\u0438\u0442\u0430\u0442\u044C", boost::locale::conv::utf_to_utf<wchar_t>(value->value().c_str(), value->value().c_str() + value->value().size()));
+    ASSERT_TRUE(stream.next());
+    ASSERT_EQ(L"\u0437\u0432\u0435\u0437\u0434\u044B", boost::locale::conv::utf_to_utf<wchar_t>(value->value().c_str(), value->value().c_str() + value->value().size()));
+    ASSERT_FALSE(stream.next());
+  }
+
+  // locale-sensitive case conversion
+  {
+    irs::analysis::text_token_stream::options_t options;
+
+    options.locale = irs::locale_utils::locale("tr-TR.UTF-8");
+
     std::wstring sDataUCS2 = L"\u0130I";
     std::string data(boost::locale::conv::utf_to_utf<char>(sDataUCS2));
-    text_token_stream stream(locale, emptySet);
+    irs::analysis::text_token_stream stream(options);
 
     ASSERT_TRUE(stream.reset(data));
 
@@ -221,10 +385,13 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
   {
     // there is no Snowball stemmer for Chinese
-    auto locale = irs::locale_utils::locale("zh_CN.UTF-8");
+    irs::analysis::text_token_stream::options_t options;
+
+    options.locale = irs::locale_utils::locale("zh_CN.UTF-8");
+
     std::wstring sDataUCS2 = L"\u4ECA\u5929\u4E0B\u5348\u7684\u592A\u9633\u5F88\u6E29\u6696\u3002";
     std::string data(boost::locale::conv::utf_to_utf<char>(sDataUCS2));
-    text_token_stream stream(locale, emptySet);
+    irs::analysis::text_token_stream stream(options);
 
     ASSERT_TRUE(stream.reset(data));
 
@@ -257,10 +424,13 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
   {
     // ICU locale will fail initialization for an invalid std:locale
-    auto locale = irs::locale_utils::locale("invalid12345.UTF-8");
+    irs::analysis::text_token_stream::options_t options;
+
+    options.locale = irs::locale_utils::locale("invalid12345.UTF-8");
+
     std::string sDataASCII = "abc";
     std::string data(sDataASCII);
-    text_token_stream stream(locale, emptySet);
+    irs::analysis::text_token_stream stream(options);
 
     ASSERT_FALSE(stream.reset(data));
   }
