@@ -101,7 +101,7 @@ Now that the Cluster is prepared, the `parallelRestore` script will be used.
 Please create the below `parallelRestore` script in any of your _Coordinators_.
 
 When executed (see below for further details), this script will create other scripts
-that can be then copied and then executed on each _Coordinator_.
+that can be then copied and executed on each _Coordinator_.
 
 
 ```
