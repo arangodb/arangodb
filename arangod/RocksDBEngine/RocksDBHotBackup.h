@@ -145,8 +145,10 @@ public:
 
 protected:
 
+  bool createRestoringDirectory(const std::string &);
+
   bool _saveCurrent;
-  bool _forceBackup;
+  bool _forceRestore;
   unsigned _timeoutMS;
   std::string _timestampCurrent;
   std::string _directoryRestore;

@@ -455,7 +455,7 @@ void RocksDBHotBackupCreate::executeCreate() {
 ///        POST:  Initiate restore of rocksdb snapshot in place of working directory
 ////////////////////////////////////////////////////////////////////////////////
 RocksDBHotBackupRestore::RocksDBHotBackupRestore(const VPackSlice body)
-  : RocksDBHotBackup(body), _saveCurrent(true), _forceBackup(true), _timeoutMS(10000)
+  : RocksDBHotBackup(body), _saveCurrent(true), _forceRestore(true), _timeoutMS(10000)
 {
 }
 
@@ -483,7 +483,7 @@ void RocksDBHotBackupRestore::parseParameters(rest::RequestType const type) {
   // remaining params are optional
   getParamValue("saveCurrent", _saveCurrent, false);
   getParamValue("timeoutMS", _timeoutMS, false);
-  getParamValue("forceBackup", _forceBackup, false);
+  getParamValue("forceRestore", _forceRestore, false);
 
   //
   // extra validation
@@ -512,6 +512,8 @@ static basics::FileUtils::TRI_copy_recursive_e copyVersusLink(std::string const 
   if (name.length() > 4 && 0 == name.substr(name.length()-4, 4).compare(".sst"))
   {
     ret_code = basics::FileUtils::TRI_COPY_LINK;
+  } else if (std::string::npos != name.find(".sha.")) {
+    ret_code = basics::FileUtils::TRI_COPY_LINK;
   } else if (0 == basename.compare("CURRENT")) {
     ret_code = basics::FileUtils::TRI_COPY_COPY;
   } else if (0 == basename.substr(0,8).compare("MANIFEST")) {
@@ -525,31 +527,34 @@ static basics::FileUtils::TRI_copy_recursive_e copyVersusLink(std::string const 
 } // copyVersusLink
 
 
-
 void RocksDBHotBackupRestore::execute() {
   std::string errors;
+  bool copyGood={false}, gotLock={false};
 
   // remove "restoring" directory if it exists
   std::string restoringDir = rebuildPath("restoring");
-  if (basics::FileUtils::exists(restoringDir)) {
-    if (basics::FileUtils::isDirectory(restoringDir)) {
-      // code to remove directory
-    } else {
-      // currently ignoring error
-      basics::FileUtils::remove(restoringDir);
-    } // else
-    // test if still there and error out?
+
+  if (createRestoringDirectory(restoringDir)) {
+    // copy restore contents to new "restoring" directory (hard links)
+    //  (both directories must exists)
+    std::function<basics::FileUtils::TRI_copy_recursive_e(std::string const&)>  filter=copyVersusLink;
+    std::string fullDirectoryRestore = rebuildPath(_directoryRestore);
+    copyGood = basics::FileUtils::copyRecursive(fullDirectoryRestore, restoringDir,
+                                                filter, errors);
   } // if
 
+  // proceed only if copy completed
+  if (copyGood) {
+    // make sure the transaction hold is released
+    auto guardHold = scopeGuard([&gotLock]()
+                                  { if (gotLock) TransactionManagerFeature::manager()->releaseTransactions(); });
+    // convert timeout from milliseconds to microseconds
+    gotLock = TransactionManagerFeature::manager()->holdTransactions(_timeoutMS * 1000);
 
-
-  // copy restore contents to new "restoring" directory (hard links)
-  //  (both directories must exists)
-  basics::FileUtils::createDirectory(restoringDir, nullptr);
-  std::function<basics::FileUtils::TRI_copy_recursive_e(std::string const&)>  filter=copyVersusLink;
-  std::string fullDirectoryRestore = rebuildPath(_directoryRestore);
-  _success = basics::FileUtils::copyRecursive(fullDirectoryRestore, restoringDir,
-                                              filter, errors);
+    if (gotLock || _forceRestore) {
+        EngineSelectorFeature::ENGINE->flushWal(true, true);
+      } // if
+  }  // if
 
   // transaction hold
   // rocksdb stop
@@ -564,5 +569,37 @@ void RocksDBHotBackupRestore::execute() {
 } // RocksDBHotBackupRestore::execute
 
 
+bool RocksDBHotBackupRestore::createRestoringDirectory(const std::string & restoreDir) {
+  bool retFlag={true};
 
+  // git rid of an old restoring directory if it exists
+  if (basics::FileUtils::exists(restoreDir)) {
+    if (basics::FileUtils::isDirectory(restoreDir)) {
+      // currently ignoring error
+      TRI_RemoveDirectory(restoreDir.c_str());
+    } else {
+      // currently ignoring error
+      basics::FileUtils::remove(restoreDir);
+    } // else
+
+    // test if still there and error out?
+    if (basics::FileUtils::exists(restoreDir)) {
+      retFlag = false;
+    } // if
+  } // if
+
+  // now create a new restoring directory
+  if (retFlag) {
+    retFlag = basics::FileUtils::createDirectory(restoreDir, nullptr);
+  } // if
+
+  // set error values
+  if (!retFlag) {
+    _respError = TRI_ERROR_CANNOT_CREATE_DIRECTORY;
+    _respCode = rest::ResponseCode::BAD;
+  } // if
+
+  return retFlag;
+
+} // RocksDBHotBackupRestore::createRestoringDirectory
 }  // namespace arangodb
