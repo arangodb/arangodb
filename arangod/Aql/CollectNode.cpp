@@ -140,7 +140,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
 
       CountCollectExecutorInfos infos(collectRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                       getRegisterPlan()->nrRegs[getDepth()],
-                                      getRegsToClear());
+                                      getRegsToClear(), calcRegsToKeep());
 
       return std::make_unique<ExecutionBlockImpl<CountCollectExecutor>>(&engine, this,
                                                                         std::move(infos));

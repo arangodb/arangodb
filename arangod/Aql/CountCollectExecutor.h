@@ -50,7 +50,8 @@ class CountCollectExecutorInfos : public ExecutorInfos {
  public:
   CountCollectExecutorInfos(RegisterId collectRegister, RegisterId nrInputRegisters,
                             RegisterId nrOutputRegisters,
-                            std::unordered_set<RegisterId> registersToClear);
+                            std::unordered_set<RegisterId> registersToClear,
+                            std::unordered_set<RegisterId> registersToKeep);
 
   CountCollectExecutorInfos() = delete;
   CountCollectExecutorInfos(CountCollectExecutorInfos&&) = default;
