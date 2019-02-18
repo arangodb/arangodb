@@ -1276,7 +1276,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
-  Result res = mthds->Put(RocksDBColumnFamily::documents(), key.ref(),
+  Result res = mthds->PutUntracked(RocksDBColumnFamily::documents(), key.ref(),
                           rocksdb::Slice(reinterpret_cast<char const*>(doc.begin()),
                                          static_cast<size_t>(doc.byteSize())));
   if (!res.ok()) {
@@ -1370,7 +1370,7 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthd, trx->isSingleOperationTransaction());
 
-  Result res = mthd->Put(RocksDBColumnFamily::documents(), newKey.ref(),
+  Result res = mthd->PutUntracked(RocksDBColumnFamily::documents(), newKey.ref(),
                          rocksdb::Slice(reinterpret_cast<char const*>(newDoc.begin()),
                                         static_cast<size_t>(newDoc.byteSize())));
   if (!res.ok()) {
