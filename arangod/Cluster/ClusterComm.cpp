@@ -251,10 +251,7 @@ ClusterComm::ClusterComm(bool ignored)
 /// @brief ClusterComm destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterComm::~ClusterComm() {
-  stopBackgroundThreads();
-  cleanupAllQueues();
-}
+ClusterComm::~ClusterComm() { stopBackgroundThreads(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getter for our singleton instance
@@ -447,7 +444,12 @@ OperationID ClusterComm::asyncRequest(
                           initTimeout](int errorCode, std::unique_ptr<GeneralResponse> response) {
       {
         CONDITION_LOCKER(locker, somethingReceived);
-        responses.erase(result->operationID);
+        size_t numErased = responses.erase(result->operationID);
+        if (numErased == 0) {
+          // Request has been dropped, noone cares for it anymore.
+          // So do not call the callback (might be gone anyways)
+          return;
+        }
       }
       result->fromError(errorCode, std::move(response));
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
@@ -459,7 +461,12 @@ OperationID ClusterComm::asyncRequest(
     callbacks._onSuccess = [callback, result, this](std::unique_ptr<GeneralResponse> response) {
       {
         CONDITION_LOCKER(locker, somethingReceived);
-        responses.erase(result->operationID);
+        size_t numErased = responses.erase(result->operationID);
+        if (numErased == 0) {
+          // Request has been dropped, noone cares for it anymore.
+          // So do not call the callback (might be gone anyways)
+          return;
+        }
       }
       TRI_ASSERT(response.get() != nullptr);
       result->fromResponse(std::move(response));
@@ -469,6 +476,8 @@ OperationID ClusterComm::asyncRequest(
   } else {
     callbacks._onError = [result, doLogConnectionErrors, this,
                           initTimeout](int errorCode, std::unique_ptr<GeneralResponse> response) {
+      // If the result has been removed from responses we are the last ones
+      // having a shared_ptr So it will be gone after this callback
       CONDITION_LOCKER(locker, somethingReceived);
       result->fromError(errorCode, std::move(response));
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
@@ -477,6 +486,8 @@ OperationID ClusterComm::asyncRequest(
       somethingReceived.broadcast();
     };
     callbacks._onSuccess = [result, this](std::unique_ptr<GeneralResponse> response) {
+      // If the result has been removed from responses we are the last ones
+      // having a shared_ptr So it will be gone after this callback
       TRI_ASSERT(response.get() != nullptr);
       CONDITION_LOCKER(locker, somethingReceived);
       result->fromResponse(std::move(response));
@@ -486,12 +497,15 @@ OperationID ClusterComm::asyncRequest(
 
   TRI_ASSERT(request != nullptr);
   CONDITION_LOCKER(locker, somethingReceived);
+  // Rall a random communicator
+  auto communicatorPtr = communicator();
   auto ticketId =
-      communicator()->addRequest(createCommunicatorDestination(result->endpoint, path),
-                                 std::move(request), callbacks, opt);
+      communicatorPtr->addRequest(createCommunicatorDestination(result->endpoint, path),
+                                  std::move(request), callbacks, opt);
 
   result->operationID = ticketId;
-  responses.emplace(ticketId, AsyncResponse{TRI_microtime(), result});
+  responses.emplace(ticketId, AsyncResponse{TRI_microtime(), result,
+                                            std::move(communicatorPtr)});
   return ticketId;
 }
 
@@ -726,15 +740,25 @@ ClusterCommResult const ClusterComm::wait(CoordTransactionID const coordTransact
 
 void ClusterComm::drop(CoordTransactionID const coordTransactionID,
                        OperationID const operationID, ShardID const& shardID) {
-  // TODO Reimplements
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cleanup all queues
-////////////////////////////////////////////////////////////////////////////////
-
-void ClusterComm::cleanupAllQueues() {
-  // TODO Reimplements
+  // Loop through the responses queue
+  {
+    // Lock out the communicators to write responses in this very moment.
+    CONDITION_LOCKER(guard, somethingReceived);
+    ResponseIterator q = responses.begin();
+    for (; q != responses.end();) {
+      ClusterCommResult* result = q->second.result.get();
+      // The result is not allowed to be deleted
+      TRI_ASSERT(result != nullptr);
+      if ((0 != operationID && result->operationID == operationID) ||
+          match(coordTransactionID, shardID, result)) {
+        // Abort on communicator does not trigger a function that requires responses list.
+        q->second.communicator->abortRequest(q->first);
+        q = responses.erase(q);
+      } else {
+        q++;
+      }
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
