@@ -636,9 +636,10 @@ class ClusterComm {
   std::unordered_map<communicator::Ticket, AsyncResponse> responses;
   typedef decltype(ClusterComm::responses)::iterator ResponseIterator;
 
-  // Receiving answers:
-  std::list<ClusterCommOperation*> received;
-  std::map<OperationID, std::list<ClusterCommOperation*>::iterator> receivedByOpID;
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief condition variable to protect the responses map
+  //////////////////////////////////////////////////////////////////////////////
+
   arangodb::basics::ConditionVariable somethingReceived;
 
   //////////////////////////////////////////////////////////////////////////////

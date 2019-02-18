@@ -726,31 +726,7 @@ ClusterCommResult const ClusterComm::wait(CoordTransactionID const coordTransact
 
 void ClusterComm::drop(CoordTransactionID const coordTransactionID,
                        OperationID const operationID, ShardID const& shardID) {
-  QueueIterator q;
-  QueueIterator nextq;
-  IndexIterator i;
-  // Now look through the receive queue:
-  {
-    CONDITION_LOCKER(locker, somethingReceived);
-
-    for (q = received.begin(); q != received.end();) {
-      ClusterCommOperation* op = *q;
-      if ((0 != operationID && operationID == op->result.operationID) ||
-          match(coordTransactionID, shardID, &op->result)) {
-        nextq = q;
-        nextq++;
-        i = receivedByOpID.find(op->result.operationID);  // cannot fail
-        if (i != receivedByOpID.end() && q == i->second) {
-          receivedByOpID.erase(i);
-        }
-        received.erase(q);
-        delete op;
-        q = nextq;
-      } else {
-        q++;
-      }
-    }
-  }
+  // TODO Reimplements
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -758,15 +734,7 @@ void ClusterComm::drop(CoordTransactionID const coordTransactionID,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::cleanupAllQueues() {
-  {
-    CONDITION_LOCKER(locker, somethingReceived);
-
-    for (auto& it : received) {
-      delete it;
-    }
-    receivedByOpID.clear();
-    received.clear();
-  }
+  // TODO Reimplements
 }
 
 ////////////////////////////////////////////////////////////////////////////////
