@@ -21,7 +21,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "v8-query.h"
 #include "Aql/Query.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
@@ -42,6 +41,7 @@
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+#include "v8-query.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -355,7 +355,7 @@ static void JS_ChecksumCollection(v8::FunctionCallbackInfo<v8::Value> const& arg
   auto result = col->checksum(withRevisions, withData);
 
   if (!result.ok()) {
-    TRI_V8_THROW_EXCEPTION(result);
+    TRI_V8_THROW_EXCEPTION(std::move(result).result());
   }
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, result.builder().slice()));

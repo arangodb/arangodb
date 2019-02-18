@@ -137,7 +137,7 @@ void RestControlPregelHandler::startExecution() {
     graph::GraphManager gmngr{_vocbase};
     auto graphRes = gmngr.lookupGraphByName(gs);
     if (graphRes.fail()) {
-      generateError(graphRes.copy_result());
+      generateError(std::move(graphRes).result());
       return;
     }
     std::unique_ptr<graph::Graph> graph = std::move(graphRes.get());
