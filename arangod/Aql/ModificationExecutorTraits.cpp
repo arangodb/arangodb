@@ -221,7 +221,7 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
   std::string rev;
 
   const RegisterId& inReg = info._input1RegisterId.value();
-  executor._fetcher.forRowinBlock([this, &errorCode, &key, &rev, trx, inReg,
+  executor._fetcher.forRowinBlock([this, &executor, &stats, &errorCode, &key, &rev, trx, inReg,
                                    &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
     if (!info._consultAqlWriteFilter ||
@@ -253,7 +253,7 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
       } else {
         // We have an error, handle it
         _operations.push_back(IGNORE_SKIP);
-        // FIXME //handleResult(errorCode, info._ignoreErrors, nullptr);
+        executor.handleStats(stats, errorCode, info._ignoreErrors);
       }
     } else {
       // not relevant for ourselves... just pass it on to the next block
@@ -380,7 +380,7 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
   const RegisterId& insertReg = info._input2RegisterId.value();
   const RegisterId& updateReg = info._input3RegisterId.value();
 
-  executor._fetcher.forRowinBlock([this, &errorCode, &errorMessage, &key, trx, inDocReg,
+  executor._fetcher.forRowinBlock([this, &executor, &stats, &errorCode, &errorMessage, &key, trx, inDocReg,
                                    insertReg, updateReg, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inDocReg);
     if (inVal.isObject()) /*update case, as old doc is present*/ {
@@ -432,8 +432,7 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
 
       if (errorCode != TRI_ERROR_NO_ERROR) {
         _operations.push_back(IGNORE_SKIP);
-        // FIXME
-        // handleResult(errorCode, info._ignoreErrors, &errorMessage);
+        executor.handleStats(stats, errorCode, info._ignoreErrors, &errorMessage);
       }
     }
   });

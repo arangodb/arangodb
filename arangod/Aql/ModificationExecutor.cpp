@@ -37,6 +37,33 @@ ModificationExecutorBase::ModificationExecutorBase(Fetcher& fetcher, Infos& info
     : _infos(infos), _fetcher(fetcher), _prepared(false){};
 
 /// @brief process the result of a data-modification operation
+void ModificationExecutorBase::handleStats(ModificationExecutorBase::Stats& stats, int code, bool ignoreErrors,
+                                     std::string const* errorMessage) {
+  if (code == TRI_ERROR_NO_ERROR) {
+    // update the success counter
+    if (_infos._doCount) {
+      stats.incrWritesExecuted();
+    }
+    return;
+  }
+
+  if (ignoreErrors) {
+    // update the ignored counter
+    if (_infos._doCount) {
+      stats.incrWritesExecuted();
+    }
+    return;
+  }
+
+  // bubble up the error
+  if (errorMessage != nullptr && !errorMessage->empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(code, *errorMessage);
+  }
+
+  THROW_ARANGO_EXCEPTION(code);
+}
+
+/// @brief process the result of a data-modification operation
 void ModificationExecutorBase::handleBabyStats(ModificationExecutorBase::Stats& stats,
                                                std::unordered_map<int, size_t> const& errorCounter,
                                                uint64_t numBabies, bool ignoreAllErrors,
