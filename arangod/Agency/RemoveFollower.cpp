@@ -143,12 +143,14 @@ bool RemoveFollower::start() {
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
 
-  Slice planned = _snapshot.hasAsSlice(planPath).first;
+  auto tmp = _snapshot.hasAsBuilder(planPath).first;
+  Slice planned = tmp.slice();
 
   TRI_ASSERT(planned.isArray());
 
   // First check that we still have too many followers for the current
   // `replicationFactor`:
+#warning catch throw
   size_t desiredReplFactor = collection.hasAsUInt("replicationFactor").first;
   size_t actualReplFactor = planned.length();
   if (actualReplFactor <= desiredReplFactor) {

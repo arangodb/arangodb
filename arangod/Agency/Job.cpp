@@ -238,8 +238,8 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
 
   // Remove cleaned servers from list (test first to avoid warning log
   if (snapshot.has(cleanedPrefix)) try {
-      for (auto const& srv :
-           VPackArrayIterator(snapshot.hasAsSlice(cleanedPrefix).first)) {
+      Builder cleaned = snapshot(cleanedPrefix).toBuilder();
+      for (auto const& srv : VPackArrayIterator(cleaned.slice())) {
         ret.erase(std::remove(ret.begin(), ret.end(), srv.copyString()), ret.end());
       }
     } catch (...) {
@@ -317,7 +317,7 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot, std::string const& d
     auto const otherCollection = colptr.first;
 
     if (otherCollection != collection && col.has("distributeShardsLike") &&  // use .has() form to prevent logging of missing
-        col.hasAsSlice("distributeShardsLike").first.copyString() == collection) {
+        col.hasAsBuilder("distributeShardsLike").first.slice().copyString() == collection) {
       auto const theirshards = sortedShardList(col("shards"));
       if (theirshards.size() > 0) {  // do not care about virtual collections
         if (theirshards.size() == myshards.size()) {
@@ -359,8 +359,8 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
       continue;
     }  // if
 
-    for (const auto& server :
-         VPackArrayIterator(snap.hasAsArray(currentShardPath).first)) {
+    Builder tmp = snap.hasAsArray(currentShardPath).first;
+    for (const auto& server : VPackArrayIterator(tmp.slice())) {
       auto id = server.copyString();
       if (i++ == 0) {
         // Skip leader
@@ -380,8 +380,8 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
       // check if it is also part of the plan...because if not the soon to be
       // leader will drop the collection
       bool found = false;
-      for (const auto& plannedServer :
-           VPackArrayIterator(snap.hasAsArray(plannedShardPath).first)) {
+      auto plannedServers = snap.hasAsArray(plannedShardPath).first;
+      for (const auto& plannedServer : VPackArrayIterator(plannedServers.slice())) {
         if (plannedServer == server) {
           found = true;
           continue;
@@ -457,10 +457,10 @@ void Job::doForAllShards(Node const& snapshot, std::string& database,
     std::string curPath =
         curColPrefix + database + "/" + collection + "/" + shard + "/servers";
 
-    Slice plan = snapshot.hasAsSlice(planPath).first;
-    Slice current = snapshot.hasAsSlice(curPath).first;
+    auto plan = snapshot.hasAsBuilder(planPath).first;
+    auto current = snapshot.hasAsBuilder(curPath).first;
 
-    worker(plan, current, planPath, curPath);
+    worker(plan.slice(), current.slice(), planPath, curPath);
   }
 }
 

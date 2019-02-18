@@ -142,8 +142,8 @@ bool ActiveFailoverJob::start() {
     return finish(_server, "", true, reason);  // move to /Target/Finished
   }
 
-  auto leader = _snapshot.hasAsSlice(asyncReplLeader);
-  if (!leader.second || leader.first.compareString(_server) != 0) {
+  auto leader = _snapshot.hasAsString(asyncReplLeader);
+  if (!leader.second || leader.first != _server) {
     std::string reason =
         "Server " + _server + " is not the current replication leader";
     LOG_TOPIC(INFO, Logger::SUPERVISION) << reason;
@@ -205,7 +205,9 @@ bool ActiveFailoverJob::start() {
       // Destination server should not be blocked by another job
       addPreconditionServerNotBlocked(pending, newLeader);
       // AsyncReplication leader must be the failed server
-      addPreconditionUnchanged(pending, asyncReplLeader, leader.first);
+      VPackBuilder l;
+      l.add(VPackValue(leader.first));
+      addPreconditionUnchanged(pending, asyncReplLeader, l.slice());
     }  // precondition done
 
   }  // array for transaction done

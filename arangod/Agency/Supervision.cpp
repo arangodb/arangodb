@@ -214,8 +214,8 @@ void Supervision::upgradeOne(Builder& builder) {
 void Supervision::upgradeZero(Builder& builder) {
   _lock.assertLockedByCurrentThread();
   // "/arango/Target/FailedServers" is still an array
-  Slice fails = _snapshot.hasAsSlice(failedServersPrefix).first;
-  if (fails.isArray()) {
+  Builder fails = _snapshot.hasAsBuilder(failedServersPrefix).first;
+  if (fails.slice().isArray()) {
     {
       VPackArrayBuilder trx(&builder);
       {
@@ -223,8 +223,8 @@ void Supervision::upgradeZero(Builder& builder) {
         builder.add(VPackValue(failedServersPrefix));
         {
           VPackObjectBuilder oo(&builder);
-          if (fails.length() > 0) {
-            for (VPackSlice fail : VPackArrayIterator(fails)) {
+          if (fails.slice().length() > 0) {
+            for (VPackSlice fail : VPackArrayIterator(fails.slice())) {
               builder.add(VPackValue(fail.copyString()));
               { VPackArrayBuilder ooo(&builder); }
             }
@@ -966,10 +966,9 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* a
         auto const& colname = collection.first;
 
         for (auto const& shard : collection.second->children()) {
-          auto const& servers = shard.second->hasAsArray("servers").first;
-
-          TRI_ASSERT(servers.isArray());
-
+          auto tmp = shard.second->hasAsArray("servers").first;
+          auto servers = tmp.slice();
+          
           if (servers.length() >= 1) {
             TRI_ASSERT(servers[0].isString());
             auto const& servername = servers[0].copyString();
@@ -1109,7 +1108,8 @@ void Supervision::readyOrphanedIndexCreations() {
         std::unordered_set<std::string> built;
         Slice indexes;
         if (collection.has("indexes")) {
-          indexes = collection("indexes").getArray();
+          auto tmp = collection("indexes").getArray();
+          indexes = tmp.slice();
           if (indexes.length() > 0) {
             for (auto const& planIndex : VPackArrayIterator(indexes)) {
               if (planIndex.hasKey("isBuilding") && collection.has("shards")) {
@@ -1126,9 +1126,8 @@ void Supervision::readyOrphanedIndexCreations() {
                     auto const& shname = sh.first;
 
                     if (currentDBs.has(colPath + shname + "/indexes")) {
-                      auto const& curIndexes =
-                          currentDBs(colPath + shname + "/indexes").slice();
-                      for (auto const& curIndex : VPackArrayIterator(curIndexes)) {
+                      auto const ci = currentDBs(colPath + shname + "/indexes").toBuilder();
+                      for (auto const& curIndex : VPackArrayIterator(ci.slice())) {
                         auto const& curId = curIndex.get("id");
                         if (planId == curId) {
                           ++nIndexes;
@@ -1224,7 +1223,7 @@ void Supervision::enforceReplication() {
 
       if (!clone) {
         for (auto const& shard_ : col.hasAsChildren("shards").first) {  // Pl shards
-          auto const& shard = *(shard_.second);
+          auto const& shard = shard_.second->toBuilder();
 
           size_t actualReplicationFactor = shard.slice().length();
           if (actualReplicationFactor != replicationFactor) {

@@ -87,7 +87,9 @@ void FailedLeader::rollback() {
   // Create new plan servers (exchange _to and _from)
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  auto const& planned = _snapshot.hasAsSlice(planPath).first;  // if missing, what?
+  // if missing, what?
+  auto tmp = _snapshot.hasAsBuilder(planPath).first;
+  Slice planned = tmp.slice();  
   std::shared_ptr<Builder> payload = nullptr;
 
   if (_status == PENDING) {  // Only payload if pending. Otherwise just fail.
@@ -195,14 +197,15 @@ bool FailedLeader::start() {
   using namespace std::chrono;
 
   // Current servers vector
-  auto const& current = _snapshot
-                            .hasAsSlice(curColPrefix + _database + "/" +
-                                        _collection + "/" + _shard + "/servers")
-                            .first;
+  std::string curPath =
+      curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers";
+  auto tmp = _snapshot.hasAsBuilder(curPath).first;
+  Slice current = tmp.slice();
   // Planned servers vector
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  auto const& planned = _snapshot.hasAsSlice(planPath).first;
+  auto tmp2 = _snapshot.hasAsBuilder(planPath).first;
+  Slice planned = tmp2.slice();
 
   // Get todo entry
   Builder todo;
@@ -416,11 +419,11 @@ JOB_STATUS FailedLeader::status() {
   for (auto const& clone : clones(_snapshot, _database, _collection, _shard)) {
     auto sub = database + "/" + clone.collection;
     auto plan_slice =
-        _snapshot.hasAsSlice(planColPrefix + sub + "/shards/" + clone.shard);
-    auto cur_slice = _snapshot.hasAsSlice(curColPrefix + sub + "/" +
+        _snapshot.hasAsBuilder(planColPrefix + sub + "/shards/" + clone.shard);
+    auto cur_slice = _snapshot.hasAsBuilder(curColPrefix + sub + "/" +
                                           clone.shard + "/servers");
     if (plan_slice.second && cur_slice.second &&
-        plan_slice.first[0] != cur_slice.first[0]) {
+        plan_slice.first.slice()[0] != cur_slice.first.slice()[0]) {
       LOG_TOPIC(DEBUG, Logger::SUPERVISION)
           << "FailedLeader waiting for " << sub + "/" + shard;
       break;

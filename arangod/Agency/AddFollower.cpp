@@ -140,14 +140,15 @@ bool AddFollower::start() {
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
 
-  Slice planned = _snapshot.hasAsSlice(planPath).first;
+  VPackBuilder planned = _snapshot.hasAsBuilder(planPath).first;
 
-  TRI_ASSERT(planned.isArray());
+  TRI_ASSERT(planned.slice().isArray());
 
   // First check that we still have too few followers for the current
   // `replicationFactor`:
+#warning can throw
   size_t desiredReplFactor = collection.hasAsUInt("replicationFactor").first;
-  size_t actualReplFactor = planned.length();
+  size_t actualReplFactor = planned.slice().length();
   if (actualReplFactor >= desiredReplFactor) {
     finish("", "", true, "job no longer necessary, have enough replicas");
     return true;
@@ -164,7 +165,7 @@ bool AddFollower::start() {
   // Now find some new servers to add:
   auto available = Job::availableServers(_snapshot);
   // Remove those already in Plan:
-  for (VPackSlice server : VPackArrayIterator(planned)) {
+  for (VPackSlice server : VPackArrayIterator(planned.slice())) {
     available.erase(std::remove(available.begin(), available.end(), server.copyString()),
                     available.end());
   }
@@ -265,7 +266,7 @@ bool AddFollower::start() {
     {
       VPackObjectBuilder precondition(&trx);
       // --- Check that Planned servers are still as we expect
-      addPreconditionUnchanged(trx, planPath, planned);
+      addPreconditionUnchanged(trx, planPath, planned.slice());
       addPreconditionShardNotBlocked(trx, _shard);
       for (auto const& srv : chosen) {
         addPreconditionServerHealth(trx, srv, "GOOD");

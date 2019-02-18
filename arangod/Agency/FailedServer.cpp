@@ -120,49 +120,43 @@ bool FailedServer::start() {
         for (auto const& collptr : database.second->children()) {
           auto const& collection = *(collptr.second);
 
-          auto const& replicationFactorPair =
-            collection.hasAsNode("replicationFactor");
-          if (replicationFactorPair.second) {
-            VPackSlice const replicationFactor = replicationFactorPair.first.slice();
-            
-            if (!replicationFactor.isNumber()) {
-              continue;  // no point to try salvaging unreplicated data
-            }
-            
-            uint64_t number = 1;
-            try {
-              number = replicationFactor.getNumber<uint64_t>();
-            } catch(...) {
-            }
-            if (number == 1) {
-              continue;
-            }
+          uint64_t replicationFactor = 1;
+          try {
+            replicationFactor = collection.hasAsUInt("replicationFactor").first;
+          } catch (...) {
+            continue;  
+          }
 
-            if (collection.has("distributeShardsLike")) {
-              continue;  // we only deal with the master
-            }
+          // no point to try salvaging unreplicated data
+          if (replicationFactor == 1) {
+            continue;
+          }
 
-            for (auto const& shard : collection.hasAsChildren("shards").first) {
-              size_t pos = 0;
+          if (collection.has("distributeShardsLike")) {
+            continue;  // we only deal with the master
+          }
 
-              for (auto const& it : VPackArrayIterator(shard.second->slice())) {
-                auto dbs = it.copyString();
+          for (auto const& shard : collection.hasAsChildren("shards").first) {
+            size_t pos = 0;
 
-                if (dbs == _server) {
-                  if (pos == 0) {
-                    FailedLeader(
-                      _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                      _jobId, database.first, collptr.first, shard.first, _server)
-                      .create(transactions);
-                  } else {
-                    FailedFollower(
-                      _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                      _jobId, database.first, collptr.first, shard.first, _server)
-                      .create(transactions);
-                  }
+            for (auto const& it :
+                   VPackArrayIterator(shard.second->toBuilder().slice())) {
+              auto dbs = it.copyString();
+
+              if (dbs == _server) {
+                if (pos == 0) {
+                  FailedLeader(
+                    _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
+                    _jobId, database.first, collptr.first, shard.first, _server)
+                    .create(transactions);
+                } else {
+                  FailedFollower(
+                    _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
+                    _jobId, database.first, collptr.first, shard.first, _server)
+                    .create(transactions);
                 }
-                pos++;
               }
+              pos++;
             }
           }
         }

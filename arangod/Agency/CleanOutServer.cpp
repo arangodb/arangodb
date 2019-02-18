@@ -369,7 +369,8 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         // Only shards, which are affected
         int found = -1;
         int count = 0;
-        for (auto const& dbserver : VPackArrayIterator(shard.second->slice())) {
+        auto tmp = shard.second->toBuilder();
+        for (auto const& dbserver : VPackArrayIterator(tmp.slice())) {
           if (dbserver.copyString() == _server) {
             found = count;
             break;
@@ -383,10 +384,12 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         decltype(servers) serversCopy(servers);  // a copy
 
         // Only destinations, which are not already holding this shard
-        for (auto const& dbserver : VPackArrayIterator(shard.second->slice())) {
-          serversCopy.erase(std::remove(serversCopy.begin(), serversCopy.end(),
-                                        dbserver.copyString()),
-                            serversCopy.end());
+        tmp = shard.second->toBuilder();
+        for (auto const& dbserver : VPackArrayIterator(tmp.slice())) {
+          serversCopy.erase(
+            std::remove(
+              serversCopy.begin(), serversCopy.end(), dbserver.copyString()),
+            serversCopy.end());
         }
 
         bool isLeader = (found == 0);

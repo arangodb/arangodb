@@ -141,8 +141,8 @@ bool FailedFollower::start() {
   // Planned servers vector
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  auto plannedPair = _snapshot.hasAsSlice(planPath);  // if missing, what?
-  Slice const& planned = plannedPair.first;
+  auto plannedPair = _snapshot.hasAsBuilder(planPath);  // if missing, what?
+  Slice const& planned = plannedPair.first.slice();
   if (!plannedPair.second) {
     // not clear what servers should or should not get failover ... retry later
     return false;

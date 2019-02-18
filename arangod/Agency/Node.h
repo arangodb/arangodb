@@ -35,7 +35,7 @@
 namespace arangodb {
 namespace consensus {
 
-enum NodeType { NODE, LEAF };
+enum NodeType { NODE, LEAF, ARRAY };
 enum Operation {
   SET,
   INCREMENT,
@@ -92,6 +92,9 @@ class Node {
 
   /// @brief Move constructor
   Node(Node&& other);
+
+  /// @brief Copy constructor
+  Node(Slice const slice);
 
   /// @brief Construct with name and introduce to tree under parent
   Node(std::string const& name, Node* parent);
@@ -172,12 +175,6 @@ class Node {
   /// @brief Access children
   Children const& children() const;
 
-  /// @brief Create slice from value
-  Slice slice() const;
-
-  /// @brief Get value type
-  ValueType valueType() const;
-
   /// @brief Add observer for this node
   bool addObserver(std::string const&);
 
@@ -241,10 +238,6 @@ class Node {
   /// @return  second is true if url exists, first populated if second true
   std::pair<NodeType, bool> hasAsType(std::string const&) const;
 
-  /// @brief accessor to Node's Slice value
-  /// @return  second is true if url exists, first populated if second true
-  std::pair<Slice, bool> hasAsSlice(std::string const&) const;
-
   /// @brief accessor to Node's uint64_t value
   /// @return  second is true if url exists, first populated if second true
   std::pair<uint64_t, bool> hasAsUInt(std::string const&) const;
@@ -270,9 +263,9 @@ class Node {
   /// @return  second is true if url exists, first populated if second true
   std::pair<Builder, bool> hasAsBuilder(std::string const&) const;
 
-  /// @brief accessor to Node's Array
+  /// @brief accessor to Node's value as a Builder object if node was array 
   /// @return  second is true if url exists, first populated if second true
-  std::pair<Slice, bool> hasAsArray(std::string const&) const;
+  std::pair<Builder, bool> hasAsArray(std::string const&) const;
 
   //
   // These two operator() functions could be "protected" once
@@ -288,10 +281,12 @@ class Node {
   std::string getString() const;
 
   /// @brief Get array value
-  Slice getArray() const;
+  VPackBuilder getArray() const;
 
   /// @brief Get insigned value (throws if type NODE or if conversion fails)
   uint64_t getUInt() const;
+
+  bool isNone() const;
 
   //
   // The protected accessors are the "old" interface.  They throw.
@@ -315,6 +310,7 @@ class Node {
   void clear();
 
  protected:
+
   /// @brief Add time to live entry
   virtual bool addTimeToLive(long millis);
 
@@ -329,9 +325,8 @@ class Node {
   Children _children;                   ///< @brief child nodes
   TimePoint _ttl;                       ///< @brief my expiry
   std::vector<std::shared_ptr<Node>> _array;  ///< @brief my value
+  NodeType _type;
   mutable Buffer<uint8_t> _buffer;
-  mutable bool _vecBufDirty;
-  bool _isArray;
 }
 ;
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {
