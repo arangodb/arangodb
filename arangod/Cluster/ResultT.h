@@ -87,8 +87,11 @@ class ResultT {
     return ResultT(boost::none, std::move(other));
   }
 
+  // This is disabled if U is implicitly convertible to Result
+  // (e.g., if U = int) to avoid ambiguous construction.
+  // Use ::success() or ::error() instead in that case.
   template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
-  // These are not explicit on purpose
+  // This is not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
   ResultT(Result const& other) : _result(other) {
     // .ok() is not allowed here, as _val should be expected to be initialized
@@ -96,7 +99,11 @@ class ResultT {
     TRI_ASSERT(other.fail());
   }
 
+  // This is disabled if U is implicitly convertible to Result
+  // (e.g., if U = int) to avoid ambiguous construction.
+  // Use ::success() or ::error() instead in that case.
   template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
+  // This is not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
   ResultT(Result&& other) : _result(std::move(other)) {
     // .ok() is not allowed here, as _val should be expected to be initialized
@@ -104,12 +111,19 @@ class ResultT {
     TRI_ASSERT(other.fail());
   }
 
+  // This is disabled if U is implicitly convertible to Result
+  // (e.g., if U = int) to avoid ambiguous construction.
+  // Use ::success() or ::error() instead in that case.
   template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
-  // These are not explicit on purpose
+  // This is not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
   ResultT(T&& val) : ResultT(std::move(val), TRI_ERROR_NO_ERROR) {}
 
+  // This is disabled if U is implicitly convertible to Result
+  // (e.g., if U = int) to avoid ambiguous construction.
+  // Use ::success() or ::error() instead in that case.
   template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
+  // This is not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
   ResultT(T const& val) : ResultT(val, TRI_ERROR_NO_ERROR) {}
 
@@ -143,6 +157,13 @@ class ResultT {
 
   T const&& operator*() const&& { return get(); }
 
+  // Allow convenient check to allow for code like
+  //   if (res) { /* use res.get() */ } else { /* handle error res.result() */ }
+  // . Is disabled for bools to avoid accidental confusion of
+  //   if (res)
+  // with
+  //   if (res.get())
+  // .
   template <typename U = T, typename = std::enable_if_t<!std::is_same<U, bool>::value>>
   explicit operator bool() const {
     return ok();
