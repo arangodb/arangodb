@@ -221,8 +221,8 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
   std::string rev;
 
   const RegisterId& inReg = info._input1RegisterId.value();
-  executor._fetcher.forRowinBlock([this, &executor, &stats, &errorCode, &key, &rev, trx, inReg,
-                                   &info](InputAqlItemRow&& row) {
+  executor._fetcher.forRowinBlock([this, &executor, &stats, &errorCode, &key, &rev,
+                                   trx, inReg, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
     if (!info._consultAqlWriteFilter ||
         info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
@@ -380,8 +380,9 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
   const RegisterId& insertReg = info._input2RegisterId.value();
   const RegisterId& updateReg = info._input3RegisterId.value();
 
-  executor._fetcher.forRowinBlock([this, &executor, &stats, &errorCode, &errorMessage, &key, trx, inDocReg,
-                                   insertReg, updateReg, &info](InputAqlItemRow&& row) {
+  executor._fetcher.forRowinBlock([this, &executor, &stats, &errorCode,
+                                   &errorMessage, &key, trx, inDocReg, insertReg,
+                                   updateReg, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inDocReg);
     if (inVal.isObject()) /*update case, as old doc is present*/ {
       if (!info._consultAqlWriteFilter ||
@@ -467,9 +468,8 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
       THROW_ARANGO_EXCEPTION(_operationResult.result);
     }
 
-    // FIXME
-    // handleBabyResult(operationResultInsert.countErrorCodes,
-    //                 static_cast<size_t>(toInsert.length()), info._ignoreErrors);
+    executor.handleBabyStats(stats, _operationResult.countErrorCodes,
+                             toInsert.length(), info._ignoreErrors);
   }
 
   if (toUpdate.isArray() && toUpdate.length() > 0) {
@@ -484,9 +484,8 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
       THROW_ARANGO_EXCEPTION(_operationResultUpdate.result);
     }
 
-    // FIXME
-    // handleBabyResult(_operationResultUpdate.countErrorCodes,
-    //                 static_cast<size_t>(toUpdate.length()), info._ignoreErrors);
+    executor.handleBabyStats(stats, _operationResultUpdate.countErrorCodes,
+                             toUpdate.length(), info._ignoreErrors);
   }
   // former - skip empty
   if (_operationResultArraySlice.length() == 0) {
