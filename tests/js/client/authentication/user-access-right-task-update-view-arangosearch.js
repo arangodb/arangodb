@@ -448,7 +448,8 @@ if (hasIResearch(db)) {
 			    wait(keySpaceId, name);
 			    assertTrue(getKey(keySpaceId, `${name}_status`), `${name} could not update the view with sufficient rights`);
                 assertTrue(isEqual(rootGetViewProps(testViewName, true), rootGetDefaultViewProps()),
-			   'View properties update reported success, but properties were not updated')			} else {
+			   'View properties update reported success, but properties were not updated');
+			} else {
 			    tasks.register(task);
 			    wait(keySpaceId, name);
 			    assertFalse(getKey(keySpaceId, `${name}_status`), `${name} could update the view with insufficient rights`);
