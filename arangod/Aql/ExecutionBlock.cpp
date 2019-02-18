@@ -113,11 +113,8 @@ bool ExecutionBlock::removeDependency(ExecutionBlock* ep) {
 }
 
 /// @brief whether or not the query was killed
-bool ExecutionBlock::isKilled() const { return _engine->getQuery()->killed(); }
-
-/// @brief whether or not the query was killed
 void ExecutionBlock::throwIfKilled() {
-  if (isKilled()) {
+  if (_engine->getQuery()->killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 }
