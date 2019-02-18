@@ -180,15 +180,6 @@ void RocksDBVPackIndexIterator::reset() {
   }
 }
 
-bool RocksDBVPackIndexIterator::outOfRange() const {
-  TRI_ASSERT(_trx->state()->isRunning());
-  if (_reverse) {
-    return (_cmp->Compare(_iterator->key(), _bounds.start()) < 0);
-  } else {
-    return (_cmp->Compare(_iterator->key(), _bounds.end()) > 0);
-  }
-}
-
 bool RocksDBVPackIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
@@ -206,13 +197,7 @@ bool RocksDBVPackIndexIterator::next(LocalDocumentIdCallback const& cb, size_t l
                        : RocksDBKey::indexDocumentId(_bounds.type(), _iterator->key()));
 
     --limit;
-    if (_reverse) {
-      _iterator->Prev();
-    } else {
-      _iterator->Next();
-    }
-
-    if (!_iterator->Valid() || outOfRange()) {
+    if (!advance()) {
       return false;
     }
   }
@@ -231,21 +216,16 @@ bool RocksDBVPackIndexIterator::nextCovering(DocumentCallback const& cb, size_t 
   }
 
   while (limit > 0) {
-    TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
+    rocksdb::Slice const& key = _iterator->key();
+    TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(key));
 
     LocalDocumentId const documentId(
         _index->_unique ? RocksDBValue::documentId(_iterator->value())
-                        : RocksDBKey::indexDocumentId(_bounds.type(), _iterator->key()));
-    cb(documentId, RocksDBKey::indexedVPack(_iterator->key()));
+                        : RocksDBKey::indexDocumentId(_bounds.type(), key));
+    cb(documentId, RocksDBKey::indexedVPack(key));
 
     --limit;
-    if (_reverse) {
-      _iterator->Prev();
-    } else {
-      _iterator->Next();
-    }
-
-    if (!_iterator->Valid() || outOfRange()) {
+    if (!advance()) {
       return false;
     }
   }
@@ -265,13 +245,7 @@ void RocksDBVPackIndexIterator::skip(uint64_t count, uint64_t& skipped) {
 
     --count;
     ++skipped;
-    if (_reverse) {
-      _iterator->Prev();
-    } else {
-      _iterator->Next();
-    }
-
-    if (!_iterator->Valid() || outOfRange()) {
+    if (!advance()) {
       return;
     }
   }

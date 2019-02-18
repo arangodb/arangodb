@@ -502,6 +502,8 @@ struct AqlValue final {
   /// @brief get the (object) element by name(s)
   AqlValue get(CollectionNameResolver const& resolver, std::string const& name,
                bool& mustDestroy, bool copy) const;
+  AqlValue get(CollectionNameResolver const& resolver, arangodb::velocypack::StringRef const& name,
+               bool& mustDestroy, bool copy) const;
   AqlValue get(CollectionNameResolver const& resolver,
                std::vector<std::string> const& names, bool& mustDestroy, bool copy) const;
   bool hasKey(std::string const& name) const;

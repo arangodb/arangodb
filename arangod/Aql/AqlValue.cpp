@@ -24,6 +24,7 @@
 #include "AqlValue.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Arithmetic.h"
+#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -511,6 +512,50 @@ AqlValue AqlValue::getToAttribute(bool& mustDestroy, bool doCopy) const {
 /// @brief get the (object) element by name
 AqlValue AqlValue::get(CollectionNameResolver const& resolver,
                        std::string const& name, bool& mustDestroy, bool doCopy) const {
+  mustDestroy = false;
+  switch (type()) {
+    case VPACK_SLICE_POINTER:
+      doCopy = false;
+    // intentionally falls through
+    case VPACK_INLINE:
+    // intentionally falls through
+    case VPACK_MANAGED_SLICE:
+    // intentionally falls through
+    case VPACK_MANAGED_BUFFER: {
+      VPackSlice s(slice());
+      if (s.isObject()) {
+        VPackSlice found(s.get(name));
+        if (found.isCustom()) {
+          // _id needs special treatment
+          mustDestroy = true;
+          return AqlValue(transaction::helpers::extractIdString(&resolver, s, VPackSlice()));
+        }
+        if (!found.isNone()) {
+          if (doCopy) {
+            mustDestroy = true;
+            return AqlValue(found);
+          }
+          // return a reference to an existing slice
+          return AqlValue(found.begin());
+        }
+      }
+      // intentionally falls through
+      break;
+    }
+    case DOCVEC:
+    case RANGE: {
+      // will return null
+      break;
+    }
+  }
+
+  // default is to return null
+  return AqlValue(AqlValueHintNull());
+}
+
+/// @brief get the (object) element by name
+AqlValue AqlValue::get(CollectionNameResolver const& resolver,
+                       arangodb::velocypack::StringRef const& name, bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
     case VPACK_SLICE_POINTER:

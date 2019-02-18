@@ -168,6 +168,39 @@ class StringRef {
 }
 }
 
+inline bool operator==(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) {
+  return (lhs.size() == rhs.size() && memcmp(lhs.data(), rhs.data(), lhs.size()) == 0);
+}
+
+inline bool operator!=(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) {
+  return !(lhs == rhs);
+}
+
+inline bool operator==(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) {
+  return (lhs.size() == rhs.size() && memcmp(lhs.data(), rhs.c_str(), lhs.size()) == 0);
+}
+
+inline bool operator!=(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) {
+  return !(lhs == rhs);
+}
+
+inline bool operator==(arangodb::velocypack::StringRef const& lhs, char const* rhs) {
+  size_t const len = strlen(rhs);
+  return (lhs.size() == len && memcmp(lhs.data(), rhs, lhs.size()) == 0);
+}
+
+inline bool operator!=(arangodb::velocypack::StringRef const& lhs, char const* rhs) {
+  return !(lhs == rhs);
+}
+
+inline bool operator<(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) {
+  return (lhs.compare(rhs) < 0);
+}
+
+inline bool operator>(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) {
+  return (lhs.compare(rhs) > 0);
+}
+
 namespace std {
 
 template <>

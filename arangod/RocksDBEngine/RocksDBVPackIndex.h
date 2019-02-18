@@ -39,12 +39,10 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <rocksdb/comparator.h>
+#include <rocksdb/iterator.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
-
-namespace rocksdb {
-class Iterator;
-}
 
 namespace arangodb {
 namespace aql {
@@ -126,7 +124,25 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   bool hasCovering() const override { return true; }
 
  private:
-  bool outOfRange() const;
+  inline bool outOfRange() const {
+    // TODO: prove that we can remove this extra check completely and
+    // rely on iterate_upper/lower_bound
+    if (_reverse) {
+      return (_cmp->Compare(_iterator->key(), _rangeBound) < 0);
+    } else {
+      return (_cmp->Compare(_iterator->key(), _rangeBound) > 0);
+    }
+  }
+
+  inline bool advance() {
+    if (_reverse) {
+      _iterator->Prev();
+    } else {
+      _iterator->Next();
+    }
+
+    return _iterator->Valid() && !outOfRange();
+  }
 
   arangodb::RocksDBVPackIndex const* _index;
   rocksdb::Comparator const* _cmp;
