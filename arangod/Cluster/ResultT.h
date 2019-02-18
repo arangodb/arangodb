@@ -86,7 +86,7 @@ class ResultT : public arangodb::Result {
     return ResultT(boost::none, std::move(other));
   }
 
-  template <typename U = T, typename = typename std::enable_if<!std::is_convertible<U, decltype(ResultT<U>::_errorNumber)>::value>::type>
+  template <typename U = T, typename = typename std::enable_if<!std::is_convertible<U, Result>::value>::type>
   // These are not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
   ResultT(Result const& other) : Result(other) {
@@ -95,7 +95,8 @@ class ResultT : public arangodb::Result {
     TRI_ASSERT(other.fail());
   }
 
-  template <typename U = T, typename = typename std::enable_if<!std::is_convertible<U, decltype(ResultT<U>::_errorNumber)>::value>::type>
+  template <typename U = T, typename = typename std::enable_if<!std::is_convertible<U, Result>::value>::type>
+  // These are not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
   ResultT(Result&& other) : Result(std::move(other)) {
     // .ok() is not allowed here, as _val should be expected to be initialized
@@ -103,12 +104,12 @@ class ResultT : public arangodb::Result {
     TRI_ASSERT(other.fail());
   }
 
-  template <typename U = T, typename = typename std::enable_if<!std::is_convertible<U, decltype(ResultT<U>::_errorNumber)>::value>::type>
+  template <typename U = T, typename = typename std::enable_if<!std::is_convertible<U, Result>::value>::type>
   // These are not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
   ResultT(T&& val) : ResultT(std::move(val), TRI_ERROR_NO_ERROR) {}
 
-  template <typename U = T, typename = typename std::enable_if<!std::is_convertible<U, decltype(ResultT<U>::_errorNumber)>::value>::type>
+  template <typename U = T, typename = typename std::enable_if<!std::is_convertible<U, Result>::value>::type>
   // NOLINTNEXTLINE(google-explicit-constructor)
   ResultT(T const& val) : ResultT(val, TRI_ERROR_NO_ERROR) {}
 
