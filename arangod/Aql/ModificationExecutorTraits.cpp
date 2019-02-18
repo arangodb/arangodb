@@ -36,7 +36,9 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
-int extractKey(transaction::Methods* trx, AqlValue const& value, std::string& key) {
+
+int extractKeyAndRev(transaction::Methods* trx, AqlValue const& value,
+                     std::string& key, std::string& rev, bool keyOnly = false) {
   if (value.isObject()) {
     bool mustDestroy;
     auto resolver = trx->resolver();
@@ -46,13 +48,30 @@ int extractKey(transaction::Methods* trx, AqlValue const& value, std::string& ke
 
     if (sub.isString()) {
       key.assign(sub.slice().copyString());
+
+      if (!keyOnly) {
+        bool mustDestroyToo;
+        AqlValue subTwo =
+            value.get(*resolver, StaticStrings::RevString, mustDestroyToo, false);
+        AqlValueGuard guard(subTwo, mustDestroyToo);
+        if (subTwo.isString()) {
+          rev.assign(subTwo.slice().copyString());
+        }
+      }
+
       return TRI_ERROR_NO_ERROR;
     }
   } else if (value.isString()) {
     key.assign(value.slice().copyString());
     return TRI_ERROR_NO_ERROR;
   }
+
   return TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
+}
+
+int extractKey(transaction::Methods* trx, AqlValue const& value, std::string& key) {
+  std::string optimizeAway;
+  return extractKeyAndRev(trx, value, key, optimizeAway, true /*key only*/);
 }
 
 }  // namespace
@@ -196,16 +215,47 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
   reset();
   _tmpBuilder.openArray();
 
-  const RegisterId& inReg = info._input1RegisterId.value();
+  auto* trx = info._trx;
+  int errorCode = TRI_ERROR_NO_ERROR;
+  std::string errorMessage;
+  std::string key;
+  std::string rev;
 
-  executor._fetcher.forRowinBlock([this, inReg, &info](InputAqlItemRow&& row) {
+  const RegisterId& inReg = info._input1RegisterId.value();
+  executor._fetcher.forRowinBlock([this, &errorCode, &errorMessage, &key, &rev,
+                                   trx, inReg, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
     if (!info._consultAqlWriteFilter ||
         info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
                                                               StaticStrings::Empty)) {
-      _operations.push_back(APPLY_RETURN);
-      // TODO This may be optimized with externals
-      _tmpBuilder.add(inVal.slice());
+      key.clear();
+      rev.clear();
+
+      if (inVal.isObject()) {
+        errorCode = extractKeyAndRev(trx, inVal, key, rev, info._options.ignoreRevs /*key only*/);
+      } else if (inVal.isString()) {
+        // value is a string
+        key = inVal.slice().copyString();
+      } else {
+        errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+      }
+
+      if (errorCode == TRI_ERROR_NO_ERROR) {
+        _operations.push_back(APPLY_RETURN);
+
+        // no error. we expect to have a key
+        // create a slice for the key
+        _tmpBuilder.openObject();
+        _tmpBuilder.add(StaticStrings::KeyString, VPackValue(key));
+        if (!info._options.ignoreRevs && !rev.empty()) {
+          _tmpBuilder.add(StaticStrings::RevString, VPackValue(rev));
+        }
+        _tmpBuilder.close();
+      } else {
+        // We have an error, handle it
+        _operations.push_back(IGNORE_SKIP);
+        // FIXME //handleResult(errorCode, info._ignoreErrors, nullptr);
+      }
     } else {
       // not relevant for ourselves... just pass it on to the next block
       _operations.push_back(IGNORE_RETURN);
@@ -215,7 +265,7 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
   TRI_ASSERT(_operations.size() == executor._fetcher.currentBlock()->block().size());
 
   _tmpBuilder.close();
-  auto toInsert = _tmpBuilder.slice();
+  auto toRemove = _tmpBuilder.slice();
 
   // At this point _tempbuilder contains the objects to insert
   // and _operations the information if the data is to be kept or not
@@ -315,7 +365,6 @@ bool Remove::doOutput(ModificationExecutor<Remove>& executor, OutputAqlItemRow& 
   return ++_blockIndex < _block->block().size();
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////
 // UPSERT /////////////////////////////////////////////////////////////////////
 bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
@@ -414,7 +463,7 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
   TRI_ASSERT(info._trx);
   // we use _operationResult as insertResult
   //
-  OperationResult opRes; //temporaroy value
+  OperationResult opRes;  // temporaroy value
   if (toInsert.isArray() && toInsert.length() > 0) {
     OperationResult opRes =
         info._trx->insert(info._aqlCollection->name(), toInsert, options);
@@ -462,15 +511,12 @@ bool Upsert::doOutput(ModificationExecutor<Upsert>& executor, OutputAqlItemRow& 
   auto& info = executor._infos;
   OperationOptions& options = info._options;
 
-
-
-
   InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
   if (!options.silent) {
     auto& op = _operations[_blockIndex];
     if (op == APPLY_UPDATE || op == APPLY_INSERT) {
-      TRI_ASSERT(_operationResultIterator.valid()); //insert
-      TRI_ASSERT(_operationResultUpdateIterator.valid()); //update
+      TRI_ASSERT(_operationResultIterator.valid());        // insert
+      TRI_ASSERT(_operationResultUpdateIterator.valid());  // update
 
       // fetch operation type (insert or update/replace)
       VPackArrayIterator* iter = &_operationResultIterator;

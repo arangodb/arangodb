@@ -1232,9 +1232,13 @@ RegisterId ExecutionNode::variableToRegisterId(Variable const* variable) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  std::unordered_set<RegisterId> toKeep;
+
+  // number in == number out
+  // Other nodes get the nrInRegs from the previous node.
+  // That is why we do not use `calcRegsToKeep()`
   RegisterId const nrRegs = getRegisterPlan()->nrRegs[getDepth()];
 
+  std::unordered_set<RegisterId> toKeep;
   if (isInSubQuery(this)) {
     for (auto const& var : this->getVarsUsedLater()) {
       auto val = variableToRegisterId(var);
@@ -1246,7 +1250,6 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
   }
 
   IdExecutorInfos infos(nrRegs, std::move(toKeep), getRegsToClear());
-
   return std::make_unique<ExecutionBlockImpl<IdExecutor>>(&engine, this, std::move(infos));
 }
 
