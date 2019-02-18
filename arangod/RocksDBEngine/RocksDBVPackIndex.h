@@ -29,7 +29,6 @@
 #include "Aql/AstNode.h"
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
-#include "Basics/StringRef.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -42,6 +41,7 @@
 #include <rocksdb/comparator.h>
 #include <rocksdb/iterator.h>
 #include <velocypack/Buffer.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/Slice.h>
 
 namespace arangodb {
@@ -125,8 +125,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
  private:
   inline bool outOfRange() const {
-    // TODO: prove that we can remove this extra check completely and
-    // rely on iterate_upper/lower_bound
     if (_reverse) {
       return (_cmp->Compare(_iterator->key(), _rangeBound) < 0);
     } else {
@@ -168,7 +166,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
+  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
 
   RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
   void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) override;

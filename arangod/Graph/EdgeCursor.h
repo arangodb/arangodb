@@ -28,10 +28,9 @@
 
 namespace arangodb {
 
-class StringRef;
-
 namespace velocypack {
 class Slice;
+class StringRef;
 }
 
 namespace graph {

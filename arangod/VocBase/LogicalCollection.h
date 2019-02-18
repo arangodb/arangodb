@@ -52,10 +52,13 @@ struct OperationOptions;
 class PhysicalCollection;
 class Result;
 class ShardingInfo;
-class StringRef;
 
 namespace transaction {
 class Methods;
+}
+
+namespace velocypack {
+class StringRef;
 }
 
 class ChecksumResult {
@@ -276,7 +279,7 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Index access (local only)
 
   /// @brief reads an element from the document collection
-  Result read(transaction::Methods* trx, StringRef const& key,
+  Result read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
               ManagedDocumentResult& mdr, bool lock);
   Result read(transaction::Methods*, arangodb::velocypack::Slice const&,
               ManagedDocumentResult& result, bool);

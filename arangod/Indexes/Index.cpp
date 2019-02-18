@@ -28,7 +28,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/HashSet.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -43,6 +42,7 @@
 #include "VocBase/ticks.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <iostream>
 #include <ostream>
@@ -463,7 +463,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto typeSlice = info.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
-  StringRef typeStr(typeSlice);
+  arangodb::velocypack::StringRef typeStr(typeSlice);
   TRI_ASSERT(typeStr == oldtypeName());
 #endif
   auto value = info.get(arangodb::StaticStrings::IndexId);
@@ -475,7 +475,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
       return false;
     }
     // Short circuit. If id is correct the index is identical.
-    StringRef idRef(value);
+    arangodb::velocypack::StringRef idRef(value);
     return idRef == std::to_string(_iid);
   }
 
@@ -509,7 +509,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
       // Invalid field definition!
       return false;
     }
-    arangodb::StringRef in(f);
+    arangodb::velocypack::StringRef in(f);
     TRI_ParseAttributeString(in, translate, true);
     if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate, false)) {
       return false;
@@ -519,7 +519,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
 }
 
 /// @brief default implementation for selectivityEstimate
-double Index::selectivityEstimate(StringRef const&) const {
+double Index::selectivityEstimate(arangodb::velocypack::StringRef const&) const {
   if (_unique) {
     return 1.0;
   }

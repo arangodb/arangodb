@@ -27,10 +27,11 @@
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Indexes/Index.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/StringRef.h>
 
 using namespace arangodb;
 

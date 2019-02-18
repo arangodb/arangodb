@@ -39,7 +39,7 @@ bool RocksDBHashIndex::matchesDefinition(VPackSlice const& info) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto typeSlice = info.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
-  StringRef typeStr(typeSlice);
+  arangodb::velocypack::StringRef typeStr(typeSlice);
   TRI_ASSERT(typeStr == oldtypeName());
 #endif
   auto value = info.get(arangodb::StaticStrings::IndexId);
@@ -51,7 +51,7 @@ bool RocksDBHashIndex::matchesDefinition(VPackSlice const& info) const {
       return false;
     }
     // Short circuit. If id is correct the index is identical.
-    StringRef idRef(value);
+    arangodb::velocypack::StringRef idRef(value);
     return idRef == std::to_string(_iid);
   }
 
@@ -86,7 +86,7 @@ bool RocksDBHashIndex::matchesDefinition(VPackSlice const& info) const {
       return false;
     }
     translate.clear();
-    arangodb::StringRef in(f);
+    arangodb::velocypack::StringRef in(f);
     TRI_ParseAttributeString(in, translate, true);
 
     for (size_t i = 0; i < n; ++i) {

@@ -32,7 +32,6 @@ namespace arangodb {
 
 class LocalDocumentId;
 struct OperationCursor;
-class StringRef;
 class LogicalCollection;
 
 namespace transaction {
@@ -41,6 +40,7 @@ class Methods;
 
 namespace velocypack {
 class Slice;
+class StringRef;
 }
 
 namespace graph {

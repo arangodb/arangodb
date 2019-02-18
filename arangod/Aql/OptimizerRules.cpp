@@ -2237,14 +2237,14 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
       TRI_ASSERT(accessed != nullptr);
 
       if (accessed->type == NODE_TYPE_OBJECT) {
-        StringRef const attributeName(node->getStringValue(), node->getStringLength());
+        arangodb::velocypack::StringRef const attributeName(node->getStringValue(), node->getStringLength());
         bool isDynamic = false;
         size_t const n = accessed->numMembers();
         for (size_t i = 0; i < n; ++i) {
           auto member = accessed->getMemberUnchecked(i);
 
           if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-              StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
+              arangodb::velocypack::StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
             // found the attribute!
             AstNode* next = member->getMember(0);
             if (!next->isDeterministic()) {
@@ -2296,19 +2296,19 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
       }
 
       if (accessed->type == NODE_TYPE_OBJECT) {
-        StringRef attributeName;
+        arangodb::velocypack::StringRef attributeName;
         std::string indexString;
 
         if (indexValue->isStringValue()) {
           // string index, e.g. ['123']
           attributeName =
-              StringRef(indexValue->getStringValue(), indexValue->getStringLength());
+              arangodb::velocypack::StringRef(indexValue->getStringValue(), indexValue->getStringLength());
         } else {
           // numeric index, e.g. [123]
           TRI_ASSERT(indexValue->isNumericValue());
           // convert the numeric index into a string
           indexString = std::to_string(indexValue->getIntValue());
-          attributeName = StringRef(indexString);
+          attributeName = arangodb::velocypack::StringRef(indexString);
         }
 
         bool isDynamic = false;
@@ -2317,7 +2317,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
           auto member = accessed->getMemberUnchecked(i);
 
           if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-              StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
+              arangodb::velocypack::StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
             // found the attribute!
             AstNode* next = member->getMember(0);
             if (!next->isDeterministic()) {

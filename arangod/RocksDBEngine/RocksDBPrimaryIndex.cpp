@@ -211,7 +211,7 @@ bool RocksDBPrimaryIndexEqIterator::next(LocalDocumentIdCallback const& cb, size
   }
 
   _done = true;
-  LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(_key->slice()));
+  LocalDocumentId documentId = _index->lookupKey(_trx, arangodb::velocypack::StringRef(_key->slice()));
   if (documentId.isSet()) {
     cb(documentId);
   }
@@ -228,7 +228,7 @@ bool RocksDBPrimaryIndexEqIterator::nextCovering(DocumentCallback const& cb, siz
   }
 
   _done = true;
-  LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(_key->slice()));
+  LocalDocumentId documentId = _index->lookupKey(_trx, arangodb::velocypack::StringRef(_key->slice()));
   if (documentId.isSet()) {
     cb(documentId, _key->slice());
   }
@@ -264,7 +264,7 @@ bool RocksDBPrimaryIndexInIterator::next(LocalDocumentIdCallback const& cb, size
   }
 
   while (limit > 0) {
-    LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(*_iterator));
+    LocalDocumentId documentId = _index->lookupKey(_trx, arangodb::velocypack::StringRef(*_iterator));
     if (documentId.isSet()) {
       cb(documentId);
       --limit;
@@ -288,7 +288,7 @@ bool RocksDBPrimaryIndexInIterator::nextCovering(DocumentCallback const& cb, siz
   }
 
   while (limit > 0) {
-    LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(*_iterator));
+    LocalDocumentId documentId = _index->lookupKey(_trx, arangodb::velocypack::StringRef(*_iterator));
     if (documentId.isSet()) {
       cb(documentId, *_iterator);
       --limit;
@@ -346,7 +346,7 @@ void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder,
 }
 
 LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
-                                               arangodb::StringRef keyRef) const {
+                                               arangodb::velocypack::StringRef keyRef) const {
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, keyRef);
 
@@ -406,7 +406,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 /// the case for older collections
 /// in this case the caller must fetch the revision id from the actual
 /// document
-bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx, arangodb::StringRef keyRef,
+bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx, arangodb::velocypack::StringRef keyRef,
                                          LocalDocumentId& documentId,
                                          TRI_voc_rid_t& revisionId) const {
   documentId.clear();
@@ -440,7 +440,7 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
   TRI_ASSERT(keySlice.isString());
   RocksDBKeyLeaser key(&trx);
 
-  key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
+  key->constructPrimaryIndexValue(_objectId, arangodb::velocypack::StringRef(keySlice));
 
   rocksdb::PinnableSlice val;
   rocksdb::Status s = mthd->Get(_cf, key->string(), &val);
@@ -482,7 +482,7 @@ Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mt
   TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
   RocksDBKeyLeaser key(&trx);
 
-  key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
+  key->constructPrimaryIndexValue(_objectId, arangodb::velocypack::StringRef(keySlice));
 
   TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(newDoc);
   auto value = RocksDBValue::PrimaryIndexValue(newDocumentId, revision);
@@ -507,7 +507,7 @@ Result RocksDBPrimaryIndex::remove(transaction::Methods& trx, RocksDBMethods* mt
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
   TRI_ASSERT(keySlice.isString());
   RocksDBKeyLeaser key(&trx);
-  key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
+  key->constructPrimaryIndexValue(_objectId, arangodb::velocypack::StringRef(keySlice));
 
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 

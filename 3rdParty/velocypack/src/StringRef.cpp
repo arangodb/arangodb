@@ -27,6 +27,8 @@
 #include "velocypack/StringRef.h"
 #include "velocypack/Slice.h"
 
+#include <iostream>
+
 using namespace arangodb::velocypack;
   
 StringRef::StringRef(Slice slice) {
@@ -43,4 +45,9 @@ StringRef& StringRef::operator=(Slice slice) {
   _data = slice.getString(l);
   _length = l;
   return *this;
+}
+
+std::ostream& operator<<(std::ostream& stream, arangodb::velocypack::StringRef const& ref) {
+  stream.write(ref.data(), ref.length());
+  return stream;
 }

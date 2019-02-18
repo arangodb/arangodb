@@ -24,10 +24,11 @@
 #include "Basics/Common.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/StringRef.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
+
+#include <velocypack/StringRef.h>
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
@@ -47,16 +48,16 @@ using namespace arangodb;
 
 namespace {
 /// @brief custom comparer for failure points. this allows an implicit
-/// conversion from char const* to StringRef in order to avoid memory
+/// conversion from char const* to arangodb::velocypack::StringRef in order to avoid memory
 /// allocations for temporary string values
 struct Comparer {
   using is_transparent = std::true_type;
   // implement comparison functions for various types
-  inline bool operator()(arangodb::StringRef const& lhs, std::string const& rhs) const noexcept {
-    return lhs < arangodb::StringRef(rhs);
+  inline bool operator()(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) const noexcept {
+    return lhs < arangodb::velocypack::StringRef(rhs);
   }
-  inline bool operator()(std::string const& lhs, arangodb::StringRef const& rhs) const noexcept {
-    return arangodb::StringRef(lhs) < rhs;
+  inline bool operator()(std::string const& lhs, arangodb::velocypack::StringRef const& rhs) const noexcept {
+    return arangodb::velocypack::StringRef(lhs) < rhs;
   }
   inline bool operator()(std::string const& lhs, std::string const& rhs) const noexcept {
     return lhs < rhs;
@@ -95,7 +96,7 @@ void TRI_SegfaultDebugging(char const* message) {
 bool TRI_ShouldFailDebugging(char const* value) {
   READ_LOCKER(readLocker, ::failurePointsLock);
 
-  return ::failurePoints.find(StringRef(value)) != ::failurePoints.end();
+  return ::failurePoints.find(arangodb::velocypack::StringRef(value)) != ::failurePoints.end();
 }
 
 /// @brief add a failure point

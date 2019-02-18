@@ -58,7 +58,7 @@ using namespace arangodb;
 static int ProcessIndexFields(VPackSlice const definition, VPackBuilder& builder,
                               size_t minFields, size_t maxField, bool create) {
   TRI_ASSERT(builder.isOpenObject());
-  std::unordered_set<StringRef> fields;
+  std::unordered_set<arangodb::velocypack::StringRef> fields;
   auto fieldsSlice = definition.get(arangodb::StaticStrings::IndexFields);
 
   builder.add(arangodb::velocypack::Value(arangodb::StaticStrings::IndexFields));
@@ -71,7 +71,7 @@ static int ProcessIndexFields(VPackSlice const definition, VPackBuilder& builder
         return TRI_ERROR_BAD_PARAMETER;
       }
 
-      StringRef f(it);
+      arangodb::velocypack::StringRef f(it);
 
       if (f.empty() || (create && f == StaticStrings::IdString)) {
         // accessing internal attributes is disallowed
@@ -665,7 +665,7 @@ void RocksDBIndexFactory::prepareIndexes(
           from.openObject();
 
           for (auto const& f : VPackObjectIterator(v)) {
-            if (arangodb::StringRef(f.key) == StaticStrings::IndexFields) {
+            if (arangodb::velocypack::StringRef(f.key) == StaticStrings::IndexFields) {
               from.add(VPackValue(StaticStrings::IndexFields));
               from.openArray();
               from.add(VPackValue(StaticStrings::FromString));
@@ -682,12 +682,12 @@ void RocksDBIndexFactory::prepareIndexes(
 
           to.openObject();
           for (auto const& f : VPackObjectIterator(v)) {
-            if (arangodb::StringRef(f.key) == StaticStrings::IndexFields) {
+            if (arangodb::velocypack::StringRef(f.key) == StaticStrings::IndexFields) {
               to.add(VPackValue(StaticStrings::IndexFields));
               to.openArray();
               to.add(VPackValue(StaticStrings::ToString));
               to.close();
-            } else if (arangodb::StringRef(f.key) == StaticStrings::IndexId) {
+            } else if (arangodb::velocypack::StringRef(f.key) == StaticStrings::IndexId) {
               auto iid = basics::StringUtils::uint64(f.value.copyString()) + 1;
               last = iid;
               to.add(StaticStrings::IndexId, VPackValue(std::to_string(iid)));
@@ -731,7 +731,7 @@ void RocksDBIndexFactory::prepareIndexes(
         b.openObject();
 
         for (auto const& f : VPackObjectIterator(v)) {
-          if (arangodb::StringRef(f.key) == StaticStrings::IndexId) {
+          if (arangodb::velocypack::StringRef(f.key) == StaticStrings::IndexId) {
             last++;
             b.add(StaticStrings::IndexId, VPackValue(std::to_string(last)));
           } else {

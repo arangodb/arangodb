@@ -161,7 +161,7 @@ class Query {
     return _collections.add(name, accessType);
   }
 
-  inline Collection* addCollection(StringRef name, AccessMode::Type accessType) {
+  inline Collection* addCollection(arangodb::velocypack::StringRef name, AccessMode::Type accessType) {
     return _collections.add(name.toString(), accessType);
   }
 

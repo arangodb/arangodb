@@ -29,10 +29,11 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/StringRef.h>
 
 #include <iosfwd>
 
@@ -242,9 +243,9 @@ class Index {
   /// @brief return the selectivity estimate of the index
   /// must only be called if hasSelectivityEstimate() returns true
   ///
-  /// The extra StringRef is only used in the edge index as direction
+  /// The extra arangodb::velocypack::StringRef is only used in the edge index as direction
   /// attribute attribute, a Slice would be more flexible.
-  virtual double selectivityEstimate(arangodb::StringRef const& extra = arangodb::StringRef()) const;
+  virtual double selectivityEstimate(arangodb::velocypack::StringRef const& extra = arangodb::velocypack::StringRef()) const;
 
   /// @brief update the cluster selectivity estimate
   virtual void updateClusterSelectivityEstimate(double /*estimate*/) {

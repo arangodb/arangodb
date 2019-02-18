@@ -25,7 +25,6 @@
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/QueryString.h"
-#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -42,6 +41,7 @@
 #include <v8.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <regex>
 
@@ -397,7 +397,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
     }
     // We simply ignore invalid entries in the _functions collection:
     if (name.isString() && fn.isString() && (fn.getStringLength() > 2)) {
-      auto ref = StringRef(fn);
+      auto ref = arangodb::velocypack::StringRef(fn);
 
       ref = ref.substr(1, ref.length() - 2);
       tmp = basics::StringUtils::trim(ref.toString());

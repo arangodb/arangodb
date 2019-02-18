@@ -24,10 +24,11 @@
 #define ARANGOD_CLUSTER_ENGINE_CLUSTER_INDEX_H 1
 
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
 #include "ClusterEngine/ClusterTransactionState.h"
 #include "ClusterEngine/Common.h"
 #include "Indexes/Index.h"
+
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 class LogicalCollection;
@@ -65,7 +66,7 @@ class ClusterIndex : public Index {
 
   bool hasSelectivityEstimate() const override;
 
-  double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
+  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
 
   /// @brief update the cluster selectivity estimate
   void updateClusterSelectivityEstimate(double estimate) override;

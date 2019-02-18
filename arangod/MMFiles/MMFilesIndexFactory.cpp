@@ -24,7 +24,6 @@
 #include "MMFilesIndexFactory.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -43,6 +42,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #ifdef USE_IRESEARCH
@@ -58,7 +58,7 @@ using namespace arangodb;
 static int ProcessIndexFields(VPackSlice const definition, VPackBuilder& builder,
                               size_t minFields, size_t maxField, bool create) {
   TRI_ASSERT(builder.isOpenObject());
-  std::unordered_set<StringRef> fields;
+  std::unordered_set<arangodb::velocypack::StringRef> fields;
   auto fieldsSlice = definition.get(arangodb::StaticStrings::IndexFields);
 
   builder.add(arangodb::velocypack::Value(arangodb::StaticStrings::IndexFields));
@@ -71,7 +71,7 @@ static int ProcessIndexFields(VPackSlice const definition, VPackBuilder& builder
         return TRI_ERROR_BAD_PARAMETER;
       }
 
-      StringRef f(it);
+      arangodb::velocypack::StringRef f(it);
 
       if (f.empty() || (create && f == StaticStrings::IdString)) {
         // accessing internal attributes is disallowed

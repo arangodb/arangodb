@@ -25,7 +25,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/hashes.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -34,6 +33,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -72,7 +72,7 @@ VPackSlice buildTemporarySlice(VPackSlice const& sub, Part const& part,
     switch (part) {
       case Part::ALL: {
         if (splitSlash) {
-          arangodb::StringRef key(sub);
+          arangodb::velocypack::StringRef key(sub);
           size_t pos = key.find('/');
           if (pos != std::string::npos) {
             // We have an _id. Split it.
@@ -85,7 +85,7 @@ VPackSlice buildTemporarySlice(VPackSlice const& sub, Part const& part,
         return sub;
       }
       case Part::FRONT: {
-        arangodb::StringRef prefix(sub);
+        arangodb::velocypack::StringRef prefix(sub);
         size_t pos;
         if (splitSlash) {
           pos = prefix.find('/');

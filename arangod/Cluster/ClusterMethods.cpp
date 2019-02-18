@@ -24,7 +24,6 @@
 #include "ClusterMethods.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
@@ -1035,7 +1034,7 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
           for (auto const& identifier :
                VPackObjectIterator(answer.get("identifiers"))) {
             if (identifier.value.hasKey("selectivityEstimate")) {
-              StringRef shard_index_id(identifier.key);
+              arangodb::velocypack::StringRef shard_index_id(identifier.key);
               auto split_point =
                   std::find(shard_index_id.begin(), shard_index_id.end(), '/');
               std::string index(split_point + 1, shard_index_id.end());
@@ -1272,7 +1271,7 @@ int deleteDocumentOnCoordinator(std::string const& dbname, std::string const& co
                           &reverseMapping](VPackSlice const value) -> int {
       // Sort out the _key attribute and identify the shard responsible for it.
 
-      StringRef _key(transaction::helpers::extractKeyPart(value));
+      arangodb::velocypack::StringRef _key(transaction::helpers::extractKeyPart(value));
       ShardID shardID;
       if (_key.empty()) {
         // We have invalid input at this point.
@@ -1771,7 +1770,7 @@ int getDocumentOnCoordinator(std::string const& dbname, std::string const& colln
 int fetchEdgesFromEngines(std::string const& dbname,
                           std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
                           VPackSlice const vertexId, size_t depth,
-                          std::unordered_map<StringRef, VPackSlice>& cache,
+                          std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache,
                           std::vector<VPackSlice>& result,
                           std::vector<std::shared_ptr<VPackBuilder>>& datalake,
                           VPackBuilder& builder, size_t& filtered, size_t& read) {
@@ -1837,7 +1836,7 @@ int fetchEdgesFromEngines(std::string const& dbname,
         LOG_TOPIC(ERR, Logger::GRAPHS) << "got invalid edge id type: " << id.typeName();
         continue;
       }
-      StringRef idRef(id);
+      arangodb::velocypack::StringRef idRef(id);
       auto resE = cache.insert({idRef, e});
       if (resE.second) {
         // This edge is not yet cached.
@@ -1866,8 +1865,8 @@ int fetchEdgesFromEngines(std::string const& dbname,
 void fetchVerticesFromEngines(
     std::string const& dbname,
     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-    std::unordered_set<StringRef>& vertexIds,
-    std::unordered_map<StringRef, std::shared_ptr<VPackBuffer<uint8_t>>>& result,
+    std::unordered_set<arangodb::velocypack::StringRef>& vertexIds,
+    std::unordered_map<arangodb::velocypack::StringRef, std::shared_ptr<VPackBuffer<uint8_t>>>& result,
     VPackBuilder& builder) {
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
@@ -1928,7 +1927,7 @@ void fetchVerticesFromEngines(
                                                TRI_errno_string(code)));
     }
     for (auto const& pair : VPackObjectIterator(resSlice)) {
-      StringRef key(pair.key);
+      arangodb::velocypack::StringRef key(pair.key);
       if (vertexIds.erase(key) == 0) {
         // We either found the same vertex twice,
         // or found a vertex we did not request.
@@ -1945,7 +1944,7 @@ void fetchVerticesFromEngines(
         continue;
       }
       TRI_ASSERT(id.isString());
-      result.emplace(StringRef(id), val.steal());
+      result.emplace(arangodb::velocypack::StringRef(id), val.steal());
     }
   }
 
@@ -1970,8 +1969,8 @@ void fetchVerticesFromEngines(
 void fetchVerticesFromEngines(
     std::string const& dbname,
     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-    std::unordered_set<StringRef>& vertexIds,
-    std::unordered_map<StringRef, arangodb::velocypack::Slice>& result,
+    std::unordered_set<arangodb::velocypack::StringRef>& vertexIds,
+    std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>& result,
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake,
     VPackBuilder& builder) {
   auto cc = ClusterComm::instance();
@@ -2035,7 +2034,7 @@ void fetchVerticesFromEngines(
     bool cached = false;
 
     for (auto const& pair : VPackObjectIterator(resSlice)) {
-      StringRef key(pair.key);
+      arangodb::velocypack::StringRef key(pair.key);
       if (vertexIds.erase(key) == 0) {
         // We either found the same vertex twice,
         // or found a vertex we did not request.
@@ -2299,7 +2298,7 @@ int modifyDocumentOnCoordinator(
           return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
         }
 
-        StringRef keyStr(keySlice);
+        arangodb::velocypack::StringRef keyStr(keySlice);
         // We send to single endpoint
         requests.emplace_back("shard:" + it.first, reqType,
                               baseUrl + StringUtils::urlEncode(it.first) + "/" +
@@ -2637,7 +2636,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
 int fetchEdgesFromEngines(std::string const& dbname,
                           std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
                           VPackSlice const vertexId, bool backward,
-                          std::unordered_map<StringRef, VPackSlice>& cache,
+                          std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache,
                           std::vector<VPackSlice>& result,
                           std::vector<std::shared_ptr<VPackBuilder>>& datalake,
                           VPackBuilder& builder, size_t& read) {
@@ -2700,7 +2699,7 @@ int fetchEdgesFromEngines(std::string const& dbname,
         LOG_TOPIC(ERR, Logger::GRAPHS) << "got invalid edge id type: " << id.typeName();
         continue;
       }
-      StringRef idRef(id);
+      arangodb::velocypack::StringRef idRef(id);
       auto resE = cache.insert({idRef, e});
       if (resE.second) {
         // This edge is not yet cached.

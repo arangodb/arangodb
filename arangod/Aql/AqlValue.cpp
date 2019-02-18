@@ -24,7 +24,6 @@
 #include "AqlValue.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Arithmetic.h"
-#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -35,6 +34,7 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <array>
