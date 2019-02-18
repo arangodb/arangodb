@@ -106,7 +106,7 @@ exports.deriveTestSuite = function (deriveFrom, deriveTo, namespace) {
   }
 };
 
-exports.deriveTestSuiteWithamespace = function (deriveFrom, deriveTo, namespace) {
+exports.deriveTestSuiteWithnamespace = function (deriveFrom, deriveTo, namespace) {
     let rc = {};
     for (let testcase in deriveTo) {
 	let targetTestCase = testcase + namespace;

@@ -33,7 +33,7 @@ var jsunity = require('jsunity');
 const testHelper = require('@arangodb/test-helper');
 const isEqual = testHelper.isEqual;
 const deriveTestSuite = testHelper.deriveTestSuite;
-const deriveTestSuiteWithamespace = testHelper.deriveTestSuiteWithamespace;
+const deriveTestSuiteWithnamespace = testHelper.deriveTestSuiteWithnamespace;
 const users = require('@arangodb/users');
 const helper = require('@arangodb/user-helper');
 const tasks = require('@arangodb/tasks');
@@ -512,7 +512,7 @@ if (hasIResearch(db)) {
 		}
 	    };
 		jsunity.run(function() {
-		    return deriveTestSuiteWithamespace(
+		    return deriveTestSuiteWithnamespace(
 		    UserRightsManagement(name),
 		    suite,
 		    "_-_" + name);
