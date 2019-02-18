@@ -37,6 +37,7 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
+#include "tests/Mocks/Servers.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -49,31 +50,28 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-SCENARIO("DistinctCollectExecutor", "[AQL][EXECUTOR][DISTINCTCOLLETEXECUTOR]") {
+SCENARIO("DistinctCollectExecutor", "[AQL][EXECUTOR][DISTINCTCOLLECTEXECUTOR]") {
   ExecutionState state;
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager{&monitor};
 
   GIVEN("there are no rows upstream") {
-    // fake transaction::Methods
-    fakeit::Mock<transaction::Methods> mockTrx;
-    // fake transaction::Methods - end
-
-    fakeit::Mock<TRI_vocbase_t> vocbaseMock;
-    TRI_vocbase_t& vocbase = vocbaseMock.get();  // required to create collection
+    mocks::MockAqlServer server{};
+    std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
+    arangodb::transaction::Methods* trx = fakedQuery->trx();
 
     std::unordered_set<RegisterId> const regToClear;
+    std::unordered_set<RegisterId> const regToKeep;
     std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
     groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 2));
 
     std::unordered_set<RegisterId> readableInputRegisters;
     std::unordered_set<RegisterId> writeableOutputRegisters;
 
-    transaction::Methods& trx = mockTrx.get();
-    DistinctCollectExecutorInfos infos(2 /*nrIn*/, 2 /*nrOut*/, {},
-                                       std::move(readableInputRegisters),
+    DistinctCollectExecutorInfos infos(2 /*nrIn*/, 2 /*nrOut*/, regToClear,
+                                       regToKeep, std::move(readableInputRegisters),
                                        std::move(writeableOutputRegisters),
-                                       std::move(groupRegisters), &trx);
+                                       std::move(groupRegisters), trx);
 
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
     auto outputBlockShell =
@@ -86,8 +84,8 @@ SCENARIO("DistinctCollectExecutor", "[AQL][EXECUTOR][DISTINCTCOLLETEXECUTOR]") {
       DistinctCollectExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE") {
-        OutputAqlItemRow result(std::move(outputBlockShell),
-                                infos.getOutputRegisters(), infos.registersToKeep());
+        OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+                                infos.registersToKeep(), infos.registersToClear());
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -99,8 +97,8 @@ SCENARIO("DistinctCollectExecutor", "[AQL][EXECUTOR][DISTINCTCOLLETEXECUTOR]") {
       DistinctCollectExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT") {
-        OutputAqlItemRow result(std::move(outputBlockShell),
-                                infos.getOutputRegisters(), infos.registersToKeep());
+        OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+                                infos.registersToKeep(), infos.registersToClear());
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -115,14 +113,12 @@ SCENARIO("DistinctCollectExecutor", "[AQL][EXECUTOR][DISTINCTCOLLETEXECUTOR]") {
   }
 
   GIVEN("there are rows in the upstream") {
-    // fake transaction::Methods
-    fakeit::Mock<transaction::Methods> mockTrx;
-    // fake transaction::Methods - end
-
-    fakeit::Mock<TRI_vocbase_t> vocbaseMock;
-    TRI_vocbase_t& vocbase = vocbaseMock.get();  // required to create collection
+    mocks::MockAqlServer server{};
+    std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
+    arangodb::transaction::Methods* trx = fakedQuery->trx();
 
     std::unordered_set<RegisterId> regToClear;
+    std::unordered_set<RegisterId> regToKeep;
     std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
     groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
 
@@ -134,11 +130,10 @@ SCENARIO("DistinctCollectExecutor", "[AQL][EXECUTOR][DISTINCTCOLLETEXECUTOR]") {
 
     RegisterId nrOutputRegister = 2;
 
-    transaction::Methods& trx = mockTrx.get();
-    DistinctCollectExecutorInfos infos(1 /*nrInputReg*/, nrOutputRegister /*nrOutputReg*/, regToClear,
-                                       std::move(readableInputRegisters),
+    DistinctCollectExecutorInfos infos(1 /*nrInputReg*/, nrOutputRegister /*nrOutputReg*/,
+                                       regToClear, regToKeep, std::move(readableInputRegisters),
                                        std::move(writeableOutputRegisters),
-                                       std::move(groupRegisters), &trx);
+                                       std::move(groupRegisters), trx);
 
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, nrOutputRegister);
     auto outputBlockShell =
@@ -146,40 +141,80 @@ SCENARIO("DistinctCollectExecutor", "[AQL][EXECUTOR][DISTINCTCOLLETEXECUTOR]") {
     NoStats stats{};
 
     WHEN("the producer does not wait") {
-      auto input = VPackParser::fromJson("[ [1], [2], [1] ]");
+      auto input = VPackParser::fromJson("[ [1], [2] ]");
       SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       DistinctCollectExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE") {
-        OutputAqlItemRow result(std::move(outputBlockShell),
-                                infos.getOutputRegisters(), infos.registersToKeep());
+        OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+                                infos.registersToKeep(), infos.registersToClear());
 
-        LOG_DEVEL << 1;
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        LOG_DEVEL << 2;
-        std::tie(state, stats) = testee.produceRow(result);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(result.produced());
-        result.advanceRow();
-
-        LOG_DEVEL << 3;
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(result.produced());
         result.advanceRow();
 
-        LOG_DEVEL << 4;
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
-        LOG_DEVEL << 5;
+
+        auto block = result.stealBlock();
+        AqlValue x = block->getValue(0, 1);
+        REQUIRE(x.isNumber());
+        REQUIRE(x.toInt64() == 1);
+
+        AqlValue z = block->getValue(1, 1);
+        REQUIRE(z.isNumber());
+        REQUIRE(z.toInt64() == 2);
       }
     }
 
+    WHEN("the producer does wait") {
+      auto input = VPackParser::fromJson("[ [1], [2] ]");
+      SingleRowFetcherHelper<false> fetcher(input->steal(), true);
+      DistinctCollectExecutor testee(fetcher, infos);
+
+      THEN("the executor should return WAIT first") {
+        OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+                                infos.registersToKeep(), infos.registersToClear());
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result.produced());
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(result.produced());
+        result.advanceRow();
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result.produced());
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::DONE);
+        REQUIRE(result.produced());
+        result.advanceRow();
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::DONE);
+        REQUIRE(!result.produced());
+
+        auto block = result.stealBlock();
+        AqlValue x = block->getValue(0, 1);
+        REQUIRE(x.isNumber());
+        REQUIRE(x.toInt64() == 1);
+
+        AqlValue z = block->getValue(1, 1);
+        REQUIRE(z.isNumber());
+        REQUIRE(z.toInt64() == 2);
+      }
+    }
   }
 }
 

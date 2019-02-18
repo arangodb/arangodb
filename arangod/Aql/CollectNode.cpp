@@ -157,7 +157,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
       DistinctCollectExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                          getRegisterPlan()->nrRegs[getDepth()],
-                                         getRegsToClear(), std::move(readableInputRegisters),
+                                         getRegsToClear(), calcRegsToKeep(),
+                                         std::move(readableInputRegisters),
                                          std::move(writeableInputRegisters),
                                          std::move(groupRegisters), trxPtr);
 
