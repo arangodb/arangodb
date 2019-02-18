@@ -51,7 +51,7 @@ class IResearchViewNode;
 ///////////////////////////////////////////////////////////////////////////////
 class IResearchViewBlockBase : public aql::ExecutionBlock {
  public:
-  IResearchViewBlockBase(IResearchView::Snapshot const& reader,
+  IResearchViewBlockBase(std::shared_ptr<IResearchView::Snapshot const> reader,
                          aql::ExecutionEngine&, IResearchViewNode const&);
 
   std::pair<aql::ExecutionState, std::unique_ptr<aql::AqlItemBlock>> getSome(size_t atMost) override final;
@@ -91,7 +91,7 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   std::vector<arangodb::LocalDocumentId> _keys;  // buffer for primary keys
   irs::attribute_view _filterCtx;                // filter context
   ViewExpressionContext _ctx;
-  IResearchView::Snapshot const& _reader;
+  std::shared_ptr<IResearchView::Snapshot const> _reader;
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
   iresearch::ExpressionExecutionContext _execCtx;  // expression execution context
@@ -106,7 +106,7 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
 ///////////////////////////////////////////////////////////////////////////////
 class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
  public:
-  IResearchViewUnorderedBlock(IResearchView::Snapshot const& reader,
+  IResearchViewUnorderedBlock(std::shared_ptr<IResearchView::Snapshot const> reader,
                               aql::ExecutionEngine& engine, IResearchViewNode const& node);
 
  protected:
@@ -135,7 +135,7 @@ class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
 ///////////////////////////////////////////////////////////////////////////////
 class IResearchViewBlock final : public IResearchViewUnorderedBlock {
  public:
-  IResearchViewBlock(IResearchView::Snapshot const& reader,
+  IResearchViewBlock(std::shared_ptr<IResearchView::Snapshot const> reader,
                      aql::ExecutionEngine& engine, IResearchViewNode const& node);
 
  protected:

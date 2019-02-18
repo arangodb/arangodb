@@ -330,17 +330,25 @@ class phrase_filter_test_case : public filter_test_case_base {
        .push_back("brown")
        .push_back("fox");
 
-      size_t collect_count = 0;
+      size_t collect_field_count = 0;
+      size_t collect_term_count = 0;
       size_t finish_count = 0;
       irs::order ord;
       auto& sort = ord.add<tests::sort::custom_sort>(false);
-      sort.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
-        ++collect_count;
+
+      sort.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+        ++collect_field_count;
       };
-      sort.collector_finish = [&finish_count](irs::attribute_store&, const irs::index_reader&)->void{
+      sort.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+        ++collect_term_count;
+      };
+      sort.collectors_collect_ = [&finish_count](irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++finish_count;
       };
-      sort.prepare_collector = [&sort]()->irs::sort::collector::ptr {
+      sort.prepare_field_collector_ = [&sort]()->irs::sort::field_collector::ptr {
+        return irs::memory::make_unique<sort::custom_sort::prepared::collector>(sort);
+      };
+      sort.prepare_term_collector_ = [&sort]()->irs::sort::term_collector::ptr {
         return irs::memory::make_unique<sort::custom_sort::prepared::collector>(sort);
       };
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void {
@@ -353,7 +361,8 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       auto pord = ord.prepare();
       auto prepared = q.prepare(rdr, pord);
-      ASSERT_EQ(3, collect_count);
+      ASSERT_EQ(1, collect_field_count); // 1 field in 1 segment
+      ASSERT_EQ(3, collect_term_count); // 3 different terms
       ASSERT_EQ(3, finish_count); // 3 sub-terms in phrase
       auto sub = rdr.begin();
       auto column = sub->column_reader("name");

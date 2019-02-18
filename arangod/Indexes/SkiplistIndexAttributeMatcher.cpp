@@ -438,7 +438,7 @@ arangodb::aql::AstNode* SkiplistIndexAttributeMatcher::specializeCondition(
                 return Index::sortWeight(lhs) < Index::sortWeight(rhs);
               });
 
-    std::unordered_set<int> operatorsFound;
+    arangodb::HashSet<int> operatorsFound;
     for (auto& it : nodes) {
       if (it->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE) {
         // ignore all != operators here
@@ -470,7 +470,7 @@ arangodb::aql::AstNode* SkiplistIndexAttributeMatcher::specializeCondition(
 }
 
 bool SkiplistIndexAttributeMatcher::isDuplicateOperator(arangodb::aql::AstNode const* node,
-                                                        std::unordered_set<int> const& operatorsFound) {
+                                                        arangodb::HashSet<int> const& operatorsFound) {
   auto type = node->type;
   if (operatorsFound.find(static_cast<int>(type)) != operatorsFound.end()) {
     // duplicate operator

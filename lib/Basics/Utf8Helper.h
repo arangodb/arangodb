@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,8 +25,9 @@
 #ifndef ARANGODB_BASICS_UTF8HELPER_H
 #define ARANGODB_BASICS_UTF8HELPER_H 1
 
-#include <velocypack/StringRef.h>
 #include "Basics/Common.h"
+
+#include <velocypack/StringRef.h>
 
 #include <unicode/coll.h>
 #include <unicode/regex.h>
@@ -40,10 +41,6 @@ class Utf8Helper {
   Utf8Helper& operator=(Utf8Helper const&) = delete;
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a default helper
-  //////////////////////////////////////////////////////////////////////////////
-
   static Utf8Helper DefaultUtf8Helper;
 
  public:
@@ -153,6 +150,26 @@ class Utf8Helper {
                       char const* replacement, size_t replacementLength,
                       bool partial, bool& error);
 
+  // append an UTF8 to a string. This will append 1 to 4 bytes.
+  static void appendUtf8Character(std::string& result, uint32_t ch) {
+    if (ch <= 0x7f) {
+      result.push_back((uint8_t)ch);
+    } else {
+      if (ch <= 0x7ff) {
+        result.push_back((uint8_t)((ch >> 6) | 0xc0));
+      } else {
+        if (ch <= 0xffff) {
+          result.push_back((uint8_t)((ch >> 12) | 0xe0));
+        } else {
+          result.push_back((uint8_t)((ch >> 18) | 0xf0));
+          result.push_back((uint8_t)(((ch >> 12) & 0x3f) | 0x80));
+        }
+        result.push_back((uint8_t)(((ch >> 6) & 0x3f) | 0x80));
+      }
+      result.push_back((uint8_t)((ch & 0x3f) | 0x80));
+    }
+  }
+
  private:
   Collator* _coll;
 };
@@ -164,6 +181,8 @@ class Utf8Helper {
 ////////////////////////////////////////////////////////////////////////////////
 
 UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, size_t* outLength);
+UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, UChar* buffer, size_t bufferSize,
+                       size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uchar (utf-16) to a utf-8 string

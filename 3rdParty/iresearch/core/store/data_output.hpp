@@ -84,7 +84,7 @@ struct IRESEARCH_API data_output
 struct IRESEARCH_API index_output : public data_output {
  public:
   DECLARE_IO_PTR(index_output, close);
-  DEFINE_FACTORY_INLINE(index_output);
+  DEFINE_FACTORY_INLINE(index_output)
 
   virtual ~index_output();
 

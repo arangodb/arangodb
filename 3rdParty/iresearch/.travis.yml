@@ -15,7 +15,6 @@ cache:
 #    - ${TRAVIS_BUILD_DIR}/deps/boost-1.61.0
 #    - ${TRAVIS_BUILD_DIR}/deps/boost-1.62.0
 #    - ${TRAVIS_BUILD_DIR}/deps/boost-1.63.0
-#    - ${TRAVIS_BUILD_DIR}/deps/boost-1.69.0
 
 branches:
   only:

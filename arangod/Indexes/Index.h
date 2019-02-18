@@ -193,11 +193,6 @@ class Index {
 
   static IndexType type(std::string const& type);
 
-  static bool isGeoIndex(IndexType type) {
-    return type == TRI_IDX_TYPE_GEO1_INDEX || type == TRI_IDX_TYPE_GEO2_INDEX ||
-           type == TRI_IDX_TYPE_GEO_INDEX;
-  }
-
   virtual char const* typeName() const = 0;
 
   static bool allowExpansion(IndexType type) {
@@ -300,16 +295,6 @@ class Index {
 
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
-
-  virtual void batchInsert(transaction::Methods& trx,
-                           std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const& docs,
-                           std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);
-
-  virtual Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const& doc, OperationMode mode) = 0;
-
-  virtual Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const& doc, OperationMode mode) = 0;
 
   virtual void load() = 0;
   virtual void unload() = 0;

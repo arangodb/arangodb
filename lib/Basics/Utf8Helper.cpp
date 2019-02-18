@@ -69,9 +69,8 @@ int Utf8Helper::compareUtf8(char const* left, size_t leftLength,
   UErrorCode status = U_ZERO_ERROR;
   int result = _coll->compareUTF8(StringPiece(left, (int32_t)leftLength),
                                   StringPiece(right, (int32_t)rightLength), status);
-  if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "error in Collator::compareUTF8(...): " << u_errorName(status);
+  if (ADB_UNLIKELY(U_FAILURE(status))) {
+    TRI_ASSERT(false);
     return (strncmp(left, right, leftLength < rightLength ? leftLength : rightLength));
   }
 
@@ -82,27 +81,8 @@ int Utf8Helper::compareUtf16(uint16_t const* left, size_t leftLength,
                              uint16_t const* right, size_t rightLength) const {
   TRI_ASSERT(left != nullptr);
   TRI_ASSERT(right != nullptr);
+  TRI_ASSERT(_coll);
 
-  if (!_coll) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "no Collator in Utf8Helper::compareUtf16()!";
-
-    if (leftLength == rightLength) {
-      return memcmp((const void*)left, (const void*)right, leftLength * 2);
-    }
-
-    int result = memcmp((const void*)left, (const void*)right,
-                        leftLength < rightLength ? leftLength * 2 : rightLength * 2);
-
-    if (result == 0) {
-      if (leftLength < rightLength) {
-        return -1;
-      }
-      return 1;
-    }
-
-    return result;
-  }
   // ..........................................................................
   // Take note here: we are assuming that the ICU type UChar is two bytes.
   // There is no guarantee that this will be the case on all platforms and
@@ -572,6 +552,44 @@ char* TRI_tolower_utf8(char const* src, int32_t srcLength, int32_t* dstLength) {
 /// @brief convert a utf-8 string to a uchar (utf-16)
 ////////////////////////////////////////////////////////////////////////////////
 
+UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, 
+                       UChar* buffer, size_t bufferSize, size_t* outLength) {
+  UErrorCode status = U_ZERO_ERROR;
+
+  // 1. convert utf8 string to utf16
+  // calculate utf16 string length
+  int32_t utf16Length;
+  u_strFromUTF8(nullptr, 0, &utf16Length, utf8, (int32_t)inLength, &status);
+  if (status != U_BUFFER_OVERFLOW_ERROR) {
+    return nullptr;
+  }
+
+  UChar* utf16;
+  if (utf16Length + 1 <= (int32_t) bufferSize) {
+    // use local buffer
+    utf16 = buffer;
+  } else {
+    // dynamic memory 
+    utf16 = (UChar*)TRI_Allocate((utf16Length + 1) * sizeof(UChar));
+    if (utf16 == nullptr) {
+      return nullptr;
+    }
+  }
+
+  // now convert
+  status = U_ZERO_ERROR;
+  // the +1 will append a 0 byte at the end
+  u_strFromUTF8(utf16, utf16Length + 1, nullptr, utf8, (int32_t)inLength, &status);
+  if (status != U_ZERO_ERROR) {
+    TRI_Free(utf16);
+    return nullptr;
+  }
+
+  *outLength = (size_t)utf16Length;
+
+  return utf16;
+}
+
 UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, size_t* outLength) {
   int32_t utf16Length;
 
@@ -643,13 +661,10 @@ char* TRI_UCharToUtf8(UChar const* uchar, size_t inLength, size_t* outLength) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength, size_t* outLength) {
-  size_t utf16Length;
-
   *outLength = 0;
-  char* utf8Dest;
 
   if (inLength == 0) {
-    utf8Dest = static_cast<char*>(TRI_Allocate(sizeof(char)));
+    char* utf8Dest = static_cast<char*>(TRI_Allocate(sizeof(char)));
 
     if (utf8Dest != nullptr) {
       utf8Dest[0] = '\0';
@@ -657,16 +672,24 @@ char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength, size_t* outLe
     return utf8Dest;
   }
 
-  UChar* utf16 = TRI_Utf8ToUChar(utf8, inLength, &utf16Length);
+  size_t utf16Length;
+  // use this buffer and pass it to TRI_Utf8ToUChar so we can avoid dynamic memory
+  // allocation for shorter strings
+  UChar buffer[128];
+  UChar* utf16 = TRI_Utf8ToUChar(utf8, inLength, &buffer[0], sizeof(buffer) / sizeof(UChar), &utf16Length);
 
   if (utf16 == nullptr) {
     return nullptr;
   }
 
   // continue in TR_normalize_utf16_to_NFC
-  utf8Dest = TRI_normalize_utf16_to_NFC((uint16_t const*)utf16,
-                                        (int32_t)utf16Length, outLength);
-  TRI_Free(utf16);
+  char* utf8Dest = TRI_normalize_utf16_to_NFC((uint16_t const*)utf16,
+                                              (int32_t)utf16Length, outLength);
+
+  if (utf16 != &buffer[0]) {
+    // TRI_Utf8ToUChar dynamically allocated memory
+    TRI_Free(utf16);
+  }
 
   return utf8Dest;
 }
@@ -677,10 +700,9 @@ char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength, size_t* outLe
 
 char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16, size_t inLength, size_t* outLength) {
   *outLength = 0;
-  char* utf8Dest;
 
   if (inLength == 0) {
-    utf8Dest = static_cast<char*>(TRI_Allocate(sizeof(char)));
+    char* utf8Dest = static_cast<char*>(TRI_Allocate(sizeof(char)));
     if (utf8Dest != nullptr) {
       utf8Dest[0] = '\0';
     }
@@ -770,7 +792,7 @@ char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16, size_t inLength, size_t*
   }
 
   // Convert data back from UChar (UTF-16) to UTF-8
-  utf8Dest = TRI_UCharToUtf8(utf16Dest, (size_t)utf16DestLength, outLength);
+  char* utf8Dest = TRI_UCharToUtf8(utf16Dest, (size_t)utf16DestLength, outLength);
 
   if (mustFree) {
     TRI_Free(utf16Dest);

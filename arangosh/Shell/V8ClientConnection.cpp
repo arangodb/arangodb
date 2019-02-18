@@ -102,12 +102,16 @@ void V8ClientConnection::createConnection() {
       std::shared_ptr<VPackBuilder> parsedBody;
       VPackSlice body;
       if (res->contentType() == fuerte::ContentType::VPack) {
-        body = res->slices()[0];
+        body = res->slice();
       } else {
         parsedBody =
             VPackParser::fromJson(reinterpret_cast<char const*>(res->payload().data()),
                                   res->payload().size());
         body = parsedBody->slice();
+      }
+      if (!body.isObject()) {
+        _lastErrorMessage = "invalid response";
+        _lastHttpReturnCode = 503;
       }
 
       std::string const server =
@@ -165,6 +169,14 @@ std::string V8ClientConnection::endpointSpecification() const {
     return _connection->endpoint();
   }
   return "";
+}
+    
+double V8ClientConnection::timeout() const {
+  return _requestTimeout.count();
+}
+
+void V8ClientConnection::timeout(double value) {
+  _requestTimeout = std::chrono::duration<double>(value);
 }
 
 void V8ClientConnection::connect(ClientFeature* client) {
@@ -1149,7 +1161,44 @@ static void ClientConnection_isConnected(v8::FunctionCallbackInfo<v8::Value> con
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ClientConnection method "isConnected"
+/// @brief ClientConnection method "timeout"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_timeout(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // get the connection
+  V8ClientConnection* v8connection =
+      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION);
+
+  if (v8connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+  }
+  
+  if (args.Length() == 0) {
+    TRI_V8_RETURN(v8::Number::New(isolate, v8connection->timeout()));
+  } else {
+    double value = TRI_ObjectToDouble(args[0]);
+    v8connection->timeout(value);
+
+    v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
+    ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+
+    if (client == nullptr) {
+      TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    }
+    
+    client->requestTimeout(value);
+
+    TRI_V8_RETURN_UNDEFINED();
+  }
+    
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "toString"
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_toString(v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -1694,6 +1743,9 @@ void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Local<v8::Context>
                         v8::FunctionTemplate::New(isolate, ClientConnection_connectedUser,
                                                   v8client));
 
+  connection_proto->Set(isolate, "timeout",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_timeout));
+  
   connection_proto->Set(isolate, "toString",
                         v8::FunctionTemplate::New(isolate, ClientConnection_toString));
 

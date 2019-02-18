@@ -51,7 +51,6 @@ void AqlFunctionFeature::validateOptions(std::shared_ptr<options::ProgramOptions
 void AqlFunctionFeature::prepare() {
   // set singleton
   AQLFUNCTIONS = this;
-  Functions::init();
 
   /// @brief Add all AQL functions to the FunctionDefintions map
   addTypeCheckFunctions();

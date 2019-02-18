@@ -182,8 +182,8 @@ class same_position_query final : public filter::prepared {
   stats_t stats_;
 }; // same_position_query
 
-DEFINE_FILTER_TYPE(by_same_position);
-DEFINE_FACTORY_DEFAULT(by_same_position);
+DEFINE_FILTER_TYPE(by_same_position)
+DEFINE_FACTORY_DEFAULT(by_same_position)
 
 /* static */ const flags& by_same_position::features() {
   static flags features{ frequency::type(), position::type() };
@@ -255,11 +255,11 @@ filter::prepared::ptr by_same_position::prepare(
   term_states.reserve(terms_.size());
 
   // prepare phrase stats (collector for each term)
-  std::vector<order::prepared::stats> term_stats;
+  std::vector<order::prepared::collectors> term_stats;
   term_stats.reserve(terms_.size());
 
   for(auto size = terms_.size(); size; --size) {
-    term_stats.emplace_back(ord.prepare_stats());
+    term_stats.emplace_back(ord.prepare_collectors(1)); // 1 term per attribute_store because a range is treated as a disjunction
   }
 
   for (const auto& segment : index) {
@@ -279,6 +279,8 @@ filter::prepared::ptr by_same_position::prepare(
         continue;
       }
 
+      term_itr->collect(segment, *field); // collect field statistics once per segment
+
       // find terms
       seek_term_iterator::ptr term = field->iterator();
       // get term metadata
@@ -295,10 +297,11 @@ filter::prepared::ptr by_same_position::prepare(
       }
 
       term->read(); // read term attributes
-      term_itr->collect(segment, *field, term->attributes()); // collect statistics
-
+      term_itr->collect(segment, *field, 0, term->attributes()); // collect statistics, 0 because only 1 term
       term_states.emplace_back();
+
       auto& state = term_states.back();
+
       state.cookie = term->cookie();
       state.estimation = meta ? meta->docs_count : cost::MAX;
       state.reader = field;

@@ -1108,6 +1108,23 @@ static void JS_setFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> cons
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_GetFoxxmasterSince(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getFoxxmasterSince()");
+  }
+
+  // Ticks can be up to 56 bits, but JS numbers can represent ints up to
+  // 53 bits only.
+  std::string const foxxmasterSince =
+      std::to_string(ServerState::instance()->getFoxxmasterSince());
+  TRI_V8_RETURN_STD_STRING(foxxmasterSince);
+
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the primary servers id (only for secondaries)
 ////////////////////////////////////////////////////////////////////////////////
@@ -1999,6 +2016,9 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "setFoxxmasterQueueupdate"),
                        JS_setFoxxmasterQueueupdate);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "getFoxxmasterSince"),
+                       JS_GetFoxxmasterSince);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "idOfPrimary"),
                        JS_IdOfPrimaryServerState);
   TRI_AddMethodVocbase(isolate, rt,

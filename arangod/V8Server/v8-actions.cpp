@@ -38,6 +38,7 @@
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "Utils/ExecContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -51,7 +52,6 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
-#include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -356,6 +356,19 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
     req->ForceSet(UserKey, v8::Null(isolate));
   } else {
     req->ForceSet(UserKey, TRI_V8_STD_STRING(isolate, user));
+  }
+  
+  TRI_GET_GLOBAL_STRING(IsAdminUser);
+  if (request->authenticated()) {
+    if (user.empty() || (ExecContext::CURRENT != nullptr &&
+                         ExecContext::CURRENT->isAdminUser())) {
+      req->ForceSet(IsAdminUser, v8::True(isolate));
+    } else {
+      req->ForceSet(IsAdminUser, v8::False(isolate));
+    }
+  } else {
+    req->ForceSet(IsAdminUser, ExecContext::isAuthEnabled() ?
+                  v8::False(isolate) : v8::True(isolate));
   }
 
   // create database attribute
@@ -1505,6 +1518,38 @@ static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks a failure point
+///
+/// @FUN{internal.debugShouldFailAt(@FA{point})}
+///
+/// Checks if a specific intentional failure point is set
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+static void JS_DebugShouldFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_GET_GLOBALS();
+
+  if (v8g->_vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
+  }
+
+  // extract arguments
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("debugShouldFailAt(<point>)");
+  }
+
+  std::string const point = TRI_ObjectToString(args[0]);
+
+  TRI_V8_RETURN_BOOL(TRI_ShouldFailDebugging(point.c_str()));
+
+  TRI_V8_TRY_CATCH_END
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a failure point
 ///
 /// @FUN{internal.debugRemoveFailAt(@FA{point})}
@@ -1607,5 +1652,9 @@ void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context)
                                TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_DEBUG_REMOVE_FAILAT"),
                                JS_DebugRemoveFailAt);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "SYS_DEBUG_SHOULD_FAILAT"),
+                               JS_DebugShouldFailAt);
 #endif
 }

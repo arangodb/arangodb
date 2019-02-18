@@ -30,6 +30,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Logger/Logger.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
@@ -181,10 +182,13 @@ QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t& vocbase, CursorId id,
   }
 
   if (contextOwnedByExterior) {
+    TRI_ASSERT(_query->trx()->status() == transaction::Status::RUNNING);
+    int level = _query->trx()->state()->nestingLevel(); // should be level 0 or 1
     // things break if the Query outlives a V8 transaction
-    _stateChangeCb = [this](transaction::Methods& trx, transaction::Status status) {
-      if ((status == transaction::Status::COMMITTED || status == transaction::Status::ABORTED) &&
-          !this->isUsed()) {
+    _stateChangeCb = [this, level](transaction::Methods& trx, transaction::Status status) {
+      if (trx.state()->nestingLevel() == level &&
+          (status == transaction::Status::COMMITTED ||
+           status == transaction::Status::ABORTED)) {
         this->setDeleted();
       }
     };
@@ -199,7 +203,7 @@ QueryStreamCursor::~QueryStreamCursor() {
     cleanupStateCallback();
 
     while (!_queryResults.empty()) {
-      _query->engine()->_itemBlockManager.returnBlock(std::move(_queryResults.front()));
+      _query->engine()->itemBlockManager().returnBlock(std::move(_queryResults.front()));
       _queryResults.pop_front();
     }
 
@@ -346,7 +350,7 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
       if (_queryResultPos == block->size()) {
         // get next block
         TRI_ASSERT(_queryResultPos == block->size());
-        engine->_itemBlockManager.returnBlock(std::move(block));
+        engine->itemBlockManager().returnBlock(std::move(block));
         _queryResults.pop_front();
         _queryResultPos = 0;
       }

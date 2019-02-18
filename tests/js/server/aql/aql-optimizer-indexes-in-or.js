@@ -663,8 +663,25 @@ function optimizerIndexesInOrTestSuite () {
         assertTrue(results.stats.scannedIndex > 0);
         assertEqual(0, results.stats.scannedFull);
       });
-    }
+    },
 
+    testInOrReplacements : function() {
+      c.ensureSkiplist("foo");
+
+      c.insert({ value1: "testi", value2: "foobar", foo: 0 });
+      c.insert({ value1: "testi", value2: "foobar", foo: 1 });
+      c.insert({ value1: "testi", value2: "foobar", foo: 2 });
+      c.insert({ value1: "testi", value2: "foobar", foo: 5 });
+      c.insert({ value1: "testi", value2: "foobar", foo: 9 });
+      c.insert({ value1: "testi", value2: "foobar", foo: 10 });
+      c.insert({ value1: "testi", value2: "foobar", foo: 11 });
+
+      let query = "FOR doc IN " + c.name() + " FILTER (LIKE(doc.value1, '%testi%') OR LIKE(doc.value2, '%foobar%')) AND doc.foo IN [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] RETURN doc";
+
+      let results = AQL_EXECUTE(query);
+      assertEqual(5, results.json.length);
+    }
+        
   };
 }
 
