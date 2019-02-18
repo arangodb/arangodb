@@ -66,20 +66,21 @@ static void resolveFCallConstAttributes(AstNode* fcall) {
 }  // namespace
 
 IndexExecutorInfos::IndexExecutorInfos(
-    RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear, ExecutionEngine* engine,
+    RegisterId outputRegister, RegisterId nrInputRegisters,
+    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+    std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     std::vector<std::string> const& projections, transaction::Methods* trxPtr,
-    std::vector<size_t> const& coveringIndexAttributePositions,
-    bool useRawDocumentPointers,
+    std::vector<size_t> const& coveringIndexAttributePositions, bool useRawDocumentPointers,
     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
     bool hasV8Expression, AstNode const* condition,
     std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
     IndexIteratorOptions options)
     : ExecutorInfos(make_shared_unordered_set(),
-                    make_shared_unordered_set({outputRegister}), nrInputRegisters,
-                    nrOutputRegisters, std::move(registersToClear)),
+                    make_shared_unordered_set({outputRegister}),
+                    nrInputRegisters, nrOutputRegisters,
+                    std::move(registersToClear), std::move(registersToKeep)),
       _indexes(indexes),
       _condition(condition),
       _ast(ast),
@@ -170,7 +171,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       buildCallback(_documentProducer, _infos.getOutVariable(),
                     _infos.getProduceResult(), _infos.getProjections(),
                     _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
-                    _allowCoveringIndexOptimization, // reference here is important
+                    _allowCoveringIndexOptimization,  // reference here is important
                     _infos.getUseRawDocumentPointers()));  // remove true flag later, it is always true in any case (?)
 };
 
@@ -468,8 +469,7 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
     //    auto saveReturned = _infos.getReturned();
     bool more = readIndex(callback, hasWritten);
     //    TRI_ASSERT(!more || _infos.getCursor()->hasMore());
-    TRI_ASSERT((getCursor() != nullptr || !more) ||
-               more == getCursor()->hasMore());
+    TRI_ASSERT((getCursor() != nullptr || !more) || more == getCursor()->hasMore());
 
     if (!more) {
       _input = InputAqlItemRow{CreateInvalidInputRowHint{}};

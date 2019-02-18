@@ -90,6 +90,7 @@ SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
   CalculationExecutorInfos infos(outRegID /*out reg*/, RegisterId(1) /*in width*/,
                                  RegisterId(2) /*out width*/,
                                  std::unordered_set<RegisterId>{} /*to clear*/,
+                                 std::unordered_set<RegisterId>{} /*to keep*/,
                                  *fakedQuery.get() /*query*/, expr /*expression*/,
                                  std::vector<Variable const*>{&var} /*expression in variables*/,
                                  std::vector<RegisterId>{inRegID} /*expression in registers*/

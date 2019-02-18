@@ -46,7 +46,8 @@ class FilterExecutorInfos : public ExecutorInfos {
  public:
   FilterExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
                       RegisterId nrOutputRegisters,
-                      std::unordered_set<RegisterId> registersToClear);
+                      std::unordered_set<RegisterId> registersToClear,
+                      std::unordered_set<RegisterId> registersToKeep);
 
   FilterExecutorInfos() = delete;
   FilterExecutorInfos(FilterExecutorInfos&&) = default;

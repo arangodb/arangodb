@@ -25,7 +25,14 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/Expression.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Query.h"
+#include "Aql/SingleRowFetcher.h"
+#include "Aql/Stats.h"
+#include "Cluster/ServerState.h"
+#include "ExecutorExpressionContext.h"
+#include "V8/v8-globals.h"
 
 namespace arangodb {
 namespace transaction {
@@ -36,9 +43,6 @@ namespace aql {
 
 class ExecutorInfos;
 class InputAqlItemRow;
-class NoStats;
-template <bool>
-class SingleRowFetcher;
 class Expression;
 class Query;
 struct Variable;
@@ -47,8 +51,8 @@ struct CalculationExecutorInfos : public ExecutorInfos {
   CalculationExecutorInfos(RegisterId outputRegister, RegisterId nrInputRegisters,
                            RegisterId nrOutputRegisters,
                            std::unordered_set<RegisterId> registersToClear,
-                           Query& query, Expression& expression,
-                           std::vector<Variable const*>&& expInVars,
+                           std::unordered_set<RegisterId> registersToKeep, Query& query,
+                           Expression& expression, std::vector<Variable const*>&& expInVars,
                            std::vector<RegisterId>&& expInRegs);
 
   CalculationExecutorInfos() = delete;
@@ -98,7 +102,29 @@ class CalculationExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  inline std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output) {
+    ExecutionState state;
+    InputAqlItemRow row = InputAqlItemRow{CreateInvalidInputRowHint{}};
+    std::tie(state, row) = _fetcher.fetchRow();
+
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(!row);
+      return {state, NoStats{}};
+    }
+
+    if (!row) {
+      TRI_ASSERT(state == ExecutionState::DONE);
+      return {state, NoStats{}};
+    }
+
+    doEvaluation(row, output);
+
+    return {state, NoStats{}};
+  }
+
+ private:
+  // specialized implementations
+  inline void doEvaluation(InputAqlItemRow& input, OutputAqlItemRow& output);
 
  public:
   CalculationExecutorInfos& _infos;
@@ -109,6 +135,75 @@ class CalculationExecutor {
   InputAqlItemRow _currentRow;
   ExecutionState _rowState;
 };
+
+template <>
+inline void CalculationExecutor<CalculationType::Reference>::doEvaluation(
+    InputAqlItemRow& input, OutputAqlItemRow& output) {
+  auto const& inRegs = _infos.getExpInRegs();
+  TRI_ASSERT(inRegs.size() == 1);
+
+  TRI_IF_FAILURE("CalculationBlock::executeExpression") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  TRI_IF_FAILURE("CalculationBlock::fillBlockWithReference") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  output.cloneValueInto(_infos.getOutputRegisterId(), input, input.getValue(inRegs[0]));
+}
+
+template <>
+inline void CalculationExecutor<CalculationType::Condition>::doEvaluation(
+    InputAqlItemRow& input, OutputAqlItemRow& output) {
+  // execute the expression
+  ExecutorExpressionContext ctx(&_infos.getQuery(), input,
+                                _infos.getExpInVars(), _infos.getExpInRegs());
+
+  bool mustDestroy;  // will get filled by execution
+  AqlValue a = _infos.getExpression().execute(_infos.getQuery().trx(), &ctx, mustDestroy);
+  AqlValueGuard guard(a, mustDestroy);
+
+  TRI_IF_FAILURE("CalculationBlock::executeExpression") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  output.moveValueInto(_infos.getOutputRegisterId(), input, guard);
+}
+
+template <>
+inline void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
+    InputAqlItemRow& input, OutputAqlItemRow& output) {
+  static const bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
+  const bool stream = _infos.getQuery().queryOptions().stream;
+  auto cleanup = [&]() {
+    if (isRunningInCluster || stream) {
+      // must invalidate the expression now as we might be called from
+      // different threads
+      _infos.getExpression().invalidate();
+      _infos.getQuery().exitContext();
+    }
+  };
+
+  // must have a V8 context here to protect Expression::execute()
+  _infos.getQuery().enterContext();
+  TRI_DEFER(cleanup());
+
+  ISOLATE;
+  v8::HandleScope scope(isolate);  // do not delete this!
+  // execute the expression
+  ExecutorExpressionContext ctx(&_infos.getQuery(), input,
+                                _infos.getExpInVars(), _infos.getExpInRegs());
+
+  bool mustDestroy;  // will get filled by execution
+  AqlValue a = _infos.getExpression().execute(_infos.getQuery().trx(), &ctx, mustDestroy);
+  AqlValueGuard guard(a, mustDestroy);
+
+  TRI_IF_FAILURE("CalculationBlock::executeExpression") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  output.moveValueInto(_infos.getOutputRegisterId(), input, guard);
+}
 
 }  // namespace aql
 }  // namespace arangodb

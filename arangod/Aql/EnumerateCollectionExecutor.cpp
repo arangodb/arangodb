@@ -45,15 +45,17 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
-    RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear, ExecutionEngine* engine,
+    RegisterId outputRegister, RegisterId nrInputRegisters,
+    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+    std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     std::vector<std::string> const& projections, transaction::Methods* trxPtr,
     std::vector<size_t> const& coveringIndexAttributePositions,
     bool useRawDocumentPointers, bool random)
     : ExecutorInfos(make_shared_unordered_set(),
-                    make_shared_unordered_set({outputRegister}), nrInputRegisters,
-                    nrOutputRegisters, std::move(registersToClear)),
+                    make_shared_unordered_set({outputRegister}),
+                    nrInputRegisters, nrOutputRegisters,
+                    std::move(registersToClear), std::move(registersToKeep)),
       _outputRegisterId(outputRegister),
       _engine(engine),
       _collection(collection),

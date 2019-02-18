@@ -221,8 +221,8 @@ arangodb::aql::AstNode* IndexNode::makeUnique(arangodb::aql::AstNode* node,
     bool isSparse = false;
     TRI_ASSERT(trx != nullptr);
 
-    // Here it does not matter which index we choose for the isSorted/isSparse check, we need them
-    // all sorted here.
+    // Here it does not matter which index we choose for the isSorted/isSparse
+    // check, we need them all sorted here.
     auto unused = trx->getIndexFeatures(_indexes.at(0), isSorted, isSparse);
     if (isSparse || isSorted) {
       // the index is sorted. we need to use SORTED_UNIQUE to get the
@@ -390,7 +390,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   IndexExecutorInfos infos(outputRegister,
                            getRegisterPlan()->nrRegs[previousNode->getDepth()],
                            getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                           &engine, this->_collection, _outVariable,
+                           calcRegsToKeep(), &engine, this->_collection, _outVariable,
                            this->isVarUsedLater(_outVariable), this->projections(),
                            trxPtr, this->coveringIndexAttributePositions(),
                            EngineSelectorFeature::ENGINE->useRawDocumentPointers(),

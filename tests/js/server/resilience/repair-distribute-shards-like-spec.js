@@ -30,6 +30,8 @@ const request = require('@arangodb/request');
 
 const colName = "repairDSLTestCollection";
 const protoColName = "repairDSLTestProtoCollection";
+// number of documents per collection in tests that work with data
+const numDocuments = 1000;
 
 let coordinator = instanceInfo.arangods.filter(arangod => {
   return arangod.role === 'coordinator';
@@ -96,7 +98,7 @@ const waitForAgencyJob = function (jobId) {
   ].map(p => `${prefix}/${p}`);
 
   const waitInterval = 1.0;
-  const maxWaitTime = 60;
+  const maxWaitTime = 120;
 
   let jobStopped = false;
   let success = false;
@@ -200,15 +202,20 @@ const expectEqualShardDistributionPlan = function (shardDist, protoShardDist) {
   }
 };
 
-const createBrokenClusterState = function ({failOnOperation = null} = {}) {
+const createBrokenClusterState = function ({failOnOperation = null, withData} = {}) {
+  expect(withData).to.be.a('boolean');
   const replicationFactor = dbServerCount - 1;
-  const protoCollection = internal.db._createDocumentCollection(protoColName,
-    {replicationFactor: replicationFactor, numberOfShards: 16});
+  const { collection: protoCollection, dataInfo: protoData }
+    = createCollectionOptionallyWithData(protoColName,
+    { replicationFactor: replicationFactor, numberOfShards: 16 },
+    withData);
   let localColName = failOnOperation === null
     ? colName
     : colName + `---fail_on_operation_nr-${failOnOperation}`;
-  const collection = internal.db._createDocumentCollection(localColName,
-    {distributeShardsLike: protoCollection._id});
+  const { collection, dataInfo: colData }
+    = createCollectionOptionallyWithData(localColName,
+    { distributeShardsLike: protoCollection._id },
+    withData);
 
   expect(waitForPlanEqualCurrent(protoCollection)).to.be.true;
   expect(waitForPlanEqualCurrent(collection)).to.be.true;
@@ -216,6 +223,14 @@ const createBrokenClusterState = function ({failOnOperation = null} = {}) {
   // IMPORTANT NOTE: Never do this in a real environment. Changing
   // distributeShardsLike will break your cluster!
   global.ArangoAgency.remove(`Plan/Collections/${internal.db._name()}/${collection._id}/distributeShardsLike`);
+
+  const getShardInfoOf = (colName, shard) => {
+    const shardDist = internal.getCollectionShardDistribution(colName)[colName].Plan;
+    return {
+      leader: shardDist[shard].leader,
+      followers: shardDist[shard].followers,
+    };
+  };
 
   global.ArangoClusterInfo.flush();
   const protoShardDist = internal.getCollectionShardDistribution(protoColName)[protoColName].Plan;
@@ -231,6 +246,14 @@ const createBrokenClusterState = function ({failOnOperation = null} = {}) {
       (nameToId, server) => {
         nameToId[server.serverName] = server.serverId;
         return nameToId;
+      },
+      {}
+    );
+  const dbServerNameById =
+    dbServers.reduce(
+      (idToName, server) => {
+        idToName[server.serverId] = server.serverName;
+        return idToName;
       },
       {}
     );
@@ -338,11 +361,27 @@ const createBrokenClusterState = function ({failOnOperation = null} = {}) {
   let result = waitForAgencyJob(jobId);
   expect(result).to.equal(true);
   expect(waitForReplicationFactor(collection)).to.be.true;
+  let expected = {
+    leader: dbServerNameById[freeDbServer],
+    followers: protoShardInfo.followers,
+  };
+  let actual = getShardInfoOf(localColName, shard);
+  expect(expected).to.deep.equal(actual,
+    `Expected ${JSON.stringify(expected)}, but got ${JSON.stringify(actual)} `
+  + `after moving leader ${dbServerNameById[leaderDbServer]} to ${dbServerNameById[freeDbServer]}`);
   expect(waitForPlanEqualCurrent(collection)).to.be.true;
 
   jobId = postMoveShardJob(followerDbServer, leaderDbServer, false);
   result = waitForAgencyJob(jobId);
   expect(waitForReplicationFactor(collection)).to.be.true;
+  expected = {
+    leader: dbServerNameById[freeDbServer],
+    followers: protoShardInfo.followers.slice(1).concat([dbServerNameById[leaderDbServer]]),
+  };
+  actual = getShardInfoOf(localColName, shard);
+  expect(expected).to.deep.equal(actual,
+    `Expected ${JSON.stringify(expected)}, but got ${JSON.stringify(actual)}`
+    + `after moving follower ${dbServerNameById[followerDbServer]} to ${dbServerNameById[leaderDbServer]}`);
 
   expect(result).to.equal(true);
 
@@ -357,11 +396,11 @@ const createBrokenClusterState = function ({failOnOperation = null} = {}) {
   global.ArangoAgency.increaseVersion("Plan/Version");
 
   expect(waitForPlanEqualCurrent(collection)).to.be.true;
-  return {collection, protoCollection, expectedCollections};
+  return {collection, colData, protoCollection, protoData, expectedCollections};
 };
 
 
-let waitForJob = function (postJobRes) {
+const waitForJob = function (postJobRes) {
   expect(postJobRes).to.have.property("status", 202);
   expect(postJobRes).to.have.property("headers");
   expect(postJobRes.headers).to.have.property('x-arango-async-id');
@@ -401,60 +440,97 @@ let waitForJob = function (postJobRes) {
   return undefined;
 };
 
+// takes a collection as a parameter and fills it with data. returns an object
+// that can be used to check if the same data is still in the collection with
+// `expectToContain`.
+const fillWithAndReturnDataInfo = (() => {
+  // "static" variable
+  let nextStartValue = 0;
 
-describe('Collections with distributeShardsLike', function () {
-  afterEach(function() {
-    internal.db._drop(colName);
-    internal.db._collections()
-      .map(col => col.name())
-      .filter(col => col.startsWith(`${colName}---`))
-      .forEach(col => internal.db._drop(col));
-    internal.db._drop(protoColName);
-    internal.debugClearFailAt();
-  });
+  return function (collection) {
+    const startValue = nextStartValue;
+    // endValue will not be contained in the current collection
+    const endValue = startValue + numDocuments + 1;
+    nextStartValue = endValue;
 
-  it('if newly created, should always be ok', function() {
-    const protoCollection = internal.db._createDocumentCollection(protoColName,
-      {replicationFactor: dbServerCount, numberOfShards: 3});
-    const collection = internal.db._createDocumentCollection(colName,
-      {distributeShardsLike: protoCollection._id});
+    const data = _.range(startValue, endValue).map(value => ({value}));
 
-    expect(waitForPlanEqualCurrent(protoCollection)).to.be.true;
-    expect(waitForPlanEqualCurrent(collection)).to.be.true;
+    collection.insert(data);
 
-    // Directly posting should generally not be used, as it is likely to timeout.
-    // Setting the header "x-arango-async: store" instead is preferred.
-    // In this case however it should return immediately, so a timeout would
-    // be an error here. Also its good to have a test for a direct call, too.
-    const d = request.post(coordinator.url + '/_admin/repair/distributeShardsLike');
+    return {startValue, endValue};
+  };
+})();
 
-    expect(d.status).to.equal(200);
+// takes a collection and an object returned by fillWithAndReturnDataInfo and
+// asserts that the collection contains exactly the data that was inserted by
+// it.
+const expectToContain = function (collection, expectedData) {
+  const {startValue, endValue} = expectedData;
 
-    let response = JSON.parse(d.body);
+  const actualData = collection.toArray();
+  // sort ascending by obj.value
+  actualData.sort((a, b) => a.value - b.value);
 
-    expect(response).to.have.property("error", false);
-    expect(response).to.have.property("code", 200);
-    expect(response).to.have.property("message", "Nothing to do.");
-  });
+  expect(actualData)
+    .to.be.an('array')
+    .and.to.have.lengthOf(endValue - startValue);
 
+  for(let i = 0, value = startValue; value < endValue; i++, value++) {
+    expect(actualData[i]).to.have.property('value', value);
+  }
+};
 
-// - Create collection A
-// - Create collection B with distributeShardsLike=A
-// - Wait for both to be replicated
-// - Use an agency transaction to rename distributeShardsLike
-// - Use MoveShard Operations (and wait for them) to break the
-//   distributeShardsLike assumptions. Use a DBServer order/permutation
-//   depending on the servers available in the proto-shard and their order
-//   to make this deterministic.
-// - Use an agency transaction to restore distributeShardsLike
-// - Execute repairs
-  it('if broken, should be repaired', function() {
-    const { protoCollection, collection, expectedCollections }
-      = createBrokenClusterState();
+const createCollectionOptionallyWithData =
+    (collectionName, options, withData) => {
+  expect(withData).to.be.a('boolean');
+  const collection
+    = internal.db._createDocumentCollection(collectionName, options);
 
-    { // Before executing repairs, check via GET if the planned operations
-      // seem right.
-      const d = request.get(coordinator.url + '/_admin/repair/distributeShardsLike');
+  let dataInfo;
+
+  if (withData) {
+    dataInfo = fillWithAndReturnDataInfo(collection);
+  } else {
+    // zero length data
+    dataInfo = { startValue: 0, endValue: 0 };
+  }
+
+  return {collection, dataInfo};
+};
+
+const distributeShardsLikeSuite = (options) => {
+  const { withData } = options;
+  if (typeof withData !== 'boolean') {
+    throw new Error('distributeShardsLikeSuite expects its parameter `withData` to be set and a boolean!');
+  }
+
+  return function () {
+    afterEach(function() {
+      internal.db._drop(colName);
+      internal.db._collections()
+        .map(col => col.name())
+        .filter(col => col.startsWith(`${colName}---`))
+        .forEach(col => internal.db._drop(col));
+      internal.db._drop(protoColName);
+      internal.debugClearFailAt();
+    });
+
+    it('if newly created, should always be ok', function() {
+      const { collection: protoCollection, dataInfo: protoData }
+        = createCollectionOptionallyWithData(protoColName,
+        { replicationFactor: dbServerCount, numberOfShards: 3 }, withData);
+      const { collection, dataInfo: colData }
+        = createCollectionOptionallyWithData(colName,
+        { distributeShardsLike: protoCollection._id }, withData);
+
+      expect(waitForPlanEqualCurrent(protoCollection)).to.be.true;
+      expect(waitForPlanEqualCurrent(collection)).to.be.true;
+
+      // Directly posting should generally not be used, as it is likely to timeout.
+      // Setting the header "x-arango-async: store" instead is preferred.
+      // In this case however it should return immediately, so a timeout would
+      // be an error here. Also its good to have a test for a direct call, too.
+      const d = request.post(coordinator.url + '/_admin/repair/distributeShardsLike');
 
       expect(d.status).to.equal(200);
 
@@ -462,57 +538,26 @@ describe('Collections with distributeShardsLike', function () {
 
       expect(response).to.have.property("error", false);
       expect(response).to.have.property("code", 200);
-      expect(response).to.have.property("collections");
+      expect(response).to.have.property("message", "Nothing to do.");
 
-      const fullColName = internal.db._name() + '/' + collection.name();
-      expect(response.collections).to.have.property(fullColName);
-      expect(response.collections).to.have.all.keys([fullColName]);
-      expect(response.collections[fullColName]).to.have.property('PlannedOperations');
-      const plannedOperations = response.collections[fullColName]['PlannedOperations'];
-      expect(plannedOperations).to.be.an('array').that.has.lengthOf(5);
-    }
+      expectToContain(protoCollection, protoData);
+      expectToContain(collection, colData);
+    });
 
-    const postJobRes = request.post(
-      coordinator.url + '/_admin/repair/distributeShardsLike',
-      {
-        headers: { "x-arango-async": "store" }
-      }
-    );
-    const jobRes = waitForJob(postJobRes);
 
-    expect(jobRes).to.have.property("status", 200);
-
-    let response = JSON.parse(jobRes.body);
-
-    expect(response).to.have.property("error", false);
-    expect(response).to.have.property("code", 200);
-    expect(response).to.have.property("collections");
-    expect(response.collections).to.eql(expectedCollections);
-
-    global.ArangoClusterInfo.flush();
-
-    // Note: properties() returns the name of the collection in distributeShardsLike
-    // instead of the id!
-    expect(
-      collection.properties().distributeShardsLike
-    ).to.equal(protoCollection.name());
-
-    global.ArangoClusterInfo.flush();
-    const shardDist = internal
-      .getCollectionShardDistribution(collection._id)[collection.name()];
-    const protoShardDist = internal
-      .getCollectionShardDistribution(protoCollection._id)[protoCollection.name()];
-    expectEqualShardDistributionPlan(shardDist, protoShardDist);
-  });
-
-  if (internal.debugCanUseFailAt()) {
-    it('if interrupted, should complete repairs', function () {
-      // In this test case, trigger an exception after the second operation,
-      // i.e. after the first move shard operation, has been posted
-      // (but not finished).
-      const {protoCollection, collection, expectedCollections}
-        = createBrokenClusterState({failOnOperation: 2});
-
+  // - Create collection A
+  // - Create collection B with distributeShardsLike=A
+  // - Wait for both to be replicated
+  // - Use an agency transaction to rename distributeShardsLike
+  // - Use MoveShard Operations (and wait for them) to break the
+  //   distributeShardsLike assumptions. Use a DBServer order/permutation
+  //   depending on the servers available in the proto-shard and their order
+  //   to make this deterministic.
+  // - Use an agency transaction to restore distributeShardsLike
+  // - Execute repairs
+    it('if broken, should be repaired', function() {
+      const { protoCollection, protoData, collection, colData, expectedCollections }
+        = createBrokenClusterState({ withData });
 
       { // Before executing repairs, check via GET if the planned operations
         // seem right.
@@ -534,99 +579,24 @@ describe('Collections with distributeShardsLike', function () {
         expect(plannedOperations).to.be.an('array').that.has.lengthOf(5);
       }
 
-      internal.debugSetFailAt("RestRepairHandler::executeRepairOperations");
+      const postJobRes = request.post(
+        coordinator.url + '/_admin/repair/distributeShardsLike',
+        {
+          headers: { "x-arango-async": "store" }
+        }
+      );
+      const jobRes = waitForJob(postJobRes);
 
-      { // This request should fail
-        const postJobRes = request.post(
-          coordinator.url + '/_admin/repair/distributeShardsLike',
-          {
-            headers: {"x-arango-async": "store"}
-          }
-        );
-        const jobRes = waitForJob(postJobRes);
+      expect(jobRes).to.have.property("status", 200);
 
-        // jobRes =  [IncomingResponse 500 Internal Server Error 80 bytes "{"error":true,"errorMessage":"intentional debug error","code":500,"errorNum":22}"]
+      let response = JSON.parse(jobRes.body);
 
-        expect(jobRes).to.have.property("status", 500);
+      expect(response).to.have.property("error", false);
+      expect(response).to.have.property("code", 200);
+      expect(response).to.have.property("collections");
+      expect(response.collections).to.eql(expectedCollections);
 
-        let response = JSON.parse(jobRes.body);
-
-        expect(response).to.have.property("error", true);
-        expect(response).to.have.property("errorMessage", internal.errors.ERROR_DEBUG.message);
-        expect(response).to.have.property("errorNum", internal.errors.ERROR_DEBUG.code);
-        expect(response).to.have.property("code", 500);
-        expect(response).to.not.have.property("collections");
-
-        global.ArangoClusterInfo.flush();
-      }
-
-      internal.debugClearFailAt();
-
-      expect(waitForAllAgencyJobs());
-      expect(waitForReplicationFactor(collection)).to.be.true;
-      expect(waitForPlanEqualCurrent(collection)).to.be.true;
-
-      { // Before executing repairs, check via GET if the planned operations
-        // seem right.
-        const d = request.get(coordinator.url + '/_admin/repair/distributeShardsLike');
-
-        expect(d.status).to.equal(200);
-
-        let response = JSON.parse(d.body);
-
-        expect(response).to.have.property("error", false);
-        expect(response).to.have.property("code", 200);
-        expect(response).to.have.property("collections");
-
-        const fullColName = internal.db._name() + '/' + collection.name();
-        expect(response.collections).to.have.property(fullColName);
-        expect(response.collections).to.have.all.keys([fullColName]);
-        expect(response.collections[fullColName]).to.have.property('PlannedOperations');
-        const plannedOperations = response.collections[fullColName]['PlannedOperations'];
-        expect(plannedOperations).to.be.an('array').that.has.lengthOf(4);
-      }
-
-      { // This request should finish the repairs
-        const postJobRes = request.post(
-          coordinator.url + '/_admin/repair/distributeShardsLike',
-          {
-            headers: {"x-arango-async": "store"}
-          }
-        );
-        const jobRes = waitForJob(postJobRes);
-
-        expect(jobRes).to.have.property("status", 200);
-
-        let response = JSON.parse(jobRes.body);
-
-        const fullColName = internal.db._name() + '/' + collection.name();
-        const originalExpectedOperations = expectedCollections[fullColName]['PlannedOperations'];
-
-        expect(response).to.have.property("error", false);
-        expect(response).to.have.property("code", 200);
-        expect(response).to.have.property("collections");
-        expect(response.collections).to.have.property(fullColName);
-        expect(response.collections[fullColName]).to.have.property('PlannedOperations');
-        const plannedOperations = response.collections[fullColName]['PlannedOperations'];
-        expect(plannedOperations).to.be.an('array').that.has.lengthOf(4);
-        expect(plannedOperations[0]).to.have.property('BeginRepairsOperation');
-        expect(plannedOperations[0]['BeginRepairsOperation']).to.have.property('renameDistributeShardsLike', false);
-        expect(plannedOperations[0]['BeginRepairsOperation']).to.eql({
-          "database": internal.db._name(),
-          "collection": collection.name(),
-          "distributeShardsLike": protoCollection.name(),
-          "renameDistributeShardsLike": false,
-          "replicationFactor": protoCollection.properties().replicationFactor
-        });
-        expect(plannedOperations[1]).to.have.property('MoveShardOperation');
-        expect(plannedOperations[1]).to.eql(originalExpectedOperations[2]);
-        expect(plannedOperations[2]).to.have.property('FixServerOrderOperation');
-        expect(plannedOperations[2]).to.eql(originalExpectedOperations[3]);
-        expect(plannedOperations[3]).to.have.property('FinishRepairsOperation');
-        expect(plannedOperations[3]).to.eql(originalExpectedOperations[4]);
-
-        global.ArangoClusterInfo.flush();
-      }
+      global.ArangoClusterInfo.flush();
 
       // Note: properties() returns the name of the collection in distributeShardsLike
       // instead of the id!
@@ -640,40 +610,194 @@ describe('Collections with distributeShardsLike', function () {
       const protoShardDist = internal
         .getCollectionShardDistribution(protoCollection._id)[protoCollection.name()];
       expectEqualShardDistributionPlan(shardDist, protoShardDist);
+
+      expectToContain(collection, colData);
+      expectToContain(protoCollection, protoData);
     });
-  }
 
-  it('if called via GET, only return planned operations', function() {
-    const { protoCollection, collection, expectedCollections }
-      = createBrokenClusterState();
+    if (internal.debugCanUseFailAt()) {
+      it('if interrupted, should complete repairs', function () {
+        // In this test case, trigger an exception after the second operation,
+        // i.e. after the first move shard operation, has been posted
+        // (but not finished).
+        const { protoCollection, protoData, collection, colData, expectedCollections }
+          = createBrokenClusterState({ failOnOperation: 2, withData });
 
-    global.ArangoClusterInfo.flush();
-    const previousShardDist = internal
-      .getCollectionShardDistribution(collection._id)[collection.name()];
 
-    const d = request.get(coordinator.url + '/_admin/repair/distributeShardsLike');
+        { // Before executing repairs, check via GET if the planned operations
+          // seem right.
+          const d = request.get(coordinator.url + '/_admin/repair/distributeShardsLike');
 
-    expect(d.status).to.equal(200);
+          expect(d.status).to.equal(200);
 
-    let response = JSON.parse(d.body);
+          let response = JSON.parse(d.body);
 
-    expect(response).to.have.property("error", false);
-    expect(response).to.have.property("code", 200);
-    expect(response).to.have.property("collections");
-    expect(response.collections).to.eql(expectedCollections);
+          expect(response).to.have.property("error", false);
+          expect(response).to.have.property("code", 200);
+          expect(response).to.have.property("collections");
 
-    global.ArangoClusterInfo.flush();
+          const fullColName = internal.db._name() + '/' + collection.name();
+          expect(response.collections).to.have.property(fullColName);
+          expect(response.collections).to.have.all.keys([fullColName]);
+          expect(response.collections[fullColName]).to.have.property('PlannedOperations');
+          const plannedOperations = response.collections[fullColName]['PlannedOperations'];
+          expect(plannedOperations).to.be.an('array').that.has.lengthOf(5);
+        }
 
-    // Note: properties() returns the name of the collection in distributeShardsLike
-    // instead of the id!
-    expect(
-      collection.properties().distributeShardsLike
-    ).to.equal(protoCollection.name());
+        internal.debugSetFailAt("RestRepairHandler::executeRepairOperations");
 
-    global.ArangoClusterInfo.flush();
-    const shardDist = internal
-      .getCollectionShardDistribution(collection._id)[collection.name()];
-    expectEqualShardDistributionPlan(shardDist, previousShardDist);
-  });
+        { // This request should fail
+          const postJobRes = request.post(
+            coordinator.url + '/_admin/repair/distributeShardsLike',
+            {
+              headers: {"x-arango-async": "store"}
+            }
+          );
+          const jobRes = waitForJob(postJobRes);
 
-});
+          // jobRes =  [IncomingResponse 500 Internal Server Error 80 bytes "{"error":true,"errorMessage":"intentional debug error","code":500,"errorNum":22}"]
+
+          expect(jobRes).to.have.property("status", 500);
+
+          let response = JSON.parse(jobRes.body);
+
+          expect(response).to.have.property("error", true);
+          expect(response).to.have.property("errorMessage", internal.errors.ERROR_DEBUG.message);
+          expect(response).to.have.property("errorNum", internal.errors.ERROR_DEBUG.code);
+          expect(response).to.have.property("code", 500);
+          expect(response).to.not.have.property("collections");
+
+          global.ArangoClusterInfo.flush();
+        }
+
+        internal.debugClearFailAt();
+
+        expect(waitForAllAgencyJobs());
+        expect(waitForReplicationFactor(collection)).to.be.true;
+        expect(waitForPlanEqualCurrent(collection)).to.be.true;
+
+        { // Before executing repairs, check via GET if the planned operations
+          // seem right.
+          const d = request.get(coordinator.url + '/_admin/repair/distributeShardsLike');
+
+          expect(d.status).to.equal(200);
+
+          let response = JSON.parse(d.body);
+
+          expect(response).to.have.property("error", false);
+          expect(response).to.have.property("code", 200);
+          expect(response).to.have.property("collections");
+
+          const fullColName = internal.db._name() + '/' + collection.name();
+          expect(response.collections).to.have.property(fullColName);
+          expect(response.collections).to.have.all.keys([fullColName]);
+          expect(response.collections[fullColName]).to.have.property('PlannedOperations');
+          const plannedOperations = response.collections[fullColName]['PlannedOperations'];
+          expect(plannedOperations).to.be.an('array').that.has.lengthOf(4);
+        }
+
+        { // This request should finish the repairs
+          const postJobRes = request.post(
+            coordinator.url + '/_admin/repair/distributeShardsLike',
+            {
+              headers: {"x-arango-async": "store"}
+            }
+          );
+          const jobRes = waitForJob(postJobRes);
+
+          expect(jobRes).to.have.property("status", 200, {jobRes});
+
+          let response = JSON.parse(jobRes.body);
+
+          const fullColName = internal.db._name() + '/' + collection.name();
+          const originalExpectedOperations = expectedCollections[fullColName]['PlannedOperations'];
+
+          expect(response).to.have.property("error", false);
+          expect(response).to.have.property("code", 200);
+          expect(response).to.have.property("collections");
+          expect(response.collections).to.have.property(fullColName);
+          expect(response.collections[fullColName]).to.have.property('PlannedOperations');
+          const plannedOperations = response.collections[fullColName]['PlannedOperations'];
+          expect(plannedOperations).to.be.an('array').that.has.lengthOf(4);
+          expect(plannedOperations[0]).to.have.property('BeginRepairsOperation');
+          expect(plannedOperations[0]['BeginRepairsOperation']).to.have.property('renameDistributeShardsLike', false);
+          expect(plannedOperations[0]['BeginRepairsOperation']).to.eql({
+            "database": internal.db._name(),
+            "collection": collection.name(),
+            "distributeShardsLike": protoCollection.name(),
+            "renameDistributeShardsLike": false,
+            "replicationFactor": protoCollection.properties().replicationFactor
+          });
+          expect(plannedOperations[1]).to.have.property('MoveShardOperation');
+          expect(plannedOperations[1]).to.eql(originalExpectedOperations[2]);
+          expect(plannedOperations[2]).to.have.property('FixServerOrderOperation');
+          expect(plannedOperations[2]).to.eql(originalExpectedOperations[3]);
+          expect(plannedOperations[3]).to.have.property('FinishRepairsOperation');
+          expect(plannedOperations[3]).to.eql(originalExpectedOperations[4]);
+
+          global.ArangoClusterInfo.flush();
+        }
+
+        // Note: properties() returns the name of the collection in distributeShardsLike
+        // instead of the id!
+        expect(
+          collection.properties().distributeShardsLike
+        ).to.equal(protoCollection.name());
+
+        global.ArangoClusterInfo.flush();
+        const shardDist = internal
+          .getCollectionShardDistribution(collection._id)[collection.name()];
+        const protoShardDist = internal
+          .getCollectionShardDistribution(protoCollection._id)[protoCollection.name()];
+        expectEqualShardDistributionPlan(shardDist, protoShardDist);
+
+        expectToContain(collection, colData);
+        expectToContain(protoCollection, protoData);
+      });
+    }
+
+    it('if called via GET, only return planned operations', function() {
+      const { protoCollection, protoData, collection, colData, expectedCollections }
+        = createBrokenClusterState({withData});
+
+      global.ArangoClusterInfo.flush();
+      const previousShardDist = internal
+        .getCollectionShardDistribution(collection._id)[collection.name()];
+
+      const d = request.get(coordinator.url + '/_admin/repair/distributeShardsLike');
+
+      expect(d.status).to.equal(200);
+
+      let response = JSON.parse(d.body);
+
+      expect(response).to.have.property("error", false);
+      expect(response).to.have.property("code", 200);
+      expect(response).to.have.property("collections");
+      expect(response.collections).to.eql(expectedCollections);
+
+      global.ArangoClusterInfo.flush();
+
+      // Note: properties() returns the name of the collection in distributeShardsLike
+      // instead of the id!
+      expect(
+        collection.properties().distributeShardsLike
+      ).to.equal(protoCollection.name());
+
+      global.ArangoClusterInfo.flush();
+      const shardDist = internal
+        .getCollectionShardDistribution(collection._id)[collection.name()];
+      expectEqualShardDistributionPlan(shardDist, previousShardDist);
+
+      expectToContain(collection, colData);
+      expectToContain(protoCollection, protoData);
+    });
+
+  };
+};
+
+
+describe('Collections with distributeShardsLike without data',
+  distributeShardsLikeSuite({withData: false}));
+
+describe('Collections with distributeShardsLike with data',
+  distributeShardsLikeSuite({withData: true}));

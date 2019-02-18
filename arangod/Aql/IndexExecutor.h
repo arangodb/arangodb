@@ -52,12 +52,12 @@ class SingleRowFetcher;
 class IndexExecutorInfos : public ExecutorInfos {
  public:
   IndexExecutorInfos(
-      RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-      std::unordered_set<RegisterId> registersToClear, ExecutionEngine* engine,
+      RegisterId outputRegister, RegisterId nrInputRegisters,
+      RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+      std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
       Collection const* collection, Variable const* outVariable, bool produceResult,
       std::vector<std::string> const& projections, transaction::Methods* trxPtr,
-      std::vector<size_t> const& coveringIndexAttributePositions,
-      bool useRawDocumentPointers,
+      std::vector<size_t> const& coveringIndexAttributePositions, bool useRawDocumentPointers,
       std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
       std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
       bool hasV8Expression, AstNode const* condition,

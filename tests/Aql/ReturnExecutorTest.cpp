@@ -70,9 +70,10 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
 #define FOR_BOOLS(name, block) \
   _FOR_BLOCK(name, true, block) \
   _FOR_BLOCK(name, false, block)
-// clang-format on
+  // clang-format on
 
-  FOR_BOOLS(passBlocksThrough, BLOCK({
+  FOR_BOOLS(
+      passBlocksThrough, BLOCK({
         ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/,
                                   passBlocksThrough /*return inherit*/);
 

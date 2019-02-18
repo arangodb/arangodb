@@ -52,6 +52,7 @@ class SortExecutorInfos : public ExecutorInfos {
   SortExecutorInfos(std::vector<SortRegister> sortRegisters, std::size_t limit,
                     AqlItemBlockManager& manager, RegisterId nrInputRegisters,
                     RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+                    std::unordered_set<RegisterId> registersToKeep,
                     transaction::Methods* trx, bool stable);
 
   SortExecutorInfos() = delete;
