@@ -102,7 +102,6 @@ SCENARIO("EnumerateCollectionExecutor",
                                            regToClear, regToKeep, &engine, &abc,
                                            &outVariable, varUsedLater, projections,
                                            &trx, coveringIndexAttributePositions,
-                                           allowCoveringIndexOptimization,
                                            useRawPointers, random);
 
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
