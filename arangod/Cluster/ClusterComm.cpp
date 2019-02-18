@@ -729,33 +729,6 @@ void ClusterComm::drop(CoordTransactionID const coordTransactionID,
   QueueIterator q;
   QueueIterator nextq;
   IndexIterator i;
-
-  // First look through the send queue:
-  {
-    CONDITION_LOCKER(sendLocker, somethingToSend);
-
-    for (q = toSend.begin(); q != toSend.end();) {
-      ClusterCommOperation* op = *q;
-      if ((0 != operationID && operationID == op->result.operationID) ||
-          match(coordTransactionID, shardID, &op->result)) {
-        if (op->result.status == CL_COMM_SENDING) {
-          op->result.dropped = true;
-          q++;
-        } else {
-          nextq = q;
-          nextq++;
-          i = toSendByOpID.find(op->result.operationID);  // cannot fail
-          TRI_ASSERT(i != toSendByOpID.end());
-          TRI_ASSERT(q == i->second);
-          toSendByOpID.erase(i);
-          toSend.erase(q);
-          q = nextq;
-        }
-      } else {
-        q++;
-      }
-    }
-  }
   // Now look through the receive queue:
   {
     CONDITION_LOCKER(locker, somethingReceived);
@@ -785,16 +758,6 @@ void ClusterComm::drop(CoordTransactionID const coordTransactionID,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::cleanupAllQueues() {
-  {
-    CONDITION_LOCKER(locker, somethingToSend);
-
-    for (auto& it : toSend) {
-      delete it;
-    }
-    toSendByOpID.clear();
-    toSend.clear();
-  }
-
   {
     CONDITION_LOCKER(locker, somethingReceived);
 
@@ -1324,9 +1287,6 @@ void ClusterCommThread::beginShutdown() {
   // different thread than the ClusterCommThread. Therefore we can still
   // use the condition variable to wake up the ClusterCommThread.
   Thread::beginShutdown();
-
-  CONDITION_LOCKER(guard, _cc->somethingToSend);
-  guard.signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

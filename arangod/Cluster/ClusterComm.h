@@ -625,14 +625,6 @@ class ClusterComm {
   static OperationID getOperationID();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief send queue with lock and index
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::list<ClusterCommOperation*> toSend;
-  std::map<OperationID, std::list<ClusterCommOperation*>::iterator> toSendByOpID;
-  arangodb::basics::ConditionVariable somethingToSend;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief received queue with lock and index
   //////////////////////////////////////////////////////////////////////////////
 
@@ -648,11 +640,6 @@ class ClusterComm {
   std::list<ClusterCommOperation*> received;
   std::map<OperationID, std::list<ClusterCommOperation*>::iterator> receivedByOpID;
   arangodb::basics::ConditionVariable somethingReceived;
-
-  // Note: If you really have to lock both `somethingToSend`
-  // and `somethingReceived` at the same time (usually you should
-  // not have to!), then: first lock `somethingToReceive`, then
-  // lock `somethingtoSend` in this order!
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief iterator type which is frequently used
