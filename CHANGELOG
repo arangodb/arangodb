@@ -1,5 +1,16 @@
-v3.4.3 (XXXX-XX-XX)
+v3.4.4 (XXXX-XX-XX)
 -------------------
+
+* when creating a new database with an initial user, set the database permission
+  for this user as specified in the documentation
+
+
+v3.4.3 (2019-02-19)
+-------------------
+
+* fixed JS AQL query objects with empty query strings not being recognized as AQL queries
+
+* fixed issue #8137: NULL input field generates U_ILLEGAL_ARGUMENT_ERROR
 
 * fixed issue #8108: AQL variable - not working query since upgrade to 3.4 release
 

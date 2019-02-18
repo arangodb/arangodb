@@ -392,6 +392,7 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx, RocksDBMethods
     }
     return res;
   }
+  TRI_ASSERT(!_unique);
   TRI_ASSERT(!cells.empty());
   TRI_ASSERT(S2::IsUnitLength(centroid));
 
@@ -399,7 +400,7 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx, RocksDBMethods
   RocksDBKeyLeaser key(trx);
   for (S2CellId cell : cells) {
     key->constructGeoIndexValue(_objectId, cell.id(), documentId);
-    res = mthd->Put(RocksDBColumnFamily::geo(), key.ref(), val.string());
+    res = mthd->PutUntracked(RocksDBColumnFamily::geo(), key.ref(), val.string());
     if (res.fail()) {
       return res;
     }
