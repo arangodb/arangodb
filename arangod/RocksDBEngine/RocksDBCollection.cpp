@@ -1243,26 +1243,26 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
-  RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
 
   // disable indexing in this transaction if we are allowed to
-  IndexingDisabler disabler(mthd, trx->isSingleOperationTransaction());
+  IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
-  rocksdb::Status s = mthd->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
+  rocksdb::Status s = mthds->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
   /*LOG_TOPIC(ERR, Logger::ENGINES)
       << "Delete rev: " << revisionId << " trx: " << trx->state()->id()
-      << " seq: " << mthd->sequenceNumber()
+      << " seq: " << mthds->sequenceNumber()
       << " objectID " << _objectId << " name: " << _logicalCollection->name();*/
 
   Result resInner;
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-    res = ridx->remove(*trx, mthd, documentId, doc, options.indexOperationMode);
+    res = ridx->remove(*trx, mthds, documentId, doc, options.indexOperationMode);
 
     if (res.fail()) {
       break;
@@ -1284,15 +1284,15 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   TRI_ASSERT(_objectId != 0);
   Result res;
 
-  RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
   // disable indexing in this transaction if we are allowed to
-  IndexingDisabler disabler(mthd, trx->isSingleOperationTransaction());
+  IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
   RocksDBKeyLeaser key(trx);
   key->constructDocument(_objectId, oldDocumentId);
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
-  rocksdb::Status s = mthd->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
+  rocksdb::Status s = mthds->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
@@ -1300,9 +1300,9 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   key->constructDocument(_objectId, newDocumentId);
   // simon: we do not need to blacklist the new documentId
   TRI_ASSERT(key->containsLocalDocumentId(newDocumentId));
-  s = mthd->PutUntracked(RocksDBColumnFamily::documents(), key.ref(),
-                         rocksdb::Slice(newDoc.startAs<char>(),
-                                        static_cast<size_t>(newDoc.byteSize())));
+  s = mthds->PutUntracked(RocksDBColumnFamily::documents(), key.ref(),
+                          rocksdb::Slice(newDoc.startAs<char>(),
+                                         static_cast<size_t>(newDoc.byteSize())));
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
@@ -1310,7 +1310,7 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
-    res = rIdx->update(*trx, mthd, oldDocumentId, oldDoc, newDocumentId, newDoc,
+    res = rIdx->update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId, newDoc,
                        options.indexOperationMode);
 
     if (res.fail()) {

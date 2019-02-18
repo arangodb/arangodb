@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed JS AQL query objects with empty query strings not being recognized as AQL queries
+
 * report run-time openssl version (for dynamically linked executables)
 
 * added greeting warning about maintainer mode

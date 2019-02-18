@@ -59,16 +59,20 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
  *
  * ATTENTION: The following tests are duplicated this way!
  */
+#ifdef _WIN32
+#define BLOCK(...) __VA_ARGS__
+#else
+#define BLOCK
+#endif
 // clang-format off
 #define _FOR_BLOCK(name, v, block) \
   { constexpr bool name = v; block; }
 #define FOR_BOOLS(name, block) \
-  _FOR_BLOCK(name, true, block); \
-  _FOR_BLOCK(name, false, block);
-  // clang-format on
+  _FOR_BLOCK(name, true, block) \
+  _FOR_BLOCK(name, false, block)
+// clang-format on
 
-  FOR_BOOLS(
-      passBlocksThrough, ({
+  FOR_BOOLS(passBlocksThrough, BLOCK({
         ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/,
                                   passBlocksThrough /*return inherit*/);
 
@@ -208,7 +212,7 @@ SCENARIO("ReturnExecutor", "[AQL][EXECUTOR][RETURN]") {
             }
           }
         }  // GIVEN
-      }));
+      }))
 
 }  // SCENARIO
 

@@ -233,7 +233,7 @@ uint64_t RocksDBValue::keyValue(char const* data, size_t size) {
   VPackSlice key = transaction::helpers::extractKeyFromDocument(VPackSlice(data));
   if (key.isString()) {
     VPackValueLength l;
-    char const* p = key.getString(l);
+    char const* p = key.getStringUnchecked(l);
     if (l > 0 && *p >= '0' && *p <= '9') {
       return NumberUtils::atoi_zero<uint64_t>(p, p + l);
     }

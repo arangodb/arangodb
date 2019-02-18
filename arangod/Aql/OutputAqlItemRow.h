@@ -107,6 +107,18 @@ class OutputAqlItemRow {
       _lastBaseIndex = _baseIndex;
       return;
     }
+
+    // This may only be set if the input block is the same as the output block,
+    // because it is passed through.
+    if (_doNotCopyInputRow) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      TRI_ASSERT(sourceRow.internalBlockIs(blockShell()));
+#endif
+      _inputRowCopied = true;
+      _lastSourceRow = sourceRow;
+      return;
+    }
+
     doCopyRow(sourceRow, ignoreMissing);
   }
 

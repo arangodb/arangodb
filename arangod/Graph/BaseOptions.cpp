@@ -29,6 +29,7 @@
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/Query.h"
+#include "Basics/HashSet.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/TraverserCache.h"
@@ -284,7 +285,8 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
       continue;
     }
   }
-  std::unordered_set<size_t> toRemove;
+
+  arangodb::HashSet<size_t> toRemove;
   aql::Condition::collectOverlappingMembers(plan, _tmpVar, condition, info.indexCondition,
                                             toRemove, nullptr, false);
   size_t n = condition->numMembers();

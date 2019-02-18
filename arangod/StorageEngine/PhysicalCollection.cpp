@@ -94,7 +94,7 @@ bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
 
   // validate id string
   VPackValueLength len;
-  char const* docId = slice.getString(len);
+  char const* docId = slice.getStringUnchecked(len);
   return KeyGenerator::validateId(docId, static_cast<size_t>(len));
 }
 
@@ -237,7 +237,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
     if (s.isString()) {
       b.add(StaticStrings::RevString, s);
       VPackValueLength l;
-      char const* p = s.getString(l);
+      char const* p = s.getStringUnchecked(l);
       revisionId = TRI_StringToRid(p, l, false);
       handled = true;
     }
