@@ -1,3 +1,10 @@
+v3.4.4 (XXXX-XX-XX)
+-------------------
+
+* when creating a new database with an initial user, set the database permission
+  for this user as specified in the documentation
+
+
 v3.4.3 (2019-02-19)
 -------------------
 
