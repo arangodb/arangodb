@@ -1707,6 +1707,7 @@ uint64_t RocksDBCollection::recalculateCounts() {
   rocksdb::Slice upper(bounds.end());
 
   rocksdb::ReadOptions ro;
+  ro.snapshot = snapshot;
   ro.prefix_same_as_start = true;
   ro.iterate_upper_bound = &upper;
   ro.verify_checksums = false;

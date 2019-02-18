@@ -618,7 +618,7 @@ void RocksDBEngine::start() {
   }
 
   rocksdb::Status status =
-      rocksdb::TransactionDB::Open(_options, transactionOptions, _path,
+    arangodb::RocksDBWrapper::Open(_options, transactionOptions, _path,
                                    cfFamilies, &cfHandles, &_db);
 
   if (!status.ok()) {

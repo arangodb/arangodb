@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "RocksDBEngine/RocksDBWrapper.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/AccessMode.h"
 
@@ -238,7 +239,7 @@ class RocksDBEngine final : public StorageEngine {
   void addParametersForNewCollection(arangodb::velocypack::Builder& builder,
                                      arangodb::velocypack::Slice info) override;
 
-  rocksdb::TransactionDB* db() const { return _db; }
+  RocksDBWrapper * db() const { return _db; }
 
   Result writeDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice,
                              RocksDBLogValue&& logValue);
@@ -322,7 +323,8 @@ class RocksDBEngine final : public StorageEngine {
 
  private:
   /// single rocksdb database used in this storage engine
-  rocksdb::TransactionDB* _db;
+  RocksDBWrapper * _db;
+//  rocksdb::TransactionDB* _db;
   /// default read options
   rocksdb::Options _options;
   /// arangodb comparator - requried because of vpack in keys
