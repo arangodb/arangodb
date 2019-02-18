@@ -565,9 +565,6 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
     if (e == pv.size()) {  // existing
       copy(pv) = _node(pv);
       auto tmp = _node(pv).toBuilder();
-      LOG_DEVEL << tmp.slice().toJson();
-      LOG_DEVEL << _node;
-      LOG_DEVEL << copy;
     } else {  // non-existing
       for (size_t i = 0; i < pv.size() - e + 1; ++i) {
         pv.pop_back();

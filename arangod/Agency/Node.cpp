@@ -515,7 +515,7 @@ bool Node::handle<PUSH>(VPackSlice const& slice) {
 
   _type = ARRAY;
   _children.clear();
-  _array.clear();
+  _buffer.clear();
     
   auto tmp = std::make_shared<Node>();
   *tmp = slice.get("new");
