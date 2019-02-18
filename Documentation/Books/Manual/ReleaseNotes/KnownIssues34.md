@@ -39,4 +39,4 @@ Other
 | **Date Added:** 2019-02-18 <br> **Component:** arangod <br> **Deployment Mode:** Windows with rocksdb storage engine <br> **Description:** There is a clock overflow bug within Facebook's rocksdb storage engine for Windows.  The problem manifests under heavy write loads, including long imports.  The Windows server will suddenly block all writes for minutes or hours, then begin working again just fine. An immediate work around is to add the following lines to arangod.conf<br><pre>
 [rocksdb]
 throttle = false
-</pre><br> **Affected Versions:** all 3.x versions <br> **Fixed in Versions:** pending <br> **Reference:** [facebook/rocksdb#4983(https://github.com/facebook/rocksdb/issues/4983)  |
+</pre><br> **Affected Versions:** all 3.x versions <br> **Fixed in Versions:** 3.4.4 <br> **Reference:** [facebook/rocksdb#4983(https://github.com/facebook/rocksdb/issues/4983)  |
