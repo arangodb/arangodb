@@ -56,6 +56,7 @@ int extractKey(transaction::Methods* trx, AqlValue const& value, std::string& ke
 }
 
 }  // namespace
+
 ///////////////////////////////////////////////////////////////////////////////
 // INSERT /////////////////////////////////////////////////////////////////////
 bool Insert::doModifications(ModificationExecutor<Insert>& executor,
@@ -184,6 +185,136 @@ bool Insert::doOutput(ModificationExecutor<Insert>& executor, OutputAqlItemRow& 
   // increase index and make sure next element is within the valid range
   return ++_blockIndex < _block->block().size();
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// REMOVE /////////////////////////////////////////////////////////////////////
+bool Remove::doModifications(ModificationExecutor<Remove>& executor,
+                             ModificationExecutorBase::Stats& stats) {
+  auto& info = executor._infos;
+  OperationOptions& options = info._options;
+
+  reset();
+  _tmpBuilder.openArray();
+
+  const RegisterId& inReg = info._input1RegisterId.value();
+
+  executor._fetcher.forRowinBlock([this, inReg, &info](InputAqlItemRow&& row) {
+    auto const& inVal = row.getValue(inReg);
+    if (!info._consultAqlWriteFilter ||
+        info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
+                                                              StaticStrings::Empty)) {
+      _operations.push_back(APPLY_RETURN);
+      // TODO This may be optimized with externals
+      _tmpBuilder.add(inVal.slice());
+    } else {
+      // not relevant for ourselves... just pass it on to the next block
+      _operations.push_back(IGNORE_RETURN);
+    }
+  });
+
+  TRI_ASSERT(_operations.size() == executor._fetcher.currentBlock()->block().size());
+
+  _tmpBuilder.close();
+  auto toInsert = _tmpBuilder.slice();
+
+  // At this point _tempbuilder contains the objects to insert
+  // and _operations the information if the data is to be kept or not
+
+  // TRI_ASSERT(toInsert.isArray());
+  // try {
+  //  LOG_DEVEL << "num to insert" << toInsert.length();
+  //} catch (...) {
+  //}
+
+  // former - skip empty
+  // no more to prepare
+  if (toInsert.length() == 0) {
+    executor._copyBlock = true;
+    TRI_ASSERT(false);
+    return true;
+  }
+
+  // execute insert
+  TRI_ASSERT(info._trx);
+  auto operationResult = info._trx->insert(info._aqlCollection->name(), toInsert, options);
+  setOperationResult(std::move(operationResult));
+
+  // handle statisitcs
+  executor.handleBabyStats(stats, _operationResult.countErrorCodes,
+                           toInsert.length(), info._ignoreErrors);
+
+  if (_operationResult.fail()) {
+    THROW_ARANGO_EXCEPTION(_operationResult.result);
+  }
+
+  if (!options.silent) {
+    TRI_ASSERT(_operationResult.buffer != nullptr);
+    TRI_ASSERT(_operationResult.slice().isArray());
+
+    // former - skip empty
+    if (_operationResultArraySlice.length() == 0) {
+      executor._copyBlock = true;
+      TRI_ASSERT(false);
+      return true;
+    }
+  }
+  return true;
+}
+
+bool Remove::doOutput(ModificationExecutor<Remove>& executor, OutputAqlItemRow& output) {
+  TRI_ASSERT(_block);
+  TRI_ASSERT(_block->hasBlock());
+  TRI_ASSERT(_blockIndex < _block->block().size());
+
+  auto& info = executor._infos;
+  OperationOptions& options = info._options;
+
+  InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
+  if (!options.silent) {
+    if (_operations[_blockIndex] == APPLY_RETURN) {
+      TRI_ASSERT(_operationResultIterator.valid());
+      auto elm = _operationResultIterator.value();
+
+      bool wasError =
+          arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
+
+      if (!wasError) {
+        if (options.returnNew) {
+          AqlValue value(elm.get("new"));
+          AqlValueGuard guard(value, true);
+          // store $NEW
+          output.moveValueInto(info._outputNewRegisterId.value(), input, guard);
+        }
+        if (options.returnOld) {
+          // store $OLD
+          auto slice = elm.get("old");
+          if (slice.isNone()) {
+            AqlValue value(VPackSlice::nullSlice());
+            AqlValueGuard guard(value, true);
+            output.moveValueInto(info._outputOldRegisterId.value(), input, guard);
+          } else {
+            AqlValue value(slice);
+            AqlValueGuard guard(value, true);
+            output.moveValueInto(info._outputOldRegisterId.value(), input, guard);
+          }
+        }
+      }
+      ++_operationResultIterator;
+    } else if (_operations[_blockIndex] == IGNORE_RETURN) {
+      output.copyRow(input);
+    } else {
+      LOG_DEVEL << "OHOHOHHOOHO";
+      TRI_ASSERT(false);
+    }
+
+  } else {
+    output.copyRow(input);
+  }
+
+  // increase index and make sure next element is within the valid range
+  return ++_blockIndex < _block->block().size();
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // UPSERT /////////////////////////////////////////////////////////////////////
@@ -336,7 +467,8 @@ bool Upsert::doOutput(ModificationExecutor<Upsert>& executor, OutputAqlItemRow& 
 
   InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
   if (!options.silent) {
-    if (_operations[_blockIndex] == APPLY_UPDATE || APPLY_INSERT) {
+    auto& op = _operations[_blockIndex];
+    if (op == APPLY_UPDATE || op == APPLY_INSERT) {
       TRI_ASSERT(_operationResultIterator.valid()); //insert
       TRI_ASSERT(_operationResultUpdateIterator.valid()); //update
 

@@ -192,7 +192,7 @@ struct ModificationExecutorBase {
 template <typename Modifier>
 class ModificationExecutor : public ModificationExecutorBase {
   friend struct Insert;
-  // friend struct Remove;
+  friend struct Remove;
   // friend struct UpdateReplace;
   // friend struct Update;
   friend struct Upsert;

@@ -91,6 +91,11 @@ struct Insert : ModificationBase {
   bool doOutput(ModificationExecutor<Insert>&, OutputAqlItemRow&);
 };
 
+struct Remove : ModificationBase {
+  bool doModifications(ModificationExecutor<Remove>&, ModificationExecutorBase::Stats&);
+  bool doOutput(ModificationExecutor<Remove>&, OutputAqlItemRow&);
+};
+
 struct Upsert : ModificationBase {
   bool doModifications(ModificationExecutor<Upsert>&, ModificationExecutorBase::Stats&);
   bool doOutput(ModificationExecutor<Upsert>&, OutputAqlItemRow&);
