@@ -57,6 +57,7 @@ namespace arangodb {
 // or, having a `Result result` with result.fail() being true,
 //   return result;
 // .
+// Some implicit conversions are disabled when they could cause ambiguity.
 template <typename T>
 class ResultT {
  public:
@@ -86,7 +87,7 @@ class ResultT {
     return ResultT(boost::none, std::move(other));
   }
 
-  template <typename U = T, typename = typename std::enable_if<!std::is_convertible<U, decltype(ResultT<U>::_errorNumber)>::value>::type>
+  template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
   // These are not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
   ResultT(Result const& other) : _result(other) {
@@ -95,7 +96,7 @@ class ResultT {
     TRI_ASSERT(other.fail());
   }
 
-  template <typename U = T, typename = typename std::enable_if<!std::is_convertible<U, decltype(ResultT<U>::_errorNumber)>::value>::type>
+  template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   ResultT(Result&& other) : _result(std::move(other)) {
     // .ok() is not allowed here, as _val should be expected to be initialized
@@ -103,12 +104,12 @@ class ResultT {
     TRI_ASSERT(other.fail());
   }
 
-  template <typename U = T, typename = typename std::enable_if<!std::is_convertible<U, decltype(ResultT<U>::_errorNumber)>::value>::type>
+  template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
   // These are not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
   ResultT(T&& val) : ResultT(std::move(val), TRI_ERROR_NO_ERROR) {}
 
-  template <typename U = T, typename = typename std::enable_if<!std::is_convertible<U, decltype(ResultT<U>::_errorNumber)>::value>::type>
+  template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
   // NOLINTNEXTLINE(google-explicit-constructor)
   ResultT(T const& val) : ResultT(val, TRI_ERROR_NO_ERROR) {}
 
@@ -123,8 +124,6 @@ class ResultT {
     _val = std::move(val_);
     return *this;
   }
-
-  Result copy_result() const { return *this; }
 
   // These would be very convenient, but also make it very easy to accidentally
   // use the value of an error-result. So don't add them.
@@ -144,7 +143,7 @@ class ResultT {
 
   T const&& operator*() const&& { return get(); }
 
-  template <typename U = T, typename = typename std::enable_if<!std::is_same<U, bool>::value>::type>
+  template <typename U = T, typename = std::enable_if_t<!std::is_same<U, bool>::value>>
   explicit operator bool() const {
     return ok();
   }
@@ -186,7 +185,7 @@ class ResultT {
   // forwarded methods
   bool ok() const { return _result.ok(); }
   bool fail() const { return _result.fail(); }
-  bool is(uint64_t code) { return _result.is(code); }
+  bool is(int code) { return _result.is(code); }
   int errorNumber() const { return _result.errorNumber(); }
   std::string errorMessage() const { return _result.errorMessage(); }
 
@@ -210,8 +209,8 @@ class ResultT {
   ResultT(boost::optional<T> const& val_, int errorNumber, std::string const& errorMessage)
       : _result(errorNumber, errorMessage), _val(val_) {}
 
-  ResultT(boost::optional<T>&& val_, Result const& result)
-      : _result(result), _val(std::move(val_)) {}
+  ResultT(boost::optional<T>&& val_, Result result)
+      : _result(std::move(result)), _val(std::move(val_)) {}
 
   ResultT(boost::optional<T>&& val_, Result&& result)
       : _result(std::move(result)), _val(std::move(val_)) {}
