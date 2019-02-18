@@ -32,7 +32,7 @@
 #include <functional>
 #include <algorithm>
 #include <string>
-#include <iosfwd>
+#include <iostream>
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
@@ -194,7 +194,10 @@ class StringRef {
 }
 }
 
-std::ostream& operator<<(std::ostream&, arangodb::velocypack::StringRef const&);
+std::ostream& operator<<(std::ostream& ref, arangodb::velocypack::StringRef const& ref) {
+  stream.write(ref.data(), ref.length());
+  return stream;
+}
 
 inline bool operator==(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) {
   return (lhs.size() == rhs.size() && memcmp(lhs.data(), rhs.data(), lhs.size()) == 0);
