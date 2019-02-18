@@ -194,7 +194,7 @@ class StringRef {
 }
 }
 
-std::ostream& operator<<(std::ostream& stream, arangodb::velocypack::StringRef const& ref) {
+inline std::ostream& operator<<(std::ostream& stream, arangodb::velocypack::StringRef const& ref) {
   stream.write(ref.data(), ref.length());
   return stream;
 }
