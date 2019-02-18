@@ -111,7 +111,7 @@ std::unordered_map<int, std::string const> const typeNames{
 // during register planning
 bool isInSubQuery(ExecutionNode const* node) {
   auto current = node;
-  while (current->hasDependency()){
+  while (current->hasDependency()) {
     current = current->getFirstDependency();
   }
   TRI_ASSERT(current->getType() == ExecutionNode::NodeType::SINGLETON);
@@ -1237,7 +1237,11 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
 
   if (isInSubQuery(this)) {
     for (auto const& var : this->getVarsUsedLater()) {
-        toKeep.insert(variableToRegisterId(var));
+      auto val = variableToRegisterId(var);
+      if (val < nrRegs) {
+        auto rv = toKeep.insert(val);
+        TRI_ASSERT(rv.second);
+      }
     }
   }
 
