@@ -217,13 +217,12 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
 
   auto* trx = info._trx;
   int errorCode = TRI_ERROR_NO_ERROR;
-  std::string errorMessage;
   std::string key;
   std::string rev;
 
   const RegisterId& inReg = info._input1RegisterId.value();
-  executor._fetcher.forRowinBlock([this, &errorCode, &errorMessage, &key, &rev,
-                                   trx, inReg, &info](InputAqlItemRow&& row) {
+  executor._fetcher.forRowinBlock([this, &errorCode, &key, &rev, trx, inReg,
+                                   &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
     if (!info._consultAqlWriteFilter ||
         info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
@@ -278,7 +277,7 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
 
   // former - skip empty
   // no more to prepare
-  if (toInsert.length() == 0) {
+  if (toRemove.length() == 0) {
     executor._copyBlock = true;
     TRI_ASSERT(false);
     return true;
@@ -286,12 +285,12 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
 
   // execute insert
   TRI_ASSERT(info._trx);
-  auto operationResult = info._trx->insert(info._aqlCollection->name(), toInsert, options);
+  auto operationResult = info._trx->remove(info._aqlCollection->name(), toRemove, options);
   setOperationResult(std::move(operationResult));
 
   // handle statisitcs
   executor.handleBabyStats(stats, _operationResult.countErrorCodes,
-                           toInsert.length(), info._ignoreErrors);
+                           toRemove.length(), info._ignoreErrors);
 
   if (_operationResult.fail()) {
     THROW_ARANGO_EXCEPTION(_operationResult.result);
@@ -329,24 +328,20 @@ bool Remove::doOutput(ModificationExecutor<Remove>& executor, OutputAqlItemRow& 
           arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
 
       if (!wasError) {
-        if (options.returnNew) {
-          AqlValue value(elm.get("new"));
-          AqlValueGuard guard(value, true);
-          // store $NEW
-          output.moveValueInto(info._outputNewRegisterId.value(), input, guard);
-        }
         if (options.returnOld) {
           // store $OLD
           auto slice = elm.get("old");
-          if (slice.isNone()) {
-            AqlValue value(VPackSlice::nullSlice());
-            AqlValueGuard guard(value, true);
-            output.moveValueInto(info._outputOldRegisterId.value(), input, guard);
-          } else {
-            AqlValue value(slice);
-            AqlValueGuard guard(value, true);
-            output.moveValueInto(info._outputOldRegisterId.value(), input, guard);
-          }
+
+          // original no none check! //result->emplaceValue(dstRow, _outRegOld, elm.get("old"));
+          // if (slice.isNone()) {
+          //   AqlValue value(VPackSlice::nullSlice());
+          //   AqlValueGuard guard(value, true);
+          //   output.moveValueInto(info._outputOldRegisterId.value(), input, guard);
+          // } else {
+          AqlValue value(slice);
+          AqlValueGuard guard(value, true);
+          output.moveValueInto(info._outputOldRegisterId.value(), input, guard);
+          //}
         }
       }
       ++_operationResultIterator;
