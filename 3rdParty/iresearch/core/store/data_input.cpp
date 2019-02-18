@@ -33,25 +33,13 @@
 
 NS_ROOT
 
-/* -------------------------------------------------------------------
-* data_input
-* ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                          input_buf implementation
+// -----------------------------------------------------------------------------
 
-data_input::~data_input() { }
-
-/* -------------------------------------------------------------------
-* index_input
-* ------------------------------------------------------------------*/
-
-index_input::~index_input() { }
-
-/* -------------------------------------------------------------------
-* input_buf
-* ------------------------------------------------------------------*/
-
-input_buf::input_buf( index_input* in )
-  : in_( in ) {
-  assert( in_ );
+input_buf::input_buf(index_input* in)
+  : in_(in) {
+  assert(in_);
 }
 
 std::streamsize input_buf::xsgetn(input_buf::char_type* c, std::streamsize size) {
@@ -80,21 +68,24 @@ std::streamsize input_buf::showmanyc() {
   return in_->length() - in_->file_pointer();
 }
 
-/* -------------------------------------------------------------------
-* buffered_index_input
-* ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                               buffered_index_input implementation
+// -----------------------------------------------------------------------------
 
-buffered_index_input::buffered_index_input(size_t buf_size /* = 1024 */)
-  : buf_size_(buf_size) {
+buffered_index_input::buffered_index_input(
+    size_t buf_size/*= DEFAULT_BUFFER_SIZE*/
+) NOEXCEPT
+  : start_(0),
+    buf_size_(buf_size) {
 }
 
-buffered_index_input::buffered_index_input(const buffered_index_input& rhs)
+buffered_index_input::buffered_index_input(
+    const buffered_index_input& rhs
+) NOEXCEPT
   : index_input(),
     start_(rhs.start_ + rhs.offset()),
     buf_size_(rhs.buf_size_) {
 }
-
-buffered_index_input::~buffered_index_input() { }
 
 byte_type buffered_index_input::read_byte() {
   if (begin_ >= end_) {
@@ -136,26 +127,37 @@ size_t buffered_index_input::read_bytes(byte_type* b, size_t count) {
   if (read) {
     std::memcpy(b, begin_, sizeof(byte_type) * read);
     begin_ += read;
-    count -= read;
   }
 
-  if (!count) {
-    return read; // it's enuogh for us
+  if (read == count) {
+    return read; // it's enough for us
   }
 
-  size_t size;
+  size_t size = count - read;
   b += read;
-  if (count < buf_size_) { // refill buffer & copy
-    size = std::min(count, refill());
+  if (size < buf_size_) { // refill buffer & copy
+    size = std::min(size, refill());
     std::memcpy(b, begin_, sizeof(byte_type) * size);
     begin_ += size;
-  } else { // read directly to output buffer
-    size = read_internal(b, count);
-    start_ += (offset() + size);
-    begin_ = end_ = buf_.get(); // will trigger refill on the next read
+    read += size;
+  } else {
+    // read directly to output buffer if possible
+    if (read_internal(b, size, size)) {
+      start_ += (offset() + size);
+      begin_ = end_ = buf_.get(); // will trigger refill on the next read
+      read += size;
+    } else {
+      do {
+        size = std::min(size, refill());
+        std::memcpy(b, begin_, sizeof(byte_type) * size);
+        begin_ += size;
+        read += size;
+        b += size;
+      } while ((size = count - read));
+    }
   }
 
-  return read += size;
+  return read;
 }
 
 size_t buffered_index_input::refill() {
@@ -169,6 +171,7 @@ size_t buffered_index_input::refill() {
 
   if (!buf_) {
     buf_ = memory::make_unique<byte_type[]>(buf_size_);
+    begin_ = end_ = buf_.get();
     seek_internal(start_);
   }
 

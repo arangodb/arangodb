@@ -176,34 +176,33 @@ inline void write_string(data_output& out, const byte_type* s, size_t len) {
   out.write_bytes(s, len);
 }
 
-template< typename StringType >
+template<typename StringType>
 inline void write_string(data_output& out, const StringType& str) {
   write_string(out, str.c_str(), str.size());
 }
 
-template< typename ContType >
+template<typename ContType>
 inline data_output& write_strings(data_output& out, const ContType& c) {
   write_size(out, c.size());
   for (const auto& s : c) {
-    write_string< decltype(s) >(out, s);
+    write_string<decltype(s)>(out, s);
   }
 
   return out;
 }
 
-template< typename StringType >
+template<typename StringType>
 inline StringType read_string(data_input& in) {
   const size_t len = in.read_vint();
 
   StringType str(len, 0);
 #ifdef IRESEARCH_DEBUG
-  const size_t read = in.read_bytes(reinterpret_cast<byte_type*>(&str[0]), len);
-  assert(read == len);
+  const size_t read = in.read_bytes(reinterpret_cast<byte_type*>(&str[0]), str.size());
+  assert(read == str.size());
   UNUSED(read);
 #else
-  in.read_bytes(reinterpret_cast<byte_type*>(&str[0]), len);
+  in.read_bytes(reinterpret_cast<byte_type*>(&str[0]), str.size());
 #endif // IRESEARCH_DEBUG
-
   return str;
 }
 
@@ -215,7 +214,7 @@ inline ContType read_strings(data_input& in) {
   c.reserve(size);
 
   for (size_t i = 0; i < size; ++i) {
-    c.emplace(read_string< typename ContType::value_type >(in));
+    c.emplace(read_string<typename ContType::value_type>(in));
   }
 
   return c;

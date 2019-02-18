@@ -77,13 +77,13 @@ void assert_index(
   tests::assert_index(expected, actual, irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::offset::type(), irs::payload::type() }, skip);
 }
 
-struct incompatible_attribute: irs::attribute {
+struct incompatible_test_attribute: irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();
-  incompatible_attribute() NOEXCEPT {}
+  incompatible_test_attribute() NOEXCEPT {}
 };
 
-REGISTER_ATTRIBUTE(incompatible_attribute);
-DEFINE_ATTRIBUTE_TYPE(incompatible_attribute)
+REGISTER_ATTRIBUTE(incompatible_test_attribute);
+DEFINE_ATTRIBUTE_TYPE(incompatible_test_attribute)
 
 class transaction_store_tests: public test_base {
   virtual void SetUp() {
@@ -2317,7 +2317,7 @@ TEST_F(transaction_store_tests, writer_bulk_insert) {
     indexed_and_stored_field(std::string&& name, const irs::string_ref& value, bool stored_valid = true, bool indexed_valid = true)
       : name_(std::move(name)), value_(value), stored_valid_(stored_valid) {
       if (!indexed_valid) {
-        features_.add<incompatible_attribute>();
+        features_.add<incompatible_test_attribute>();
       }
     }
     indexed_and_stored_field(indexed_and_stored_field&& other) NOEXCEPT
@@ -2352,7 +2352,7 @@ TEST_F(transaction_store_tests, writer_bulk_insert) {
     indexed_field(std::string&& name, const irs::string_ref& value, bool valid = true)
       : name_(std::move(name)), value_(value) {
       if (!valid) {
-        features_.add<incompatible_attribute>();
+        features_.add<incompatible_test_attribute>();
       }
     }
     indexed_field(indexed_field&& other) NOEXCEPT
