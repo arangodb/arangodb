@@ -36,3 +36,7 @@ Other
 | Issue      |
 |------------|
 | **Date Added:** 2018-12-04 <br> **Component:** arangod <br> **Deployment Mode:** All <br> **Description:** Parallel creation of collections using multiple client connections with the same database user may spuriously fail with "Could not update user due to conflict" warnings when setting user permissions on the new collections. A follow-up effect of this may be that access to the just-created collection is denied. <br> **Affected Versions:** 3.4.0 <br> **Fixed in Versions:** 3.4.1 <br> **Reference:** [arangodb/arangodb#5342](https://github.com/arangodb/arangodb/issues/5342)  |
+| **Date Added:** 2019-02-18 <br> **Component:** arangod <br> **Deployment Mode:** Windows with rocksdb storage engine <br> **Description:** There is a clock overflow bug within Facebook's rocksdb storage engine for Windows.  The problem manifests under heavy write loads, including long imports.  The Windows server will suddenly block all writes for minutes or hours, then begin working again just fine. An immediate work around is to add the following lines to arangod.conf<br><pre>
+[rocksdb]
+throttle = false
+</pre><br> **Affected Versions:** all 3.x versions <br> **Fixed in Versions:** pending <br> **Reference:** [facebook/rocksdb#4983(https://github.com/facebook/rocksdb/issues/4983)  |
