@@ -176,11 +176,12 @@ struct ModificationExecutorBase {
   //                      AqlItemBlock* dst, size_t& dstRow);
 
   /// @brief process the result of a data-modification operation
+  // return true if work can continue
   void handleStats(ModificationExecutorBase::Stats& stats, int code, bool ignoreErrors, std::string const* errorMessage = nullptr);
 
   // done
-  void handleBabyStats(Stats&, std::unordered_map<int, size_t> const&, uint64_t,
-                       bool ignoreAllErrors, bool ignoreDocumentNotFound = false);
+  void handleBabyStats(Stats&, std::unordered_map<int, size_t> const& errorCounter, uint64_t numBabies,
+                       bool ignoreErros, bool ignoreDocumentNotFound = false);
 };
 
 template <typename Modifier>

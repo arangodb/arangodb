@@ -66,7 +66,7 @@ void ModificationExecutorBase::handleStats(ModificationExecutorBase::Stats& stat
 /// @brief process the result of a data-modification operation
 void ModificationExecutorBase::handleBabyStats(ModificationExecutorBase::Stats& stats,
                                                std::unordered_map<int, size_t> const& errorCounter,
-                                               uint64_t numBabies, bool ignoreAllErrors,
+                                               uint64_t numBabies, bool ignoreErrors,
                                                bool ignoreDocumentNotFound) {
   size_t numberBabies = numBabies;  // from uint64_t to size_t
 
@@ -79,7 +79,7 @@ void ModificationExecutorBase::handleBabyStats(ModificationExecutorBase::Stats& 
     return;
   }
 
-  if (ignoreAllErrors) {
+  if (ignoreErrors) {
     for (auto const& pair : errorCounter) {
       // update the ignored counter
       if (_infos._doCount) {
