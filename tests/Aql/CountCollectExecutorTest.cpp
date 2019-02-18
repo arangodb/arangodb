@@ -141,7 +141,15 @@ SCENARIO("CountCollectExecutor", "[AQL][EXECUTOR][COUNTCOLLECTEXECUTOR]") {
         REQUIRE(!result.produced());
 
         std::tie(state, stats) = testee.produceRow(result);
-        REQUIRE(state == ExecutionState::DONE); // <-- TODO: currently WAITING! Should be Done.
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result.produced());
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result.produced());
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::DONE);
         REQUIRE(result.produced());
 
         auto block = result.stealBlock();
