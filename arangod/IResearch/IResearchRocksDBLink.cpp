@@ -35,6 +35,34 @@
 
 #include "IResearchRocksDBLink.h"
 
+namespace {
+
+class RocksDBCipher : public irs::cipher {
+ public:
+  static std::shared_ptr<RocksDBCipher> make(rocksdb::BlockCipher& cipher) {
+    return std::make_shared<RocksDBCipher>(cipher);
+  }
+
+  explicit RocksDBCipher(rocksdb::BlockCipher& cipher) noexcept
+    : _cipher(&cipher) {
+  }
+
+  size_t block_size() const { return _cipher->BlockSize(); }
+
+  bool encrypt(irs::byte_type* data) const {
+    return _cipher->Encrypt(reinterpret_cast<char*>(data)).ok();
+  }
+
+  bool decrypt(irs::byte_type* data) const {
+    return _cipher->Decrypt(reinterpret_cast<char*>(data)).ok();
+  }
+
+ private:
+  rocksdb::BlockCipher* _cipher;
+};
+
+}
+
 namespace arangodb {
 namespace iresearch {
 
@@ -55,7 +83,7 @@ struct IResearchRocksDBLink::IndexFactory : public arangodb::IndexTypeFactory {
     try {
       auto link =
           std::shared_ptr<IResearchRocksDBLink>(new IResearchRocksDBLink(id, collection));
-      auto res = link->init(definition);
+      auto res = link->init(definition, RocksDBLinkInitCallback);
 
       if (!res.ok()) {
         return res;
@@ -147,6 +175,23 @@ void IResearchRocksDBLink::toVelocyPack(arangodb::velocypack::Builder& builder,
 
   builder.close();
 }
+
+/*static*/ IResearchLink::InitCallback const
+IResearchRocksDBLink::RocksDBLinkInitCallback = [](irs::directory& dir) -> void {
+  TRI_ASSERT(EngineSelectorFeature::isRocksDB());
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto* engine = dynamic_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+#else
+  auto* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+#endif
+
+  auto* cipher = engine ? engine->blockCipher() : nullptr;
+
+  if (cipher) {
+    dir.attributes().emplace<RocksDBCipher>(*cipher);
+  }
+};
 
 }  // namespace iresearch
 }  // namespace arangodb

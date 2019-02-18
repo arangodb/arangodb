@@ -295,7 +295,15 @@ class RocksDBEngine final : public StorageEngine {
  public:
   static std::string const EngineName;
   static std::string const FeatureName;
-  
+
+  rocksdb::BlockCipher* blockCipher() const noexcept {
+#ifdef USE_ENTERPRISE
+    return _eeData._blockCipher.get();
+#else
+    return nullptr;
+#endif
+  }
+
   /// @brief allow / disbable removal of WAL files
   void disableWalFilePruning(bool disable);
   bool disableWalFilePruning() const;
