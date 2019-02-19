@@ -144,6 +144,7 @@ TEST_CASE("FailedServer", "[agency][supervision]") {
     When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
     auto &agent = mockAgent.get();
     auto builder = agency.toBuilder();
+    LOG_DEVEL << builder.toJson();
     FailedServer(
       agency(PREFIX), &agent, jobId, "unittest", SHARD_LEADER).create();
     Verify(Method(mockAgent, write));

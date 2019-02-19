@@ -151,9 +151,9 @@ bool RemoveFollower::start() {
   // First check that we still have too many followers for the current
   // `replicationFactor`:
 
-  uint64_t desiredReplFactor;
+  uint64_t desiredReplFactor = 1;
   try {
-    collection.hasAsUInt("replicationFactor").first;
+    desiredReplFactor = collection.hasAsUInt("replicationFactor").first;
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::SUPERVISION)
       << "Failed to acquired desired replication factor for "
