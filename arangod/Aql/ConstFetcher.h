@@ -76,8 +76,13 @@ class ConstFetcher {
   void injectBlock(std::shared_ptr<AqlItemBlockShell> block);
 
   // Argument will be ignored!
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
-    fetchBlockForPassthrough(size_t);
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t);
+
+  std::pair<ExecutionState, size_t> preFetchNumberOfRows() {
+    // This is not implemented for this fetcher
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
 
  private:
   /**

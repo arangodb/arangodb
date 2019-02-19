@@ -58,7 +58,6 @@ class SingleRowFetcher {
   SingleRowFetcher();
 
  public:
-
   /**
    * @brief Fetch one new AqlItemRow from upstream.
    *        **Guarantee**: the pointer returned is valid only
@@ -89,6 +88,12 @@ class SingleRowFetcher {
   // TODO enable_if<passBlocksThrough>
   std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t atMost);
 
+  std::pair<ExecutionState, size_t> preFetchNumberOfRows() {
+    // This is not implemented for this fetcher
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
  private:
   BlockFetcher<passBlocksThrough>* _blockFetcher;
 
@@ -117,17 +122,16 @@ class SingleRowFetcher {
   size_t _rowIndex;
 
   /**
-  * @brief The current row, as returned last by fetchRow(). Must stay valid
-  *        until the next fetchRow() call.
-  */
+   * @brief The current row, as returned last by fetchRow(). Must stay valid
+   *        until the next fetchRow() call.
+   */
   InputAqlItemRow _currentRow;
 
  private:
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
-    fetchBlock(size_t atMost);
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock(size_t atMost);
 
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
@@ -146,7 +150,6 @@ class SingleRowFetcher {
     TRI_ASSERT(indexIsValid());
     return _rowIndex;
   }
-
 };
 
 template <bool passBlocksThrough>
