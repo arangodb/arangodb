@@ -257,7 +257,7 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
         std::initializer_list<RegisterId>{inReg});
     auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
         std::initializer_list<RegisterId>{outReg});
-    std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId> registerMapping{
+    std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId, TraversalExecutorInfos::OutputNameHash> registerMapping{
         {TraversalExecutorInfos::OutputName::VERTEX, outReg}};
 
     std::string const noFixed = "";
@@ -443,7 +443,7 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
         std::initializer_list<RegisterId>{});
     auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
         std::initializer_list<RegisterId>{1});
-    std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId> registerMapping{
+    std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId, TraversalExecutorInfos::OutputNameHash> registerMapping{
         {TraversalExecutorInfos::OutputName::VERTEX, outReg}};
 
     std::string const fixed = "v/1";

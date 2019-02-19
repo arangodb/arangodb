@@ -57,11 +57,14 @@ namespace arangodb {
   class FlushFeature::FlushSubscriptionBase
       : public FlushFeature::FlushSubscription {
    public:
+    void disable() noexcept { _enabled.store(false); }
+
     /// @brief earliest tick that can be released
     virtual TRI_voc_tick_t tick() const = 0;
 
    protected:
     TRI_voc_tick_t const _databaseId;
+    std::atomic<bool> _enabled; // WAL is still valid
     arangodb::StorageEngine const& _engine;
     TRI_voc_tick_t _tickCurrent; // last successful tick, should be replayed
     TRI_voc_tick_t _tickPrevious; // previous successful tick, should be replayed
@@ -72,6 +75,7 @@ namespace arangodb {
         TRI_voc_tick_t databaseId, // vocbase id
         arangodb::StorageEngine const& engine // vocbase engine
     ): _databaseId(databaseId),
+       _enabled(true),
        _engine(engine),
        _tickCurrent(0), // default (smallest) tick for StorageEngine
        _tickPrevious(0), // default (smallest) tick for StorageEngine
@@ -286,6 +290,13 @@ class MMFilesFlushSubscription final
   }
 
   arangodb::Result commit(arangodb::velocypack::Slice const& data) override {
+    if (!_enabled.load()) {
+      return arangodb::Result( // result
+        TRI_ERROR_ARANGO_ILLEGAL_STATE, // code
+        "FlushFeature not running" // message
+      );
+    }
+
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
@@ -431,6 +442,13 @@ class RocksDBFlushSubscription final
   }
 
   arangodb::Result commit(arangodb::velocypack::Slice const& data) override {
+    if (!_enabled.load()) {
+      return arangodb::Result( // result
+        TRI_ERROR_ARANGO_ILLEGAL_STATE, // code
+        "FlushFeature not running" // message
+      );
+    }
+
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
@@ -584,6 +602,13 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
     );
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
+    if (!_isRunning.load()) {
+      LOG_TOPIC(ERR, Logger::FLUSH)
+        << "FlushFeature not running";
+
+      return nullptr;
+    }
+
     _flushSubscriptions.emplace(subscription);
 
     return subscription;
@@ -614,6 +639,14 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
       type, vocbase.id(), *rocksdbEngine, *rootDb
     );
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
+
+
+    if (!_isRunning.load()) {
+      LOG_TOPIC(ERR, Logger::FLUSH)
+        << "FlushFeature not running";
+
+      return nullptr;
+    }
 
     _flushSubscriptions.emplace(subscription);
 
@@ -764,6 +797,21 @@ void FlushFeature::stop() {
       WRITE_LOCKER(wlock, _threadLock);
       _isRunning.store(false);
       _flushThread.reset();
+    }
+
+    // disable and release any remamining flush subscritions
+    {
+      std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
+
+      for (auto& entry: _flushSubscriptions) {
+        TRI_ASSERT(!entry || entry.use_count() == 1); // should not have any active subscriptions during stop()
+
+        if (entry) {
+          entry->disable();
+        }
+      }
+
+      _flushSubscriptions.clear();
     }
   }
 }
