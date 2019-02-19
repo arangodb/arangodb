@@ -122,7 +122,7 @@ class FakePathFinder : public ShortestPathFinder {
 
   bool shortestPath(VPackSlice const& source, VPackSlice const& target,
                     arangodb::graph::ShortestPathResult& result,
-                    std::function<void()> const& callback) {
+                    std::function<void()> const& callback) override {
     REQUIRE(source.isString());
     REQUIRE(target.isString());
     _calledWith.emplace_back(std::make_pair(source.copyString(), target.copyString()));
@@ -294,7 +294,6 @@ static void RunTestWithFullCombination(ShortestPathExecutorInfos::InputVertex&& 
                                        bool useEdgeOutput) {
   RegisterId vOutReg = 2;
   RegisterId eOutReg = 3;
-  ExecutionState state;
   mocks::MockAqlServer server{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
   auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>(

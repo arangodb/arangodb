@@ -46,7 +46,7 @@ void MMFilesFulltextIndex::extractWords(std::set<std::string>& words,
     // extract the string value for the indexed attribute
     // parse the document text
     arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, value.stringRef(),
-                                                             _minWordLength, TRI_FULLTEXT_MAX_WORD_LENGTH,
+                                                             _minWordLength, FulltextIndexLimits::maxWordLength,
                                                              true);
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed
@@ -66,7 +66,7 @@ MMFilesFulltextIndex::MMFilesFulltextIndex(TRI_idx_iid_t iid,
                                            arangodb::velocypack::Slice const& info)
     : MMFilesIndex(iid, collection, info),
       _fulltextIndex(nullptr),
-      _minWordLength(TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT) {
+      _minWordLength(FulltextIndexLimits::minWordLengthDefault) {
   TRI_ASSERT(iid != 0);
 
   VPackSlice const value = info.get("minLength");
@@ -259,7 +259,7 @@ IndexIterator* MMFilesFulltextIndex::iteratorForCondition(
     limit = args->getMember(3)->getIntValue();
   }
   TRI_fulltext_query_t* ft =
-      TRI_CreateQueryMMFilesFulltextIndex(TRI_FULLTEXT_SEARCH_MAX_WORDS, limit);
+      TRI_CreateQueryMMFilesFulltextIndex(FulltextIndexLimits::maxSearchWords, limit);
   if (ft == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }

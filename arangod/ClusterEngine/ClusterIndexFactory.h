@@ -31,6 +31,10 @@ class ClusterIndexFactory final : public IndexFactory {
  public:
   ClusterIndexFactory();
   ~ClusterIndexFactory() = default;
+  
+  /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" => "hash")
+  /// used to display storage engine capabilities
+  std::unordered_map<std::string, std::string> indexAliases() const override;
 
   Result enhanceIndexDefinition(velocypack::Slice const definition,
                                 velocypack::Builder& normalized, bool isCreation,

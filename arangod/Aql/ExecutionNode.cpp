@@ -652,15 +652,15 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& it : _dependencies) {
-      nodes.add(VPackValue(static_cast<double>(it->id())));
+      nodes.add(VPackValue(it->id()));
     }
   }
-  nodes.add("id", VPackValue(static_cast<double>(id())));
+  nodes.add("id", VPackValue(id()));
   if (flags & ExecutionNode::SERIALIZE_PARENTS) {
     nodes.add(VPackValue("parents"));  // Open Key
     VPackArrayBuilder guard(&nodes);
     for (auto const& it : _parents) {
-      nodes.add(VPackValue(static_cast<double>(it->id())));
+      nodes.add(VPackValue(it->id()));
     }
   }
   if (flags & ExecutionNode::SERIALIZE_ESTIMATES) {
@@ -670,7 +670,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
   }
 
   if (flags & ExecutionNode::SERIALIZE_DETAILS) {
-    nodes.add("depth", VPackValue(static_cast<double>(_depth)));
+    nodes.add("depth", VPackValue(_depth));
 
     if (_registerPlan) {
       nodes.add(VPackValue("varInfoList"));
@@ -678,24 +678,24 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
         VPackArrayBuilder guard(&nodes);
         for (auto const& oneVarInfo : _registerPlan->varInfo) {
           VPackObjectBuilder guardInner(&nodes);
-          nodes.add("VariableId", VPackValue(static_cast<double>(oneVarInfo.first)));
-          nodes.add("depth", VPackValue(static_cast<double>(oneVarInfo.second.depth)));
+          nodes.add("VariableId", VPackValue(oneVarInfo.first));
+          nodes.add("depth", VPackValue(oneVarInfo.second.depth));
           nodes.add("RegisterId",
-                    VPackValue(static_cast<double>(oneVarInfo.second.registerId)));
+                    VPackValue(oneVarInfo.second.registerId));
         }
       }
       nodes.add(VPackValue("nrRegs"));
       {
         VPackArrayBuilder guard(&nodes);
         for (auto const& oneRegisterID : _registerPlan->nrRegs) {
-          nodes.add(VPackValue(static_cast<double>(oneRegisterID)));
+          nodes.add(VPackValue(oneRegisterID));
         }
       }
       nodes.add(VPackValue("nrRegsHere"));
       {
         VPackArrayBuilder guard(&nodes);
         for (auto const& oneRegisterID : _registerPlan->nrRegsHere) {
-          nodes.add(VPackValue(static_cast<double>(oneRegisterID)));
+          nodes.add(VPackValue(oneRegisterID));
         }
       }
       nodes.add("totalNrRegs", VPackValue(_registerPlan->totalNrRegs));
@@ -713,7 +713,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     {
       VPackArrayBuilder guard(&nodes);
       for (auto const& oneRegisterID : _regsToClear) {
-        nodes.add(VPackValue(static_cast<double>(oneRegisterID)));
+        nodes.add(VPackValue(oneRegisterID));
       }
     }
 
@@ -822,12 +822,17 @@ ExecutionNode::RegisterPlan::RegisterPlan(RegisterPlan const& v, unsigned int ne
       depth(newdepth + 1),
       totalNrRegs(v.nrRegs[newdepth]),
       me(nullptr) {
-  nrRegs.resize(depth);
-  nrRegsHere.resize(depth);
-  nrRegsHere.emplace_back(0);
+  if (depth + 1 < 8) {
+    // do a minium initial allocation to avoid frequent reallocations
+    nrRegsHere.reserve(8);
+    nrRegs.reserve(8);
+  }
+  nrRegsHere.resize(depth + 1);
+  nrRegsHere.back() = 0;
   // create a copy of the last value here
   // this is required because back returns a reference and emplace/push_back may
   // invalidate all references
+  nrRegs.resize(depth);
   RegisterId registerId = nrRegs.back();
   nrRegs.emplace_back(registerId);
 }
@@ -1488,8 +1493,8 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
 void LimitNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
-  nodes.add("offset", VPackValue(static_cast<double>(_offset)));
-  nodes.add("limit", VPackValue(static_cast<double>(_limit)));
+  nodes.add("offset", VPackValue(_offset));
+  nodes.add("limit", VPackValue(_limit));
   nodes.add("fullCount", VPackValue(_fullCount));
 
   // And close it:

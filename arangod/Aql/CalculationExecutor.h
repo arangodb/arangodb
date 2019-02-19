@@ -66,7 +66,7 @@ struct CalculationExecutorInfos : public ExecutorInfos {
 
   Expression& getExpression() const { return _expression; }
 
-  std::vector<const Variable*> const& getExpInVars() const {
+  std::vector<Variable const*> const& getExpInVars() const {
     return _expInVars;
   }
 

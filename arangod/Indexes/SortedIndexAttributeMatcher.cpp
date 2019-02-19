@@ -20,7 +20,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SkiplistIndexAttributeMatcher.h"
+#include "SortedIndexAttributeMatcher.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -35,7 +35,7 @@
 
 using namespace arangodb;
 
-bool SkiplistIndexAttributeMatcher::accessFitsIndex(
+bool SortedIndexAttributeMatcher::accessFitsIndex(
     arangodb::Index const* idx,            // index
     arangodb::aql::AstNode const* access,  // attribute access
     arangodb::aql::AstNode const* other,   // eg const value
@@ -132,7 +132,7 @@ bool SkiplistIndexAttributeMatcher::accessFitsIndex(
   return false;
 }
 
-void SkiplistIndexAttributeMatcher::matchAttributes(
+void SortedIndexAttributeMatcher::matchAttributes(
     arangodb::Index const* idx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>& found,
@@ -182,7 +182,7 @@ void SkiplistIndexAttributeMatcher::matchAttributes(
   }
 }
 
-bool SkiplistIndexAttributeMatcher::supportsFilterCondition(
+bool SortedIndexAttributeMatcher::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::Index const* idx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
@@ -357,7 +357,7 @@ bool SkiplistIndexAttributeMatcher::supportsFilterCondition(
   return false;
 }
 
-bool SkiplistIndexAttributeMatcher::supportsSortCondition(
+bool SortedIndexAttributeMatcher::supportsSortCondition(
     arangodb::Index const* idx, arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     double& estimatedCost, size_t& coveredAttributes) {
@@ -371,11 +371,20 @@ bool SkiplistIndexAttributeMatcher::supportsSortCondition(
 
       if (coveredAttributes >= sortCondition->numAttributes()) {
         // sort is fully covered by index. no additional sort costs!
-        estimatedCost = 0.0;
+        // forward iteration does not have high costs
+        estimatedCost = itemsInIndex * 0.001;
+        if (idx->isPersistent() && sortCondition->isDescending()) {
+          // reverse iteration has higher costs than forward iteration
+          estimatedCost *= 4;
+        }
         return true;
       } else if (coveredAttributes > 0) {
         estimatedCost = (itemsInIndex / coveredAttributes) *
                         std::log2(static_cast<double>(itemsInIndex));
+        if (idx->isPersistent() && sortCondition->isDescending()) {
+          // reverse iteration is more expensive
+          estimatedCost *= 4;
+        }
         return true;
       }
     }
@@ -385,6 +394,11 @@ bool SkiplistIndexAttributeMatcher::supportsSortCondition(
   // by default no sort conditions are supported
   if (itemsInIndex > 0) {
     estimatedCost = itemsInIndex * std::log2(static_cast<double>(itemsInIndex));
+    // slightly penalize this type of index against other indexes which
+    // are in memory
+    if (idx->isPersistent()) {
+      estimatedCost *= 1.05;
+    }
   } else {
     estimatedCost = 0.0;
   }
@@ -392,7 +406,7 @@ bool SkiplistIndexAttributeMatcher::supportsSortCondition(
 }
 
 /// @brief specializes the condition for use with the index
-arangodb::aql::AstNode* SkiplistIndexAttributeMatcher::specializeCondition(
+arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
     arangodb::Index const* idx, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) {
   // mmfiles failure compat
@@ -470,8 +484,8 @@ arangodb::aql::AstNode* SkiplistIndexAttributeMatcher::specializeCondition(
   return node;
 }
 
-bool SkiplistIndexAttributeMatcher::isDuplicateOperator(arangodb::aql::AstNode const* node,
-                                                        arangodb::HashSet<int> const& operatorsFound) {
+bool SortedIndexAttributeMatcher::isDuplicateOperator(arangodb::aql::AstNode const* node,
+                                                      arangodb::HashSet<int> const& operatorsFound) {
   auto type = node->type;
   if (operatorsFound.find(static_cast<int>(type)) != operatorsFound.end()) {
     // duplicate operator

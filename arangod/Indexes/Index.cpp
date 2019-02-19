@@ -229,6 +229,9 @@ Index::IndexType Index::type(char const* type, size_t len) {
   if (::typeMatch(type, len, "skiplist")) {
     return TRI_IDX_TYPE_SKIPLIST_INDEX;
   }
+  if (::typeMatch(type, len, "ttl")) {
+    return TRI_IDX_TYPE_TTL_INDEX;
+  }
   if (::typeMatch(type, len, "persistent") ||
       ::typeMatch(type, len, "rocksdb")) {
     return TRI_IDX_TYPE_PERSISTENT_INDEX;
@@ -273,6 +276,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "hash";
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
       return "skiplist";
+    case TRI_IDX_TYPE_TTL_INDEX:
+      return "ttl";
     case TRI_IDX_TYPE_PERSISTENT_INDEX:
       return "persistent";
     case TRI_IDX_TYPE_FULLTEXT_INDEX:

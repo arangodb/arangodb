@@ -2074,6 +2074,12 @@ void ExecutionPlan::unlinkNodes(std::unordered_set<ExecutionNode*> const& toRemo
   }
 }
 
+void ExecutionPlan::unlinkNodes(arangodb::HashSet<ExecutionNode*> const& toRemove) {
+  for (auto& node : toRemove) {
+    unlinkNode(node);
+  }
+}
+
 /// @brief unlinkNode, note that this does not delete the removed
 /// node and that one cannot remove the root node of the plan.
 void ExecutionPlan::unlinkNode(ExecutionNode* node, bool allowUnlinkingRoot) {

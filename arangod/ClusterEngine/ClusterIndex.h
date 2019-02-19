@@ -74,6 +74,8 @@ class ClusterIndex : public Index {
   void load() override {}
   void unload() override {}
   size_t memory() const override { return 0; }
+  
+  bool isPersistent() const override;
 
   Result drop() override { return Result(TRI_ERROR_NOT_IMPLEMENTED); }
 
