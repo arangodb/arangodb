@@ -75,11 +75,14 @@ class SingleBlockFetcher {
   // SingleBlockFetcher cannot pass through. Could be implemented, but currently
   // there are no executors that could use this and not better use
   // SingleRowFetcher instead.
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock();
   std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   };
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock();
+  std::pair<ExecutionState, std::size_t> preFetchNumberOfRows();
+
   void forRowinBlock(std::function<void(InputAqlItemRow&&)> cb);
+
   InputAqlItemRow accessRow(std::size_t index);
   ExecutionState upstreamState() const { return _upstreamState; }
   std::shared_ptr<AqlItemBlockShell> currentBlock() const { return _currentBlock; }

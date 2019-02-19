@@ -55,6 +55,12 @@ std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> SingleBlockFetcher
 }
 
 template <bool pass>
+std::pair<ExecutionState, std::size_t> SingleBlockFetcher<pass>::preFetchNumberOfRows(){
+  TRI_ASSERT(false);
+  return { ExecutionState::DONE, 0};
+}
+
+template <bool pass>
 InputAqlItemRow SingleBlockFetcher<pass>::accessRow(std::size_t index) {
   TRI_ASSERT(_currentBlock);
   TRI_ASSERT(index < _currentBlock->block().size());

@@ -191,12 +191,11 @@ bool Insert::doOutput(ModificationExecutor<Insert>& executor, OutputAqlItemRow& 
             output.moveValueInto(info._outputOldRegisterId.value(), input, guard);
           }
         }
-      }
+      }  // !wasError - end
       ++_operationResultIterator;
     } else if (_operations[_blockIndex] == IGNORE_RETURN) {
       output.copyRow(input);
     } else {
-      LOG_DEVEL << "OHOHOHHOOHO";
       TRI_ASSERT(false);
     }
 
@@ -353,7 +352,6 @@ bool Remove::doOutput(ModificationExecutor<Remove>& executor, OutputAqlItemRow& 
     } else if (_operations[_blockIndex] == IGNORE_RETURN) {
       output.copyRow(input);
     } else {
-      LOG_DEVEL << "OHOHOHHOOHO";
       TRI_ASSERT(false);
     }
 
@@ -542,7 +540,6 @@ bool Upsert::doOutput(ModificationExecutor<Upsert>& executor, OutputAqlItemRow& 
     } else if (_operations[_blockIndex] == IGNORE_SKIP) {
       output.copyRow(input);
     } else {
-      LOG_DEVEL << "OHOHOHHOOHO";
       TRI_ASSERT(false);
     }
 
@@ -556,9 +553,9 @@ bool Upsert::doOutput(ModificationExecutor<Upsert>& executor, OutputAqlItemRow& 
 
 ///////////////////////////////////////////////////////////////////////////////
 // UPDATEREPLACE //////////////////////////////////////////////////////////////
-template<typename ModType>
+template <typename ModType>
 bool UpdateReplace<ModType>::doModifications(ModificationExecutor<ModificationType>& executor,
-                                    ModificationExecutorBase::Stats& stats) {
+                                             ModificationExecutorBase::Stats& stats) {
   auto& info = executor._infos;
   OperationOptions& options = info._options;
 
@@ -626,12 +623,13 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutor<ModificationTy
           if (!options.ignoreRevs && !rev.empty()) {
             _tmpBuilder.add(StaticStrings::RevString, VPackValue(rev));
           } else {
-          // we must never take _rev from the document if there is a key
-          // expression.
-          _tmpBuilder.add(StaticStrings::RevString, VPackValue(VPackValueType::Null));
+            // we must never take _rev from the document if there is a key
+            // expression.
+            _tmpBuilder.add(StaticStrings::RevString, VPackValue(VPackValueType::Null));
           }
           _tmpBuilder.close();
-          VPackCollection::merge(_updateOrReplaceBuilder, inVal.slice(), _tmpBuilder.slice(), false, true);
+          VPackCollection::merge(_updateOrReplaceBuilder, inVal.slice(),
+                                 _tmpBuilder.slice(), false, true);
         } else {
           // use original slice for updating
           _updateOrReplaceBuilder.add(inVal.slice());
@@ -662,9 +660,9 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutor<ModificationTy
 
   TRI_ASSERT(info._trx);
 
-
   if (toUpdateOrReplace.isArray() && toUpdateOrReplace.length() > 0) {
-    OperationResult opRes = (info._trx->*_method)(info._aqlCollection->name(), toUpdateOrReplace, options);
+    OperationResult opRes =
+        (info._trx->*_method)(info._aqlCollection->name(), toUpdateOrReplace, options);
     setOperationResult(std::move(opRes));
 
     if (_operationResult.fail()) {
@@ -673,12 +671,10 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutor<ModificationTy
 
     executor.handleBabyStats(stats, _operationResult.countErrorCodes,
                              toUpdateOrReplace.length(), info._ignoreErrors);
-
   }
 
   _tmpBuilder.clear();
   _updateOrReplaceBuilder.clear();
-
 
   // former - skip empty
   if (_operationResultArraySlice.length() == 0) {
@@ -689,94 +685,45 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutor<ModificationTy
   return true;
 }
 
-//////    VPackSlice resultList = opRes.slice();
-//////
-//////    if (skipEmptyValues(resultList, n, res, result.get(), dstRow)) {
-//////      it->release();
-//////      returnBlock(res);
-//////      continue;
-//////    }
-//////
-//////    TRI_ASSERT(resultList.isArray());
-//////    auto iter = VPackArrayIterator(resultList);
-//////    for (size_t i = 0; i < n; ++i) {
-//////      TRI_ASSERT(i < _operations.size());
-//////      if (_operations[i] == APPLY_RETURN && result != nullptr) {
-//////        TRI_ASSERT(iter.valid());
-//////        auto elm = iter.value();
-//////        bool wasError =
-//////            arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
-//////
-//////        if (!wasError) {
-//////          inheritRegisters(res, result.get(), i, dstRow);
-//////
-//////          if (ep->_outVariableOld != nullptr) {
-//////            // store $OLD
-//////            result->emplaceValue(dstRow, _outRegOld, elm.get("old"));
-//////          }
-//////          if (ep->_outVariableNew != nullptr) {
-//////            // store $NEW
-//////            result->emplaceValue(dstRow, _outRegNew, elm.get("new"));
-//////          }
-//////          ++dstRow;
-//////        }
-//////        ++iter;
-//////      } else if (_operations[i] == IGNORE_SKIP) {
-//////        TRI_ASSERT(result != nullptr);
-//////        inheritRegisters(res, result.get(), i, dstRow);
-//////        ++dstRow;
-//////      }
-//////    }
-//////
-//////    // done with block. now unlink it and return it to block manager
-//////    it->release();
-//////    returnBlock(res);
-//////  }
-template<typename ModType>
+template <typename ModType>
 bool UpdateReplace<ModType>::doOutput(ModificationExecutor<ModificationType>& executor,
-                             OutputAqlItemRow& output) {
+                                      OutputAqlItemRow& output) {
   TRI_ASSERT(_block);
   TRI_ASSERT(_block->hasBlock());
   TRI_ASSERT(_blockIndex < _block->block().size());
+  TRI_ASSERT(_operationResultArraySlice.isArray());
 
   auto& info = executor._infos;
   OperationOptions& options = info._options;
 
   InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
-  if (!options.silent) {
-    auto& op = _operations[_blockIndex];
-    if (op == APPLY_UPDATE || op == APPLY_INSERT) {
-      TRI_ASSERT(_operationResultIterator.valid());        // insert
-      //TRI_ASSERT(_operationResultUpdateIterator.valid());  // update
+  if (_operations[_blockIndex] == APPLY_RETURN) {
+    TRI_ASSERT(_operationResultIterator.valid());
+    auto elm = _operationResultIterator.value();
 
-      // fetch operation type (insert or update/replace)
-      VPackArrayIterator* iter = &_operationResultIterator;
-      if (_operations[_blockIndex] == APPLY_UPDATE) {
-        //iter = &_operationResultUpdateIterator;
+    bool wasError =
+        arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
+
+    if (!wasError) {
+      if (options.returnNew) {
+        AqlValue value(elm.get("new"));
+        AqlValueGuard guard(value, true);
+        // store $NEW
+        output.moveValueInto(info._outputNewRegisterId.value(), input, guard);
       }
-      auto elm = iter->value();
-
-      bool wasError =
-          arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
-
-      if (!wasError) {
-        if (options.returnNew) {
-          AqlValue value(elm.get("new"));
-          AqlValueGuard guard(value, true);
-          // store $NEW
-          output.moveValueInto(info._outputNewRegisterId.value(), input, guard);
-        }
+      if (options.returnOld) {
+        auto slice = elm.get("old");
+        AqlValue value(slice);
+        AqlValueGuard guard(value, true);
+        // store $OLD
+        output.moveValueInto(info._outputOldRegisterId.value(), input, guard);
       }
-      ++*iter;
-    } else if (_operations[_blockIndex] == IGNORE_SKIP) {
-      output.copyRow(input);
-    } else {
-      LOG_DEVEL << "OHOHOHHOOHO";
-      TRI_ASSERT(false);
     }
-
-  } else {
+    ++_operationResultIterator;
+  } else if (_operations[_blockIndex] == IGNORE_SKIP) {
     output.copyRow(input);
+  } else {
+    TRI_ASSERT(false);
   }
 
   // increase index and make sure next element is within the valid range
