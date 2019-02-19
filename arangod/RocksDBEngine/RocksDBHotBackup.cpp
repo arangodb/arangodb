@@ -455,7 +455,7 @@ void RocksDBHotBackupCreate::executeCreate() {
 ///        POST:  Initiate restore of rocksdb snapshot in place of working directory
 ////////////////////////////////////////////////////////////////////////////////
 RocksDBHotBackupRestore::RocksDBHotBackupRestore(const VPackSlice body)
-  : RocksDBHotBackup(body), _saveCurrent(true), _forceRestore(true), _timeoutMS(10000)
+  : RocksDBHotBackup(body), _saveCurrent(true), _timeoutMS(10000)
 {
 }
 
@@ -483,7 +483,6 @@ void RocksDBHotBackupRestore::parseParameters(rest::RequestType const type) {
   // remaining params are optional
   getParamValue("saveCurrent", _saveCurrent, false);
   getParamValue("timeoutMS", _timeoutMS, false);
-  getParamValue("forceRestore", _forceRestore, false);
 
   //
   // extra validation
@@ -529,13 +528,13 @@ static basics::FileUtils::TRI_copy_recursive_e copyVersusLink(std::string const 
 
 void RocksDBHotBackupRestore::execute() {
   std::string errors;
-  bool copyGood={false}, gotLock={false};
+  bool copyGood={false}, gotLock={false}, pauseWorked={false};
 
-  // remove "restoring" directory if it exists
+  /// 1. remove prior "restoring" directory if it exists
   std::string restoringDir = rebuildPath("restoring");
 
   if (createRestoringDirectory(restoringDir)) {
-    // copy restore contents to new "restoring" directory (hard links)
+    /// 2. copy contents of selected hotbackup to new "restoring" directory
     //  (both directories must exists)
     std::function<basics::FileUtils::TRI_copy_recursive_e(std::string const&)>  filter=copyVersusLink;
     std::string fullDirectoryRestore = rebuildPath(_directoryRestore);
@@ -548,12 +547,41 @@ void RocksDBHotBackupRestore::execute() {
     // make sure the transaction hold is released
     auto guardHold = scopeGuard([&gotLock]()
                                   { if (gotLock) TransactionManagerFeature::manager()->releaseTransactions(); });
+    /// 3. stop transactions
     // convert timeout from milliseconds to microseconds
     gotLock = TransactionManagerFeature::manager()->holdTransactions(_timeoutMS * 1000);
 
-    if (gotLock || _forceRestore) {
-        EngineSelectorFeature::ENGINE->flushWal(true, true);
-      } // if
+    if (gotLock) {
+      int retVal;
+      std::string nowStamp, newDirectory, errorStr;
+      long systemError;
+
+      /// 4. stop rocksdb
+      pauseWorked = rocksutils::globalRocksDB()->pauseRocksDB(std::chrono::milliseconds(_timeoutMS));
+      if (pauseWorked) {
+        /// 5. shift active database to a hotbackup directory
+        nowStamp = timepointToString(std::chrono::system_clock::now());
+        newDirectory = buildDirectoryPath(nowStamp, "before_restore");
+        retVal = TRI_RenameFile(getDatabasePath().c_str(), newDirectory.c_str(), &systemError, &errorStr);
+
+        if (TRI_ERROR_NO_ERROR == retVal) {
+          /// 6. shift copy of restoring directory to active database position
+          retVal = TRI_RenameFile(restoringDir.c_str(), getDatabasePath().c_str(), &systemError, &errorStr);
+
+          if (TRI_ERROR_NO_ERROR == retVal) {
+            /// 7. restart rocksdb
+            rocksutils::globalRocksDB()->restartRocksDB();
+          } else {
+            // rename to move restoring into position failed.
+          } // else
+
+        } else {
+          // rename to move production away, failed
+        } // else
+      } else {
+        // rocks db did not stop
+      } // else
+    }  // if
   }  // if
 
   // transaction hold

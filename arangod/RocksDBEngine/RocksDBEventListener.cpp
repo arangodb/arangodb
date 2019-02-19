@@ -129,6 +129,7 @@ bool RocksDBEventListenerThread::shaCalcFile(std::string const & filename) {
       std::string newfile = filename.substr(0, filename.size() - 4);
       newfile += ".sha.";
       newfile += sha.final();
+      newfile += ".hash";
       int ret_val = TRI_WriteFile(newfile.c_str(), "", 0);
       if (TRI_ERROR_NO_ERROR != ret_val) {
         good = false;

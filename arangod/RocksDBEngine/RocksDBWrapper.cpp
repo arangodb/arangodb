@@ -65,13 +65,13 @@ RocksDBWrapper::RocksDBWrapper(const rocksdb::DBOptions& db_options,
 
 
 /// @brief start a rocksdb pause, then return.  True if pause started within timeout
-bool RocksDBWrapper::pauseRocksDB(std::chrono::milliseconds timeout, bool force) {
+bool RocksDBWrapper::pauseRocksDB(std::chrono::milliseconds timeout) {
   bool withinTimeout(false);
 
   // NOTE: this is intentionally without unlock protection
-//  withinTimeout=_rwlock.writeLock(timeout);
+  withinTimeout=_rwlock.writeLock(timeout);
 
-  if (withinTimeout || force) {
+  if (withinTimeout) {
     deactivateAllIterators();
     deactivateAllSnapshots();
     _db->Close();
@@ -82,6 +82,17 @@ bool RocksDBWrapper::pauseRocksDB(std::chrono::milliseconds timeout, bool force)
   return withinTimeout;
 
 } // RocksDBWrapper::pauseRocksDB
+
+
+bool RocksDBWrapper::restartRocksDB() {
+
+  _db = nullptr;
+
+  _rwlock.unlockWrite();
+
+  return false;
+
+} // RocksDBWrapper::restartRocksDB
 
 
 rocksdb::Iterator* RocksDBWrapper::NewIterator(const rocksdb::ReadOptions& opts,

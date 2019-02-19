@@ -535,7 +535,8 @@ class RocksDBWrapper : public rocksdb::TransactionDB {
   }
 
   ///
-  bool pauseRocksDB(std::chrono::milliseconds timeout, bool force);
+  bool pauseRocksDB(std::chrono::milliseconds timeout);
+  bool restartRocksDB();
 
   /// give out readwrite lock so iterators and snapshots can protect their API too
   basics::ReadWriteLock & rwlock() {return _rwlock;}

@@ -158,7 +158,7 @@ SECTION("delete matching sha") {
   CHECK(TRI_ERROR_NO_ERROR == ret_val);
 
   /// not real ssh for the data written above
-  new_sha = basepath + ".sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+  new_sha = basepath + ".sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash";
   ret_val = TRI_WriteFile(new_sha.c_str(), "", 0);
   CHECK(TRI_ERROR_NO_ERROR == ret_val);
 
@@ -180,9 +180,9 @@ public:
     setup.writeFile("CURRENT","MANIFEST-000004\n");
     setup.writeFile("IDENTITY","no idea what goes here");
     setup.writeFile("037793.sst","raw data 1");
-    setup.writeFile("037793.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","");
+    setup.writeFile("037793.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash","");
     setup.writeFile("037684.sst","raw data 2");
-    setup.writeFile("086218.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","");
+    setup.writeFile("086218.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash","");
     setup.writeFile("086219.sst","raw data 3");
   };
 
@@ -210,13 +210,13 @@ SECTION("verify common situations") {
   CHECK( TRI_ExistsFile(tr.pathName("CURRENT").c_str()));
   CHECK( TRI_ExistsFile(tr.pathName("IDENTITY").c_str()));
   CHECK( TRI_ExistsFile(tr.pathName("037793.sst").c_str()));
-  CHECK( TRI_ExistsFile(tr.pathName("037793.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855").c_str()));
+  CHECK( TRI_ExistsFile(tr.pathName("037793.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash").c_str()));
   CHECK( TRI_ExistsFile(tr.pathName("037684.sst").c_str()));
-  CHECK( TRI_ExistsFile(tr.pathName("037684.sha.2db3c4a7da801356e4efda0d65229d0baadf6950b366418e96abb7ece9c56c12").c_str()));
+  CHECK( TRI_ExistsFile(tr.pathName("037684.sha.2db3c4a7da801356e4efda0d65229d0baadf6950b366418e96abb7ece9c56c12.hash").c_str()));
   CHECK( TRI_ExistsFile(tr.pathName("086219.sst").c_str()));
-  CHECK( TRI_ExistsFile(tr.pathName("086219.sha.5d3cfa346c3852c0c108d720d580cf99910749f17c8429c07c1c2d714be2b7ff").c_str()));
+  CHECK( TRI_ExistsFile(tr.pathName("086219.sha.5d3cfa346c3852c0c108d720d580cf99910749f17c8429c07c1c2d714be2b7ff.hash").c_str()));
 
-  CHECK( !TRI_ExistsFile(tr.pathName("086218.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855").c_str()));
+  CHECK( !TRI_ExistsFile(tr.pathName("086218.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash").c_str()));
 
 
 } // SECTION
