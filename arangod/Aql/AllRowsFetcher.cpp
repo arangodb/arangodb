@@ -69,16 +69,16 @@ ExecutionState AllRowsFetcher::fetchUntilDone() {
   return state;
 }
 
-std::pair<ExecutionState, size_t> AllRowsFetcher::preFetchNumberOfRows() {
+std::pair<ExecutionState, size_t> AllRowsFetcher::preFetchNumberOfRows(size_t atMost) {
   if (_upstreamState == ExecutionState::DONE) {
     TRI_ASSERT(_aqlItemMatrix != nullptr);
-    return {ExecutionState::DONE, _aqlItemMatrix->size()};
+    return {ExecutionState::DONE, (std::min)(atMost, _aqlItemMatrix->size())};
   }
   if (fetchUntilDone() == ExecutionState::WAITING) {
     return {ExecutionState::WAITING, 0};
   }
   TRI_ASSERT(_aqlItemMatrix != nullptr);
-  return {ExecutionState::DONE, _aqlItemMatrix->size()};
+  return {ExecutionState::DONE, (std::min)(atMost, _aqlItemMatrix->size())};
 }
 
 AllRowsFetcher::AllRowsFetcher(BlockFetcher<false>& executionBlock)

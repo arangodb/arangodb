@@ -88,10 +88,30 @@ class SingleRowFetcher {
   // TODO enable_if<passBlocksThrough>
   std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t atMost);
 
-  std::pair<ExecutionState, size_t> preFetchNumberOfRows() {
-    // This is not implemented for this fetcher
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost) {
+    if (_upstreamState == ExecutionState::HASMORE &&
+        (_currentBlock == nullptr /* nothing fetched */ ||
+         _currentBlock->block().size() >= _rowIndex /* fully consumed */)) {
+      fetchBlock(atMost);
+      // we de not need result as local members are modified
+      if (_upstreamState == ExecutionState::WAITING) {
+        return {_upstreamState, 0};
+      }
+    }
+    if (_upstreamState == ExecutionState::DONE) {
+      if (_currentBlock == nullptr) {
+        // There is nothing more from upstream
+        return {_upstreamState, 0};
+      }
+      // we only have the block in hand, so we can only return that
+      // many additional rows
+      TRI_ASSERT(_rowIndex < _currentBlock->block().size());
+      return {_upstreamState, (std::min)(_currentBlock->block().size() - _rowIndex, atMost)};
+    }
+    TRI_ASSERT(_currentBlock != nullptr);
+    // Here we can only assume that we have enough from upstream
+    // We do not want to pull additional block
+    return {_upstreamState, atMost};
   }
 
  private:
