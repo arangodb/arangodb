@@ -82,7 +82,7 @@ EnsureIndex::EnsureIndex(MaintenanceFeature& feature, ActionDescription const& d
   }
 }
 
-EnsureIndex::~EnsureIndex(){};
+EnsureIndex::~EnsureIndex() {}
 
 bool EnsureIndex::first() {
   arangodb::Result res;

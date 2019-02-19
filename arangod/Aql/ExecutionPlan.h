@@ -187,6 +187,7 @@ class ExecutionPlan {
   /// @brief unlinkNodes, note that this does not delete the removed
   /// nodes and that one cannot remove the root node of the plan.
   void unlinkNodes(std::unordered_set<ExecutionNode*> const& toUnlink);
+  void unlinkNodes(arangodb::HashSet<ExecutionNode*> const& toUnlink);
 
   /// @brief unlinkNode, note that this does not delete the removed
   /// node and that one cannot remove the root node of the plan.
@@ -331,7 +332,7 @@ class ExecutionPlan {
   /// @brief root node of the plan
   ExecutionNode* _root;
 
-  /// @brief get the node where a variable is introducted.
+  /// @brief get the node where a variable is introduced.
   std::unordered_map<VariableId, ExecutionNode*> _varSetBy;
 
   /// @brief which optimizer rules were applied for a plan

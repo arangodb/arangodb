@@ -51,6 +51,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
+#include "Utils/CollectionGuard.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
@@ -306,12 +307,11 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
 std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
                                                       bool restore, bool& created) {
   TRI_ASSERT(info.isObject());
-  Result res;
 
   // Step 0. Lock all the things
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
   TRI_vocbase_col_status_e status;
-  res = vocbase.useCollection(&_logicalCollection, status);
+  Result res = vocbase.useCollection(&_logicalCollection, status);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -328,9 +328,14 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 
   std::shared_ptr<Index> idx;
   {  // Step 1. Check for matching index
-    WRITE_LOCKER(guard, _indexesLock);
+    READ_LOCKER(guard, _indexesLock);
     if ((idx = findIndex(info, _indexes)) != nullptr) {
-      created = false;  // We already have this index.
+      // We already have this index.
+      if (idx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "there can only be one ttl index per collection");
+      }
+
+      created = false;  
       return idx;
     }
   }

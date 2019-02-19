@@ -124,6 +124,8 @@ class RocksDBIndex : public Index {
   virtual RocksDBCuckooIndexEstimator<uint64_t>* estimator() { return nullptr; }
   virtual void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) {}
   virtual void recalculateEstimates() {}
+  
+  virtual bool isPersistent() const override { return true; }
 
  protected:
   RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,

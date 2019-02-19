@@ -50,6 +50,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/v8-actions.h"
+#include "V8Server/v8-ttl.h"
 #include "V8Server/v8-user-functions.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/vocbase.h"
@@ -1478,6 +1479,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
       TRI_InitV8Utils(isolate, localContext, _startupDirectory, modules);
       TRI_InitV8DebugUtils(isolate, localContext);
       TRI_InitV8Shell(isolate);
+      TRI_InitV8Ttl(isolate);
 
       {
         v8::HandleScope scope(isolate);
