@@ -455,7 +455,7 @@ void RocksDBHotBackupCreate::executeCreate() {
 ///        POST:  Initiate restore of rocksdb snapshot in place of working directory
 ////////////////////////////////////////////////////////////////////////////////
 RocksDBHotBackupRestore::RocksDBHotBackupRestore(const VPackSlice body)
-  : RocksDBHotBackup(body), _saveCurrent(true), _timeoutMS(10000)
+  : RocksDBHotBackup(body), _saveCurrent(true), _forceRestore(true), _timeoutSeconds(10000)
 {
 }
 
@@ -463,7 +463,7 @@ RocksDBHotBackupRestore::RocksDBHotBackupRestore(const VPackSlice body)
 RocksDBHotBackupRestore::~RocksDBHotBackupRestore() {
 }
 
-
+/// @brief convert the message payload into class variable options
 void RocksDBHotBackupRestore::parseParameters(rest::RequestType const type) {
 
   _valid = (rest::RequestType::POST == type);
@@ -482,7 +482,8 @@ void RocksDBHotBackupRestore::parseParameters(rest::RequestType const type) {
 
   // remaining params are optional
   getParamValue("saveCurrent", _saveCurrent, false);
-  getParamValue("timeoutMS", _timeoutMS, false);
+  getParamValue("forceRestore", _forceRestore, false);
+  getParamValue("timeout", _timeoutSeconds, false);
 
   //
   // extra validation
@@ -526,108 +527,184 @@ static basics::FileUtils::TRI_copy_recursive_e copyVersusLink(std::string const 
 } // copyVersusLink
 
 
+/// @brief step through the restore procedures
 void RocksDBHotBackupRestore::execute() {
-  std::string errors;
-  bool copyGood={false}, gotLock={false}, pauseWorked={false};
+  std::string errors, restoringDir;
+  bool good = {true}, restoringReady={false}, gotLock={false}, pauseWorked={false};
 
-  /// 1. remove prior "restoring" directory if it exists
-  std::string restoringDir = rebuildPath("restoring");
-
-  if (createRestoringDirectory(restoringDir)) {
-    /// 2. copy contents of selected hotbackup to new "restoring" directory
-    //  (both directories must exists)
-    std::function<basics::FileUtils::TRI_copy_recursive_e(std::string const&)>  filter=copyVersusLink;
-    std::string fullDirectoryRestore = rebuildPath(_directoryRestore);
-    copyGood = basics::FileUtils::copyRecursive(fullDirectoryRestore, restoringDir,
-                                                filter, errors);
-  } // if
+  /// 1. create copy of hotbackup to restore
+  ///    (restoringDir populated by function)
+  restoringReady = createRestoringDirectory(restoringDir);
+  good = restoringReady;
 
   // proceed only if copy completed
-  if (copyGood) {
+  if (good) {
     // make sure the transaction hold is released
     auto guardHold = scopeGuard([&gotLock]()
                                   { if (gotLock) TransactionManagerFeature::manager()->releaseTransactions(); });
-    /// 3. stop transactions
-    // convert timeout from milliseconds to microseconds
-    gotLock = TransactionManagerFeature::manager()->holdTransactions(_timeoutMS * 1000);
+    try {
+      /// 2. attempt to stop transactions,
+      // convert timeout from seconds to microseconds
+      gotLock = TransactionManagerFeature::manager()->holdTransactions(_timeoutSeconds * 1000000);
 
-    if (gotLock) {
-      int retVal;
-      std::string nowStamp, newDirectory, errorStr;
-      long systemError;
+      if (gotLock || _forceRestore) {
+        int retVal;
+        std::string nowStamp, newDirectory, errorStr;
+        long systemError;
 
-      /// 4. stop rocksdb
-      pauseWorked = rocksutils::globalRocksDB()->pauseRocksDB(std::chrono::milliseconds(_timeoutMS));
-      if (pauseWorked) {
-        /// 5. shift active database to a hotbackup directory
-        nowStamp = timepointToString(std::chrono::system_clock::now());
-        newDirectory = buildDirectoryPath(nowStamp, "before_restore");
-        retVal = TRI_RenameFile(getDatabasePath().c_str(), newDirectory.c_str(), &systemError, &errorStr);
-
-        if (TRI_ERROR_NO_ERROR == retVal) {
-          /// 6. shift copy of restoring directory to active database position
-          retVal = TRI_RenameFile(restoringDir.c_str(), getDatabasePath().c_str(), &systemError, &errorStr);
+        /// 3. stop rocksdb
+        pauseWorked = pauseRocksDB();
+        if (pauseWorked) {
+          /// 4. shift active database to a hotbackup directory
+          nowStamp = timepointToString(std::chrono::system_clock::now());
+          newDirectory = buildDirectoryPath(nowStamp, "before_restore");
+          retVal = TRI_RenameFile(getDatabasePath().c_str(), newDirectory.c_str(), &systemError, &errorStr);
 
           if (TRI_ERROR_NO_ERROR == retVal) {
-            /// 7. restart rocksdb
-            rocksutils::globalRocksDB()->restartRocksDB();
-          } else {
-            // rename to move restoring into position failed.
-          } // else
+            /// 5. shift copy of restoring directory to active database position
+            retVal = TRI_RenameFile(restoringDir.c_str(), getDatabasePath().c_str(), &systemError, &errorStr);
 
+            if (TRI_ERROR_NO_ERROR == retVal) {
+              /// 6. restart rocksdb
+              restartRocksDB();
+            } else {
+              // rename to move restoring into position failed.
+              good = false;
+              _respCode = rest::ResponseCode::BAD;
+              _errorMessage = "Unable to rename restore directory into production. (";
+              _errorMessage += errorStr;
+              _errorMessage += ")";
+              LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+                << "RocksDBHotBackupRestore: " << _errorMessage;
+
+              // ... and if this fails too? ...
+              retVal = TRI_RenameFile(newDirectory.c_str(), getDatabasePath().c_str(), &systemError, &errorStr);
+              if (TRI_ERROR_NO_ERROR != retVal) {
+                TRI_ASSERT(false);
+                LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+                  << "RocksDBHotBackupRestore: Unable to rename old production back after failure."
+                  << errorStr;
+              } // if
+            } // else
+          } else {
+            // rename to move production away, failed
+            good = false;
+            _respCode = rest::ResponseCode::BAD;
+            _errorMessage = "Unable to rename existing database directory. (";
+            _errorMessage += errorStr;
+            _errorMessage += ")";
+          } // else
         } else {
-          // rename to move production away, failed
+          // unable to pause rocksdb, production db still alive and running
+          good = false;
+          _respCode = rest::ResponseCode::BAD;
+          _errorMessage = "Unable to stop rocksdb within timeout.";
         } // else
       } else {
         // rocks db did not stop
+        good = false;
+        _respCode = rest::ResponseCode::BAD;
+        _errorMessage = "Unable to stop rocksdb transactions within timeout.";
       } // else
-    }  // if
+    } catch(...) {
+      good = false;
+      _respCode = rest::ResponseCode::BAD;
+      _errorMessage = "RocksDBHotBackupRestore::execute caught exception.";
+      // _respError = 0;???
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "RocksDBHotBackupRestore::execute caught exception.";
+    } // catch
   }  // if
 
-  // transaction hold
-  // rocksdb stop
-  // move active directory to new snapshot directory name
-  // rename "restoring" to active name
-  // rocksdb start
-  // release transaction hold
-  // optionally delete new snapshot directory
+  /// clean up on error
+  if (!good) {
+    if (pauseWorked) {
+      restartRocksDB();
+    } // if
+
+    if (restoringReady) {
+      TRI_RemoveDirectory(restoringDir.c_str());
+    } // if
+  }  // if
 
   return;
 
 } // RocksDBHotBackupRestore::execute
 
 
-bool RocksDBHotBackupRestore::createRestoringDirectory(const std::string & restoreDir) {
+/// @brief clear previous restoring directory and populate new
+///        with files from desired hotbackup
+bool RocksDBHotBackupRestore::createRestoringDirectory(std::string & restoreDirOutput) {
   bool retFlag={true};
+  std::string errors, fullDirectoryRestore = rebuildPath(_directoryRestore);
 
-  // git rid of an old restoring directory if it exists
-  if (basics::FileUtils::exists(restoreDir)) {
-    if (basics::FileUtils::isDirectory(restoreDir)) {
-      // currently ignoring error
-      TRI_RemoveDirectory(restoreDir.c_str());
-    } else {
-      // currently ignoring error
-      basics::FileUtils::remove(restoreDir);
-    } // else
+  try {
+    // create path name (used here and returned)
+    restoreDirOutput = rebuildPath("restoring");
 
-    // test if still there and error out?
-    if (basics::FileUtils::exists(restoreDir)) {
-      retFlag = false;
+    // git rid of an old restoring directory/file if it exists
+    if (basics::FileUtils::exists(restoreDirOutput)) {
+      if (basics::FileUtils::isDirectory(restoreDirOutput)) {
+        TRI_RemoveDirectory(restoreDirOutput.c_str());
+      } else {
+        basics::FileUtils::remove(restoreDirOutput);
+      } // else
+
+      // test if still there and error out?
+      if (basics::FileUtils::exists(restoreDirOutput)) {
+        retFlag = false;
+      } // if
     } // if
-  } // if
 
-  // now create a new restoring directory
-  if (retFlag) {
-    retFlag = basics::FileUtils::createDirectory(restoreDir, nullptr);
-  } // if
+    // now create a new restoring directory
+    if (retFlag) {
+      retFlag = basics::FileUtils::createDirectory(restoreDirOutput, nullptr);
+    } // if
+
+    //  copy contents of selected hotbackup to new "restoring" directory
+    //  (both directories must exists)
+    if (retFlag) {
+      std::function<basics::FileUtils::TRI_copy_recursive_e(std::string const&)>  filter=copyVersusLink;
+      retFlag = basics::FileUtils::copyRecursive(fullDirectoryRestore, restoreDirOutput,
+                                                 filter, errors);
+    } // if
+  } catch(...) {
+    retFlag = false;
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      << "createRestoringDirectory caught exception.";
+  } // catch
 
   // set error values
   if (!retFlag) {
     _respError = TRI_ERROR_CANNOT_CREATE_DIRECTORY;
     _respCode = rest::ResponseCode::BAD;
+    _result.add(VPackValue(VPackValueType::Object));
+    _result.add("failedDirectory", VPackValue(restoreDirOutput.c_str()));
+    _result.close();
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      << "RocksDBHotBackupRestore unable to create/populate " << restoreDirOutput
+      << " from " << fullDirectoryRestore << " (errors: " << errors << ")";
   } // if
 
   return retFlag;
 
 } // RocksDBHotBackupRestore::createRestoringDirectory
-}  // namespace arangodb
+
+
+/// @brief wrapper for easy unit testing
+bool RocksDBHotBackupRestore::pauseRocksDB() {
+
+  return rocksutils::globalRocksDB()->pauseRocksDB(std::chrono::seconds(_timeoutSeconds));
+
+} //  RocksDBHotBackupRestore::pauseRocksDB
+
+
+/// @brief wrapper for easy unit testing
+bool RocksDBHotBackupRestore::restartRocksDB() {
+
+  return rocksutils::globalRocksDB()->restartRocksDB();
+
+} //  RocksDBHotBackupRestore::restartRocksDB
+
+
+} // namespace arangodb

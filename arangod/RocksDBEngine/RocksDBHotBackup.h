@@ -140,18 +140,24 @@ public:
 
   // @brief accessors to the parameters
   const std::string & getTimestampCurrent() const {return _timestampCurrent;}
-  unsigned getTimeoutMS() const {return _timeoutMS;}
+  unsigned getTimeout() const {return _timeoutSeconds;}
   const std::string & getDirectoryRestore() const {return _directoryRestore;}
 
 protected:
 
-  bool createRestoringDirectory(const std::string &);
+  bool createRestoringDirectory(std::string & nameOutput);
 
   bool _saveCurrent;
-  bool _forceRestore;
-  unsigned _timeoutMS;
+  bool _forceRestore;  // relates to transaction pause only, not rocksdb pause
+  unsigned _timeoutSeconds; // used to stop transaction, used again to stop rocksdb
   std::string _timestampCurrent;
   std::string _directoryRestore;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief The following wrapper routines simplify unit testing
+  ////////////////////////////////////////////////////////////////////////////////
+  virtual bool pauseRocksDB();
+  virtual bool restartRocksDB();
 
 };// class RocksDBHotBackupRestore
 
