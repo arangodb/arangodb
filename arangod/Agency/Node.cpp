@@ -119,14 +119,11 @@ Node::Node(Node&& other)
       _buffer(std::move(other._buffer)) {
   // The _children map / _array vector has been moved here, therefore we must
   // correct the _parent entry of all direct children:
-  if (_type == NODE) {
-    for (auto& child : _children) {
-      child.second->_parent = this;
-    }
-  } else if (_type == ARRAY) {
-    for (auto& element : _array) {
-      element->_parent = this;
-    }
+  for (auto& child : _children) {
+    child.second->_parent = this;
+  }
+  for (auto& element : _array) {
+    element->_parent = this;
   }
 }
 
@@ -135,22 +132,18 @@ Node::Node(Node const& other)
     : _nodeName(other._nodeName),
       _parent(nullptr),
       _store(nullptr),
-      _children(other._children),
       _ttl(other._ttl),
-      _array(other._array),
       _type(other._type),
       _buffer(other._buffer) {
-  if (other._type == NODE) {
-    for (auto const& p : other._children) {
-      auto copy = std::make_shared<Node>(*p.second);
-      copy->_parent = this;  // new children have us as _parent!
-    }
+  for (auto const& p : other._children) {
+    auto copy = std::make_shared<Node>(*p.second);
+    copy->_parent = this;  // new children have us as _parent!
+    _children.emplace(p.first,copy);
   }
-  if (other._type == ARRAY) {
-    for (auto const& a : other._array) {
-      auto copy = std::make_shared<Node>(*a);
-      copy->_parent = this;  // new array elements have us as _parent!
-    }
+  for (auto const& a : other._array) {
+    auto copy = std::make_shared<Node>(*a);
+    copy->_parent = this;  // new array elements have us as _parent!
+    _array.emplace_back(copy);
   }
 }
 
@@ -219,6 +212,7 @@ Node& Node::operator=(Node const& rhs) {
   removeTimeToLive();
   _nodeName = rhs._nodeName;
   _children.clear();
+  _array.clear();
   for (auto const& p : rhs._children) {
     auto copy = std::make_shared<Node>(*p.second);
     copy->_parent = this;  // new child copy has us as _parent
@@ -283,7 +277,11 @@ Node& Node::operator()(std::vector<std::string> const& pv) {
     if (_children.find(key) == _children.end()) {
       _array.clear();
       _buffer.clear();
-      _children[key] = std::make_shared<Node>(key, this);
+
+      auto node = std::make_shared<Node>(key);
+      node->_parent = this;  // new child copy has us as _parent
+      _children.emplace(std::make_pair(key,node));
+
     }
     auto pvc(pv);
     pvc.erase(pvc.begin());
@@ -585,7 +583,6 @@ bool Node::handle<REPLACE>(VPackSlice const& slice) {
 
   _type = ARRAY;
   if (!_array.empty()) {
-    VPackSlice valToRepl = ;
     for (auto const& i : _array) {
       auto tmp = i->toBuilder();
       if (VelocyPackHelper::compare(tmp.slice(), slice.get("val"), true) == 0) {
