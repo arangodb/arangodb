@@ -122,7 +122,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
     tmp.openArray();
     for (VPackSlice const& s : VPackArrayIterator(tmpInner.slice())) {
-      auto id = StringRef(s.get(StaticStrings::IndexId));
+      auto id = arangodb::velocypack::StringRef(s.get(StaticStrings::IndexId));
       auto found = std::find_if(estimates.begin(), estimates.end(),
                                 [&id](std::pair<std::string, double> const& v) {
                                   return id == v.first;

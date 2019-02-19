@@ -98,7 +98,7 @@ class Context {
 
   /// @brief unregister the transaction
   /// this will save the transaction's id and status locally
-  void storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations) noexcept;
+  void storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations, bool wasRegistered) noexcept;
 
   /// @brief get a custom type handler
   virtual std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() = 0;
@@ -140,6 +140,7 @@ class Context {
   struct {
     TRI_voc_tid_t id;
     bool hasFailedOperations;
+    bool wasRegistered;
   } _transaction;
 
   bool _ownsResolver;

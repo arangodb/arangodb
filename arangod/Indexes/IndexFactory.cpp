@@ -25,7 +25,6 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -35,6 +34,7 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace {
@@ -318,7 +318,7 @@ Result IndexFactory::processIndexFields(VPackSlice definition, VPackBuilder& bui
                                         size_t minFields, size_t maxField, bool create,
                                         bool allowExpansion) {
   TRI_ASSERT(builder.isOpenObject());
-  std::unordered_set<StringRef> fields;
+  std::unordered_set<arangodb::velocypack::StringRef> fields;
   auto fieldsSlice = definition.get(arangodb::StaticStrings::IndexFields);
 
   builder.add(
@@ -333,7 +333,7 @@ Result IndexFactory::processIndexFields(VPackSlice definition, VPackBuilder& bui
         return Result(TRI_ERROR_BAD_PARAMETER, "index field names must be strings");
       }
 
-      StringRef f(it);
+      arangodb::velocypack::StringRef f(it);
 
       if (f.empty() || (create && f == StaticStrings::IdString)) {
         // accessing internal attributes is disallowed
@@ -454,6 +454,10 @@ Result IndexFactory::enhanceJsonIndexTtl(VPackSlice definition,
       return Result(TRI_ERROR_BAD_PARAMETER, "expireAfter attribute must greater equal to zero");
     }
     builder.add(arangodb::StaticStrings::IndexExpireAfter, v);
+    
+    bool bck = basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::IndexInBackground,
+                                                         false);
+    builder.add(StaticStrings::IndexInBackground, VPackValue(bck));
   }
 
   return res;
@@ -469,6 +473,10 @@ Result IndexFactory::enhanceJsonIndexGeo(VPackSlice definition,
     builder.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(true));
     builder.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(false));
     IndexFactory::processIndexGeoJsonFlag(definition, builder);
+    
+    bool bck = basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::IndexInBackground,
+                                                         false);
+    builder.add(StaticStrings::IndexInBackground, VPackValue(bck));
   }
 
   return res;
@@ -495,6 +503,10 @@ Result IndexFactory::enhanceJsonIndexFulltext(VPackSlice definition,
     }
 
     builder.add("minLength", VPackValue(minWordLength));
+    
+    bool bck = basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::IndexInBackground,
+                                                         false);
+    builder.add(StaticStrings::IndexInBackground, VPackValue(bck));
   }
 
   return res;

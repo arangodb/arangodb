@@ -500,7 +500,7 @@ static void ClientConnection_httpGetAny(v8::FunctionCallbackInfo<v8::Value> cons
     ObjectToMap(isolate, headerFields, args[1]);
   }
 
-  TRI_V8_RETURN(v8connection->getData(isolate, StringRef(*url, url.length()),
+  TRI_V8_RETURN(v8connection->getData(isolate, arangodb::velocypack::StringRef(*url, url.length()),
                                       headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
@@ -552,7 +552,7 @@ static void ClientConnection_httpHeadAny(v8::FunctionCallbackInfo<v8::Value> con
     ObjectToMap(isolate, headerFields, args[1]);
   }
 
-  TRI_V8_RETURN(v8connection->headData(isolate, StringRef(*url, url.length()),
+  TRI_V8_RETURN(v8connection->headData(isolate, arangodb::velocypack::StringRef(*url, url.length()),
                                        headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
@@ -599,7 +599,7 @@ static void ClientConnection_httpDeleteAny(v8::FunctionCallbackInfo<v8::Value> c
 
   std::unordered_map<std::string, std::string> headerFields;
   if (args.Length() == 1) {  // no body provided
-    TRI_V8_RETURN(v8connection->deleteData(isolate, StringRef(*url, url.length()),
+    TRI_V8_RETURN(v8connection->deleteData(isolate, arangodb::velocypack::StringRef(*url, url.length()),
                                            v8::Undefined(isolate), headerFields, raw));
   }
 
@@ -608,7 +608,7 @@ static void ClientConnection_httpDeleteAny(v8::FunctionCallbackInfo<v8::Value> c
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(v8connection->deleteData(isolate, StringRef(*url, url.length()),
+  TRI_V8_RETURN(v8connection->deleteData(isolate, arangodb::velocypack::StringRef(*url, url.length()),
                                          args[1], headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
@@ -660,7 +660,7 @@ static void ClientConnection_httpOptionsAny(v8::FunctionCallbackInfo<v8::Value> 
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(v8connection->optionsData(isolate, StringRef(*url, url.length()),
+  TRI_V8_RETURN(v8connection->optionsData(isolate, arangodb::velocypack::StringRef(*url, url.length()),
                                           args[1], headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
@@ -711,7 +711,7 @@ static void ClientConnection_httpPostAny(v8::FunctionCallbackInfo<v8::Value> con
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(v8connection->postData(isolate, StringRef(*url, url.length()),
+  TRI_V8_RETURN(v8connection->postData(isolate, arangodb::velocypack::StringRef(*url, url.length()),
                                        args[1], headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
@@ -763,7 +763,7 @@ static void ClientConnection_httpPutAny(v8::FunctionCallbackInfo<v8::Value> cons
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(v8connection->putData(isolate, StringRef(*url, url.length()),
+  TRI_V8_RETURN(v8connection->putData(isolate, arangodb::velocypack::StringRef(*url, url.length()),
                                       args[1], headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
@@ -814,7 +814,7 @@ static void ClientConnection_httpPatchAny(v8::FunctionCallbackInfo<v8::Value> co
     ObjectToMap(isolate, headerFields, args[2]);
   }
 
-  TRI_V8_RETURN(v8connection->patchData(isolate, StringRef(*url, url.length()),
+  TRI_V8_RETURN(v8connection->patchData(isolate, arangodb::velocypack::StringRef(*url, url.length()),
                                         args[1], headerFields, raw));
   TRI_V8_TRY_CATCH_END
 }
@@ -869,7 +869,7 @@ static void ClientConnection_httpSendFile(v8::FunctionCallbackInfo<v8::Value> co
   // check header fields
   std::unordered_map<std::string, std::string> headerFields;
   v8::Local<v8::Value> result =
-      v8connection->postData(isolate, StringRef(*url, url.length()), args[1],
+      v8connection->postData(isolate, arangodb::velocypack::StringRef(*url, url.length()), args[1],
                              headerFields, false, /*isFile*/ true);
 
   if (tryCatch.HasCaught()) {
@@ -1333,7 +1333,7 @@ static void ClientConnection_setDatabaseName(v8::FunctionCallbackInfo<v8::Value>
 }
 
 v8::Local<v8::Value> V8ClientConnection::getData(
-    v8::Isolate* isolate, StringRef const& location,
+    v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
     return requestDataRaw(isolate, fuerte::RestVerb::Get, location,
@@ -1344,7 +1344,7 @@ v8::Local<v8::Value> V8ClientConnection::getData(
 }
 
 v8::Local<v8::Value> V8ClientConnection::headData(
-    v8::Isolate* isolate, StringRef const& location,
+    v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
     return requestDataRaw(isolate, fuerte::RestVerb::Head, location,
@@ -1355,7 +1355,7 @@ v8::Local<v8::Value> V8ClientConnection::headData(
 }
 
 v8::Local<v8::Value> V8ClientConnection::deleteData(
-    v8::Isolate* isolate, StringRef const& location, v8::Local<v8::Value> const& body,
+    v8::Isolate* isolate, arangodb::velocypack::StringRef const& location, v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
     return requestDataRaw(isolate, fuerte::RestVerb::Delete, location, body, headerFields);
@@ -1364,7 +1364,7 @@ v8::Local<v8::Value> V8ClientConnection::deleteData(
 }
 
 v8::Local<v8::Value> V8ClientConnection::optionsData(
-    v8::Isolate* isolate, StringRef const& location, v8::Local<v8::Value> const& body,
+    v8::Isolate* isolate, arangodb::velocypack::StringRef const& location, v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
     return requestDataRaw(isolate, fuerte::RestVerb::Options, location, body, headerFields);
@@ -1373,7 +1373,7 @@ v8::Local<v8::Value> V8ClientConnection::optionsData(
 }
 
 v8::Local<v8::Value> V8ClientConnection::postData(
-    v8::Isolate* isolate, StringRef const& location, v8::Local<v8::Value> const& body,
+    v8::Isolate* isolate, arangodb::velocypack::StringRef const& location, v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw, bool isFile) {
   if (raw) {
     return requestDataRaw(isolate, fuerte::RestVerb::Post, location, body, headerFields);
@@ -1382,7 +1382,7 @@ v8::Local<v8::Value> V8ClientConnection::postData(
 }
 
 v8::Local<v8::Value> V8ClientConnection::putData(
-    v8::Isolate* isolate, StringRef const& location, v8::Local<v8::Value> const& body,
+    v8::Isolate* isolate, arangodb::velocypack::StringRef const& location, v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
     return requestDataRaw(isolate, fuerte::RestVerb::Put, location, body, headerFields);
@@ -1391,7 +1391,7 @@ v8::Local<v8::Value> V8ClientConnection::putData(
 }
 
 v8::Local<v8::Value> V8ClientConnection::patchData(
-    v8::Isolate* isolate, StringRef const& location, v8::Local<v8::Value> const& body,
+    v8::Isolate* isolate, arangodb::velocypack::StringRef const& location, v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
     return requestDataRaw(isolate, fuerte::RestVerb::Patch, location, body, headerFields);
@@ -1400,7 +1400,7 @@ v8::Local<v8::Value> V8ClientConnection::patchData(
 }
 
 v8::Local<v8::Value> V8ClientConnection::requestData(
-    v8::Isolate* isolate, fuerte::RestVerb method, StringRef const& location,
+    v8::Isolate* isolate, fuerte::RestVerb method, arangodb::velocypack::StringRef const& location,
     v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool isFile) {
   _lastErrorMessage = "";
@@ -1467,7 +1467,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
 }
 
 v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
-    v8::Isolate* isolate, fuerte::RestVerb method, StringRef const& location,
+    v8::Isolate* isolate, fuerte::RestVerb method, arangodb::velocypack::StringRef const& location,
     v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields) {
   _lastErrorMessage = "";

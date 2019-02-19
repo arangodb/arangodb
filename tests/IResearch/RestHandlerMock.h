@@ -42,7 +42,7 @@ struct GeneralRequestMock: public arangodb::GeneralRequest {
   using arangodb::GeneralRequest::addSuffix;
   void addSuffix(std::string const& part) { addSuffix(std::string(part)); }
   virtual size_t contentLength() const override;
-  virtual arangodb::StringRef rawPayload() const override;
+  virtual arangodb::velocypack::StringRef rawPayload() const override;
   virtual arangodb::velocypack::Slice payload(arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults) override;
   virtual arangodb::Endpoint::TransportType transportType() override;
 };
