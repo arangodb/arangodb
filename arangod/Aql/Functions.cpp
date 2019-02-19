@@ -4159,18 +4159,22 @@ AqlValue Functions::Unique(ExpressionContext* expressionContext, transaction::Me
   std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
              arangodb::basics::VelocyPackHelper::VPackEqual(options));
-
-  for (VPackSlice s : VPackArrayIterator(slice)) {
-    if (!s.isNone()) {
-      values.emplace(s.resolveExternal());
-    }
-  }
-
+  
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
-  for (auto const& it : values) {
-    builder->add(it);
+
+  for (VPackSlice s : VPackArrayIterator(slice)) {
+    if (s.isNone()) {
+      continue;
+    }
+
+    s = s.resolveExternal();
+
+    if (values.emplace(s).second) {
+      builder->add(s);
+    }
   }
+  
   builder->close();
   return AqlValue(builder.get());
 }
