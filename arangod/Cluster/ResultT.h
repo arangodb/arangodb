@@ -23,6 +23,8 @@
 #ifndef ARANGODB_BASICS_RESULT_T_H
 #define ARANGODB_BASICS_RESULT_T_H
 
+#include <type_traits>
+
 #include <boost/optional.hpp>
 
 #include "Basics/Common.h"
@@ -55,6 +57,7 @@ namespace arangodb {
 // or, having a `Result result` with result.fail() being true,
 //   return result;
 // .
+// Some implicit conversions are disabled when they could cause ambiguity.
 template <typename T>
 class ResultT {
  public:
@@ -74,22 +77,54 @@ class ResultT {
     return ResultT(boost::none, errorNumber, errorMessage);
   }
 
-  // These are not explicit on purpose
+  ResultT static error(Result const& other) {
+    TRI_ASSERT(other.fail());
+    return ResultT(boost::none, other);
+  }
+
+  ResultT static error(Result&& other) {
+    TRI_ASSERT(other.fail());
+    return ResultT(boost::none, std::move(other));
+  }
+
+  // This is disabled if U is implicitly convertible to Result
+  // (e.g., if U = int) to avoid ambiguous construction.
+  // Use ::success() or ::error() instead in that case.
+  template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
+  // This is not explicit on purpose
+  // NOLINTNEXTLINE(google-explicit-constructor)
   ResultT(Result const& other) : _result(other) {
     // .ok() is not allowed here, as _val should be expected to be initialized
     // iff .ok() is true.
     TRI_ASSERT(other.fail());
   }
 
+  // This is disabled if U is implicitly convertible to Result
+  // (e.g., if U = int) to avoid ambiguous construction.
+  // Use ::success() or ::error() instead in that case.
+  template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
+  // This is not explicit on purpose
+  // NOLINTNEXTLINE(google-explicit-constructor)
   ResultT(Result&& other) : _result(std::move(other)) {
     // .ok() is not allowed here, as _val should be expected to be initialized
     // iff .ok() is true.
     TRI_ASSERT(other.fail());
   }
 
-  // These are not explicit on purpose
+  // This is disabled if U is implicitly convertible to Result
+  // (e.g., if U = int) to avoid ambiguous construction.
+  // Use ::success() or ::error() instead in that case.
+  template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
+  // This is not explicit on purpose
+  // NOLINTNEXTLINE(google-explicit-constructor)
   ResultT(T&& val) : ResultT(std::move(val), TRI_ERROR_NO_ERROR) {}
 
+  // This is disabled if U is implicitly convertible to Result
+  // (e.g., if U = int) to avoid ambiguous construction.
+  // Use ::success() or ::error() instead in that case.
+  template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
+  // This is not explicit on purpose
+  // NOLINTNEXTLINE(google-explicit-constructor)
   ResultT(T const& val) : ResultT(val, TRI_ERROR_NO_ERROR) {}
 
   ResultT() = delete;
@@ -103,8 +138,6 @@ class ResultT {
     _val = std::move(val_);
     return *this;
   }
-
-  Result copy_result() const { return *this; }
 
   // These would be very convenient, but also make it very easy to accidentally
   // use the value of an error-result. So don't add them.
@@ -124,7 +157,17 @@ class ResultT {
 
   T const&& operator*() const&& { return get(); }
 
-  explicit operator bool() const { return ok(); }
+  // Allow convenient check to allow for code like
+  //   if (res) { /* use res.get() */ } else { /* handle error res.result() */ }
+  // . Is disabled for bools to avoid accidental confusion of
+  //   if (res)
+  // with
+  //   if (res.get())
+  // .
+  template <typename U = T, typename = std::enable_if_t<!std::is_same<U, bool>::value>>
+  explicit operator bool() const {
+    return ok();
+  }
 
   T const& get() const { return _val.get(); }
 
@@ -163,7 +206,7 @@ class ResultT {
   // forwarded methods
   bool ok() const { return _result.ok(); }
   bool fail() const { return _result.fail(); }
-  bool is(uint64_t code) { return _result.is(code); }
+  bool is(int code) { return _result.is(code); }
   int errorNumber() const { return _result.errorNumber(); }
   std::string errorMessage() const { return _result.errorMessage(); }
 
@@ -186,6 +229,12 @@ class ResultT {
 
   ResultT(boost::optional<T> const& val_, int errorNumber, std::string const& errorMessage)
       : _result(errorNumber, errorMessage), _val(val_) {}
+
+  ResultT(boost::optional<T>&& val_, Result result)
+      : _result(std::move(result)), _val(std::move(val_)) {}
+
+  ResultT(boost::optional<T>&& val_, Result&& result)
+      : _result(std::move(result)), _val(std::move(val_)) {}
 };
 
 }  // namespace arangodb
