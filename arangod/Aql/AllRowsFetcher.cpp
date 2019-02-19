@@ -33,9 +33,17 @@ using namespace arangodb::aql;
 std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcher::fetchAllRows() {
   // Avoid unnecessary upstream calls
   if (_upstreamState == ExecutionState::DONE) {
-    return {ExecutionState::DONE, nullptr};
+    TRI_ASSERT(_aqlItemMatrix != nullptr);
+    return {ExecutionState::DONE, _aqlItemMatrix.get()};
   }
+  if (fetchUntilDone() == ExecutionState::WAITING) {
+    return {ExecutionState::WAITING, nullptr};
+  }
+  TRI_ASSERT(_aqlItemMatrix != nullptr);
+  return {ExecutionState::DONE, _aqlItemMatrix.get()};
+}
 
+ExecutionState AllRowsFetcher::fetchUntilDone() {
   if (_aqlItemMatrix == nullptr) {
     _aqlItemMatrix = std::make_unique<AqlItemMatrix>(getNrInputRegisters());
   }
@@ -47,7 +55,7 @@ std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcher::fetchAllRows() {
     std::tie(state, block) = fetchBlock();
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(block == nullptr);
-      return {ExecutionState::WAITING, nullptr};
+      return state;
     }
     if (block == nullptr) {
       TRI_ASSERT(state == ExecutionState::DONE);
@@ -56,9 +64,21 @@ std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcher::fetchAllRows() {
     }
   }
 
+  TRI_ASSERT(_aqlItemMatrix != nullptr);
   TRI_ASSERT(state == ExecutionState::DONE);
+  return state;
+}
 
-  return {ExecutionState::DONE, _aqlItemMatrix.get()};
+std::pair<ExecutionState, size_t> AllRowsFetcher::preFetchNumberOfRows() {
+  if (_upstreamState == ExecutionState::DONE) {
+    TRI_ASSERT(_aqlItemMatrix != nullptr);
+    return {ExecutionState::DONE, _aqlItemMatrix->size()};
+  }
+  if (fetchUntilDone() == ExecutionState::WAITING) {
+    return {ExecutionState::WAITING, 0};
+  }
+  TRI_ASSERT(_aqlItemMatrix != nullptr);
+  return {ExecutionState::DONE, _aqlItemMatrix->size()};
 }
 
 AllRowsFetcher::AllRowsFetcher(BlockFetcher<false>& executionBlock)
