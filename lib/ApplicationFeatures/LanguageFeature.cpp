@@ -41,7 +41,7 @@ void setCollator(std::string const& language, void* icuDataPtr) {
   }
 }
 
-void setLocale(Locale& locale) {
+  void setLocale(icu::Locale& locale) {
   using arangodb::basics::Utf8Helper;
   std::string languageName;
 
@@ -49,15 +49,15 @@ void setLocale(Locale& locale) {
     languageName =
         std::string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" +
                     Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
-    locale = Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str(),
-                    Utf8Helper::DefaultUtf8Helper.getCollatorCountry().c_str()
+    locale = icu::Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str(),
+                         Utf8Helper::DefaultUtf8Helper.getCollatorCountry().c_str()
                     /*
                        const   char * variant  = 0,
                        const   char * keywordsAndValues = 0
                     */
     );
   } else {
-    locale = Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str());
+    locale = icu::Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str());
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
 
@@ -146,8 +146,8 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
 #ifndef _WIN32
       setenv("ICU_DATA", icu_path.c_str(), 1);
 #else
-      UnicodeString uicuEnv(icu_path.c_str(), (uint16_t)icu_path.length());
-      SetEnvironmentVariableW(L"ICU_DATA", uicuEnv.getTerminatedBuffer());
+      icu::UnicodeString uicuEnv(icu_path.c_str(), (uint16_t)icu_path.length());
+      SetEnvironmentVariableW(L"ICU_DATA", (wchar_t*)uicuEnv.getTerminatedBuffer());
 #endif
     }
   }
