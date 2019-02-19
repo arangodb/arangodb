@@ -150,8 +150,16 @@ bool RemoveFollower::start() {
 
   // First check that we still have too many followers for the current
   // `replicationFactor`:
-#warning catch throw
-  size_t desiredReplFactor = collection.hasAsUInt("replicationFactor").first;
+
+  uint64_t desiredReplFactor;
+  try {
+    collection.hasAsUInt("replicationFactor").first;
+  } catch (std::exception const& e) {
+    LOG_TOPIC(WARN, Logger::SUPERVISION)
+      << "Failed to acquired desired replication factor for "
+      << planColPrefix + _database + "/" + _collection << ": " << e.what();
+    return false;
+  }
   size_t actualReplFactor = planned.length();
   if (actualReplFactor <= desiredReplFactor) {
     finish("", "", true, "job no longer necessary, have few enough replicas");

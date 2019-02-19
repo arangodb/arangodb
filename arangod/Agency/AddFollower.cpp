@@ -146,8 +146,15 @@ bool AddFollower::start() {
 
   // First check that we still have too few followers for the current
   // `replicationFactor`:
-#warning can throw
-  size_t desiredReplFactor = collection.hasAsUInt("replicationFactor").first;
+
+  size_t desiredReplFactor;
+  try {
+    desiredReplFactor = collection.hasAsUInt("replicationFactor").first;
+  } catch (std::exception const& e) {
+    LOG_TOPIC(WARN, Logger::SUPERVISION)
+      << "Failed to acquire desired replication factor for "
+      << planColPrefix + _database + "/" + _collection << ": " << e.what();
+  }
   size_t actualReplFactor = planned.slice().length();
   if (actualReplFactor >= desiredReplFactor) {
     finish("", "", true, "job no longer necessary, have enough replicas");
