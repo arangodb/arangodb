@@ -6951,7 +6951,9 @@ void arangodb::aql::geoIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> 
 
     // if info is valid we try to optimize ENUMERATE_COLLECTION
     if (info && info.collectionNodeToReplace == node) {
-      mod = mod || applyGeoOptimization(plan.get(), limit, info);
+      if (applyGeoOptimization(plan.get(), limit, info)) {
+        mod = true;
+      }
     }
   }
 
