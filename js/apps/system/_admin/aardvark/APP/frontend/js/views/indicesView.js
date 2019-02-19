@@ -46,9 +46,18 @@
       var self = this;
 
       var continueFunction = function (data) {
+        /* filter out index aliases */
+        var aliases = data.supports.aliases;
+        if (!aliases) {
+          aliases = {};
+        } else {
+          aliases = aliases.indexes;
+        }
         $(self.el).html(self.template.render({
           model: self.model,
-          supported: data.supports.indexes
+          supported: data.supports.indexes.filter(function (type) {
+            return !aliases.hasOwnProperty(type);
+          })
         }));
 
         self.breadcrumb();
@@ -119,8 +128,19 @@
       var unique;
       var sparse;
       var deduplicate;
+      var background;
 
       switch (indexType) {
+        case 'Ttl':
+          fields = $('#newTtlFields').val();
+          var expireAfter = parseInt($('#newTtlExpireAfter').val(), 10) || 0;
+          postParameter = {
+            type: 'ttl',
+            fields: self.stringToArray(fields),
+            expireAfter: expireAfter
+          };
+          background = self.checkboxToValue('#newTtlBackground');
+          break;
         case 'Geo':
           // HANDLE ARRAY building
           fields = $('#newGeoFields').val();
@@ -128,7 +148,8 @@
           postParameter = {
             type: 'geo',
             fields: self.stringToArray(fields),
-            geoJson: geoJson
+            geoJson: geoJson,
+            inBackground: background
           };
           break;
         case 'Persistent':
@@ -136,12 +157,14 @@
           unique = self.checkboxToValue('#newPersistentUnique');
           sparse = self.checkboxToValue('#newPersistentSparse');
           deduplicate = self.checkboxToValue('#newPersistentDeduplicate');
+          background = self.checkboxToValue('#newPersistentBackground');
           postParameter = {
             type: 'persistent',
             fields: self.stringToArray(fields),
             unique: unique,
             sparse: sparse,
-            deduplicate: deduplicate
+            deduplicate: deduplicate,
+            inBackground: background
           };
           break;
         case 'Hash':
@@ -149,21 +172,25 @@
           unique = self.checkboxToValue('#newHashUnique');
           sparse = self.checkboxToValue('#newHashSparse');
           deduplicate = self.checkboxToValue('#newHashDeduplicate');
+          background = self.checkboxToValue('#newHashBackground');
           postParameter = {
             type: 'hash',
             fields: self.stringToArray(fields),
             unique: unique,
             sparse: sparse,
-            deduplicate: deduplicate
+            deduplicate: deduplicate,
+            inBackground: background
           };
           break;
         case 'Fulltext':
           fields = $('#newFulltextFields').val();
           var minLength = parseInt($('#newFulltextMinLength').val(), 10) || 0;
+          background = self.checkboxToValue('#newFulltextBackground');
           postParameter = {
             type: 'fulltext',
             fields: self.stringToArray(fields),
-            minLength: minLength
+            minLength: minLength,
+            inBackground: background
           };
           break;
         case 'Skiplist':
@@ -171,12 +198,14 @@
           unique = self.checkboxToValue('#newSkiplistUnique');
           sparse = self.checkboxToValue('#newSkiplistSparse');
           deduplicate = self.checkboxToValue('#newSkiplistDeduplicate');
+          background = self.checkboxToValue('#newSkiplistBackground');
           postParameter = {
             type: 'skiplist',
             fields: self.stringToArray(fields),
             unique: unique,
             sparse: sparse,
-            deduplicate: deduplicate
+            deduplicate: deduplicate,
+            inBackground: background
           };
           break;
       }
@@ -185,9 +214,9 @@
         if (error) {
           if (msg) {
             var message = JSON.parse(msg.responseText);
-            arangoHelper.arangoError('Document error', message.errorMessage);
+            arangoHelper.arangoError('Index error', message.errorMessage);
           } else {
-            arangoHelper.arangoError('Document error', 'Could not create index.');
+            arangoHelper.arangoError('Index error', 'Could not create index.');
           }
         } else {
           arangoHelper.arangoNotification('Index', 'Creation in progress. This may take a while.');

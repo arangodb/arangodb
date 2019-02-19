@@ -400,7 +400,7 @@
   },
   "output-directory" : {
     "category" : "option",
-    "default" : "/oskar/work/ArangoDB/export",
+    "default" : "/home/steemann/ArangoNoAsan/export",
     "deprecatedIn" : null,
     "description" : "output directory",
     "dynamic" : false,
