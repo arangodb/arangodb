@@ -49,7 +49,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 class CollectionNameResolver;
-class LogicalDataSource; // forward declaration
+class LogicalDataSource;  // forward declaration
 
 namespace transaction {
 class Context;

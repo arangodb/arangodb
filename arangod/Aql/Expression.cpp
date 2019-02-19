@@ -59,11 +59,7 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the expression
 Expression::Expression(ExecutionPlan* plan, Ast* ast, AstNode* node)
-    : _plan(plan),
-      _ast(ast),
-      _node(node),
-      _type(UNPROCESSED),
-      _expressionContext(nullptr) {
+    : _plan(plan), _ast(ast), _node(node), _type(UNPROCESSED), _expressionContext(nullptr) {
   _ast->query()->unPrepareV8Context();
   TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_node != nullptr);
@@ -842,7 +838,8 @@ AqlValue Expression::invokeV8Function(ExpressionContext* expressionContext,
   }
 
   // actually call the V8 function
-  v8::TryCatch tryCatch;
+  v8::TryCatch tryCatch(isolate);
+  ;
   v8::Handle<v8::Value> result =
       v8::Handle<v8::Function>::Cast(function)->Call(current, static_cast<int>(callArgs), args);
 

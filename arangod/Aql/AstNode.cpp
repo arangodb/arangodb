@@ -204,14 +204,14 @@ inline int valueTypeOrder(VPackValueType type) {
     case VPackValueType::Double:
       return 2;
     case VPackValueType::String:
-    case VPackValueType::Custom: // _id
+    case VPackValueType::Custom:  // _id
       return 3;
     case VPackValueType::Array:
       return 4;
     case VPackValueType::Object:
       return 5;
-    default: 
-      return 0; // null
+    default:
+      return 0;  // null
   }
 }
 

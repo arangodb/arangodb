@@ -148,7 +148,7 @@ void ConsoleFeature::_print2(std::string const& s) {
 
   LPWSTR wBuf = new WCHAR[sLen + 1];
   int wLen = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), (int)sLen, wBuf,
-                                 (int)((sizeof WCHAR) * (sLen + 1)));
+                                 (int)((sizeof(WCHAR)) * (sLen + 1)));
 
   if (wLen) {
     auto handle = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -300,7 +300,7 @@ std::string ConsoleFeature::readPassword() {
   std::wstring wpassword;
   _setmode(_fileno(stdin), _O_U16TEXT);
   std::getline(std::wcin, wpassword);
-  UnicodeString pw(wpassword.c_str(), static_cast<int32_t>(wpassword.length()));
+  icu::UnicodeString pw(wpassword.c_str(), static_cast<int32_t>(wpassword.length()));
   pw.toUTF8String<std::string>(password);
 #else
   std::getline(std::cin, password);
