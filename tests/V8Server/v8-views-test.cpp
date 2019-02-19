@@ -271,7 +271,7 @@ SECTION("test_auth") {
       CHECK((slice.hasKey(arangodb::StaticStrings::ErrorNum) && slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() && TRI_ERROR_FORBIDDEN == slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
       CHECK((vocbase.views().empty()));
     }
-    /* TODO unwrapping can't me achieved easily
+
     // authorzed (RW user)
     {
       arangodb::auth::UserMap userMap;
@@ -290,7 +290,7 @@ SECTION("test_auth") {
       CHECK((false == !view));
     }
   }
-    */
+
   // test drop (static)
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"testViewType\" }");
@@ -1032,7 +1032,7 @@ SECTION("test_auth") {
       auto view = vocbase.lookupView("testView");
       CHECK((false == !view));
     }
-    /* TODO unwrapping can't me achieved easily
+
     // authorized (NONE view) as per https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
@@ -1051,7 +1051,6 @@ SECTION("test_auth") {
       auto view = vocbase.lookupView("testView");
       CHECK((false == !view));
     }
-    */
 /* redundant because of above
     // not authorized (NONE view)
     {
@@ -1315,7 +1314,7 @@ SECTION("test_auth") {
       auto view2 = vocbase.lookupView("testView2");
       CHECK((false == !view2));
     }
-    /* TODO unwrapping can't me achieved easily
+
     // not authorized (failed detailed toVelocyPack(...)) as per https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
@@ -1340,8 +1339,7 @@ SECTION("test_auth") {
       auto view1 = vocbase.lookupView("testView1");
       CHECK((false == !view1));
     }
-    */
-    /* TODO unwrapping can't me achieved easily     
+
     // authorized (NONE view) as per https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
@@ -1363,7 +1361,6 @@ SECTION("test_auth") {
       auto view1 = vocbase.lookupView("testView1");
       CHECK((false == !view1));
     }
-    */
 /* redundant because of above
     // not authorized (NONE view)
     {
@@ -1411,7 +1408,7 @@ SECTION("test_auth") {
 */
   }
 }
-}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
 ////////////////////////////////////////////////////////////////////////////////
