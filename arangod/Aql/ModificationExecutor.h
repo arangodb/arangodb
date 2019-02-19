@@ -106,7 +106,7 @@ class ModificationExecutorInfos : public ExecutorInfos {
                             aql::Collection const* aqlCollection, bool producesResults,
                             bool consultAqlWriteFilter, bool ignoreErrors,
                             bool doCount, bool returnInheritedResults,
-                            bool isReplace)
+                            bool isReplace, bool ignoreDocumentNotFound)
       : ExecutorInfos(makeSet({wrap(input1RegisterId),wrap(input2RegisterId), wrap(input3RegisterId)}) /*input registers*/,
                       makeSet({wrap(outputOldRegisterId), wrap(outputNewRegisterId)}) /*output registers*/,
                       nrInputRegisters, nrOutputRegisters, std::move(registersToClear), std::move(registersToKeep)),
@@ -119,6 +119,7 @@ class ModificationExecutorInfos : public ExecutorInfos {
         _doCount(doCount),
         _returnInheritedResults(returnInheritedResults),
         _isReplace(isReplace),
+        _ignoreDocumentNotFound(ignoreDocumentNotFound),
         _input1RegisterId(input1RegisterId),
         _input2RegisterId(input2RegisterId),
         _input3RegisterId(input3RegisterId),
@@ -141,10 +142,11 @@ class ModificationExecutorInfos : public ExecutorInfos {
   bool _doCount;  // count statisitics
   bool _returnInheritedResults;
   bool _isReplace; // needed for upsert
+  bool _ignoreDocumentNotFound; // needed for update replace
 
-  // insert (singleinput) - upsert (inDoc)
+  // insert (singleinput) - upsert (inDoc) - update replace (inDoc)
   boost::optional<RegisterId> _input1RegisterId;
-  // upsert (insertVar)
+  // upsert (insertVar) -- update replace (keyVar)
   boost::optional<RegisterId> _input2RegisterId;
   // upsert (updateVar)
   boost::optional<RegisterId> _input3RegisterId;

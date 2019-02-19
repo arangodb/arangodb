@@ -179,7 +179,7 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
       calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
       _collection, producesResults(), _options.consultAqlWriteFilter,
       _options.ignoreErrors, countStats(), false /*return interhited FIXME*/,
-      false /*is replace (needed by upsert)*/);
+      false /*is replace (needed by upsert)*/, false /*ignore document not found*/);
 
   return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Insert>>>(&engine, this,
                                                                             std::move(infos));
@@ -376,7 +376,7 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
       calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options), _collection,
       producesResults(), _options.consultAqlWriteFilter, _options.ignoreErrors,
-      countStats(), false /*return interhited FIXME*/, _isReplace /*is replace*/
+      countStats(), false /*return interhited FIXME*/, _isReplace /*is replace*/, false /*ignore document not found*/
   );
 
   return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Insert>>>(&engine, this,

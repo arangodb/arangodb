@@ -135,12 +135,10 @@ struct UpdateReplace : ModificationBase {
   UpdateReplace() : _operationResultUpdateIterator(VPackSlice::emptyArraySlice()) {}
 
   VPackBuilder _updateBuilder;
-  VPackBuilder _insertBuilder;
 
   void reset() {
     ModificationBase::reset();
     _updateBuilder.clear();
-    _insertBuilder.clear();
 
     _operationResultUpdate = OperationResult();
     _operationResultArraySliceUpdate = velocypack::Slice::emptyArraySlice();
