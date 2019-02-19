@@ -202,7 +202,8 @@ start_color_print('arangodb', true);
       console.addHistory(input);
 
       {
-        v8::TryCatch tryCatch;
+        v8::TryCatch tryCatch(isolate);
+        ;
         v8::HandleScope scope(isolate);
 
         console.setExecutingCommand(true);

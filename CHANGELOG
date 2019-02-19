@@ -11,6 +11,21 @@ devel
 * fixed JS AQL query objects with empty query strings not being recognized 
   as AQL queries
 
+* update V8 to 7.1.302.28
+
+  New V8 behavior introduced herein: 
+
+  - ES2016 changed the default timezone of date strings to be conditional on
+    whether a time part is included. The semantics were a compromise approach
+    based on web compatibility feedback from V8, but until now, we have been
+    shipping ES5.1 default timezone semantics. This patch implements the
+    new semantics, following ChakraCore and SpiderMonkey (though JSC
+    implements V8's previous semantics).
+ 
+
+* fixed JS AQL query objects with empty query strings not being recognized as AQL queries
+>>>>>>> 492d05c1f1bd5cff4e067ae7d6593b9f03cebe37
+
 * report run-time openssl version (for dynamically linked executables)
 
 * added greeting warning about maintainer mode
