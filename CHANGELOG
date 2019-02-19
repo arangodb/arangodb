@@ -1,6 +1,16 @@
 devel
 -----
 
+* add "TTL" index type, for optional auto-expiration of documents 
+
+* disable selection of index types "persistent" and "skiplist" in the web
+  interface when using the RocksDB engine. The index types "hash", "skiplist"
+  and "persistent" are just aliases of each other with the RocksDB engine,
+  so there is no need to offer all of them.
+
+* fixed JS AQL query objects with empty query strings not being recognized 
+  as AQL queries
+
 * update V8 to 7.1.302.28
 
   New V8 behavior introduced herein: 
@@ -14,6 +24,7 @@ devel
  
 
 * fixed JS AQL query objects with empty query strings not being recognized as AQL queries
+>>>>>>> 492d05c1f1bd5cff4e067ae7d6593b9f03cebe37
 
 * report run-time openssl version (for dynamically linked executables)
 
@@ -31,7 +42,8 @@ devel
 
 * upgraded to OpenSSL 1.1.0j
 
-* added configurable masking of dumped data via `arangodump` tool to obfuscate exported sensible data
+* added configurable masking of dumped data via `arangodump` tool to obfuscate 
+  exported sensible data
 
 * fixed arangoimp script for MacOSX CLI Bundle
 
@@ -52,9 +64,6 @@ devel
   Now the length of the millisecond part is unrestricted, but the 
   millisecond precision is still limited to up to 3 digits.
 
-* fix issue #7900: Bind values of `null` are not replaced by empty string 
-  anymore, when toggling between JSON and table view in the web UI
-
 * the RocksDB primary index can now be used by the optimizer to optimize queries
   that use `_key` or `_id` for sorting or for range queries.
 
@@ -74,9 +83,6 @@ devel
 * upgraded bundled boost library to version 1.69.0
 
 * upgraded bundled curl library to version 7.63
-
-* fix issue #7900: Bind values of `null` are not replaced by empty string anymore, 
-  when toggling between JSON and table view in the web UI.
 
 * Use base64url to encode and decode JWT parts.
 

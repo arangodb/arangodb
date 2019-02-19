@@ -1246,7 +1246,7 @@
                 msg: 'May not contain APP'
               },
               {
-                rule: Joi.string().regex(/^([a-zA-Z0-9_\-\/]+)+$/),
+                rule: Joi.string().regex(/^([a-zA-Z0-9_\-/]+)+$/),
                 msg: 'Can only contain [a-zA-Z0-9_-/]'
               },
               {

@@ -95,7 +95,7 @@ class ExecutorInfos {
    *
    * @return The indices of the input registers.
    */
-  std::shared_ptr<const std::unordered_set<RegisterId>> const getInputRegisters() const {
+  std::shared_ptr<std::unordered_set<RegisterId> const> const getInputRegisters() const {
     return _inRegs;
   }
 
@@ -109,7 +109,7 @@ class ExecutorInfos {
    *
    * @return The indices of the output registers.
    */
-  std::shared_ptr<const std::unordered_set<RegisterId>> const getOutputRegisters() const {
+  std::shared_ptr<std::unordered_set<RegisterId> const> const getOutputRegisters() const {
     return _outRegs;
   }
 
@@ -127,26 +127,26 @@ class ExecutorInfos {
    */
   RegisterId numberOfOutputRegisters() const { return _numOutRegs; }
 
-  std::shared_ptr<const std::unordered_set<RegisterId>> const& registersToKeep() const {
+  std::shared_ptr<std::unordered_set<RegisterId> const> const& registersToKeep() const {
     return _registersToKeep;
   }
 
-  std::shared_ptr<const std::unordered_set<RegisterId>> const& registersToClear() const {
+  std::shared_ptr<std::unordered_set<RegisterId> const> const& registersToClear() const {
     return _registersToClear;
   }
 
  protected:
-  std::shared_ptr<const std::unordered_set<RegisterId>> _inRegs;
+  std::shared_ptr<std::unordered_set<RegisterId> const> _inRegs;
 
-  std::shared_ptr<const std::unordered_set<RegisterId>> _outRegs;
+  std::shared_ptr<std::unordered_set<RegisterId> const> _outRegs;
 
   RegisterId _numInRegs;
 
   RegisterId _numOutRegs;
 
-  std::shared_ptr<const std::unordered_set<RegisterId>> _registersToKeep;
+  std::shared_ptr<std::unordered_set<RegisterId> const> _registersToKeep;
 
-  std::shared_ptr<const std::unordered_set<RegisterId>> const _registersToClear;
+  std::shared_ptr<std::unordered_set<RegisterId> const> const _registersToClear;
 };
 
 }  // namespace aql

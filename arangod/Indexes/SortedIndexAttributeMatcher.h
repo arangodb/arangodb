@@ -20,8 +20,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SKIPLIST_INDEX_ATTRIBUTE_MATCHER_H
-#define ARANGOD_SKIPLIST_INDEX_ATTRIBUTE_MATCHER_H 1
+#ifndef ARANGOD_INDEXES_SORTED_INDEX_ATTRIBUTE_MATCHER_H
+#define ARANGOD_INDEXES_SORTED_INDEX_ATTRIBUTE_MATCHER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/HashSet.h"
@@ -36,8 +36,7 @@ struct Variable;
 
 class Index;
 
-/// Contains code for in-memory skiplist indexes (MMFilesSkiplistIndex)
-namespace SkiplistIndexAttributeMatcher {
+namespace SortedIndexAttributeMatcher {
 
 bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
                              arangodb::Index const* index,
@@ -71,7 +70,8 @@ bool accessFitsIndex(
 
 bool isDuplicateOperator(arangodb::aql::AstNode const* node,
                          arangodb::HashSet<int> const& operatorsFound);
-};  // namespace SkiplistIndexAttributeMatcher
+};  // namespace SortedIndexAttributeMatcher
+
 }  // namespace arangodb
 
 #endif

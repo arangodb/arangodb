@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,30 +20,24 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VPACK_INDEX_MATCHER_H
-#define ARANGOD_VPACK_INDEX_MATCHER_H 1
+#ifndef ARANGOD_REST_HANDLER_TTL_HANDLER_H
+#define ARANGOD_REST_HANDLER_TTL_HANDLER_H 1
 
-#include "Basics/Common.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
-namespace aql {
-class Ast;
-struct AstNode;
-class SortCondition;
-struct Variable;
-}  // namespace aql
+class RestTtlHandler : public arangodb::RestVocbaseBaseHandler {
+ public:
+  RestTtlHandler(GeneralRequest*, GeneralResponse*);
 
-class Index;
+ public:
+  char const* name() const override final { return "RestTtlHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  RestStatus execute() override;
 
-/// Contains code for persistent sorted indexes such as the RocksDBVPackIndex
-/// and the MMFilesPersistentIndex. Weights used are mostly intended for
-/// rocksdb based storage
-namespace PersistentIndexAttributeMatcher {
-
-bool supportsSortCondition(arangodb::Index const*,
-                           arangodb::aql::SortCondition const* sortCondition,
-                           arangodb::aql::Variable const* reference, size_t itemsInIndex,
-                           double& estimatedCost, size_t& coveredAttributes);
+ private:
+  RestStatus handleStatistics();
+  RestStatus handleProperties();
 };
 }  // namespace arangodb
 
