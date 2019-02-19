@@ -367,7 +367,7 @@ class Query {
 
   /// @brief set of DataSources used in the query
   ///        needed for the query cache, value LogicalDataSource::system()
-  std::unordered_set<std::shared_ptr<arangodb::LogicalDataSource>> _queryDataSources;
+  std::vector<std::weak_ptr<arangodb::LogicalDataSource>> _queryDataSources;
 
   /// @brief the actual query string
   QueryString _queryString;

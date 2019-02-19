@@ -29,6 +29,8 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 
+#include <memory>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -62,7 +64,7 @@ struct QueryCacheResultEntry {
   QueryCacheResultEntry(uint64_t hash, QueryString const& queryString,
                         std::shared_ptr<arangodb::velocypack::Builder> const& queryResult,
                         std::shared_ptr<arangodb::velocypack::Builder> const& bindVars,
-    std::unordered_set<std::shared_ptr<arangodb::LogicalDataSource>>&& dataSources // query DataSources
+    std::vector<std::weak_ptr<arangodb::LogicalDataSource>>&& dataSources // query DataSources
   );
 
   ~QueryCacheResultEntry() = default;
@@ -71,7 +73,7 @@ struct QueryCacheResultEntry {
   std::string const _queryString;
   std::shared_ptr<arangodb::velocypack::Builder> const _queryResult;
   std::shared_ptr<arangodb::velocypack::Builder> const _bindVars;
-  std::unordered_set<std::shared_ptr<arangodb::LogicalDataSource>> const _dataSources; // query DataSources
+  std::vector<std::weak_ptr<arangodb::LogicalDataSource>> const _dataSources; // query DataSources
   std::shared_ptr<arangodb::velocypack::Builder> _stats;
   size_t _size;
   size_t _rows;
