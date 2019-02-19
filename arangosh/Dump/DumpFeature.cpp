@@ -480,10 +480,10 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
     // always create the file so that arangorestore does not complain
     auto file = jobData.directory.writableFile(jobData.name + "_" + hexString +
                                                    ".data.json",
-                                                 true);
-      if (!::fileOk(file.get())) {
-        return ::fileError(file.get(), true);
-      }
+                                               true);
+    if (!::fileOk(file.get())) {
+      return ::fileError(file.get(), true);
+    }
 
     if (dumpData) {
       // save the actual data
@@ -589,9 +589,11 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
   options->addOption("--tick-end", "last tick to be included in data dump",
                      new UInt64Parameter(&_options.tickEnd));
 
-  options->addOption("--maskings", "file with maskings definition",
-                     new StringParameter(&_options.maskingsFile))
-                     .setIntroducedIn(30322).setIntroducedIn(30402);
+  options
+      ->addOption("--maskings", "file with maskings definition",
+                  new StringParameter(&_options.maskingsFile))
+      .setIntroducedIn(30322)
+      .setIntroducedIn(30402);
 }
 
 void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -672,7 +674,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client, std::string co
   if (!body.isObject()) {
     return ::ErrorMalformedJsonResponse;
   }
-  
+
   // use tick provided by server if user did not specify one
   if (_options.tickEnd == 0 && !_options.clusterMode) {
     uint64_t tick = basics::VelocyPackHelper::stringUInt64(body, "tick");

@@ -379,16 +379,16 @@ static std::wstring makeWindowsArgs(ExternalProcess* external) {
     }
   }
 
-  UnicodeString uwargs(external->_executable.c_str());
+  icu::UnicodeString uwargs(external->_executable.c_str());
 
-  err = wAppendQuotedArg(res, uwargs.getTerminatedBuffer());
+  err = wAppendQuotedArg(res, static_cast<const wchar_t*>(uwargs.getTerminatedBuffer()));
   if (err != TRI_ERROR_NO_ERROR) {
     return nullptr;
   }
   for (i = 1; i < external->_numberArguments; i++) {
     res += L' ';
     uwargs = external->_arguments[i];
-    err = wAppendQuotedArg(res, uwargs.getTerminatedBuffer());
+    err = wAppendQuotedArg(res, static_cast<const wchar_t*>(uwargs.getTerminatedBuffer()));
     if (err != TRI_ERROR_NO_ERROR) {
       return nullptr;
     }
