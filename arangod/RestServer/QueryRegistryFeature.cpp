@@ -51,7 +51,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _queryCacheMaxResultsSize(0),
       _queryCacheMaxEntrySize(0),
       _queryCacheIncludeSystem(false),
-      _queryRegistryTTL(DefaultQueryTTL) {
+      _queryRegistryTTL(0) {
   setOptional(false);
   startsAfter("V8Phase");
 
@@ -157,7 +157,8 @@ void QueryRegistryFeature::prepare() {
   arangodb::aql::QueryCache::instance()->properties(properties);
 
   if (_queryRegistryTTL <= 0) {
-    _queryRegistryTTL = DefaultQueryTTL;
+    // set to default value based on instance type
+    _queryRegistryTTL = ServerState::instance()->isSingleServer() ? 30 : 600;
   }
 
   // create the query registery

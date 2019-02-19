@@ -21,7 +21,6 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "EngineInfoContainerDBServer.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
@@ -36,6 +35,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngineRegistry.h"
+#include "EngineInfoContainerDBServer.h"
 #include "Graph/BaseOptions.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
@@ -98,7 +98,6 @@ GatherNode* findFirstGather(ExecutionNode const& root) {
   return nullptr;
 }
 
-
 ScatterNode* findFirstScatter(ExecutionNode const& root) {
   ExecutionNode* node = root.getFirstDependency();
 
@@ -153,9 +152,7 @@ EngineInfoContainerDBServer::EngineInfo::EngineInfo(EngineInfo&& other) noexcept
       TRI_ASSERT(source.collection);
     }
 
-    void operator()(ViewSource const& source) {
-      TRI_ASSERT(source.view);
-    }
+    void operator()(ViewSource const& source) { TRI_ASSERT(source.view); }
   } visitor;
 
   boost::apply_visitor(visitor, _source);
@@ -197,11 +194,8 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
       // can't do it on DB servers since only parts of the plan will be sent
       viewNode.volatility(true);
 
-      _source = ViewSource(
-        *viewNode.view().get(),
-        findFirstGather(viewNode),
-        findFirstScatter(viewNode)
-      );
+      _source = ViewSource(*viewNode.view().get(), findFirstGather(viewNode),
+                           findFirstScatter(viewNode));
       break;
     }
 #endif
@@ -979,12 +973,7 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds,
     return {TRI_ERROR_SHUTTING_DOWN};
   }
 
-  double ttl = QueryRegistryFeature::DefaultQueryTTL;
-  auto* registry = QueryRegistryFeature::registry();
-  if (registry != nullptr) {
-    ttl = registry->defaultTTL();
-  }
-  TRI_ASSERT(ttl > 0);
+  double ttl = _query->queryOptions().ttl;
 
   std::string const url(
       "/_db/" + arangodb::basics::StringUtils::urlEncode(_query->vocbase().name()) +

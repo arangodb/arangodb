@@ -175,7 +175,25 @@ void RestAqlHandler::setupClusterQuery() {
   //   variables: <variables slice>
   // }
 
-  auto options = std::make_shared<VPackBuilder>(VPackBuilder::clone(optionsSlice));
+  // patch options with ttl
+  auto options = std::make_shared<VPackBuilder>();
+  double ttl = _queryRegistry->defaultTTL();
+  {
+    VPackObjectBuilder guard(options.get());
+    TRI_ASSERT(optionsSlice.isObject());
+    for (auto const& pair : VPackObjectIterator(optionsSlice)) {
+      if (pair.key.isEqualString("ttl")) {
+        ttl = VelocyPackHelper::getNumericValue<double>(optionsSlice, "ttl", ttl);
+        ttl = _request->parsedValue<double>("ttl", ttl);
+        if (ttl <= 0) {
+          ttl = _queryRegistry->defaultTTL();
+        }
+        options->add("ttl", VPackValue(ttl));
+      } else {
+        options->add(pair.key.stringRef(), pair.value);
+      }
+    }
+  }
 
   // Build the collection information
   VPackBuilder collectionBuilder;
@@ -209,12 +227,6 @@ void RestAqlHandler::setupClusterQuery() {
     }
   }
   collectionBuilder.close();
-
-  // Now the query is ready to go, store it in the registry and return:
-  double ttl = _request->parsedValue<double>("ttl", _queryRegistry->defaultTTL());
-  if (ttl <= 0) {
-    ttl = _queryRegistry->defaultTTL();
-  }
 
   // creates a StandaloneContext or a leasing context
   auto ctx = transaction::SmartContext::Create(_vocbase);
@@ -280,6 +292,9 @@ bool RestAqlHandler::registerSnippets(VPackSlice const snippetsSlice,
 
     // enables the query to get the correct transaction
     query->setTransactionContext(ctx);
+
+    // make sure query has ttl set
+    query->queryOptions().ttl = ttl;
 
     try {
       query->prepare(_queryRegistry);
@@ -396,8 +411,26 @@ void RestAqlHandler::createQueryFromVelocyPack() {
     return;
   }
 
-  auto options = std::make_shared<VPackBuilder>(
-      VPackBuilder::clone(querySlice.get("options")));
+  // patch options with ttl
+  auto optionsSlice = querySlice.get("options");
+  TRI_ASSERT(querySlice.get("options").isObject());
+  auto options = std::make_shared<VPackBuilder>();
+  double ttl = _queryRegistry->defaultTTL();
+  {
+    VPackObjectBuilder guard(options.get());
+    for (auto const& pair : VPackObjectIterator(optionsSlice)) {
+      if (pair.key.isEqualString("ttl")) {
+        ttl = VelocyPackHelper::getNumericValue<double>(optionsSlice, "ttl", ttl);
+        ttl = _request->parsedValue<double>("ttl", ttl);
+        if (ttl <= 0) {
+          ttl = _queryRegistry->defaultTTL();
+        }
+        options->add("ttl", VPackValue(ttl));
+      } else {
+        options->add(pair.key.stringRef(), pair.value);
+      }
+    }
+  }
 
   std::string const part =
       VelocyPackHelper::getStringValue(querySlice, "part", "");
@@ -419,9 +452,6 @@ void RestAqlHandler::createQueryFromVelocyPack() {
                   "failed to instantiate the query");
     return;
   }
-
-  // Now the query is ready to go, store it in the registry and return:
-  double ttl = _request->parsedValue<double>("ttl", _queryRegistry->defaultTTL());
 
   _qId = TRI_NewTickServer();
   try {
