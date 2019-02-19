@@ -378,6 +378,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Insert>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Remove>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<UpdateReplace>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Upsert>>;
 template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<false>>;

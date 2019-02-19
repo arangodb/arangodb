@@ -124,6 +124,34 @@ struct Upsert : ModificationBase {
   }
 };
 
+struct UpdateReplace : ModificationBase {
+  bool doModifications(ModificationExecutor<UpdateReplace>&, ModificationExecutorBase::Stats&);
+  bool doOutput(ModificationExecutor<UpdateReplace>&, OutputAqlItemRow&);
+
+  OperationResult _operationResultUpdate;
+  VPackSlice _operationResultArraySliceUpdate = VPackSlice::nullSlice();
+  velocypack::ArrayIterator _operationResultUpdateIterator;  // ctor init list
+
+  UpdateReplace() : _operationResultUpdateIterator(VPackSlice::emptyArraySlice()) {}
+
+  VPackBuilder _updateBuilder;
+  VPackBuilder _insertBuilder;
+
+  void reset() {
+    ModificationBase::reset();
+    _updateBuilder.clear();
+    _insertBuilder.clear();
+
+    _operationResultUpdate = OperationResult();
+    _operationResultArraySliceUpdate = velocypack::Slice::emptyArraySlice();
+    _operationResultUpdateIterator= VPackArrayIterator(VPackSlice::emptyArraySlice());
+  };
+
+  void setOperationResultUpdate(OperationResult&& result){
+    setOperationResult(std::move(result),_operationResultUpdate,_operationResultArraySliceUpdate,_operationResultUpdateIterator);
+  }
+};
+
 }  // namespace aql
 }  // namespace arangodb
 
