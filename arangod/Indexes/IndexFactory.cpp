@@ -40,15 +40,15 @@
 namespace {
 
 struct InvalidIndexFactory : public arangodb::IndexTypeFactory {
-  virtual bool equal(arangodb::velocypack::Slice const&,
-                     arangodb::velocypack::Slice const&) const override {
+  bool equal(arangodb::velocypack::Slice const&,
+             arangodb::velocypack::Slice const&) const override {
     return false;  // invalid definitions are never equal
   }
 
-  virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>&,
-                                       arangodb::LogicalCollection&,
-                                       arangodb::velocypack::Slice const& definition,
-                                       TRI_idx_iid_t, bool) const override {
+  arangodb::Result instantiate(std::shared_ptr<arangodb::Index>&,
+                               arangodb::LogicalCollection&,
+                               arangodb::velocypack::Slice const& definition,
+                               TRI_idx_iid_t, bool) const override {
     return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string(
@@ -56,9 +56,9 @@ struct InvalidIndexFactory : public arangodb::IndexTypeFactory {
             definition.toString());
   }
 
-  virtual arangodb::Result normalize(arangodb::velocypack::Builder&,
-                                     arangodb::velocypack::Slice definition,
-                                     bool) const override {
+  arangodb::Result normalize(arangodb::velocypack::Builder&,
+                             arangodb::velocypack::Slice definition,
+                             bool) const override {
     return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string(
@@ -75,7 +75,8 @@ namespace arangodb {
   
 bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
                              arangodb::velocypack::Slice const& lhs,
-                             arangodb::velocypack::Slice const& rhs) const {
+                             arangodb::velocypack::Slice const& rhs,
+                             bool attributeOrderMatters) const {
 
   // unique must be identical if present
   auto value = lhs.get(arangodb::StaticStrings::IndexUnique);
@@ -120,7 +121,8 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
   value = lhs.get(arangodb::StaticStrings::IndexFields);
 
   if (value.isArray()) {
-    if (arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX == type) {
+    if (!attributeOrderMatters) {
+      // attributes can be specified in any order
       arangodb::velocypack::ValueLength const nv = value.length();
 
       // compare fields in arbitrary order
@@ -147,6 +149,7 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
         }
       }
     } else {
+      // attribute order matters
       if (arangodb::basics::VelocyPackHelper::compare(
               value, rhs.get(arangodb::StaticStrings::IndexFields), false) != 0) {
         return false;

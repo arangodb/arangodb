@@ -45,8 +45,8 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
 
   explicit DefaultIndexFactory(std::string const& type) : _type(type) {}
 
-  virtual bool equal(arangodb::velocypack::Slice const& lhs,
-                     arangodb::velocypack::Slice const& rhs) const override {
+  bool equal(arangodb::velocypack::Slice const& lhs,
+             arangodb::velocypack::Slice const& rhs) const override {
     auto* clusterEngine =
         static_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE);
 
@@ -67,12 +67,12 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
     return engine->indexFactory().factory(_type).equal(lhs, rhs);
   }
 
-  virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
-                                       arangodb::LogicalCollection& collection,
-                                       arangodb::velocypack::Slice const& definition,
-                                       TRI_idx_iid_t id,
-                                       bool  // isClusterConstructor
-                                       ) const override {
+  arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
+                               arangodb::LogicalCollection& collection,
+                               arangodb::velocypack::Slice const& definition,
+                               TRI_idx_iid_t id,
+                               bool  // isClusterConstructor
+                              ) const override {
     auto* clusterEngine =
         static_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE);
 
@@ -91,9 +91,9 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
     return arangodb::Result();
   }
 
-  virtual arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                                     arangodb::velocypack::Slice definition,
-                                     bool isCreation) const override {
+  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
+                             arangodb::velocypack::Slice definition,
+                             bool isCreation) const override {
     auto* clusterEngine =
         static_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE);
 
@@ -118,11 +118,11 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
 struct EdgeIndexFactory : public DefaultIndexFactory {
   explicit EdgeIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
-  virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
-                                       arangodb::LogicalCollection& collection,
-                                       arangodb::velocypack::Slice const& definition,
-                                       TRI_idx_iid_t id,
-                                       bool isClusterConstructor) const override {
+  arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
+                               arangodb::LogicalCollection& collection,
+                               arangodb::velocypack::Slice const& definition,
+                               TRI_idx_iid_t id,
+                               bool isClusterConstructor) const override {
     if (!isClusterConstructor) {
       // this indexes cannot be created directly
       return arangodb::Result(TRI_ERROR_INTERNAL, "cannot create edge index");
@@ -150,11 +150,11 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
 struct PrimaryIndexFactory : public DefaultIndexFactory {
   explicit PrimaryIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
-  virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
-                                       arangodb::LogicalCollection& collection,
-                                       arangodb::velocypack::Slice const& definition,
-                                       TRI_idx_iid_t id,
-                                       bool isClusterConstructor) const override {
+  arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
+                               arangodb::LogicalCollection& collection,
+                               arangodb::velocypack::Slice const& definition,
+                               TRI_idx_iid_t id,
+                               bool isClusterConstructor) const override {
     if (!isClusterConstructor) {
       // this indexes cannot be created directly
       return arangodb::Result(TRI_ERROR_INTERNAL,

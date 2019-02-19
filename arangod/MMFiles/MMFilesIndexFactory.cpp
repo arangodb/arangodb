@@ -61,18 +61,18 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
 
   bool equal(arangodb::velocypack::Slice const& lhs,
              arangodb::velocypack::Slice const& rhs) const override {
-    return arangodb::IndexTypeFactory::equal(Index::type(_type), lhs, rhs);
+    return arangodb::IndexTypeFactory::equal(Index::type(_type), lhs, rhs, attributeOrderMatters());
   }
 };
 
 struct EdgeIndexFactory : public DefaultIndexFactory {
   explicit EdgeIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
-  virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
-                                       arangodb::LogicalCollection& collection,
-                                       arangodb::velocypack::Slice const& definition,
-                                       TRI_idx_iid_t id,
-                                       bool isClusterConstructor) const override {
+  arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
+                               arangodb::LogicalCollection& collection,
+                               arangodb::velocypack::Slice const& definition,
+                               TRI_idx_iid_t id,
+                               bool isClusterConstructor) const override {
     if (!isClusterConstructor) {
       // this indexes cannot be created directly
       return arangodb::Result(TRI_ERROR_INTERNAL, "cannot create edge index");
@@ -83,9 +83,9 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
     return arangodb::Result();
   }
 
-  virtual arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                                     arangodb::velocypack::Slice definition,
-                                     bool isCreation) const override {
+  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
+                             arangodb::velocypack::Slice definition,
+                             bool isCreation) const override {
     if (isCreation) {
       // creating these indexes yourself is forbidden
       return TRI_ERROR_FORBIDDEN;
@@ -102,19 +102,19 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
 struct FulltextIndexFactory : public DefaultIndexFactory {
   explicit FulltextIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
-  virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
-                                       arangodb::LogicalCollection& collection,
-                                       arangodb::velocypack::Slice const& definition,
-                                       TRI_idx_iid_t id,
-                                       bool isClusterConstructor) const override {
+  arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
+                               arangodb::LogicalCollection& collection,
+                               arangodb::velocypack::Slice const& definition,
+                               TRI_idx_iid_t id,
+                               bool isClusterConstructor) const override {
     index = std::make_shared<arangodb::MMFilesFulltextIndex>(id, collection, definition);
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                                     arangodb::velocypack::Slice definition,
-                                     bool isCreation) const override {
+  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
+                             arangodb::velocypack::Slice definition,
+                             bool isCreation) const override {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(
@@ -127,20 +127,20 @@ struct FulltextIndexFactory : public DefaultIndexFactory {
 struct GeoIndexFactory : public DefaultIndexFactory {
   explicit GeoIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
-  virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
-                                       arangodb::LogicalCollection& collection,
-                                       arangodb::velocypack::Slice const& definition,
-                                       TRI_idx_iid_t id,
-                                       bool isClusterConstructor) const override {
+  arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
+                               arangodb::LogicalCollection& collection,
+                               arangodb::velocypack::Slice const& definition,
+                               TRI_idx_iid_t id,
+                               bool isClusterConstructor) const override {
     index = std::make_shared<arangodb::MMFilesGeoIndex>(id, collection,
                                                         definition, "geo");
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                                     arangodb::velocypack::Slice definition,
-                                     bool isCreation) const override {
+  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
+                             arangodb::velocypack::Slice definition,
+                             bool isCreation) const override {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
@@ -152,20 +152,20 @@ struct GeoIndexFactory : public DefaultIndexFactory {
 struct Geo1IndexFactory : public DefaultIndexFactory {
   explicit Geo1IndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
-  virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
-                                       arangodb::LogicalCollection& collection,
-                                       arangodb::velocypack::Slice const& definition,
-                                       TRI_idx_iid_t id,
-                                       bool isClusterConstructor) const override {
+  arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
+                               arangodb::LogicalCollection& collection,
+                               arangodb::velocypack::Slice const& definition,
+                               TRI_idx_iid_t id,
+                               bool isClusterConstructor) const override {
     index = std::make_shared<arangodb::MMFilesGeoIndex>(id, collection,
                                                         definition, "geo1");
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                                     arangodb::velocypack::Slice definition,
-                                     bool isCreation) const override {
+  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
+                             arangodb::velocypack::Slice definition,
+                             bool isCreation) const override {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
@@ -177,20 +177,20 @@ struct Geo1IndexFactory : public DefaultIndexFactory {
 struct Geo2IndexFactory : public DefaultIndexFactory {
   explicit Geo2IndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
-  virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
-                                       arangodb::LogicalCollection& collection,
-                                       arangodb::velocypack::Slice const& definition,
-                                       TRI_idx_iid_t id,
-                                       bool isClusterConstructor) const override {
+  arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
+                               arangodb::LogicalCollection& collection,
+                               arangodb::velocypack::Slice const& definition,
+                               TRI_idx_iid_t id,
+                               bool isClusterConstructor) const override {
     index = std::make_shared<arangodb::MMFilesGeoIndex>(id, collection,
                                                         definition, "geo2");
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                                     arangodb::velocypack::Slice definition,
-                                     bool isCreation) const override {
+  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
+                             arangodb::velocypack::Slice definition,
+                            bool isCreation) const override {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
@@ -202,43 +202,48 @@ struct Geo2IndexFactory : public DefaultIndexFactory {
 struct HashIndexFactory : public DefaultIndexFactory {
   explicit HashIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
-  virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
-                                       arangodb::LogicalCollection& collection,
-                                       arangodb::velocypack::Slice const& definition,
-                                       TRI_idx_iid_t id,
-                                       bool isClusterConstructor) const override {
+  arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
+                               arangodb::LogicalCollection& collection,
+                               arangodb::velocypack::Slice const& definition,
+                               TRI_idx_iid_t id,
+                               bool isClusterConstructor) const override {
     index = std::make_shared<arangodb::MMFilesHashIndex>(id, collection, definition);
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                                     arangodb::velocypack::Slice definition,
-                                     bool isCreation) const override {
+  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
+                             arangodb::velocypack::Slice definition,
+                             bool isCreation) const override {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_HASH_INDEX)));
 
     return IndexFactory::enhanceJsonIndexGeneric(definition, normalized, isCreation);
   }
+
+  bool attributeOrderMatters() const override {
+    // an index on ["a", "b"] is the same as an index on ["b", "a"]
+    return false;
+  }
 };
 
 struct PersistentIndexFactory : public DefaultIndexFactory {
   explicit PersistentIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
-  virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
-                                       arangodb::LogicalCollection& collection,
-                                       arangodb::velocypack::Slice const& definition,
-                                       TRI_idx_iid_t id,
-                                       bool isClusterConstructor) const override {
+  arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
+                               arangodb::LogicalCollection& collection,
+                               arangodb::velocypack::Slice const& definition,
+                               TRI_idx_iid_t id,
+                               bool isClusterConstructor) const override {
     index = std::make_shared<arangodb::MMFilesPersistentIndex>(id, collection, definition);
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                                     arangodb::velocypack::Slice definition,
-                                     bool isCreation) const override {
+  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
+                             arangodb::velocypack::Slice definition,
+                             bool isCreation) const override {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(
@@ -251,19 +256,19 @@ struct PersistentIndexFactory : public DefaultIndexFactory {
 struct TtlIndexFactory : public DefaultIndexFactory {
   explicit TtlIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
-  virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
-                                       arangodb::LogicalCollection& collection,
-                                       arangodb::velocypack::Slice const& definition,
-                                       TRI_idx_iid_t id,
-                                       bool isClusterConstructor) const override {
+  arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
+                               arangodb::LogicalCollection& collection,
+                               arangodb::velocypack::Slice const& definition,
+                               TRI_idx_iid_t id,
+                               bool isClusterConstructor) const override {
     index = std::make_shared<arangodb::MMFilesTtlIndex>(id, collection, definition);
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                                     arangodb::velocypack::Slice definition,
-                                     bool isCreation) const override {
+  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
+                             arangodb::velocypack::Slice definition,
+                             bool isCreation) const override {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_TTL_INDEX)));
@@ -275,11 +280,11 @@ struct TtlIndexFactory : public DefaultIndexFactory {
 struct PrimaryIndexFactory : public DefaultIndexFactory {
   explicit PrimaryIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
-  virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
-                                       arangodb::LogicalCollection& collection,
-                                       arangodb::velocypack::Slice const& definition,
-                                       TRI_idx_iid_t id,
-                                       bool isClusterConstructor) const override {
+  arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
+                               arangodb::LogicalCollection& collection,
+                               arangodb::velocypack::Slice const& definition,
+                               TRI_idx_iid_t id,
+                               bool isClusterConstructor) const override {
     if (!isClusterConstructor) {
       // this indexes cannot be created directly
       return arangodb::Result(TRI_ERROR_INTERNAL,
@@ -291,9 +296,9 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
     return arangodb::Result();
   }
 
-  virtual arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                                     arangodb::velocypack::Slice definition,
-                                     bool isCreation) const override {
+  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
+                             arangodb::velocypack::Slice definition,
+                             bool isCreation) const override {
     if (isCreation) {
       // creating these indexes yourself is forbidden
       return TRI_ERROR_FORBIDDEN;
@@ -311,19 +316,19 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 struct SkiplistIndexFactory : public DefaultIndexFactory {
   explicit SkiplistIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
 
-  virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
-                                       arangodb::LogicalCollection& collection,
-                                       arangodb::velocypack::Slice const& definition,
-                                       TRI_idx_iid_t id,
-                                       bool isClusterConstructor) const override {
+  arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
+                               arangodb::LogicalCollection& collection,
+                               arangodb::velocypack::Slice const& definition,
+                               TRI_idx_iid_t id,
+                               bool isClusterConstructor) const override {
     index = std::make_shared<arangodb::MMFilesSkiplistIndex>(id, collection, definition);
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                                     arangodb::velocypack::Slice definition,
-                                     bool isCreation) const override {
+  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
+                             arangodb::velocypack::Slice definition,
+                             bool isCreation) const override {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(

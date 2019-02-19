@@ -45,7 +45,8 @@ struct IndexTypeFactory {
 
   /// @brief determine if the two Index definitions will result in the same
   ///        index once instantiated
-  virtual bool equal(Index::IndexType type, velocypack::Slice const& lhs, velocypack::Slice const& rhs) const;
+  virtual bool equal(Index::IndexType type, velocypack::Slice const& lhs, velocypack::Slice const& rhs,
+                     bool attributeOrderMatters) const;
   
   virtual bool equal(velocypack::Slice const& lhs, velocypack::Slice const& rhs) const = 0;
 
@@ -57,6 +58,12 @@ struct IndexTypeFactory {
   /// @brief normalize an Index definition prior to instantiation/persistence
   virtual Result normalize(velocypack::Builder& normalized,
                            velocypack::Slice definition, bool isCreation) const = 0;
+  
+  /// @brief the order of attributes matters by default  
+  virtual bool attributeOrderMatters() const {
+    // can be overridden by specific indexes
+    return true;
+  }
 };
 
 class IndexFactory {
