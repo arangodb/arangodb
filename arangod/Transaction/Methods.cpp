@@ -823,7 +823,8 @@ transaction::Methods::~Methods() {
     TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
     // store result
     _transactionContextPtr->storeTransactionResult(_state->id(),
-                                                   _state->hasFailedOperations());
+                                                   _state->hasFailedOperations(),
+                                                   _state->wasRegistered());
     _transactionContextPtr->unregisterTransaction();
 
     delete _state;
