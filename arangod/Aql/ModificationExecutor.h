@@ -51,10 +51,12 @@ struct SortRegister;
 
 struct Insert;
 struct Remove;
-struct UpdateReplace;
-struct Update;
 struct Upsert;
+struct Update;
 struct Replace;
+
+template <typename>
+struct UpdateReplace;
 
 inline OperationOptions convertOptions(ModificationOptions const& in,
                                        Variable const* outVariableNew,
@@ -190,10 +192,9 @@ template <typename Modifier>
 class ModificationExecutor : public ModificationExecutorBase {
   friend struct Insert;
   friend struct Remove;
-  friend struct UpdateReplace;
-  // friend struct Update;
   friend struct Upsert;
-  // friend struct Replace;
+  friend struct UpdateReplace<Update>;
+  friend struct UpdateReplace<Replace>;
 
  public:
   using Modification = Modifier;

@@ -124,30 +124,31 @@ struct Upsert : ModificationBase {
   }
 };
 
+template <typename ModType>
 struct UpdateReplace : ModificationBase {
-  bool doModifications(ModificationExecutor<UpdateReplace>&, ModificationExecutorBase::Stats&);
-  bool doOutput(ModificationExecutor<UpdateReplace>&, OutputAqlItemRow&);
+  using ModificationType = ModType;
+  using MethodPtr = OperationResult(transaction::Methods::*)(std::string const& collectionName, VPackSlice const updateValue, OperationOptions const& options);
+  bool doModifications(ModificationExecutor<ModificationType>&, ModificationExecutorBase::Stats&);
+  bool doOutput(ModificationExecutor<ModificationType>&, OutputAqlItemRow&);
 
-  OperationResult _operationResultUpdate;
-  VPackSlice _operationResultArraySliceUpdate = VPackSlice::nullSlice();
-  velocypack::ArrayIterator _operationResultUpdateIterator;  // ctor init list
-
-  UpdateReplace() : _operationResultUpdateIterator(VPackSlice::emptyArraySlice()) {}
-
-  VPackBuilder _updateBuilder;
+  UpdateReplace() = delete;
+  UpdateReplace(MethodPtr method, std::string name) : _method(method), _name(std::move(name)) {}
 
   void reset() {
     ModificationBase::reset();
-    _updateBuilder.clear();
-
-    _operationResultUpdate = OperationResult();
-    _operationResultArraySliceUpdate = velocypack::Slice::emptyArraySlice();
-    _operationResultUpdateIterator= VPackArrayIterator(VPackSlice::emptyArraySlice());
+    _updateOrReplaceBuilder.clear();
   };
 
-  void setOperationResultUpdate(OperationResult&& result){
-    setOperationResult(std::move(result),_operationResultUpdate,_operationResultArraySliceUpdate,_operationResultUpdateIterator);
-  }
+  MethodPtr _method;
+  std::string _name;
+  VPackBuilder _updateOrReplaceBuilder;
+};
+
+struct Update : UpdateReplace<Update> {
+  Update() : UpdateReplace(&transaction::Methods::update, "UPDATE") {}
+};
+struct Replace : UpdateReplace<Replace> {
+  Replace() : UpdateReplace(&transaction::Methods::replace, "REPLACE") {}
 };
 
 }  // namespace aql

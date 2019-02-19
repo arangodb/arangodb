@@ -556,7 +556,8 @@ bool Upsert::doOutput(ModificationExecutor<Upsert>& executor, OutputAqlItemRow& 
 
 ///////////////////////////////////////////////////////////////////////////////
 // UPDATEREPLACE //////////////////////////////////////////////////////////////
-bool UpdateReplace::doModifications(ModificationExecutor<UpdateReplace>& executor,
+template<typename ModType>
+bool UpdateReplace<ModType>::doModifications(ModificationExecutor<ModificationType>& executor,
                                     ModificationExecutorBase::Stats& stats) {
   auto& info = executor._infos;
   OperationOptions& options = info._options;
@@ -573,7 +574,7 @@ bool UpdateReplace::doModifications(ModificationExecutor<UpdateReplace>& executo
       info._producesResults || (isDBServer && info._ignoreDocumentNotFound);
 
   reset();
-  _updateBuilder.openArray();
+  _updateOrReplaceBuilder.openArray();
 
   int errorCode = TRI_ERROR_NO_ERROR;
   std::string errorMessage;
@@ -611,7 +612,7 @@ bool UpdateReplace::doModifications(ModificationExecutor<UpdateReplace>& executo
     } else /*inDoc is not an object*/ {
       errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
       errorMessage = std::string("expecting 'Object', got: ") + inVal.slice().typeName() +
-                     std::string(" while handling: UpdateReplace");
+                     std::string(" while handling: ") + _name;
     }
 
     if (errorCode == TRI_ERROR_NO_ERROR) {
@@ -630,10 +631,10 @@ bool UpdateReplace::doModifications(ModificationExecutor<UpdateReplace>& executo
           _tmpBuilder.add(StaticStrings::RevString, VPackValue(VPackValueType::Null));
           }
           _tmpBuilder.close();
-          VPackCollection::merge(_updateBuilder, inVal.slice(), _tmpBuilder.slice(), false, true);
+          VPackCollection::merge(_updateOrReplaceBuilder, inVal.slice(), _tmpBuilder.slice(), false, true);
         } else {
           // use original slice for updating
-          _updateBuilder.add(inVal.slice());
+          _updateOrReplaceBuilder.add(inVal.slice());
         }
       } else {
         // not relevant for ourselves... just pass it on to the next block
@@ -647,49 +648,23 @@ bool UpdateReplace::doModifications(ModificationExecutor<UpdateReplace>& executo
 
   TRI_ASSERT(_operations.size() == executor._fetcher.currentBlock()->block().size());
 
-  _updateBuilder.close();
+  _updateOrReplaceBuilder.close();
 
-  auto toUpdate = _updateBuilder.slice();
-
-  //////
-  //////
-  //////    if (opRes.fail()) {
-  //////      THROW_ARANGO_EXCEPTION(opRes.result);
-  //////    }
-  //////
+  auto toUpdateOrReplace = _updateOrReplaceBuilder.slice();
 
   // former - skip empty
   // no more to prepare
-  if (toUpdate.length() == 0 && toUpdate.length() == 0) {
+  if (toUpdateOrReplace.length() == 0 && toUpdateOrReplace.length() == 0) {
     executor._copyBlock = true;
     TRI_ASSERT(false);
     return true;
   }
 
   TRI_ASSERT(info._trx);
-  OperationResult opRes;  // temporaroy value
-
-  //////    // perform update/replace
-  //////    OperationResult opRes = apply(toUpdate, options);
-  //////
-  //////    handleBabyResult(opRes.countErrorCodes, static_cast<size_t>(toUpdate.length()),
-  //////                     ep->_options.ignoreErrors, ignoreDocumentNotFound);
-  //
-
-  using MethodPtr = OperationResult(transaction::Methods::*)(std::string const& collectionName, VPackSlice const updateValue, OperationOptions const& options);
-  MethodPtr method = nullptr;
-
-  if (std::is_same<Update,decltype(*this)>::value){
-    method = &transaction::Methods::update;
-  } else {
-    method = &transaction::Methods::replace;
-  }
 
 
-
-
-  if (toUpdate.isArray() && toUpdate.length() > 0) {
-    OperationResult opRes = (info._trx->*method)(info._aqlCollection->name(), toUpdate, options);
+  if (toUpdateOrReplace.isArray() && toUpdateOrReplace.length() > 0) {
+    OperationResult opRes = (info._trx->*_method)(info._aqlCollection->name(), toUpdateOrReplace, options);
     setOperationResult(std::move(opRes));
 
     if (_operationResult.fail()) {
@@ -697,12 +672,12 @@ bool UpdateReplace::doModifications(ModificationExecutor<UpdateReplace>& executo
     }
 
     executor.handleBabyStats(stats, _operationResult.countErrorCodes,
-                             toUpdate.length(), info._ignoreErrors);
+                             toUpdateOrReplace.length(), info._ignoreErrors);
 
   }
 
   _tmpBuilder.clear();
-  _updateBuilder.clear();
+  _updateOrReplaceBuilder.clear();
 
 
   // former - skip empty
@@ -757,7 +732,8 @@ bool UpdateReplace::doModifications(ModificationExecutor<UpdateReplace>& executo
 //////    it->release();
 //////    returnBlock(res);
 //////  }
-bool UpdateReplace::doOutput(ModificationExecutor<UpdateReplace>& executor,
+template<typename ModType>
+bool UpdateReplace<ModType>::doOutput(ModificationExecutor<ModificationType>& executor,
                              OutputAqlItemRow& output) {
   TRI_ASSERT(_block);
   TRI_ASSERT(_block->hasBlock());
@@ -771,12 +747,12 @@ bool UpdateReplace::doOutput(ModificationExecutor<UpdateReplace>& executor,
     auto& op = _operations[_blockIndex];
     if (op == APPLY_UPDATE || op == APPLY_INSERT) {
       TRI_ASSERT(_operationResultIterator.valid());        // insert
-      TRI_ASSERT(_operationResultUpdateIterator.valid());  // update
+      //TRI_ASSERT(_operationResultUpdateIterator.valid());  // update
 
       // fetch operation type (insert or update/replace)
       VPackArrayIterator* iter = &_operationResultIterator;
       if (_operations[_blockIndex] == APPLY_UPDATE) {
-        iter = &_operationResultUpdateIterator;
+        //iter = &_operationResultUpdateIterator;
       }
       auto elm = iter->value();
 
@@ -806,3 +782,6 @@ bool UpdateReplace::doOutput(ModificationExecutor<UpdateReplace>& executor,
   // increase index and make sure next element is within the valid range
   return ++_blockIndex < _block->block().size();
 }
+
+template struct arangodb::aql::UpdateReplace<Update>;
+template struct arangodb::aql::UpdateReplace<Replace>;

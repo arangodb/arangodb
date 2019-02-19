@@ -216,5 +216,6 @@ ModificationExecutor<Modifier>::produceRow(OutputAqlItemRow& output) {
 
 template class ::arangodb::aql::ModificationExecutor<Insert>;
 template class ::arangodb::aql::ModificationExecutor<Remove>;
-template class ::arangodb::aql::ModificationExecutor<UpdateReplace>;
+template class ::arangodb::aql::ModificationExecutor<Replace>;
+template class ::arangodb::aql::ModificationExecutor<Update>;
 template class ::arangodb::aql::ModificationExecutor<Upsert>;
