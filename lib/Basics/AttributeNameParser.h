@@ -27,11 +27,9 @@
 #include <iosfwd>
 #include "Common.h"
 
-namespace arangodb {
+#include <velocypack/StringRef.h>
 
-namespace velocypack {
-class StringRef;
-}
+namespace arangodb {
 
 namespace basics {
 

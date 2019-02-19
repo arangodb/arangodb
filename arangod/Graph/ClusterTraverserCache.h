@@ -26,6 +26,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Graph/TraverserCache.h"
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 
@@ -40,7 +41,6 @@ class Methods;
 namespace velocypack {
 class Builder;
 class Slice;
-class StringRef;
 }  // namespace velocypack
 
 namespace graph {

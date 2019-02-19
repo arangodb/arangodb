@@ -25,12 +25,12 @@
 #define ARANGOD_GRAPH_EDGECURSOR_H 1
 
 #include "Basics/Common.h"
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 
 namespace velocypack {
 class Slice;
-class StringRef;
 }
 
 namespace graph {

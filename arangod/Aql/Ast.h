@@ -33,6 +33,8 @@
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
 
+#include <velocypack/StringRef.h>
+
 #include <functional>
 #include <iterator>
 #include <vector>
@@ -41,7 +43,6 @@ namespace arangodb {
 
 namespace velocypack {
 class Slice;
-class StringRef;
 }
 
 namespace aql {

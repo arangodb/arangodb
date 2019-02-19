@@ -42,7 +42,6 @@ class Methods;
 
 namespace velocypack {
 class Builder;
-class StringRef;
 }
 
 namespace graph {

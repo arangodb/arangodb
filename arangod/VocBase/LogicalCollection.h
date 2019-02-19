@@ -35,6 +35,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 typedef std::string ServerID;  // ID of a server
@@ -55,10 +56,6 @@ class ShardingInfo;
 
 namespace transaction {
 class Methods;
-}
-
-namespace velocypack {
-class StringRef;
 }
 
 class ChecksumResult {

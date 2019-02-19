@@ -24,6 +24,8 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
+
 #include "velocypack/StringRef.h"
 #include "velocypack/Slice.h"
 
@@ -43,4 +45,9 @@ StringRef& StringRef::operator=(Slice slice) {
   _data = slice.getString(l);
   _length = l;
   return *this;
+}
+
+std::ostream& operator<<(std::ostream& stream, arangodb::velocypack::StringRef const& ref) {
+  stream.write(ref.data(), ref.length());
+  return stream;
 }
