@@ -47,7 +47,13 @@ StringRef& StringRef::operator=(Slice slice) {
   return *this;
 }
 
-std::ostream& operator<<(std::ostream& stream, arangodb::velocypack::StringRef const& ref) {
+namespace arangodb {
+namespace velocypack {
+
+std::ostream& operator<<(std::ostream& stream, StringRef const& ref) {
   stream.write(ref.data(), ref.length());
   return stream;
+}
+
+}
 }

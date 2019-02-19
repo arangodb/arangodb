@@ -191,10 +191,10 @@ class StringRef {
   size_t _length;
 };
 
+std::ostream& operator<<(std::ostream& stream, StringRef const& ref);
 }
 }
 
-std::ostream& operator<<(std::ostream& stream, arangodb::velocypack::StringRef const& ref);
 
 inline bool operator==(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) {
   return (lhs.size() == rhs.size() && memcmp(lhs.data(), rhs.data(), lhs.size()) == 0);
