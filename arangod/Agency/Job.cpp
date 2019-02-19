@@ -146,9 +146,9 @@ bool Job::finish(std::string const& server, std::string const& shard,
         addReleaseShard(finished, shard);
       }
     }
-    { VPackObjectBuilder guard2(&finished); // Preconditions
-      // Additional payload, which is to be executed in the finish transaction
-      if (!preconditions.isNone() && preconditions.length() > 0) {
+    if (!preconditions.isNone() && preconditions.length() > 0) {
+      { VPackObjectBuilder guard2(&finished); // Preconditions
+        // Additional payload, which is to be executed in the finish transaction
         for (auto const& oper : VPackObjectIterator(preconditions)) {
           finished.add(oper.key.copyString(), oper.value);
         }

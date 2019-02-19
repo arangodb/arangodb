@@ -1593,7 +1593,8 @@ SECTION("a pending moveshard job should also put the original server back into p
     INFO("WriteTransaction: " << q->slice().toJson());
     auto writes = q->slice()[0][0];
     CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
-    REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+    // we always simply override, if to server not already leading
+    REQUIRE(q->slice()[0].length() == 2); 
     CHECK(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() == "delete");
     CHECK(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() == "delete");
     CHECK(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).typeName()) == "array");
@@ -1821,7 +1822,8 @@ SECTION("aborting the job while a leader transition is in progress (for example 
     INFO("WriteTransaction: " << q->slice().toJson());
     auto writes = q->slice()[0][0];
     CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
-    REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+    // we always simply override, if not already to server leading ...
+    REQUIRE(q->slice()[0].length() == 2); 
     CHECK(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() == "delete");
     CHECK(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() == "delete");
     CHECK(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).typeName()) == "array");
@@ -2126,7 +2128,8 @@ SECTION("when aborting a moveshard job that is moving stuff away from a follower
     INFO("WriteTransaction: " << q->slice().toJson());
     auto writes = q->slice()[0][0];
     CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
-    REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+    // we always simply override, if to server not already leading
+    REQUIRE(q->slice()[0].length() == 2); 
     CHECK(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() == "delete");
     CHECK(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() == "delete");
     CHECK(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).typeName()) == "array");
