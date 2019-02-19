@@ -91,7 +91,7 @@ class SingleRowFetcher {
   std::pair<ExecutionState, size_t> preFetchNumberOfRows() {
     // This is not implemented for this fetcher
     TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
  private:
