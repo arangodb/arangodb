@@ -30,7 +30,7 @@
 
 namespace arangodb {
 namespace aql {
-enum ModOperationType : uint8_t {
+enum class ModOperationType : uint8_t {
   IGNORE_SKIP = 0,    // do not apply, do not produce a result - used for
                       // skipping over suppressed errors
   IGNORE_RETURN = 1,  // do not apply, but pass the row to the next block -

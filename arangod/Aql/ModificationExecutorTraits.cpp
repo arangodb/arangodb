@@ -94,12 +94,12 @@ bool Insert::doModifications(ModificationExecutor<Insert>& executor,
     if (!info._consultAqlWriteFilter ||
         info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
                                                               StaticStrings::Empty)) {
-      _operations.push_back(APPLY_RETURN);
+      _operations.push_back(ModOperationType::APPLY_RETURN);
       // TODO This may be optimized with externals
       _tmpBuilder.add(inVal.slice());
     } else {
       // not relevant for ourselves... just pass it on to the next block
-      _operations.push_back(IGNORE_RETURN);
+      _operations.push_back(ModOperationType::IGNORE_RETURN);
     }
   });
 
@@ -164,7 +164,7 @@ bool Insert::doOutput(ModificationExecutor<Insert>& executor, OutputAqlItemRow& 
 
   InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
   if (!options.silent) {
-    if (_operations[_blockIndex] == APPLY_RETURN) {
+    if (_operations[_blockIndex] == ModOperationType::APPLY_RETURN) {
       TRI_ASSERT(_operationResultIterator.valid());
       auto elm = _operationResultIterator.value();
 
@@ -193,7 +193,7 @@ bool Insert::doOutput(ModificationExecutor<Insert>& executor, OutputAqlItemRow& 
         }
       }  // !wasError - end
       ++_operationResultIterator;
-    } else if (_operations[_blockIndex] == IGNORE_RETURN) {
+    } else if (_operations[_blockIndex] == ModOperationType::IGNORE_RETURN) {
       output.copyRow(input);
     } else {
       TRI_ASSERT(false);
@@ -242,7 +242,7 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
       }
 
       if (errorCode == TRI_ERROR_NO_ERROR) {
-        _operations.push_back(APPLY_RETURN);
+        _operations.push_back(ModOperationType::APPLY_RETURN);
 
         // no error. we expect to have a key
         // create a slice for the key
@@ -254,12 +254,12 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
         _tmpBuilder.close();
       } else {
         // We have an error, handle it
-        _operations.push_back(IGNORE_SKIP);
+        _operations.push_back(ModOperationType::IGNORE_SKIP);
         executor.handleStats(stats, errorCode, info._ignoreErrors);
       }
     } else {
       // not relevant for ourselves... just pass it on to the next block
-      _operations.push_back(IGNORE_RETURN);
+      _operations.push_back(ModOperationType::IGNORE_RETURN);
     }
   });
 
@@ -324,7 +324,7 @@ bool Remove::doOutput(ModificationExecutor<Remove>& executor, OutputAqlItemRow& 
 
   InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
   if (!options.silent) {
-    if (_operations[_blockIndex] == APPLY_RETURN) {
+    if (_operations[_blockIndex] == ModOperationType::APPLY_RETURN) {
       TRI_ASSERT(_operationResultIterator.valid());
       auto elm = _operationResultIterator.value();
 
@@ -349,7 +349,7 @@ bool Remove::doOutput(ModificationExecutor<Remove>& executor, OutputAqlItemRow& 
         }
       }
       ++_operationResultIterator;
-    } else if (_operations[_blockIndex] == IGNORE_RETURN) {
+    } else if (_operations[_blockIndex] == ModOperationType::IGNORE_RETURN) {
       output.copyRow(input);
     } else {
       TRI_ASSERT(false);
@@ -406,7 +406,7 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
             VPackBuilder tmp =
                 VPackCollection::merge(toUpdate, _tmpBuilder.slice(), false, false);
             _updateBuilder.add(tmp.slice());
-            _operations.push_back(APPLY_UPDATE);
+            _operations.push_back(ModOperationType::APPLY_UPDATE);
           } else {
             errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
             errorMessage = std::string("expecting 'Object', got: ") +
@@ -415,7 +415,7 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
           }
         }
       } else /*Doc is not relevant ourselves. Just pass Row to the next block*/ {
-        _operations.push_back(IGNORE_RETURN);
+        _operations.push_back(ModOperationType::IGNORE_RETURN);
       }
     } else /*insert case*/ {
       auto const& toInsert = row.getValue(insertReg).slice();
@@ -423,10 +423,10 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
         if (!info._consultAqlWriteFilter ||
             !info._aqlCollection->getCollection()->skipForAqlWrite(toInsert, StaticStrings::Empty)) {
           _insertBuilder.add(toInsert);
-          _operations.push_back(APPLY_INSERT);
+          _operations.push_back(ModOperationType::APPLY_INSERT);
         } else {
           // not relevant for ourselves... just pass it on to the next block
-          _operations.push_back(IGNORE_RETURN);
+          _operations.push_back(ModOperationType::IGNORE_RETURN);
         }
       } else {
         errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
@@ -435,7 +435,7 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
       }
 
       if (errorCode != TRI_ERROR_NO_ERROR) {
-        _operations.push_back(IGNORE_SKIP);
+        _operations.push_back(ModOperationType::IGNORE_SKIP);
         executor.handleStats(stats, errorCode, info._ignoreErrors, &errorMessage);
       }
     }
@@ -514,13 +514,13 @@ bool Upsert::doOutput(ModificationExecutor<Upsert>& executor, OutputAqlItemRow& 
   InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
   if (!options.silent) {
     auto& op = _operations[_blockIndex];
-    if (op == APPLY_UPDATE || op == APPLY_INSERT) {
+    if (op == ModOperationType::APPLY_UPDATE || op == ModOperationType::APPLY_INSERT) {
       TRI_ASSERT(_operationResultIterator.valid());        // insert
       TRI_ASSERT(_operationResultUpdateIterator.valid());  // update
 
       // fetch operation type (insert or update/replace)
       VPackArrayIterator* iter = &_operationResultIterator;
-      if (_operations[_blockIndex] == APPLY_UPDATE) {
+      if (_operations[_blockIndex] == ModOperationType::APPLY_UPDATE) {
         iter = &_operationResultUpdateIterator;
       }
       auto elm = iter->value();
@@ -537,7 +537,7 @@ bool Upsert::doOutput(ModificationExecutor<Upsert>& executor, OutputAqlItemRow& 
         }
       }
       ++*iter;
-    } else if (_operations[_blockIndex] == IGNORE_SKIP) {
+    } else if (_operations[_blockIndex] == ModOperationType::IGNORE_SKIP) {
       output.copyRow(input);
     } else {
       TRI_ASSERT(false);
@@ -615,7 +615,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutor<ModificationTy
     if (errorCode == TRI_ERROR_NO_ERROR) {
       if (!info._consultAqlWriteFilter ||
           !info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(), key)) {
-        _operations.push_back(APPLY_RETURN);
+        _operations.push_back(ModOperationType::APPLY_RETURN);
         if (hasKeyVariable) {
           _tmpBuilder.clear();
           _tmpBuilder.openObject();
@@ -636,10 +636,10 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutor<ModificationTy
         }
       } else {
         // not relevant for ourselves... just pass it on to the next block
-        _operations.push_back(IGNORE_RETURN);
+        _operations.push_back(ModOperationType::IGNORE_RETURN);
       }
     } else {
-      _operations.push_back(IGNORE_SKIP);
+      _operations.push_back(ModOperationType::IGNORE_SKIP);
       executor.handleStats(stats, errorCode, info._ignoreErrors, &errorMessage);
     }
   });
@@ -697,7 +697,7 @@ bool UpdateReplace<ModType>::doOutput(ModificationExecutor<ModificationType>& ex
   OperationOptions& options = info._options;
 
   InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
-  if (_operations[_blockIndex] == APPLY_RETURN) {
+  if (_operations[_blockIndex] == ModOperationType::APPLY_RETURN) {
     TRI_ASSERT(_operationResultIterator.valid());
     auto elm = _operationResultIterator.value();
 
@@ -720,7 +720,7 @@ bool UpdateReplace<ModType>::doOutput(ModificationExecutor<ModificationType>& ex
       }
     }
     ++_operationResultIterator;
-  } else if (_operations[_blockIndex] == IGNORE_SKIP) {
+  } else if (_operations[_blockIndex] == ModOperationType::IGNORE_SKIP) {
     output.copyRow(input);
   } else {
     TRI_ASSERT(false);
