@@ -66,7 +66,7 @@ static bool showBindVars = true;  // will be set once on startup. cannot be chan
 QueryCacheResultEntry::QueryCacheResultEntry(uint64_t hash, QueryString const& queryString,
                                              std::shared_ptr<VPackBuilder> const& queryResult,
                                              std::shared_ptr<VPackBuilder> const& bindVars,
-    std::vector<std::weak_ptr<arangodb::LogicalDataSource>>&& dataSources // query DataSources
+                                             std::unordered_map<std::string, std::string>&& dataSources 
 )
     : _hash(hash),
       _queryString(queryString.data(), queryString.size()),
@@ -149,11 +149,9 @@ void QueryCacheResultEntry::toVelocyPack(VPackBuilder& builder) const {
 
   builder.add("dataSources", VPackValue(VPackValueType::Array));
 
-  for (auto const& ds : _dataSources) {
-    auto obj = ds.lock();
-    if (obj) {
-      builder.add(arangodb::velocypack::Value(obj->name()));
-    }
+  // emit all datasource names
+  for (auto const& it : _dataSources) {
+    builder.add(arangodb::velocypack::Value(it.second));
   }
 
   builder.close();
@@ -261,24 +259,16 @@ void QueryCacheDatabaseEntry::store(std::shared_ptr<QueryCacheResultEntry>&& ent
 
   try {
     for (auto const& it : e->_dataSources) {
-      auto obj = it.lock();
-      if (!obj) {
-        continue; // skip null datasources
-      }
-
-      _entriesByDataSourceGuid[obj->guid()].second.emplace(hash);
+      auto& ref = _entriesByDataSourceGuid[it.first];
+      ref.first = it.first[0] == '_';
+      ref.second.emplace(hash);
     }
   } catch (...) {
     // rollback
 
     // remove from data sources
     for (auto const& it : e->_dataSources) {
-      auto obj = it.lock();
-      if (!obj) {
-        continue; // skip null datasources
-      }
-
-      auto itr2 = _entriesByDataSourceGuid.find(obj->guid());
+      auto itr2 = _entriesByDataSourceGuid.find(it.first);
 
       if (itr2 != _entriesByDataSourceGuid.end()) {
         itr2->second.second.erase(hash);
@@ -373,11 +363,11 @@ void QueryCacheDatabaseEntry::excludeSystem() {
   for (auto itr = _entriesByDataSourceGuid.begin(); // setup
        itr != _entriesByDataSourceGuid.end(); // condition
        /* no hoisting */) {
-    if (!itr->second.first || !itr->second.first->system()) {
+    if (!itr->second.first) {
       // not a system collection
       ++itr;
     } else {
-      for (auto const& hash: itr->second.second) {
+      for (auto const& hash : itr->second.second) {
         auto it2 = _entriesByHash.find(hash);
 
         if (it2 != _entriesByHash.end()) {
@@ -393,13 +383,8 @@ void QueryCacheDatabaseEntry::excludeSystem() {
 }
 
 void QueryCacheDatabaseEntry::removeDatasources(QueryCacheResultEntry const* e) {
-  for (auto const& ds : e->_dataSources) {
-    auto obj = ds.lock();
-    if (!obj) {
-      continue; // skip null datasources
-    }
-
-    auto itr = _entriesByDataSourceGuid.find(obj->guid());
+  for (auto const& it : e->_dataSources) {
+    auto itr = _entriesByDataSourceGuid.find(it.first);
 
     if (itr != _entriesByDataSourceGuid.end()) {
       itr->second.second.erase(e->_hash);
@@ -627,9 +612,8 @@ void QueryCache::store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultE
   if (!::includeSystem.load()) {
     // check if we need to exclude the entry because it refers to system
     // collections
-    for (auto const& ds : e->_dataSources) {
-      auto obj = ds.lock();
-      if (obj && obj->system()) {
+    for (auto const& it : e->_dataSources) {
+      if  (it.second[0] == '_') {
         // refers to a system collection...
         return;
       }

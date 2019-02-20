@@ -366,8 +366,8 @@ class Query {
   std::unordered_map<std::string, std::unique_ptr<graph::Graph>> _graphs;
 
   /// @brief set of DataSources used in the query
-  ///        needed for the query cache, value LogicalDataSource::system()
-  std::vector<std::weak_ptr<arangodb::LogicalDataSource>> _queryDataSources;
+  ///        needed for the query cache, stores datasource guid -> datasource name
+  std::unordered_map<std::string, std::string> _queryDataSources;
 
   /// @brief the actual query string
   QueryString _queryString;
