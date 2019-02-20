@@ -58,6 +58,9 @@ public:
   VPackSlice resultSlice() {return _result.slice();};
   VPackBuilder const& result() const { return _result;};
 
+  std::string getRocksDBPath();
+  unsigned getTimeout() const {return _timeoutSeconds;}
+
 protected:
   virtual std::string buildDirectoryPath(const std::string & timestamp, const std::string & userString);
   std::string rebuildPath(const std::string & suffix);
@@ -77,12 +80,18 @@ protected:
   std::string _errorMessage;
   VPackBuilder _result;
 
+  unsigned _timeoutSeconds; // used to stop transaction, used again to stop rocksdb
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The following wrapper routines simplify unit testing
   ////////////////////////////////////////////////////////////////////////////////
   virtual std::string getDatabasePath();
-
   virtual std::string getPersistedId();
+  virtual bool pauseRocksDB();
+  virtual bool restartRocksDB();
+  virtual bool holdRocksDBTransactions();
+  virtual void releaseRocksDBTransactions();
+
 };// class RocksDBHotBackup
 
 
@@ -106,7 +115,6 @@ public:
   // @brief accessors to the parameters
   bool isCreate() const {return _isCreate;}
   const std::string & getTimestamp() const {return _timestamp;}
-  unsigned getTimeoutMS() const {return _timeoutMS;}
   const std::string & getUserString() const {return _userString;}
 
 protected:
@@ -118,7 +126,6 @@ protected:
 
   bool _isCreate;
   bool _forceBackup;
-  unsigned _timeoutMS;
   std::string _timestamp;
   std::string _userString;
 
@@ -140,7 +147,6 @@ public:
 
   // @brief accessors to the parameters
   const std::string & getTimestampCurrent() const {return _timestampCurrent;}
-  unsigned getTimeout() const {return _timeoutSeconds;}
   const std::string & getDirectoryRestore() const {return _directoryRestore;}
 
 protected:
@@ -149,15 +155,13 @@ protected:
 
   bool _saveCurrent;
   bool _forceRestore;  // relates to transaction pause only, not rocksdb pause
-  unsigned _timeoutSeconds; // used to stop transaction, used again to stop rocksdb
   std::string _timestampCurrent;
   std::string _directoryRestore;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The following wrapper routines simplify unit testing
   ////////////////////////////////////////////////////////////////////////////////
-  virtual bool pauseRocksDB();
-  virtual bool restartRocksDB();
+
 
 };// class RocksDBHotBackupRestore
 

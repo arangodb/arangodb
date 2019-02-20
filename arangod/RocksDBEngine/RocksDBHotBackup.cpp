@@ -96,7 +96,7 @@ std::shared_ptr<RocksDBHotBackup> RocksDBHotBackup::operationFactory(
 //
 RocksDBHotBackup::RocksDBHotBackup(const VPackSlice body)
   : _body(body), _valid(false), _success(false), _respCode(rest::ResponseCode::BAD),
-    _respError(TRI_ERROR_HTTP_BAD_PARAMETER)
+    _respError(TRI_ERROR_HTTP_BAD_PARAMETER), _timeoutSeconds(10)
 {
   return;
 }
@@ -294,13 +294,56 @@ std::string RocksDBHotBackup::getDatabasePath() {
 
 } // RocksDBHotBackup::getDatabasePath
 
+
+std::string RocksDBHotBackup::getRocksDBPath() {
+  std::string engineDir;
+
+  engineDir = getDatabasePath();
+  engineDir += TRI_DIR_SEPARATOR_CHAR;
+  engineDir += "engine-rocksdb";
+
+  return engineDir;
+
+} // RocksDBHotBackup::getRocksDBPath()
+
+
+/// @brief wrapper for easy unit testing
+bool RocksDBHotBackup::pauseRocksDB() {
+
+  return rocksutils::globalRocksDB()->pauseRocksDB(std::chrono::seconds(_timeoutSeconds));
+
+} //  RocksDBHotBackup::pauseRocksDB
+
+
+/// @brief wrapper for easy unit testing
+bool RocksDBHotBackup::restartRocksDB() {
+
+  return rocksutils::globalRocksDB()->restartRocksDB();
+
+} //  RocksDBHotBackup::restartRocksDB
+
+
+bool RocksDBHotBackup::holdRocksDBTransactions() {
+
+  return TransactionManagerFeature::manager()->holdTransactions(_timeoutSeconds * 1000000);
+
+} // RocksDBHotBackup::holdRocksDBTransactions()
+
+
+void RocksDBHotBackup::releaseRocksDBTransactions() {
+
+  TransactionManagerFeature::manager()->releaseTransactions();
+
+} // RocksDBHotBackup::releaseRocksDBTransactions()
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief RocksDBHotBackupCreate
 ///        POST:  Initiate rocksdb checkpoint on local server
 ///        DELETE:  Remove an existing rocksdb checkpoint from local server
 ////////////////////////////////////////////////////////////////////////////////
 RocksDBHotBackupCreate::RocksDBHotBackupCreate(const VPackSlice body)
-  : RocksDBHotBackup(body), _isCreate(true), _forceBackup(false), _timeoutMS(10000)
+  : RocksDBHotBackup(body), _isCreate(true), _forceBackup(false)
 {
 }
 
@@ -328,7 +371,7 @@ void RocksDBHotBackupCreate::parseParameters(rest::RequestType const type) {
   } // else
 
   // remaining params are optional
-  getParamValue("timeoutMS", _timeoutMS, false);
+  getParamValue("timeout", _timeoutSeconds, false);
   getParamValue("userString", _userString, false);
   getParamValue("forceBackup", _forceBackup, false);
 
@@ -400,8 +443,8 @@ void RocksDBHotBackupCreate::executeCreate() {
     {
       auto guardHold = scopeGuard([&gotLock]()
                                   { if (gotLock) TransactionManagerFeature::manager()->releaseTransactions(); });
-      // convert timeout from milliseconds to microseconds
-      gotLock = TransactionManagerFeature::manager()->holdTransactions(_timeoutMS * 1000);
+      // convert timeout from seconds to microseconds
+      gotLock = TransactionManagerFeature::manager()->holdTransactions(_timeoutSeconds * 1000000);
 
       if (gotLock || _forceBackup) {
         EngineSelectorFeature::ENGINE->flushWal(true, true);
@@ -414,13 +457,10 @@ void RocksDBHotBackupCreate::executeCreate() {
     ptr = nullptr;
 
     if (_success) {
-      std::string engineDir, errors;
+      std::string errors;
 
-      engineDir = getDatabasePath();
-      engineDir += TRI_DIR_SEPARATOR_CHAR;
-      engineDir += "engine-rocksdb";
       std::function<basics::FileUtils::TRI_copy_recursive_e(std::string const&)>  filter=linkShaFiles;
-      /*_success =*/ basics::FileUtils::copyRecursive(engineDir, dirPath,
+      /*_success =*/ basics::FileUtils::copyRecursive(getRocksDBPath(), dirPath,
                                                   filter, errors);
     } // if
   } // if
@@ -455,7 +495,7 @@ void RocksDBHotBackupCreate::executeCreate() {
 ///        POST:  Initiate restore of rocksdb snapshot in place of working directory
 ////////////////////////////////////////////////////////////////////////////////
 RocksDBHotBackupRestore::RocksDBHotBackupRestore(const VPackSlice body)
-  : RocksDBHotBackup(body), _saveCurrent(true), _forceRestore(true), _timeoutSeconds(10000)
+  : RocksDBHotBackup(body), _saveCurrent(true), _forceRestore(true)
 {
 }
 
@@ -529,8 +569,10 @@ static basics::FileUtils::TRI_copy_recursive_e copyVersusLink(std::string const 
 
 /// @brief step through the restore procedures
 void RocksDBHotBackupRestore::execute() {
-  std::string errors, restoringDir;
+  std::string errors, restoringDir, rocksDBPath;
   bool good = {true}, restoringReady={false}, gotLock={false}, pauseWorked={false};
+
+  rocksDBPath = getRocksDBPath();
 
   /// 1. create copy of hotbackup to restore
   ///    (restoringDir populated by function)
@@ -540,12 +582,12 @@ void RocksDBHotBackupRestore::execute() {
   // proceed only if copy completed
   if (good) {
     // make sure the transaction hold is released
-    auto guardHold = scopeGuard([&gotLock]()
-                                  { if (gotLock) TransactionManagerFeature::manager()->releaseTransactions(); });
+    auto guardHold = scopeGuard([&gotLock, this]()
+                                { if (gotLock) releaseRocksDBTransactions(); } );
     try {
       /// 2. attempt to stop transactions,
       // convert timeout from seconds to microseconds
-      gotLock = TransactionManagerFeature::manager()->holdTransactions(_timeoutSeconds * 1000000);
+      gotLock = holdRocksDBTransactions();
 
       if (gotLock || _forceRestore) {
         int retVal;
@@ -558,11 +600,11 @@ void RocksDBHotBackupRestore::execute() {
           /// 4. shift active database to a hotbackup directory
           nowStamp = timepointToString(std::chrono::system_clock::now());
           newDirectory = buildDirectoryPath(nowStamp, "before_restore");
-          retVal = TRI_RenameFile(getDatabasePath().c_str(), newDirectory.c_str(), &systemError, &errorStr);
+          retVal = TRI_RenameFile(rocksDBPath.c_str(), newDirectory.c_str(), &systemError, &errorStr);
 
           if (TRI_ERROR_NO_ERROR == retVal) {
             /// 5. shift copy of restoring directory to active database position
-            retVal = TRI_RenameFile(restoringDir.c_str(), getDatabasePath().c_str(), &systemError, &errorStr);
+            retVal = TRI_RenameFile(restoringDir.c_str(), rocksDBPath.c_str(), &systemError, &errorStr);
 
             if (TRI_ERROR_NO_ERROR == retVal) {
               /// 6. restart rocksdb
@@ -578,7 +620,7 @@ void RocksDBHotBackupRestore::execute() {
                 << "RocksDBHotBackupRestore: " << _errorMessage;
 
               // ... and if this fails too? ...
-              retVal = TRI_RenameFile(newDirectory.c_str(), getDatabasePath().c_str(), &systemError, &errorStr);
+              retVal = TRI_RenameFile(newDirectory.c_str(), rocksDBPath.c_str(), &systemError, &errorStr);
               if (TRI_ERROR_NO_ERROR != retVal) {
                 TRI_ASSERT(false);
                 LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
@@ -689,22 +731,6 @@ bool RocksDBHotBackupRestore::createRestoringDirectory(std::string & restoreDirO
   return retFlag;
 
 } // RocksDBHotBackupRestore::createRestoringDirectory
-
-
-/// @brief wrapper for easy unit testing
-bool RocksDBHotBackupRestore::pauseRocksDB() {
-
-  return rocksutils::globalRocksDB()->pauseRocksDB(std::chrono::seconds(_timeoutSeconds));
-
-} //  RocksDBHotBackupRestore::pauseRocksDB
-
-
-/// @brief wrapper for easy unit testing
-bool RocksDBHotBackupRestore::restartRocksDB() {
-
-  return rocksutils::globalRocksDB()->restartRocksDB();
-
-} //  RocksDBHotBackupRestore::restartRocksDB
 
 
 } // namespace arangodb
