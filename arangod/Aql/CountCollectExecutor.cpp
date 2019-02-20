@@ -49,40 +49,6 @@ CountCollectExecutorInfos::CountCollectExecutorInfos(
       _collectRegister(collectRegister) {}
 
 CountCollectExecutor::CountCollectExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _fetcher(fetcher), _count(0){};
+    : _infos(infos), _fetcher(fetcher), _state(ExecutionState::HASMORE), _count(0){};
 
 CountCollectExecutor::~CountCollectExecutor() = default;
-
-std::pair<ExecutionState, NoStats> CountCollectExecutor::produceRow(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("CountCollectExecutor::produceRow") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  NoStats stats{};
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
-  ExecutionState state;
-
-  while (true) {
-    std::tie(state, input) = _fetcher.fetchRow();
-
-    if (state == ExecutionState::WAITING) {
-      return {state, stats};
-    }
-
-    if (!input) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      output.cloneValueInto(_infos.getOutputRegisterId(), input,
-                            AqlValue(AqlValueHintUInt(static_cast<uint64_t>(getCount()))));
-      return {state, stats};
-    }
-
-    TRI_ASSERT(input.isInitialized());
-    incrCount();
-
-    // Abort if upstream is done
-    if (state == ExecutionState::DONE) {
-      output.cloneValueInto(_infos.getOutputRegisterId(), input,
-                            AqlValue(AqlValueHintUInt(static_cast<uint64_t>(getCount()))));
-      return {state, stats};
-    }
-  }
-}

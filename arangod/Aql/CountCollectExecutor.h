@@ -90,10 +90,46 @@ class CountCollectExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+
+  inline std::pair<ExecutionState, NoStats> produceRow(OutputAqlItemRow& output) {
+    TRI_IF_FAILURE("CountCollectExecutor::produceRow") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    NoStats stats{};
+    InputAqlItemRow input{CreateInvalidInputRowHint{}};
+
+    if (_state == ExecutionState::DONE) {
+      return {_state, stats};
+    }
+
+    while (true) {
+      std::tie(_state, input) = _fetcher.fetchRow();
+
+      if (_state == ExecutionState::WAITING) {
+        return {_state, stats};
+      }
+
+      if (!input) {
+        TRI_ASSERT(_state == ExecutionState::DONE);
+        output.cloneValueInto(_infos.getOutputRegisterId(), input,
+                              AqlValue(AqlValueHintUInt(getCount())));
+        return {_state, stats};
+      }
+
+      TRI_ASSERT(input.isInitialized());
+      incrCount();
+
+      // Abort if upstream is done
+      if (_state == ExecutionState::DONE) {
+        output.cloneValueInto(_infos.getOutputRegisterId(), input,
+                              AqlValue(AqlValueHintUInt(getCount())));
+        return {_state, stats};
+      }
+    }
+  }
 
   void incrCount() noexcept { _count++; };
-  size_t getCount() noexcept { return _count; };
+  uint64_t getCount() noexcept { return _count; };
 
  private:
   Infos const& infos() const noexcept { return _infos; };
@@ -101,8 +137,8 @@ class CountCollectExecutor {
  private:
   Infos const& _infos;
   Fetcher& _fetcher;
-
-  size_t _count;
+  ExecutionState _state;
+  uint64_t _count;
 };
 
 }  // namespace aql
