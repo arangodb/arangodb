@@ -26,13 +26,13 @@
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
-#include "Basics/StringRef.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -42,7 +42,7 @@ using namespace arangodb::graph;
 namespace {
 static bool isValidId(VPackSlice id) {
   TRI_ASSERT(id.isString());
-  StringRef tester(id);
+  arangodb::velocypack::StringRef tester(id);
   return tester.find('/') != std::string::npos;
 }
 }  // namespace

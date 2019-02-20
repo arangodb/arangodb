@@ -24,11 +24,11 @@
 #include "v8-vpack.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/Exceptions.h"
-#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -270,7 +270,7 @@ struct BuilderContext {
 
 template <typename T, bool inObject>
 static inline void AddValue(BuilderContext& context,
-                            arangodb::StringRef const& attributeName, T const& value) {
+                            arangodb::velocypack::StringRef const& attributeName, T const& value) {
   if (inObject) {
     context.builder.addUnchecked(attributeName.begin(), attributeName.size(), value);
   } else {
@@ -284,7 +284,7 @@ static inline void AddValue(BuilderContext& context,
 
 template <bool performAllChecks, bool inObject>
 static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parameter,
-                     arangodb::StringRef const& attributeName, bool convertFunctionsToNull) {
+                     arangodb::velocypack::StringRef const& attributeName, bool convertFunctionsToNull) {
   if (parameter->IsNullOrUndefined() ||
       (convertFunctionsToNull && parameter->IsFunction())) {
     AddValue<VPackValue, inObject>(context, attributeName, VPackValue(VPackValueType::Null));
@@ -351,7 +351,7 @@ static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parame
         return TRI_ERROR_BAD_PARAMETER;
       }
 
-      int res = V8ToVPack<performAllChecks, false>(context, value, arangodb::StringRef(),
+      int res = V8ToVPack<performAllChecks, false>(context, value, arangodb::velocypack::StringRef(),
                                                    convertFunctionsToNull);
 
       --context.level;
@@ -459,7 +459,7 @@ static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parame
       }
 
       int res = V8ToVPack<performAllChecks, true>(context, value,
-                                                  arangodb::StringRef(*str, str.length()),
+                                                  arangodb::velocypack::StringRef(*str, str.length()),
                                                   convertFunctionsToNull);
 
       --context.level;
@@ -490,7 +490,7 @@ int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
   TRI_GET_GLOBALS();
   TRI_GET_GLOBAL_STRING(ToJsonKey);
   context.toJsonKey = ToJsonKey;
-  return V8ToVPack<true, false>(context, value, arangodb::StringRef(), convertFunctionsToNull);
+  return V8ToVPack<true, false>(context, value, arangodb::velocypack::StringRef(), convertFunctionsToNull);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -503,5 +503,5 @@ int TRI_V8ToVPackSimple(v8::Isolate* isolate, arangodb::velocypack::Builder& bui
                         v8::Handle<v8::Value> const value) {
   // a HandleScope must have been created by the caller already
   BuilderContext context(isolate->GetCurrentContext(), isolate, builder, false);
-  return V8ToVPack<false, false>(context, value, arangodb::StringRef(), false);
+  return V8ToVPack<false, false>(context, value, arangodb::velocypack::StringRef(), false);
 }

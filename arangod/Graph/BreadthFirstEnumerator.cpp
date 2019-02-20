@@ -36,11 +36,11 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-BreadthFirstEnumerator::PathStep::PathStep(StringRef const vertex)
+BreadthFirstEnumerator::PathStep::PathStep(arangodb::velocypack::StringRef const vertex)
     : sourceIdx(0), edge(EdgeDocumentToken()), vertex(vertex) {}
 
 BreadthFirstEnumerator::PathStep::PathStep(size_t sourceIdx, EdgeDocumentToken&& edge,
-                                           StringRef const vertex)
+                                           arangodb::velocypack::StringRef const vertex)
     : sourceIdx(sourceIdx), edge(edge), vertex(vertex) {}
 
 BreadthFirstEnumerator::PathStep::~PathStep() {}
@@ -56,7 +56,7 @@ BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser, VPackSlice 
       _currentDepth(0),
       _toSearchPos(0) {
   _schreier.reserve(32);
-  StringRef startVId = _opts->cache()->persistString(StringRef(startVertex));
+  arangodb::velocypack::StringRef startVId = _opts->cache()->persistString(arangodb::velocypack::StringRef(startVertex));
 
   _schreier.emplace_back(std::make_unique<PathStep>(startVId));
   _toSearch.emplace_back(NextStep(0));
@@ -116,7 +116,7 @@ bool BreadthFirstEnumerator::next() {
     _tmpEdges.clear();
     auto const nextIdx = _toSearch[_toSearchPos++].sourceIdx;
     auto const nextVertex = _schreier[nextIdx]->vertex;
-    StringRef vId;
+    arangodb::velocypack::StringRef vId;
 
     std::unique_ptr<EdgeCursor> cursor(
         _opts->nextCursor(_traverser->mmdr(), nextVertex, _currentDepth));
@@ -226,7 +226,7 @@ arangodb::aql::AqlValue BreadthFirstEnumerator::pathToAqlValue(arangodb::velocyp
   return arangodb::aql::AqlValue(result.slice());
 }
 
-bool BreadthFirstEnumerator::pathContainsVertex(size_t index, StringRef vertex) const {
+bool BreadthFirstEnumerator::pathContainsVertex(size_t index, arangodb::velocypack::StringRef vertex) const {
   while (true) {
     TRI_ASSERT(index < _schreier.size());
     auto const& step = _schreier[index];

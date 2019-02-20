@@ -78,6 +78,7 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       _hasMultipleExpansions(false),
       _returned(0),
       _copyFromRow(0),
+      _nrInRegs(0),
       _resultInFlight(nullptr) {
   _mmdr.reset(new ManagedDocumentResult);
 
@@ -134,6 +135,8 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       }
     }
   }
+
+  _nrInRegs = getNrInputRegisters();
 
   // build the _documentProducer callback for extracting
   // documents from the index
@@ -589,7 +592,6 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(siz
   }
 
   TRI_ASSERT(atMost > 0);
-  size_t const nrInRegs = getNrInputRegisters();
   if (_resultInFlight == nullptr) {
     // We handed sth out last call and need to reset now.
     TRI_ASSERT(_returned == 0);
@@ -604,7 +606,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(siz
 
   if (_indexes.size() > 1 || _hasMultipleExpansions) {
     // Activate uniqueness checks
-    callback = [this, nrInRegs](LocalDocumentId const& token, VPackSlice slice) {
+    callback = [this](LocalDocumentId const& token, VPackSlice slice) {
       TRI_ASSERT(_resultInFlight != nullptr);
       if (!_isLastIndex) {
         // insert & check for duplicates in one go
@@ -620,13 +622,13 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(siz
         }
       }
 
-      _documentProducer(_resultInFlight.get(), slice, nrInRegs, _returned, _copyFromRow);
+      _documentProducer(_resultInFlight.get(), slice, _nrInRegs, _returned, _copyFromRow);
     };
   } else {
     // No uniqueness checks
-    callback = [this, nrInRegs](LocalDocumentId const&, VPackSlice slice) {
+    callback = [this](LocalDocumentId const&, VPackSlice slice) {
       TRI_ASSERT(_resultInFlight != nullptr);
-      _documentProducer(_resultInFlight.get(), slice, nrInRegs, _returned, _copyFromRow);
+      _documentProducer(_resultInFlight.get(), slice, _nrInRegs, _returned, _copyFromRow);
     };
   }
 
@@ -689,9 +691,8 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(siz
     // At least one of them is prepared and ready to read.
     TRI_ASSERT(!_indexesExhausted);
     AqlItemBlock* cur = _buffer.front();
-    TRI_ASSERT(nrInRegs == cur->getNrRegs());
-
-    TRI_ASSERT(nrInRegs <= _resultInFlight->getNrRegs());
+    TRI_ASSERT(_nrInRegs == cur->getNrRegs());
+    TRI_ASSERT(_nrInRegs <= _resultInFlight->getNrRegs());
 
     // only copy 1st row of registers inherited from previous frame(s)
     inheritRegisters(cur, _resultInFlight.get(), _pos, _returned);
@@ -702,7 +703,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(siz
     _indexesExhausted = !readIndex(atMost, callback);
     if (_returned == saveReturned) {
       // No results. Kill the registers:
-      for (arangodb::aql::RegisterId i = 0; i < nrInRegs; ++i) {
+      for (arangodb::aql::RegisterId i = 0; i < _nrInRegs; ++i) {
         _resultInFlight->destroyValue(_returned, i);
       }
     } else {

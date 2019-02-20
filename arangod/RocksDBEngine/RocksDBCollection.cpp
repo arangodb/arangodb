@@ -730,7 +730,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 LocalDocumentId RocksDBCollection::lookupKey(transaction::Methods* trx,
                                              VPackSlice const& key) const {
   TRI_ASSERT(key.isString());
-  return primaryIndex()->lookupKey(trx, StringRef(key));
+  return primaryIndex()->lookupKey(trx, arangodb::velocypack::StringRef(key));
 }
 
 bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice const& key,
@@ -739,7 +739,7 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
   LocalDocumentId documentId;
   revisionId = 0;
   // lookup the revision id in the primary index
-  if (!primaryIndex()->lookupRevision(trx, StringRef(key), documentId, revisionId)) {
+  if (!primaryIndex()->lookupRevision(trx, arangodb::velocypack::StringRef(key), documentId, revisionId)) {
     // document not found
     TRI_ASSERT(revisionId == 0);
     return false;
@@ -756,7 +756,7 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
   });
 }
 
-Result RocksDBCollection::read(transaction::Methods* trx, arangodb::StringRef const& key,
+Result RocksDBCollection::read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
                                ManagedDocumentResult& result, bool) {
   LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, key);
   if (documentId.isSet()) {
@@ -826,7 +826,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(newSlice);
     if (keySlice.isString()) {
       LocalDocumentId const documentId =
-          primaryIndex()->lookupKey(trx, StringRef(keySlice));
+          primaryIndex()->lookupKey(trx, arangodb::velocypack::StringRef(keySlice));
       if (documentId.isSet()) {
         if (options.indexOperationMode == Index::OperationMode::internal) {
           // need to return the key of the conflict document

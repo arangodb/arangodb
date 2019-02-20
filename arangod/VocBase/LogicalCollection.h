@@ -35,6 +35,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 typedef std::string ServerID;  // ID of a server
@@ -52,7 +53,6 @@ struct OperationOptions;
 class PhysicalCollection;
 class Result;
 class ShardingInfo;
-class StringRef;
 
 namespace transaction {
 class Methods;
@@ -276,7 +276,7 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Index access (local only)
 
   /// @brief reads an element from the document collection
-  Result read(transaction::Methods* trx, StringRef const& key,
+  Result read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
               ManagedDocumentResult& mdr, bool lock);
   Result read(transaction::Methods*, arangodb::velocypack::Slice const&,
               ManagedDocumentResult& result, bool);

@@ -25,7 +25,6 @@
 
 #include "RocksDBCommon.h"
 #include "Basics/RocksDBUtils.h"
-#include "Basics/StringRef.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBComparator.h"
@@ -40,6 +39,7 @@
 #include <rocksdb/convenience.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 namespace rocksutils {
