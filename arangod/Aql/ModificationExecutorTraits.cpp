@@ -75,6 +75,89 @@ int extractKey(transaction::Methods* trx, AqlValue const& value, std::string& ke
   return extractKeyAndRev(trx, value, key, optimizeAway, true /*key only*/);
 }
 
+/// @brief process the result of a data-modification operation
+void handleStats(ModificationExecutorBase::Stats& stats,
+                 ModificationExecutorInfos& info, int code, bool ignoreErrors,
+                 std::string const* errorMessage = nullptr) {
+  if (code == TRI_ERROR_NO_ERROR) {
+    // update the success counter
+    if (info._doCount) {
+      stats.incrWritesExecuted();
+    }
+    return;
+  }
+
+  if (ignoreErrors) {
+    // update the ignored counter
+    if (info._doCount) {
+      stats.incrWritesExecuted();
+    }
+    return;
+  }
+
+  // bubble up the error
+  if (errorMessage != nullptr && !errorMessage->empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(code, *errorMessage);
+  }
+
+  THROW_ARANGO_EXCEPTION(code);
+}
+
+/// @brief process the result of a data-modification operation
+void handleBabyStats(ModificationExecutorBase::Stats& stats, ModificationExecutorInfos& info,
+                     std::unordered_map<int, size_t> const& errorCounter, uint64_t numBabies,
+                     bool ignoreErrors, bool ignoreDocumentNotFound = false) {
+  size_t numberBabies = numBabies;  // from uint64_t to size_t
+
+  if (errorCounter.empty()) {
+    // update the success counter
+    // All successful.
+    if (info._doCount) {
+      stats.addWritesExecuted(numberBabies);
+    }
+    return;
+  }
+
+  if (ignoreErrors) {
+    for (auto const& pair : errorCounter) {
+      // update the ignored counter
+      if (info._doCount) {
+        stats.addWritesIgnored(pair.second);
+      }
+      numberBabies -= pair.second;
+    }
+
+    // update the success counter
+    if (info._doCount) {
+      stats.addWritesExecuted(numberBabies);
+    }
+    return;
+  }
+  auto first = errorCounter.begin();
+  if (ignoreDocumentNotFound && first->first == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    if (errorCounter.size() == 1) {
+      // We only have Document not found. Fix statistics and ignore
+      // update the ignored counter
+      if (info._doCount) {
+        stats.addWritesIgnored(first->second);
+      }
+      numberBabies -= first->second;
+      // update the success counter
+      if (info._doCount) {
+        stats.addWritesExecuted(numberBabies);
+      }
+      return;
+    }
+
+    // Sorry we have other errors as well.
+    // No point in fixing statistics.
+    // Throw other error.
+    ++first;
+    TRI_ASSERT(first != errorCounter.end());
+  }
+
+  THROW_ARANGO_EXCEPTION(first->first);
+}
 }  // namespace
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -133,8 +216,8 @@ bool Insert::doModifications(ModificationExecutor<Insert>& executor,
   _tmpBuilder.clear();
 
   // handle statisitcs
-  executor.handleBabyStats(stats, _operationResult.countErrorCodes,
-                           toInsert.length(), info._ignoreErrors);
+  handleBabyStats(stats, info, _operationResult.countErrorCodes,
+                  toInsert.length(), info._ignoreErrors);
 
   if (_operationResult.fail()) {
     THROW_ARANGO_EXCEPTION(_operationResult.result);
@@ -223,7 +306,7 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
   std::string rev;
 
   const RegisterId& inReg = info._input1RegisterId.value();
-  executor._fetcher.forRowInBlock([this, &executor, &stats, &errorCode, &key, &rev,
+  executor._fetcher.forRowInBlock([this, &stats, &errorCode, &key, &rev,
                                    trx, inReg, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
     if (!info._consultAqlWriteFilter ||
@@ -255,7 +338,7 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
       } else {
         // We have an error, handle it
         _operations.push_back(ModOperationType::IGNORE_SKIP);
-        executor.handleStats(stats, errorCode, info._ignoreErrors);
+        handleStats(stats, info, errorCode, info._ignoreErrors);
       }
     } else {
       // not relevant for ourselves... just pass it on to the next block
@@ -293,8 +376,8 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
   _tmpBuilder.clear();
 
   // handle statisitcs
-  executor.handleBabyStats(stats, _operationResult.countErrorCodes,
-                           toRemove.length(), info._ignoreErrors);
+  handleBabyStats(stats, info, _operationResult.countErrorCodes,
+                  toRemove.length(), info._ignoreErrors);
 
   if (_operationResult.fail()) {
     THROW_ARANGO_EXCEPTION(_operationResult.result);
@@ -383,7 +466,7 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
   const RegisterId& insertReg = info._input2RegisterId.value();
   const RegisterId& updateReg = info._input3RegisterId.value();
 
-  executor._fetcher.forRowInBlock([this, &executor, &stats, &errorCode,
+  executor._fetcher.forRowInBlock([this, &stats, &errorCode,
                                    &errorMessage, &key, trx, inDocReg, insertReg,
                                    updateReg, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inDocReg);
@@ -436,7 +519,7 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
 
       if (errorCode != TRI_ERROR_NO_ERROR) {
         _operations.push_back(ModOperationType::IGNORE_SKIP);
-        executor.handleStats(stats, errorCode, info._ignoreErrors, &errorMessage);
+        handleStats(stats, info, errorCode, info._ignoreErrors, &errorMessage);
       }
     }
   });
@@ -471,7 +554,7 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
       THROW_ARANGO_EXCEPTION(_operationResult.result);
     }
 
-    executor.handleBabyStats(stats, _operationResult.countErrorCodes,
+    handleBabyStats(stats, info, _operationResult.countErrorCodes,
                              toInsert.length(), info._ignoreErrors);
   }
 
@@ -491,7 +574,7 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
       THROW_ARANGO_EXCEPTION(_operationResultUpdate.result);
     }
 
-    executor.handleBabyStats(stats, _operationResultUpdate.countErrorCodes,
+    handleBabyStats(stats, info, _operationResultUpdate.countErrorCodes,
                              toUpdate.length(), info._ignoreErrors);
   }
   // former - skip empty
@@ -584,7 +667,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutor<ModificationTy
 
   // const RegisterId& updateReg = info._input3RegisterId.value();
 
-  executor._fetcher.forRowInBlock([this, &executor, &options, &stats, &errorCode,
+  executor._fetcher.forRowInBlock([this, &options, &stats, &errorCode,
                                    &errorMessage, &key, &rev, trx, inDocReg, keyReg,
                                    hasKeyVariable, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inDocReg);
@@ -640,7 +723,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutor<ModificationTy
       }
     } else {
       _operations.push_back(ModOperationType::IGNORE_SKIP);
-      executor.handleStats(stats, errorCode, info._ignoreErrors, &errorMessage);
+      handleStats(stats, info, errorCode, info._ignoreErrors, &errorMessage);
     }
   });
 
@@ -669,7 +752,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutor<ModificationTy
       THROW_ARANGO_EXCEPTION(_operationResult.result);
     }
 
-    executor.handleBabyStats(stats, _operationResult.countErrorCodes,
+    handleBabyStats(stats, info, _operationResult.countErrorCodes,
                              toUpdateOrReplace.length(), info._ignoreErrors);
   }
 
