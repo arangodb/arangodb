@@ -58,7 +58,7 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
     RegisterId reg;
     std::string value;
 
-    InputVertex(std::string const value)
+    InputVertex(std::string const& value)
         : type(CONSTANT), reg(0), value(value) {}
     InputVertex(RegisterId reg) : type(REGISTER), reg(reg), value("") {}
   };

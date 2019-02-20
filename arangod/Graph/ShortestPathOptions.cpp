@@ -179,7 +179,7 @@ double ShortestPathOptions::weightEdge(VPackSlice edge) {
       edge, weightAttribute.c_str(), defaultWeight);
 }
 
-EdgeCursor* ShortestPathOptions::nextCursor(ManagedDocumentResult* mmdr, StringRef vid) {
+EdgeCursor* ShortestPathOptions::nextCursor(ManagedDocumentResult* mmdr, arangodb::velocypack::StringRef vid) {
   if (_isCoordinator) {
     return nextCursorCoordinator(vid);
   }
@@ -187,7 +187,7 @@ EdgeCursor* ShortestPathOptions::nextCursor(ManagedDocumentResult* mmdr, StringR
   return nextCursorLocal(mmdr, vid, _baseLookupInfos);
 }
 
-EdgeCursor* ShortestPathOptions::nextReverseCursor(ManagedDocumentResult* mmdr, StringRef vid) {
+EdgeCursor* ShortestPathOptions::nextReverseCursor(ManagedDocumentResult* mmdr, arangodb::velocypack::StringRef vid) {
   if (_isCoordinator) {
     return nextReverseCursorCoordinator(vid);
   }
@@ -195,17 +195,17 @@ EdgeCursor* ShortestPathOptions::nextReverseCursor(ManagedDocumentResult* mmdr, 
   return nextCursorLocal(mmdr, vid, _reverseLookupInfos);
 }
 
-EdgeCursor* ShortestPathOptions::nextCursorCoordinator(StringRef vid) {
+EdgeCursor* ShortestPathOptions::nextCursorCoordinator(arangodb::velocypack::StringRef vid) {
   auto cursor = std::make_unique<ClusterEdgeCursor>(vid, false, this);
   return cursor.release();
 }
 
-EdgeCursor* ShortestPathOptions::nextReverseCursorCoordinator(StringRef vid) {
+EdgeCursor* ShortestPathOptions::nextReverseCursorCoordinator(arangodb::velocypack::StringRef vid) {
   auto cursor = std::make_unique<ClusterEdgeCursor>(vid, true, this);
   return cursor.release();
 }
 
-void ShortestPathOptions::fetchVerticesCoordinator(std::deque<StringRef> const& vertexIds) {
+void ShortestPathOptions::fetchVerticesCoordinator(std::deque<arangodb::velocypack::StringRef> const& vertexIds) {
   // TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   if (!arangodb::ServerState::instance()->isCoordinator()) {
     return;
@@ -215,9 +215,9 @@ void ShortestPathOptions::fetchVerticesCoordinator(std::deque<StringRef> const& 
   auto ch = reinterpret_cast<ClusterTraverserCache*>(cache());
   TRI_ASSERT(ch != nullptr);
   // get the map of _ids into the datalake
-  std::unordered_map<StringRef, VPackSlice>& cache = ch->cache();
+  std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache = ch->cache();
 
-  std::unordered_set<StringRef> fetch;
+  std::unordered_set<arangodb::velocypack::StringRef> fetch;
   for (auto it : vertexIds) {
     if (cache.find(it) == cache.end()) {
       // We do not have this vertex

@@ -50,7 +50,7 @@ class MMFilesIndex : public Index {
     return false;  // do not generally hide MMFiles indexes
   }
   
-  virtual bool isPersistent() const { return false; };
+  virtual bool isPersistent() const override { return false; };
 
   virtual void batchInsert(transaction::Methods& trx,
                            std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const& docs,

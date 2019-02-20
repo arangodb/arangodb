@@ -254,7 +254,6 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
  arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
   RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(internal != nullptr);
-  std::function<void()> empty;
 
   const rocksdb::Snapshot* snap = nullptr;
 

@@ -29,7 +29,7 @@
 #include "Basics/FixedSizeAllocator.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/SkiplistIndexAttributeMatcher.h"
+#include "Indexes/SortedIndexAttributeMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexLookupContext.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -1184,7 +1184,7 @@ bool MMFilesSkiplistIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex, size_t& estimatedItems, double& estimatedCost) const {
-  return SkiplistIndexAttributeMatcher::supportsFilterCondition(allIndexes, this,
+  return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this,
                                                                 node, reference,
                                                                 itemsInIndex, estimatedItems,
                                                                 estimatedCost);
@@ -1194,7 +1194,7 @@ bool MMFilesSkiplistIndex::supportsSortCondition(arangodb::aql::SortCondition co
                                                  arangodb::aql::Variable const* reference,
                                                  size_t itemsInIndex, double& estimatedCost,
                                                  size_t& coveredAttributes) const {
-  return SkiplistIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
+  return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
                                                               itemsInIndex, estimatedCost,
                                                               coveredAttributes);
 }
@@ -1202,5 +1202,5 @@ bool MMFilesSkiplistIndex::supportsSortCondition(arangodb::aql::SortCondition co
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* MMFilesSkiplistIndex::specializeCondition(
     arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference) const {
-  return SkiplistIndexAttributeMatcher::specializeCondition(this, node, reference);
+  return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
 }

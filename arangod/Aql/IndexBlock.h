@@ -165,6 +165,9 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
   ///        Needs to be 0 after we return a result.
   size_t _copyFromRow;
 
+  /// @brief Number of input registers  
+  size_t _nrInRegs;
+
   /// @brief Capture of all results that are produced before the last WAITING
   /// call.
   ///        Needs to be nullptr after it got returned.

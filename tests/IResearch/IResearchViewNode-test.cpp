@@ -1214,7 +1214,6 @@ TEST_CASE("IResearchViewNodeTest", "[iresearch][iresearch-view-node]") {
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto logicalView = vocbase.createView(createJson->slice());
     REQUIRE((false == !logicalView));
-    auto view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE(nullptr != view);
 
     // create collection0

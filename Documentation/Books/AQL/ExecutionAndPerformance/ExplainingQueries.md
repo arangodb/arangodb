@@ -15,7 +15,8 @@ A query can also be explained from the ArangoShell using the `ArangoDatabase`'s 
 or in detail via `ArangoStatement`'s `explain` method.
 
 
-### Inspecting query plans
+Inspecting query plans
+----------------------
 
 The `explain` method of `ArangoStatement` as shown in the next chapters creates very verbose output.
 To get a human-readable output of the query plan you can use the `explain` method on our database
@@ -33,7 +34,8 @@ The plan will show you the estimated number of items (results) for each query st
 query stage roughly equates to a line in your original query, which you can see under _Comment_.
 
 
-### Profiling queries 
+Profiling queries
+-----------------
 
 Sometimes when you have a complex query it can be unclear on what time is spent
 during the execution, even for intermediate ArangoDB users.
@@ -55,7 +57,8 @@ For more information see [Profiling Queries](QueryProfiler.md).
     @endDocuBlock 01_workWithAQL_databaseProfileQuery
 
 
-### Execution plans in detail
+Execution plans in detail
+-------------------------
 
 By default, the query optimizer will return what it considers to be the *optimal plan*. The
 optimal plan will be returned in the `plan` attribute of the result. If `explain` is
@@ -167,7 +170,8 @@ The above command prints the query's execution plan in the ArangoShell directly,
 on the most important information.
 
 
-### Gathering debug information about a query
+Gathering debug information about a query
+-----------------------------------------
 
 If an explain provides no suitable insight into why a query does not perform as
 expected, it may be reported to the ArangoDB support. In order to make this as easy

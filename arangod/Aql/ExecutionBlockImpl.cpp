@@ -35,6 +35,7 @@
 
 #include "Aql/CalculationExecutor.h"
 #include "Aql/ConstrainedSortExecutor.h"
+#include "Aql/DistinctCollectExecutor.h"
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/FilterExecutor.h"
@@ -350,6 +351,26 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
       }
     }
 #endif
+  } else if (std::is_same<Executor, SortExecutor>::value) {
+    // The SortExecutor should refetch a block to save memory in case if only few elements to sort
+    ExecutionState state;
+    size_t expectedRows = 0;
+    std::tie(state, expectedRows) = _rowFetcher.preFetchNumberOfRows();
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(expectedRows == 0);
+      return {state, nullptr};
+    }
+    // All Rows Fetcher cannot return HASMORE
+    TRI_ASSERT(state == ExecutionState::DONE);
+    nrItems = (std::min)(expectedRows, nrItems);
+    if (nrItems == 0) {
+      TRI_ASSERT(state == ExecutionState::DONE);
+      return {state, nullptr};
+    }
+    AqlItemBlock* block = requestBlock(nrItems, nrRegs);
+    blockShell =
+        std::make_unique<AqlItemBlockShell>(_engine->itemBlockManager(),
+                                            std::unique_ptr<AqlItemBlock>{block});
   } else {
     AqlItemBlock* block = requestBlock(nrItems, nrRegs);
 
@@ -369,6 +390,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<Calculati
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ConstrainedSortExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<DistinctCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;

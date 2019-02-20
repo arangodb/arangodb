@@ -27,7 +27,6 @@
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/hashes.h"
 #include "Graph/AttributeWeightShortestPathFinder.h"
@@ -36,6 +35,8 @@
 #include "Graph/ShortestPathFinder.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/voc-types.h"
+
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 
@@ -133,12 +134,12 @@ class Traverser {
 
     virtual ~VertexGetter() = default;
 
-    virtual bool getVertex(arangodb::velocypack::Slice, std::vector<arangodb::StringRef>&);
+    virtual bool getVertex(arangodb::velocypack::Slice, std::vector<arangodb::velocypack::StringRef>&);
 
-    virtual bool getSingleVertex(arangodb::velocypack::Slice, StringRef,
-                                 uint64_t, StringRef&);
+    virtual bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::StringRef,
+                                 uint64_t, arangodb::velocypack::StringRef&);
 
-    virtual void reset(arangodb::StringRef const&);
+    virtual void reset(arangodb::velocypack::StringRef const&);
 
    protected:
     Traverser* _traverser;
@@ -155,14 +156,14 @@ class Traverser {
 
     ~UniqueVertexGetter() = default;
 
-    bool getVertex(arangodb::velocypack::Slice, std::vector<arangodb::StringRef>&) override;
+    bool getVertex(arangodb::velocypack::Slice, std::vector<arangodb::velocypack::StringRef>&) override;
 
-    bool getSingleVertex(arangodb::velocypack::Slice, StringRef, uint64_t, StringRef&) override;
+    bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::StringRef, uint64_t, arangodb::velocypack::StringRef&) override;
 
-    void reset(arangodb::StringRef const&) override;
+    void reset(arangodb::velocypack::StringRef const&) override;
 
    private:
-    std::unordered_set<arangodb::StringRef> _returnedVertices;
+    std::unordered_set<arangodb::velocypack::StringRef> _returnedVertices;
   };
 
  public:
@@ -212,13 +213,13 @@ class Traverser {
   ///        Returns true if the vertex passes filtering conditions
   ///        Also appends the _id value of the vertex in the given vector
   virtual bool getVertex(arangodb::velocypack::Slice,
-                         std::vector<arangodb::StringRef>&) = 0;
+                         std::vector<arangodb::velocypack::StringRef>&) = 0;
 
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
   virtual bool getSingleVertex(arangodb::velocypack::Slice edge,
-                               arangodb::StringRef const sourceVertexId, uint64_t depth,
-                               arangodb::StringRef& targetVertexId) = 0;
+                               arangodb::velocypack::StringRef const sourceVertexId, uint64_t depth,
+                               arangodb::velocypack::StringRef& targetVertexId) = 0;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -275,10 +276,10 @@ class Traverser {
 
   bool hasMore() { return !_done; }
 
-  bool edgeMatchesConditions(arangodb::velocypack::Slice edge, StringRef vid,
+  bool edgeMatchesConditions(arangodb::velocypack::Slice edge, arangodb::velocypack::StringRef vid,
                              uint64_t depth, size_t cursorId);
 
-  bool vertexMatchesConditions(StringRef vid, uint64_t depth);
+  bool vertexMatchesConditions(arangodb::velocypack::StringRef vid, uint64_t depth);
 
   void allowOptimizedNeighbors();
 
@@ -317,10 +318,10 @@ class Traverser {
   bool _canUseOptimizedNeighbors;
 
   /// @brief Function to fetch the real data of a vertex into an AQLValue
-  virtual aql::AqlValue fetchVertexData(StringRef vid) = 0;
+  virtual aql::AqlValue fetchVertexData(arangodb::velocypack::StringRef vid) = 0;
 
   /// @brief Function to add the real data of a vertex into a velocypack builder
-  virtual void addVertexToVelocyPack(StringRef vid, arangodb::velocypack::Builder&) = 0;
+  virtual void addVertexToVelocyPack(arangodb::velocypack::StringRef vid, arangodb::velocypack::Builder&) = 0;
 };
 }  // namespace traverser
 }  // namespace arangodb
