@@ -56,6 +56,8 @@ struct ModificationBase {
 
   std::vector<ModOperationType> _operations;
 
+  //SingleBlockFetcher<false>& _fetcher;
+
   void reset() {
     // MUST not reset _block
     _prepared = false;
@@ -86,18 +88,22 @@ struct ModificationBase {
   }
 };
 
+
 struct Insert : ModificationBase {
-  bool doModifications(ModificationExecutor<Insert>&, ModificationExecutorBase::Stats&);
+  template<bool pass>
+  bool doModifications(ModificationExecutorInfos&, SingleBlockFetcher<pass>&, ModificationExecutorBase::Stats&);
   bool doOutput(ModificationExecutorInfos&, OutputAqlItemRow&);
 };
 
 struct Remove : ModificationBase {
-  bool doModifications(ModificationExecutor<Remove>&, ModificationExecutorBase::Stats&);
+  template<bool pass>
+  bool doModifications(ModificationExecutorInfos&, SingleBlockFetcher<pass>&, ModificationExecutorBase::Stats&);
   bool doOutput(ModificationExecutorInfos&, OutputAqlItemRow&);
 };
 
 struct Upsert : ModificationBase {
-  bool doModifications(ModificationExecutor<Upsert>&, ModificationExecutorBase::Stats&);
+  template<bool pass>
+  bool doModifications(ModificationExecutorInfos&, SingleBlockFetcher<pass>&, ModificationExecutorBase::Stats&);
   bool doOutput(ModificationExecutorInfos&, OutputAqlItemRow&);
 
   OperationResult _operationResultUpdate;
@@ -128,7 +134,8 @@ template <typename ModType>
 struct UpdateReplace : ModificationBase {
   using ModificationType = ModType;
   using MethodPtr = OperationResult(transaction::Methods::*)(std::string const& collectionName, VPackSlice const updateValue, OperationOptions const& options);
-  bool doModifications(ModificationExecutor<ModificationType>&, ModificationExecutorBase::Stats&);
+  template<bool pass>
+  bool doModifications(ModificationExecutorInfos&, SingleBlockFetcher<pass>&, ModificationExecutorBase::Stats&);
   bool doOutput(ModificationExecutorInfos&, OutputAqlItemRow&);
 
   UpdateReplace() = delete;

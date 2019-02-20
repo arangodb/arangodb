@@ -101,7 +101,7 @@ ModificationExecutor<Modifier>::produceRow(OutputAqlItemRow& output) {
     TRI_ASSERT(_modifier._block->hasBlock());
 
     // prepares modifier for single row output
-    _prepared = _modifier.doModifications(*this, stats);
+    _prepared = _modifier.doModifications(_infos, _fetcher, stats);
 
     if (!_infos._producesResults) {
       _prepared = false;

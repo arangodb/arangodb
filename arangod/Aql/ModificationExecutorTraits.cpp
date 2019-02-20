@@ -162,9 +162,9 @@ void handleBabyStats(ModificationExecutorBase::Stats& stats, ModificationExecuto
 
 ///////////////////////////////////////////////////////////////////////////////
 // INSERT /////////////////////////////////////////////////////////////////////
-bool Insert::doModifications(ModificationExecutor<Insert>& executor,
+template<bool pass>
+bool Insert::doModifications(ModificationExecutorInfos& info, SingleBlockFetcher<pass>& fetcher,
                              ModificationExecutorBase::Stats& stats) {
-  auto& info = executor._infos;
   OperationOptions& options = info._options;
 
   reset();
@@ -172,7 +172,7 @@ bool Insert::doModifications(ModificationExecutor<Insert>& executor,
 
   const RegisterId& inReg = info._input1RegisterId.value();
 
-  executor._fetcher.forRowInBlock([this, inReg, &info](InputAqlItemRow&& row) {
+  fetcher.forRowInBlock([this, inReg, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
     if (!info._consultAqlWriteFilter ||
         info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
@@ -186,7 +186,7 @@ bool Insert::doModifications(ModificationExecutor<Insert>& executor,
     }
   });
 
-  TRI_ASSERT(_operations.size() == executor._fetcher.currentBlock()->block().size());
+  TRI_ASSERT(_operations.size() == fetcher.currentBlock()->block().size());
 
   _tmpBuilder.close();
   auto toInsert = _tmpBuilder.slice();
@@ -209,7 +209,7 @@ bool Insert::doModifications(ModificationExecutor<Insert>& executor,
   // former - skip empty
   // no more to prepare
   if (toInsert.length() == 0) {
-    executor._copyBlock = true;
+//    executor._copyBlock = true;
     LOG_DEVEL << "THIS IS BAD!";
     TRI_ASSERT(false);
     return true;
@@ -237,7 +237,7 @@ bool Insert::doModifications(ModificationExecutor<Insert>& executor,
 
     // former - skip empty
     if (_operationResultArraySlice.length() == 0) {
-      executor._copyBlock = true;
+//      executor._copyBlock = true;
       TRI_ASSERT(false);
       return true;
     }
@@ -299,9 +299,9 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 
 ///////////////////////////////////////////////////////////////////////////////
 // REMOVE /////////////////////////////////////////////////////////////////////
-bool Remove::doModifications(ModificationExecutor<Remove>& executor,
+template<bool pass>
+bool Remove::doModifications(ModificationExecutorInfos& info, SingleBlockFetcher<pass>& fetcher,
                              ModificationExecutorBase::Stats& stats) {
-  auto& info = executor._infos;
   OperationOptions& options = info._options;
 
   reset();
@@ -313,7 +313,7 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
   std::string rev;
 
   const RegisterId& inReg = info._input1RegisterId.value();
-  executor._fetcher.forRowInBlock([this, &stats, &errorCode, &key, &rev, trx,
+  fetcher.forRowInBlock([this, &stats, &errorCode, &key, &rev, trx,
                                    inReg, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
     if (!info._consultAqlWriteFilter ||
@@ -353,7 +353,7 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
     }
   });
 
-  TRI_ASSERT(_operations.size() == executor._fetcher.currentBlock()->block().size());
+  TRI_ASSERT(_operations.size() == fetcher.currentBlock()->block().size());
 
   _tmpBuilder.close();
   auto toRemove = _tmpBuilder.slice();
@@ -370,7 +370,7 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
   // former - skip empty
   // no more to prepare
   if (toRemove.length() == 0) {
-    executor._copyBlock = true;
+//    executor._copyBlock = true;
     TRI_ASSERT(false);
     return true;
   }
@@ -397,7 +397,7 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
 
     // former - skip empty
     if (_operationResultArraySlice.length() == 0) {
-      executor._copyBlock = true;
+//      executor._copyBlock = true;
       TRI_ASSERT(false);
       return true;
     }
@@ -455,9 +455,9 @@ bool Remove::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 
 ///////////////////////////////////////////////////////////////////////////////
 // UPSERT /////////////////////////////////////////////////////////////////////
-bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
+template<bool pass>
+bool Upsert::doModifications(ModificationExecutorInfos& info, SingleBlockFetcher<pass>& fetcher,
                              ModificationExecutorBase::Stats& stats) {
-  auto& info = executor._infos;
   OperationOptions& options = info._options;
 
   reset();
@@ -473,7 +473,7 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
   const RegisterId& insertReg = info._input2RegisterId.value();
   const RegisterId& updateReg = info._input3RegisterId.value();
 
-  executor._fetcher.forRowInBlock([this, &stats, &errorCode, &errorMessage,
+  fetcher.forRowInBlock([this, &stats, &errorCode, &errorMessage,
                                    &key, trx, inDocReg, insertReg, updateReg,
                                    &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inDocReg);
@@ -531,7 +531,7 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
     }
   });
 
-  TRI_ASSERT(_operations.size() == executor._fetcher.currentBlock()->block().size());
+  TRI_ASSERT(_operations.size() == fetcher.currentBlock()->block().size());
 
   _insertBuilder.close();
   _updateBuilder.close();
@@ -542,7 +542,7 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
   // former - skip empty
   // no more to prepare
   if (toInsert.length() == 0 && toUpdate.length() == 0) {
-    executor._copyBlock = true;
+//    executor._copyBlock = true;
     TRI_ASSERT(false);
     return true;
   }
@@ -588,7 +588,7 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
   }
   // former - skip empty
   if (_operationResultArraySlice.length() == 0) {
-    executor._copyBlock = true;
+//    executor._copyBlock = true;
     TRI_ASSERT(false);
     return true;
   }
@@ -645,9 +645,9 @@ bool Upsert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 ///////////////////////////////////////////////////////////////////////////////
 // UPDATEREPLACE //////////////////////////////////////////////////////////////
 template <typename ModType>
-bool UpdateReplace<ModType>::doModifications(ModificationExecutor<ModificationType>& executor,
+template<bool pass>
+bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info, SingleBlockFetcher<pass>& fetcher,
                                              ModificationExecutorBase::Stats& stats) {
-  auto& info = executor._infos;
   OperationOptions& options = info._options;
 
   //  if (!producesOutput && isDBServer && ignoreDocumentNotFound) {
@@ -675,7 +675,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutor<ModificationTy
 
   // const RegisterId& updateReg = info._input3RegisterId.value();
 
-  executor._fetcher.forRowInBlock([this, &options, &stats, &errorCode,
+  fetcher.forRowInBlock([this, &options, &stats, &errorCode,
                                    &errorMessage, &key, &rev, trx, inDocReg, keyReg,
                                    hasKeyVariable, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inDocReg);
@@ -735,7 +735,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutor<ModificationTy
     }
   });
 
-  TRI_ASSERT(_operations.size() == executor._fetcher.currentBlock()->block().size());
+  TRI_ASSERT(_operations.size() == fetcher.currentBlock()->block().size());
 
   _updateOrReplaceBuilder.close();
 
@@ -744,7 +744,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutor<ModificationTy
   // former - skip empty
   // no more to prepare
   if (toUpdateOrReplace.length() == 0 && toUpdateOrReplace.length() == 0) {
-    executor._copyBlock = true;
+//    executor._copyBlock = true;
     TRI_ASSERT(false);
     return true;
   }
@@ -769,7 +769,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutor<ModificationTy
 
   // former - skip empty
   if (_operationResultArraySlice.length() == 0) {
-    executor._copyBlock = true;
+//    executor._copyBlock = true;
     TRI_ASSERT(false);
     return true;
   }
@@ -822,3 +822,21 @@ bool UpdateReplace<ModType>::doOutput(ModificationExecutorInfos &info,
 
 template struct arangodb::aql::UpdateReplace<Update>;
 template struct arangodb::aql::UpdateReplace<Replace>;
+
+template bool arangodb::aql::Insert::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<true>&, ModificationExecutorBase::Stats&);
+template bool arangodb::aql::Insert::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<false>&, ModificationExecutorBase::Stats&);
+
+template bool arangodb::aql::Remove::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<true>&, ModificationExecutorBase::Stats&);
+template bool arangodb::aql::Remove::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<false>&, ModificationExecutorBase::Stats&);
+
+template bool arangodb::aql::Upsert::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<true>&, ModificationExecutorBase::Stats&);
+template bool arangodb::aql::Upsert::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<false>&, ModificationExecutorBase::Stats&);
+
+//template bool arangodb::aql::Update::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<true>&, ModificationExecutorBase::Stats&);
+//template bool arangodb::aql::Update::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<false>&, ModificationExecutorBase::Stats&);
+
+template bool arangodb::aql::UpdateReplace<Update>::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<true>&, ModificationExecutorBase::Stats&);
+template bool arangodb::aql::UpdateReplace<Update>::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<false>&, ModificationExecutorBase::Stats&);
+
+template bool arangodb::aql::UpdateReplace<Replace>::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<true>&, ModificationExecutorBase::Stats&);
+template bool arangodb::aql::UpdateReplace<Replace>::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<false>&, ModificationExecutorBase::Stats&);
