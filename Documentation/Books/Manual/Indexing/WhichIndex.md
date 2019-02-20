@@ -67,17 +67,19 @@ different usage scenarios:
   The TTL index is set up by setting an `expireAfter` value and by picking a single 
   document attribute which contains the documents' creation date and time. Documents 
   are expired after `expireAfter` seconds after their creation time. The creation time
-  is specified as a numeric timestamp with millisecond precision.
+  is specified as either a numeric timestamp (Unix timestamp) or a date string in format
+  `YYYY-MM-DDTHH:MM:SS` with optional milliseconds. All date strings will be interpreted
+  as UTC dates.
 
   For example, if `expireAfter` is set to 600 seconds (10 minutes) and the index
   attribute is "creationDate" and there is the following document:
 
-      { "creationDate" : 1550165973964 }
+      { "creationDate" : 1550165973 }
 
-  This document will be indexed with a creation date time value of `1550165973964`,
-  which translates to the human-readable date `2019-02-14T17:39:33.964Z`. The document
-  will expire 600 seconds afterwards, which is at timestamp `1550166573964` (or
-  `2019-02-14T17:49:33.964Z` in the human-readable version).
+  This document will be indexed with a creation date time value of `1550165973`,
+  which translates to the human-readable date `2019-02-14T17:39:33.000Z`. The document
+  will expire 600 seconds afterwards, which is at timestamp `1550166573` (or
+  `2019-02-14T17:49:33.000Z` in the human-readable version).
 
   The actual removal of expired documents will not necessarily happen immediately. 
   Expired documents will eventually removed by a background thread that is periodically
@@ -92,15 +94,22 @@ different usage scenarios:
   past their expiration time will actually be removed.
 
   Please note that the numeric date time values for the index attribute should be 
-  specified in milliseconds since January 1st 1970 (Unix timestamp with millisecond
-  precision). To calculate the current timestamp from JavaScript in this format, 
-  there is `Date.now()`, to calculate it from an arbitrary date string, there is 
-  `Date.getTime()`.
+  specified in milliseconds since January 1st 1970 (Unix timestamp). To calculate the current 
+  timestamp from JavaScript in this format, there is `Date.now() / 1000`, to calculate it 
+  from an arbitrary date string, there is `Date.getTime() / 1000`.
 
-  In case the index attribute does not contain a numeric value, the document will not
-  be stored in the TTL index and thus will not become a candidate for expiration and 
-  removal. Providing either a non-numeric value or even no value for the index attribute
-  is a supported way of keeping documents from being expired and removed.
+  Alternatively, the index attribute values can be specified as a date string in format
+  `YYYY-MM-DDTHH:MM:SS` with optional milliseconds. All date strings will be interpreted 
+  as UTC dates.
+    
+  The above example document using a datestring attribute value would be
+ 
+      { "creationDate" : "2019-02-14T17:39:33.000Z" }
+
+  In case the index attribute does not contain a numeric value nor a proper date string,
+  the document will not be stored in the TTL index and thus will not become a candidate 
+  for expiration and removal. Providing either a non-numeric value or even no value for 
+  the index attribute is a supported way of keeping documents from being expired and removed.
 
 - geo index: the geo index provided by ArangoDB allows searching for documents
   within a radius around a two-dimensional earth coordinate (point), or to
