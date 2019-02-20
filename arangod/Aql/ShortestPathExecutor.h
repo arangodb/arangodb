@@ -64,7 +64,7 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
   };
 
   enum OutputName { VERTEX, EDGE };
-  struct OutputNameHash { size_t operator()(OutputName const& v) const { return size_t(v); } };
+  struct OutputNameHash { size_t operator()(OutputName v) const noexcept { return size_t(v); } };
 
   ShortestPathExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
                             std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,

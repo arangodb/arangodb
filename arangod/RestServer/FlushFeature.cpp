@@ -57,14 +57,11 @@ namespace arangodb {
   class FlushFeature::FlushSubscriptionBase
       : public FlushFeature::FlushSubscription {
    public:
-    void disable() noexcept { _enabled.store(false); }
-
     /// @brief earliest tick that can be released
     virtual TRI_voc_tick_t tick() const = 0;
 
    protected:
     TRI_voc_tick_t const _databaseId;
-    std::atomic<bool> _enabled; // WAL is still valid
     arangodb::StorageEngine const& _engine;
     TRI_voc_tick_t _tickCurrent; // last successful tick, should be replayed
     TRI_voc_tick_t _tickPrevious; // previous successful tick, should be replayed
@@ -75,7 +72,6 @@ namespace arangodb {
         TRI_voc_tick_t databaseId, // vocbase id
         arangodb::StorageEngine const& engine // vocbase engine
     ): _databaseId(databaseId),
-       _enabled(true),
        _engine(engine),
        _tickCurrent(0), // default (smallest) tick for StorageEngine
        _tickPrevious(0), // default (smallest) tick for StorageEngine
@@ -282,6 +278,13 @@ class MMFilesFlushSubscription final
   }
 
   ~MMFilesFlushSubscription() {
+    if (!arangodb::MMFilesLogfileManager::instance(true)) { // true to avoid assertion failure
+      LOG_TOPIC(ERR, arangodb::Logger::FLUSH)
+        << "failed to remove MMFiles Logfile barrier from subscription due to missing LogFileManager";
+
+      return; // ignore (probably already deallocated)
+    }
+
     try {
       _wal.removeLogfileBarrier(_barrier);
     } catch (...) {
@@ -290,12 +293,10 @@ class MMFilesFlushSubscription final
   }
 
   arangodb::Result commit(arangodb::velocypack::Slice const& data) override {
-    if (!_enabled.load()) {
-      return arangodb::Result( // result
-        TRI_ERROR_ARANGO_ILLEGAL_STATE, // code
-        "FlushFeature not running" // message
-      );
-    }
+    // must be present for WAL write to succeed or '_wal' is a dangling instance
+    // guard against scenario: FlushFeature::stop() + MMFilesEngine::stop() and later commit()
+    // since subscription could survive after FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
+    TRI_ASSERT(arangodb::MMFilesLogfileManager::instance(true)); // true to avoid assertion failure
 
     arangodb::velocypack::Builder builder;
 
@@ -306,7 +307,7 @@ class MMFilesFlushSubscription final
 
     MMFilesFlushMarker marker(_databaseId, builder.slice());
     auto tick = _engine.currentTick(); // get before writing marker to ensure nothing between tick and marker
-    auto res = arangodb::Result(_wal.allocateAndWrite(marker, true).errorCode);
+    auto res = arangodb::Result(_wal.allocateAndWrite(marker, true).errorCode); // will check for allowWalWrites()
 
     if (res.ok()) {
       auto barrier = _wal.addLogfileBarrier( // barier starting from previous marker
@@ -442,12 +443,13 @@ class RocksDBFlushSubscription final
   }
 
   arangodb::Result commit(arangodb::velocypack::Slice const& data) override {
-    if (!_enabled.load()) {
-      return arangodb::Result( // result
-        TRI_ERROR_ARANGO_ILLEGAL_STATE, // code
-        "FlushFeature not running" // message
-      );
-    }
+    // must be present for WAL write to succeed or '_wal' is a dangling instance
+    // guard against scenario: FlushFeature::stop() + RocksDBEngine::stop() and later commit()
+    // since subscription could survive after FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
+    TRI_ASSERT( // precondition
+      arangodb::EngineSelectorFeature::ENGINE // ensure have engine
+      && static_cast<arangodb::RocksDBEngine*>(arangodb::EngineSelectorFeature::ENGINE)->db() // not stopped
+    );
 
     arangodb::velocypack::Builder builder;
 
@@ -640,7 +642,6 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
     );
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
-
     if (!_isRunning.load()) {
       LOG_TOPIC(ERR, Logger::FLUSH)
         << "FlushFeature not running";
@@ -799,18 +800,11 @@ void FlushFeature::stop() {
       _flushThread.reset();
     }
 
-    // disable and release any remamining flush subscritions
     {
       std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
-      for (auto& entry: _flushSubscriptions) {
-        TRI_ASSERT(!entry || entry.use_count() == 1); // should not have any active subscriptions during stop()
-
-        if (entry) {
-          entry->disable();
-        }
-      }
-
+      // release any remamining flush subscritions so that they may get deallocated ASAP
+      // subscriptions could survive after FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
       _flushSubscriptions.clear();
     }
   }
