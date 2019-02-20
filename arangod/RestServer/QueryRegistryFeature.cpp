@@ -123,7 +123,9 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new UInt64Parameter(&_maxQueryPlans));
 
   options->addOption("--query.registry-ttl",
-                     "default time-to-live of query snippets (in seconds)",
+                     "default time-to-live of cursors and query snippets (in "
+                     "seconds); if <= 0, value will default to 30 for "
+                     "single-server instances or 600 for cluster instances",
                      new DoubleParameter(&_queryRegistryTTL),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
