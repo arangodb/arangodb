@@ -1203,20 +1203,18 @@ void ExecutionNode::removeDependencies() {
 }
 
 std::unordered_set<RegisterId> ExecutionNode::calcRegsToKeep() const {
-  std::unordered_set<RegisterId> regsToKeep{};
-  regsToKeep.reserve(getVarsUsedLater().size());
   ExecutionNode const* const previousNode = getFirstDependency();
   // Only the Singleton has no previousNode, and it does not call this method.
   TRI_ASSERT(previousNode != nullptr);
 
+  bool inserted = false;
   RegisterId const nrInRegs = getRegisterPlan()->nrRegs[previousNode->getDepth()];
-  std::unordered_map<VariableId, VarInfo> const& varInfo = getRegisterPlan()->varInfo;
+  std::unordered_set<RegisterId> regsToKeep{};
+  regsToKeep.reserve(getVarsUsedLater().size());
+
   for (auto const var : getVarsUsedLater()) {
-    auto const it = varInfo.find(var->id);
-    TRI_ASSERT(it != varInfo.end());
-    RegisterId const reg = it->second.registerId;
+    auto reg = variableToRegisterId(var);
     if (reg < nrInRegs) {
-      bool inserted;
       std::tie(std::ignore, inserted) = regsToKeep.emplace(reg);
       TRI_ASSERT(inserted);
     }
