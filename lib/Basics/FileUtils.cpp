@@ -740,7 +740,8 @@ int slurpProgramWithExitcode(std::string const& program, std::string &stdout) {
   }
 
   throwProgramError(program);
-}
+  return 0; // dead code
+};
 
 }  // namespace FileUtils
 }  // namespace basics
