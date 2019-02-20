@@ -23,7 +23,7 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> Accepted
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _YNEaEbq--B
+etag: _YOn1G3a--_
 x-content-type-options: nosniff
 
 { 
@@ -49,7 +49,7 @@ x-content-type-options: nosniff
     <span class="hljs-string">"initial"</span> : <span class="hljs-string">"startVertices"</span>, 
     <span class="hljs-string">"initialCid"</span> : <span class="hljs-number">101271</span>, 
     <span class="hljs-string">"smartGraphAttribute"</span> : <span class="hljs-string">"region"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YNEaEbq--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YOn1G3a--_"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/myGraph"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"myGraph"</span> 
   } 

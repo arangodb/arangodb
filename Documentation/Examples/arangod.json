@@ -283,7 +283,7 @@
   },
   "cache.size" : {
     "category" : "option",
-    "default" : 3637390336,
+    "default" : 3637388288,
     "deprecatedIn" : null,
     "description" : "size of cache in bytes",
     "dynamic" : true,
@@ -2318,7 +2318,7 @@
   },
   "rocksdb.block-cache-size" : {
     "category" : "option",
-    "default" : 4364868403,
+    "default" : 4364865945,
     "deprecatedIn" : null,
     "description" : "size of block cache in bytes",
     "dynamic" : true,
@@ -2766,7 +2766,7 @@
   },
   "rocksdb.total-write-buffer-size" : {
     "category" : "option",
-    "default" : 5819824537,
+    "default" : 5819821260,
     "deprecatedIn" : null,
     "description" : "maximum total size of in-memory write buffers (0 = unbounded)",
     "dynamic" : true,
