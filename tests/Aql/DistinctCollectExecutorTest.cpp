@@ -50,7 +50,8 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-SCENARIO("DistinctCollectExecutor", "[AQL][EXECUTOR][DISTINCTCOLLECTEXECUTOR]") {
+SCENARIO("DistinctCollectExecutor",
+         "[AQL][EXECUTOR][DISTINCTCOLLECTEXECUTOR]") {
   ExecutionState state;
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager{&monitor};
@@ -130,8 +131,9 @@ SCENARIO("DistinctCollectExecutor", "[AQL][EXECUTOR][DISTINCTCOLLECTEXECUTOR]") 
 
     RegisterId nrOutputRegister = 2;
 
-    DistinctCollectExecutorInfos infos(1 /*nrInputReg*/, nrOutputRegister /*nrOutputReg*/,
-                                       regToClear, regToKeep, std::move(readableInputRegisters),
+    DistinctCollectExecutorInfos infos(1 /*nrInputReg*/,
+                                       nrOutputRegister /*nrOutputReg*/, regToClear,
+                                       regToKeep, std::move(readableInputRegisters),
                                        std::move(writeableOutputRegisters),
                                        std::move(groupRegisters), trx);
 
@@ -235,8 +237,9 @@ SCENARIO("DistinctCollectExecutor", "[AQL][EXECUTOR][DISTINCTCOLLECTEXECUTOR]") 
 
     RegisterId nrOutputRegister = 2;
 
-    DistinctCollectExecutorInfos infos(1 /*nrInputReg*/, nrOutputRegister /*nrOutputReg*/,
-                                       regToClear, regToKeep, std::move(readableInputRegisters),
+    DistinctCollectExecutorInfos infos(1 /*nrInputReg*/,
+                                       nrOutputRegister /*nrOutputReg*/, regToClear,
+                                       regToKeep, std::move(readableInputRegisters),
                                        std::move(writeableOutputRegisters),
                                        std::move(groupRegisters), trx);
 
@@ -246,13 +249,18 @@ SCENARIO("DistinctCollectExecutor", "[AQL][EXECUTOR][DISTINCTCOLLECTEXECUTOR]") 
     NoStats stats{};
 
     WHEN("the producer does not wait") {
-      auto input = VPackParser::fromJson("[ [1], [2], [1], [2] ]");
+      auto input = VPackParser::fromJson("[ [1], [2], [3], [1], [2] ]");
       SingleRowFetcherHelper<false> fetcher(input->steal(), false);
       DistinctCollectExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE") {
         OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
                                 infos.registersToKeep(), infos.registersToClear());
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(result.produced());
+        result.advanceRow();
 
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::HASMORE);
@@ -284,9 +292,86 @@ SCENARIO("DistinctCollectExecutor", "[AQL][EXECUTOR][DISTINCTCOLLECTEXECUTOR]") 
         AqlValue z = block->getValue(1, 1);
         REQUIRE(z.isNumber());
         REQUIRE(z.toInt64() == 2);
+
+        AqlValue y = block->getValue(2, 1);
+        REQUIRE(y.isNumber());
+        REQUIRE(y.toInt64() == 3);
       }
     }
+
+    WHEN("the producer does wait") {
+      auto input = VPackParser::fromJson("[ [1], [2], [3], [1], [2] ]");
+      SingleRowFetcherHelper<false> fetcher(input->steal(), true);
+      DistinctCollectExecutor testee(fetcher, infos);
+
+      THEN("the executor should return DONE") {
+        OutputAqlItemRow result(std::move(outputBlockShell), infos.getOutputRegisters(),
+                                infos.registersToKeep(), infos.registersToClear());
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result.produced());
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(result.produced());
+        result.advanceRow();
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result.produced());
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(result.produced());
+        result.advanceRow();
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result.produced());
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(result.produced());
+        result.advanceRow();
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result.produced());
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(!result.produced());
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result.produced());
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::DONE);
+        REQUIRE(!result.produced());
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::DONE);
+        REQUIRE(!result.produced());
+
+        auto block = result.stealBlock();
+        AqlValue x = block->getValue(0, 1);
+        REQUIRE(x.isNumber());
+        REQUIRE(x.toInt64() == 1);
+
+        AqlValue z = block->getValue(1, 1);
+        REQUIRE(z.isNumber());
+        REQUIRE(z.toInt64() == 2);
+
+        AqlValue y = block->getValue(2, 1);
+        REQUIRE(y.isNumber());
+        REQUIRE(y.toInt64() == 3);
+      }
+    }
+
   }
+
 }
 
 }  // namespace aql
