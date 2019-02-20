@@ -1214,7 +1214,6 @@ TEST_CASE("IResearchViewNodeTest", "[iresearch][iresearch-view-node]") {
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto logicalView = vocbase.createView(createJson->slice());
     REQUIRE((false == !logicalView));
-    REQUIRE(nullptr != view);
 
     // create collection0
     std::shared_ptr<arangodb::LogicalCollection> collection0;
