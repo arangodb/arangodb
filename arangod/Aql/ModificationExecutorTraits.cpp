@@ -194,9 +194,15 @@ bool Insert::doModifications(ModificationExecutor<Insert>& executor,
   // At this point _tempbuilder contains the objects to insert
   // and _operations the information if the data is to be kept or not
 
-  // TRI_ASSERT(toInsert.isArray());
-  // try {
-  //  LOG_DEVEL << "num to insert" << toInsert.length();
+  TRI_ASSERT(toInsert.isArray());
+  try {
+    LOG_DEVEL << "num to insert: " << toInsert.length();
+  } catch (...) {
+  }
+
+  //TRI_ASSERT(toInsert.isArray());
+  //try {
+  //  LOG_DEVEL << "to insert: " << toInsert.toJson();
   //} catch (...) {
   //}
 
@@ -204,6 +210,7 @@ bool Insert::doModifications(ModificationExecutor<Insert>& executor,
   // no more to prepare
   if (toInsert.length() == 0) {
     executor._copyBlock = true;
+    LOG_DEVEL << "THIS IS BAD!";
     TRI_ASSERT(false);
     return true;
   }
@@ -213,11 +220,12 @@ bool Insert::doModifications(ModificationExecutor<Insert>& executor,
   auto operationResult = info._trx->insert(info._aqlCollection->name(), toInsert, options);
   setOperationResult(std::move(operationResult));
 
-  _tmpBuilder.clear();
 
   // handle statisitcs
   handleBabyStats(stats, info, _operationResult.countErrorCodes,
                   toInsert.length(), info._ignoreErrors);
+
+  _tmpBuilder.clear();
 
   if (_operationResult.fail()) {
     THROW_ARANGO_EXCEPTION(_operationResult.result);
@@ -306,8 +314,8 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
   std::string rev;
 
   const RegisterId& inReg = info._input1RegisterId.value();
-  executor._fetcher.forRowInBlock([this, &stats, &errorCode, &key, &rev,
-                                   trx, inReg, &info](InputAqlItemRow&& row) {
+  executor._fetcher.forRowInBlock([this, &stats, &errorCode, &key, &rev, trx,
+                                   inReg, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
     if (!info._consultAqlWriteFilter ||
         info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
@@ -373,11 +381,12 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
   auto operationResult = info._trx->remove(info._aqlCollection->name(), toRemove, options);
   setOperationResult(std::move(operationResult));
 
-  _tmpBuilder.clear();
 
   // handle statisitcs
   handleBabyStats(stats, info, _operationResult.countErrorCodes,
                   toRemove.length(), info._ignoreErrors);
+
+  _tmpBuilder.clear();
 
   if (_operationResult.fail()) {
     THROW_ARANGO_EXCEPTION(_operationResult.result);
@@ -466,9 +475,9 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
   const RegisterId& insertReg = info._input2RegisterId.value();
   const RegisterId& updateReg = info._input3RegisterId.value();
 
-  executor._fetcher.forRowInBlock([this, &stats, &errorCode,
-                                   &errorMessage, &key, trx, inDocReg, insertReg,
-                                   updateReg, &info](InputAqlItemRow&& row) {
+  executor._fetcher.forRowInBlock([this, &stats, &errorCode, &errorMessage,
+                                   &key, trx, inDocReg, insertReg, updateReg,
+                                   &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inDocReg);
     if (inVal.isObject()) /*update case, as old doc is present*/ {
       if (!info._consultAqlWriteFilter ||
@@ -555,7 +564,9 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
     }
 
     handleBabyStats(stats, info, _operationResult.countErrorCodes,
-                             toInsert.length(), info._ignoreErrors);
+                    toInsert.length(), info._ignoreErrors);
+
+    _insertBuilder.clear();
   }
 
   if (toUpdate.isArray() && toUpdate.length() > 0) {
@@ -566,16 +577,16 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
     }
     setOperationResultUpdate(std::move(opRes));
 
-    _tmpBuilder.clear();
-    _insertBuilder.clear();
-    _updateBuilder.clear();
-
     if (_operationResultUpdate.fail()) {
       THROW_ARANGO_EXCEPTION(_operationResultUpdate.result);
     }
 
     handleBabyStats(stats, info, _operationResultUpdate.countErrorCodes,
-                             toUpdate.length(), info._ignoreErrors);
+                    toUpdate.length(), info._ignoreErrors);
+
+    _tmpBuilder.clear();
+    _updateBuilder.clear();
+
   }
   // former - skip empty
   if (_operationResultArraySlice.length() == 0) {
@@ -753,7 +764,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutor<ModificationTy
     }
 
     handleBabyStats(stats, info, _operationResult.countErrorCodes,
-                             toUpdateOrReplace.length(), info._ignoreErrors);
+                    toUpdateOrReplace.length(), info._ignoreErrors);
   }
 
   _tmpBuilder.clear();
