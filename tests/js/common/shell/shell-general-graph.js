@@ -544,7 +544,7 @@ function GeneralGraphCreationSuite() {
           }
         );
       } catch (err) {
-        assertEqual(err.errorMessage, ERRORS.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION);
+        assertEqual(err.errorMessage, ERRORS.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.message);
       }
     },
 
