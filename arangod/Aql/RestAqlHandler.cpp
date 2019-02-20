@@ -293,9 +293,6 @@ bool RestAqlHandler::registerSnippets(VPackSlice const snippetsSlice,
     // enables the query to get the correct transaction
     query->setTransactionContext(ctx);
 
-    // make sure query has ttl set
-    query->queryOptions().ttl = ttl;
-
     try {
       query->prepare(_queryRegistry);
     } catch (std::exception const& ex) {
