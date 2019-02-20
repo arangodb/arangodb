@@ -271,9 +271,6 @@ Query* Query::clone(QueryPart part, bool withPlan) {
   return clone.release();
 }
 
-/// @brief whether or not the query is killed
-bool Query::killed() const { return _killed; }
-
 /// @brief set the query to killed
 void Query::kill() { _killed = true; }
 

@@ -83,6 +83,7 @@ AqlValue Expression::execute(transaction::Methods* trx, ExpressionContext* ctx,
   buildExpression(trx);
 
   TRI_ASSERT(_type != UNPROCESSED);
+      
   _expressionContext = ctx;
 
   // and execute
@@ -459,7 +460,6 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(AstNode const* node,
   TRI_ASSERT(node->numMembers() == 1);
 
   auto member = node->getMemberUnchecked(0);
-  char const* name = static_cast<char const*>(node->getData());
 
   bool localMustDestroy;
   AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
@@ -467,7 +467,12 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(AstNode const* node,
   auto resolver = trx->resolver();
   TRI_ASSERT(resolver != nullptr);
 
-  return result.get(*resolver, std::string(name, node->getStringLength()), mustDestroy, true);
+  return result.get(
+      *resolver, 
+      arangodb::velocypack::StringRef(static_cast<char const*>(node->getData()), node->getStringLength()), 
+      mustDestroy, 
+      true
+  );
 }
 
 /// @brief execute an expression of type SIMPLE with INDEXED ACCESS
@@ -531,10 +536,11 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(AstNode const* node,
     }
 
     if (indexResult.isString()) {
-      std::string const indexString = indexResult.slice().copyString();
+      VPackValueLength l;
+      char const* p = indexResult.slice().getStringUnchecked(l);
       auto resolver = trx->resolver();
       TRI_ASSERT(resolver != nullptr);
-      return result.get(*resolver, indexString, mustDestroy, true);
+      return result.get(*resolver, arangodb::velocypack::StringRef(p, l), mustDestroy, true);
     }
 
     // fall-through to returning null

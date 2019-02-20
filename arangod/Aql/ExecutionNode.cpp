@@ -111,9 +111,15 @@ std::unordered_map<int, std::string const> const typeNames{
 // during register planning
 bool isInSubQuery(ExecutionNode const* node) {
   auto current = node;
-  while (current->hasDependency()) {
+  TRI_ASSERT(current != nullptr);
+  while (current != nullptr && current->hasDependency()) {
     current = current->getFirstDependency();
   }
+  if (ADB_UNLIKELY(current == nullptr)) {
+    // shouldn't happen in reality, just to please the compiler
+    return false;
+  }
+  TRI_ASSERT(current != nullptr);
   TRI_ASSERT(current->getType() == ExecutionNode::NodeType::SINGLETON);
   return current->id() != 1;
 }
@@ -1242,7 +1248,7 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
   RegisterId const nrRegs = getRegisterPlan()->nrRegs[getDepth()];
 
   std::unordered_set<RegisterId> toKeep;
-  if (isInSubQuery(this)) {
+  if (::isInSubQuery(this)) {
     for (auto const& var : this->getVarsUsedLater()) {
       auto val = variableToRegisterId(var);
       if (val < nrRegs) {
@@ -1468,7 +1474,7 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   // Fullcount must only be enabled on the last limit node on the main level
-  TRI_ASSERT(!_fullCount || !isInSubQuery(this));
+  TRI_ASSERT(!_fullCount || !::isInSubQuery(this));
 
   LimitExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
                            getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),

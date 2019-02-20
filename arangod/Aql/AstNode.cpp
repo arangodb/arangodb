@@ -768,15 +768,15 @@ std::string AstNode::getString() const {
   return std::string(getStringValue(), getStringLength());
 }
 
-/// @brief return the string value of a node, as a StringRef
-arangodb::StringRef AstNode::getStringRef() const noexcept {
+/// @brief return the string value of a node, as a arangodb::velocypack::StringRef
+arangodb::velocypack::StringRef AstNode::getStringRef() const noexcept {
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_OBJECT_ELEMENT ||
              type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_PARAMETER ||
              type == NODE_TYPE_PARAMETER_DATASOURCE || type == NODE_TYPE_COLLECTION ||
              type == NODE_TYPE_VIEW || type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS ||
              type == NODE_TYPE_FCALL_USER);
   TRI_ASSERT(value.type == VALUE_TYPE_STRING);
-  return arangodb::StringRef(getStringValue(), getStringLength());
+  return arangodb::velocypack::StringRef(getStringValue(), getStringLength());
 }
 
 /// @brief test if all members of a node are equality comparisons

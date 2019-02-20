@@ -823,7 +823,8 @@ transaction::Methods::~Methods() {
     TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
     // store result
     _transactionContextPtr->storeTransactionResult(_state->id(),
-                                                   _state->hasFailedOperations());
+                                                   _state->hasFailedOperations(),
+                                                   _state->wasRegistered());
     _transactionContextPtr->unregisterTransaction();
 
     delete _state;
@@ -876,7 +877,7 @@ std::string transaction::Methods::extractIdString(VPackSlice slice) {
 /// added to the builder in the argument as a single object.
 void transaction::Methods::buildDocumentIdentity(
     LogicalCollection* collection, VPackBuilder& builder, TRI_voc_cid_t cid,
-    StringRef const& key, TRI_voc_rid_t rid, TRI_voc_rid_t oldRid,
+    arangodb::velocypack::StringRef const& key, TRI_voc_rid_t rid, TRI_voc_rid_t oldRid,
     ManagedDocumentResult const* oldDoc, ManagedDocumentResult const* newDoc) {
   std::string temp;  // TODO: pass a string into this function
   temp.reserve(64);
@@ -1246,7 +1247,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 
   pinData(cid);  // will throw when it fails
 
-  StringRef key(transaction::helpers::extractKeyPart(value));
+  arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(value));
   if (key.empty()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
@@ -1281,7 +1282,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 ///        Does not care for revision handling!
 ///        Must only be called on a local server, not in cluster case!
 Result transaction::Methods::documentFastPathLocal(std::string const& collectionName,
-                                                   StringRef const& key,
+                                                   arangodb::velocypack::StringRef const& key,
                                                    ManagedDocumentResult& result,
                                                    bool shouldLock) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -1453,7 +1454,7 @@ OperationResult transaction::Methods::documentCoordinator(std::string const& col
   auto resultBody = std::make_shared<VPackBuilder>();
 
   if (!value.isArray()) {
-    StringRef key(transaction::helpers::extractKeyPart(value));
+    arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(value));
 
     if (key.empty()) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
@@ -1487,7 +1488,7 @@ OperationResult transaction::Methods::documentLocal(std::string const& collectio
   ManagedDocumentResult result;
 
   auto workForOneDocument = [&](VPackSlice const value, bool isMultiple) -> Result {
-    StringRef key(transaction::helpers::extractKeyPart(value));
+    arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(value));
     if (key.empty()) {
       return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
     }
@@ -1791,7 +1792,7 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
     if (!options.silent) {
       TRI_ASSERT(!documentResult.empty());
 
-      StringRef keyString(transaction::helpers::extractKeyFromDocument(
+      arangodb::velocypack::StringRef keyString(transaction::helpers::extractKeyFromDocument(
           VPackSlice(documentResult.vpack())));
 
       bool showReplaced = false;
@@ -2099,7 +2100,7 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
-        StringRef key(newVal.get(StaticStrings::KeyString));
+        arangodb::velocypack::StringRef key(newVal.get(StaticStrings::KeyString));
         buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision,
                               0, options.returnOld ? &previous : nullptr, nullptr);
       }
@@ -2109,7 +2110,7 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
     if (!options.silent) {
       TRI_ASSERT(!previous.empty());
       TRI_ASSERT(!result.empty());
-      StringRef key(newVal.get(StaticStrings::KeyString));
+      arangodb::velocypack::StringRef key(newVal.get(StaticStrings::KeyString));
       buildDocumentIdentity(collection, resultBuilder, cid, key,
                             TRI_ExtractRevisionId(VPackSlice(result.vpack())),
                             actualRevision, options.returnOld ? &previous : nullptr,
@@ -2337,7 +2338,7 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
   auto workForOneDocument = [&](VPackSlice value, bool isBabies) -> Result {
     TRI_voc_rid_t actualRevision = 0;
     transaction::BuilderLeaser builder(this);
-    StringRef key;
+    arangodb::velocypack::StringRef key;
     if (value.isString()) {
       key = value;
       size_t pos = key.find('/');

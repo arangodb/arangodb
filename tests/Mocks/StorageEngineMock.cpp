@@ -822,7 +822,7 @@ void PhysicalCollectionMock::prepareIndexes(arangodb::velocypack::Slice indexesS
   }
 }
 
-arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*, arangodb::StringRef const& key, arangodb::ManagedDocumentResult& result, bool) {
+arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*, arangodb::velocypack::StringRef const& key, arangodb::ManagedDocumentResult& result, bool) {
   before();
 
   for (size_t i = documents.size(); i; --i) {
@@ -839,7 +839,7 @@ arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*, a
       continue;
     }
 
-    arangodb::StringRef const docKey(keySlice);
+    arangodb::velocypack::StringRef const docKey(keySlice);
 
     if (key == docKey) {
       result.setUnmanaged(doc.data(), arangodb::LocalDocumentId(i));

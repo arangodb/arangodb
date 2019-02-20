@@ -3075,6 +3075,7 @@ bool Heap::PerformIdleTimeAction(GCIdleTimeAction action,
       break;
     }
     case DO_NOTHING:
+      result = true;
       break;
   }
 

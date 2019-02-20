@@ -45,13 +45,13 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   struct PathStep {
     size_t sourceIdx;
     graph::EdgeDocumentToken edge;
-    arangodb::StringRef const vertex;
+    arangodb::velocypack::StringRef const vertex;
 
    public:
-    explicit PathStep(arangodb::StringRef const vertex);
+    explicit PathStep(arangodb::velocypack::StringRef const vertex);
 
     PathStep(size_t sourceIdx, graph::EdgeDocumentToken&& edge,
-             arangodb::StringRef const vertex);
+             arangodb::velocypack::StringRef const vertex);
 
     ~PathStep();
 
@@ -160,7 +160,7 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
    *
    * @return true if the vertex is already in the path
    */
-  bool pathContainsVertex(size_t index, StringRef vertex) const;
+  bool pathContainsVertex(size_t index, arangodb::velocypack::StringRef vertex) const;
 
   /**
    * @brief Helper function to validate if the path contains the given
