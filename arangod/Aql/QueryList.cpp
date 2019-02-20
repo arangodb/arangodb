@@ -27,13 +27,13 @@
 #include "Aql/QueryProfile.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/StringRef.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/Value.h>
 
 using namespace arangodb;

@@ -277,7 +277,7 @@ class MMFilesCollection final : public PhysicalCollection {
 
   LocalDocumentId lookupKey(transaction::Methods* trx, velocypack::Slice const& key) const override;
 
-  Result read(transaction::Methods*, arangodb::StringRef const& key,
+  Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
               ManagedDocumentResult& result, bool) override;
 
   Result read(transaction::Methods*, arangodb::velocypack::Slice const& key,

@@ -24,6 +24,7 @@
 #include "mmfiles-fulltext-query.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/tri-strings.h"
+#include "Indexes/Index.h"
 #include "MMFiles/mmfiles-fulltext-index.h"
 
 /// @brief normalize a word for a fulltext search query
@@ -58,7 +59,7 @@ static char* NormalizeWord(char const* word, size_t wordLength) {
     return nullptr;
   }
 
-  char* prefixEnd = TRI_PrefixUtf8String(copy2, TRI_FULLTEXT_MAX_WORD_LENGTH);
+  char* prefixEnd = TRI_PrefixUtf8String(copy2, arangodb::FulltextIndexLimits::maxWordLength);
   ptrdiff_t prefixLength = prefixEnd - copy2;
 
   char* copy3 =
@@ -222,7 +223,7 @@ int TRI_ParseQueryMMFilesFulltextIndex(TRI_fulltext_query_t* query,
 
     ++i;
 
-    if (i >= TRI_FULLTEXT_SEARCH_MAX_WORDS) {
+    if (i >= arangodb::FulltextIndexLimits::maxSearchWords) {
       break;
     }
   }

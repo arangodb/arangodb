@@ -89,6 +89,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/BlockFetcherMock.cpp
   Aql/CalculationExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
+  Aql/DistinctCollectExecutorTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
   Aql/EnumerateCollectionExecutorTest.cpp
   Aql/EnumerateListExecutorTest.cpp
@@ -130,6 +131,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/string-test.cpp
   Basics/vector-test.cpp
   Basics/structure-size-test.cpp
+  Basics/CompileTimeStrlenTest.cpp
   Basics/EndpointTest.cpp
   Basics/HashSetTest.cpp
   Basics/LoggerTest.cpp
@@ -212,6 +214,7 @@ target_link_libraries(
 
 target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
+  ${V8_INCLUDE_DIR}
 )
 
 # add these includes as system includes because otherwise

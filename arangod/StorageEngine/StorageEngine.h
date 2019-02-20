@@ -368,13 +368,21 @@ class StorageEngine : public application_features::ApplicationFeature {
     builder.add("name", velocypack::Value(typeName()));
     builder.add("supports", velocypack::Value(VPackValueType::Object));
     builder.add("dfdb", velocypack::Value(supportsDfdb()));
+    
     builder.add("indexes", velocypack::Value(VPackValueType::Array));
-
-    for (auto& it : indexFactory().supportedIndexes()) {
+    for (auto const& it : indexFactory().supportedIndexes()) {
       builder.add(velocypack::Value(it));
     }
-
     builder.close();  // indexes
+    
+    builder.add("aliases", velocypack::Value(VPackValueType::Object));
+    builder.add("indexes", velocypack::Value(VPackValueType::Object));
+    for (auto const& it : indexFactory().indexAliases()) {
+      builder.add(it.first, velocypack::Value(it.second));
+    }
+    builder.close();  // indexes
+    builder.close();  // aliases
+    
     builder.close();  // supports
     builder.close();  // object
   }

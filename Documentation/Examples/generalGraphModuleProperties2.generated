@@ -5,64 +5,28 @@ arangosh&gt; graph._commonProperties({}, {}, {<span class="hljs-attr">ignoreProp
   { 
     <span class="hljs-string">"frenchCity/Lyon"</span> : [ 
       { 
-        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"Point"</span> 
-      }, 
-      { 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
-        <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"Point"</span> 
+        <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span> 
       }, 
       { 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
-        <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"Point"</span> 
-      }, 
-      { 
-        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"Point"</span> 
+        <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span> 
       } 
     ] 
   }, 
   { 
     <span class="hljs-string">"frenchCity/Paris"</span> : [ 
       { 
-        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"Point"</span> 
-      }, 
-      { 
-        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"Point"</span> 
-      }, 
-      { 
-        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"Point"</span> 
-      }, 
-      { 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
-        <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"Point"</span> 
+        <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">true</span> 
       } 
     ] 
   }, 
   { 
     <span class="hljs-string">"germanCity/Berlin"</span> : [ 
       { 
-        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"Point"</span> 
-      }, 
-      { 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
-        <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"Point"</span> 
-      }, 
-      { 
-        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"Point"</span> 
-      }, 
-      { 
-        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"Point"</span> 
+        <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">true</span> 
       } 
     ] 
   }, 
@@ -70,21 +34,11 @@ arangosh&gt; graph._commonProperties({}, {}, {<span class="hljs-attr">ignoreProp
     <span class="hljs-string">"germanCity/Cologne"</span> : [ 
       { 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
-        <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"Point"</span> 
-      }, 
-      { 
-        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"Point"</span> 
+        <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span> 
       }, 
       { 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
-        <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"Point"</span> 
-      }, 
-      { 
-        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"Point"</span> 
+        <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span> 
       } 
     ] 
   }, 
@@ -92,21 +46,11 @@ arangosh&gt; graph._commonProperties({}, {}, {<span class="hljs-attr">ignoreProp
     <span class="hljs-string">"germanCity/Hamburg"</span> : [ 
       { 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
-        <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"Point"</span> 
-      }, 
-      { 
-        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"Point"</span> 
+        <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span> 
       }, 
       { 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
-        <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"Point"</span> 
-      }, 
-      { 
-        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"Point"</span> 
+        <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span> 
       } 
     ] 
   } 

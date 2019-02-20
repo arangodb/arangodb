@@ -68,7 +68,7 @@ class BlockFetcher {
    */
   BlockFetcher(std::vector<ExecutionBlock*> const& dependencies,
                AqlItemBlockManager& itemBlockManager,
-               std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters,
+               std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
                RegisterId nrInputRegisters)
       : _dependencies(dependencies),
         _itemBlockManager(itemBlockManager),
@@ -112,7 +112,7 @@ class BlockFetcher {
  private:
   std::vector<ExecutionBlock*> const& _dependencies;
   AqlItemBlockManager& _itemBlockManager;
-  std::shared_ptr<const std::unordered_set<RegisterId>> const _inputRegisters;
+  std::shared_ptr<std::unordered_set<RegisterId> const> const _inputRegisters;
   RegisterId const _nrInputRegisters;
   std::queue<std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>> _blockShellQueue;
   // only used in case of allowBlockPassthrough:

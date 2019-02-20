@@ -29,10 +29,11 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/StringRef.h>
 
 #include <iosfwd>
 
@@ -61,6 +62,16 @@ namespace transaction {
 class Methods;
 }
 
+/// @brief static limits for fulltext index
+struct FulltextIndexLimits {
+  /// @brief maximum length of an indexed word in characters
+  static constexpr int maxWordLength = 40;
+  /// @brief default minimum word length for a fulltext index
+  static constexpr int minWordLengthDefault = 2;
+  /// @brief maximum number of search words in a query
+  static constexpr int maxSearchWords = 32;
+};
+
 class Index {
  public:
   Index() = delete;
@@ -88,6 +99,7 @@ class Index {
     TRI_IDX_TYPE_EDGE_INDEX,
     TRI_IDX_TYPE_FULLTEXT_INDEX,
     TRI_IDX_TYPE_SKIPLIST_INDEX,
+    TRI_IDX_TYPE_TTL_INDEX,
     TRI_IDX_TYPE_PERSISTENT_INDEX,
 #ifdef USE_IRESEARCH
     TRI_IDX_TYPE_IRESEARCH_LINK,
@@ -218,6 +230,10 @@ class Index {
   /// contents are the same
   static bool Compare(velocypack::Slice const& lhs, velocypack::Slice const& rhs);
 
+  /// @brief whether or not the index is persistent (storage on durable media)
+  /// or not (RAM only)
+  virtual bool isPersistent() const = 0;
+
   virtual bool canBeDropped() const = 0;
 
   /// @brief whether or not the index provides an iterator that can extract
@@ -242,9 +258,9 @@ class Index {
   /// @brief return the selectivity estimate of the index
   /// must only be called if hasSelectivityEstimate() returns true
   ///
-  /// The extra StringRef is only used in the edge index as direction
+  /// The extra arangodb::velocypack::StringRef is only used in the edge index as direction
   /// attribute attribute, a Slice would be more flexible.
-  virtual double selectivityEstimate(arangodb::StringRef const& extra = arangodb::StringRef()) const;
+  virtual double selectivityEstimate(arangodb::velocypack::StringRef const& extra = arangodb::velocypack::StringRef()) const;
 
   /// @brief update the cluster selectivity estimate
   virtual void updateClusterSelectivityEstimate(double /*estimate*/) {

@@ -115,7 +115,7 @@ class EnumerateCollectionExecutor {
 
   typedef std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
 
-  void setProducingFunction(DocumentProducingFunction documentProducer) {
+  void setProducingFunction(DocumentProducingFunction const& documentProducer) {
     _documentProducer = documentProducer;
   };
 

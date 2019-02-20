@@ -285,7 +285,7 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
       return v8::Undefined(isolate);
     }
 
-    object->ForceSet(attributeName, sub);
+    object->Set(attributeName, sub);
 
     c = yylex(scanner);
   }
