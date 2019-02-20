@@ -111,6 +111,7 @@ std::unordered_map<int, std::string const> const typeNames{
 // during register planning
 bool isInSubQuery(ExecutionNode const* node) {
   auto current = node;
+  TRI_ASSERT(current != nullptr);
   while (current != nullptr && current->hasDependency()) {
     current = current->getFirstDependency();
   }
