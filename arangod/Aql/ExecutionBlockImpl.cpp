@@ -370,13 +370,13 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
     }
     AqlItemBlock* block = requestBlock(nrItems, nrRegs);
     blockShell =
-        std::make_unique<AqlItemBlockShell>(_engine->itemBlockManager(),
+        std::make_shared<AqlItemBlockShell>(_engine->itemBlockManager(),
                                             std::unique_ptr<AqlItemBlock>{block});
   } else {
     AqlItemBlock* block = requestBlock(nrItems, nrRegs);
 
     blockShell =
-        std::make_unique<AqlItemBlockShell>(_engine->itemBlockManager(),
+        std::make_shared<AqlItemBlockShell>(_engine->itemBlockManager(),
                                             std::unique_ptr<AqlItemBlock>{block});
   }
 

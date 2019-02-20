@@ -56,7 +56,7 @@ struct ModificationBase {
 
   std::vector<ModOperationType> _operations;
 
-  //SingleBlockFetcher<false>& _fetcher;
+  // SingleBlockFetcher<false>& _fetcher;
 
   void reset() {
     // MUST not reset _block
@@ -83,27 +83,24 @@ struct ModificationBase {
     }
   }
 
-  void setOperationResult(OperationResult&& result){
-    setOperationResult(std::move(result),_operationResult,_operationResultArraySlice,_operationResultIterator);
+  void setOperationResult(OperationResult&& result) {
+    setOperationResult(std::move(result), _operationResult,
+                       _operationResultArraySlice, _operationResultIterator);
   }
 };
 
-
 struct Insert : ModificationBase {
-  template<bool pass>
-  bool doModifications(ModificationExecutorInfos&, SingleBlockFetcher<pass>&, ModificationExecutorBase::Stats&);
+  bool doModifications(ModificationExecutorInfos&, ModificationExecutorBase::Stats&);
   bool doOutput(ModificationExecutorInfos&, OutputAqlItemRow&);
 };
 
 struct Remove : ModificationBase {
-  template<bool pass>
-  bool doModifications(ModificationExecutorInfos&, SingleBlockFetcher<pass>&, ModificationExecutorBase::Stats&);
+  bool doModifications(ModificationExecutorInfos&, ModificationExecutorBase::Stats&);
   bool doOutput(ModificationExecutorInfos&, OutputAqlItemRow&);
 };
 
 struct Upsert : ModificationBase {
-  template<bool pass>
-  bool doModifications(ModificationExecutorInfos&, SingleBlockFetcher<pass>&, ModificationExecutorBase::Stats&);
+  bool doModifications(ModificationExecutorInfos&, ModificationExecutorBase::Stats&);
   bool doOutput(ModificationExecutorInfos&, OutputAqlItemRow&);
 
   OperationResult _operationResultUpdate;
@@ -122,24 +119,27 @@ struct Upsert : ModificationBase {
 
     _operationResultUpdate = OperationResult();
     _operationResultArraySliceUpdate = velocypack::Slice::emptyArraySlice();
-    _operationResultUpdateIterator= VPackArrayIterator(VPackSlice::emptyArraySlice());
+    _operationResultUpdateIterator = VPackArrayIterator(VPackSlice::emptyArraySlice());
   };
 
-  void setOperationResultUpdate(OperationResult&& result){
-    setOperationResult(std::move(result),_operationResultUpdate,_operationResultArraySliceUpdate,_operationResultUpdateIterator);
+  void setOperationResultUpdate(OperationResult&& result) {
+    setOperationResult(std::move(result), _operationResultUpdate,
+                       _operationResultArraySliceUpdate, _operationResultUpdateIterator);
   }
 };
 
 template <typename ModType>
 struct UpdateReplace : ModificationBase {
   using ModificationType = ModType;
-  using MethodPtr = OperationResult(transaction::Methods::*)(std::string const& collectionName, VPackSlice const updateValue, OperationOptions const& options);
-  template<bool pass>
-  bool doModifications(ModificationExecutorInfos&, SingleBlockFetcher<pass>&, ModificationExecutorBase::Stats&);
+  using MethodPtr = OperationResult (transaction::Methods::*)(std::string const& collectionName,
+                                                              VPackSlice const updateValue,
+                                                              OperationOptions const& options);
+  bool doModifications(ModificationExecutorInfos&, ModificationExecutorBase::Stats&);
   bool doOutput(ModificationExecutorInfos&, OutputAqlItemRow&);
 
   UpdateReplace() = delete;
-  UpdateReplace(MethodPtr method, std::string name) : _method(method), _name(std::move(name)) {}
+  UpdateReplace(MethodPtr method, std::string name)
+      : _method(method), _name(std::move(name)) {}
 
   void reset() {
     ModificationBase::reset();

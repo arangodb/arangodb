@@ -104,13 +104,6 @@ class SingleBlockFetcher {
     return {ExecutionState::DONE, 0};
   }
 
-  void forRowInBlock(std::function<void(InputAqlItemRow&&)> callback) {
-    TRI_ASSERT(_currentBlock);
-    for (std::size_t index = 0; index < _currentBlock->block().size(); ++index) {
-      callback(InputAqlItemRow{_currentBlock, index});
-    }
-  }
-
   InputAqlItemRow accessRow(std::size_t index) {
     TRI_ASSERT(_currentBlock);
     TRI_ASSERT(index < _currentBlock->block().size());

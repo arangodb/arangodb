@@ -162,8 +162,7 @@ void handleBabyStats(ModificationExecutorBase::Stats& stats, ModificationExecuto
 
 ///////////////////////////////////////////////////////////////////////////////
 // INSERT /////////////////////////////////////////////////////////////////////
-template<bool pass>
-bool Insert::doModifications(ModificationExecutorInfos& info, SingleBlockFetcher<pass>& fetcher,
+bool Insert::doModifications(ModificationExecutorInfos& info,
                              ModificationExecutorBase::Stats& stats) {
   OperationOptions& options = info._options;
 
@@ -171,8 +170,8 @@ bool Insert::doModifications(ModificationExecutorInfos& info, SingleBlockFetcher
   _tmpBuilder.openArray();
 
   const RegisterId& inReg = info._input1RegisterId.value();
-
-  fetcher.forRowInBlock([this, inReg, &info](InputAqlItemRow&& row) {
+  TRI_ASSERT(_block);
+  _block->forRowInBlock([this, inReg, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
     if (!info._consultAqlWriteFilter ||
         info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
@@ -186,7 +185,7 @@ bool Insert::doModifications(ModificationExecutorInfos& info, SingleBlockFetcher
     }
   });
 
-  TRI_ASSERT(_operations.size() == fetcher.currentBlock()->block().size());
+  TRI_ASSERT(_operations.size() == _block->block().size());
 
   _tmpBuilder.close();
   auto toInsert = _tmpBuilder.slice();
@@ -299,8 +298,7 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 
 ///////////////////////////////////////////////////////////////////////////////
 // REMOVE /////////////////////////////////////////////////////////////////////
-template<bool pass>
-bool Remove::doModifications(ModificationExecutorInfos& info, SingleBlockFetcher<pass>& fetcher,
+bool Remove::doModifications(ModificationExecutorInfos& info,
                              ModificationExecutorBase::Stats& stats) {
   OperationOptions& options = info._options;
 
@@ -313,7 +311,8 @@ bool Remove::doModifications(ModificationExecutorInfos& info, SingleBlockFetcher
   std::string rev;
 
   const RegisterId& inReg = info._input1RegisterId.value();
-  fetcher.forRowInBlock([this, &stats, &errorCode, &key, &rev, trx,
+  TRI_ASSERT(_block);
+  _block->forRowInBlock([this, &stats, &errorCode, &key, &rev, trx,
                                    inReg, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
     if (!info._consultAqlWriteFilter ||
@@ -353,7 +352,7 @@ bool Remove::doModifications(ModificationExecutorInfos& info, SingleBlockFetcher
     }
   });
 
-  TRI_ASSERT(_operations.size() == fetcher.currentBlock()->block().size());
+  TRI_ASSERT(_operations.size() == _block->block().size());
 
   _tmpBuilder.close();
   auto toRemove = _tmpBuilder.slice();
@@ -455,8 +454,7 @@ bool Remove::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 
 ///////////////////////////////////////////////////////////////////////////////
 // UPSERT /////////////////////////////////////////////////////////////////////
-template<bool pass>
-bool Upsert::doModifications(ModificationExecutorInfos& info, SingleBlockFetcher<pass>& fetcher,
+bool Upsert::doModifications(ModificationExecutorInfos& info,
                              ModificationExecutorBase::Stats& stats) {
   OperationOptions& options = info._options;
 
@@ -473,7 +471,7 @@ bool Upsert::doModifications(ModificationExecutorInfos& info, SingleBlockFetcher
   const RegisterId& insertReg = info._input2RegisterId.value();
   const RegisterId& updateReg = info._input3RegisterId.value();
 
-  fetcher.forRowInBlock([this, &stats, &errorCode, &errorMessage,
+  _block->forRowInBlock([this, &stats, &errorCode, &errorMessage,
                                    &key, trx, inDocReg, insertReg, updateReg,
                                    &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inDocReg);
@@ -531,7 +529,7 @@ bool Upsert::doModifications(ModificationExecutorInfos& info, SingleBlockFetcher
     }
   });
 
-  TRI_ASSERT(_operations.size() == fetcher.currentBlock()->block().size());
+  TRI_ASSERT(_operations.size() == _block->block().size());
 
   _insertBuilder.close();
   _updateBuilder.close();
@@ -645,8 +643,7 @@ bool Upsert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 ///////////////////////////////////////////////////////////////////////////////
 // UPDATEREPLACE //////////////////////////////////////////////////////////////
 template <typename ModType>
-template<bool pass>
-bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info, SingleBlockFetcher<pass>& fetcher,
+bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
                                              ModificationExecutorBase::Stats& stats) {
   OperationOptions& options = info._options;
 
@@ -675,7 +672,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info, Si
 
   // const RegisterId& updateReg = info._input3RegisterId.value();
 
-  fetcher.forRowInBlock([this, &options, &stats, &errorCode,
+  _block->forRowInBlock([this, &options, &stats, &errorCode,
                                    &errorMessage, &key, &rev, trx, inDocReg, keyReg,
                                    hasKeyVariable, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inDocReg);
@@ -735,7 +732,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info, Si
     }
   });
 
-  TRI_ASSERT(_operations.size() == fetcher.currentBlock()->block().size());
+  TRI_ASSERT(_operations.size() == _block->block().size());
 
   _updateOrReplaceBuilder.close();
 
@@ -822,21 +819,3 @@ bool UpdateReplace<ModType>::doOutput(ModificationExecutorInfos &info,
 
 template struct arangodb::aql::UpdateReplace<Update>;
 template struct arangodb::aql::UpdateReplace<Replace>;
-
-template bool arangodb::aql::Insert::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<true>&, ModificationExecutorBase::Stats&);
-template bool arangodb::aql::Insert::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<false>&, ModificationExecutorBase::Stats&);
-
-template bool arangodb::aql::Remove::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<true>&, ModificationExecutorBase::Stats&);
-template bool arangodb::aql::Remove::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<false>&, ModificationExecutorBase::Stats&);
-
-template bool arangodb::aql::Upsert::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<true>&, ModificationExecutorBase::Stats&);
-template bool arangodb::aql::Upsert::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<false>&, ModificationExecutorBase::Stats&);
-
-//template bool arangodb::aql::Update::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<true>&, ModificationExecutorBase::Stats&);
-//template bool arangodb::aql::Update::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<false>&, ModificationExecutorBase::Stats&);
-
-template bool arangodb::aql::UpdateReplace<Update>::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<true>&, ModificationExecutorBase::Stats&);
-template bool arangodb::aql::UpdateReplace<Update>::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<false>&, ModificationExecutorBase::Stats&);
-
-template bool arangodb::aql::UpdateReplace<Replace>::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<true>&, ModificationExecutorBase::Stats&);
-template bool arangodb::aql::UpdateReplace<Replace>::doModifications(ModificationExecutorInfos&, SingleBlockFetcher<false>&, ModificationExecutorBase::Stats&);
