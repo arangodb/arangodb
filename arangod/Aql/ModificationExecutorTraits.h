@@ -57,7 +57,7 @@ struct ModificationBase {
   std::vector<ModOperationType> _operations;
 
   void reset() {
-    // may not reset _block
+    // MUST not reset _block
     _prepared = false;
     _blockIndex = 0;
 
