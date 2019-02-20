@@ -60,10 +60,10 @@ public:
 
   std::string getRocksDBPath();
   unsigned getTimeout() const {return _timeoutSeconds;}
+  std::string rebuildPath(const std::string & suffix);
 
 protected:
   virtual std::string buildDirectoryPath(const std::string & timestamp, const std::string & userString);
-  std::string rebuildPath(const std::string & suffix);
 
   // retrieve configuration values from request's body
   void getParamValue(const char * key, std::string & value, bool required);
@@ -149,9 +149,9 @@ public:
   const std::string & getTimestampCurrent() const {return _timestampCurrent;}
   const std::string & getDirectoryRestore() const {return _directoryRestore;}
 
-protected:
-
   bool createRestoringDirectory(std::string & nameOutput);
+
+protected:
 
   bool _saveCurrent;
   bool _forceRestore;  // relates to transaction pause only, not rocksdb pause

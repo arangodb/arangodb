@@ -422,6 +422,8 @@ static basics::FileUtils::TRI_copy_recursive_e linkShaFiles(std::string const & 
 } // linkShaFiles
 
 
+/// @brief /_admin/hotbackup/create with POST method comes here, initiates
+///       a rocksdb checkpoint
 void RocksDBHotBackupCreate::executeCreate() {
 
   // note current time
@@ -609,6 +611,7 @@ void RocksDBHotBackupRestore::execute() {
             if (TRI_ERROR_NO_ERROR == retVal) {
               /// 6. restart rocksdb
               restartRocksDB();
+              _success = true;
             } else {
               // rename to move restoring into position failed.
               good = false;

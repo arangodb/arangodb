@@ -149,7 +149,9 @@ TEST_CASE("RocksDBHotBackup operation parameters", "[rocksdb][devel]") {
 ////////////////////////////////////////////////////////////////////////////////
 class RocksDBHotBackupRestoreTest : public RocksDBHotBackupRestore {
 public:
-  RocksDBHotBackupRestoreTest() : RocksDBHotBackupRestore(VPackSlice()) {
+  RocksDBHotBackupRestoreTest() : RocksDBHotBackupRestore(VPackSlice()),
+                                  _pauseRocksDBReturn(true), _restartRocksDBReturn(true),
+                                  _holdTransactionsReturn(true) {
     long systemError;
     std::string errorMessage;
 
@@ -161,10 +163,12 @@ public:
     _directory = TRI_GetTempPath();
     _directory += TRI_DIR_SEPARATOR_CHAR;
     _directory += "arangotest-";
-    _directory += static_cast<uint64_t>(TRI_microtime());
-    _directory += arangodb::RandomGenerator::interval(UINT32_MAX);
+    _directory += std::to_string(TRI_microtime());
+    _directory += std::to_string(arangodb::RandomGenerator::interval(UINT32_MAX));
 
     TRI_CreateDirectory(_directory.c_str(), systemError, errorMessage);
+
+    _directoryRestore = "SNGL-9231534b-e1aa-4eb6-881a-0b6c798c6677_2019-02-15T20.51.13Z";
   }
 
   //RocksDBHotBackupRestoreTest(const VPackSlice body) : RocksDBHotBackup(body) {};
@@ -175,7 +179,7 @@ public:
     {return RocksDBHotBackup::buildDirectoryPath(time, userString);};
 
   std::string getPersistedId() override
-    {return "SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe";};
+    {return "SNGL-9231534b-e1aa-4eb6-881a-0b6c798c6677";};
 
   bool pauseRocksDB() override {return _pauseRocksDBReturn;};
   bool restartRocksDB() override {return _restartRocksDBReturn;};
@@ -212,13 +216,14 @@ public:
     return filename;
   }
 
-  StringBuffer * writeFile (const char * name, const char * blob) {
-    StringBuffer* filename = new StringBuffer(true);
-    filename->appendText(_directory);
-    filename->appendChar(TRI_DIR_SEPARATOR_CHAR);
-    filename->appendText(name);
+  void writeFile(const char * pathname, const char * filename, const char * blob) {
+    std::string filepath;
 
-    FILE* fd = fopen(filename->c_str(), "wb");
+    filepath = pathname;
+    filepath += TRI_DIR_SEPARATOR_CHAR;
+    filepath += filename;
+
+    FILE* fd = fopen(filepath.c_str(), "wb");
 
     if (fd) {
       size_t numWritten = fwrite(blob, strlen(blob), 1, fd);
@@ -229,42 +234,158 @@ public:
       CHECK(false == true);
     }
 
-    return filename;
+    return;
   }
+
+
+  /// @brief Create an engine-rocksdb directory with a few files
+  void createDBDirectory() {
+    std::string pathname, systemErrorStr;
+    int retVal;
+    long systemError;
+
+    pathname = getRocksDBPath();
+    retVal = TRI_CreateRecursiveDirectory(pathname.c_str(), systemError,
+                                          systemErrorStr);
+    CHECK(TRI_ERROR_NO_ERROR == retVal);
+
+    writeFile(pathname.c_str(), "MANIFEST-000007", "manifest info");
+    writeFile(pathname.c_str(), "CURRENT", "MANIFEST-000007\n");
+    writeFile(pathname.c_str(), "IDENTITY", "huh?");
+    writeFile(pathname.c_str(), "000221.sst", "raw data 1");
+    writeFile(pathname.c_str(), "000221.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash", "");
+    writeFile(pathname.c_str(), "001442.sst", "raw data 2");
+    writeFile(pathname.c_str(), "001442.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash", "");
+    writeFile(pathname.c_str(), "001447.sst", "raw data 3");
+    writeFile(pathname.c_str(), "001447.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash", "");
+
+  } // createDBDirectory
+
+  void createHotDirectory() {
+    std::string pathname, systemErrorStr;
+    int retVal;
+    long systemError;
+
+    pathname = getDatabasePath();
+    pathname += TRI_DIR_SEPARATOR_CHAR;
+    pathname += "hotbackups";
+    pathname += TRI_DIR_SEPARATOR_CHAR;
+    pathname += _directoryRestore;
+    retVal = TRI_CreateRecursiveDirectory(pathname.c_str(), systemError,
+                                          systemErrorStr);
+
+    CHECK(TRI_ERROR_NO_ERROR == retVal);
+
+    writeFile(pathname.c_str(), "MANIFEST-000003", "manifest info");
+    writeFile(pathname.c_str(), "CURRENT", "MANIFEST-000003\n");
+    writeFile(pathname.c_str(), "IDENTITY", "huh?");
+    writeFile(pathname.c_str(), "000111.sst", "raw data 1");
+    writeFile(pathname.c_str(), "000111.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash", "");
+    writeFile(pathname.c_str(), "000223.sst", "raw data 2");
+    writeFile(pathname.c_str(), "000223.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash", "");
+    writeFile(pathname.c_str(), "000333.sst", "raw data 3");
+    writeFile(pathname.c_str(), "000333.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash", "");
+  } // createHotDirectory
+
 
   std::string _directory;
   bool _pauseRocksDBReturn;
   bool _restartRocksDBReturn;
   bool _holdTransactionsReturn;
-};
+};// class RocksDBHotBackupRestoreTest
 
 
 
-#if 0
 /// @brief test
-TEST_CASE("RocksDBHotBackup path tests", "[rocksdb][devel]") {
-  RocksDBHotBackupTest testee;
+TEST_CASE("RocksDBHotBackupRestore directories", "[rocksdb][devel]") {
+  std::string restoringDir, tempname;
+  bool retBool;
 
-  SECTION("test_override") {
-    CHECK(0 == testee.getPersistedId().compare("SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe"));
+  SECTION("test createRestoringDirectory") {
+    RocksDBHotBackupRestoreTest testee;
+    testee.createHotDirectory();
+
+    retBool = testee.createRestoringDirectory(restoringDir);
+
+    // spot check files in restoring dir
+    CHECK( true == retBool );
+    CHECK( TRI_ExistsFile(restoringDir.c_str()) );
+    CHECK( TRI_IsDirectory(restoringDir.c_str()) );
+    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "MANIFEST-000003";
+    CHECK( TRI_ExistsFile(tempname.c_str()) );
+    CHECK( TRI_IsRegularFile(tempname.c_str()) );
+    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "CURRENT";
+    CHECK( TRI_ExistsFile(tempname.c_str()) );
+    CHECK( TRI_IsRegularFile(tempname.c_str()) );
+    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "000111.sst";
+    CHECK( TRI_ExistsFile(tempname.c_str()) );
+    CHECK( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
+    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "000111.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash";
+    CHECK( TRI_ExistsFile(tempname.c_str()) );
+    CHECK( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
+
+    // verify still present in originating dir
+    restoringDir = testee.rebuildPath(testee.getDirectoryRestore());
+    CHECK( TRI_ExistsFile(restoringDir.c_str()) );
+    CHECK( TRI_IsDirectory(restoringDir.c_str()) );
+    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "MANIFEST-000003";
+    CHECK( TRI_ExistsFile(tempname.c_str()) );
+    CHECK( TRI_IsRegularFile(tempname.c_str()) );
+    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "CURRENT";
+    CHECK( TRI_ExistsFile(tempname.c_str()) );
+    CHECK( TRI_IsRegularFile(tempname.c_str()) );
+    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "000111.sst";
+    CHECK( TRI_ExistsFile(tempname.c_str()) );
+    CHECK( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
+    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "000111.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash";
+    CHECK( TRI_ExistsFile(tempname.c_str()) );
+    CHECK( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
+
   }
 
-  SECTION("test_date clean up") {
-    CHECK(testee.buildDirectoryPath("2019-01-23T14:47:42Z","") ==
-            "/var/db/hotbackups/SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe_2019-01-23T14.47.42Z");
-  }
 
-  SECTION("test_user string clean up") {
-    CHECK(testee.buildDirectoryPath("2019-01-23T14:47:42Z","1\"2#3,14159") ==
-            "/var/db/hotbackups/SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe_2019-01-23T14.47.42Z_1.2.3.14159");
-    CHECK(testee.buildDirectoryPath("2019-01-23T14:47:42Z","Today\'s Hot Backup") ==
-            "/var/db/hotbackups/SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe_2019-01-23T14.47.42Z_Today.s_Hot_Backup");
-    std::string raw_string("Toodaay\'s hot");
-    raw_string[1]=(char)1;
-    raw_string[5]=(char)5;
-    CHECK(testee.buildDirectoryPath("2019-01-23T14:47:42Z",raw_string) ==
-            "/var/db/hotbackups/SNGL-d8e661e0-0202-48f3-801e-b6f36000aebe_2019-01-23T14.47.42Z_Today.s_hot");
-  }
+  SECTION("test execute() normal directory path") {
+    RocksDBHotBackupRestoreTest testee;
+    testee.createDBDirectory();
+    testee.createHotDirectory();
 
-}
+    testee.execute();
+
+    CHECK( testee.success() );
+#if 0
+    // spot check files in restoring dir
+    CHECK( true == retBool );
+    CHECK( TRI_ExistsFile(restoringDir.c_str()) );
+    CHECK( TRI_IsDirectory(restoringDir.c_str()) );
+    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "MANIFEST-000003";
+    CHECK( TRI_ExistsFile(tempname.c_str()) );
+    CHECK( TRI_IsRegularFile(tempname.c_str()) );
+    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "CURRENT";
+    CHECK( TRI_ExistsFile(tempname.c_str()) );
+    CHECK( TRI_IsRegularFile(tempname.c_str()) );
+    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "000111.sst";
+    CHECK( TRI_ExistsFile(tempname.c_str()) );
+    CHECK( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
+    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "000111.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash";
+    CHECK( TRI_ExistsFile(tempname.c_str()) );
+    CHECK( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
+
+    // verify still present in originating dir
+    restoringDir = testee.rebuildPath(testee.getDirectoryRestore());
+    CHECK( TRI_ExistsFile(restoringDir.c_str()) );
+    CHECK( TRI_IsDirectory(restoringDir.c_str()) );
+    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "MANIFEST-000003";
+    CHECK( TRI_ExistsFile(tempname.c_str()) );
+    CHECK( TRI_IsRegularFile(tempname.c_str()) );
+    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "CURRENT";
+    CHECK( TRI_ExistsFile(tempname.c_str()) );
+    CHECK( TRI_IsRegularFile(tempname.c_str()) );
+    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "000111.sst";
+    CHECK( TRI_ExistsFile(tempname.c_str()) );
+    CHECK( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
+    tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "000111.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash";
+    CHECK( TRI_ExistsFile(tempname.c_str()) );
+    CHECK( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
 #endif
+  }
+}
