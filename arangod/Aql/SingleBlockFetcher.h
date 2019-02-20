@@ -23,8 +23,12 @@
 #ifndef ARANGOD_AQL_SINGLE_BLOCK_FETCHER_H
 #define ARANGOD_AQL_SINGLE_BLOCK_FETCHER_H
 
+#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemMatrix.h"
+#include "Aql/BlockFetcher.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/SortExecutor.h"
 
 #include <Basics/Exceptions.h>
 
@@ -45,7 +49,10 @@ class BlockFetcher;
 template <bool pass>
 class SingleBlockFetcher {
  public:
-  explicit SingleBlockFetcher(BlockFetcher<pass>& executionBlock);
+  explicit SingleBlockFetcher(BlockFetcher<pass>& executionBlock)
+      : _blockFetcher(&executionBlock),
+        _currentBlock(nullptr),
+        _upstreamState(ExecutionState::HASMORE) {}
 
   TEST_VIRTUAL ~SingleBlockFetcher() = default;
 
@@ -75,17 +82,45 @@ class SingleBlockFetcher {
   // SingleBlockFetcher cannot pass through. Could be implemented, but currently
   // there are no executors that could use this and not better use
   // SingleRowFetcher instead.
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock();
+
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock() {
+    if (_upstreamState == ExecutionState::DONE) {
+      TRI_ASSERT(_currentBlock == nullptr);
+      return {_upstreamState, _currentBlock};
+    }
+
+    auto res = _blockFetcher->fetchBlock();
+    _upstreamState = res.first;
+    _currentBlock = res.second;
+    return res;
+  }
+
   std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   };
-  std::pair<ExecutionState, std::size_t> preFetchNumberOfRows();
 
-  void forRowInBlock(std::function<void(InputAqlItemRow&&)> cb);
+  std::pair<ExecutionState, std::size_t> preFetchNumberOfRows() {
+    TRI_ASSERT(false);
+    return {ExecutionState::DONE, 0};
+  }
 
-  InputAqlItemRow accessRow(std::size_t index);
+  void forRowInBlock(std::function<void(InputAqlItemRow&&)> callback) {
+    TRI_ASSERT(_currentBlock);
+    for (std::size_t index = 0; index < _currentBlock->block().size(); ++index) {
+      callback(InputAqlItemRow{_currentBlock, index});
+    }
+  }
+
+  InputAqlItemRow accessRow(std::size_t index) {
+    TRI_ASSERT(_currentBlock);
+    TRI_ASSERT(index < _currentBlock->block().size());
+    return InputAqlItemRow{_currentBlock, index};
+  }
+
   ExecutionState upstreamState() const { return _upstreamState; }
-  std::shared_ptr<AqlItemBlockShell> currentBlock() const { return _currentBlock; }
+  std::shared_ptr<AqlItemBlockShell> currentBlock() const {
+    return _currentBlock;
+  }
 
  private:
   BlockFetcher<pass>* _blockFetcher;
@@ -96,14 +131,11 @@ class SingleBlockFetcher {
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
-  RegisterId getNrInputRegisters() const;
-
-  /**
-   * @brief Delegates to ExecutionBlock::fetchBlock()
-   */
+  RegisterId getNrInputRegisters() const {
+    return _blockFetcher->getNrInputRegisters();
+  }
 };
 
 }  // namespace aql
 }  // namespace arangodb
-
 #endif  // ARANGOD_AQL_SINGLE_BLOCK_FETCHER_H
