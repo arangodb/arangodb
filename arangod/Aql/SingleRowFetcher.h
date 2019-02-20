@@ -89,14 +89,21 @@ class SingleRowFetcher {
   std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t atMost);
 
   std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost) {
-    if (_upstreamState == ExecutionState::HASMORE &&
-        (_currentBlock == nullptr /* nothing fetched */ ||
-         _currentBlock->block().size() >= _rowIndex /* fully consumed */)) {
-      fetchBlock(atMost);
+    if (_upstreamState == ExecutionState::WAITING ||
+        (_upstreamState == ExecutionState::HASMORE &&
+         (_currentBlock == nullptr /* nothing fetched */ ||
+          _currentBlock->block().size() >= _rowIndex /* fully consumed */))) {
+      ExecutionState state;
+      std::shared_ptr<AqlItemBlockShell> newBlock;
+      std::tie(state, newBlock) = fetchBlock(atMost);
       // we de not need result as local members are modified
-      if (_upstreamState == ExecutionState::WAITING) {
-        return {_upstreamState, 0};
+      if (state == ExecutionState::WAITING) {
+        return {state, 0};
       }
+      // The internal state should be in-line with the returned state.
+      TRI_ASSERT(_upstreamState == state);
+      _currentBlock = std::move(newBlock);
+      _rowIndex = 0;
     }
     if (_upstreamState == ExecutionState::DONE) {
       if (_currentBlock == nullptr) {
