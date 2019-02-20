@@ -497,7 +497,7 @@ OperationID ClusterComm::asyncRequest(
 
   TRI_ASSERT(request != nullptr);
   CONDITION_LOCKER(locker, somethingReceived);
-  // Rall a random communicator
+  // Call a random communicator
   auto communicatorPtr = communicator();
   auto ticketId =
       communicatorPtr->addRequest(createCommunicatorDestination(result->endpoint, path),
@@ -745,7 +745,7 @@ void ClusterComm::drop(CoordTransactionID const coordTransactionID,
     // Lock out the communicators to write responses in this very moment.
     CONDITION_LOCKER(guard, somethingReceived);
     ResponseIterator q = responses.begin();
-    for (; q != responses.end();) {
+    while (q != responses.end()) {
       ClusterCommResult* result = q->second.result.get();
       // The result is not allowed to be deleted
       TRI_ASSERT(result != nullptr);
