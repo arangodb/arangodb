@@ -29,6 +29,7 @@
 #include "Agency/FailedLeader.h"
 #include "Agency/Job.h"
 
+#include  <thread>
 using namespace arangodb::consensus;
 
 FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
@@ -139,10 +140,9 @@ bool FailedServer::start() {
           for (auto const& shard : collection.hasAsChildren("shards").first) {
             size_t pos = 0;
 
-            for (auto const& it :
-                   VPackArrayIterator(shard.second->toBuilder().slice())) {
+            auto tmp = shard.second->toBuilder();
+            for (auto const& it : VPackArrayIterator(tmp.slice())) {
               auto dbs = it.copyString();
-
               if (dbs == _server) {
                 if (pos == 0) {
                   FailedLeader(
