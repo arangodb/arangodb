@@ -120,8 +120,6 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
   }
 
  private:
-  static const InitCallback RocksDBLinkInitCallback;
-
   struct IndexFactory;  // forward declaration
 
   IResearchRocksDBLink(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection);
