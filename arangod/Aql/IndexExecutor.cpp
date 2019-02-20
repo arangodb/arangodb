@@ -172,7 +172,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
                     _infos.getProduceResult(), _infos.getProjections(),
                     _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
                     _allowCoveringIndexOptimization,  // reference here is important
-                    _infos.getUseRawDocumentPointers()));  // remove true flag later, it is always true in any case (?)
+                    _infos.getUseRawDocumentPointers()));
 };
 
 IndexExecutor::~IndexExecutor() = default;
@@ -184,7 +184,6 @@ arangodb::OperationCursor* IndexExecutor::orderCursor(size_t currentIndex) {
   // TODO: if we have _nonConstExpressions, we should also reuse the
   // cursors, but in this case we have to adjust the iterator's search condition
   // from _condition
-  // if (!_infos.getNonConstExpressions().empty() || _infos.checkCursor(currentIndex)) {
   if (!_infos.getNonConstExpressions().empty() || getCursor(currentIndex) == nullptr) {
     AstNode const* conditionNode = nullptr;
     if (_infos.getCondition() != nullptr) {

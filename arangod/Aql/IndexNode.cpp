@@ -258,13 +258,6 @@ void IndexNode::initializeOnce(bool hasV8Expression, std::vector<Variable const*
     nonConstExpressions.emplace_back(
         std::make_unique<NonConstExpression>(std::move(e), std::move(idxs)));
 
-    // TODO removeable?
-    // Prepare _inVars and _inRegs:
-    /* inVars.emplace_back();
-    std::vector<Variable const*>& inVarsCur = inVars.back();
-    inRegs.emplace_back();
-    std::vector<RegisterId>& inRegsCur = inRegs.back(); */
-
     for (auto const& v : innerVars) {
       inVars.emplace_back(v);
       auto it = getRegisterPlan()->varInfo.find(v->id);
