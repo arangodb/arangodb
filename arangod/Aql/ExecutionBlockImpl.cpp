@@ -35,6 +35,7 @@
 
 #include "Aql/CalculationExecutor.h"
 #include "Aql/ConstrainedSortExecutor.h"
+#include "Aql/DistinctCollectExecutor.h"
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/FilterExecutor.h"
@@ -389,6 +390,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<Calculati
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>;
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ConstrainedSortExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<DistinctCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
