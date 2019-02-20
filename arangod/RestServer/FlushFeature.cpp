@@ -803,7 +803,7 @@ void FlushFeature::stop() {
     {
       std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
-      // release any remamining flush subscritions so that they may get deallocated ASAP
+      // release any remaining flush subscriptions so that they may get deallocated ASAP
       // subscriptions could survive after FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
       _flushSubscriptions.clear();
     }
