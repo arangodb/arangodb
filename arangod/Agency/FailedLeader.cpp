@@ -161,7 +161,7 @@ bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
   }
 
   return true;
-  
+
 }
 
 bool FailedLeader::start() {
@@ -227,6 +227,7 @@ bool FailedLeader::start() {
   for (auto const& i : VPackArrayIterator(planned)) {
     auto s = i.copyString();
     if (s != _from && s != _to) {
+      LOG_DEVEL << "Server " << s << " is also in plan";
       planv.push_back(s);
     }
   }
@@ -235,6 +236,8 @@ bool FailedLeader::start() {
   auto additionalFollower = randomIdleGoodAvailableServer(_snapshot, planned);
   if (!additionalFollower.empty()) {
     planv.push_back(additionalFollower);
+  } else {
+    LOG_DEVEL << "No additional follower found";
   }
 
   // Transactions
@@ -269,11 +272,13 @@ bool FailedLeader::start() {
             std::string s = i.copyString();
             if (s != _from && s != _to) {
               ns.add(i);
+              LOG_DEVEL << "Adding " << s << " from current";
               planv.erase(std::remove(planv.begin(), planv.end(), s), planv.end());
             }
           }
           ns.add(VPackValue(_from));
           for (auto const& i : planv) {
+            LOG_DEVEL << "Adding " << i << " from planv";
             ns.add(VPackValue(i));
           }
         }
