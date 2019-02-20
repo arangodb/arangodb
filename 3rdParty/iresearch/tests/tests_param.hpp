@@ -26,6 +26,7 @@
 
 #include "store/directory.hpp"
 #include "store/directory_attributes.hpp"
+#include "utils/encryption.hpp"
 #include <memory>
 
 class test_base;
@@ -82,7 +83,16 @@ std::pair<std::shared_ptr<irs::directory>, std::string> rot13_cipher_directory(c
   auto info = DirectoryGenerator(ctx);
 
   if (info.first) {
-    info.first->attributes().emplace<rot13_cipher>(BlockSize);
+    struct encryption : irs::ctr_encryption {
+      static std::shared_ptr<encryption> make() {
+        return std::make_shared<encryption>();
+      }
+
+      encryption() : irs::ctr_encryption(cipher), cipher(BlockSize) { }
+      rot13_cipher cipher;
+    };
+
+    info.first->attributes().emplace<encryption>();
   }
 
   return std::make_pair(info.first, info.second + "_cipher_rot13_" + std::to_string(BlockSize));

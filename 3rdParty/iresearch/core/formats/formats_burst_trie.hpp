@@ -34,6 +34,7 @@
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 #include "utils/buffers.hpp"
+#include "utils/encryption.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/memory.hpp"
 
@@ -346,13 +347,14 @@ class field_writer final : public irs::field_writer {
 
   void push(const irs::bytes_ref& term);
 
-  const cipher* cipher_{};
   std::unordered_map<const attribute::type_id*, size_t> feature_map_;
-  irs::memory_output suffix_; // term suffix column
-  irs::memory_output stats_; // term stats column
-  irs::index_output::ptr terms_out_; // output stream for terms
-  irs::index_output::ptr index_out_; // output stream for indexes
-  irs::postings_writer::ptr pw_; // postings writer
+  memory_output suffix_; // term suffix column
+  memory_output stats_; // term stats column
+  encryption::stream::ptr terms_out_cipher_;
+  index_output::ptr terms_out_; // output stream for terms
+  encryption::stream::ptr index_out_cipher_;
+  index_output::ptr index_out_; // output stream for indexes
+  postings_writer::ptr pw_; // postings writer
   std::vector<detail::entry> stack_;
   std::unique_ptr<detail::fst_buffer> fst_buf_; // pimpl buffer used for building FST for fields
   detail::volatile_byte_ref last_term_; // last pushed term
@@ -387,12 +389,12 @@ class field_reader final : public irs::field_reader {
  private:
   friend class detail::term_iterator;
 
-  const cipher* cipher_{};
   std::vector<detail::term_reader> fields_;
   std::unordered_map<hashed_string_ref, term_reader*> name_to_field_;
   std::vector<const detail::term_reader*> fields_mask_;
   irs::postings_reader::ptr pr_;
-  irs::index_input::ptr terms_in_;
+  encryption::stream::ptr terms_in_cipher_;
+  index_input::ptr terms_in_;
 }; // field_reader
 
 NS_END // burst_trie

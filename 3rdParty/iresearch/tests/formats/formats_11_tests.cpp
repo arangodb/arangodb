@@ -160,10 +160,10 @@ INSTANTIATE_TEST_CASE_P(
       &tests::rot13_cipher_directory<&tests::mmap_directory, 16>,
       &tests::rot13_cipher_directory<&tests::memory_directory, 7>,
       &tests::rot13_cipher_directory<&tests::fs_directory, 7>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 7>,
-      &tests::rot13_cipher_directory<&tests::memory_directory, 0>,
-      &tests::rot13_cipher_directory<&tests::fs_directory, 0>,
-      &tests::rot13_cipher_directory<&tests::mmap_directory, 0>
+      &tests::rot13_cipher_directory<&tests::mmap_directory, 7>
+//      &tests::rot13_cipher_directory<&tests::memory_directory, 0>,
+//      &tests::rot13_cipher_directory<&tests::fs_directory, 0>,
+//      &tests::rot13_cipher_directory<&tests::mmap_directory, 0>
     ),
     ::testing::Values("1_1")
   ),

@@ -141,7 +141,7 @@ set(IResearch_core_sources
   ./utils/async_utils.cpp
   ./utils/attributes.cpp
   ./utils/bit_packing.cpp
-  ./utils/cipher_utils.cpp
+  ./utils/encryption.cpp
   ./utils/compression.cpp
   ./utils/directory_utils.cpp
   ./utils/file_utils.cpp 

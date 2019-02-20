@@ -33,7 +33,6 @@
 #include "index/file_names.hpp"
 #include "index/index_meta.hpp"
 
-#include "utils/cipher_utils.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/fst.hpp"
@@ -490,8 +489,8 @@ class term_iterator : public irs::seek_term_iterator {
 
   index_input& terms_input() const;
 
-  const irs::cipher* cipher() const NOEXCEPT {
-    return owner_->owner_->cipher_;
+  irs::encryption::stream* terms_cipher() const NOEXCEPT {
+    return owner_->owner_->terms_in_cipher_.get();
   }
 
  private:
@@ -609,7 +608,7 @@ void block_iterator::load() {
     return;
   }
 
-  auto* cipher = owner_->cipher();
+  auto* cipher = owner_->terms_cipher();
 
   index_input& in = owner_->terms_input();
   in.seek(cur_start_);
@@ -618,20 +617,20 @@ void block_iterator::load() {
   }
   uint64_t block_size;
   leaf_ = shift_unpack_64(in.read_vlong(), block_size);
-  const auto aligned_block_size = (cipher ? ceil(*cipher, block_size) : block_size);
 
   // read suffix block
-  string_utils::oversize(suffix_block_, aligned_block_size);
+  string_utils::oversize(suffix_block_, block_size);
 #ifdef IRESEARCH_DEBUG
-  const auto read = in.read_bytes(&(suffix_block_[0]), aligned_block_size);
-  assert(read == aligned_block_size);
+  const auto read = in.read_bytes(&(suffix_block_[0]), block_size);
+  assert(read == block_size);
   UNUSED(read);
 #else
-  in.read_bytes(&(suffix_block_[0]), aligned_block_size);
+  in.read_bytes(&(suffix_block_[0]), block_size);
 #endif // IRESEARCH_DEBUG
   suffix_in_.reset(suffix_block_.c_str(), block_size);
+
   if (cipher) {
-    decrypt(*cipher, &(suffix_block_[0]), aligned_block_size);
+    cipher->decrypt(cur_start_, &(suffix_block_[0]), block_size);
   }
 
   // read stats block
@@ -1339,10 +1338,6 @@ void field_writer::write_block(
 
   size_t block_size = suffix_.stream.file_pointer();
 
-  if (cipher_) {
-    irs::append_padding(*cipher_, suffix_.stream);
-  }
-
   suffix_.stream.flush();
   stats_.stream.flush();
 
@@ -1355,15 +1350,18 @@ void field_writer::write_block(
     return true;
   };
 
-  if (cipher_) {
-    auto encrypt_and_copy = [this](irs::byte_type* b, size_t len) {
-      assert(cipher_);
+  if (terms_out_cipher_) {
+    auto offset = block_start;
 
-      if (!encrypt(*cipher_, b, len)) {
+    auto encrypt_and_copy = [this, &offset](irs::byte_type* b, size_t len) {
+      assert(terms_out_cipher_);
+
+      if (!terms_out_cipher_->encrypt(offset, b, len)) {
         return false;
       }
 
       terms_out_->write_bytes(b, len);
+      offset += len;
       return true;
     };
 
@@ -1572,23 +1570,25 @@ void field_writer::prepare(const irs::flush_state& state) {
   fields_count_ = 0;
 
   // prepare terms and index output
-  std::string str;
-  prepare_output(str, terms_out_, state, TERMS_EXT, FORMAT_TERMS, version_);
-  prepare_output(str, index_out_, state, TERMS_INDEX_EXT, FORMAT_TERMS_INDEX, version_);
+  std::string filename;
+  prepare_output(filename, terms_out_, state, TERMS_EXT, FORMAT_TERMS, version_);
+  prepare_output(filename, index_out_, state, TERMS_INDEX_EXT, FORMAT_TERMS_INDEX, version_);
 
   if (version_ > FORMAT_MIN) {
-    cipher_ = get_cipher(state.dir->attributes());
+    bstring enc_header;
+    auto* enc = get_encryption(state.dir->attributes());
 
-    const size_t block_size = cipher_ ? cipher_->block_size() : 0;
-    terms_out_->write_vlong(block_size);
-    index_out_->write_vlong(block_size);
+    if (irs::encrypt(filename, enc, enc_header, terms_out_cipher_)) {
+      assert(terms_out_cipher_ && terms_out_cipher_->block_size());
+      irs::write_string(*terms_out_, enc_header);
+    }
 
-    if (block_size) {
-      const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/block_size;
-      index_out_ = index_output::make<encrypted_output>(std::move(index_out_), *cipher_, buffer_size);
-    } else {
-      // don't use cipher
-      cipher_ = nullptr;
+    if (irs::encrypt(filename, enc, enc_header, index_out_cipher_)) {
+      assert(index_out_cipher_ && index_out_cipher_->block_size());
+      irs::write_string(*index_out_, enc_header);
+
+      const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/index_out_cipher_->block_size();
+      index_out_ = index_output::make<encrypted_output>(std::move(index_out_), *index_out_cipher_, buffer_size);
     }
   }
 
@@ -1754,9 +1754,9 @@ void field_writer::end() {
   format_utils::write_footer(*terms_out_);
   terms_out_.reset(); // ensure stream is closed
 
-  if (cipher_) {
+  if (index_out_cipher_) {
     auto& out = static_cast<encrypted_output&>(*index_out_);
-    out.append_and_flush();
+    out.flush();
     index_out_ = out.release();
   }
 
@@ -1779,7 +1779,7 @@ void field_reader::prepare(
     const segment_meta& meta,
     const document_mask& /*mask*/
 ) {
-  std::string str;
+  std::string filename;
 
   //-----------------------------------------------------------------
   // read term index
@@ -1798,7 +1798,7 @@ void field_reader::prepare(
   int64_t checksum = 0;
 
   const auto term_index_version = prepare_input(
-    str, index_in,
+    filename, index_in,
     irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE, state,
     field_writer::TERMS_INDEX_EXT,
     field_writer::FORMAT_TERMS_INDEX,
@@ -1826,30 +1826,21 @@ void field_reader::prepare(
     index_in->seek(ptr);
   }
 
+  auto* enc = get_encryption(dir.attributes());
+  encryption::stream::ptr index_in_cipher;
+
   if (term_index_version > field_writer::FORMAT_MIN) {
-    const size_t block_size = index_in->read_vlong();
+    const auto enc_header = irs::read_string<bstring>(*index_in);
 
-    if (block_size) {
-      cipher_ = irs::get_cipher(dir.attributes());
+    if (irs::decrypt(filename, enc, enc_header, index_in_cipher)) {
+      assert(index_in_cipher);
 
-      if (!cipher_) {
-        throw index_error(string_utils::to_string(
-          "failed to open encrypted term index without cipher in segment: '%s'",
-          meta.name.c_str()
-        ));
-      }
-
-      if (block_size != cipher_->block_size()) {
-        throw index_error(string_utils::to_string(
-          "failed to open encrypted term index in segment '%s', expect cipher block of size " IR_SIZE_T_SPECIFIER ", got " IR_SIZE_T_SPECIFIER,
-          meta.name.c_str(), cipher_->block_size(), block_size
-        ));
-      }
-
-      const auto buffer_size = buffered_index_input::DEFAULT_BUFFER_SIZE/block_size;
+      const auto block_size = index_in_cipher->block_size();
+      assert(block_size); // already checked in 'irs::decrypt'
+      const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/block_size;
 
       index_in = index_input::make<encrypted_input>(
-        std::move(index_in), *cipher_, buffer_size, FOOTER_LEN
+        std::move(index_in), *index_in_cipher, buffer_size, FOOTER_LEN
       );
     }
   }
@@ -1903,7 +1894,7 @@ void field_reader::prepare(
 
   // check term header
   const auto term_dict_version = prepare_input(
-    str, terms_in_, irs::IOAdvice::RANDOM, state,
+    filename, terms_in_, irs::IOAdvice::RANDOM, state,
     field_writer::TERMS_EXT,
     field_writer::FORMAT_TERMS,
     field_writer::FORMAT_MIN,
@@ -1920,23 +1911,9 @@ void field_reader::prepare(
   }
 
   if (term_dict_version > field_writer::FORMAT_MIN) {
-    const size_t block_size = terms_in_->read_vlong();
+    const auto enc_header = read_string<bstring>(*terms_in_);
 
-    if (block_size) {
-      if (!cipher_) {
-        throw index_error(string_utils::to_string(
-          "failed to open encrypted term dictionary without cipher in segment: '%s'",
-          meta.name.c_str()
-        ));
-      }
-
-      if (block_size != cipher_->block_size()) {
-        throw index_error(string_utils::to_string(
-          "failed to open encrypted term dictionary in segment '%s', expect cipher block of size " IR_SIZE_T_SPECIFIER ", got " IR_SIZE_T_SPECIFIER,
-          meta.name.c_str(), cipher_->block_size(), block_size
-        ));
-      }
-    }
+    irs::decrypt(filename, enc, enc_header, terms_in_cipher_);
   }
 
   // prepare postings reader

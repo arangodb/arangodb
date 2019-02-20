@@ -51,7 +51,7 @@
 #include "utils/bit_packing.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
-#include "utils/cipher_utils.hpp"
+#include "utils/encryption.hpp"
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
@@ -2513,7 +2513,7 @@ class meta_writer final : public irs::column_meta_writer {
   virtual void flush() override;
 
  private:
-  size_t cipher_block_size_{};
+  encryption::stream::ptr out_cipher_;
   index_output::ptr out_;
   size_t count_{}; // number of written objects
   field_id max_id_{}; // the highest column id written (optimization for vector resize on read to highest id)
@@ -2545,17 +2545,17 @@ void meta_writer::prepare(directory& dir, const segment_meta& meta) {
   }
 
   format_utils::write_header(*out_, FORMAT_NAME, version_);
-  cipher_block_size_ = 0;
 
   if (version_ > FORMAT_MIN) {
-    auto* cipher = irs::get_cipher(dir.attributes());
+    bstring enc_header;
+    auto* enc = get_encryption(dir.attributes());
 
-    cipher_block_size_ = cipher ? cipher->block_size() : 0;
-    out_->write_vlong(cipher_block_size_);
+    if (irs::encrypt(filename, enc, enc_header, out_cipher_)) {
+      assert(out_cipher_ && out_cipher_->block_size());
+      irs::write_string(*out_, enc_header); // write encryption header
 
-    if (cipher_block_size_) {
-      const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/cipher_block_size_;
-      out_ = index_output::make<encrypted_output>(std::move(out_), *cipher, buffer_size);
+      const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/out_cipher_->block_size();
+      out_ = index_output::make<encrypted_output>(std::move(out_), *out_cipher_, buffer_size);
     }
   }
 }
@@ -2571,9 +2571,9 @@ void meta_writer::write(const std::string& name, field_id id) {
 void meta_writer::flush() {
   assert(out_);
 
-  if (cipher_block_size_) {
+  if (out_cipher_) {
     auto& out = static_cast<encrypted_output&>(*out_);
-    out.append_and_flush();
+    out.flush();
     out_ = out.release();
   }
 
@@ -2595,6 +2595,7 @@ class meta_reader final : public irs::column_meta_reader {
   virtual bool read(column_meta& column) override;
 
  private:
+  encryption::stream::ptr in_cipher_;
   index_input::ptr in_;
   size_t count_{0};
   field_id max_id_{0};
@@ -2664,27 +2665,16 @@ bool meta_reader::prepare(
   );
 
   if (version > meta_writer::FORMAT_MIN) {
-    const size_t block_size = in_->read_vlong();
+    encryption* enc = get_encryption(dir.attributes());
+    const auto enc_header = read_string<bstring>(*in_); // read encryption header
 
-    if (block_size) {
-      auto* cipher = irs::get_cipher(dir.attributes());
+    if (irs::decrypt(filename, enc, enc_header, in_cipher_)) {
+      assert(in_cipher_);
 
-      if (!cipher) {
-        throw index_error(string_utils::to_string(
-          "failed to open encrypted file without cipher, path: %s",
-          filename.c_str()
-        ));
-      }
-
-      if (block_size != cipher->block_size()) {
-        throw index_error(string_utils::to_string(
-          "failed to open encrypted file, path '%s', expect cipher block of size " IR_SIZE_T_SPECIFIER ", got " IR_SIZE_T_SPECIFIER,
-          filename.c_str(), cipher->block_size(), block_size
-        ));
-      }
-
+      const auto block_size = in_cipher_->block_size();
+      assert(block_size); // already checked in 'irs::decrypt'
       const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/block_size;
-      in_ = index_input::make<encrypted_input>(std::move(in_), *cipher, buffer_size, FOOTER_LEN);
+      in_ = index_input::make<encrypted_input>(std::move(in_), *in_cipher_, buffer_size, FOOTER_LEN);
     }
   }
 
