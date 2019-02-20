@@ -326,7 +326,7 @@ class Node {
   TimePoint _ttl;                       ///< @brief my expiry
   std::vector<std::shared_ptr<Node>> _array;  ///< @brief my value
   NodeType _type;
-  mutable Buffer<uint8_t> _buffer;
+  Buffer<uint8_t> _buffer;
 }
 ;
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {
