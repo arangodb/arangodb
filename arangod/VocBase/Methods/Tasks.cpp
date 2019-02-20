@@ -215,7 +215,7 @@ bool Task::tryCompile(v8::Isolate* isolate, std::string const& command) {
   // arguments
   v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
                                    TRI_V8_STD_STRING(isolate, command)};
-  v8::Local<v8::Object> function = ctor->NewInstance(2, args);
+  v8::Local<v8::Object> function = ctor->NewInstance(TRI_IGETC, 2, args).FromMaybe(v8::Local<v8::Object>());
 
   v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
 
@@ -396,7 +396,7 @@ void Task::work(ExecContext const* exec) {
     // arguments
     v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
                                      TRI_V8_STD_STRING(isolate, _command)};
-    v8::Local<v8::Object> function = ctor->NewInstance(2, args);
+    v8::Local<v8::Object> function = ctor->NewInstance(TRI_IGETC, 2, args).FromMaybe(v8::Local<v8::Object>());
 
     v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
 
@@ -412,7 +412,7 @@ void Task::work(ExecContext const* exec) {
 
       // call the function within a try/catch
       try {
-        v8::TryCatch tryCatch;
+        v8::TryCatch tryCatch(isolate);;
         action->Call(current, 1, &fArgs);
         if (tryCatch.HasCaught()) {
           if (tryCatch.CanContinue()) {

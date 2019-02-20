@@ -394,7 +394,7 @@ double BaseOptions::costForLookupInfoList(std::vector<BaseOptions::LookupInfo> c
   return cost;
 }
 
-EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr, StringRef vid,
+EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr, arangodb::velocypack::StringRef vid,
                                          std::vector<LookupInfo>& list) {
   TRI_ASSERT(mmdr != nullptr);
   auto allCursor = std::make_unique<SingleServerEdgeCursor>(this, list.size());

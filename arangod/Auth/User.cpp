@@ -25,7 +25,6 @@
 #include "Auth/User.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -42,6 +41,7 @@
 #include "VocBase/Methods/Databases.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;

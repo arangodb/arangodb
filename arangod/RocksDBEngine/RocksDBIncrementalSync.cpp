@@ -82,7 +82,7 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
   TRI_ASSERT(chunk.isObject());
   auto lowSlice = chunk.get("low");
   TRI_ASSERT(lowSlice.isString());
-  StringRef lowRef(lowSlice);
+  arangodb::velocypack::StringRef lowRef(lowSlice);
 
   // last high
   chunk = chunkSlice.at(numChunks - 1);
@@ -90,7 +90,7 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
 
   auto highSlice = chunk.get("high");
   TRI_ASSERT(highSlice.isString());
-  StringRef highRef(highSlice);
+  arangodb::velocypack::StringRef highRef(highSlice);
 
   auto iterator = createPrimaryIndexIterator(&trx, coll);
 
@@ -103,7 +103,7 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
   // remote key
   iterator.next(
       [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
-        StringRef docKey(RocksDBKey::primaryKey(rocksKey));
+        arangodb::velocypack::StringRef docKey(RocksDBKey::primaryKey(rocksKey));
         if (docKey.compare(lowRef) < 0) {
           builder.clear();
           builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),
@@ -140,7 +140,7 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice, LogicalCollection* coll,
 
   iterator.next(
       [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
-        StringRef docKey(RocksDBKey::primaryKey(rocksKey));
+        arangodb::velocypack::StringRef docKey(RocksDBKey::primaryKey(rocksKey));
         if (docKey.compare(highRef) > 0) {
           builder.clear();
           builder.add(velocypack::ValuePair(docKey.data(), docKey.size(),

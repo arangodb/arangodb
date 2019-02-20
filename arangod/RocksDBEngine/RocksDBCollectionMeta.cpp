@@ -361,7 +361,7 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
       continue;
     }
 
-    StringRef estimateInput(value.data() + sizeof(uint64_t), value.size() - sizeof(uint64_t));
+    arangodb::velocypack::StringRef estimateInput(value.data() + sizeof(uint64_t), value.size() - sizeof(uint64_t));
 
     uint64_t committedSeq = rocksutils::uint64FromPersistent(value.data());
     if (RocksDBCuckooIndexEstimator<uint64_t>::isFormatSupported(estimateInput)) {

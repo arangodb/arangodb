@@ -71,7 +71,7 @@ class RocksDBSyncThread final : public Thread {
   /// @brief the last definitely synced RocksDB WAL sequence number
   rocksdb::SequenceNumber _lastSequenceNumber;
 
-  /// @brief protected _lastSyncTime and _lastSequenceNumber
+  /// @brief protects _lastSyncTime and _lastSequenceNumber
   arangodb::basics::ConditionVariable _condition;
 };
 }  // namespace arangodb

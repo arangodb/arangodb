@@ -49,7 +49,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 class CollectionNameResolver;
-class LogicalDataSource; // forward declaration
+class LogicalDataSource;  // forward declaration
 
 namespace transaction {
 class Context;
@@ -110,7 +110,7 @@ class Query {
   constexpr static uint64_t DontCache = 0;
 
   /// @brief whether or not the query is killed
-  bool killed() const;
+  inline bool killed() const { return _killed; }
 
   /// @brief set the query to killed
   void kill();
@@ -161,7 +161,7 @@ class Query {
     return _collections.add(name, accessType);
   }
 
-  inline Collection* addCollection(StringRef name, AccessMode::Type accessType) {
+  inline Collection* addCollection(arangodb::velocypack::StringRef name, AccessMode::Type accessType) {
     return _collections.add(name.toString(), accessType);
   }
 

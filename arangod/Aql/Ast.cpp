@@ -32,7 +32,6 @@
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Basics/SmallVector.h"
-#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterInfo.h"
@@ -44,6 +43,7 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -70,7 +70,7 @@ auto doNothingVisitor = [](AstNode const*) {};
  */
 LogicalDataSource::Category const* injectDataSourceInQuery(
     Query& query, arangodb::CollectionNameResolver const& resolver,
-    AccessMode::Type accessType, bool failIfDoesNotExist, arangodb::StringRef& nameRef) {
+    AccessMode::Type accessType, bool failIfDoesNotExist, arangodb::velocypack::StringRef& nameRef) {
   std::string const name = nameRef.toString();
   // NOTE The name may be modified if a numeric collection ID is given instead
   // of a collection Name. Afterwards it will contain the name.
@@ -99,9 +99,9 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
 
   if (nameRef != name) {
     // name has changed by the lookup, so we need to reserve the collection
-    // name on the heap and update our StringRef
+    // name on the heap and update our arangodb::velocypack::StringRef
     char* p = query.registerString(dataSourceName.data(), dataSourceName.size());
-    nameRef = arangodb::StringRef(p, dataSourceName.size());
+    nameRef = arangodb::velocypack::StringRef(p, dataSourceName.size());
   }
 
   // add views to the collection list
@@ -668,7 +668,7 @@ AstNode* Ast::createNodeDataSource(arangodb::CollectionNameResolver const& resol
                                    char const* name, size_t nameLength,
                                    AccessMode::Type accessType,
                                    bool validateName, bool failIfDoesNotExist) {
-  arangodb::StringRef nameRef(name, nameLength);
+  arangodb::velocypack::StringRef nameRef(name, nameLength);
 
   // will throw if validation fails
   validateDataSourceName(nameRef, validateName);
@@ -695,7 +695,7 @@ AstNode* Ast::createNodeDataSource(arangodb::CollectionNameResolver const& resol
 AstNode* Ast::createNodeCollection(arangodb::CollectionNameResolver const& resolver,
                                    char const* name, size_t nameLength,
                                    AccessMode::Type accessType) {
-  arangodb::StringRef nameRef(name, nameLength);
+  arangodb::velocypack::StringRef nameRef(name, nameLength);
 
   // will throw if validation fails
   validateDataSourceName(nameRef, true);
@@ -1171,7 +1171,7 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections,
     if (c->isStringValue()) {
       std::string const name = c->getString();
       // this call may update nameRef
-      arangodb::StringRef nameRef(name);
+      arangodb::velocypack::StringRef nameRef(name);
       LogicalDataSource::Category const* category =
           injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, nameRef);
       if (category == LogicalCollection::category()) {
@@ -1187,7 +1187,7 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections,
             auto names = coll->realNames();
 
             for (auto const& n : names) {
-              arangodb::StringRef shardsNameRef(n);
+              arangodb::velocypack::StringRef shardsNameRef(n);
               LogicalDataSource::Category const* shardsCategory =
                   injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ,
                                           false, shardsNameRef);
@@ -1219,7 +1219,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
   auto ci = ClusterInfo::instance();
   auto ss = ServerState::instance();
   auto doTheAdd = [&](std::string const& name) {
-    arangodb::StringRef nameRef(name);
+    arangodb::velocypack::StringRef nameRef(name);
     LogicalDataSource::Category const* category =
         injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, nameRef);
     if (category == LogicalCollection::category()) {
@@ -1229,7 +1229,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
           auto const& names = c->realNames();
 
           for (auto const& n : names) {
-            arangodb::StringRef shardsNameRef(n);
+            arangodb::velocypack::StringRef shardsNameRef(n);
             LogicalDataSource::Category const* shardsCategory =
                 injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ,
                                         false, shardsNameRef);
@@ -1578,12 +1578,12 @@ void Ast::injectBindParameters(BindParameters& parameters,
           // check if the collection was used in a data-modification query
           bool isWriteCollection = false;
 
-          arangodb::StringRef paramRef(param);
+          arangodb::velocypack::StringRef paramRef(param);
           for (auto const& it : _writeCollections) {
             auto const& c = it.first;
 
             if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
-                paramRef == arangodb::StringRef(c->getStringValue(), c->getStringLength())) {
+                paramRef == arangodb::velocypack::StringRef(c->getStringValue(), c->getStringLength())) {
               isWriteCollection = true;
               break;
             }
@@ -1601,7 +1601,7 @@ void Ast::injectBindParameters(BindParameters& parameters,
               auto& c = _writeCollections[i].first;
 
               if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
-                  paramRef == arangodb::StringRef(c->getStringValue(), c->getStringLength())) {
+                  paramRef == arangodb::velocypack::StringRef(c->getStringValue(), c->getStringLength())) {
                 c = node;
                 // no break here. replace all occurrences
               }
@@ -1705,7 +1705,7 @@ AstNode* Ast::replaceAttributeAccess(AstNode* node, Variable const* variable,
     return node;
   }
 
-  std::vector<arangodb::StringRef> attributePath;
+  std::vector<arangodb::velocypack::StringRef> attributePath;
 
   auto visitor = [&](AstNode* node) -> AstNode* {
     if (node == nullptr) {
@@ -3341,7 +3341,7 @@ AstNode* Ast::optimizeIndexedAccess(AstNode* node) {
     // found a string value (e.g. a['foo']). now turn this into
     // an attribute access (e.g. a.foo) in order to make the node qualify
     // for being turned into an index range later
-    arangodb::StringRef indexValue(index->getStringValue(), index->getStringLength());
+    arangodb::velocypack::StringRef indexValue(index->getStringValue(), index->getStringLength());
 
     if (!indexValue.empty() && (indexValue[0] < '0' || indexValue[0] > '9')) {
       // we have to be careful with numeric values here...
@@ -3570,8 +3570,8 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
   TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
   AstNode const* original = node;
 
-  SmallVector<arangodb::StringRef>::allocator_type::arena_type a;
-  SmallVector<arangodb::StringRef> attributeNames{a};
+  SmallVector<arangodb::velocypack::StringRef>::allocator_type::arena_type a;
+  SmallVector<arangodb::velocypack::StringRef> attributeNames{a};
 
   while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     attributeNames.push_back(node->getStringRef());
@@ -3593,7 +3593,7 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
 
     if (node->type == NODE_TYPE_OBJECT) {
       TRI_ASSERT(which > 0);
-      arangodb::StringRef const& attributeName = attributeNames[which - 1];
+      arangodb::velocypack::StringRef const& attributeName = attributeNames[which - 1];
       --which;
 
       size_t const n = node->numMembers();
@@ -3601,7 +3601,7 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
         auto member = node->getMemberUnchecked(i);
 
         if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-            arangodb::StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
+            arangodb::velocypack::StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
           // found the attribute
           node = member->getMember(0);
           if (which == 0) {
@@ -3760,7 +3760,7 @@ AstNode* Ast::createNode(AstNodeType type) {
 
 /// @brief validate the name of the given datasource
 /// in case validation fails, will throw an exception
-void Ast::validateDataSourceName(arangodb::StringRef const& name, bool validateStrict) {
+void Ast::validateDataSourceName(arangodb::velocypack::StringRef const& name, bool validateStrict) {
   // common validation
   if (name.empty() ||
       (validateStrict &&
@@ -3774,7 +3774,7 @@ void Ast::validateDataSourceName(arangodb::StringRef const& name, bool validateS
 
 /// @brief create an AST collection node
 /// private function, does no validation
-AstNode* Ast::createNodeCollectionNoValidation(arangodb::StringRef const& name,
+AstNode* Ast::createNodeCollectionNoValidation(arangodb::velocypack::StringRef const& name,
                                                AccessMode::Type accessType) {
   if (ServerState::instance()->isCoordinator()) {
     auto ci = ClusterInfo::instance();

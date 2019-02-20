@@ -38,7 +38,7 @@ using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
 // Traverser variant
-ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, uint64_t depth,
+ClusterEdgeCursor::ClusterEdgeCursor(arangodb::velocypack::StringRef vertexId, uint64_t depth,
                                      graph::BaseOptions* opts)
     : _position(0),
       _resolver(opts->trx()->resolver()),
@@ -56,7 +56,7 @@ ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, uint64_t depth,
 }
 
 // ShortestPath variant
-ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, bool backward, graph::BaseOptions* opts)
+ClusterEdgeCursor::ClusterEdgeCursor(arangodb::velocypack::StringRef vertexId, bool backward, graph::BaseOptions* opts)
     : _position(0),
       _resolver(opts->trx()->resolver()),
       _opts(opts),

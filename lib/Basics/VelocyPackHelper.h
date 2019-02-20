@@ -32,13 +32,13 @@
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace velocypack {
 struct AttributeExcludeHandler;
 class AttributeTranslator;
-class StringRef;
 }  // namespace velocypack
 
 namespace basics {
