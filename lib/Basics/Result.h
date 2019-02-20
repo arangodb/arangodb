@@ -26,7 +26,7 @@
 #include "Basics/Common.h"
 
 namespace arangodb {
-class Result {
+class Result final {
  public:
   Result();
 
@@ -68,11 +68,6 @@ class Result {
    * @return        Refernce to ourselves
    */
   Result& operator=(Result&& other) noexcept;
-
-  /**
-   * @brief Default dtor
-   */
-  virtual ~Result();
 
  public:
   /**

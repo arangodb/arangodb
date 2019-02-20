@@ -37,7 +37,7 @@ using namespace arangodb::traverser;
 NeighborsEnumerator::NeighborsEnumerator(Traverser* traverser, VPackSlice const& startVertex,
                                          TraverserOptions* opts)
     : PathEnumerator(traverser, startVertex.copyString(), opts), _searchDepth(0) {
-  StringRef vId = _traverser->traverserCache()->persistString(StringRef(startVertex));
+  arangodb::velocypack::StringRef vId = _traverser->traverserCache()->persistString(arangodb::velocypack::StringRef(startVertex));
   _allFound.insert(vId);
   _currentDepth.insert(vId);
   _iterator = _currentDepth.begin();
@@ -75,9 +75,9 @@ bool NeighborsEnumerator::next() {
           }
 
           // Counting should be done in readAll
-          StringRef v;
+          arangodb::velocypack::StringRef v;
           if (other.isString()) {
-            v = _opts->cache()->persistString(StringRef(other));
+            v = _opts->cache()->persistString(arangodb::velocypack::StringRef(other));
           } else {
             TRI_ASSERT(other.isObject());
             VPackSlice tmp = transaction::helpers::extractFromFromDocument(other);
@@ -85,7 +85,7 @@ bool NeighborsEnumerator::next() {
               tmp = transaction::helpers::extractToFromDocument(other);
             }
             TRI_ASSERT(tmp.isString());
-            v = _opts->cache()->persistString(StringRef(tmp));
+            v = _opts->cache()->persistString(arangodb::velocypack::StringRef(tmp));
           }
 
           if (_allFound.find(v) == _allFound.end()) {

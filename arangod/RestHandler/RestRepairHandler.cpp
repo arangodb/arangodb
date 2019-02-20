@@ -290,7 +290,7 @@ ResultT<bool> RestRepairHandler::jobFinished(std::string const& jobId) {
         break;
 
       case JobStatus::finished:
-        return true;
+        return ResultT<bool>::success(true);
         break;
 
       case JobStatus::failed:
@@ -298,14 +298,14 @@ ResultT<bool> RestRepairHandler::jobFinished(std::string const& jobId) {
             << "RestRepairHandler::jobFinished: "
             << "Job " << jobId << " failed, aborting";
 
-        return Result(TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED);
+        return ResultT<bool>::error(TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED);
 
       case JobStatus::missing:
         LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
             << "RestRepairHandler::jobFinished: "
             << "Job " << jobId << " went missing, aborting";
 
-        return Result(TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED);
+        return ResultT<bool>::error(TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED);
     }
 
   } else {
@@ -314,10 +314,10 @@ ResultT<bool> RestRepairHandler::jobFinished(std::string const& jobId) {
         << "Failed to get job status: "
         << "[" << jobStatus.errorNumber() << "] " << jobStatus.errorMessage();
 
-    return jobStatus;
+    return ResultT<bool>::error(std::move(jobStatus.result()));
   }
 
-  return false;
+  return ResultT<bool>::success(false);
 }
 
 Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
@@ -375,7 +375,7 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
       while (!previousJobFinished) {
         ResultT<bool> jobFinishedResult = jobFinished(jobId);
         if (jobFinishedResult.fail()) {
-          return jobFinishedResult;
+          return std::move(jobFinishedResult).result();
         }
         previousJobFinished = jobFinishedResult.get();
 
@@ -396,7 +396,7 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
             checkReplicationFactor(databaseId, collectionId);
 
         if (checkReplicationFactorResult.fail()) {
-          return checkReplicationFactorResult;
+          return std::move(checkReplicationFactorResult).result();
         }
         replicationFactorMatches = checkReplicationFactorResult.get();
 
@@ -465,7 +465,7 @@ ResultT<VPackBufferPtr> RestRepairHandler::getFromAgency(std::string const& agen
   if (rv.ok()) {
     return ResultT<VPackBufferPtr>::success(rv.get()[0]);
   } else {
-    return ResultT<VPackBufferPtr>(rv);
+    return ResultT<VPackBufferPtr>(std::move(rv).result());
   }
 }
 
@@ -478,7 +478,7 @@ ResultT<JobStatus> RestRepairHandler::getJobStatusFromAgency(std::string const& 
                                "Target/Finished/" + jobId, "Target/Failed/" + jobId}});
 
   if (rv.fail()) {
-    return ResultT<JobStatus>(rv);
+    return ResultT<JobStatus>(std::move(rv).result());
   }
 
   VPackSlice todo(rv.get()[0]->data());
@@ -636,7 +636,7 @@ ResultT<bool> RestRepairHandler::checkReplicationFactor(DatabaseID const& databa
         << "No ClusterInfo instance";
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
 
-    return Result(TRI_ERROR_INTERNAL);
+    return ResultT<bool>::error(TRI_ERROR_INTERNAL);
   }
 
   clusterInfo->loadPlan();
@@ -656,11 +656,11 @@ ResultT<bool> RestRepairHandler::checkReplicationFactor(DatabaseID const& databa
           << "replicationFactor is " << collection->replicationFactor()
           << ", but the shard has " << dbServers.size() << " DBServers.";
 
-      return false;
+      return ResultT<bool>::success(false);
     }
   }
 
-  return true;
+  return ResultT<bool>::success(true);
 }
 
 void RestRepairHandler::generateResult(rest::ResponseCode code,

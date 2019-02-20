@@ -27,7 +27,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/fasthash.h"
 #include "Basics/hashes.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
@@ -42,6 +41,7 @@
 #include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -202,7 +202,7 @@ MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollectio
 }
 
 /// @brief return a selectivity estimate for the index
-double MMFilesEdgeIndex::selectivityEstimate(arangodb::StringRef const& attribute) const {
+double MMFilesEdgeIndex::selectivityEstimate(arangodb::velocypack::StringRef const& attribute) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_unique) {
     return 1.0;

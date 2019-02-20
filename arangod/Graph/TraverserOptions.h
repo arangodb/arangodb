@@ -26,10 +26,11 @@
 
 #include "Aql/FixedVarExpressionContext.h"
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
 #include "Graph/BaseOptions.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
+
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 class ManagedDocumentResult;
@@ -119,12 +120,12 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool hasEdgeFilter(int64_t, size_t) const;
 
-  bool evaluateEdgeExpression(arangodb::velocypack::Slice, StringRef vertexId,
+  bool evaluateEdgeExpression(arangodb::velocypack::Slice, arangodb::velocypack::StringRef vertexId,
                               uint64_t, size_t) const;
 
   bool evaluateVertexExpression(arangodb::velocypack::Slice, uint64_t) const;
 
-  graph::EdgeCursor* nextCursor(ManagedDocumentResult*, StringRef vid, uint64_t);
+  graph::EdgeCursor* nextCursor(ManagedDocumentResult*, arangodb::velocypack::StringRef vid, uint64_t);
 
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
 
@@ -142,7 +143,7 @@ struct TraverserOptions : public graph::BaseOptions {
   }
 
  private:
-  graph::EdgeCursor* nextCursorCoordinator(StringRef vid, uint64_t);
+  graph::EdgeCursor* nextCursorCoordinator(arangodb::velocypack::StringRef vid, uint64_t);
 };
 }  // namespace traverser
 }  // namespace arangodb

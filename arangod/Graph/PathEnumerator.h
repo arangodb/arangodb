@@ -48,7 +48,7 @@ struct TraverserOptions;
 
 struct EnumeratedPath {
   std::vector<graph::EdgeDocumentToken> edges;
-  std::vector<arangodb::StringRef> vertices;
+  std::vector<arangodb::velocypack::StringRef> vertices;
   EnumeratedPath() {}
 };
 

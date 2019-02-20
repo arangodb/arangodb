@@ -28,8 +28,7 @@
 #include "Aql/SortCondition.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Indexes/PersistentIndexAttributeMatcher.h"
-#include "Indexes/SkiplistIndexAttributeMatcher.h"
+#include "Indexes/SortedIndexAttributeMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -180,15 +179,6 @@ void RocksDBVPackIndexIterator::reset() {
   }
 }
 
-bool RocksDBVPackIndexIterator::outOfRange() const {
-  TRI_ASSERT(_trx->state()->isRunning());
-  if (_reverse) {
-    return (_cmp->Compare(_iterator->key(), _bounds.start()) < 0);
-  } else {
-    return (_cmp->Compare(_iterator->key(), _bounds.end()) > 0);
-  }
-}
-
 bool RocksDBVPackIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
@@ -206,13 +196,7 @@ bool RocksDBVPackIndexIterator::next(LocalDocumentIdCallback const& cb, size_t l
                        : RocksDBKey::indexDocumentId(_bounds.type(), _iterator->key()));
 
     --limit;
-    if (_reverse) {
-      _iterator->Prev();
-    } else {
-      _iterator->Next();
-    }
-
-    if (!_iterator->Valid() || outOfRange()) {
+    if (!advance()) {
       return false;
     }
   }
@@ -231,21 +215,16 @@ bool RocksDBVPackIndexIterator::nextCovering(DocumentCallback const& cb, size_t 
   }
 
   while (limit > 0) {
-    TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
+    rocksdb::Slice const& key = _iterator->key();
+    TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(key));
 
     LocalDocumentId const documentId(
         _index->_unique ? RocksDBValue::documentId(_iterator->value())
-                        : RocksDBKey::indexDocumentId(_bounds.type(), _iterator->key()));
-    cb(documentId, RocksDBKey::indexedVPack(_iterator->key()));
+                        : RocksDBKey::indexDocumentId(_bounds.type(), key));
+    cb(documentId, RocksDBKey::indexedVPack(key));
 
     --limit;
-    if (_reverse) {
-      _iterator->Prev();
-    } else {
-      _iterator->Next();
-    }
-
-    if (!_iterator->Valid() || outOfRange()) {
+    if (!advance()) {
       return false;
     }
   }
@@ -265,13 +244,7 @@ void RocksDBVPackIndexIterator::skip(uint64_t count, uint64_t& skipped) {
 
     --count;
     ++skipped;
-    if (_reverse) {
-      _iterator->Prev();
-    } else {
-      _iterator->Next();
-    }
-
-    if (!_iterator->Valid() || outOfRange()) {
+    if (!advance()) {
       return;
     }
   }
@@ -313,7 +286,7 @@ RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid, arangodb::LogicalCollect
 /// @brief destroy the index
 RocksDBVPackIndex::~RocksDBVPackIndex() {}
 
-double RocksDBVPackIndex::selectivityEstimate(arangodb::StringRef const&) const {
+double RocksDBVPackIndex::selectivityEstimate(arangodb::velocypack::StringRef const&) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_unique) {
     return 1.0;
@@ -911,7 +884,7 @@ bool RocksDBVPackIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex, size_t& estimatedItems, double& estimatedCost) const {
-  return SkiplistIndexAttributeMatcher::supportsFilterCondition(allIndexes, this,
+  return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this,
                                                                 node, reference,
                                                                 itemsInIndex, estimatedItems,
                                                                 estimatedCost);
@@ -921,15 +894,15 @@ bool RocksDBVPackIndex::supportsSortCondition(arangodb::aql::SortCondition const
                                               arangodb::aql::Variable const* reference,
                                               size_t itemsInIndex, double& estimatedCost,
                                               size_t& coveredAttributes) const {
-  return PersistentIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
-                                                                itemsInIndex, estimatedCost,
-                                                                coveredAttributes);
+  return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
+                                                              itemsInIndex, estimatedCost,
+                                                              coveredAttributes);
 }
 
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(
     arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference) const {
-  return SkiplistIndexAttributeMatcher::specializeCondition(this, node, reference);
+  return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
 }
 
 IndexIterator* RocksDBVPackIndex::iteratorForCondition(
@@ -962,7 +935,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     std::unordered_set<std::string> nonNullAttributes;
     size_t unused = 0;
 
-    SkiplistIndexAttributeMatcher::matchAttributes(this, node, reference, found,
+    SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found,
                                                    unused, nonNullAttributes, true);
 
     // found contains all attributes that are relevant for this node.

@@ -60,9 +60,6 @@ class ExecutionBlock {
   RegisterId getRegister(VariableId id) const;
   RegisterId getRegister(Variable const* variable) const;
 
-  /// @brief whether or not the query was killed
-  bool isKilled() const;
-
   /// @brief throw an exception if query was killed
   void throwIfKilled();
 
@@ -140,10 +137,10 @@ class ExecutionBlock {
   AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
 
   /// @brief return an AqlItemBlock to the memory manager
-  void returnBlock(AqlItemBlock*& block);
+  void returnBlock(AqlItemBlock*& block) noexcept;
 
   /// @brief return an AqlItemBlock to the memory manager, but ignore nullptr
-  void returnBlockUnlessNull(AqlItemBlock*& block);
+  void returnBlockUnlessNull(AqlItemBlock*& block) noexcept;
 
   /// @brief copy register data from one block (src) into another (dst)
   /// register values are cloned

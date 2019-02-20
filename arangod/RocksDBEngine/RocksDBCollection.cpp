@@ -51,6 +51,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
+#include "Utils/CollectionGuard.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
@@ -306,12 +307,11 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
 std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
                                                       bool restore, bool& created) {
   TRI_ASSERT(info.isObject());
-  Result res;
 
   // Step 0. Lock all the things
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
   TRI_vocbase_col_status_e status;
-  res = vocbase.useCollection(&_logicalCollection, status);
+  Result res = vocbase.useCollection(&_logicalCollection, status);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -328,9 +328,14 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 
   std::shared_ptr<Index> idx;
   {  // Step 1. Check for matching index
-    WRITE_LOCKER(guard, _indexesLock);
+    READ_LOCKER(guard, _indexesLock);
     if ((idx = findIndex(info, _indexes)) != nullptr) {
-      created = false;  // We already have this index.
+      // We already have this index.
+      if (idx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "there can only be one ttl index per collection");
+      }
+
+      created = false;  
       return idx;
     }
   }
@@ -725,7 +730,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 LocalDocumentId RocksDBCollection::lookupKey(transaction::Methods* trx,
                                              VPackSlice const& key) const {
   TRI_ASSERT(key.isString());
-  return primaryIndex()->lookupKey(trx, StringRef(key));
+  return primaryIndex()->lookupKey(trx, arangodb::velocypack::StringRef(key));
 }
 
 bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice const& key,
@@ -734,7 +739,7 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
   LocalDocumentId documentId;
   revisionId = 0;
   // lookup the revision id in the primary index
-  if (!primaryIndex()->lookupRevision(trx, StringRef(key), documentId, revisionId)) {
+  if (!primaryIndex()->lookupRevision(trx, arangodb::velocypack::StringRef(key), documentId, revisionId)) {
     // document not found
     TRI_ASSERT(revisionId == 0);
     return false;
@@ -751,7 +756,7 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
   });
 }
 
-Result RocksDBCollection::read(transaction::Methods* trx, arangodb::StringRef const& key,
+Result RocksDBCollection::read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
                                ManagedDocumentResult& result, bool) {
   LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, key);
   if (documentId.isSet()) {
@@ -821,7 +826,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(newSlice);
     if (keySlice.isString()) {
       LocalDocumentId const documentId =
-          primaryIndex()->lookupKey(trx, StringRef(keySlice));
+          primaryIndex()->lookupKey(trx, arangodb::velocypack::StringRef(keySlice));
       if (documentId.isSet()) {
         if (options.indexOperationMode == Index::OperationMode::internal) {
           // need to return the key of the conflict document
@@ -1243,26 +1248,26 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
-  RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
 
   // disable indexing in this transaction if we are allowed to
-  IndexingDisabler disabler(mthd, trx->isSingleOperationTransaction());
+  IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
-  rocksdb::Status s = mthd->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
+  rocksdb::Status s = mthds->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
   /*LOG_TOPIC(ERR, Logger::ENGINES)
       << "Delete rev: " << revisionId << " trx: " << trx->state()->id()
-      << " seq: " << mthd->sequenceNumber()
+      << " seq: " << mthds->sequenceNumber()
       << " objectID " << _objectId << " name: " << _logicalCollection->name();*/
 
   Result resInner;
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-    res = ridx->remove(*trx, mthd, documentId, doc, options.indexOperationMode);
+    res = ridx->remove(*trx, mthds, documentId, doc, options.indexOperationMode);
 
     if (res.fail()) {
       break;
@@ -1284,15 +1289,15 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   TRI_ASSERT(_objectId != 0);
   Result res;
 
-  RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
   // disable indexing in this transaction if we are allowed to
-  IndexingDisabler disabler(mthd, trx->isSingleOperationTransaction());
+  IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
   RocksDBKeyLeaser key(trx);
   key->constructDocument(_objectId, oldDocumentId);
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
-  rocksdb::Status s = mthd->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
+  rocksdb::Status s = mthds->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
@@ -1300,9 +1305,9 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   key->constructDocument(_objectId, newDocumentId);
   // simon: we do not need to blacklist the new documentId
   TRI_ASSERT(key->containsLocalDocumentId(newDocumentId));
-  s = mthd->PutUntracked(RocksDBColumnFamily::documents(), key.ref(),
-                         rocksdb::Slice(newDoc.startAs<char>(),
-                                        static_cast<size_t>(newDoc.byteSize())));
+  s = mthds->PutUntracked(RocksDBColumnFamily::documents(), key.ref(),
+                          rocksdb::Slice(newDoc.startAs<char>(),
+                                         static_cast<size_t>(newDoc.byteSize())));
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
@@ -1310,7 +1315,7 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
-    res = rIdx->update(*trx, mthd, oldDocumentId, oldDoc, newDocumentId, newDoc,
+    res = rIdx->update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId, newDoc,
                        options.indexOperationMode);
 
     if (res.fail()) {

@@ -38,7 +38,7 @@ using TraverserOptions = arangodb::traverser::TraverserOptions;
 PathEnumerator::PathEnumerator(Traverser* traverser, std::string const& startVertex,
                                TraverserOptions* opts)
     : _traverser(traverser), _isFirst(true), _opts(opts) {
-  StringRef svId = _opts->cache()->persistString(StringRef(startVertex));
+  arangodb::velocypack::StringRef svId = _opts->cache()->persistString(arangodb::velocypack::StringRef(startVertex));
   // Guarantee that this vertex _id does not run away
   _enumeratedPath.vertices.push_back(svId);
   TRI_ASSERT(_enumeratedPath.vertices.size() == 1);
@@ -67,7 +67,7 @@ bool DepthFirstEnumerator::next() {
       // We are not done with this path, so
       // we reserve the cursor for next depth
       auto cursor = _opts->nextCursor(_traverser->mmdr(),
-                                      StringRef(_enumeratedPath.vertices.back()),
+                                      arangodb::velocypack::StringRef(_enumeratedPath.vertices.back()),
                                       _enumeratedPath.edges.size());
       if (cursor != nullptr) {
         _edgeCursors.emplace(cursor);
@@ -90,7 +90,7 @@ bool DepthFirstEnumerator::next() {
           e = _opts->cache()->lookupToken(eid);
         }
         if (!_traverser->edgeMatchesConditions(
-                e, StringRef(_enumeratedPath.vertices.back()),
+                e, arangodb::velocypack::StringRef(_enumeratedPath.vertices.back()),
                 _enumeratedPath.edges.size(), cursorId)) {
           // This edge does not pass the filtering
           return;
@@ -195,7 +195,7 @@ bool DepthFirstEnumerator::next() {
 void DepthFirstEnumerator::prune() {}
 
 arangodb::aql::AqlValue DepthFirstEnumerator::lastVertexToAqlValue() {
-  return _traverser->fetchVertexData(StringRef(_enumeratedPath.vertices.back()));
+  return _traverser->fetchVertexData(arangodb::velocypack::StringRef(_enumeratedPath.vertices.back()));
 }
 
 arangodb::aql::AqlValue DepthFirstEnumerator::lastEdgeToAqlValue() {
@@ -220,7 +220,7 @@ arangodb::aql::AqlValue DepthFirstEnumerator::pathToAqlValue(arangodb::velocypac
   result.add(VPackValue("vertices"));
   result.openArray();
   for (auto const& it : _enumeratedPath.vertices) {
-    _traverser->addVertexToVelocyPack(StringRef(it), result);
+    _traverser->addVertexToVelocyPack(arangodb::velocypack::StringRef(it), result);
   }
   result.close();
   result.close();
