@@ -81,7 +81,7 @@ class SingleBlockFetcher {
   };
   std::pair<ExecutionState, std::size_t> preFetchNumberOfRows();
 
-  void forRowinBlock(std::function<void(InputAqlItemRow&&)> cb);
+  void forRowInBlock(std::function<void(InputAqlItemRow&&)> cb);
 
   InputAqlItemRow accessRow(std::size_t index);
   ExecutionState upstreamState() const { return _upstreamState; }

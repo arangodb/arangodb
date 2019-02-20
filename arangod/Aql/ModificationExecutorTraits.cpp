@@ -89,7 +89,7 @@ bool Insert::doModifications(ModificationExecutor<Insert>& executor,
 
   const RegisterId& inReg = info._input1RegisterId.value();
 
-  executor._fetcher.forRowinBlock([this, inReg, &info](InputAqlItemRow&& row) {
+  executor._fetcher.forRowInBlock([this, inReg, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
     if (!info._consultAqlWriteFilter ||
         info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
@@ -223,7 +223,7 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
   std::string rev;
 
   const RegisterId& inReg = info._input1RegisterId.value();
-  executor._fetcher.forRowinBlock([this, &executor, &stats, &errorCode, &key, &rev,
+  executor._fetcher.forRowInBlock([this, &executor, &stats, &errorCode, &key, &rev,
                                    trx, inReg, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
     if (!info._consultAqlWriteFilter ||
@@ -383,7 +383,7 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
   const RegisterId& insertReg = info._input2RegisterId.value();
   const RegisterId& updateReg = info._input3RegisterId.value();
 
-  executor._fetcher.forRowinBlock([this, &executor, &stats, &errorCode,
+  executor._fetcher.forRowInBlock([this, &executor, &stats, &errorCode,
                                    &errorMessage, &key, trx, inDocReg, insertReg,
                                    updateReg, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inDocReg);
@@ -584,7 +584,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutor<ModificationTy
 
   // const RegisterId& updateReg = info._input3RegisterId.value();
 
-  executor._fetcher.forRowinBlock([this, &executor, &options, &stats, &errorCode,
+  executor._fetcher.forRowInBlock([this, &executor, &options, &stats, &errorCode,
                                    &errorMessage, &key, &rev, trx, inDocReg, keyReg,
                                    hasKeyVariable, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inDocReg);

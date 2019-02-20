@@ -68,7 +68,7 @@ InputAqlItemRow SingleBlockFetcher<pass>::accessRow(std::size_t index) {
 }
 
 template <bool pass>
-void SingleBlockFetcher<pass>::forRowinBlock(std::function<void(InputAqlItemRow&&)> func) {
+void SingleBlockFetcher<pass>::forRowInBlock(std::function<void(InputAqlItemRow&&)> func) {
   TRI_ASSERT(_currentBlock);
   for (std::size_t index = 0; index < _currentBlock->block().size(); ++index) {
     func(InputAqlItemRow{_currentBlock, index});
