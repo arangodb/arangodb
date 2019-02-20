@@ -350,11 +350,12 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
       }
     }
 #endif
-  } else if (std::is_same<Executor, SortExecutor>::value) {
+  } else if (std::is_same<Executor, SortExecutor>::value ||
+             std::is_same<Executor, FilterExecutor>::value) {
     // The SortExecutor should refetch a block to save memory in case if only few elements to sort
     ExecutionState state;
     size_t expectedRows = 0;
-    std::tie(state, expectedRows) = _rowFetcher.preFetchNumberOfRows();
+    std::tie(state, expectedRows) = _rowFetcher.preFetchNumberOfRows(nrItems);
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(expectedRows == 0);
       return {state, nullptr};
