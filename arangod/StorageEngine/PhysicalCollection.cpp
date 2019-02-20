@@ -26,7 +26,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/encoding.h"
@@ -42,6 +41,7 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
@@ -178,11 +178,11 @@ Result PhysicalCollection::mergeObjectsForUpdate(
   VPackSlice fromSlice;
   VPackSlice toSlice;
 
-  std::unordered_map<StringRef, VPackSlice> newValues;
+  std::unordered_map<arangodb::velocypack::StringRef, VPackSlice> newValues;
   {
     VPackObjectIterator it(newValue, true);
     while (it.valid()) {
-      StringRef key(it.key());
+      arangodb::velocypack::StringRef key(it.key());
       if (!key.empty() && key[0] == '_' &&
           (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
            key == StaticStrings::RevString ||
@@ -258,7 +258,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
   {
     VPackObjectIterator it(oldValue, true);
     while (it.valid()) {
-      StringRef key(it.key());
+      arangodb::velocypack::StringRef key(it.key());
       // exclude system attributes in old value now
       if (!key.empty() && key[0] == '_' &&
           (key == StaticStrings::KeyString || key == StaticStrings::IdString ||

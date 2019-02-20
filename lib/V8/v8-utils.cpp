@@ -965,7 +965,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         try {
           std::string json;
           basics::StringBuffer const& sb = response->getBody();
-          StringRef body(sb.c_str(), sb.length());
+          arangodb::velocypack::StringRef body(sb.c_str(), sb.length());
 
           bool found = false;
           std::string content =
@@ -979,7 +979,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
             VPackValidator validator(&validationOptions);
             validator.validate(sb.data(), sb.length());  // throws on error
             json.assign(VPackSlice(sb.data()).toJson());
-            body = StringRef(json);
+            body = arangodb::velocypack::StringRef(json);
           }
 
           if (outfile.size() > 0) {

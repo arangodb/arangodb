@@ -54,13 +54,13 @@ const double SETUP_TIMEOUT = 90.0;
 
 Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string& shardId) {
   TRI_ASSERT(keySlice.isString());  // used as  a key in Json
-  StringRef key(keySlice);
+  arangodb::velocypack::StringRef key(keySlice);
   size_t p = key.find(':');
   if (p == std::string::npos) {
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
             "Unexpected response from DBServer during setup"};
   }
-  StringRef remId = key.substr(0, p);
+  arangodb::velocypack::StringRef remId = key.substr(0, p);
   remoteId = basics::StringUtils::uint64(remId.begin(), remId.length());
   if (remoteId == 0) {
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,

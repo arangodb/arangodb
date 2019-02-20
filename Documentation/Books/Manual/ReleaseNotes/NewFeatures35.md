@@ -153,3 +153,6 @@ The bundled JEMalloc memory allocator used in ArangoDB release packages has been
 upgraded from version 5.0.1 to version 5.1.0.
 
 The bundled version of the RocksDB library has been upgraded from 5.16 to 5.18.
+
+The bundled version of the V8 JavaScript engine has been upgraded from 5.7.492.77 to 
+7.1.302.28.

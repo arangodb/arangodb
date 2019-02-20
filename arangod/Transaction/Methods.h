@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
-#include "Basics/StringRef.h"
 #include "Rest/CommonDefines.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Hints.h"
@@ -39,6 +38,7 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 
 #ifdef USE_ENTERPRISE
 #define ENTERPRISE_VIRT virtual
@@ -286,7 +286,7 @@ class Methods {
   ///        not care for revision handling! Must only be called on a local
   ///        server, not in cluster case!
   ENTERPRISE_VIRT Result documentFastPathLocal(std::string const& collectionName,
-                                               StringRef const& key,
+                                               arangodb::velocypack::StringRef const& key,
                                                ManagedDocumentResult& result,
                                                bool shouldLock);
 
@@ -446,7 +446,7 @@ class Methods {
   // SHOULD THE OPTIONS BE CONST?
   void buildDocumentIdentity(arangodb::LogicalCollection* collection,
                              VPackBuilder& builder, TRI_voc_cid_t cid,
-                             StringRef const& key, TRI_voc_rid_t rid,
+                             arangodb::velocypack::StringRef const& key, TRI_voc_rid_t rid,
                              TRI_voc_rid_t oldRid, ManagedDocumentResult const* oldDoc,
                              ManagedDocumentResult const* newDoc);
 

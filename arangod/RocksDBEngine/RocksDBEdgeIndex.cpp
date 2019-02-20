@@ -28,7 +28,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/CachedValue.h"
 #include "Cache/TransactionalCache.h"
@@ -51,6 +50,7 @@
 #include <rocksdb/utilities/write_batch_with_index.h>
 
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <cmath>
@@ -184,7 +184,7 @@ bool RocksDBEdgeIndexIterator::next(LocalDocumentIdCallback const& cb, size_t li
       fromToSlice = fromToSlice.get(StaticStrings::IndexEq);
     }
     TRI_ASSERT(fromToSlice.isString());
-    StringRef fromTo(fromToSlice);
+    arangodb::velocypack::StringRef fromTo(fromToSlice);
 
     bool needRocksLookup = true;
     if (_cache) {
@@ -289,7 +289,7 @@ bool RocksDBEdgeIndexIterator::nextCovering(DocumentCallback const& cb, size_t l
       return false;
     }
 
-    StringRef fromTo(fromToSlice);
+    arangodb::velocypack::StringRef fromTo(fromToSlice);
 
     bool needRocksLookup = true;
     if (_cache) {
@@ -403,7 +403,7 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb, size_t limit) 
       fromToSlice = fromToSlice.get(StaticStrings::IndexEq);
     }
     TRI_ASSERT(fromToSlice.isString());
-    StringRef fromTo(fromToSlice);
+    arangodb::velocypack::StringRef fromTo(fromToSlice);
 
     bool needRocksLookup = true;
     if (_cache) {
@@ -462,7 +462,7 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb, size_t limit) 
   return _builderIterator.valid() || _keysIterator.valid();
 }
 
-void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
+void RocksDBEdgeIndexIterator::lookupInRocksDB(arangodb::velocypack::StringRef fromTo) {
   // Bad case read from RocksDB
   _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId, fromTo);
   _iterator->Seek(_bounds.start());
@@ -478,7 +478,7 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
 
     // adding revision ID and _from or _to value
     _builder.add(VPackValue(documentId.id()));
-    StringRef vertexId = RocksDBValue::vertexId(_iterator->value());
+    arangodb::velocypack::StringRef vertexId = RocksDBValue::vertexId(_iterator->value());
     _builder.add(VPackValuePair(vertexId.data(), vertexId.size(), VPackValueType::String));
 
     _iterator->Next();
@@ -519,10 +519,10 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
 // ============================= Index ====================================
 
 uint64_t RocksDBEdgeIndex::HashForKey(const rocksdb::Slice& key) {
-  std::hash<StringRef> hasher;
+  std::hash<arangodb::velocypack::StringRef> hasher;
   // NOTE: This function needs to use the same hashing on the
   // indexed VPack as the initial inserter does
-  StringRef tmp = RocksDBKey::vertexId(key);
+  arangodb::velocypack::StringRef tmp = RocksDBKey::vertexId(key);
   return static_cast<uint64_t>(hasher(tmp));
 }
 
@@ -561,7 +561,7 @@ std::vector<std::vector<arangodb::basics::AttributeName>> const& RocksDBEdgeInde
 }
 
 /// @brief return a selectivity estimate for the index
-double RocksDBEdgeIndex::selectivityEstimate(arangodb::StringRef const& attribute) const {
+double RocksDBEdgeIndex::selectivityEstimate(arangodb::velocypack::StringRef const& attribute) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_unique) {
     return 1.0;
@@ -590,7 +590,7 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   Result res;
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
-  auto fromToRef = StringRef(fromTo);
+  auto fromToRef = arangodb::velocypack::StringRef(fromTo);
   RocksDBKeyLeaser key(&trx);
 
   key->constructEdgeIndexValue(_objectId, fromToRef, documentId);
@@ -600,7 +600,7 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                           ? transaction::helpers::extractToFromDocument(doc)
                           : transaction::helpers::extractFromFromDocument(doc);
   TRI_ASSERT(toFrom.isString());
-  RocksDBValue value = RocksDBValue::EdgeIndexValue(StringRef(toFrom));
+  RocksDBValue value = RocksDBValue::EdgeIndexValue(arangodb::velocypack::StringRef(toFrom));
 
   // blacklist key in cache
   blackListKey(fromToRef);
@@ -609,7 +609,7 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   rocksdb::Status s = mthd->PutUntracked(_cf, key.ref(), value.string());
 
   if (s.ok()) {
-    std::hash<StringRef> hasher;
+    std::hash<arangodb::velocypack::StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     RocksDBTransactionState::toState(&trx)->trackIndexInsert(_collection.id(), id(), hash);
   } else {
@@ -628,7 +628,7 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
 
   // VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
-  auto fromToRef = StringRef(fromTo);
+  auto fromToRef = arangodb::velocypack::StringRef(fromTo);
   TRI_ASSERT(fromTo.isString());
   RocksDBKeyLeaser key(&trx);
   key->constructEdgeIndexValue(_objectId, fromToRef, documentId);
@@ -636,14 +636,14 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                           ? transaction::helpers::extractToFromDocument(doc)
                           : transaction::helpers::extractFromFromDocument(doc);
   TRI_ASSERT(toFrom.isString());
-  RocksDBValue value = RocksDBValue::EdgeIndexValue(StringRef(toFrom));
+  RocksDBValue value = RocksDBValue::EdgeIndexValue(arangodb::velocypack::StringRef(toFrom));
 
   // blacklist key in cache
   blackListKey(fromToRef);
 
   rocksdb::Status s = mthd->Delete(_cf, key.ref());
   if (s.ok()) {
-    std::hash<StringRef> hasher;
+    std::hash<arangodb::velocypack::StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     RocksDBTransactionState::toState(&trx)->trackIndexRemove(_collection.id(), id(), hash);
   } else {
@@ -853,7 +853,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
     n++;
 
     rocksdb::Slice key = it->key();
-    StringRef v = RocksDBKey::vertexId(key);
+    arangodb::velocypack::StringRef v = RocksDBKey::vertexId(key);
     if (previous.empty()) {
       // First call.
       builder.clear();

@@ -38,6 +38,11 @@
 
 using namespace arangodb::velocypack;
 
+// maximum values for integers of different byte sizes
+static int64_t const maxValues[] = {
+  128, 32768, 8388608, 2147483648, 549755813888, 140737488355328, 36028797018963968
+};
+
 // creates a Slice from Json and adds it to a scope
 Slice Slice::fromJson(SliceScope& scope, std::string const& json,
                       Options const* options) {
@@ -262,7 +267,7 @@ int64_t Slice::getIntUnchecked() const noexcept {
       return toInt64(v);
     } else {
       int64_t vv = static_cast<int64_t>(v);
-      int64_t shift = 1LL << ((h - 0x1f) * 8 - 1);
+      int64_t shift = maxValues[h - 0x20];
       return vv < shift ? vv : vv - (shift << 1);
     }
   }
@@ -283,7 +288,7 @@ int64_t Slice::getInt() const {
       return toInt64(v);
     } else {
       int64_t vv = static_cast<int64_t>(v);
-      int64_t shift = 1LL << ((h - 0x1f) * 8 - 1);
+      int64_t shift = maxValues[h - 0x20];
       return vv < shift ? vv : vv - (shift << 1);
     }
   }

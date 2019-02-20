@@ -42,9 +42,9 @@ class Traverser;
 class ClusterEdgeCursor : public graph::EdgeCursor {
  public:
   // Traverser Variant
-  ClusterEdgeCursor(StringRef vid, uint64_t, graph::BaseOptions*);
+  ClusterEdgeCursor(arangodb::velocypack::StringRef vid, uint64_t, graph::BaseOptions*);
   // ShortestPath Variant
-  ClusterEdgeCursor(StringRef vid, bool isBackward, graph::BaseOptions*);
+  ClusterEdgeCursor(arangodb::velocypack::StringRef vid, bool isBackward, graph::BaseOptions*);
 
   ~ClusterEdgeCursor() {}
 

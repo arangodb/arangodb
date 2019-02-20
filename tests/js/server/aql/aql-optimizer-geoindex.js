@@ -54,22 +54,22 @@ function legacyOptimizerRuleTestSuite() {
   var colName = "UnitTestsAqlOptimizerGeoIndex";
 
   var geocol;
-  var hasSortNode = function (plan,query) {
+  var hasSortNode = function (plan, query) {
     assertEqual(findExecutionNodes(plan, "SortNode").length, 1, query.string + " Has SortNode ");
   };
-  var hasNoSortNode = function (plan,query) {
+  var hasNoSortNode = function (plan, query) {
     assertEqual(findExecutionNodes(plan, "SortNode").length, 0, query.string + " Has no SortNode");
   };
-  var hasFilterNode = function (plan,query) {
+  var hasFilterNode = function (plan, query) {
     assertEqual(findExecutionNodes(plan, "FilterNode").length, 1, query.string + " Has FilterNode");
   };
-  var hasNoFilterNode = function (plan,query) {
+  var hasNoFilterNode = function (plan, query) {
     assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, query.string + " Has no FilterNode");
   };
-  var hasNoIndexNode = function (plan,query) {
+  var hasNoIndexNode = function (plan, query) {
     assertEqual(findExecutionNodes(plan, "IndexNode").length, 0, query.string + " Has no IndexNode");
   };
-  var hasIndexNode = function (plan,query) {
+  var hasIndexNode = function (plan, query) {
     var rn = findExecutionNodes(plan,"IndexNode");
     assertEqual(rn.length, 1, query.string + " Has IndexNode");
     assertEqual(rn[0].indexes.length, 1);
@@ -445,6 +445,24 @@ function optimizerRuleTestSuite() {
       geocol = null;
       db._drop("UnitTestsGeoJsonTestSuite");
     },
+    
+    testRuleMultiIndexes: function () {
+      let query = "LET x1 = (FOR d IN " + colName + " SORT distance(d.lat, d.lon, 0, 0) LIMIT 1 RETURN d) LET x2 = (FOR d IN " + colName + " SORT distance(d.lat, d.lon, 0, 0) LIMIT 1 RETURN d) RETURN { x1, x2 }";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf("geo-index-optimizer"));
+
+      let nodes = helper.findExecutionNodes(plan, "IndexNode");
+      assertEqual(2, nodes.length);
+      nodes.forEach(function(n) {
+        assertEqual("IndexNode", n.type);
+        assertEqual(colName, n.collection);
+        assertEqual(1, n.indexes.length);
+        let index = n.indexes[0];
+
+        assertEqual("geo", index.type);
+        assertEqual(["lat", "lon"], index.fields);
+      });
+    },
 
     testRuleBasics: function () {
       if (enabled.basics) {
@@ -452,14 +470,14 @@ function optimizerRuleTestSuite() {
 
         var queries = [
           {
-            string: "FOR d IN " + colName + " SORT distance(d.lat, d.lon, 0 ,0 ) ASC LIMIT 1 RETURN d",
+            string: "FOR d IN " + colName + " SORT distance(d.lat, d.lon, 0, 0) ASC LIMIT 1 RETURN d",
             cluster: false,
             sort: false,
             filter: false,
             index: true
           },
           {
-            string: "FOR d IN " + colName + " SORT distance(d.loca.tion.lat, d.loca.tion.lon, 0 ,0 ) ASC LIMIT 1 RETURN d",
+            string: "FOR d IN " + colName + " SORT distance(d.loca.tion.lat, d.loca.tion.lon, 0, 0) ASC LIMIT 1 RETURN d",
             cluster: false,
             sort: false,
             filter: false,

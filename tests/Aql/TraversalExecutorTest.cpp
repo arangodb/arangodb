@@ -64,7 +64,7 @@ class TestGraph {
     vertex.add(StaticStrings::RevString, VPackValue("123"));  // just to have it there
     vertex.close();
     auto vslice = vertex.slice();
-    StringRef id(vslice.get(StaticStrings::IdString));
+    arangodb::velocypack::StringRef id(vslice.get(StaticStrings::IdString));
     _dataLake.emplace_back(vertex.steal());
     _vertices.emplace(id, vslice);
   }
@@ -81,18 +81,18 @@ class TestGraph {
     edge.add(StaticStrings::ToString, VPackValue(toVal));
     edge.close();
     auto eslice = edge.slice();
-    _outEdges[StringRef(eslice.get(StaticStrings::FromString))].emplace_back(eslice);
-    _inEdges[StringRef(eslice.get(StaticStrings::ToString))].emplace_back(eslice);
+    _outEdges[arangodb::velocypack::StringRef(eslice.get(StaticStrings::FromString))].emplace_back(eslice);
+    _inEdges[arangodb::velocypack::StringRef(eslice.get(StaticStrings::ToString))].emplace_back(eslice);
     _dataLake.emplace_back(edge.steal());
   }
 
-  VPackSlice getVertexData(StringRef id) const {
+  VPackSlice getVertexData(arangodb::velocypack::StringRef id) const {
     auto const& it = _vertices.find(id);
     REQUIRE(it != _vertices.end());
     return it->second;
   }
 
-  std::vector<VPackSlice> const& getInEdges(StringRef id) const {
+  std::vector<VPackSlice> const& getInEdges(arangodb::velocypack::StringRef id) const {
     auto it = _inEdges.find(id);
     if (it == _inEdges.end()) {
       return _noEdges;
@@ -100,7 +100,7 @@ class TestGraph {
     return it->second;
   }
 
-  std::vector<VPackSlice> const& getOutEdges(StringRef id) const {
+  std::vector<VPackSlice> const& getOutEdges(arangodb::velocypack::StringRef id) const {
     auto it = _outEdges.find(id);
     if (it == _outEdges.end()) {
       return _noEdges;
@@ -114,9 +114,9 @@ class TestGraph {
 
   std::vector<VPackSlice> _noEdges;
   std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> _dataLake;
-  std::unordered_map<StringRef, VPackSlice> _vertices;
-  std::unordered_map<StringRef, std::vector<VPackSlice>> _outEdges;
-  std::unordered_map<StringRef, std::vector<VPackSlice>> _inEdges;
+  std::unordered_map<arangodb::velocypack::StringRef, VPackSlice> _vertices;
+  std::unordered_map<arangodb::velocypack::StringRef, std::vector<VPackSlice>> _outEdges;
+  std::unordered_map<arangodb::velocypack::StringRef, std::vector<VPackSlice>> _inEdges;
 };
 
 // @brief
@@ -133,7 +133,7 @@ class GraphEnumerator : public PathEnumerator {
         _idx(0),
         _depth(0),
         _currentDepth{},
-        _nextDepth{StringRef(startVertex)} {}
+        _nextDepth{arangodb::velocypack::StringRef(startVertex)} {}
 
   ~GraphEnumerator() {}
 
@@ -141,7 +141,7 @@ class GraphEnumerator : public PathEnumerator {
     ++_idx;
     while (true) {
       if (_idx < _edges.size()) {
-        _nextDepth.emplace_back(StringRef(_edges.at(_idx).get(StaticStrings::ToString)));
+        _nextDepth.emplace_back(arangodb::velocypack::StringRef(_edges.at(_idx).get(StaticStrings::ToString)));
         return true;
       } else {
         if (_currentDepth.empty()) {
@@ -175,8 +175,8 @@ class GraphEnumerator : public PathEnumerator {
   size_t _idx;
   size_t _depth;
   std::vector<VPackSlice> _edges;
-  std::vector<StringRef> _currentDepth;
-  std::vector<StringRef> _nextDepth;
+  std::vector<arangodb::velocypack::StringRef> _currentDepth;
+  std::vector<arangodb::velocypack::StringRef> _nextDepth;
 };
 
 class TraverserHelper : public Traverser {
@@ -190,23 +190,23 @@ class TraverserHelper : public Traverser {
     _done = false;
   }
 
-  bool getVertex(VPackSlice edge, std::vector<arangodb::StringRef>& result) override {
+  bool getVertex(VPackSlice edge, std::vector<arangodb::velocypack::StringRef>& result) override {
     // Implement
     return false;
   }
 
-  bool getSingleVertex(VPackSlice edge, arangodb::StringRef const sourceVertex,
-                       uint64_t depth, arangodb::StringRef& targetVertex) override {
+  bool getSingleVertex(VPackSlice edge, arangodb::velocypack::StringRef const sourceVertex,
+                       uint64_t depth, arangodb::velocypack::StringRef& targetVertex) override {
     // Implement
     return false;
   }
 
-  AqlValue fetchVertexData(StringRef vid) override {
+  AqlValue fetchVertexData(arangodb::velocypack::StringRef vid) override {
     VPackSlice v = _graph.getVertexData(vid);
     return AqlValue(v);
   }
 
-  void addVertexToVelocyPack(StringRef vid, VPackBuilder& builder) override {
+  void addVertexToVelocyPack(arangodb::velocypack::StringRef vid, VPackBuilder& builder) override {
     REQUIRE(builder.isOpenArray());
     VPackSlice v = _graph.getVertexData(vid);
     builder.add(v);
@@ -427,7 +427,7 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
               REQUIRE(value.isObject());
               REQUIRE(arangodb::basics::VelocyPackHelper::compare(
                           value.slice(),
-                          myGraph.getVertexData(StringRef(expectedResult.at(index))),
+                          myGraph.getVertexData(arangodb::velocypack::StringRef(expectedResult.at(index))),
                           false) == 0);
             }
           }
@@ -613,7 +613,7 @@ SCENARIO("TraversalExecutor", "[AQL][EXECUTOR][TRAVEXE]") {
               REQUIRE(value.isObject());
               REQUIRE(arangodb::basics::VelocyPackHelper::compare(
                           value.slice(),
-                          myGraph.getVertexData(StringRef(expectedResult.at(index))),
+                          myGraph.getVertexData(arangodb::velocypack::StringRef(expectedResult.at(index))),
                           false) == 0);
             }
           }
