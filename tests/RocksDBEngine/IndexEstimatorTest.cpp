@@ -26,13 +26,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
 #include "catch.hpp"
 
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBCollectionMeta.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+
+#include <velocypack/StringRef.h>
 
 using namespace arangodb;
 
@@ -109,7 +110,7 @@ TEST_CASE("IndexEstimator", "[rocksdb][indexestimator]") {
 
     // We first have an uint64_t representing the length.
     // This has to be extracted BEFORE initialization.
-    StringRef ref(serialization.data() + 8, persLength);
+    arangodb::velocypack::StringRef ref(serialization.data() + 8, persLength);
 
     RocksDBCuckooIndexEstimator<uint64_t> copy(seq, ref);
 

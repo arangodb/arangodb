@@ -90,6 +90,7 @@ std::string const StaticStrings::DataSourceSystem("isSystem");
 std::string const StaticStrings::DataSourceType("type");
 
 // Index definition fields
+std::string const StaticStrings::IndexExpireAfter("expireAfter");
 std::string const StaticStrings::IndexFields("fields");
 std::string const StaticStrings::IndexId("id");
 std::string const StaticStrings::IndexSparse("sparse");

@@ -62,12 +62,12 @@ class AllRowsFetcher {
    *         ExecutionState:
    *           WAITING => IO going on, immediatly return to caller.
    *           DONE => No more to expect from Upstream, if you are done with
-   *                   this row return DONE to caller.
-   *           HASMORE => There is potentially more from above, call again if
-   *                      you need more input.
+   *                   this Matrix return DONE to caller.
+   *           HASMORE => Cannot be returned here
+   *
    *         AqlItemRow:
    *           If WAITING => Do not use this Row, it is a nullptr.
-   *           If HASMORE => The Row is guaranteed to not be a nullptr.
+   *           If HASMORE => impossible
    *           If DONE => Row can be a nullptr (nothing received) or valid.
    */
   TEST_VIRTUAL std::pair<ExecutionState, AqlItemMatrix const*> fetchAllRows();
@@ -79,6 +79,25 @@ class AllRowsFetcher {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   };
+
+  /**
+   * @brief Prefetch the number of rows that will be returned from upstream.
+   * calling this function will render the fetchAllRows() a noop function
+   * as this function will already fill the local result caches.
+   *
+   * @return A pair with the following properties:
+   *         ExecutionState:
+   *           WAITING => IO going on, immediatly return to caller.
+   *           DONE => No more to expect from Upstream, if you are done with
+   *                   this Matrix return DONE to caller.
+   *           HASMORE => Cannot be returned here
+   *
+   *         AqlItemRow:
+   *           If WAITING => Do not use this number, it is 0.
+   *           If HASMORE => impossible
+   *           If DONE => Number contains the correct number of rows upstream.
+   */
+  TEST_VIRTUAL std::pair<ExecutionState, size_t> preFetchNumberOfRows();
 
  private:
   BlockFetcher<false>* _blockFetcher;
@@ -97,6 +116,11 @@ class AllRowsFetcher {
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
   std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock();
+
+  /**
+   * @brief Fetch blocks from upstream until done
+   */
+  ExecutionState fetchUntilDone();
 };
 
 }  // namespace aql
