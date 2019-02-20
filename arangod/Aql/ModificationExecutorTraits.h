@@ -88,17 +88,17 @@ struct ModificationBase {
 
 struct Insert : ModificationBase {
   bool doModifications(ModificationExecutor<Insert>&, ModificationExecutorBase::Stats&);
-  bool doOutput(ModificationExecutor<Insert>&, OutputAqlItemRow&);
+  bool doOutput(ModificationExecutorInfos&, OutputAqlItemRow&);
 };
 
 struct Remove : ModificationBase {
   bool doModifications(ModificationExecutor<Remove>&, ModificationExecutorBase::Stats&);
-  bool doOutput(ModificationExecutor<Remove>&, OutputAqlItemRow&);
+  bool doOutput(ModificationExecutorInfos&, OutputAqlItemRow&);
 };
 
 struct Upsert : ModificationBase {
   bool doModifications(ModificationExecutor<Upsert>&, ModificationExecutorBase::Stats&);
-  bool doOutput(ModificationExecutor<Upsert>&, OutputAqlItemRow&);
+  bool doOutput(ModificationExecutorInfos&, OutputAqlItemRow&);
 
   OperationResult _operationResultUpdate;
   VPackSlice _operationResultArraySliceUpdate = VPackSlice::nullSlice();
@@ -129,7 +129,7 @@ struct UpdateReplace : ModificationBase {
   using ModificationType = ModType;
   using MethodPtr = OperationResult(transaction::Methods::*)(std::string const& collectionName, VPackSlice const updateValue, OperationOptions const& options);
   bool doModifications(ModificationExecutor<ModificationType>&, ModificationExecutorBase::Stats&);
-  bool doOutput(ModificationExecutor<ModificationType>&, OutputAqlItemRow&);
+  bool doOutput(ModificationExecutorInfos&, OutputAqlItemRow&);
 
   UpdateReplace() = delete;
   UpdateReplace(MethodPtr method, std::string name) : _method(method), _name(std::move(name)) {}

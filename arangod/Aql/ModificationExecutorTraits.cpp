@@ -245,12 +245,11 @@ bool Insert::doModifications(ModificationExecutor<Insert>& executor,
   return true;
 }
 
-bool Insert::doOutput(ModificationExecutor<Insert>& executor, OutputAqlItemRow& output) {
+bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output) {
   TRI_ASSERT(_block);
   TRI_ASSERT(_block->hasBlock());
   TRI_ASSERT(_blockIndex < _block->block().size());
 
-  auto& info = executor._infos;
   OperationOptions& options = info._options;
 
   InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
@@ -406,12 +405,11 @@ bool Remove::doModifications(ModificationExecutor<Remove>& executor,
   return true;
 }
 
-bool Remove::doOutput(ModificationExecutor<Remove>& executor, OutputAqlItemRow& output) {
+bool Remove::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output) {
   TRI_ASSERT(_block);
   TRI_ASSERT(_block->hasBlock());
   TRI_ASSERT(_blockIndex < _block->block().size());
 
-  auto& info = executor._infos;
   OperationOptions& options = info._options;
 
   InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
@@ -597,12 +595,11 @@ bool Upsert::doModifications(ModificationExecutor<Upsert>& executor,
   return true;
 }
 
-bool Upsert::doOutput(ModificationExecutor<Upsert>& executor, OutputAqlItemRow& output) {
+bool Upsert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output) {
   TRI_ASSERT(_block);
   TRI_ASSERT(_block->hasBlock());
   TRI_ASSERT(_blockIndex < _block->block().size());
 
-  auto& info = executor._infos;
   OperationOptions& options = info._options;
 
   InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
@@ -780,14 +777,13 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutor<ModificationTy
 }
 
 template <typename ModType>
-bool UpdateReplace<ModType>::doOutput(ModificationExecutor<ModificationType>& executor,
+bool UpdateReplace<ModType>::doOutput(ModificationExecutorInfos &info,
                                       OutputAqlItemRow& output) {
   TRI_ASSERT(_block);
   TRI_ASSERT(_block->hasBlock());
   TRI_ASSERT(_blockIndex < _block->block().size());
   TRI_ASSERT(_operationResultArraySlice.isArray());
 
-  auto& info = executor._infos;
   OperationOptions& options = info._options;
 
   InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);

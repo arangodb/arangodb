@@ -115,7 +115,7 @@ ModificationExecutor<Modifier>::produceRow(OutputAqlItemRow& output) {
     TRI_ASSERT(_modifier._block->hasBlock());
 
     // LOG_DEVEL << "call doOutput";
-    bool thisBlockHasMore = _modifier.doOutput(*this, output);
+    bool thisBlockHasMore = _modifier.doOutput(this->_infos, output);
 
     if (thisBlockHasMore) {
       // LOG_DEVEL << "doOutput OPRES HASMORE";
