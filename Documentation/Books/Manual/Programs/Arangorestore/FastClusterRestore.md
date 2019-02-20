@@ -107,10 +107,10 @@ that can be then copied and executed on each _Coordinator_.
 ```
 #!/bin/sh
 #
-# Version: 0.2
+# Version: 0.3
 #
 # Release Notes:
-# - v0.3: ....... TODO .... fixed a bug when _ is used in the collection name
+# - v0.3: fixed a bug that was happening when the collection name included an underscore 
 # - v0.2: compatibility with version 3.4: now each coordinator_<number-of-coordinator>.sh
 #         includes a single restore command (instead of one for each collection)
 #         which allows making using of the --threads option in v.3.4.0 and later
@@ -165,7 +165,7 @@ files = files.map(function(f) {
       pos = f.slice(1).indexOf("_") + 1;
       collName = "_" + f.slice(1, pos);
     } else {
-      pos = f.indexOf("_");
+      pos = f.lastIndexOf("_")
       collName = f.slice(0, pos);
     }
   }
@@ -204,15 +204,8 @@ for (let i = 0; i < dataFiles.length; ++i) {
 }
 
 var cnum = 0;
-// for (let i = 0; i < dataFiles.length; ++i) {
 for (let i = 0; i < coordinators.length; ++i) {
-  // var f = files[dataFiles[i]];
-  // scripts[cnum].push(`${arangorestore} --collection ${f.collName} --input-directory ${dumpDir} --server.endpoint ${coordinators[cnum]} ` + otherArgs.join(" "));
   scripts[i].push(`${arangorestore} --input-directory ${dumpDir} --server.endpoint ${coordinators[i]} ` + collections[i] + ' ' + otherArgs.join(" "));
-  // cnum += 1;
-  // if (cnum >= coordinators.length) {
-  //   cnum = 0;
-  // }
 }
 
 for (let i = 0; i < coordinators.length; ++i) {
