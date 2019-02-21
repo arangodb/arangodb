@@ -434,6 +434,33 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   auto opts = static_cast<TraverserOptions*>(options());
   std::unique_ptr<Traverser> traverser;
   auto trx = engine.getQuery()->trx();
+
+  if (pruneExpression() != nullptr) {
+    std::vector<Variable const*> pruneVars;
+    getPruneVariables(pruneVars);
+    std::vector<RegisterId> pruneRegs;
+    // Create List for _pruneVars
+    pruneRegs.reserve(pruneVars.size());
+    size_t vertexRegIdx = std::numeric_limits<std::size_t>::max();
+    size_t edgeRegIdx = std::numeric_limits<std::size_t>::max();
+    size_t pathRegIdx = std::numeric_limits<std::size_t>::max();
+    for (auto const v : pruneVars) {
+      auto it = varInfo.find(v->id);
+      TRI_ASSERT(it != varInfo.end());
+      if (v == vertexOutVariable()) {
+        vertexRegIdx = pruneRegs.size();
+      } else if (v == edgeOutVariable()) {
+        edgeRegIdx = pruneRegs.size();
+      } else if (v == pathOutVariable()) {
+        pathRegIdx = pruneRegs.size();
+      }
+      pruneRegs.emplace_back(it->second.registerId);
+    }
+
+    opts->activatePrune(std::move(pruneVars), std::move(pruneRegs),
+                        vertexRegIdx, edgeRegIdx, pathRegIdx, pruneExpression());
+  }
+
   if (arangodb::ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
     if (isSmart()) {

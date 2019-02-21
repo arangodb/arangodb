@@ -26,10 +26,10 @@
 #include "QueryExpressionContext.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/InputAqlItemRow.h"
 
 namespace arangodb {
 namespace aql {
-class AqlItemBlock;
 class Query;
 
 /**
@@ -41,13 +41,13 @@ class Query;
  */
 class InAndOutRowExpressionContext final : public QueryExpressionContext {
  public:
-  InAndOutRowExpressionContext(Query* query, std::vector<Variable const*> const& vars,
-                               std::vector<RegisterId> const& regs, size_t vertexVarIdx,
+  InAndOutRowExpressionContext(Query* query, std::vector<Variable const*> const&& vars,
+                               std::vector<RegisterId> const&& regs, size_t vertexVarIdx,
                                size_t edgeVarIdx, size_t pathVarIdx);
 
   ~InAndOutRowExpressionContext() {}
 
-  void setInputRow(size_t inputRowId, AqlItemBlock const* inputBlock);
+  void setInputRow(InputAqlItemRow input);
 
   size_t numRegisters() const override { return _regs.size(); }
 
@@ -84,10 +84,9 @@ class InAndOutRowExpressionContext final : public QueryExpressionContext {
   }
 
  private:
-  size_t _inputRowId;
-  AqlItemBlock const* _inputBlock;
-  std::vector<Variable const*> const& _vars;
-  std::vector<RegisterId> const& _regs;
+  InputAqlItemRow _input;
+  std::vector<Variable const*> const _vars;
+  std::vector<RegisterId> const _regs;
   size_t const _vertexVarIdx;
   size_t const _edgeVarIdx;
   size_t const _pathVarIdx;

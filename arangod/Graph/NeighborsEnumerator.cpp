@@ -37,7 +37,8 @@ using namespace arangodb::traverser;
 NeighborsEnumerator::NeighborsEnumerator(Traverser* traverser, VPackSlice const& startVertex,
                                          TraverserOptions* opts)
     : PathEnumerator(traverser, startVertex.copyString(), opts), _searchDepth(0) {
-  arangodb::velocypack::StringRef vId = _traverser->traverserCache()->persistString(arangodb::velocypack::StringRef(startVertex));
+  arangodb::velocypack::StringRef vId = _traverser->traverserCache()->persistString(
+      arangodb::velocypack::StringRef(startVertex));
   _allFound.insert(vId);
   _currentDepth.insert(vId);
   _iterator = _currentDepth.begin();
@@ -127,8 +128,6 @@ bool NeighborsEnumerator::next() {
   TRI_ASSERT(_iterator != _currentDepth.end());
   return true;
 }
-
-void NeighborsEnumerator::prune() {}
 
 arangodb::aql::AqlValue NeighborsEnumerator::lastVertexToAqlValue() {
   TRI_ASSERT(_iterator != _currentDepth.end());

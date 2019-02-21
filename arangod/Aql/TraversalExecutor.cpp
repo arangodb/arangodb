@@ -22,6 +22,7 @@
 
 #include "TraversalExecutor.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Graph/Traverser.h"
@@ -149,7 +150,6 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
         s.addScannedIndex(_traverser.getAndResetReadDocuments());
         return {_rowState, s};
       }
-
       if (!resetTraverser()) {
         // Could not start here, (invalid)
         // Go to next
@@ -203,7 +203,11 @@ bool TraversalExecutor::resetTraverser() {
   for (auto const& pair : _infos.filterConditionVariables()) {
     opts->setVariableValue(pair.first, _input.getValue(pair.second));
   }
-
+  if (opts->usesPrune()) {
+    auto* evaluator = opts->getPruneEvaluator();
+    // Replace by inputRow
+    evaluator->prepareContext(_input);
+  }
   // Now reset the traverser
   if (_infos.usesFixedSource()) {
     auto pos = _infos.getFixedSource().find('/');

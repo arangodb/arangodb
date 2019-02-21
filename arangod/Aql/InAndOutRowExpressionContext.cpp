@@ -32,14 +32,13 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 InAndOutRowExpressionContext::InAndOutRowExpressionContext(
-    Query* query, std::vector<Variable const*> const& vars,
-    std::vector<RegisterId> const& regs, size_t vertexVarIdx, size_t edgeVarIdx,
-    size_t pathVarIdx)
+    Query* query, std::vector<Variable const*> const&& vars,
+    std::vector<RegisterId> const&& regs, size_t vertexVarIdx,
+    size_t edgeVarIdx, size_t pathVarIdx)
     : QueryExpressionContext(query),
-      _inputRowId(0),
-      _inputBlock(nullptr),
-      _vars(vars),
-      _regs(regs),
+      _input{CreateInvalidInputRowHint()},
+      _vars(std::move(vars)),
+      _regs(std::move(regs)),
       _vertexVarIdx(vertexVarIdx),
       _edgeVarIdx(edgeVarIdx),
       _pathVarIdx(pathVarIdx) {
@@ -52,14 +51,13 @@ InAndOutRowExpressionContext::InAndOutRowExpressionContext(
              _pathVarIdx == std::numeric_limits<std::size_t>::max());
 }
 
-void InAndOutRowExpressionContext::setInputRow(size_t inputRowId,
-                                               AqlItemBlock const* inputBlock) {
-  _inputRowId = inputRowId;
-  _inputBlock = inputBlock;
+void InAndOutRowExpressionContext::setInputRow(InputAqlItemRow input) {
+  TRI_ASSERT(input.isInitialized());
+  _input = input;
 }
 
 AqlValue const& InAndOutRowExpressionContext::getRegisterValue(size_t i) const {
-  TRI_ASSERT(_inputBlock != nullptr);
+  TRI_ASSERT(_input.isInitialized());
   TRI_ASSERT(i < _regs.size());
   if (i == _vertexVarIdx) {
     return _vertexValue;
@@ -72,13 +70,13 @@ AqlValue const& InAndOutRowExpressionContext::getRegisterValue(size_t i) const {
   }
   // Search InputRow
   RegisterId const& regId = _regs[i];
-  TRI_ASSERT(regId < _inputBlock->getNrRegs());
-  return _inputBlock->getValueReference(_inputRowId, regId);
+  TRI_ASSERT(regId < _input.getNrRegisters());
+  return _input.getValue(regId);
 }
 
 AqlValue InAndOutRowExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
                                                         bool& mustDestroy) const {
-  TRI_ASSERT(_inputBlock != nullptr);
+  TRI_ASSERT(_input.isInitialized());
   for (size_t i = 0; i < _vars.size(); ++i) {
     auto const& v = _vars[i];
     if (v->id == variable->id) {
@@ -96,8 +94,8 @@ AqlValue InAndOutRowExpressionContext::getVariableValue(Variable const* variable
         }
         // Search InputRow
         RegisterId const& regId = _regs[i];
-        TRI_ASSERT(regId < _inputBlock->getNrRegs());
-        return _inputBlock->getValueReference(_inputRowId, regId).clone();
+        TRI_ASSERT(regId < _input.getNrRegisters());
+        return _input.getValue(regId).clone();
       } else {
         mustDestroy = false;
         if (i == _vertexVarIdx) {
@@ -111,8 +109,8 @@ AqlValue InAndOutRowExpressionContext::getVariableValue(Variable const* variable
         }
         // Search InputRow
         RegisterId const& regId = _regs[i];
-        TRI_ASSERT(regId < _inputBlock->getNrRegs());
-        return _inputBlock->getValueReference(_inputRowId, regId);
+        TRI_ASSERT(regId < _input.getNrRegisters());
+        return _input.getValue(regId);
       }
     }
   }

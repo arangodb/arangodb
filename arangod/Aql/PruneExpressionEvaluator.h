@@ -36,20 +36,19 @@ class Methods;
 namespace aql {
 class Expression;
 class Query;
+class InputAqlItemRow;
 
 class PruneExpressionEvaluator {
  public:
   PruneExpressionEvaluator(transaction::Methods* trx, Query* query,
-                           std::vector<Variable const*> const& vars,
-                           std::vector<RegisterId> const& regs, size_t vertexVarIdx,
+                           std::vector<Variable const*> const&& vars,
+                           std::vector<RegisterId> const&& regs, size_t vertexVarIdx,
                            size_t edgeVarIdx, size_t pathVarIdx, Expression* expr);
 
   ~PruneExpressionEvaluator();
 
   bool evaluate();
-  void prepareContext(size_t inputRowId, AqlItemBlock const* inputBlock) {
-    _ctx.setInputRow(inputRowId, inputBlock);
-  }
+  void prepareContext(InputAqlItemRow input) { _ctx.setInputRow(input); }
 
   bool needsVertex() const { return _ctx.needsVertexValue(); }
   void injectVertex(velocypack::Slice v) { _ctx.setVertexValue(v); }

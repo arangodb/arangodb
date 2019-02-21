@@ -57,7 +57,8 @@ BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser, VPackSlice 
       _currentDepth(0),
       _toSearchPos(0) {
   _schreier.reserve(32);
-  arangodb::velocypack::StringRef startVId = _opts->cache()->persistString(arangodb::velocypack::StringRef(startVertex));
+  arangodb::velocypack::StringRef startVId =
+      _opts->cache()->persistString(arangodb::velocypack::StringRef(startVertex));
 
   _schreier.emplace_back(std::make_unique<PathStep>(startVId));
   _toSearch.emplace_back(NextStep(0));
@@ -189,9 +190,6 @@ bool BreadthFirstEnumerator::next() {
   // entry. We compute the path to it.
   return true;
 }
-
-void BreadthFirstEnumerator::prune() {}
-
 arangodb::aql::AqlValue BreadthFirstEnumerator::lastVertexToAqlValue() {
   return vertexToAqlValue(_lastReturned);
 }
@@ -249,7 +247,8 @@ arangodb::aql::AqlValue BreadthFirstEnumerator::pathToIndexToAqlValue(
   return arangodb::aql::AqlValue(result.slice());
 }
 
-bool BreadthFirstEnumerator::pathContainsVertex(size_t index, arangodb::velocypack::StringRef vertex) const {
+bool BreadthFirstEnumerator::pathContainsVertex(size_t index,
+                                                arangodb::velocypack::StringRef vertex) const {
   while (true) {
     TRI_ASSERT(index < _schreier.size());
     auto const& step = _schreier[index];

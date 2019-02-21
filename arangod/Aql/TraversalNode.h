@@ -191,9 +191,7 @@ class TraversalNode : public GraphNode {
 
   // @brief Get reference to the Prune expression.
   //        You are not responsible for it!
-  Expression* pruneExpression() const {
-    return _pruneExpression.get();
-  }
+  Expression* pruneExpression() const { return _pruneExpression.get(); }
 
  private:
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -238,6 +236,7 @@ class TraversalNode : public GraphNode {
   /// @brief List of all depth specific conditions for vertices
   std::unordered_map<uint64_t, AstNode*> _vertexConditions;
 
+  /// @brief the hashSet for variables used in pruning
   arangodb::HashSet<Variable const*> _pruneVariables;
 };
 

@@ -95,8 +95,6 @@ class PathEnumerator {
 
   virtual bool next() = 0;
 
-  virtual void prune() = 0;
-
   virtual aql::AqlValue lastVertexToAqlValue() = 0;
   virtual aql::AqlValue lastEdgeToAqlValue() = 0;
   virtual aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder&) = 0;
@@ -126,13 +124,6 @@ class DepthFirstEnumerator final : public PathEnumerator {
   //////////////////////////////////////////////////////////////////////////////
 
   bool next() override;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Prunes the current path prefix, the next function should not return
-  ///        any path having this prefix anymore.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void prune() override;
 
   aql::AqlValue lastVertexToAqlValue() override;
 

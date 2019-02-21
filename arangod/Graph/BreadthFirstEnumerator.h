@@ -135,8 +135,6 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
 
   bool next() override;
 
-  void prune() override;
-
   aql::AqlValue lastVertexToAqlValue() override;
 
   aql::AqlValue lastEdgeToAqlValue() override;
