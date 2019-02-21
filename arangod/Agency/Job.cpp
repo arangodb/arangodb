@@ -38,6 +38,7 @@ std::string const failedPrefix = "/Target/Failed/";
 std::string const finishedPrefix = "/Target/Finished/";
 std::string const toDoPrefix = "/Target/ToDo/";
 std::string const cleanedPrefix = "/Target/CleanedServers";
+std::string const toBeCleanedPrefix = "/Target/ToBeCleanedServers";
 std::string const failedServersPrefix = "/Target/FailedServers";
 std::string const planColPrefix = "/Plan/Collections/";
 std::string const curColPrefix = "/Current/Collections/";
@@ -139,43 +140,22 @@ bool Job::finish(std::string const& server, std::string const& shard,
   return false;
 }
 
-std::string Job::randomIdleGoodAvailableServer(Node const& snap,
+std::string Job::randomIdleAvailableServer(Node const& snap,
                                                std::vector<std::string> const& exclude) {
   std::vector<std::string> as = availableServers(snap);
   std::string ret;
   auto ex(exclude);
 
-
-  LOG_DEVEL << "excluded Servers: " << StringUtils::join(exclude);
-  LOG_DEVEL << "available Servers: " << StringUtils::join(as);
-
-  // ungood;
+  // unfailed; - servers that have are just temporarily bad, should be considered
+  // as valid server.
   try {
     for (auto const& srv : snap.hasAsChildren(healthPrefix).first) {
-      if ((*srv.second).hasAsString("Status").first != "GOOD") {
+      if ((*srv.second).hasAsString("Status").first == "FAILED") {
         ex.push_back(srv.first);
-        LOG_DEVEL << "Adding " << srv.first << " to excluded: Status is " << (*srv.second).hasAsString("Status").first;
       }
     }
   } catch (...) {
   }
-
-
-  LOG_DEVEL << "excluded Servers: " << StringUtils::join(exclude);
-  LOG_DEVEL << "available Servers: " << StringUtils::join(as);
-
-  // blocked;
-  try {
-    for (auto const& srv : snap.hasAsChildren(blockedServersPrefix).first) {
-      ex.push_back(srv.first);
-      LOG_DEVEL << "Adding " << srv.first << " to excluded: is blocked";
-    }
-  } catch (...) {
-  }
-
-
-  LOG_DEVEL << "excluded Servers: " << StringUtils::join(exclude);
-  LOG_DEVEL << "available Servers: " << StringUtils::join(as);
 
   // Remove excluded servers
   std::sort(std::begin(ex), std::end(ex));
@@ -184,11 +164,6 @@ std::string Job::randomIdleGoodAvailableServer(Node const& snap,
                             return std::binary_search(std::begin(ex), std::end(ex), s);
                           }),
            std::end(as));
-
-
-  LOG_DEVEL << "removed excluded servers";
-  LOG_DEVEL << "available Servers: " << StringUtils::join(as);
-
 
   // Choose random server from rest
   if (!as.empty()) {
@@ -204,7 +179,7 @@ std::string Job::randomIdleGoodAvailableServer(Node const& snap,
   return ret;
 }
 
-std::string Job::randomIdleGoodAvailableServer(Node const& snap, Slice const& exclude) {
+std::string Job::randomIdleAvailableServer(Node const& snap, Slice const& exclude) {
   std::vector<std::string> ev;
   if (exclude.isArray()) {
     for (const auto& s : VPackArrayIterator(exclude)) {
@@ -213,10 +188,10 @@ std::string Job::randomIdleGoodAvailableServer(Node const& snap, Slice const& ex
       }
     }
   }
-  return randomIdleGoodAvailableServer(snap, ev);
+  return randomIdleAvailableServer(snap, ev);
 }
 
-/// @brief Get servers from plan, which are not failed or cleaned out
+/// @brief Get servers from plan, which are not failed or (to be) cleaned out
 std::vector<std::string> Job::availableServers(Node const& snapshot) {
   std::vector<std::string> ret;
 
@@ -226,31 +201,31 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
     ret.push_back(srv.first);
   }
 
-  LOG_DEVEL << "Planned Servers: " << StringUtils::join(ret);
+  auto excludePrefix = [&ret, &snapshot](std::string const& prefix, bool isArray) {
 
-  // Remove cleaned servers from list (test first to avoid warning log
-  if (snapshot.has(cleanedPrefix)) try {
-      for (auto const& srv :
-           VPackArrayIterator(snapshot.hasAsSlice(cleanedPrefix).first)) {
-        LOG_DEVEL << srv.copyString() << " is cleaned out";
-        ret.erase(std::remove(ret.begin(), ret.end(), srv.copyString()), ret.end());
+    bool has;
+    VPackSlice slice;
+    Node::Children children;
+
+    if (isArray) {
+      std::tie(slice, has) = snapshot.hasAsSlice(prefix);
+      if (has) {
+        for (auto const& srv : VPackArrayIterator(slice)) {
+          ret.erase(std::remove(ret.begin(), ret.end(), srv.copyString()), ret.end());
+        }
       }
-    } catch (...) {
-    }
-
-  LOG_DEVEL << "Removed cleaned out servers";
-  LOG_DEVEL << "Remaining Servers: " << StringUtils::join(ret);
-
-  // Remove failed servers from list (test first to avoid warning log)
-  if (snapshot.has(failedServersPrefix)) try {
-      for (auto const& srv : snapshot.hasAsChildren(failedServersPrefix).first) {
-        LOG_DEVEL << srv.first << " is failed";
+    } else {
+      std::tie(children, has) = snapshot.hasAsChildren(prefix);
+      for (auto const& srv : children) {
         ret.erase(std::remove(ret.begin(), ret.end(), srv.first), ret.end());
       }
-    } catch (...) {
     }
+  };
 
-  LOG_DEVEL << "Remaining Servers: " << StringUtils::join(ret);
+  // Remove (to be) cleaned and failed servers from the list
+  excludePrefix(cleanedPrefix, true);
+  excludePrefix(failedServersPrefix, false);
+  excludePrefix(toBeCleanedPrefix, true);
 
   return ret;
 }
