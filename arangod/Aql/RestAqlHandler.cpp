@@ -93,6 +93,29 @@ RestAqlHandler::RestAqlHandler(GeneralRequest* request, GeneralResponse* respons
 //    variables: [ <variables> ]
 //  }
 
+std::pair<double, std::shared_ptr<VPackBuilder>> RestAqlHandler::getPatchedOptionsWithTTL(
+    VPackSlice const& optionsSlice) const {
+  auto options = std::make_shared<VPackBuilder>();
+  double ttl = _queryRegistry->defaultTTL();
+  {
+    VPackObjectBuilder guard(options.get());
+    TRI_ASSERT(optionsSlice.isObject());
+    for (auto const& pair : VPackObjectIterator(optionsSlice)) {
+      if (pair.key.isEqualString("ttl")) {
+        ttl = VelocyPackHelper::getNumericValue<double>(optionsSlice, "ttl", ttl);
+        ttl = _request->parsedValue<double>("ttl", ttl);
+        if (ttl <= 0) {
+          ttl = _queryRegistry->defaultTTL();
+        }
+        options->add("ttl", VPackValue(ttl));
+      } else {
+        options->add(pair.key.stringRef(), pair.value);
+      }
+    }
+  }
+  return std::make_pair(ttl, options);
+}
+
 void RestAqlHandler::setupClusterQuery() {
   // We should not intentionally call this method
   // on the wrong server. So fail during maintanence.
@@ -175,25 +198,9 @@ void RestAqlHandler::setupClusterQuery() {
   //   variables: <variables slice>
   // }
 
-  // patch options with ttl
-  auto options = std::make_shared<VPackBuilder>();
-  double ttl = _queryRegistry->defaultTTL();
-  {
-    VPackObjectBuilder guard(options.get());
-    TRI_ASSERT(optionsSlice.isObject());
-    for (auto const& pair : VPackObjectIterator(optionsSlice)) {
-      if (pair.key.isEqualString("ttl")) {
-        ttl = VelocyPackHelper::getNumericValue<double>(optionsSlice, "ttl", ttl);
-        ttl = _request->parsedValue<double>("ttl", ttl);
-        if (ttl <= 0) {
-          ttl = _queryRegistry->defaultTTL();
-        }
-        options->add("ttl", VPackValue(ttl));
-      } else {
-        options->add(pair.key.stringRef(), pair.value);
-      }
-    }
-  }
+  std::shared_ptr<VPackBuilder> options;
+  double ttl;
+  std::tie(ttl, options) = getPatchedOptionsWithTTL(optionsSlice);
 
   // Build the collection information
   VPackBuilder collectionBuilder;
@@ -408,26 +415,9 @@ void RestAqlHandler::createQueryFromVelocyPack() {
     return;
   }
 
-  // patch options with ttl
-  auto optionsSlice = querySlice.get("options");
-  TRI_ASSERT(querySlice.get("options").isObject());
-  auto options = std::make_shared<VPackBuilder>();
-  double ttl = _queryRegistry->defaultTTL();
-  {
-    VPackObjectBuilder guard(options.get());
-    for (auto const& pair : VPackObjectIterator(optionsSlice)) {
-      if (pair.key.isEqualString("ttl")) {
-        ttl = VelocyPackHelper::getNumericValue<double>(optionsSlice, "ttl", ttl);
-        ttl = _request->parsedValue<double>("ttl", ttl);
-        if (ttl <= 0) {
-          ttl = _queryRegistry->defaultTTL();
-        }
-        options->add("ttl", VPackValue(ttl));
-      } else {
-        options->add(pair.key.stringRef(), pair.value);
-      }
-    }
-  }
+  std::shared_ptr<VPackBuilder> options;
+  double ttl;
+  std::tie(ttl, options) = getPatchedOptionsWithTTL(querySlice.get("options"));
 
   std::string const part =
       VelocyPackHelper::getStringValue(querySlice, "part", "");
