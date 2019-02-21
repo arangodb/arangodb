@@ -111,21 +111,29 @@ JOB_STATUS CleanOutServer::status() {
 
   // Put server in /Target/CleanedServers:
   Builder reportTrx;
-  { VPackArrayBuilder arrayGuard(&reportTrx);
-    { VPackObjectBuilder objectGuard(&reportTrx);
+  {
+    VPackArrayBuilder arrayGuard(&reportTrx);
+    {
+      VPackObjectBuilder objectGuard(&reportTrx);
       reportTrx.add(VPackValue("/Target/CleanedServers"));
-      { VPackObjectBuilder guard4(&reportTrx);
+      {
+        VPackObjectBuilder guard4(&reportTrx);
         reportTrx.add("op", VPackValue("push"));
-        reportTrx.add("new", VPackValue(_server)); }
+        reportTrx.add("new", VPackValue(_server));
+      }
       reportTrx.add(VPackValue("/Target/ToBeCleanedServers"));
-      { VPackObjectBuilder guard4(&reportTrx);
+      {
+        VPackObjectBuilder guard4(&reportTrx);
         reportTrx.add("op", VPackValue("erase"));
-        reportTrx.add("val", VPackValue(_server)); }
+        reportTrx.add("val", VPackValue(_server));
+      }
       addRemoveJobFromSomewhere(reportTrx, "Pending", _jobId);
       Builder job;
       _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
       addPutJobIntoSomewhere(reportTrx, "Finished", job.slice(), "");
-      addReleaseServer(reportTrx, _server); }}
+      addReleaseServer(reportTrx, _server);
+    }
+  }
 
   // Transact to agency
   write_ret_t res = singleWriteTransaction(_agent, reportTrx);
@@ -386,10 +394,9 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         // Only destinations, which are not already holding this shard
         tmp = shard.second->toBuilder();
         for (auto const& dbserver : VPackArrayIterator(tmp.slice())) {
-          serversCopy.erase(
-            std::remove(
-              serversCopy.begin(), serversCopy.end(), dbserver.copyString()),
-            serversCopy.end());
+          serversCopy.erase(std::remove(serversCopy.begin(), serversCopy.end(),
+                                        dbserver.copyString()),
+                            serversCopy.end());
         }
 
         bool isLeader = (found == 0);
