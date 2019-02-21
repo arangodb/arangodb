@@ -253,6 +253,17 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
     }
   }
 
+  list = base.get("expression");
+  if (!list.isNone()) {
+    _pruneExpression = std::make_unique<aql::Expression>(plan, plan->getAst(), base);
+    TRI_ASSERT(base.hasKey("pruneVariables"));
+    list = base.get("pruneVariables");
+    TRI_ASSERT(list.isArray());
+    for (auto const& varinfo : VPackArrayIterator(list)) {
+      _pruneVariables.emplace(plan->getAst()->variables()->createVariable(varinfo));
+    }
+  }
+
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   checkConditionsDefined();
 #endif
@@ -385,6 +396,17 @@ void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) cons
   nodes.add(VPackValue("indexes"));
   _options->toVelocyPackIndexes(nodes);
 
+  if (_pruneExpression != nullptr) {
+    // The Expression constructor expects only this name
+    nodes.add(VPackValue("expression"));
+    _pruneExpression->toVelocyPack(nodes, flags);
+    nodes.add(VPackValue("pruneVariables"));
+    nodes.openArray();
+    for (auto const& var : _pruneVariables) {
+      var->toVelocyPack(nodes);
+    }
+    nodes.close();
+  }
   // And close it:
   nodes.close();
 }
