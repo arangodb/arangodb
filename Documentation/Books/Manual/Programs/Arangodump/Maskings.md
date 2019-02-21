@@ -109,8 +109,7 @@ Path
 
 `path` defines which field to obfuscate. There can only be a single
 path per masking, but an unlimited amount of maskings per collection.
-
-Note that the top-level system attributes like `_key`, `_from` are
+Top-level **system attributes** (`_key`, `_from`, etc.) are
 never masked.
 
 To mask a top-level attribute value, the path is simply the attribute
@@ -152,8 +151,11 @@ is not a leaf attribute.
 If the attribute value is an **array** then the masking is applied to
 **all array elements individually**.
 
-If you have an attribute name that contains a dot, you need to quote the
-name with either a tick or a backtick. For example:
+If the path is `"*"` then it matches all leaf attribute.
+
+If you have an attribute name that contains a dot or a top-level attribute
+with a single asterisk as name (`"*": ...`) then you need to quote the name in
+ticks or backticks to escape it. For example:
 
     "path": "´name.with.dots´"
 
@@ -222,6 +224,8 @@ get masked if there is only a masking configured for the attribute `email`
 but not its nested attributes.
 {% endhint %}
 
+You can use the special path `"*"` to match all leaf attributes.
+
 **Examples**
 
 Masking `email` with the _Xify Front_ function will convert:
@@ -282,10 +286,6 @@ including the elements of the sub-array. The document:
 … will not be changed because `email` is not a leaf attribute.
 To mask the email address, you could use the paths `email.address`
 or `.address`.
-
-### Match all
-
-If the path is `"*"` then this match any leaf attribute.
 
 Masking Functions
 -----------------
