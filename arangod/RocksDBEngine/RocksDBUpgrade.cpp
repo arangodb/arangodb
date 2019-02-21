@@ -45,7 +45,7 @@
 
 using namespace arangodb;
 
-void arangodb::rocksdbStartupVersionCheck(rocksdb::TransactionDB* db, bool dbExisted) {
+void arangodb::rocksdbStartupVersionCheck(RocksDBWrapper* db, bool dbExisted) {
   static_assert(std::is_same<char, std::underlying_type<RocksDBEndianness>::type>::value,
                 "RocksDBEndianness has wrong type");
 

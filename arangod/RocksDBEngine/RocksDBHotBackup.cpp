@@ -436,7 +436,7 @@ void RocksDBHotBackupCreate::executeCreate() {
   std::string dirPath;
   bool gotLock(false);
 
-  stat = rocksdb::Checkpoint::Create(rocksutils::globalRocksDB(), &ptr);
+  stat = rocksdb::Checkpoint::Create(rocksutils::globalRocksDB()->GetRootDB(), &ptr);
 
   if (stat.ok()) {
     dirPath = buildDirectoryPath(_timestamp, _userString);

@@ -42,7 +42,7 @@ using namespace arangodb;
 
 /// {"tickMin":"123", "tickMax":"456", "version":"3.2", "serverId":"abc"}
 Result RocksDBWalAccess::tickRange(std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const {
-  rocksdb::TransactionDB* tdb = rocksutils::globalRocksDB();
+  RocksDBWrapper* tdb = rocksutils::globalRocksDB();
   rocksdb::VectorLogPtr walFiles;
   rocksdb::Status s = tdb->GetSortedWalFiles(walFiles);
   if (!s.ok()) {
@@ -724,7 +724,7 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   /*LOG_TOPIC(WARN, Logger::ENGINES) << "1. Starting tailing: tickStart " <<
   tickStart << " tickEnd " << tickEnd << " chunkSize " << chunkSize;//*/
 
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBWrapper* db = rocksutils::globalRocksDB();
 
   if (chunkSize < 16384) {  // we need to have some sensible minimum
     chunkSize = 16384;

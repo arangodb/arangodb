@@ -1201,7 +1201,7 @@ void RocksDBVPackIndex::recalculateEstimates() {
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
 
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBWrapper* db = rocksutils::globalRocksDB();
   rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
 
   auto bounds = getBounds();

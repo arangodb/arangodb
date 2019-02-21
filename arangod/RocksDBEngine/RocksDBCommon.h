@@ -75,14 +75,14 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t);
 std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> mapObjectToIndex(uint64_t);
 
 /// @brief count all keys in the given column family
-std::size_t countKeys(rocksdb::DB*, rocksdb::ColumnFamilyHandle* cf);
+std::size_t countKeys(RocksDBWrapper*, rocksdb::ColumnFamilyHandle* cf);
 
 /// @brief iterate over all keys in range and count them
-std::size_t countKeyRange(rocksdb::DB*, RocksDBKeyBounds const&, bool prefix_same_as_start);
+std::size_t countKeyRange(RocksDBWrapper*, RocksDBKeyBounds const&, bool prefix_same_as_start);
 
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
-Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
+Result removeLargeRange(RocksDBWrapper* db, RocksDBKeyBounds const& bounds,
                         bool prefixSameAsStart, bool useRangeDelete);
 
 // optional switch to std::function to reduce amount of includes and

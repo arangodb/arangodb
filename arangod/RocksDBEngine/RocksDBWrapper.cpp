@@ -22,6 +22,7 @@
 #include "RocksDBWrapper.h"
 
 #include "Basics/MutexLocker.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 
 namespace arangodb {
 
@@ -36,7 +37,7 @@ rocksdb::Status RocksDBWrapper::Open(const rocksdb::DBOptions& db_options,
   rocksdb::TransactionDB * trans_db;
 
   *dbptr = nullptr;
-  ret_status = TransactionDB::Open(db_options, txn_db_options, dbname, column_families, handles, &trans_db);
+  ret_status = rocksdb::TransactionDB::Open(db_options, txn_db_options, dbname, column_families, handles, &trans_db);
 
   if (ret_status.ok()) {
     // create copies of all the parameters to ease reuse on hot backup restore
@@ -50,13 +51,28 @@ rocksdb::Status RocksDBWrapper::Open(const rocksdb::DBOptions& db_options,
 } // RocksDBWrapper::Open
 
 
+// this is NOT a static, wrapper was previously created with Open.  now creating a new rocksdb
+//  instance within this existing wrapper
+rocksdb::Status RocksDBWrapper::ReOpen() {
+
+  rocksdb::Status ret_status;
+  rocksdb::TransactionDB * trans_db={nullptr};
+
+  ret_status = rocksdb::TransactionDB::Open(_db_options, _txn_db_options, _dbname, _column_families, _handlesPtr, &trans_db);
+  _db = trans_db;
+
+  return ret_status;
+
+} // RocksDBWrapper::ReOpen
+
+
 /// @brief construct to save all starting parameters for use in later restart
 RocksDBWrapper::RocksDBWrapper(const rocksdb::DBOptions& db_options,
                                                const rocksdb::TransactionDBOptions& txn_db_options,
                                                const std::string& dbname,
                                                const std::vector<rocksdb::ColumnFamilyDescriptor>& column_families,
                                std::vector<rocksdb::ColumnFamilyHandle*>* handles, rocksdb::TransactionDB * trans)
-  : TransactionDB(trans), _db_options(db_options), _txn_db_options(txn_db_options), _dbname(dbname),
+  : /*TransactionDB(trans),*/ _db_options(db_options), _txn_db_options(txn_db_options), _dbname(dbname),
     _column_families(column_families), _handlesPtr(handles), _db(trans) {
 
   return;
@@ -74,6 +90,8 @@ bool RocksDBWrapper::pauseRocksDB(std::chrono::milliseconds timeout) {
   if (withinTimeout) {
     deactivateAllIterators();
     deactivateAllSnapshots();
+    rocksutils::globalRocksEngine()->shutdownRocksDBInstance(false);
+
     _db->Close();
     delete _db;
     _db = nullptr;
@@ -84,13 +102,21 @@ bool RocksDBWrapper::pauseRocksDB(std::chrono::milliseconds timeout) {
 } // RocksDBWrapper::pauseRocksDB
 
 
-bool RocksDBWrapper::restartRocksDB() {
+bool RocksDBWrapper::restartRocksDB(bool isRetry) {
+  rocksdb::Status ret_status;
 
-  _db = nullptr;
+  rocksutils::globalRocksEngine()->setEventListeners();
+  _handlesPtr->clear();
 
-  _rwlock.unlockWrite();
+  ret_status = rocksutils::globalRocksEngine()->callRocksDBOpen(_txn_db_options, _column_families, _handlesPtr);
+    //TransactionDB::Open(_db_options, _txn_db_options, _dbname, _column_families, _handlesPtr, &_db);
 
-  return false;
+  // leave this locked on a fail to give time for a retry with previous db?
+  if (ret_status.ok() || isRetry) {
+    _rwlock.unlockWrite();
+  } // if
+
+  return ret_status.ok();
 
 } // RocksDBWrapper::restartRocksDB
 

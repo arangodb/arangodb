@@ -28,6 +28,7 @@
 #include <rocksdb/types.h>
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
+#include "RocksDBEngine/RocksDBWrapper.h"
 
 namespace rocksdb {
 
@@ -57,7 +58,7 @@ class RocksDBRecoveryManager final : public application_features::ApplicationFea
   //////////////////////////////////////////////////////////////////////////////
   /// @brief rocksdb instance
   //////////////////////////////////////////////////////////////////////////////
-  rocksdb::TransactionDB* _db;
+  RocksDBWrapper* _db;
 
   std::atomic<bool> _inRecovery;
 };

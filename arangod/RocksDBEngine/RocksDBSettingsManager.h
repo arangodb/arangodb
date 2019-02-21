@@ -50,7 +50,7 @@ class RocksDBSettingsManager {
 
   /// Constructor needs to be called synchronously,
   /// will load counts from the db and scan the WAL
-  explicit RocksDBSettingsManager(rocksdb::TransactionDB* db);
+  explicit RocksDBSettingsManager(RocksDBWrapper* db);
 
  public:
   /// Retrieve initial settings values from database on engine startup

@@ -167,15 +167,13 @@ RocksDBEngine::~RocksDBEngine() { shutdownRocksDBInstance(); }
 
 /// shuts down the RocksDB instance. this is called from unprepare
 /// and the dtor
-void RocksDBEngine::shutdownRocksDBInstance() noexcept {
+void RocksDBEngine::shutdownRocksDBInstance(bool deleteDB) noexcept {
   if (_db == nullptr) {
     return;
   }
 
   // turn off RocksDBThrottle, and release our pointers to it
-  if (nullptr != _listener.get()) {
-    _listener->StopThread();
-  }  // if
+  clearEventListeners();
 
   for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamily::_allHandles) {
     _db->DestroyColumnFamilyHandle(h);
@@ -210,8 +208,11 @@ void RocksDBEngine::shutdownRocksDBInstance() noexcept {
     // we must not throw an exception from here
   }
 
-  delete _db;
-  _db = nullptr;
+  // do not delete wrapper if this is hotbackup restore
+  if (deleteDB) {
+    delete _db;
+    _db = nullptr;
+  } // if
 }
 
 // inherited from ApplicationFeature
@@ -495,15 +496,7 @@ void RocksDBEngine::start() {
   // TODO: enable memtable_insert_with_hint_prefix_extractor?
   _options.bloom_locality = 1;
 
-  if (_useThrottle) {
-    _listener.reset(new RocksDBThrottle);
-    _options.listeners.push_back(_listener);
-  } // if
-
-  if (_createShaFiles) {
-    _shaListener.reset(new RocksDBEventListener);
-    _options.listeners.push_back(_shaListener);
-  } // if
+  setEventListeners();
 
   if (opts->_totalWriteBufferSize > 0) {
     _options.db_write_buffer_size = opts->_totalWriteBufferSize;
@@ -617,9 +610,10 @@ void RocksDBEngine::start() {
     }
   }
 
-  rocksdb::Status status =
-    arangodb::RocksDBWrapper::Open(_options, transactionOptions, _path,
-                                   cfFamilies, &cfHandles, &_db);
+  rocksdb::Status status = callRocksDBOpen(transactionOptions, cfFamilies, &cfHandles);
+
+//    arangodb::RocksDBWrapper::Open(_options, transactionOptions, _path,
+//                                   cfFamilies, &cfHandles, &_db);
 
   if (!status.ok()) {
     std::string error;
@@ -787,6 +781,67 @@ std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
     LogicalCollection& collection, velocypack::Slice const& info) {
   return std::unique_ptr<PhysicalCollection>(new RocksDBCollection(collection, info));
 }
+
+
+// accessors to allow restart/replacement of rocksdb object
+//  after database restore from hotbackup
+// --------------------------------------------------------
+
+void RocksDBEngine::setEventListeners() {
+
+  if (_useThrottle) {
+    _listener.reset(new RocksDBThrottle);
+    _options.listeners.push_back(_listener);
+  } // if
+
+  if (_createShaFiles) {
+    _shaListener.reset(new RocksDBEventListener);
+    _options.listeners.push_back(_shaListener);
+  } // if
+
+} // RocksDBEngine::setEventListeners
+
+
+void RocksDBEngine::clearEventListeners() {
+
+  if (nullptr != _listener.get()) {
+    _listener->StopThread();
+    _listener.reset();
+  }  // if
+
+  if (_createShaFiles) {
+    _shaListener.reset();
+  } // if
+
+  _options.listeners.clear();
+
+} // RocksDBEngine::clearEventListeners
+
+
+rocksdb::Status RocksDBEngine::callRocksDBOpen(const rocksdb::TransactionDBOptions & txn_db_options,
+                                               const std::vector<rocksdb::ColumnFamilyDescriptor>& column_families,
+                                               std::vector<rocksdb::ColumnFamilyHandle*>* handles) {
+  rocksdb::Status retStatus;
+
+  // first time to open database
+  if (nullptr == _db) {
+    retStatus = arangodb::RocksDBWrapper::Open(_options, txn_db_options, _path,
+                                                 column_families, handles, &_db);
+
+  } else {
+    // this is a restart after hotbackup restore operation
+    retStatus = _db->ReOpen();
+  } // else
+
+
+/// add handle populate
+
+
+
+  return retStatus;
+
+} // RocksDBEngine::callRocksDBOpen
+
 
 // inventory functionality
 // -----------------------
@@ -1217,7 +1272,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   // Cleanup data-mess
 
   // Unregister collection metadata
-  Result res = RocksDBCollectionMeta::deleteCollectionMeta(db, coll->objectId());
+  Result res = RocksDBCollectionMeta::deleteCollectionMeta(_db, coll->objectId());
   if (res.fail()) {
     LOG_TOPIC(ERR, Logger::ENGINES) << "error removing collection meta-data: "
                                     << res.errorMessage();  // continue regardless
@@ -1234,7 +1289,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   TRI_ASSERT(!vecShardIndex.empty());
   for (auto& index : vecShardIndex) {
     RocksDBIndex* ridx = static_cast<RocksDBIndex*>(index.get());
-    res = RocksDBCollectionMeta::deleteIndexEstimate(db, ridx->objectId());
+    res = RocksDBCollectionMeta::deleteIndexEstimate(_db, ridx->objectId());
     if (res.fail()) {
       LOG_TOPIC(WARN, Logger::ENGINES)
           << "could not delete index estimate: " << res.errorMessage();
@@ -1253,7 +1308,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
 
   // delete documents
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(coll->objectId());
-  auto result = rocksutils::removeLargeRange(db, bounds, prefixSameAsStart, useRangeDelete);
+  auto result = rocksutils::removeLargeRange(_db, bounds, prefixSameAsStart, useRangeDelete);
 
   if (result.fail()) {
     // We try to remove all documents.
@@ -1668,7 +1723,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   rocksdb::DB* db = _db->GetRootDB();
 
   // remove view definitions
-  res = rocksutils::removeLargeRange(db, RocksDBKeyBounds::DatabaseViews(id),
+  res = rocksutils::removeLargeRange(_db, RocksDBKeyBounds::DatabaseViews(id),
                                      true, /*rangeDel*/ false);
   if (res.fail()) {
     return res;
@@ -1698,7 +1753,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         // delete index documents
         uint64_t objectId =
             basics::VelocyPackHelper::stringUInt64(it, "objectId");
-        res = RocksDBCollectionMeta::deleteIndexEstimate(db, objectId);
+        res = RocksDBCollectionMeta::deleteIndexEstimate(_db, objectId);
         if (res.fail()) {
           return;
         }
@@ -1711,7 +1766,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         RocksDBKeyBounds bounds = RocksDBIndex::getBounds(type, objectId, unique);
         // edge index drop fails otherwise
         bool const prefixSameAsStart = type != Index::TRI_IDX_TYPE_EDGE_INDEX;
-        res = rocksutils::removeLargeRange(db, bounds, prefixSameAsStart, useRangeDelete);
+        res = rocksutils::removeLargeRange(_db, bounds, prefixSameAsStart, useRangeDelete);
         if (res.fail()) {
           return;
         }
@@ -1725,14 +1780,14 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId);
-    res = rocksutils::removeLargeRange(db, bounds, true, useRangeDelete);
+    res = rocksutils::removeLargeRange(_db, bounds, true, useRangeDelete);
     if (res.fail()) {
       LOG_TOPIC(WARN, Logger::ENGINES)
           << "error deleting collection documents: '" << res.errorMessage() << "'";
       return;
     }
     // delete collection meta-data
-    res = RocksDBCollectionMeta::deleteCollectionMeta(db, objectId);
+    res = RocksDBCollectionMeta::deleteCollectionMeta(_db, objectId);
     if (res.fail()) {
       LOG_TOPIC(WARN, Logger::ENGINES)
           << "error deleting collection metadata: '" << res.errorMessage() << "'";
@@ -2082,7 +2137,7 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& bu
 }
 
 Result RocksDBEngine::createTickRanges(VPackBuilder& builder) {
-  rocksdb::TransactionDB* tdb = rocksutils::globalRocksDB();
+  RocksDBWrapper* tdb = rocksutils::globalRocksDB();
   rocksdb::VectorLogPtr walFiles;
   rocksdb::Status s = tdb->GetSortedWalFiles(walFiles);
   Result res = rocksutils::convertStatus(s);
@@ -2118,7 +2173,7 @@ Result RocksDBEngine::createTickRanges(VPackBuilder& builder) {
 
 Result RocksDBEngine::firstTick(uint64_t& tick) {
   Result res{};
-  rocksdb::TransactionDB* tdb = rocksutils::globalRocksDB();
+  RocksDBWrapper* tdb = rocksutils::globalRocksDB();
   rocksdb::VectorLogPtr walFiles;
   rocksdb::Status s = tdb->GetSortedWalFiles(walFiles);
 

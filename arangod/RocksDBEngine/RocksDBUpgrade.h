@@ -23,12 +23,14 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_UPGRADE_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_UPGRADE_H 1
 
+#include "RocksDBEngine/RocksDBWrapper.h"
+
 namespace rocksdb {
 class TransactionDB;
 }
 
 namespace arangodb {
-void rocksdbStartupVersionCheck(rocksdb::TransactionDB*, bool dbExisted);
+void rocksdbStartupVersionCheck(RocksDBWrapper*, bool dbExisted);
 }  // namespace arangodb
 
 #endif

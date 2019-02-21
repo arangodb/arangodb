@@ -1114,7 +1114,7 @@ void RocksDBCollection::deferDropCollection(std::function<bool(LogicalCollection
 
 /// @brief return engine-specific figures
 void RocksDBCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBWrapper* db = rocksutils::globalRocksDB();
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
   rocksdb::Range r(bounds.start(), bounds.end());
 
@@ -1664,7 +1664,7 @@ int RocksDBCollection::unlockRead() {
 // rescans the collection to update document count
 uint64_t RocksDBCollection::recalculateCounts() {
   RocksDBEngine* engine = rocksutils::globalRocksEngine();
-  rocksdb::TransactionDB* db = engine->db();
+  RocksDBWrapper* db = engine->db();
   const rocksdb::Snapshot* snapshot = nullptr;
   // start transaction to get a collection lock
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
@@ -1735,7 +1735,7 @@ uint64_t RocksDBCollection::recalculateCounts() {
 }
 
 void RocksDBCollection::compact() {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBWrapper* db = rocksutils::globalRocksDB();
   rocksdb::CompactRangeOptions opts;
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
   rocksdb::Slice b = bounds.start(), e = bounds.end();
@@ -1751,7 +1751,7 @@ void RocksDBCollection::compact() {
 void RocksDBCollection::estimateSize(velocypack::Builder& builder) {
   TRI_ASSERT(!builder.isOpenObject() && !builder.isOpenArray());
 
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBWrapper* db = rocksutils::globalRocksDB();
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out = 0, total = 0;

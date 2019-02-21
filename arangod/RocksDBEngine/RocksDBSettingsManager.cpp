@@ -95,7 +95,7 @@ namespace arangodb {
 
 /// Constructor needs to be called synchrunously,
 /// will load counts from the db and scan the WAL
-RocksDBSettingsManager::RocksDBSettingsManager(rocksdb::TransactionDB* db)
+RocksDBSettingsManager::RocksDBSettingsManager(RocksDBWrapper* db)
     : _lastSync(0), _syncing(false), _db(db->GetRootDB()), _initialReleasedTick(0) {}
 
 /// retrieve initial values from the database

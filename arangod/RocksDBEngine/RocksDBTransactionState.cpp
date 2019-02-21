@@ -121,7 +121,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     // start cache transaction
     _cacheTx = CacheManagerFeature::MANAGER->beginTransaction(isReadOnlyTransaction());
 
-    rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+    RocksDBWrapper* db = rocksutils::globalRocksDB();
     _rocksReadOptions.prefix_same_as_start = true;  // should always be true
 
     if (isReadOnlyTransaction()) {
@@ -198,7 +198,7 @@ void RocksDBTransactionState::createTransaction() {
   TRI_ASSERT(!isReadOnlyTransaction());
 
   // start rocks transaction
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBWrapper* db = rocksutils::globalRocksDB();
   rocksdb::TransactionOptions trxOpts;
   trxOpts.set_snapshot = true;
   // unclear performance implications do not use for now
@@ -231,7 +231,7 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
     _cacheTx = nullptr;
   }
   if (_readSnapshot != nullptr) {
-    rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+    RocksDBWrapper* db = rocksutils::globalRocksDB();
     db->ReleaseSnapshot(_readSnapshot);  // calls delete
     _readSnapshot = nullptr;
   }

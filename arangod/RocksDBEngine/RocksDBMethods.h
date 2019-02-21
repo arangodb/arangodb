@@ -137,7 +137,7 @@ class RocksDBReadOnlyMethods final : public RocksDBMethods {
   void PopSavePoint() override {}
 
  private:
-  rocksdb::TransactionDB* _db;
+  RocksDBWrapper* _db;
 };
 
 /// transaction wrapper, uses the current rocksdb transaction
@@ -200,7 +200,7 @@ class RocksDBBatchedMethods final : public RocksDBMethods {
   void PopSavePoint() override {}
 
  private:
-  rocksdb::TransactionDB* _db;
+  RocksDBWrapper* _db;
   rocksdb::WriteBatch* _wb;
 };
 
@@ -224,7 +224,7 @@ class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
   void PopSavePoint() override {}
 
  private:
-  rocksdb::TransactionDB* _db;
+  RocksDBWrapper* _db;
   rocksdb::WriteBatchWithIndex* _wb;
 };
 

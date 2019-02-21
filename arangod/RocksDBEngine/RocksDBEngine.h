@@ -97,6 +97,16 @@ class RocksDBEngine final : public StorageEngine {
   void stop() override;
   void unprepare() override;
 
+  // accessors to allow restart/replacement of rocksdb object
+  //  after database restore from hotbackup
+  // --------------------------------------------------------
+
+  void setEventListeners();
+  void clearEventListeners();
+  rocksdb::Status callRocksDBOpen(const rocksdb::TransactionDBOptions & txn_db_options,
+                                  const std::vector<rocksdb::ColumnFamilyDescriptor>& column_families,
+                                  std::vector<rocksdb::ColumnFamilyHandle*>* handles);
+
   // minimum timeout for the synchronous replication
   double minimumSyncReplicationTimeout() const override { return 1.0; }
 
@@ -268,8 +278,9 @@ class RocksDBEngine final : public StorageEngine {
   virtual TRI_voc_tick_t releasedTick() const override;
   virtual void releaseTick(TRI_voc_tick_t) override;
 
- private:
-  void shutdownRocksDBInstance() noexcept;
+  void shutdownRocksDBInstance(bool deleteDB = true) noexcept;
+
+private:
   velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key, int& status);
   int removeReplicationApplierConfiguration(RocksDBKey const& key);
   int saveReplicationApplierConfiguration(RocksDBKey const& key,

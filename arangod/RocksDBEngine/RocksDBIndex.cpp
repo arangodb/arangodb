@@ -251,7 +251,7 @@ Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* m
 
 /// @brief return the memory usage of the index
 size_t RocksDBIndex::memory() const {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBWrapper* db = rocksutils::globalRocksDB();
   RocksDBKeyBounds bounds = getBounds();
   TRI_ASSERT(_cf == bounds.columnFamily());
   rocksdb::Range r(bounds.start(), bounds.end());
@@ -265,7 +265,7 @@ size_t RocksDBIndex::memory() const {
 
 /// compact the index, should reduce read amplification
 void RocksDBIndex::cleanup() {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBWrapper* db = rocksutils::globalRocksDB();
   rocksdb::CompactRangeOptions opts;
   if (_cf != RocksDBColumnFamily::invalid()) {
     RocksDBKeyBounds bounds = this->getBounds();

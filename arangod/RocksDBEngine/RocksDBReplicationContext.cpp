@@ -351,7 +351,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
   char ridBuffer[21];  // temporary buffer for stringifying revision ids
   RocksDBKey docKey;
   VPackBuilder tmpHashBuilder;
-  rocksdb::TransactionDB* db = globalRocksDB();
+  RocksDBWrapper* db = globalRocksDB();
   auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
   uint64_t snapNumDocs = 0;
@@ -506,7 +506,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
   // reserve some space in the result builder to avoid frequent reallocations
   b.reserve(8192);
   char ridBuffer[21];  // temporary buffer for stringifying revision ids
-  rocksdb::TransactionDB* db = globalRocksDB();
+  RocksDBWrapper* db = globalRocksDB();
   auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
 
@@ -619,7 +619,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
 
   // reserve some space in the result builder to avoid frequent reallocations
   b.reserve(8192);
-  rocksdb::TransactionDB* db = globalRocksDB();
+  RocksDBWrapper* db = globalRocksDB();
   auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
 
