@@ -52,7 +52,9 @@ the document will not be stored in the TTL index and thus will not become a cand
 for expiration and removal. Providing either a non-numeric value or even no value for 
 the index attribute is a supported way of keeping documents from being expired and removed.
 
-There can at most be one TTL index per collection.
+There can at most be one TTL index per collection. It is not recommended to use
+TTL indexes for user-land AQL queries, as TTL indexes may store a transformed,
+always numerical version of the index attribute value.
 
 The frequency for invoking the background removal thread can be configured 
 using the `--ttl.frequency` startup option. 
