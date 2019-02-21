@@ -143,6 +143,7 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(LogicalCollection* collecti
     : IndexIterator(collection, trx),
       _index(index),
       _cmp(index->comparator()),
+      _fullEnumerationObjectId(0),
       _reverse(reverse),
       _bounds(std::move(bounds)) {
   TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
@@ -154,9 +155,21 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(LogicalCollection* collecti
   if (reverse) {
     _rangeBound = _bounds.start();
     options.iterate_lower_bound = &_rangeBound;
+    VPackSlice s = VPackSlice(_rangeBound.data() + sizeof(uint64_t));
+    if (s.isArray() && s.length() == 1 && s.at(0).isMinKey()) {
+      // lower bound is the min key. that means we can get away with a
+      // cheap outOfBounds comparator
+      _fullEnumerationObjectId = _index->objectId();
+    }
   } else {
     _rangeBound = _bounds.end();
     options.iterate_upper_bound = &_rangeBound;
+    VPackSlice s = VPackSlice(_rangeBound.data() + sizeof(uint64_t));
+    if (s.isArray() && s.length() == 1 && s.at(0).isMaxKey()) {
+      // upper bound is the max key. that means we can get away with a
+      // cheap outOfBounds comparator
+      _fullEnumerationObjectId = _index->objectId();
+    }
   }
 
   TRI_ASSERT(options.prefix_same_as_start);
@@ -926,7 +939,6 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     TRI_IF_FAILURE("HashIndex::noSortIterator") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-
   } else {
     // Create the search values for the lookup
     VPackArrayBuilder guard(&searchValues);

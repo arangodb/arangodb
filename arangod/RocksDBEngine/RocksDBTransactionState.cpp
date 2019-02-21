@@ -319,7 +319,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     uint64_t numOps = _rocksTransaction->GetNumPuts() +
                       _rocksTransaction->GetNumDeletes() +
                       _rocksTransaction->GetNumMerges();
-    // will invaliate all counts
+    // will invalidate all counts
     result = rocksutils::convertStatus(_rocksTransaction->Commit());
 
     if (result.ok()) {

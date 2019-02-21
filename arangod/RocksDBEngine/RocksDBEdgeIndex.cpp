@@ -80,11 +80,11 @@ void RocksDBEdgeIndexWarmupTask::run() {
   _queue->join();
 }
 
-RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(LogicalCollection* collection,
-                                                   transaction::Methods* trx,
-                                                   arangodb::RocksDBEdgeIndex const* index,
-                                                   std::unique_ptr<VPackBuilder> keys,
-                                                   std::shared_ptr<cache::Cache> cache)
+RocksDBEdgeIndexLookupIterator::RocksDBEdgeIndexLookupIterator(LogicalCollection* collection,
+                                                               transaction::Methods* trx,
+                                                               arangodb::RocksDBEdgeIndex const* index,
+                                                               std::unique_ptr<VPackBuilder> keys,
+                                                               std::shared_ptr<cache::Cache> cache)
     : IndexIterator(collection, trx),
       _keys(std::move(keys)),
       _keysIterator(_keys->slice()),
@@ -103,16 +103,16 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(LogicalCollection* collection
   _iterator = mthds->NewIterator(options, index->columnFamily());
 }
 
-RocksDBEdgeIndexIterator::~RocksDBEdgeIndexIterator() {
+RocksDBEdgeIndexLookupIterator::~RocksDBEdgeIndexLookupIterator() {
   if (_keys != nullptr) {
     // return the VPackBuilder to the transaction context
     _trx->transactionContextPtr()->returnBuilder(_keys.release());
   }
 }
 
-void RocksDBEdgeIndexIterator::resetInplaceMemory() { _builder.clear(); }
+void RocksDBEdgeIndexLookupIterator::resetInplaceMemory() { _builder.clear(); }
 
-void RocksDBEdgeIndexIterator::reset() {
+void RocksDBEdgeIndexLookupIterator::reset() {
   resetInplaceMemory();
   _keysIterator.reset();
   _lastKey = VPackSlice::nullSlice();
@@ -124,7 +124,7 @@ void RocksDBEdgeIndexIterator::reset() {
 // note that the underlying data for the Slice must remain valid
 // as long as the iterator is used and the key is not moved forward.
 // returns false if there are no more keys to look for
-bool RocksDBEdgeIndexIterator::initKey(VPackSlice& key) {
+bool RocksDBEdgeIndexLookupIterator::initKey(VPackSlice& key) {
   if (!_keysIterator.valid()) {
     // no next key
     _lastKey = VPackSlice::nullSlice();
@@ -140,7 +140,7 @@ bool RocksDBEdgeIndexIterator::initKey(VPackSlice& key) {
   return true;
 }
 
-bool RocksDBEdgeIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
+bool RocksDBEdgeIndexLookupIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -241,7 +241,7 @@ bool RocksDBEdgeIndexIterator::next(LocalDocumentIdCallback const& cb, size_t li
   return _builderIterator.valid() || _keysIterator.valid();
 }
 
-bool RocksDBEdgeIndexIterator::nextCovering(DocumentCallback const& cb, size_t limit) {
+bool RocksDBEdgeIndexLookupIterator::nextCovering(DocumentCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -357,7 +357,7 @@ bool RocksDBEdgeIndexIterator::nextCovering(DocumentCallback const& cb, size_t l
   return _builderIterator.valid() || _keysIterator.valid();
 }
 
-bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb, size_t limit) {
+bool RocksDBEdgeIndexLookupIterator::nextExtra(ExtraCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -462,7 +462,7 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb, size_t limit) 
   return _builderIterator.valid() || _keysIterator.valid();
 }
 
-void RocksDBEdgeIndexIterator::lookupInRocksDB(arangodb::velocypack::StringRef fromTo) {
+void RocksDBEdgeIndexLookupIterator::lookupInRocksDB(arangodb::velocypack::StringRef fromTo) {
   // Bad case read from RocksDB
   _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId, fromTo);
   _iterator->Seek(_bounds.start());
@@ -668,7 +668,9 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult*, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
+    
   // get computation node
+  TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
   TRI_ASSERT(node->numMembers() == 1);
   auto comp = node->getMember(0);
@@ -984,7 +986,7 @@ IndexIterator* RocksDBEdgeIndex::createEqIterator(transaction::Methods* trx,
   }
   keys->close();
 
-  return new RocksDBEdgeIndexIterator(&_collection, trx, this, std::move(keys), _cache);
+  return new RocksDBEdgeIndexLookupIterator(&_collection, trx, this, std::move(keys), _cache);
 }
 
 /// @brief create the iterator
@@ -1009,7 +1011,7 @@ IndexIterator* RocksDBEdgeIndex::createInIterator(transaction::Methods* trx,
   }
   keys->close();
 
-  return new RocksDBEdgeIndexIterator(&_collection, trx, this, std::move(keys), _cache);
+  return new RocksDBEdgeIndexLookupIterator(&_collection, trx, this, std::move(keys), _cache);
 }
 
 /// @brief add a single value node to the iterator's keys
