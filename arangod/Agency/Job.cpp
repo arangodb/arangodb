@@ -144,21 +144,17 @@ std::string Job::randomIdleAvailableServer(Node const& snap,
                                                std::vector<std::string> const& exclude) {
   std::vector<std::string> as = availableServers(snap);
   std::string ret;
-  auto ex(exclude); // make a copy of exclude
 
   // Prefer good servers over bad servers
   std::vector<std::string> good;
   std::vector<std::string> bad;
-
-  // Sort excluded servers
-  std::sort(std::begin(ex), std::end(ex));
 
   // unfailed; - servers that have are just temporarily bad, should be considered
   // as valid server.
   try {
     for (auto const& srv : snap.hasAsChildren(healthPrefix).first) {
       // ignore excluded servers
-      if (std::binary_search(std::begin(ex), std::end(ex), srv.first)) {
+      if (std::find(std::begin(exclude), std::end(exclude), srv.first) != std::end(exclude)) {
         continue ;
       }
 
