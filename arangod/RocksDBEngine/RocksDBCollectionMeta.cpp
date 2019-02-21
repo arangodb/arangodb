@@ -86,14 +86,9 @@ RocksDBCollectionMeta::RocksDBCollectionMeta() : _count(0, 0, 0, 0) {}
 Result RocksDBCollectionMeta::placeBlocker(uint64_t trxId, rocksdb::SequenceNumber seq) {
   return basics::catchToResult([&]() -> Result {
     Result res;
-    WRITE_LOCKER(locker, _blockerLock);
-
-    TRI_ASSERT(_blockers.end() == _blockers.find(trxId));
-    TRI_ASSERT(_blockersBySeq.end() == _blockersBySeq.find(std::make_pair(seq, trxId)));
-
-    auto insert = _blockers.emplace(trxId, seq);
-    auto crosslist = _blockersBySeq.emplace(seq, trxId);
-    if (!insert.second || !crosslist.second) {
+    auto inserted = _blockers.emplace(trxId, seq);
+    TRI_ASSERT(inserted);
+    if (inserted) {
       return res.reset(TRI_ERROR_INTERNAL);
     }
     return res;
@@ -111,27 +106,17 @@ Result RocksDBCollectionMeta::placeBlocker(uint64_t trxId, rocksdb::SequenceNumb
  *              earlier `placeBlocker` call)
  */
 void RocksDBCollectionMeta::removeBlocker(uint64_t trxId) {
-  WRITE_LOCKER(locker, _blockerLock);
-  auto it = _blockers.find(trxId);
-  if (ADB_LIKELY(_blockers.end() != it)) {
-    auto cross = _blockersBySeq.find(std::make_pair(it->second, it->first));
-    TRI_ASSERT(_blockersBySeq.end() != cross);
-    if (ADB_LIKELY(_blockersBySeq.end() != cross)) {
-      _blockersBySeq.erase(cross);
-    }
-    _blockers.erase(it);
-  }
+  _blockers.erase(trxId);
 }
 
 /// @brief updates and returns the largest safe seq to squash updated against
-rocksdb::SequenceNumber RocksDBCollectionMeta::committableSeq() const {
-  READ_LOCKER(locker, _blockerLock);
+rocksdb::SequenceNumber RocksDBCollectionMeta::committableSeq() {
   // if we have a blocker use the lowest counter
-  if (!_blockersBySeq.empty()) {
-    auto it = _blockersBySeq.begin();
-    return it->first;
+  auto res = std::numeric_limits<rocksdb::SequenceNumber>::max();
+  for (auto v : _blockers) {
+    res = std::min(res, v.second);
   }
-  return std::numeric_limits<rocksdb::SequenceNumber>::max();
+  return res;
 }
 
 rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::SequenceNumber commitSeq,

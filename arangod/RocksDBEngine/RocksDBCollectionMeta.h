@@ -23,7 +23,6 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_META_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_META_H 1
 
-#include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "VocBase/voc-types.h"
 
@@ -33,6 +32,9 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+
+#include <xenium/vyukov_hash_map.hpp>
+#include <xenium/reclamation/debra.hpp>
 
 namespace rocksdb {
 class DB;
@@ -98,7 +100,7 @@ struct RocksDBCollectionMeta final {
   void removeBlocker(uint64_t trxId);
 
   /// @brief updates and returns the largest safe seq to squash updated against
-  rocksdb::SequenceNumber committableSeq() const;
+  rocksdb::SequenceNumber committableSeq();
 
   /// @brief get the current count
   DocCount currentCount();
@@ -132,10 +134,9 @@ struct RocksDBCollectionMeta final {
  private:
   // TODO we should probably use flat_map or abseils Swiss Tables
 
-  mutable arangodb::basics::ReadWriteLock _blockerLock;
   /// @brief blocker identifies a transaction being committed
-  std::map<uint64_t, rocksdb::SequenceNumber> _blockers;
-  std::set<std::pair<rocksdb::SequenceNumber, uint64_t>> _blockersBySeq;
+  xenium::vyukov_hash_map<uint64_t, rocksdb::SequenceNumber,
+    xenium::policy::reclaimer<xenium::reclamation::debra<20>>> _blockers;;
 
   mutable std::mutex _countLock;
   DocCount _count;  /// @brief document count struct
