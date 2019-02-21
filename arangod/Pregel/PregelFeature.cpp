@@ -225,13 +225,9 @@ void PregelFeature::start() {
   }
 }
 
-void PregelFeature::beginShutdown() {
-  cleanupAll();
-}
+void PregelFeature::beginShutdown() { cleanupAll(); }
 
-void PregelFeature::stop() {
-  Instance = nullptr;
-}
+void PregelFeature::stop() { Instance = nullptr; }
 
 void PregelFeature::addConductor(std::unique_ptr<Conductor>&& c, uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);

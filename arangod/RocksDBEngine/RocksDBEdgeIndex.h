@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/LocalTaskQueue.h"
-#include "Basics/StringRef.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
@@ -37,6 +36,7 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/Slice.h>
 
 namespace rocksdb {
@@ -73,8 +73,8 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   // returns false if there are no more keys to look for
   bool initKey(arangodb::velocypack::Slice& key);
   void resetInplaceMemory();
-  arangodb::StringRef getFromToFromIterator(arangodb::velocypack::ArrayIterator const&);
-  void lookupInRocksDB(StringRef edgeKey);
+  arangodb::velocypack::StringRef getFromToFromIterator(arangodb::velocypack::ArrayIterator const&);
+  void lookupInRocksDB(arangodb::velocypack::StringRef edgeKey);
 
   std::unique_ptr<arangodb::velocypack::Builder> _keys;
   arangodb::velocypack::ArrayIterator _keysIterator;
@@ -131,7 +131,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   std::vector<std::vector<arangodb::basics::AttributeName>> const& coveredFields() const override;
 
-  double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
+  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
 
   RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
   void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) override;

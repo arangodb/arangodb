@@ -24,7 +24,6 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_PRIMARY_INDEX_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_PRIMARY_INDEX_H 1
 
-#include "Basics/StringRef.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -33,6 +32,7 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace rocksdb {
@@ -168,7 +168,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(StringRef const& = StringRef()) const override {
+  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override {
     return 1.0;
   }
 
@@ -176,7 +176,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   void toVelocyPack(VPackBuilder&, std::underlying_type<Index::Serialize>::type) const override;
 
-  LocalDocumentId lookupKey(transaction::Methods* trx, arangodb::StringRef key) const;
+  LocalDocumentId lookupKey(transaction::Methods* trx, arangodb::velocypack::StringRef key) const;
 
   /// @brief reads a revision id from the primary index
   /// if the document does not exist, this function will return false
@@ -186,7 +186,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   /// the case for older collections
   /// in this case the caller must fetch the revision id from the actual
   /// document
-  bool lookupRevision(transaction::Methods* trx, arangodb::StringRef key,
+  bool lookupRevision(transaction::Methods* trx, arangodb::velocypack::StringRef key,
                       LocalDocumentId& id, TRI_voc_rid_t& revisionId) const;
 
   bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,

@@ -1,12 +1,15 @@
 arangosh&gt; view.properties({<span class="hljs-attr">links</span>: {<span class="hljs-attr">colA</span>: <span class="hljs-literal">null</span>}});
 { 
   <span class="hljs-string">"cleanupIntervalStep"</span> : <span class="hljs-number">12</span>, 
+  <span class="hljs-string">"commitIntervalMsec"</span> : <span class="hljs-number">60000</span>, 
   <span class="hljs-string">"consolidationIntervalMsec"</span> : <span class="hljs-number">60000</span>, 
   <span class="hljs-string">"consolidationPolicy"</span> : { 
-    <span class="hljs-string">"segmentThreshold"</span> : <span class="hljs-number">300</span>, 
-    <span class="hljs-string">"threshold"</span> : <span class="hljs-number">0.8500000238418579</span>, 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"bytes_accum"</span> 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"bytes_accum"</span>, 
+    <span class="hljs-string">"threshold"</span> : <span class="hljs-number">0.10000000149011612</span> 
   }, 
+  <span class="hljs-string">"writebufferActive"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"writebufferIdle"</span> : <span class="hljs-number">64</span>, 
+  <span class="hljs-string">"writebufferSizeMax"</span> : <span class="hljs-number">33554432</span>, 
   <span class="hljs-string">"links"</span> : { 
     <span class="hljs-string">"colB"</span> : { 
       <span class="hljs-string">"analyzers"</span> : [ 
@@ -17,11 +20,8 @@ arangosh&gt; view.properties({<span class="hljs-attr">links</span>: {<span class
         } 
       }, 
       <span class="hljs-string">"includeAllFields"</span> : <span class="hljs-literal">false</span>, 
-      <span class="hljs-string">"trackListPositions"</span> : <span class="hljs-literal">false</span>, 
       <span class="hljs-string">"storeValues"</span> : <span class="hljs-string">"none"</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"131416"</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-string">"arangosearch"</span>, 
-      <span class="hljs-string">"view"</span> : <span class="hljs-string">"hC4048A4AEAB4/131393"</span> 
+      <span class="hljs-string">"trackListPositions"</span> : <span class="hljs-literal">false</span> 
     } 
   } 
 }

@@ -147,14 +147,14 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief temporarily lease a Builder object. Not thread safe
   RocksDBKey* leaseRocksDBKey();
   /// @brief return a temporary RocksDBKey object. Not thread safe
-  void returnRocksDBKey(RocksDBKey* key);
+  void returnRocksDBKey(RocksDBKey* key) noexcept;
 
   /// @brief Every index can track hashes inserted into this index
-  ///        Used to update the estimate after the trx commited
+  ///        Used to update the estimate after the trx committed
   void trackIndexInsert(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);
 
   /// @brief Every index can track hashes removed from this index
-  ///        Used to update the estimate after the trx commited
+  ///        Used to update the estimate after the trx committed
   void trackIndexRemove(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);
 
  private:
@@ -204,7 +204,7 @@ class RocksDBTransactionState final : public TransactionState {
 
   SmallVector<RocksDBKey*, 32>::allocator_type::arena_type _arena;
   SmallVector<RocksDBKey*, 32> _keys;
-  /// @brief if true there key buffers will no longer be shared
+  /// @brief if true the key buffers will no longer be shared
   bool _parallel;
 };
 

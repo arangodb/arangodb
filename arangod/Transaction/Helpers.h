@@ -25,12 +25,12 @@
 #define ARANGOD_TRANSACTION_HELPERS_H 1
 
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
@@ -50,7 +50,7 @@ class Methods;
 
 namespace helpers {
 /// @brief extract the _key attribute from a slice
-StringRef extractKeyPart(VPackSlice);
+arangodb::velocypack::StringRef extractKeyPart(VPackSlice);
 
 std::string extractIdString(CollectionNameResolver const*, VPackSlice, VPackSlice const&);
 

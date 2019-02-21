@@ -45,7 +45,7 @@ v8::Handle<v8::Value> JSLoader::executeGlobalScript(v8::Isolate* isolate,
                                                     v8::Handle<v8::Context> context,
                                                     std::string const& name) {
   v8::EscapableHandleScope scope(isolate);
-  v8::TryCatch tryCatch;
+  v8::TryCatch tryCatch(isolate);
   v8::Handle<v8::Value> result;
 
   findScript(name);
@@ -85,7 +85,7 @@ v8::Handle<v8::Value> JSLoader::executeGlobalScript(v8::Isolate* isolate,
 JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate, v8::Handle<v8::Context>& context,
                                       std::string const& name, VPackBuilder* builder) {
   v8::HandleScope scope(isolate);
-  v8::TryCatch tryCatch;
+  v8::TryCatch tryCatch(isolate);
 
   findScript(name);
 

@@ -28,7 +28,7 @@
 
 namespace arangodb {
 
-class RocksDBSkiplistIndex final : public RocksDBVPackIndex {
+class RocksDBSkiplistIndex : public RocksDBVPackIndex {
  public:
   RocksDBSkiplistIndex() = delete;
 

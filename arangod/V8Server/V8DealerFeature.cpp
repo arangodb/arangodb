@@ -50,6 +50,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/v8-actions.h"
+#include "V8Server/v8-ttl.h"
 #include "V8Server/v8-user-functions.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/vocbase.h"
@@ -1297,7 +1298,7 @@ void V8DealerFeature::shutdownContexts() {
     for (auto& it : _busyContexts) {
       LOG_TOPIC(WARN, arangodb::Logger::V8)
           << "sending termination signal to V8 context #" << it->id();
-      v8::V8::TerminateExecution(it->_isolate);
+      it->_isolate->TerminateExecution();
     }
   }
 
@@ -1478,6 +1479,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
       TRI_InitV8Utils(isolate, localContext, _startupDirectory, modules);
       TRI_InitV8DebugUtils(isolate, localContext);
       TRI_InitV8Shell(isolate);
+      TRI_InitV8Ttl(isolate);
 
       {
         v8::HandleScope scope(isolate);
@@ -1487,20 +1489,26 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
                                      TRI_V8_STD_STRING(isolate, _appPath));
 
         for (auto j : _definedBooleans) {
-          localContext->Global()->ForceSet(TRI_V8_STD_STRING(isolate, j.first),
-                                           v8::Boolean::New(isolate, j.second),
-                                           v8::ReadOnly);
+          localContext->Global()
+              ->DefineOwnProperty(TRI_IGETC, TRI_V8_STD_STRING(isolate, j.first),
+                                  v8::Boolean::New(isolate, j.second),
+                                  v8::ReadOnly)
+              .FromMaybe(false);  // Ignore it...
         }
 
         for (auto j : _definedDoubles) {
-          localContext->Global()->ForceSet(TRI_V8_STD_STRING(isolate, j.first),
-                                           v8::Number::New(isolate, j.second), v8::ReadOnly);
+          localContext->Global()
+              ->DefineOwnProperty(TRI_IGETC, TRI_V8_STD_STRING(isolate, j.first),
+                                  v8::Number::New(isolate, j.second), v8::ReadOnly)
+              .FromMaybe(false);  // Ignore it...
         }
 
         for (auto const& j : _definedStrings) {
-          localContext->Global()->ForceSet(TRI_V8_STD_STRING(isolate, j.first),
-                                           TRI_V8_STD_STRING(isolate, j.second),
-                                           v8::ReadOnly);
+          localContext->Global()
+              ->DefineOwnProperty(TRI_IGETC, TRI_V8_STD_STRING(isolate, j.first),
+                                  TRI_V8_STD_STRING(isolate, j.second),
+                                  v8::ReadOnly)
+              .FromMaybe(false);  // Ignore it...
         }
       }
     }

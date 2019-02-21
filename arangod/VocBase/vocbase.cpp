@@ -2089,7 +2089,7 @@ void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
   TRI_ASSERT(slice.isObject());
   VPackObjectIterator it(slice);
   while (it.valid()) {
-    StringRef key(it.key());
+    arangodb::velocypack::StringRef key(it.key());
     if (key.empty() || key[0] != '_' ||
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
          key != StaticStrings::RevString)) {
@@ -2105,7 +2105,7 @@ void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) 
   TRI_ASSERT(slice.isObject());
   VPackObjectIterator it(slice, true);
   while (it.valid()) {
-    StringRef key(it.key());
+    arangodb::velocypack::StringRef key(it.key());
     if (key.empty() || key[0] != '_' ||
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
          key != StaticStrings::RevString && key != StaticStrings::FromString &&

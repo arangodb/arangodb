@@ -28,6 +28,8 @@
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 
+#include <velocypack/StringRef.h>
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
 #include <sstream>
@@ -45,11 +47,32 @@ using namespace arangodb;
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 
 namespace {
+/// @brief custom comparer for failure points. this allows an implicit
+/// conversion from char const* to arangodb::velocypack::StringRef in order to avoid memory
+/// allocations for temporary string values
+struct Comparer {
+  using is_transparent = std::true_type;
+  // implement comparison functions for various types
+  inline bool operator()(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) const noexcept {
+    return lhs < arangodb::velocypack::StringRef(rhs);
+  }
+  inline bool operator()(std::string const& lhs, arangodb::velocypack::StringRef const& rhs) const noexcept {
+    return arangodb::velocypack::StringRef(lhs) < rhs;
+  }
+  inline bool operator()(std::string const& lhs, std::string const& rhs) const noexcept {
+    return lhs < rhs;
+  }
+};
+
+/// @brief custom comparer for failure points. allows avoiding memory allocations
+/// for temporary string objects
+Comparer const comparer;
+
 /// @brief a read-write lock for thread-safe access to the failure points set
 arangodb::basics::ReadWriteLock failurePointsLock;
 
 /// @brief a global set containing the currently registered failure points
-std::set<std::string> failurePoints;
+std::set<std::string, ::Comparer> failurePoints(comparer);
 }  // namespace
 
 /// @brief cause a segmentation violation
@@ -73,7 +96,7 @@ void TRI_SegfaultDebugging(char const* message) {
 bool TRI_ShouldFailDebugging(char const* value) {
   READ_LOCKER(readLocker, ::failurePointsLock);
 
-  return ::failurePoints.find(value) != ::failurePoints.end();
+  return ::failurePoints.find(arangodb::velocypack::StringRef(value)) != ::failurePoints.end();
 }
 
 /// @brief add a failure point
@@ -91,7 +114,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
 void TRI_RemoveFailurePointDebugging(char const* value) {
   WRITE_LOCKER(writeLocker, ::failurePointsLock);
 
-  ::failurePoints.erase(value);
+  ::failurePoints.erase(std::string(value));
 }
 
 /// @brief clear all failure points

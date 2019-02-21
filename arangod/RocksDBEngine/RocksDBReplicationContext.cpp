@@ -22,11 +22,9 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBReplicationContext.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
 #include "Replication/common-defines.h"
@@ -36,6 +34,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBReplicationContext.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Utils/DatabaseGuard.h"
@@ -44,6 +43,7 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Dumper.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -166,7 +166,7 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
     }
     numberDocuments = rcoll->numberDocuments();
     lazyCreateSnapshot();
-  } else {             // fetch non-exclusive
+  } else {  // fetch non-exclusive
     numberDocuments = rcoll->numberDocuments();
   }
   TRI_ASSERT(_snapshot != nullptr);
@@ -333,13 +333,13 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
   Result rv;
   {
     if (0 == cid || _snapshot == nullptr) {
-      return RocksDBReplicationResult{TRI_ERROR_BAD_PARAMETER, _snapshotTick};
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
 
     MUTEX_LOCKER(writeLocker, _contextLock);
     cIter = getCollectionIterator(vocbase, cid, /*sorted*/ true, /*create*/ true);
     if (!cIter || !cIter->sorted() || !cIter->iter) {
-      return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _snapshotTick);
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
   }
 
@@ -366,7 +366,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
     while (k-- > 0 && cIter->hasMore()) {
       snapNumDocs++;
 
-      StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
+      arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
       if (lowKey.empty()) {
         lowKey.assign(key.data(), key.size());
       }
@@ -453,13 +453,13 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
   Result rv;
   {
     if (0 == cid || _snapshot == nullptr) {
-      return RocksDBReplicationResult{TRI_ERROR_BAD_PARAMETER, _snapshotTick};
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
 
     MUTEX_LOCKER(writeLocker, _contextLock);
     cIter = getCollectionIterator(vocbase, cid, /*sorted*/ true, /*create*/ false);
     if (!cIter || !cIter->sorted() || !cIter->iter) {
-      return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _snapshotTick);
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
   }
 
@@ -476,7 +476,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
   size_t from = chunk * chunkSize;
   if (from != cIter->lastSortedIteratorOffset) {
     if (!lowKey.empty()) {
-      tmpKey.constructPrimaryIndexValue(cIter->bounds.objectId(), StringRef(lowKey));
+      tmpKey.constructPrimaryIndexValue(cIter->bounds.objectId(), arangodb::velocypack::StringRef(lowKey));
       cIter->iter->Seek(tmpKey.string());
       cIter->lastSortedIteratorOffset = from;
       TRI_ASSERT(cIter->iter->Valid());
@@ -531,7 +531,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
         TRI_ASSERT(ps.size() > 0);
         docRev = TRI_ExtractRevisionId(VPackSlice(ps.data()));
       } else {
-        StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
+        arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
         LOG_TOPIC(WARN, Logger::REPLICATION)
             << "inconsistent primary index, "
             << "did not find document with key " << key.toString();
@@ -540,7 +540,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
       }
     }
 
-    StringRef docKey(RocksDBKey::primaryKey(cIter->iter->key()));
+    arangodb::velocypack::StringRef docKey(RocksDBKey::primaryKey(cIter->iter->key()));
     b.openArray(true);
     b.add(velocypack::ValuePair(docKey.data(), docKey.size(), velocypack::ValueType::String));
     b.add(TRI_RidToValuePair(docRev, &ridBuffer[0]));
@@ -567,13 +567,13 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   Result rv;
   {
     if (0 == cid || _snapshot == nullptr) {
-      return RocksDBReplicationResult{TRI_ERROR_BAD_PARAMETER, _snapshotTick};
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
 
     MUTEX_LOCKER(writeLocker, _contextLock);
     cIter = getCollectionIterator(vocbase, cid, /*sorted*/ true, /*create*/ true);
     if (!cIter || !cIter->sorted() || !cIter->iter) {
-      return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _snapshotTick);
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
   }
 
@@ -591,7 +591,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   size_t from = chunk * chunkSize;
   if (from != cIter->lastSortedIteratorOffset) {
     if (!lowKey.empty()) {
-      tmpKey.constructPrimaryIndexValue(cIter->bounds.objectId(), StringRef(lowKey));
+      tmpKey.constructPrimaryIndexValue(cIter->bounds.objectId(), arangodb::velocypack::StringRef(lowKey));
       cIter->iter->Seek(tmpKey.string());
       cIter->lastSortedIteratorOffset = from;
       TRI_ASSERT(cIter->iter->Valid());
@@ -670,7 +670,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
           TRI_ASSERT(VPackSlice(ps.data()).isObject());
           b.add(VPackSlice(ps.data()));
         } else {
-          StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
+          arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
           LOG_TOPIC(WARN, Logger::REPLICATION)
               << "inconsistent primary index, "
               << "did not find document with key " << key.toString();

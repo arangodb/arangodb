@@ -26,7 +26,6 @@
 #include "Logger/Logger.h"
 #include "OperationResult.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 using namespace arangodb;
 

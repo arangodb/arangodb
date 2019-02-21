@@ -20,7 +20,7 @@
 
       <div class="pure-u-4-5">
 
-        <% if (scaling === true) { %>
+        <% if (scaling === true && frontendConfig.db === '_system') { %>
           <div class="scaleGroup" id="scaleCoords">
             <div style="text-align: -webkit-right;">
             <span class="left" id="removeCoord"><i class="fa fa-minus"></i></span>
@@ -35,7 +35,7 @@
           <% if (scaleProperties.coordsError) { %>
             <span class="negative"><span> <%= scaleProperties.coordsError %> </span><i class="fa fa-exclamation-circle"></i></span>
           <% } %>
-          <% if (scaleProperties.coordsPending && scaling === true) { %>
+          <% if (scaleProperties.coordsPending && scaling === true && frontendConfig.db === '_system') { %>
             <span class="warning"><span> <%= scaleProperties.coordsPending %> </span><i class="fa fa-circle-o-notch fa-spin"></i></span>
             <button class="abortClusterPlan button-navbar button-default">Abort</button>
           <% } %>
@@ -63,8 +63,8 @@
           <div class="pure-u-9-24 left">
             <%= node.ShortName %>
             <i class="fa fa-bar-chart"></i>
-            <% if(node.CanBeDeleted) { %>
-            <i class="fa fa-trash-o"></i>
+            <% if (node.CanBeDeleted && frontendConfig.db === '_system') { %>
+              <i class="fa fa-trash-o"></i>
             <% } %>
           </div>
           <div class="pure-u-9-24 left"><%= node.Endpoint %></div>
@@ -101,7 +101,7 @@
 
         <div class="pure-u-4-5">
 
-          <% if (scaling === true) { %>
+          <% if (scaling === true && frontendConfig.db === '_system') { %>
             <div class="scaleGroup" id="scaleCoords">
               <div style="text-align: -webkit-right;">
               <span class="left" id="removeDBs"><i class="fa fa-minus"></i></span>
@@ -116,7 +116,7 @@
             <% if (scaleProperties.dbsError) { %>
               <span class="negative"><span> <%= scaleProperties.dbsError %> </span><i class="fa fa-exclamation-circle"></i></span>
             <% } %>
-            <% if (scaleProperties.dbsPending && scaling === true) { %>
+            <% if (scaleProperties.dbsPending && scaling === true && frontendConfig.db === '_system') { %>
               <span class="warning"><span> <%= scaleProperties.dbsPending %> </span><i class="fa fa-circle-o-notch fa-spin"></i></span>
               <button class="abortClusterPlan button-navbar button-default">Abort</button>
             <% } %>
@@ -147,8 +147,8 @@
           <div class="pure-u-9-24 left">
             <%= node.ShortName %>
             <i class="fa fa-bar-chart"></i>
-            <% if(node.CanBeDeleted) { %>
-            <i class="fa fa-trash-o"></i>
+            <% if (node.CanBeDeleted && frontendConfig.db === '_system') { %>
+              <i class="fa fa-trash-o"></i>
             <% } %>
           </div>
           <div class="pure-u-9-24 left"><%= node.Endpoint %></div>
