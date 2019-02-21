@@ -3963,6 +3963,7 @@ function pruneTraversalSuite() {
 
     testObj[`testAllowPruningOnV${name}`] = () => {
       const q = `
+        WITH ${vn}
         FOR v IN 1..3 ANY "${vertex.B}" ${en}
           PRUNE v._key == "C"
           OPTIONS ${JSON.stringify(opts)}
@@ -3981,6 +3982,7 @@ function pruneTraversalSuite() {
 
     testObj[`testAllowPruningOnE${name}`] = () => {
       const q = `
+        WITH ${vn}
         FOR v, e IN 1..3 ANY "${vertex.B}" ${en}
           PRUNE e._to == "${vertex.C}"
           OPTIONS ${JSON.stringify(opts)}
@@ -3998,6 +4000,7 @@ function pruneTraversalSuite() {
 
     testObj[`testAllowPruningOnP${name}`] = () => {
       const q = `
+                WITH ${vn}
                 FOR v, e, p IN 1..3 ANY "${vertex.B}" ${en}
                   PRUNE p.vertices[1]._key == "C"
                   OPTIONS ${JSON.stringify(opts)}
@@ -4015,6 +4018,7 @@ function pruneTraversalSuite() {
 
     testObj[`testAllowPruningOnPReturnE${name}`] = () => {
       const q = `
+                WITH ${vn}
                 FOR v, e, p IN 1..3 ANY "${vertex.B}" ${en}
                   PRUNE p.vertices[1]._key == "C"
                   OPTIONS ${JSON.stringify(opts)}
@@ -4032,6 +4036,7 @@ function pruneTraversalSuite() {
 
     testObj[`testAllowPruningOnOuterVar${name}`] = () => {
       const q = `
+                WITH ${vn} 
                 FOR key IN ["C", "F"]
                 FOR v IN 1..3 ANY "${vertex.B}" ${en}
                   PRUNE v._key == key
@@ -4055,6 +4060,7 @@ function pruneTraversalSuite() {
 
     testObj[`testAllowPruningOnVBelowMinDepth${name}`] = () => {
       const q = `
+        WITH ${vn}
         FOR v IN 3 ANY "${vertex.B}" ${en}
           PRUNE v._key == "C"
           OPTIONS ${JSON.stringify(opts)}
@@ -4068,6 +4074,41 @@ function pruneTraversalSuite() {
       } else {
         assertEqual(res.count(), 1, `In query ${q}`);
         assertEqual(res.toArray().sort(), ['C'].sort(), `In query ${q}`);
+      }
+    };
+
+    testObj[`testMultipleCoordinatorParts${name}`] = () => {
+      // This is intendent to test Cluster to/from VPack function of traverser Nodes
+      // On SingleServer this tests pruning on the startVertex
+      const q = `
+        WITH ${vn}
+        FOR v IN 1 ANY "${vertex.B}" ${en}
+          PRUNE v._key == "C" /* this actually does not prune */
+          OPTIONS ${JSON.stringify(opts)}
+          FOR source IN ${vn}
+            FILTER source._key == v._key
+            FOR k IN 2 ANY source ${en}
+            PRUNE k._key == "C"
+            OPTIONS ${JSON.stringify(opts)}
+            RETURN k._key
+      `;
+
+      // The first traversal will find A, C, E
+      // The Primary Index Scan in the middle is actually
+      // a noop and only enforces a walk thorugh DBServer
+      // The Second traversal will find:
+      // A => C,E
+      // C => [] // it shall prune the startvertex
+      // E => A,C,C 
+      const res = db._query(q);
+
+      if (name === "Neighbors") {
+        // The E part does not find C twice
+        assertEqual(res.count(), 4, `In query ${q}`);
+        assertEqual(res.toArray().sort(), ["C", "E", "A", "C"].sort(), `In query ${q}`);
+      } else {
+        assertEqual(res.count(), 5, `In query ${q}`);
+        assertEqual(res.toArray().sort(), ["C", "E", "A", "C", "C"].sort(), `In query ${q}`);
       }
     };
 
@@ -4110,7 +4151,6 @@ jsunity.run(exampleGraphsSuite);
 if (!isCluster) {
   jsunity.run(optimizeNonVertexCentricIndexesSuite);
 }
-
 jsunity.run(pruneTraversalSuite);
 
 return jsunity.done();
