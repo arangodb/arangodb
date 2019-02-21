@@ -1,6 +1,8 @@
 v3.3.23 (XXXX-XX-XX)
 --------------------
 
+* fixed some escaping issues within the web ui.
+
 * fix supervision's failed server handling to transactionally create
   all failed leader/followers along
 
