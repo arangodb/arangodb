@@ -243,6 +243,10 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
 
   if (res.ok()) {  // required so iresearch commits
     res = trx.commit();
+
+    if (ridx.estimator() != nullptr) {
+      ridx.estimator()->setCommitSeq(rootDB->GetLatestSequenceNumber());
+    }
   }
 
   // if an error occured drop() will be called
