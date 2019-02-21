@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed some escaping issues within the web ui.
+
 * add "TTL" index type, for optional auto-expiration of documents 
 
 * disable selection of index types "persistent" and "skiplist" in the web
