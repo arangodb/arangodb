@@ -359,7 +359,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
   //    generate and persist new id
   //  }
   std::string id;
-  if (!hasPersistedId()) {
+  if (!hasPersistedId() || isCoordinator(role)) {
     id = generatePersistedId(role);
 
     LOG_TOPIC(INFO, Logger::CLUSTER) << "Fresh start. Persisting new UUID " << id;
