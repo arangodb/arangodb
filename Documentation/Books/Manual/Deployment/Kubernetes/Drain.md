@@ -1,5 +1,10 @@
 # Draining Kubernetes nodes
 
+{% hint 'danger' %}
+If Kubernetes nodes with ArangoDB pods on them are drained carelessly
+data loss can occur! The proper procedure is described below.
+{% endhint %}
+
 For maintenance work in k8s it is sometimes necessary to drain a k8s node,
 which means removing all pods from it. Kubernetes offers a standard API
 for this and our operator supports this - to the best of its ability.
@@ -43,15 +48,15 @@ anything, either by k8s itself (`ReplicationController`, `ReplicaSet`,
 `Job`, `DaemonSet` or `StatefulSet`) or by an operator. If this is the
 case, the drain operation will be refused, unless one uses the option
 `--force=true`. Since the ArangoDB operator manages our pods, we do not
-have to use this option for ArangoDB, you might have to use it for other
-pods.
+have to use this option for ArangoDB, but you might have to use it for
+other pods.
 
 If all these checks have been overcome, k8s proceeds as follows: All
 pods are notified about this event and are put into a `Terminating`
 state. During this time, they have a chance to take action, or indeed
 the operator managing them has. In particular, although the pods get
 termination notices, they can keep running until the operator has
-removed all "finalizers". This gives the operator a chance to sort out
+removed all _finalizers_. This gives the operator a chance to sort out
 things, for example in our case to move data away from the pod.
 
 However, there is a limit to this tolerance by k8s, and that is the
@@ -78,23 +83,22 @@ If any shard replicas are not currently in sync, then there is a serious
 risk that the cluster is currently not as resilient as expected.
 {% endhint %}
 
-One possibility to verify these two things is via the web UI. Node
-health can be monitored on this screen ("NODES/Overview" tab):
+One possibility to verify these two things is via the ArangoDB web interface.
+Node health can be monitored in the _Overview_ tab under _NODES_:
 
 ![Cluster Health Screen](./HealthyCluster.png)
 
-**One has to check that all nodes are green and there is no node error in the
-top right corner**.
+**Check that all nodes are green** and that there is **no node error** in the
+top right corner.
 
-As to the shards being in sync, one checks this on this screen
-("NODES/Shards" tab):
+As to the shards being in sync, see the _Shards_ tab under _NODES_:
 
 ![Shard Screen](./ShardsInSync.png)
 
-**One has to check that all collections have a green check mark on the
-right side**. If any collection does not have such a check mark, one can
-click on the collection and see the details about shards. Please keep in
-mind that this has to be done for each database separately!
+**Check that all collections have a green check mark** on the right side.
+If any collection does not have such a check mark, you can click on the
+collection and see the details about shards. Please keep in
+mind that this has to be done **for each database** separately!
 
 Obviously, this might be tedious and calls for automation. Therefore, there
 are APIs for this. The first one is [Cluster Health](../../../HTTP/Cluster/Health.html):
@@ -103,7 +107,7 @@ are APIs for this. The first one is [Cluster Health](../../../HTTP/Cluster/Healt
 POST /_admin/cluster/health
 ```
 
-which returns a JSON document looking like this:
+… which returns a JSON document looking like this:
 
 ```JSON
 {
@@ -154,21 +158,23 @@ which returns a JSON document looking like this:
 }
 ```
 
-One has to check that each instance has a `Status` field with the value
-`"GOOD"`. Here is a shell command which makes this check easy, using the
-`jq` JSON pretty printer:
+Check that each instance has a `Status` field with the value `"GOOD"`.
+Here is a shell command which makes this check easy, using the
+[`jq` JSON pretty printer](https://stedolan.github.io/jq/):
 
 ```bash
 curl -k https://arangodb.9hoeffer.de:8529/_admin/cluster/health --user root: | jq . | grep '"Status"' | grep -v '"GOOD"'
 ```
 
-For the shards being in sync there is the [Cluster Inventory](../../../HTTP/Replications/ReplicationDump.html#return-cluster-inventory-of-collections-and-indexes) API call:
+For the shards being in sync there is the
+[Cluster Inventory](../../../HTTP/Replications/ReplicationDump.html#return-cluster-inventory-of-collections-and-indexes)
+API call:
 
 ```
 POST /_db/_system/_api/replication/clusterInventory
 ```
 
-which returns a JSON body like this:
+… which returns a JSON body like this:
 
 ```JSON
 {
@@ -236,7 +242,7 @@ which returns a JSON body like this:
 }
 ```
 
-One has to check that for all collections the attribute `"allInSync"` has
+Check that for all collections the attribute `"allInSync"` has
 the value `true`. Note that it is necessary to do this for all databases!
 
 Here is a shell command which makes this check easy:
@@ -245,13 +251,11 @@ Here is a shell command which makes this check easy:
 curl -k https://arangodb.9hoeffer.de:8529/_db/_system/_api/replication/clusterInventory --user root: | jq . | grep '"allInSync"' | sort | uniq -c
 ```
 
-{% hint 'tip' %}
-If all these checks are performed and are OK, the cluster is ready to
+If all these checks are performed and are okay, the cluster is ready to
 run a risk-free drain operation.
-{% endhint %}
 
 {% hint 'danger' %}
-Note that if there are some collections with `replicationFactor` set to
+If there are some collections with `replicationFactor` set to
 1, the system is not resilient and cannot tolerate the failure of even a
 single server! One can still perform a drain operation in this case, but
 if anything goes wrong, in particular if the grace period is chosen too
@@ -259,26 +263,28 @@ short and a pod is killed the hard way, data loss can happen.
 {% endhint %}
 
 If all `replicationFactor`s of all collections are at least 2, then the
-system can tolerate the failure of a single DBserver. If you have set
+system can tolerate the failure of a single _DBserver_. If you have set
 the `Environment` to `Production` in the specs of the ArangoDB
-deployment, you will only ever have one DBserver on each k8s node and
+deployment, you will only ever have one _DBserver_ on each k8s node and
 therefore the drain operation is relatively safe, even if the grace
 period is chosen too small.
 
-Furthermore, we recommend to have one k8s node more than DBservers in
+Furthermore, we recommend to have one k8s node more than _DBservers_ in
 you cluster, such that the deployment of a replacement _DBServer_ can
 happen quickly and not only after the maintenance work on the drained
 node has been completed. However, with the necessary care described
 below, the procedure should also work without this.
 
-Finally, **one should not run a rolling upgrade or restart operation at
-the time of a node drain**.
+Finally, one should **not run a rolling upgrade or restart operation**
+at the time of a node drain.
 
-## Optional: Clean out a DBserver manually
+## Clean out a DBserver manually (optional)
 
 In this step we clean out a _DBServer_ manually, before even issuing the
 `kubectl drain` command. This step is optional, but can speed up things
-considerably. Here is why: If this step is not performed, we must choose
+considerably. Here is why:
+
+If this step is not performed, we must choose
 the grace period long enough to avoid any risk, as explained in the
 previous section. However, this has a disadvantage which has nothing to
 do with ArangoDB: We have observed, that some k8s internal services like
@@ -300,7 +306,7 @@ To clean out a _DBServer_ manually, we have to use this API:
 POST /_admin/cluster/cleanOutServer
 ```
 
-and send as body a JSON document like this:
+… and send as body a JSON document like this:
 
 ```JSON
 {"server":"DBServer0006"}
@@ -310,16 +316,16 @@ and send as body a JSON document like this:
 The value of the `"server"` attribute should be the name of the DBserver
 which is one the pod which shall be drained next. This uses the UI short
 name, alternatively one can use the internal name, which corresponds to
-the pod name: In the example described in this section, the pod name is
+the pod name. In our example, the pod name is:
 
 ```
 my-arangodb-cluster-prmr-wbsq47rz-5676ed
 ```
 
-where `my-arangodb-cluster` is the ArangoDB deployment name, therefore
-the internal name of the DBserver is `PRMR-wbsq47rz`, note that `PRMR`
-must be all capitals since pod names are always all lower case. So, I
-could use the body
+… where `my-arangodb-cluster` is the ArangoDB deployment name, therefore
+the internal name of the _DBserver_ is `PRMR-wbsq47rz`. Note that `PRMR`
+must be all capitals since pod names are always all lower case. So, we
+could use the body:
 
 ```JSON
 {"server":"PRMR-wbsq47rz"}
@@ -338,7 +344,7 @@ completion status of the clean out server job with this API:
 GET /_admin/cluster/queryAgencyJob?id=38029195
 ```
 
-which will return a body like this:
+… which will return a body like this:
 
 ```JSON
 {
@@ -357,7 +363,7 @@ which will return a body like this:
 }
 ```
 
-which indicates that the job is still ongoing (`"Pending"`). As soon as
+It indicates that the job is still ongoing (`"Pending"`). As soon as
 the job has completed, the answer will be:
 
 ```JSON
@@ -378,7 +384,7 @@ the job has completed, the answer will be:
 }
 ```
 
-Note that from this moment on the _DBServer_ can no longer be used to move
+From this moment on the _DBserver_ can no longer be used to move
 shards to. At the same time, it will no longer hold any data of the
 cluster.
 
@@ -387,8 +393,7 @@ completely risk-free, even with a small grace period.
 
 ## Performing the drain
 
-After all checks in Section 
-[Things to check in ArangoDB before a node drain](#things-to-check-in-arangodb-before-a-node-drain)
+After all above [checks before a node drain](#things-to-check-in-arangodb-before-a-node-drain)
 have been done successfully, it is safe to perform the drain
 operation, similar to this command:
 
@@ -404,9 +409,10 @@ can be moved to a different server within 5 minutes. Note that this is
 much data is stored in the pod, your mileage may vary, moving a terabyte
 of data can take considerably longer!
 
-If the optional step in the previous section has been performed
-beforehand, the grace period can easily be reduced to 60 seconds, say, at
-least from the perspective of ArangoDB, since the _DBServer_ is already
+If the optional step of
+[cleaning out a DBserver manually](#clean-out-a-dbserver-manually-optional)
+has been performed beforehand, the grace period can easily be reduced to 60
+seconds - at least from the perspective of ArangoDB, since the server is already
 cleaned out, so it can be dropped readily and there is still no risk.
 
 At the same time, this guarantees now that the drain is completed
@@ -415,25 +421,24 @@ approximately within a minute.
 ## Things to check after a node drain
 
 After a node has been drained, there will usually be one of the
-DBservers gone from the cluster. As a replacement, another _DBServer_ has
+_DBservers_ gone from the cluster. As a replacement, another _DBServer_ has
 been deployed on a different node, if there is a different node
 available. If not, the replacement can only be deployed when the
 maintenance work on the drained node has been completed and it is
 uncordoned again. In this latter case, one should wait until the node is
 back up and the replacement pod has been deployed there.
 
-After that, one should perform the same checks as described in Section 
-[Things to check in ArangoDB before a node drain](#things-to-check-in-arangodb-before-a-node-drain)
+After that, one should perform the same checks as described in
+[things to check before a node drain](#things-to-check-in-arangodb-before-a-node-drain)
 above.
 
 Finally, it is likely that the shard distribution in the "new" cluster
 is not balanced out. In particular, the new _DBSserver_ is not automatically
-used to store shards. We recommend to [re-balance](../../Administration/Cluster/#movingrebalancing-shards) the shard distribution,
-either manually by moving shards or by using the "Rebalance Shards"
-button in the "NODES/Shards" tab in the UI. This redistribution can take
+used to store shards. We recommend to
+[re-balance](../../Administration/Cluster/#movingrebalancing-shards) the shard distribution,
+either manually by moving shards or by using the _Rebalance Shards_
+button in the _Shards_ tab under _NODES_ in the web UI. This redistribution can take
 some time again and progress can be monitored in the UI.
 
-After all this has been done, **another round of checks should be done
-before proceeding to drain the next node**.
-
-
+After all this has been done, **another round of checks should be done**
+before proceeding to drain the next node.
