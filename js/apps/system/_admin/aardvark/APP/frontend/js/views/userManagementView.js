@@ -125,7 +125,7 @@
         reducedCollection;
 
       searchInput = $('#userManagementSearchInput');
-      searchString = arangoHelper.escapeHTML($('#userManagementSearchInput').val());
+      searchString = arangoHelper.escapeHtml($('#userManagementSearchInput').val());
       reducedCollection = this.collection.filter(
         function (u) {
           return u.get('user').indexOf(searchString) !== -1;
