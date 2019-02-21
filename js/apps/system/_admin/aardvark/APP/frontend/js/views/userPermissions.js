@@ -233,14 +233,8 @@
       this.currentUser = this.collection.findWhere({
         user: this.username
       });
-      this.breadcrumb();
 
       var url = arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(self.currentUser.get('user')) + '/database?full=true');
-      /*
-      if (frontendConfig.db === '_system') {
-        url = arangoHelper.databaseUrl('/_api/user/root/database');
-      }
-      */
 
       // FETCH COMPLETE DB LIST
       $.ajax({
@@ -281,6 +275,7 @@
       arangoHelper.createTooltips();
       // check if current user is root
       this.checkRoot();
+      this.breadcrumb();
     },
 
     checkRoot: function () {
@@ -342,7 +337,7 @@
 
       if (window.App.naviView) {
         $('#subNavigationBar .breadcrumb').html(
-          'User: ' + this.currentUser.get('user')
+          'User: ' + arangoHelper.escapeHtml(this.currentUser.get('user'))
         );
         arangoHelper.buildUserSubNav(self.currentUser.get('user'), 'Permissions');
       } else {
