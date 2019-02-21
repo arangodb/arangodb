@@ -144,35 +144,49 @@ std::string Job::randomIdleAvailableServer(Node const& snap,
                                                std::vector<std::string> const& exclude) {
   std::vector<std::string> as = availableServers(snap);
   std::string ret;
-  auto ex(exclude);
+  auto ex(exclude); // make a copy of exclude
+
+  // Prefer good servers over bad servers
+  std::vector<std::string> good;
+  std::vector<std::string> bad;
+
+  // Sort excluded servers
+  std::sort(std::begin(ex), std::end(ex));
 
   // unfailed; - servers that have are just temporarily bad, should be considered
   // as valid server.
   try {
     for (auto const& srv : snap.hasAsChildren(healthPrefix).first) {
-      if ((*srv.second).hasAsString("Status").first == "FAILED") {
-        ex.push_back(srv.first);
+      // ignore excluded servers
+      if (std::binary_search(std::begin(ex), std::end(ex), srv.first)) {
+        continue ;
+      }
+
+      std::string const& status = (*srv.second).hasAsString("Status").first;
+      if (status == "GOOD") {
+        good.push_back(srv.first);
+      } else if (status == "BAD") {
+        bad.push_back(srv.first);
       }
     }
   } catch (...) {
   }
 
-  // Remove excluded servers
-  std::sort(std::begin(ex), std::end(ex));
-  as.erase(std::remove_if(std::begin(as), std::end(as),
-                          [&](std::string const& s) {
-                            return std::binary_search(std::begin(ex), std::end(ex), s);
-                          }),
-           std::end(as));
+  if (good.empty()) {
+    if (bad.empty()) {
+      return ret;
+    }
+    good = std::move(bad);
+  }
 
   // Choose random server from rest
-  if (!as.empty()) {
-    if (as.size() == 1) {
-      ret = as[0];
+  if (!good.empty()) {
+    if (good.size() == 1) {
+      ret = good[0];
     } else {
-      uint16_t interval = static_cast<uint16_t>(as.size() - 1);
+      uint16_t interval = static_cast<uint16_t>(good.size() - 1);
       uint16_t random = RandomGenerator::interval(interval);
-      ret = as.at(random);
+      ret = good.at(random);
     }
   }
 
