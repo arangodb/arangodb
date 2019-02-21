@@ -1,8 +1,9 @@
+<!-- don't edit here, it's from https://@github.com/arangodb/kube-arangodb.git / docs/Manual/ -->
 # Draining Kubernetes nodes
 
 {% hint 'danger' %}
-If Kubernetes nodes with ArangoDB pods on them are drained carelessly
-data loss can occur! The proper procedure is described below.
+If Kubernetes nodes with ArangoDB pods on them are drained without care
+data loss can occur! The recommended procedure is described below.
 {% endhint %}
 
 For maintenance work in k8s it is sometimes necessary to drain a k8s node,
@@ -20,14 +21,10 @@ takes time, and even after the move, the distributed system ArangoDB has
 to recover from this change, for example by ensuring data synchronicity
 between the replicas in their new location.
 
-{% hint 'warning' %}
 Therefore, a systematic drain of all k8s nodes in sequence has to follow
 a careful procedure, in particular to ensure that ArangoDB is ready to
 move to the next step. This is necessary to avoid catastrophic data
 loss, and is simply the price one pays for running a stateful service.
-{% endhint %}
-
-This section describes this procedure.
 
 ## Anatomy of a drain procedure in k8s: the grace period
 
