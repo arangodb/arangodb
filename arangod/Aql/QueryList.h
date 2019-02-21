@@ -31,6 +31,9 @@
 
 #include <list>
 
+#include <xenium/vyukov_hash_map.hpp>
+#include <xenium/reclamation/debra.hpp>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -208,11 +211,12 @@ class QueryList {
   static constexpr size_t defaultMaxQueryStringLength = 4096;
 
  private:
-  /// @brief r/w lock for the list
-  arangodb::basics::ReadWriteLock _lock;
-
   /// @brief list of current queries
-  std::unordered_map<TRI_voc_tick_t, Query*> _current;
+  xenium::vyukov_hash_map<TRI_voc_tick_t, Query*,
+    xenium::policy::reclaimer<xenium::reclamation::debra<20>>> _current;
+
+  /// @brief r/w lock for the list of slow queries
+  arangodb::basics::ReadWriteLock _slowLock;
 
   /// @brief list of slow queries
   std::list<QueryEntryCopy> _slow;

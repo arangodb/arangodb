@@ -53,8 +53,8 @@ QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string&& queryString,
 
 /// @brief create a query list
 QueryList::QueryList(TRI_vocbase_t*)
-    : _lock(),
-      _current(),
+    : _current(64),
+      _slowLock(),
       _slow(),
       _slowCount(0),
       _enabled(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")
@@ -72,7 +72,6 @@ QueryList::QueryList(TRI_vocbase_t*)
               ->slowStreamingQueryThreshold()),
       _maxSlowQueries(defaultMaxSlowQueries),
       _maxQueryStringLength(defaultMaxQueryStringLength) {
-  _current.reserve(64);
 }
 
 /// @brief insert a query
@@ -83,16 +82,11 @@ bool QueryList::insert(Query* query) {
   }
 
   try {
-    WRITE_LOCKER(writeLocker, _lock);
-
     TRI_IF_FAILURE("QueryList::insert") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    auto it = _current.insert({query->id(), query});
-    if (it.second) {
-      return true;
-    }
+    return _current.emplace(query->id(), query);
   } catch (...) {
   }
 
@@ -113,14 +107,10 @@ void QueryList::remove(Query* query) {
     return;
   }
 
-  WRITE_LOCKER(writeLocker, _lock);
-  auto it = _current.find(query->id());
-
-  if (it == _current.end()) {
+  auto removed = _current.erase(query->id());
+  if (!removed) {
     return;
   }
-
-  _current.erase(it);
 
   bool const isStreaming = query->queryOptions().stream;
   double threshold = (isStreaming ? _slowStreamingQueryThreshold : _slowQueryThreshold);
@@ -140,6 +130,8 @@ void QueryList::remove(Query* query) {
       TRI_IF_FAILURE("QueryList::remove") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
+
+      WRITE_LOCKER(writeLocker, _slowLock);
 
       std::string q = extractQueryString(query, _maxQueryStringLength);
 
@@ -192,29 +184,27 @@ void QueryList::remove(Query* query) {
 
 /// @brief kills a query
 int QueryList::kill(TRI_voc_tick_t id) {
-  WRITE_LOCKER(writeLocker, _lock);
+  // Yes, this is inefficient. But we have to avoid the case where the query we want
+  // to kill is getting removed (and possible deleted), and there is no better way ATM.
+  // Also, this is probably not performance critical.
+  for (auto it : _current) {
+    if (it.first == id) {
+      Query* query = it.second;
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+            << "killing AQL query " << id << " '" << query->queryString() << "'";
 
-  auto it = _current.find(id);
-
-  if (it == _current.end()) {
-    return TRI_ERROR_QUERY_NOT_FOUND;
+        query->kill();
+        return TRI_ERROR_NO_ERROR;
+    }
   }
-
-  Query* query = (*it).second;
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-      << "killing AQL query " << id << " '" << query->queryString() << "'";
-
-  query->kill();
-  return TRI_ERROR_NO_ERROR;
+  return TRI_ERROR_QUERY_NOT_FOUND;
 }
 
 /// @brief kills all currently running queries
 uint64_t QueryList::killAll(bool silent) {
   uint64_t killed = 0;
 
-  WRITE_LOCKER(writeLocker, _lock);
-
-  for (auto& it : _current) {
+  for (auto it : _current) {
     Query* query = it.second;
 
     if (silent) {
@@ -238,29 +228,20 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
   size_t const maxLength = _maxQueryStringLength;
 
   std::vector<QueryEntryCopy> result;
-  // reserve room for some queries outside of the lock already,
-  // so we reduce the possibility of having to reserve more room
-  // later
   result.reserve(16);
 
-  {
-    READ_LOCKER(readLocker, _lock);
-    // reserve the actually needed space
-    result.reserve(_current.size());
+  for (auto const it : _current) {
+    Query const* query = it.second;
 
-    for (auto const& it : _current) {
-      Query const* query = it.second;
-
-      if (query == nullptr || query->queryString().empty()) {
-        continue;
-      }
-
-      double const started = query->startTime();
-
-      result.emplace_back(query->id(), extractQueryString(query, maxLength),
-                          _trackBindVars ? query->bindParameters() : nullptr, started,
-                          now - started, query->state(), query->queryOptions().stream);
+    if (query == nullptr || query->queryString().empty()) {
+      continue;
     }
+
+    double const started = query->startTime();
+
+    result.emplace_back(query->id(), extractQueryString(query, maxLength),
+                        _trackBindVars ? query->bindParameters() : nullptr, started,
+                        now - started, query->state(), query->queryOptions().stream);
   }
 
   return result;
@@ -275,7 +256,7 @@ std::vector<QueryEntryCopy> QueryList::listSlow() {
   result.reserve(16);
 
   {
-    READ_LOCKER(readLocker, _lock);
+    READ_LOCKER(readLocker, _slowLock);
     // reserve the actually needed space
     result.reserve(_slow.size());
 
@@ -289,7 +270,7 @@ std::vector<QueryEntryCopy> QueryList::listSlow() {
 
 /// @brief clear the list of slow queries
 void QueryList::clearSlow() {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _slowLock);
   _slow.clear();
   _slowCount = 0;
 }
