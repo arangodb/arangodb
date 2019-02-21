@@ -1,3 +1,5 @@
+include_directories(.)
+
 foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
   link_directories("${LINK_DIR}")
 endforeach()
@@ -55,11 +57,11 @@ if (USE_IRESEARCH)
     IResearch/IResearchQueryTraversal-test.cpp
     IResearch/IResearchQueryOptions-test.cpp
     IResearch/RestHandlerMock.cpp
-    IResearch/StorageEngineMock.cpp
     IResearch/IResearchViewNode-test.cpp
     IResearch/VelocyPackHelper-test.cpp
     RestHandler/RestUsersHandler-test.cpp
     RestHandler/RestViewHandler-test.cpp
+    RestServer/FlushFeature-test.cpp
     Utils/CollectionNameResolver-test.cpp
     V8Server/v8-users-test.cpp
     V8Server/v8-views-test.cpp
@@ -80,13 +82,38 @@ set(ARANGODB_TESTS_SOURCES
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
+  Aql/AllRowsFetcherTest.cpp
+  Aql/AqlItemBlockHelper.cpp
+  Aql/AqlItemRowTest.cpp
+  Aql/BlockFetcherHelper.cpp
+  Aql/BlockFetcherMock.cpp
+  Aql/CalculationExecutorTest.cpp
+  Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
+  Aql/DistinctCollectExecutorTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
+  Aql/EnumerateCollectionExecutorTest.cpp
+  Aql/EnumerateListExecutorTest.cpp
+  Aql/ExecutionBlockImplTest.cpp
+  Aql/ExecutionBlockImplTestInstances.cpp
+  Aql/FilterExecutorTest.cpp
+  Aql/LimitExecutorTest.cpp
+  Aql/IdExecutorTest.cpp
+  Aql/NoResultsExecutorTest.cpp
   Aql/RestAqlHandlerTest.cpp
+  Aql/ReturnExecutorTest.cpp
+  Aql/ShortestPathExecutorTest.cpp
+  Aql/SingleRowFetcherTest.cpp
+  Aql/SortExecutorTest.cpp
+  Aql/SortLimit-test.cpp
+  Aql/TestEmptyExecutorHelper.cpp
+  Aql/TestExecutorHelper.cpp
+  Aql/TraversalExecutorTest.cpp
+  Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
   Auth/UserManagerTest.cpp
-  Basics/icu-helper.cpp
   Basics/ApplicationServerTest.cpp
+  Basics/icu-helper.cpp
   Basics/AttributeNameParserTest.cpp
   Basics/associative-multi-pointer-test.cpp
   Basics/associative-multi-pointer-nohashcache-test.cpp
@@ -105,6 +132,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/string-test.cpp
   Basics/vector-test.cpp
   Basics/structure-size-test.cpp
+  Basics/CompileTimeStrlenTest.cpp
   Basics/EndpointTest.cpp
   Basics/HashSetTest.cpp
   Basics/LoggerTest.cpp
@@ -141,18 +169,21 @@ set(ARANGODB_TESTS_SOURCES
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp
+  Mocks/StorageEngineMock.cpp
+  Mocks/Servers.cpp
   Pregel/typedbuffer.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
+  VocBase/VersionTest.cpp
   ${IRESEARCH_TESTS_SOURCES}
 )
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
-  # this speeds up the compilation with optimizations and newer g++ versions 
+  # this speeds up the compilation with optimizations and newer g++ versions
   # and prevents the "variable tracking size limit exceeded warnings" from
   # occurring
   if (CMAKE_COMPILER_IS_GNUCC)
@@ -169,6 +200,11 @@ add_executable(
   main.cpp
 )
 
+#required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
+if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
+    target_compile_options(arangodbtests PRIVATE -fno-devirtualize)
+endif()
+
 SET_TARGET_PROPERTIES(arangodbtests PROPERTIES COMPILE_FLAGS "-DCATCH_CONFIG_FAST_COMPILE")
 
 target_link_libraries(
@@ -179,6 +215,7 @@ target_link_libraries(
 
 target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
+  ${V8_INCLUDE_DIR}
 )
 
 # add these includes as system includes because otherwise

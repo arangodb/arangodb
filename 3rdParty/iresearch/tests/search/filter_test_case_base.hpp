@@ -44,7 +44,7 @@ NS_BEGIN(sort)
 struct boost : public iresearch::sort {
   class scorer: public iresearch::sort::scorer_base<iresearch::boost::boost_t> {
    public:
-    DEFINE_FACTORY_INLINE(scorer);
+    DEFINE_FACTORY_INLINE(scorer)
 
     scorer(
         const irs::attribute_store::ref<irs::boost>::type& boost,
@@ -63,14 +63,23 @@ struct boost : public iresearch::sort {
 
   class prepared: public iresearch::sort::prepared_basic<iresearch::boost::boost_t> {
    public:
-    DEFINE_FACTORY_INLINE(prepared);
+    DEFINE_FACTORY_INLINE(prepared)
     prepared() { }
+
+    virtual void collect(
+      irs::attribute_store& filter_attrs,
+      const irs::index_reader& index,
+      const irs::sort::field_collector* field,
+      const irs::sort::term_collector* term
+    ) const {
+      // do not need to collect stats
+    }
 
     virtual const iresearch::flags& features() const override {
       return iresearch::flags::empty_instance();
     }
 
-    virtual collector::ptr prepare_collector() const override {
+    virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
       return nullptr; // do not need to collect stats
     }
 
@@ -83,6 +92,10 @@ struct boost : public iresearch::sort {
       return boost::scorer::make<boost::scorer>(
         query_attrs.get<iresearch::boost>(), query_attrs
        );
+    }
+
+    virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
+      return nullptr; // do not need to collect stats
     }
 
    private:
@@ -107,28 +120,36 @@ struct custom_sort: public irs::sort {
 
   class prepared: public irs::sort::prepared_base<irs::doc_id_t> {
    public:
-    class collector: public irs::sort::collector {
+    class collector
+      : public irs::sort::field_collector, public irs::sort::term_collector {
      public:
+      collector(const custom_sort& sort): sort_(sort) {}
+
+      virtual void collect(
+        const irs::sub_reader& segment,
+        const irs::term_reader& field
+      ) override {
+        if (sort_.collector_collect_field) {
+          sort_.collector_collect_field(segment, field);
+        }
+      }
+
       virtual void collect(
         const irs::sub_reader& segment,
         const irs::term_reader& field,
         const irs::attribute_view& term_attrs
       ) override {
-        if (sort_.collector_collect) {
-          sort_.collector_collect(segment, field, term_attrs);
+        if (sort_.collector_collect_term) {
+          sort_.collector_collect_term(segment, field, term_attrs);
         }
       }
 
-      virtual void finish(
-          irs::attribute_store& filter_attrs,
-          const irs::index_reader& index
-      ) override {
-        if (sort_.collector_finish) {
-          sort_.collector_finish(filter_attrs, index);
-        }
+      virtual void collect(const irs::bytes_ref& in) override {
+        // NOOP
       }
 
-      collector(const custom_sort& sort): sort_(sort) {
+      virtual void write(irs::data_output& out) const override {
+        // NOOP
       }
 
      private:
@@ -169,21 +190,32 @@ struct custom_sort: public irs::sort {
       const irs::term_reader& term_reader_;
     };
 
-    DEFINE_FACTORY_INLINE(prepared);
+    DEFINE_FACTORY_INLINE(prepared)
 
     prepared(const custom_sort& sort): sort_(sort) {
+    }
+
+    virtual void collect(
+      irs::attribute_store& filter_attrs,
+      const irs::index_reader& index,
+      const irs::sort::field_collector* field,
+      const irs::sort::term_collector* term
+    ) const {
+      if (sort_.collectors_collect_) {
+        sort_.collectors_collect_(filter_attrs, index, field, term);
+      }
     }
 
     virtual const iresearch::flags& features() const override {
       return iresearch::flags::empty_instance();
     }
 
-    virtual collector::ptr prepare_collector() const override {
-      if (sort_.prepare_collector) {
-        return sort_.prepare_collector();
+    virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
+      if (sort_.prepare_field_collector_) {
+        return sort_.prepare_field_collector_();
       }
 
-      return irs::sort::collector::make<custom_sort::prepared::collector>(sort_);
+      return irs::memory::make_unique<collector>(sort_);
     }
 
     virtual scorer::ptr prepare_scorer(
@@ -207,6 +239,14 @@ struct custom_sort: public irs::sort {
       score_cast(score) = irs::type_limits<irs::type_t::doc_id_t>::invalid();
     }
 
+    virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
+      if (sort_.prepare_term_collector_) {
+        return sort_.prepare_term_collector_();
+      }
+
+      return irs::memory::make_unique<collector>(sort_);
+    }
+
     virtual void add(irs::byte_type* dst, const irs::byte_type* src) const override {
       if (sort_.scorer_add) {
         sort_.scorer_add(score_cast(dst), score_cast(src));
@@ -221,10 +261,12 @@ struct custom_sort: public irs::sort {
     const custom_sort& sort_;
   };
 
-  std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)> collector_collect;
-  std::function<void(irs::attribute_store&, const irs::index_reader&)> collector_finish;
-  std::function<collector::ptr()> prepare_collector;
+  std::function<void(const irs::sub_reader&, const irs::term_reader&)> collector_collect_field;
+  std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)> collector_collect_term;
+  std::function<void(irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)> collectors_collect_;
+  std::function<irs::sort::field_collector::ptr()> prepare_field_collector_;
   std::function<scorer::ptr(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_store&, const irs::attribute_view&)> prepare_scorer;
+  std::function<irs::sort::term_collector::ptr()> prepare_term_collector_;
   std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_add;
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
   std::function<void(irs::doc_id_t&)> scorer_score;
@@ -256,28 +298,26 @@ struct frequency_sort: public iresearch::sort {
       size_t value{};
     };
 
-    class collector: public iresearch::sort::collector {
-     public:
+    struct term_collector: public irs::sort::term_collector {
+      size_t docs_count{};
+      irs::attribute_view::ref<irs::term_meta>::type meta_attr;
+
       virtual void collect(
-          const iresearch::sub_reader& segment,
-          const iresearch::term_reader& field,
+          const irs::sub_reader& segment,
+          const irs::term_reader& field,
           const irs::attribute_view& term_attrs
       ) override {
-        meta_attr = term_attrs.get<iresearch::term_meta>();
+        meta_attr = term_attrs.get<irs::term_meta>();
         docs_count += meta_attr->docs_count;
       }
 
-      virtual void finish(
-          irs::attribute_store& filter_attrs,
-          const irs::index_reader& index
-      ) override {
-        filter_attrs.emplace<count>()->value = docs_count;
-        docs_count = 0;
+      virtual void collect(const irs::bytes_ref& in) override {
+        // NOOP
       }
 
-     private:
-      size_t docs_count{};
-      irs::attribute_view::ref<irs::term_meta>::type meta_attr;
+      virtual void write(irs::data_output& out) const override {
+        // NOOP
+      }
     };
 
     class scorer: public iresearch::sort::scorer_base<score_t> {
@@ -301,16 +341,29 @@ struct frequency_sort: public iresearch::sort {
       const size_t* docs_count;
     };
 
-    DEFINE_FACTORY_INLINE(prepared);
+    DEFINE_FACTORY_INLINE(prepared)
 
     prepared() { }
+
+    virtual void collect(
+      irs::attribute_store& filter_attrs,
+      const irs::index_reader& index,
+      const irs::sort::field_collector* field,
+      const irs::sort::term_collector* term
+    ) const {
+      auto* term_ptr = dynamic_cast<const term_collector*>(term);
+      if (term_ptr) { // may be null e.g. 'all' filter
+        filter_attrs.emplace<count>()->value = term_ptr->docs_count;
+        const_cast<term_collector*>(term_ptr)->docs_count = 0;
+      }
+    }
 
     virtual const iresearch::flags& features() const override {
       return iresearch::flags::empty_instance();
     }
 
-    virtual collector::ptr prepare_collector() const override {
-      return iresearch::sort::collector::make<frequency_sort::prepared::collector>();
+    virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
+      return nullptr; // do not need to collect stats
     }
 
     virtual scorer::ptr prepare_scorer(
@@ -330,6 +383,10 @@ struct frequency_sort: public iresearch::sort {
       score.id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
       score.value = std::numeric_limits<double>::infinity();
       score.prepared = true;
+    }
+
+    virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
+      return irs::memory::make_unique<term_collector>();
     }
 
     virtual void add(irs::byte_type* dst_buf, const irs::byte_type* src_buf) const override {

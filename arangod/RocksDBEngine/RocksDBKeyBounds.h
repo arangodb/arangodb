@@ -26,12 +26,12 @@
 #define ARANGO_ROCKSDB_ROCKSDB_KEY_BOUNDS_H 1
 
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/vocbase.h"
 
 #include <rocksdb/slice.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <iosfwd>
@@ -87,7 +87,7 @@ class RocksDBKeyBounds {
   /// related to the specified vertex
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds EdgeIndexVertex(uint64_t indexId,
-                                          arangodb::StringRef const& vertexId);
+                                          arangodb::velocypack::StringRef const& vertexId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all index-entries belonging to a specified non-unique
@@ -159,12 +159,12 @@ class RocksDBKeyBounds {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all entries of a fulltext index, matching prefixes
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds FulltextIndexPrefix(uint64_t, arangodb::StringRef const&);
+  static RocksDBKeyBounds FulltextIndexPrefix(uint64_t, arangodb::velocypack::StringRef const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all entries of a fulltext index, matching the word
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds FulltextIndexComplete(uint64_t, arangodb::StringRef const&);
+  static RocksDBKeyBounds FulltextIndexComplete(uint64_t, arangodb::velocypack::StringRef const&);
 
  public:
   RocksDBKeyBounds(RocksDBKeyBounds const& other);
@@ -211,7 +211,7 @@ class RocksDBKeyBounds {
   RocksDBKeyBounds();
   explicit RocksDBKeyBounds(RocksDBEntryType type);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first);
-  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, arangodb::StringRef const& second);
+  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, arangodb::velocypack::StringRef const& second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, VPackSlice const& second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                    VPackSlice const& second, VPackSlice const& third);

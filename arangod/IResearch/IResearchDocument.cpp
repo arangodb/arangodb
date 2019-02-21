@@ -21,11 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchDocument.h"
 #include "Basics/Endian.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "IResearchCommon.h"
+#include "IResearchDocument.h"
 #include "IResearchKludge.h"
 #include "IResearchPrimaryKeyFilter.h"
 #include "IResearchViewMeta.h"
@@ -47,7 +47,6 @@ namespace {
 // --SECTION--                                           Primary key endianness
 // ----------------------------------------------------------------------------
 
-constexpr bool const LittleEndian = true;
 constexpr bool const BigEndian = false;
 
 template <bool IsLittleEndian>

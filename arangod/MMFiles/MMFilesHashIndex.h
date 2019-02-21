@@ -246,7 +246,7 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
+  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
 
   size_t memory() const override;
 

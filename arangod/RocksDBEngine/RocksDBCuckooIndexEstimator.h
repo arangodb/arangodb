@@ -28,13 +28,13 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/StringRef.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/fasthash.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 
 #include <rocksdb/types.h>
+#include <velocypack/StringRef.h>
 
 // In the following template:
 //   Key is the key type, it must be copyable and movable, furthermore, Key
@@ -152,7 +152,7 @@ class RocksDBCuckooIndexEstimator {
   };
 
  public:
-  static bool isFormatSupported(StringRef serialized) {
+  static bool isFormatSupported(arangodb::velocypack::StringRef serialized) {
     switch (serialized.front()) {
       case SerializeFormat::NOCOMPRESSION:
         return true;
@@ -189,7 +189,7 @@ class RocksDBCuckooIndexEstimator {
   }
 
   RocksDBCuckooIndexEstimator(rocksdb::SequenceNumber commitSeq,
-                              arangodb::StringRef const serialized)
+                              arangodb::velocypack::StringRef const serialized)
       : _randState(0x2636283625154737ULL),
         _logSize(0),
         _size(0),
@@ -789,7 +789,7 @@ class RocksDBCuckooIndexEstimator {
     return static_cast<uint8_t>((_randState >> 37) & 0xff);
   }
 
-  void deserializeUncompressed(arangodb::StringRef const& serialized) {
+  void deserializeUncompressed(arangodb::velocypack::StringRef const& serialized) {
     // Assert that we have at least the member variables
     TRI_ASSERT(serialized.size() >=
                (sizeof(SerializeFormat) + sizeof(uint64_t) + sizeof(_size) +

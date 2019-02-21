@@ -207,15 +207,11 @@ class MMFilesEngine final : public StorageEngine {
 
   /// @brief regiter a recovery helper
   /// @note not thread-safe on the assumption of static factory registration
-  static arangodb::Result registerRecoveryHelper(
-    MMFilesRecoveryHelper const& helper
-  );
+  static arangodb::Result registerRecoveryHelper(MMFilesRecoveryHelper const& helper);
 
   /// @brief invoke visitor with each registered recovery helper
   /// @return all recovery registered helpers invoked and returned success
-  static bool visitRecoveryHelpers(
-    std::function<bool(MMFilesRecoveryHelper const&)> const& visitor
-  );
+  static bool visitRecoveryHelpers(std::function<bool(MMFilesRecoveryHelper const&)> const& visitor);
 
  private:
   int dropDatabaseMMFiles(TRI_vocbase_t* vocbase);

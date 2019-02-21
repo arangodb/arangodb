@@ -24,7 +24,6 @@
 #include "AttributeWeightShortestPathFinder.h"
 
 #include "Basics/Exceptions.h"
-#include "Basics/StringRef.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathOptions.h"
@@ -34,19 +33,20 @@
 #include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::graph;
 
-AttributeWeightShortestPathFinder::Step::Step(arangodb::StringRef const& vert,
-                                              arangodb::StringRef const& pred,
+AttributeWeightShortestPathFinder::Step::Step(arangodb::velocypack::StringRef const& vert,
+                                              arangodb::velocypack::StringRef const& pred,
                                               double weig, EdgeDocumentToken&& edge)
     : _weight(weig), _vertex(vert), _predecessor(pred), _edge(std::move(edge)), _done(false) {}
 
 AttributeWeightShortestPathFinder::Searcher::Searcher(
     AttributeWeightShortestPathFinder* pathFinder, ThreadInfo& myInfo,
-    ThreadInfo& peerInfo, arangodb::StringRef const& start, bool isBackward)
+    ThreadInfo& peerInfo, arangodb::velocypack::StringRef const& start, bool isBackward)
     : _pathFinder(pathFinder),
       _myInfo(myInfo),
       _peerInfo(peerInfo),
@@ -70,7 +70,7 @@ void AttributeWeightShortestPathFinder::Searcher::insertNeighbor(Step* step, dou
   delete step;
 }
 
-void AttributeWeightShortestPathFinder::Searcher::lookupPeer(arangodb::StringRef& vertex,
+void AttributeWeightShortestPathFinder::Searcher::lookupPeer(arangodb::velocypack::StringRef& vertex,
                                                              double weight) {
   Step* s = _peerInfo._pq.find(vertex);
 
@@ -119,7 +119,7 @@ void AttributeWeightShortestPathFinder::Searcher::lookupPeer(arangodb::StringRef
 }
 
 bool AttributeWeightShortestPathFinder::Searcher::oneStep() {
-  arangodb::StringRef v;
+  arangodb::velocypack::StringRef v;
   Step* s = nullptr;
   bool b = _myInfo._pq.popMinimal(v, s, true);
 
@@ -150,15 +150,15 @@ bool AttributeWeightShortestPathFinder::Searcher::oneStep() {
   return true;
 }
 
-AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(ShortestPathOptions* options)
-    : _highscoreSet(false),
+AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(ShortestPathOptions& options)
+    : ShortestPathFinder(options),
+      _highscoreSet(false),
       _highscore(0),
       _bingo(false),
       _resultCode(TRI_ERROR_NO_ERROR),
       _intermediateSet(false),
       _intermediate(),
-      _mmdr(new ManagedDocumentResult{}),
-      _options(options) {}
+      _mmdr(new ManagedDocumentResult{}) {}
 
 AttributeWeightShortestPathFinder::~AttributeWeightShortestPathFinder() {}
 
@@ -172,11 +172,11 @@ bool AttributeWeightShortestPathFinder::shortestPath(
   _bingo = false;
   _intermediateSet = false;
 
-  StringRef start = _options->cache()->persistString(StringRef(st));
-  StringRef target = _options->cache()->persistString(StringRef(ta));
+  arangodb::velocypack::StringRef start = _options.cache()->persistString(arangodb::velocypack::StringRef(st));
+  arangodb::velocypack::StringRef target = _options.cache()->persistString(arangodb::velocypack::StringRef(ta));
 
   // Forward with initialization:
-  arangodb::StringRef emptyVertex;
+  arangodb::velocypack::StringRef emptyVertex;
   ThreadInfo forward;
   forward._pq.insert(start, new Step(start, emptyVertex, 0, EdgeDocumentToken()));
 
@@ -187,7 +187,7 @@ bool AttributeWeightShortestPathFinder::shortestPath(
   // Now the searcher threads:
   Searcher forwardSearcher(this, forward, backward, start, false);
   std::unique_ptr<Searcher> backwardSearcher;
-  if (_options->bidirectional) {
+  if (_options.bidirectional) {
     backwardSearcher.reset(new Searcher(this, backward, forward, target, true));
   }
 
@@ -201,7 +201,7 @@ bool AttributeWeightShortestPathFinder::shortestPath(
     if (!forwardSearcher.oneStep()) {
       break;
     }
-    if (_options->bidirectional && !backwardSearcher->oneStep()) {
+    if (_options.bidirectional && !backwardSearcher->oneStep()) {
       break;
     }
 
@@ -234,7 +234,7 @@ bool AttributeWeightShortestPathFinder::shortestPath(
     }
 
     result._edges.push_front(std::move(s->_edge));
-    result._vertices.push_front(StringRef(s->_predecessor));
+    result._vertices.push_front(arangodb::velocypack::StringRef(s->_predecessor));
     s = forward._pq.find(s->_predecessor);
   }
 
@@ -254,7 +254,7 @@ bool AttributeWeightShortestPathFinder::shortestPath(
     }
 
     result._edges.emplace_back(std::move(s->_edge));
-    result._vertices.emplace_back(StringRef(s->_predecessor));
+    result._vertices.emplace_back(arangodb::velocypack::StringRef(s->_predecessor));
     s = backward._pq.find(s->_predecessor);
   }
 
@@ -262,13 +262,13 @@ bool AttributeWeightShortestPathFinder::shortestPath(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  _options->fetchVerticesCoordinator(result._vertices);
+  _options.fetchVerticesCoordinator(result._vertices);
   return true;
 }
 
 void AttributeWeightShortestPathFinder::inserter(
-    std::unordered_map<StringRef, size_t>& candidates,
-    std::vector<Step*>& result, StringRef const& s, StringRef const& t,
+    std::unordered_map<arangodb::velocypack::StringRef, size_t>& candidates,
+    std::vector<Step*>& result, arangodb::velocypack::StringRef const& s, arangodb::velocypack::StringRef const& t,
     double currentWeight, EdgeDocumentToken&& edge) {
   auto cand = candidates.find(t);
   if (cand == candidates.end()) {
@@ -289,32 +289,32 @@ void AttributeWeightShortestPathFinder::inserter(
 }
 
 void AttributeWeightShortestPathFinder::expandVertex(bool isBackward,
-                                                     arangodb::StringRef const& vertex,
+                                                     arangodb::velocypack::StringRef const& vertex,
                                                      std::vector<Step*>& result) {
   std::unique_ptr<EdgeCursor> edgeCursor;
   if (isBackward) {
-    edgeCursor.reset(_options->nextReverseCursor(_mmdr.get(), vertex));
+    edgeCursor.reset(_options.nextReverseCursor(_mmdr.get(), vertex));
   } else {
-    edgeCursor.reset(_options->nextCursor(_mmdr.get(), vertex));
+    edgeCursor.reset(_options.nextCursor(_mmdr.get(), vertex));
   }
 
-  std::unordered_map<StringRef, size_t> candidates;
+  std::unordered_map<arangodb::velocypack::StringRef, size_t> candidates;
   auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {
     if (edge.isString()) {
-      VPackSlice doc = _options->cache()->lookupToken(eid);
-      double currentWeight = _options->weightEdge(doc);
-      StringRef other = _options->cache()->persistString(StringRef(edge));
+      VPackSlice doc = _options.cache()->lookupToken(eid);
+      double currentWeight = _options.weightEdge(doc);
+      arangodb::velocypack::StringRef other = _options.cache()->persistString(arangodb::velocypack::StringRef(edge));
       if (other.compare(vertex) != 0) {
         inserter(candidates, result, vertex, other, currentWeight, std::move(eid));
       } else {
         inserter(candidates, result, other, vertex, currentWeight, std::move(eid));
       }
     } else {
-      StringRef fromTmp(transaction::helpers::extractFromFromDocument(edge));
-      StringRef toTmp(transaction::helpers::extractToFromDocument(edge));
-      StringRef from = _options->cache()->persistString(fromTmp);
-      StringRef to = _options->cache()->persistString(toTmp);
-      double currentWeight = _options->weightEdge(edge);
+      arangodb::velocypack::StringRef fromTmp(transaction::helpers::extractFromFromDocument(edge));
+      arangodb::velocypack::StringRef toTmp(transaction::helpers::extractToFromDocument(edge));
+      arangodb::velocypack::StringRef from = _options.cache()->persistString(fromTmp);
+      arangodb::velocypack::StringRef to = _options.cache()->persistString(toTmp);
+      double currentWeight = _options.weightEdge(edge);
       if (from == vertex) {
         inserter(candidates, result, from, to, currentWeight, std::move(eid));
       } else {
@@ -598,8 +598,8 @@ bool AttributeWeightShortestPathFinder::shortestPathTwoThreads(
   // Insert all vertices and edges at front of vector
   // Do NOT! insert the intermediate vertex
   while (!s->_predecessor.isNone()) {
-    result._edges.push_front(StringRef(s->_edge));
-    result._vertices.push_front(StringRef(s->_predecessor));
+    result._edges.push_front(arangodb::velocypack::StringRef(s->_edge));
+    result._vertices.push_front(arangodb::velocypack::StringRef(s->_predecessor));
     s = forward._pq.find(s->_predecessor);
   }
 
@@ -608,8 +608,8 @@ bool AttributeWeightShortestPathFinder::shortestPathTwoThreads(
   // Also insert the intermediate vertex
   s = backward._pq.find(_intermediate);
   while (!s->_predecessor.isNone()) {
-    result._edges.emplace_back(StringRef(s->_edge));
-    result._vertices.emplace_back(StringRef(s->_predecessor));
+    result._edges.emplace_back(arangodb::velocypack::StringRef(s->_edge));
+    result._vertices.emplace_back(arangodb::velocypack::StringRef(s->_predecessor));
     s = backward._pq.find(s->_predecessor);
   }
 

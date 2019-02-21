@@ -1191,7 +1191,9 @@ function ahuacatlStringFunctionsTestSuite () {
         [ 'aaaayyybccc', 'aaaabbbbccc', [ 'A', 'b', 'c' ], [ 'x', 'y', 'z' ], 3 ],
         [ 'the quick  foxx', 'the quick brown foxx', 'brown' ],
         [ 'the quick brown foxx', 'the quick brown foxx', [ ] ],
-        [ 'the quick  foxx', 'the quick brown foxx', [ 'brown' ], [ ] ]
+        [ 'the quick  foxx', 'the quick brown foxx', [ 'brown' ], [ ] ],
+        [ 'the   ant', 'the quick brown foxx', [ 'quick', 'brown', 'foxx' ], [ '', null, 'ant' ] ], 
+        [ 'the   ant', 'the quick brown foxx', { quick: '', brown: null, foxx: 'ant' } ],
       ];
 
       values.forEach(function (value) {
@@ -1206,7 +1208,7 @@ function ahuacatlStringFunctionsTestSuite () {
         assertEqual([ expected ], nuResults, value);
       });
     },
-
+    
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test substitute function
 // //////////////////////////////////////////////////////////////////////////////

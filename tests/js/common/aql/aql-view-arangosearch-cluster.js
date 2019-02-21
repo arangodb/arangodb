@@ -603,6 +603,35 @@ function IResearchAqlTestSuite(args) {
       });
     },
 
+    testJoinTwoViewsSortByAttribute : function() {
+      var expected = [];
+      expected.push({ a: "bar", b: "foo", c: 1 });
+      expected.push({ a: "baz", b: "foo", c: 1 });
+      expected.push({ a: "foo", b: "bar", c: 1 });
+      expected.push({ a: "foo", b: "baz", c: 1 });
+      expected.push({ a: "bar", b: "foo", c: 0 });
+      expected.push({ a: "baz", b: "foo", c: 0 });
+      expected.push({ a: "foo", b: "bar", c: 0 });
+      expected.push({ a: "foo", b: "baz", c: 0 });
+
+      var result = db._query(
+        "FOR doc0 IN CompoundView OPTIONS { collections: ['UnitTestsCollection2'], waitForSync:true } " +
+        "  FOR doc1 IN UnitTestsView SEARCH doc0.c == doc1.c && STARTS_WITH(doc1['a'], doc0.a) OPTIONS { waitForSync: true } " +
+        "FILTER doc1.c < 2 " +
+        "SORT doc1.c DESC, doc1.a, doc1.b " +
+        "RETURN doc1"
+      , null, { waitForSync: true }).toArray();
+
+      assertEqual(result.length, expected.length);
+      var i = 0;
+      result.forEach(function(res) {
+        var doc = expected[i++];
+        assertEqual(doc.a, res.a);
+        assertEqual(doc.b, res.b);
+        assertEqual(doc.c, res.c);
+      });
+    },
+
     testWithKeywordForViewInGraph : function() {
       var results = [];
 

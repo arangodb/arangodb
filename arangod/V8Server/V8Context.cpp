@@ -162,7 +162,7 @@ void V8Context::handleGlobalContextMethods() {
     v8g->_allowUseDatabase = true;
 
     try {
-      v8::TryCatch tryCatch;
+      v8::TryCatch tryCatch(_isolate);
 
       TRI_ExecuteJavaScriptString(_isolate, _isolate->GetCurrentContext(),
                                   TRI_V8_STD_STRING(_isolate, func),

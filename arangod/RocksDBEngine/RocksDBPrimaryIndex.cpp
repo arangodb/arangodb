@@ -30,8 +30,7 @@
 #include "Cache/CachedValue.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ServerState.h"
-#include "Indexes/PersistentIndexAttributeMatcher.h"
-#include "Indexes/SkiplistIndexAttributeMatcher.h"
+#include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -211,7 +210,7 @@ bool RocksDBPrimaryIndexEqIterator::next(LocalDocumentIdCallback const& cb, size
   }
 
   _done = true;
-  LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(_key->slice()));
+  LocalDocumentId documentId = _index->lookupKey(_trx, arangodb::velocypack::StringRef(_key->slice()));
   if (documentId.isSet()) {
     cb(documentId);
   }
@@ -228,7 +227,7 @@ bool RocksDBPrimaryIndexEqIterator::nextCovering(DocumentCallback const& cb, siz
   }
 
   _done = true;
-  LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(_key->slice()));
+  LocalDocumentId documentId = _index->lookupKey(_trx, arangodb::velocypack::StringRef(_key->slice()));
   if (documentId.isSet()) {
     cb(documentId, _key->slice());
   }
@@ -264,7 +263,7 @@ bool RocksDBPrimaryIndexInIterator::next(LocalDocumentIdCallback const& cb, size
   }
 
   while (limit > 0) {
-    LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(*_iterator));
+    LocalDocumentId documentId = _index->lookupKey(_trx, arangodb::velocypack::StringRef(*_iterator));
     if (documentId.isSet()) {
       cb(documentId);
       --limit;
@@ -274,7 +273,7 @@ bool RocksDBPrimaryIndexInIterator::next(LocalDocumentIdCallback const& cb, size
     if (!_iterator.valid()) {
       return false;
     }
-  } 
+  }
   return true;
 }
 
@@ -288,7 +287,7 @@ bool RocksDBPrimaryIndexInIterator::nextCovering(DocumentCallback const& cb, siz
   }
 
   while (limit > 0) {
-    LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(*_iterator));
+    LocalDocumentId documentId = _index->lookupKey(_trx, arangodb::velocypack::StringRef(*_iterator));
     if (documentId.isSet()) {
       cb(documentId, *_iterator);
       --limit;
@@ -298,7 +297,7 @@ bool RocksDBPrimaryIndexInIterator::nextCovering(DocumentCallback const& cb, siz
     if (!_iterator.valid()) {
       return false;
     }
-  } while (true);
+  }
   return true;
 }
 
@@ -346,7 +345,7 @@ void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder,
 }
 
 LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
-                                               arangodb::StringRef keyRef) const {
+                                               arangodb::velocypack::StringRef keyRef) const {
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, keyRef);
 
@@ -406,7 +405,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 /// the case for older collections
 /// in this case the caller must fetch the revision id from the actual
 /// document
-bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx, arangodb::StringRef keyRef,
+bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx, arangodb::velocypack::StringRef keyRef,
                                          LocalDocumentId& documentId,
                                          TRI_voc_rid_t& revisionId) const {
   documentId.clear();
@@ -440,7 +439,7 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
   TRI_ASSERT(keySlice.isString());
   RocksDBKeyLeaser key(&trx);
 
-  key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
+  key->constructPrimaryIndexValue(_objectId, arangodb::velocypack::StringRef(keySlice));
 
   rocksdb::PinnableSlice val;
   rocksdb::Status s = mthd->Get(_cf, key->string(), &val);
@@ -482,7 +481,7 @@ Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mt
   TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
   RocksDBKeyLeaser key(&trx);
 
-  key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
+  key->constructPrimaryIndexValue(_objectId, arangodb::velocypack::StringRef(keySlice));
 
   TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(newDoc);
   auto value = RocksDBValue::PrimaryIndexValue(newDocumentId, revision);
@@ -507,7 +506,7 @@ Result RocksDBPrimaryIndex::remove(transaction::Methods& trx, RocksDBMethods* mt
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
   TRI_ASSERT(keySlice.isString());
   RocksDBKeyLeaser key(&trx);
-  key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
+  key->constructPrimaryIndexValue(_objectId, arangodb::velocypack::StringRef(keySlice));
 
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
@@ -530,7 +529,7 @@ bool RocksDBPrimaryIndex::supportsFilterCondition(
   std::unordered_set<std::string> nonNullAttributes;
 
   std::size_t values = 0;
-  SkiplistIndexAttributeMatcher::matchAttributes(this, node, reference, found,
+  SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found,
                                                  values, nonNullAttributes,
                                                  /*skip evaluation (during execution)*/ false);
   estimatedItems = values;
@@ -541,9 +540,9 @@ bool RocksDBPrimaryIndex::supportsSortCondition(arangodb::aql::SortCondition con
                                                 arangodb::aql::Variable const* reference,
                                                 size_t itemsInIndex, double& estimatedCost,
                                                 size_t& coveredAttributes) const {
-  return PersistentIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
-                                                                itemsInIndex, estimatedCost,
-                                                                coveredAttributes);
+  return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
+                                                              itemsInIndex, estimatedCost,
+                                                              coveredAttributes);
 }
 
 /// @brief creates an IndexIterator for the given Condition
@@ -591,7 +590,7 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
     }
     // fall-through intentional here
   }
-  
+
   auto removeCollectionFromString =
       [this, &trx](bool isId, std::string& value) -> int {
     if (isId) {
@@ -605,7 +604,7 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
         if (_isRunningInCluster) {
           // translate from our own shard name to "real" collection name
           return value.compare(trx->resolver()->getCollectionName(_collection.id()));
-        } 
+        }
         return value.compare(_collection.name());
       }
 
@@ -618,7 +617,7 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
       } else if (_isRunningInCluster && collection->planId() != _collection.planId()) {
         // using a different collection
         // translate from our own shard name to "real" collection name
-        return value.compare(trx->resolver()->getCollectionName(_collection.id())); 
+        return value.compare(trx->resolver()->getCollectionName(_collection.id()));
       }
 
       // strip collection name prefix
@@ -636,7 +635,7 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
 
   for (size_t i = 0; i < n; ++i) {
     aql::AstNode const* comp = node->getMemberUnchecked(i);
-    
+
     if (comp == nullptr) {
       continue;
     }
@@ -752,13 +751,13 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* RocksDBPrimaryIndex::specializeCondition(
     arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference) const {
-  return SkiplistIndexAttributeMatcher::specializeCondition(this, node, reference);
+  return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
 }
 
 /// @brief create the iterator, for a single attribute, IN operator
 IndexIterator* RocksDBPrimaryIndex::createInIterator(transaction::Methods* trx,
                                                      arangodb::aql::AstNode const* attrNode,
-                                                     arangodb::aql::AstNode const* valNode, 
+                                                     arangodb::aql::AstNode const* valNode,
                                                      bool ascending) {
   // _key or _id?
   bool const isId = (attrNode->stringEquals(StaticStrings::IdString));
@@ -796,7 +795,7 @@ IndexIterator* RocksDBPrimaryIndex::createInIterator(transaction::Methods* trx,
   }
 
   keys->close();
-        
+
   return new RocksDBPrimaryIndexInIterator(&_collection, trx, this, std::move(keys), !isId);
 }
 

@@ -36,6 +36,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/TtlFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/StandaloneContext.h"
@@ -922,10 +923,11 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.add("uptime", VPackValue(serverInfo._uptime));
   builder.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
 
+  // export v8 statistics
   builder.add("v8Context", VPackValue(VPackValueType::Object));
   V8DealerFeature::Statistics v8Counters{};
   // V8 may be turned off on a server
-  if (dealer->isEnabled()) {
+  if (dealer && dealer->isEnabled()) {
     v8Counters = dealer->getCurrentContextNumbers();
   }
   builder.add("available", VPackValue(v8Counters.available));
@@ -935,9 +937,16 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.add("max", VPackValue(v8Counters.max));
   builder.close();
 
+  // export threads statistics
   builder.add("threads", VPackValue(VPackValueType::Object));
   SchedulerFeature::SCHEDULER->addQueueStatistics(builder);
   builder.close();
+  
+  // export ttl statistics
+  TtlFeature* ttlFeature =
+      application_features::ApplicationServer::getFeature<TtlFeature>("Ttl");
+  builder.add(VPackValue("ttl"));
+  ttlFeature->statsToVelocyPack(builder);
 
   builder.close();
 

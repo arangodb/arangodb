@@ -32,6 +32,7 @@
 #include "Indexes/Index.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -430,7 +431,7 @@ bool TraverserOptions::hasEdgeFilter(int64_t depth, size_t cursorId) const {
 }
 
 bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
-                                              StringRef vertexId, uint64_t depth,
+                                              arangodb::velocypack::StringRef vertexId, uint64_t depth,
                                               size_t cursorId) const {
   arangodb::aql::Expression* expression = nullptr;
 
@@ -493,7 +494,7 @@ bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vert
 }
 
 EdgeCursor* arangodb::traverser::TraverserOptions::nextCursor(ManagedDocumentResult* mmdr,
-                                                              StringRef vid,
+                                                              arangodb::velocypack::StringRef vid,
                                                               uint64_t depth) {
   if (_isCoordinator) {
     return nextCursorCoordinator(vid, depth);
@@ -509,7 +510,7 @@ EdgeCursor* arangodb::traverser::TraverserOptions::nextCursor(ManagedDocumentRes
   return nextCursorLocal(mmdr, vid, list);
 }
 
-EdgeCursor* TraverserOptions::nextCursorCoordinator(StringRef vid, uint64_t depth) {
+EdgeCursor* TraverserOptions::nextCursorCoordinator(arangodb::velocypack::StringRef vid, uint64_t depth) {
   TRI_ASSERT(_traverser != nullptr);
   auto cursor = std::make_unique<ClusterEdgeCursor>(vid, depth, this);
   return cursor.release();

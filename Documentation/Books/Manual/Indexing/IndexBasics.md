@@ -8,7 +8,7 @@ of documents.
 
 User-defined indexes can be created on collection level. Most user-defined indexes 
 can be created by specifying the names of the index attributes.
-Some index types allow indexing just one attribute (e.g. fulltext index) whereas 
+Some index types allow indexing just one attribute (e.g. *fulltext* index) whereas 
 other index types allow indexing multiple attributes at the same time.
 
 Learn how to use different indexes efficiently by going through the
@@ -22,15 +22,14 @@ are covered by an edge collection's edge index automatically.
 Using the system attribute `_id` in user-defined indexes is not possible, but 
 indexing `_key`, `_rev`, `_from`, and `_to` is.
 
-{###
-Creating new indexes is usually done under an exclusive collection lock. The collection is not
-available as long as the index is created.  This "foreground" index creation can be undesirable, 
+Creating new indexes is by default done under an exclusive collection lock. The collection is not
+available while the index is being created.  This "foreground" index creation can be undesirable, 
 if you have to perform it on a live system without a dedicated maintenance window.
 
 For potentially long running index  creation operations the _rocksdb_ storage-engine also supports 
-creating indexes in "background". The collection remains available during the index creation, 
-see the section "Creating Indexes in Background" for more information.
-###}
+creating indexes in "background". The collection remains (mostly) available during the index creation, 
+see the section [Creating Indexes in Background](#creating-indexes-in-background) for more information.
+
 
 ArangoDB provides the following index types:
 
@@ -251,6 +250,50 @@ with the number of documents in the index.
 
 Skiplist indexes support [indexing array values](#indexing-array-values) if the index
 attribute name is extended with a <i>[\*]</i>`.
+
+TTL (time-to-live) Index
+------------------------
+
+The TTL index provided by ArangoDB can be used for automatically removing expired documents 
+from a collection. 
+
+A TTL index is set up by setting an `expireAfter` value and by picking a single 
+document attribute which contains the documents' creation date and time. Documents 
+are expired after `expireAfter` seconds after their creation time. The creation time
+is specified as a numeric timestamp with millisecond precision.
+
+For example, if `expireAfter` is set to 600 seconds (10 minutes) and the index
+attribute is "creationDate" and there is the following document:
+
+    { "creationDate" : 1550165973964 }
+
+This document will be indexed with a creation date time value of `1550165973964`,
+which translates to the human-readable date `2019-02-14T17:39:33.964Z`. The document
+will expire 600 seconds afterwards, which is at timestamp `1550166573964` (or
+`2019-02-14T17:49:33.964Z` in the human-readable version).
+
+The actual removal of expired documents will not necessarily happen immediately. 
+Expired documents will eventually removed by a background thread that is periodically
+going through all TTL indexes and removing the expired documents. The frequency for
+invoking this background thread can be configured using the `--ttl.frequency`
+startup option. 
+
+There is no guarantee when exactly the removal of expired documents will be carried
+out, so queries may still find and return documents that have already expired. These
+will eventually be removed when the background thread kicks in and has capacity to
+remove the expired documents. It is guaranteed however that only documents which are 
+past their expiration time will actually be removed.
+
+Please note that the numeric date time values for the index attribute should be 
+specified in milliseconds since January 1st 1970 (Unix timestamp with millisecond
+precision). To calculate the current timestamp from JavaScript in this format, 
+there is `Date.now()`, to calculate it from an arbitrary date string, there is 
+`Date.getTime()`.
+
+In case the index attribute does not contain a numeric value, the document will not
+be stored in the TTL index and thus will not become a candidate for expiration and 
+removal. Providing either a non-numeric value or even no value for the index attribute
+is a supported way of keeping documents from being expired and removed.
 
 
 Geo Index
@@ -551,7 +594,7 @@ based on the costs it estimates, even if a vertex centric index might
 in fact be faster. Vertex centric indexes are more likely to be chosen
 for highly connected graphs and with RocksDB storage engine.
 
-{###
+
 Creating Indexes in Background
 ------------------------------
 
@@ -610,4 +653,4 @@ if this list grows to tens of millions of entries.
 
 Building an index is always a write heavy operation (internally), it is always a good idea to build indexes
 during times with less load.
-###}
+

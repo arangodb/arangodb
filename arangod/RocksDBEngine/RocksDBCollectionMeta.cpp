@@ -354,14 +354,14 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
     if (!s.ok() && !s.IsNotFound()) {
       return rocksutils::convertStatus(s);
     } else if (s.IsNotFound()) {  // expected with nosync recovery tests
-      LOG_TOPIC(WARN, Logger::ROCKSDB)
+      LOG_TOPIC(WARN, Logger::ENGINES)
           << "recalculating index estimate for index "
           << "type '" << idx->typeName() << "' with id '" << idx->id() << "'";
       idx->recalculateEstimates();
       continue;
     }
 
-    StringRef estimateInput(value.data() + sizeof(uint64_t), value.size() - sizeof(uint64_t));
+    arangodb::velocypack::StringRef estimateInput(value.data() + sizeof(uint64_t), value.size() - sizeof(uint64_t));
 
     uint64_t committedSeq = rocksutils::uint64FromPersistent(value.data());
     if (RocksDBCuckooIndexEstimator<uint64_t>::isFormatSupported(estimateInput)) {

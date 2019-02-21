@@ -28,11 +28,11 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
@@ -62,7 +62,7 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
 
   if (_contentType == ContentType::JSON) {
     if (!_vpackBuilder) {
-      StringRef json = _message.payload();
+      arangodb::velocypack::StringRef json = _message.payload();
       if (!json.empty()) {
         _vpackBuilder = VPackParser::fromJson(json.data(), json.length());
       }
@@ -71,11 +71,14 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
       return _vpackBuilder->slice();
     }
   } else if (_contentType == ContentType::VPACK) {
-    StringRef vpack = _message.payload();
+    arangodb::velocypack::StringRef vpack = _message.payload();
     if (!vpack.empty()) {
       if (!_validatedPayload) {
         VPackOptions validationOptions = *options;  // intentional copy
         validationOptions.validateUtf8Strings = true;
+        validationOptions.checkAttributeUniqueness = true;
+        validationOptions.disallowExternals = true;
+        validationOptions.disallowCustom = true;
         VPackValidator validator(&validationOptions);
         // will throw on error
         _validatedPayload = validator.validate(vpack.data(), vpack.length());

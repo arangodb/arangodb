@@ -490,7 +490,10 @@
     "dynamic" : false,
     "enterpriseOnly" : false,
     "hidden" : false,
-    "introducedIn" : null,
+    "introducedIn" : [
+      "v3.3.22",
+      "v3.4.2"
+    ],
     "obsolete" : false,
     "requiresValue" : true,
     "section" : "",
@@ -498,7 +501,7 @@
   },
   "output-directory" : {
     "category" : "option",
-    "default" : "/oskar/work/ArangoDB/dump",
+    "default" : "/home/steemann/ArangoNoAsan/dump",
     "deprecatedIn" : null,
     "description" : "output directory",
     "dynamic" : false,

@@ -28,9 +28,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var isEqual = helper.isEqual;
+const _ = require('lodash');
+const jsunity = require("jsunity");
+const helper = require("@arangodb/aql-helper");
+const isEqual = helper.isEqual;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -211,6 +212,57 @@ function optimizerRuleTestSuite () {
         var result = AQL_EXECUTE(query[0], { }, paramDisabled).json;
         assertEqual(result, query[1], query[0]);
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test collect variable pass through
+///
+/// Regression test, input registers were only copied in the first block
+/// in sorted collect.
+////////////////////////////////////////////////////////////////////////////////
+
+
+    testCollectWithVariablePassThrough : function () {
+      const query = `
+        LET x = LENGTH(1..42)
+        FOR i IN 1..2000
+        LET d = {val: i}
+        SORT d.val
+        COLLECT v = d.val
+        RETURN {v, x}
+      `;
+
+      const expected = _.range(1, 2001).map(i => ({v: i, x: 42}));
+
+      const result = AQL_EXECUTE(query, {}, paramEnabled).json;
+      assertEqual(result.length, expected.length);
+      // Don't compare the whole arrays, for a better readable output in case
+      // of errors.
+      for (let i = 0; i < expected.length; i++) {
+        assertEqual(result[i], expected[i], `mismatch at index ${i}`);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test collect with offset
+///
+/// Regression test, there was a segfault in sorted collect when at least one
+/// row was skipped.
+////////////////////////////////////////////////////////////////////////////////
+
+
+    testCollectWithOffset : function () {
+      const query = `
+        FOR i IN 1..2
+        LET d = {val: i}
+        SORT d.val
+        COLLECT v = d.val
+        LIMIT 1,1
+        RETURN v
+      `;
+
+      const result = AQL_EXECUTE(query, {}, paramEnabled).json;
+      assertEqual(result, [2]);
     },
 
   };

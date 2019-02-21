@@ -2621,7 +2621,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner( // create index
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard(
       [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
-
+                           
   AgencyOperation newValue(planIndexesKey, AgencyValueOperationType::PUSH,
                            newIndexBuilder.slice());
   AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
@@ -2657,7 +2657,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner( // create index
     {
       // Copy over all elements in slice.
       VPackObjectBuilder b(&resultBuilder);
-      resultBuilder.add("isSmart", VPackValue(true));
+      resultBuilder.add(StaticStrings::IsSmart, VPackValue(true));
     }
 
     loadCurrent();

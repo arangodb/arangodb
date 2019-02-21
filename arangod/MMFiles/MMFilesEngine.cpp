@@ -385,9 +385,7 @@ Result MMFilesEngine::persistLocalDocumentIds(TRI_vocbase_t& vocbase) {
   return result;
 }
 
-/*static*/ arangodb::Result MMFilesEngine::registerRecoveryHelper(
-  MMFilesRecoveryHelper const& helper
-) {
+/*static*/ arangodb::Result MMFilesEngine::registerRecoveryHelper(MMFilesRecoveryHelper const& helper) {
   try {
     getRecoveryHelpers().emplace_back(&helper);
   } catch (std::bad_alloc const&) {
@@ -398,14 +396,13 @@ Result MMFilesEngine::persistLocalDocumentIds(TRI_vocbase_t& vocbase) {
 }
 
 /*static*/ bool MMFilesEngine::visitRecoveryHelpers(
-  std::function<bool(MMFilesRecoveryHelper const&)> const& visitor
-) {
+    std::function<bool(MMFilesRecoveryHelper const&)> const& visitor) {
   if (!visitor) {
     return false;
   }
 
-  for (auto& helper: getRecoveryHelpers()) {
-    TRI_ASSERT(helper); // non-nullptr ensured by registerRecoveryHelper(...)
+  for (auto& helper : getRecoveryHelpers()) {
+    TRI_ASSERT(helper);  // non-nullptr ensured by registerRecoveryHelper(...)
 
     if (!visitor(*helper)) {
       return false;
@@ -3187,7 +3184,13 @@ char* MMFilesEngine::nextFreeMarkerPosition(LogicalCollection* collection, TRI_v
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
-    cache->addDitch(ditch);
+    try {
+      cache->addDitch(ditch);
+    } catch (...) {
+      // prevent leaking here
+      arangodb::MMFilesCollection::toMMFilesCollection(collection)->ditches()->freeDitch(ditch);
+      throw;
+    }
   }
 
   TRI_ASSERT(dst != nullptr);
