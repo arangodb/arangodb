@@ -81,9 +81,9 @@ bool Job::finish(std::string const& server, std::string const& shard,
     
     if (slice.isObject()) { // Only additional operation
       operations = slice;
-    } else {                 // Additional operations and preconditions
+    } else if (slice.isArray()) { // Additional operations and preconditions
       size_t n = slice.length();
-      TRI_ASSERT(n < 2);
+      TRI_ASSERT(n <= 2);
       if (n > 0) {
         operations = slice[0];
         TRI_ASSERT(operations.isObject() || operations.isNone());
@@ -92,6 +92,9 @@ bool Job::finish(std::string const& server, std::string const& shard,
         preconditions = slice[1];
         TRI_ASSERT(preconditions.isObject() || operations.isNone());
       }
+    } else {
+      // Should never get here.
+      TRI_ASSERT(false);
     }
     
   }
@@ -452,10 +455,8 @@ void Job::doForAllShards(Node const& snapshot, std::string& database,
     std::string shard = collShard.shard;
     std::string collection = collShard.collection;
 
-    std::string planPath =
-        planColPrefix + database + "/" + collection + "/shards/" + shard;
-    std::string curPath =
-        curColPrefix + database + "/" + collection + "/" + shard + "/servers";
+    planPath = planColPrefix + database + "/" + collection + "/shards/" + shard;
+    curPath = curColPrefix + database + "/" + collection + "/" + shard + "/servers";
 
     auto plan = snapshot.hasAsBuilder(planPath).first;
     auto current = snapshot.hasAsBuilder(curPath).first;
