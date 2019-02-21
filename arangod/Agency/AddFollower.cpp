@@ -147,7 +147,7 @@ bool AddFollower::start() {
   // First check that we still have too few followers for the current
   // `replicationFactor`:
 
-  size_t desiredReplFactor;
+  size_t desiredReplFactor = 1;
   try {
     desiredReplFactor = collection.hasAsUInt("replicationFactor").first;
   } catch (std::exception const& e) {

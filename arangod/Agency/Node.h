@@ -84,9 +84,6 @@ class Node {
   /// @brief Child nodes
   typedef std::unordered_map<std::string, std::shared_ptr<Node>> Children;
 
-  /// @brief Construct with name
-  explicit Node(std::string const& name = std::string());
-
   /// @brief Copy constructor
   Node(Node const& other);
 
@@ -94,10 +91,10 @@ class Node {
   Node(Node&& other);
 
   /// @brief Copy constructor
-  Node(Slice const slice);
+  Node(Slice const slice, Node* parent = nullptr);
 
   /// @brief Construct with name and introduce to tree under parent
-  Node(std::string const& name, Node* parent);
+  Node(std::string const& name = std::string(), Node* parent = nullptr);
 
   /// @brief Construct with name and introduce to tree under parent
   Node(std::string const& name, Store* store);
@@ -324,6 +321,7 @@ class Node {
   Store* _store;                        ///< @brief Store
   Children _children;                   ///< @brief child nodes
   TimePoint _ttl;                       ///< @brief my expiry
+
   std::vector<std::shared_ptr<Node>> _array;  ///< @brief my value
   NodeType _type;
   Buffer<uint8_t> _buffer;

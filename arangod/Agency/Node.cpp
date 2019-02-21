@@ -73,10 +73,6 @@ inline static std::vector<std::string> split(const std::string& str, char separa
   return result;
 }
 
-/// @brief Construct with node name
-Node::Node(std::string const& name)
-    : _nodeName(name), _parent(nullptr), _store(nullptr), _type(NODE) {}
-
 /// @brief Construct with node name in tree structure
 Node::Node(std::string const& name, Node* parent)
     : _nodeName(name), _parent(parent), _store(nullptr), _type(NODE) {}
@@ -108,48 +104,17 @@ std::string Node::uri() const {
 }
 
 /// @brief Move constructor
-Node::Node(Node&& other)
-    : _nodeName(std::move(other._nodeName)),
-      _parent(nullptr),
-      _store(nullptr),
-      _children(std::move(other._children)),
-      _ttl(std::move(other._ttl)),
-      _array(std::move(other._array)),
-      _type(std::move(other._type)),
-      _buffer(std::move(other._buffer)) {
-  // The _children map / _array vector has been moved here, therefore we must
-  // correct the _parent entry of all direct children:
-  for (auto& child : _children) {
-    child.second->_parent = this;
-  }
-  for (auto& element : _array) {
-    element->_parent = this;
-  }
+Node::Node(Node&& other) : _parent(nullptr), _store(nullptr) {
+  *this = std::move(other);
 }
 
 /// @brief Copy constructor
-Node::Node(Node const& other)
-    : _nodeName(other._nodeName),
-      _parent(nullptr),
-      _store(nullptr),
-      _ttl(other._ttl),
-      _type(other._type),
-      _buffer(other._buffer) {
-  for (auto const& p : other._children) {
-    auto copy = std::make_shared<Node>(*p.second);
-    copy->_parent = this;  // new children have us as _parent!
-    _children.emplace(p.first,copy);
-  }
-  for (auto const& a : other._array) {
-    auto copy = std::make_shared<Node>(*a);
-    copy->_parent = this;  // new array elements have us as _parent!
-    _array.emplace_back(copy);
-  }
+Node::Node(Node const& other) : _parent(nullptr), _store(nullptr) {
+  *this = other;
 }
 
-
 // Construct by assigning slice
-Node::Node (Slice const slice) {
+Node::Node (Slice const slice, Node* parent) : _parent(parent) {
   *this = slice;
 }
 
@@ -158,7 +123,7 @@ Node::Node (Slice const slice) {
 /// 1. remove any existing time to live entry
 /// 2. clear children map
 /// 3. copy from rhs buffer to my buffer
-//::/ @brief Must not copy _parent, _ttl, _observers
+//::/ @brief Must not copy _parent
 Node& Node::operator=(VPackSlice const& slice) {
   removeTimeToLive();
   _children.clear();
@@ -169,9 +134,7 @@ Node& Node::operator=(VPackSlice const& slice) {
     _array.resize(slice.length());
     size_t j = 0;
     for (auto const& i : VPackArrayIterator(slice)) {
-      _array.at(j) = std::make_shared<Node>();
-      _array.at(j)->_parent = this;  
-      *(_array.at(j++)) = i;
+      _array.at(j++) = std::make_shared<Node>(i, this);
     }
   } else {
     _type = LEAF;
@@ -183,23 +146,26 @@ Node& Node::operator=(VPackSlice const& slice) {
 /// @brief Move operator
 Node& Node::operator=(Node&& rhs) {
   // 1. remove any existing time to live entry
-  // 2. move children map over
-  // 3. move value over
-  // Must not move over rhs's _parent, _observers
+  // 2. move children map / array / value over
+  // 3. Must not move over rhs's _parent
+  
   _nodeName = std::move(rhs._nodeName);
+  _type = std::move(rhs._type);
+  _buffer = std::move(rhs._buffer);
+  _ttl = std::move(rhs._ttl);
+  
+  // Move _children map and adopt the children
   _children = std::move(rhs._children);
-  // The _children map has been moved here, therefore we must
-  // correct the _parent entry of all direct children:
   for (auto& child : _children) {
     child.second->_parent = this;
   }
+
+  // Move _array vector and adopt the children  
   _array = std::move(rhs._array);
   for (auto& elem : _array) {
     elem->_parent = this;
   }
-  _type = std::move(rhs._type);
-  _buffer = std::move(rhs._buffer);
-  _ttl = std::move(rhs._ttl);
+
   return *this;
 }
 
@@ -208,24 +174,29 @@ Node& Node::operator=(Node const& rhs) {
   // 1. remove any existing time to live entry
   // 2. clear children map
   // 3. move from rhs to buffer pointer
-  // Must not move rhs's _parent, _observers
-  removeTimeToLive();
+  // Must not move rhs's _parent
+
   _nodeName = rhs._nodeName;
+  _type = rhs._type;
+  _buffer = rhs._buffer;
+  _ttl = rhs._ttl;
+
+  // Need deep copying of actual children
   _children.clear();
-  _array.clear();
   for (auto const& p : rhs._children) {
     auto copy = std::make_shared<Node>(*p.second);
     copy->_parent = this;  // new child copy has us as _parent
     _children.insert(std::make_pair(p.first, copy));
   }
+
+  // Need deep copying of actual elements
+  _array.clear();
   for (auto const& a : rhs._array) {
     auto copy = std::make_shared<Node>(*a);
     copy->_parent = this;  // new child copy has us as _parent
     _array.emplace_back(copy);
   }
-  _type = rhs._type;
-  _buffer = rhs._buffer;
-  _ttl = rhs._ttl;
+  
   return *this;
 }
 
