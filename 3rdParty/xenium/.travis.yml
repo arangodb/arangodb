@@ -1,0 +1,46 @@
+language: cpp
+
+os: linux
+dist: xenial
+
+jobs:
+  include:
+    # build + run tests
+    - stage: build
+      name: "build + test"
+      addons:
+        apt:
+          sources:
+          - ubuntu-toolchain-r-test
+          packages:
+          - g++-7
+      install:
+        - wget https://dl.bintray.com/boostorg/release/1.68.0/source/boost_1_68_0.tar.gz
+        - tar xzf boost_1_68_0.tar.gz
+      before_script:
+        - mkdir build
+        - cd build
+        - cmake .. -DCMAKE_CXX_COMPILER=g++-7 -DBOOST_ROOT=./boost_1_68_0
+      script:
+        - make -j 2
+        - ./gtest
+    # build + deploy documentation
+    - stage: deploy
+      name: "build + deploy documentation"
+      addons:
+        apt:
+          packages:
+          - doxygen
+          - graphviz
+      script:
+        - cd doc
+        - doxygen
+      deploy:
+        provider: pages
+        skip_cleanup: true
+        local_dir: doc/html
+        github_token: $GH_REPO_TOKEN
+        on:
+          branch: master
+
+

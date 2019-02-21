@@ -1,0 +1,15 @@
+/**
+ * @namespace xenium::reclamation
+ *
+ * @brief This namespace provides implementations of various memory reclamation schemes.
+ *
+ * The following schemes are implemented:
+ *  * `lock_free_ref_count`
+ *  * `epoch_based`
+ *  * `new_epoch_based`
+ *  * `quiescent_state_based`
+ *  * `debra`
+ *  * `hazard_pointer`
+ *  * `hazard_era`
+ *  * `stamp_it`
+ */

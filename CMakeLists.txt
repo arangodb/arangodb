@@ -1049,6 +1049,7 @@ include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKS
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/${ARANGO_S2GEOMETRY_VERSION}/src)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION})
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/xenium/)
 
 # ------------------------------------------------------------------------------
 # RocksDB
