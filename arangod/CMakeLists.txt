@@ -224,7 +224,7 @@ SET(ARANGOD_SOURCES
   Aql/GraphNode.cpp
   Aql/Graphs.cpp
   Aql/IdExecutor.cpp
-  Aql/IndexBlock.cpp
+  Aql/IndexExecutor.cpp
   Aql/IndexNode.cpp
   Aql/InputAqlItemRow.cpp
   Aql/LimitExecutor.cpp
