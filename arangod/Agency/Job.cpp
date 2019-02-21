@@ -455,8 +455,10 @@ void Job::doForAllShards(Node const& snapshot, std::string& database,
     std::string shard = collShard.shard;
     std::string collection = collShard.collection;
 
-    planPath = planColPrefix + database + "/" + collection + "/shards/" + shard;
-    curPath = curColPrefix + database + "/" + collection + "/" + shard + "/servers";
+    std::string planPath =
+      planColPrefix + database + "/" + collection + "/shards/" + shard;
+    std::string
+      curPath = curColPrefix + database + "/" + collection + "/" + shard + "/servers";
 
     auto plan = snapshot.hasAsBuilder(planPath).first;
     auto current = snapshot.hasAsBuilder(curPath).first;
