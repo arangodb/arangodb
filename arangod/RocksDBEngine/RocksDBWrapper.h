@@ -83,9 +83,11 @@ class RocksDBWrapper : public rocksdb::DB /*: public rocksdb::TransactionDB*/ {
 
   virtual rocksdb::Status Close() { return _db->Close(); }
 
-  virtual rocksdb::DB* GetRootDB() { return _db->GetRootDB(); }
+  // do NOT support GetRootDB() or GetBaseDB() ... allows routines to bypass
+  //  need rwlock.
+  //  virtual rocksdb::DB* GetRootDB() { return _db->GetRootDB(); }
 
-  virtual rocksdb::DB* GetBaseDB() { return _db->GetBaseDB(); }
+  //  virtual rocksdb::DB* GetBaseDB() { return _db->GetBaseDB(); }
 
   virtual rocksdb::Transaction* BeginTransaction(
     const rocksdb::WriteOptions& write_options,
@@ -125,7 +127,7 @@ class RocksDBWrapper : public rocksdb::DB /*: public rocksdb::TransactionDB*/ {
 
   virtual rocksdb::Status CreateColumnFamily(const rocksdb::ColumnFamilyOptions& options,
                                     const std::string& column_family_name,
-                                    rocksdb::ColumnFamilyHandle** handle) {
+                                    rocksdb::ColumnFamilyHandle** handle) override {
     READ_LOCKER(lock, _rwlock);
     return _db->CreateColumnFamily(options, column_family_name, handle);
   }
@@ -133,45 +135,45 @@ class RocksDBWrapper : public rocksdb::DB /*: public rocksdb::TransactionDB*/ {
   virtual rocksdb::Status CreateColumnFamilies(
       const rocksdb::ColumnFamilyOptions& options,
       const std::vector<std::string>& column_family_names,
-      std::vector<rocksdb::ColumnFamilyHandle*>* handles) {
+      std::vector<rocksdb::ColumnFamilyHandle*>* handles) override {
     READ_LOCKER(lock, _rwlock);
     return _db->CreateColumnFamilies(options, column_family_names, handles);
   }
 
   virtual rocksdb::Status CreateColumnFamilies(
       const std::vector<rocksdb::ColumnFamilyDescriptor>& column_families,
-      std::vector<rocksdb::ColumnFamilyHandle*>* handles) {
+      std::vector<rocksdb::ColumnFamilyHandle*>* handles) override {
     READ_LOCKER(lock, _rwlock);
     return _db->CreateColumnFamilies(column_families, handles);
   }
 
-  virtual rocksdb::Status DropColumnFamily(rocksdb::ColumnFamilyHandle* column_family) {
+  virtual rocksdb::Status DropColumnFamily(rocksdb::ColumnFamilyHandle* column_family) override {
     READ_LOCKER(lock, _rwlock);
     return _db->DropColumnFamily(column_family);
   }
 
   virtual rocksdb::Status DropColumnFamilies(
-      const std::vector<rocksdb::ColumnFamilyHandle*>& column_families) {
+      const std::vector<rocksdb::ColumnFamilyHandle*>& column_families) override {
     READ_LOCKER(lock, _rwlock);
     return _db->DropColumnFamilies(column_families);
   }
 
   virtual rocksdb::Status DestroyColumnFamilyHandle(
-      rocksdb::ColumnFamilyHandle* column_family) {
+      rocksdb::ColumnFamilyHandle* column_family) override {
 //    READ_LOCKER(lock, _rwlock);  exempt because used in shutdownRocksDBInstance
     return _db->DestroyColumnFamilyHandle(column_family);
   }
 
   virtual rocksdb::Status Put(const rocksdb::WriteOptions& options,
                      rocksdb::ColumnFamilyHandle* column_family, const rocksdb::Slice& key,
-                     const rocksdb::Slice& val) {
+                     const rocksdb::Slice& val) override {
     READ_LOCKER(lock, _rwlock);
     return _db->Put(options, column_family, key, val);
   }
 
   virtual rocksdb::Status Get(const rocksdb::ReadOptions& options,
                      rocksdb::ColumnFamilyHandle* column_family, const rocksdb::Slice& key,
-                     rocksdb::PinnableSlice* value) {
+                     rocksdb::PinnableSlice* value) override {
     READ_LOCKER(lock, _rwlock);
     rocksdb::ReadOptions local_options(options);
     local_options.snapshot = rewriteSnapshot(options.snapshot);
@@ -180,7 +182,7 @@ class RocksDBWrapper : public rocksdb::DB /*: public rocksdb::TransactionDB*/ {
 
   virtual rocksdb::Status Get(const rocksdb::ReadOptions& options,
                             rocksdb::ColumnFamilyHandle* column_family, const rocksdb::Slice& key,
-                            std::string* value) {
+                            std::string* value) override {
     READ_LOCKER(lock, _rwlock);
     rocksdb::ReadOptions local_options(options);
     local_options.snapshot = rewriteSnapshot(options.snapshot);
@@ -191,7 +193,7 @@ class RocksDBWrapper : public rocksdb::DB /*: public rocksdb::TransactionDB*/ {
       const rocksdb::ReadOptions& options,
       const std::vector<rocksdb::ColumnFamilyHandle*>& column_family,
       const std::vector<rocksdb::Slice>& keys,
-      std::vector<std::string>* values) {
+      std::vector<std::string>* values) override {
     READ_LOCKER(lock, _rwlock);
     rocksdb::ReadOptions local_options(options);
     local_options.snapshot = rewriteSnapshot(options.snapshot);
@@ -201,12 +203,12 @@ class RocksDBWrapper : public rocksdb::DB /*: public rocksdb::TransactionDB*/ {
   virtual rocksdb::Status IngestExternalFile(
       rocksdb::ColumnFamilyHandle* column_family,
       const std::vector<std::string>& external_files,
-      const rocksdb::IngestExternalFileOptions& options) {
+      const rocksdb::IngestExternalFileOptions& options) override {
     READ_LOCKER(lock, _rwlock);
     return _db->IngestExternalFile(column_family, external_files, options);
   }
 
-  virtual rocksdb::Status VerifyChecksum() {
+  virtual rocksdb::Status VerifyChecksum() override {
     READ_LOCKER(lock, _rwlock);
     return _db->VerifyChecksum();
   }
@@ -214,7 +216,7 @@ class RocksDBWrapper : public rocksdb::DB /*: public rocksdb::TransactionDB*/ {
   virtual bool KeyMayExist(const rocksdb::ReadOptions& options,
                            rocksdb::ColumnFamilyHandle* column_family, const rocksdb::Slice& key,
                            std::string* value,
-                           bool* value_found = nullptr) {
+                           bool* value_found = nullptr) override {
     READ_LOCKER(lock, _rwlock);
     rocksdb::ReadOptions local_options(options);
     local_options.snapshot = rewriteSnapshot(options.snapshot);
@@ -223,39 +225,39 @@ class RocksDBWrapper : public rocksdb::DB /*: public rocksdb::TransactionDB*/ {
 
   virtual rocksdb::Status Delete(const rocksdb::WriteOptions& wopts,
                         rocksdb::ColumnFamilyHandle* column_family,
-                        const rocksdb::Slice& key) {
+                        const rocksdb::Slice& key) override {
     READ_LOCKER(lock, _rwlock);
     return _db->Delete(wopts, column_family, key);
   }
 
   virtual rocksdb::Status SingleDelete(const rocksdb::WriteOptions& wopts,
                               rocksdb::ColumnFamilyHandle* column_family,
-                              const rocksdb::Slice& key) {
+                              const rocksdb::Slice& key) override {
     READ_LOCKER(lock, _rwlock);
     return _db->SingleDelete(wopts, column_family, key);
   }
 
   virtual rocksdb::Status Merge(const rocksdb::WriteOptions& options,
                        rocksdb::ColumnFamilyHandle* column_family, const rocksdb::Slice& key,
-                       const rocksdb::Slice& value) {
+                       const rocksdb::Slice& value) override {
     READ_LOCKER(lock, _rwlock);
     return _db->Merge(options, column_family, key, value);
   }
 
 
-  virtual rocksdb::Status Write(const rocksdb::WriteOptions& opts, rocksdb::WriteBatch* updates)
+  virtual rocksdb::Status Write(const rocksdb::WriteOptions& opts, rocksdb::WriteBatch* updates) override
     {
     READ_LOCKER(lock, _rwlock);
     return _db->Write(opts, updates);
   }
 
   virtual rocksdb::Iterator* NewIterator(const rocksdb::ReadOptions& opts,
-                                         rocksdb::ColumnFamilyHandle* column_family);
+                                         rocksdb::ColumnFamilyHandle* column_family) override;
 
   virtual rocksdb::Status NewIterators(
       const rocksdb::ReadOptions& options,
       const std::vector<rocksdb::ColumnFamilyHandle*>& column_families,
-      std::vector<rocksdb::Iterator*>* iterators) {
+      std::vector<rocksdb::Iterator*>* iterators) override {
     TRI_ASSERT(false);
     READ_LOCKER(lock, _rwlock);
     rocksdb::ReadOptions local_options(options);
@@ -264,35 +266,35 @@ class RocksDBWrapper : public rocksdb::DB /*: public rocksdb::TransactionDB*/ {
     return _db->NewIterators(local_options, column_families, iterators);
   }
 
-  virtual const rocksdb::Snapshot* GetSnapshot();
+  virtual const rocksdb::Snapshot* GetSnapshot() override;
 
-  virtual void ReleaseSnapshot(const rocksdb::Snapshot* snapshot);
+  virtual void ReleaseSnapshot(const rocksdb::Snapshot* snapshot) override;
 
   virtual bool GetProperty(rocksdb::ColumnFamilyHandle* column_family,
-                           const rocksdb::Slice& property, std::string* value) {
+                           const rocksdb::Slice& property, std::string* value) override {
     READ_LOCKER(lock, _rwlock);
     return _db->GetProperty(column_family, property, value);
   }
-  virtual bool GetProperty(const rocksdb::Slice& property, std::string* value) {
+  virtual bool GetProperty(const rocksdb::Slice& property, std::string* value) override {
     READ_LOCKER(lock, _rwlock);
     return _db->GetProperty(property, value);
   }
 
   virtual bool GetMapProperty(
       rocksdb::ColumnFamilyHandle* column_family, const rocksdb::Slice& property,
-      std::map<std::string, std::string>* value) {
+      std::map<std::string, std::string>* value) override {
     READ_LOCKER(lock, _rwlock);
     return _db->GetMapProperty(column_family, property, value);
   }
 
   virtual bool GetIntProperty(rocksdb::ColumnFamilyHandle* column_family,
-                              const rocksdb::Slice& property, uint64_t* value) {
+                              const rocksdb::Slice& property, uint64_t* value) override {
     READ_LOCKER(lock, _rwlock);
     return _db->GetIntProperty(column_family, property, value);
   }
 
   virtual bool GetAggregatedIntProperty(const rocksdb::Slice& property,
-                                        uint64_t* value) {
+                                        uint64_t* value) override {
     READ_LOCKER(lock, _rwlock);
     return _db->GetAggregatedIntProperty(property, value);
   }
@@ -300,7 +302,7 @@ class RocksDBWrapper : public rocksdb::DB /*: public rocksdb::TransactionDB*/ {
   virtual void GetApproximateSizes(rocksdb::ColumnFamilyHandle* column_family,
                                    const rocksdb::Range* r, int n, uint64_t* sizes,
                                    uint8_t include_flags
-                                   = rocksdb::DB::INCLUDE_FILES) {
+                                   = rocksdb::DB::INCLUDE_FILES) override {
     READ_LOCKER(lock, _rwlock);
     return _db->GetApproximateSizes(column_family, r, n, sizes,
                                     include_flags);
@@ -309,14 +311,14 @@ class RocksDBWrapper : public rocksdb::DB /*: public rocksdb::TransactionDB*/ {
   virtual void GetApproximateMemTableStats(rocksdb::ColumnFamilyHandle* column_family,
                                            const rocksdb::Range& range,
                                            uint64_t* const count,
-                                           uint64_t* const size) {
+                                           uint64_t* const size) override {
     READ_LOCKER(lock, _rwlock);
     return _db->GetApproximateMemTableStats(column_family, range, count, size);
   }
 
   virtual rocksdb::Status CompactRange(const rocksdb::CompactRangeOptions& options,
                               rocksdb::ColumnFamilyHandle* column_family,
-                              const rocksdb::Slice* begin, const rocksdb::Slice* end) {
+                              const rocksdb::Slice* begin, const rocksdb::Slice* end) override {
     READ_LOCKER(lock, _rwlock);
     return _db->CompactRange(options, column_family, begin, end);
   }
@@ -326,102 +328,102 @@ class RocksDBWrapper : public rocksdb::DB /*: public rocksdb::TransactionDB*/ {
       rocksdb::ColumnFamilyHandle* column_family,
       const std::vector<std::string>& input_file_names,
       const int output_level, const int output_path_id = -1,
-      std::vector<std::string>* const output_file_names = nullptr) {
+      std::vector<std::string>* const output_file_names = nullptr) override {
     READ_LOCKER(lock, _rwlock);
     return _db->CompactFiles(
         compact_options, column_family, input_file_names,
         output_level, output_path_id, output_file_names);
   }
 
-  virtual rocksdb::Status PauseBackgroundWork() {
+  virtual rocksdb::Status PauseBackgroundWork() override {
     READ_LOCKER(lock, _rwlock);
     return _db->PauseBackgroundWork();
   }
-  virtual rocksdb::Status ContinueBackgroundWork() {
+  virtual rocksdb::Status ContinueBackgroundWork() override {
     READ_LOCKER(lock, _rwlock);
     return _db->ContinueBackgroundWork();
   }
 
   virtual rocksdb::Status EnableAutoCompaction(
-      const std::vector<rocksdb::ColumnFamilyHandle*>& column_family_handles) {
+      const std::vector<rocksdb::ColumnFamilyHandle*>& column_family_handles) override {
     READ_LOCKER(lock, _rwlock);
     return _db->EnableAutoCompaction(column_family_handles);
   }
 
-  virtual int NumberLevels(rocksdb::ColumnFamilyHandle* column_family) {
+  virtual int NumberLevels(rocksdb::ColumnFamilyHandle* column_family) override {
     READ_LOCKER(lock, _rwlock);
     return _db->NumberLevels(column_family);
   }
 
-  virtual int MaxMemCompactionLevel(rocksdb::ColumnFamilyHandle* column_family)
-      {
+  virtual int MaxMemCompactionLevel(rocksdb::ColumnFamilyHandle* column_family) override
+  {
     READ_LOCKER(lock, _rwlock);
     return _db->MaxMemCompactionLevel(column_family);
   }
 
-  virtual int Level0StopWriteTrigger(rocksdb::ColumnFamilyHandle* column_family)
-      {
+  virtual int Level0StopWriteTrigger(rocksdb::ColumnFamilyHandle* column_family) override
+  {
     READ_LOCKER(lock, _rwlock);
     return _db->Level0StopWriteTrigger(column_family);
   }
 
-  virtual const std::string& GetName() const {
+  virtual const std::string& GetName() const override {
     READ_LOCKER(lock, _rwlock);
     return _db->GetName();
   }
 
-  virtual rocksdb::Env* GetEnv() const {
+  virtual rocksdb::Env* GetEnv() const override {
     READ_LOCKER(lock, _rwlock);
     return _db->GetEnv();
   }
 
-  virtual rocksdb::Options GetOptions(rocksdb::ColumnFamilyHandle* column_family) const {
+  virtual rocksdb::Options GetOptions(rocksdb::ColumnFamilyHandle* column_family) const override {
     READ_LOCKER(lock, _rwlock);
     return _db->GetOptions(column_family);
   }
 
-  virtual rocksdb::DBOptions GetDBOptions() const {
+  virtual rocksdb::DBOptions GetDBOptions() const override {
     READ_LOCKER(lock, _rwlock);
     return _db->GetDBOptions();
   }
 
   virtual rocksdb::Status Flush(const rocksdb::FlushOptions& fopts,
-                       rocksdb::ColumnFamilyHandle* column_family) {
+                       rocksdb::ColumnFamilyHandle* column_family) override {
     READ_LOCKER(lock, _rwlock);
     return _db->Flush(fopts, column_family);
   }
 
-  virtual rocksdb::Status SyncWAL() {
+  virtual rocksdb::Status SyncWAL() override {
 //    READ_LOCKER(lock, _rwlock);  exempt: used in shutdownRocksDBInstance()
     return _db->SyncWAL();
   }
 
-  virtual rocksdb::Status FlushWAL(bool sync) {
+  virtual rocksdb::Status FlushWAL(bool sync) override {
     READ_LOCKER(lock, _rwlock);
     return _db->FlushWAL(sync);
   }
 
 #ifndef ROCKSDB_LITE
 
-  virtual rocksdb::Status DisableFileDeletions() {
+  virtual rocksdb::Status DisableFileDeletions() override {
     READ_LOCKER(lock, _rwlock);
     return _db->DisableFileDeletions();
   }
 
-  virtual rocksdb::Status EnableFileDeletions(bool force) {
+  virtual rocksdb::Status EnableFileDeletions(bool force) override {
     READ_LOCKER(lock, _rwlock);
     return _db->EnableFileDeletions(force);
   }
 
   virtual void GetLiveFilesMetaData(
-      std::vector<rocksdb::LiveFileMetaData>* metadata) {
+      std::vector<rocksdb::LiveFileMetaData>* metadata) override {
     READ_LOCKER(lock, _rwlock);
     _db->GetLiveFilesMetaData(metadata);
   }
 
   virtual void GetColumnFamilyMetaData(
       rocksdb::ColumnFamilyHandle *column_family,
-      rocksdb::ColumnFamilyMetaData* cf_meta) {
+      rocksdb::ColumnFamilyMetaData* cf_meta) override {
     READ_LOCKER(lock, _rwlock);
     _db->GetColumnFamilyMetaData(column_family, cf_meta);
   }
@@ -429,90 +431,90 @@ class RocksDBWrapper : public rocksdb::DB /*: public rocksdb::TransactionDB*/ {
 #endif  // ROCKSDB_LITE
 
   virtual rocksdb::Status GetLiveFiles(std::vector<std::string>& vec, uint64_t* mfs,
-                              bool flush_memtable = true) {
+                              bool flush_memtable = true) override {
     READ_LOCKER(lock, _rwlock);
     return _db->GetLiveFiles(vec, mfs, flush_memtable);
   }
 
-  virtual rocksdb::SequenceNumber GetLatestSequenceNumber() const {
+  virtual rocksdb::SequenceNumber GetLatestSequenceNumber() const override {
     READ_LOCKER(lock, _rwlock);
     return _db->GetLatestSequenceNumber();
   }
 
-  virtual bool SetPreserveDeletesSequenceNumber(rocksdb::SequenceNumber seqnum) {
+  virtual bool SetPreserveDeletesSequenceNumber(rocksdb::SequenceNumber seqnum) override {
     READ_LOCKER(lock, _rwlock);
     return _db->SetPreserveDeletesSequenceNumber(seqnum);
   }
 
-  virtual rocksdb::Status GetSortedWalFiles(rocksdb::VectorLogPtr& files) {
+  virtual rocksdb::Status GetSortedWalFiles(rocksdb::VectorLogPtr& files) override {
 //    READ_LOCKER(lock, _rwlock);  exempt: used in determinPrunableWalFiles
     return _db->GetSortedWalFiles(files);
   }
 
-  virtual rocksdb::Status DeleteFile(std::string name) {
+  virtual rocksdb::Status DeleteFile(std::string name) override {
 //    READ_LOCKER(lock, _rwlock);  exempt: used in pruneWalFiles
     return _db->DeleteFile(name);
   }
 
-  virtual rocksdb::Status GetDbIdentity(std::string& identity) const {
+  virtual rocksdb::Status GetDbIdentity(std::string& identity) const override {
     READ_LOCKER(lock, _rwlock);
     return _db->GetDbIdentity(identity);
   }
 
   virtual rocksdb::Status SetOptions(rocksdb::ColumnFamilyHandle* column_family_handle,
                             const std::unordered_map<std::string, std::string>&
-                                new_options) {
+                                new_options) override {
     READ_LOCKER(lock, _rwlock);
     return _db->SetOptions(column_family_handle, new_options);
   }
 
   virtual rocksdb::Status SetDBOptions(
       const std::unordered_map<std::string, std::string>& new_options)
-      {
+      override {
     READ_LOCKER(lock, _rwlock);
     return _db->SetDBOptions(new_options);
   }
 
-  virtual rocksdb::Status ResetStats() {
+  virtual rocksdb::Status ResetStats() override {
     READ_LOCKER(lock, _rwlock);
     return _db->ResetStats();
   }
 
   virtual rocksdb::Status GetPropertiesOfAllTables(
       rocksdb::ColumnFamilyHandle* column_family,
-      rocksdb::TablePropertiesCollection* props) {
+      rocksdb::TablePropertiesCollection* props) override {
     READ_LOCKER(lock, _rwlock);
     return _db->GetPropertiesOfAllTables(column_family, props);
   }
 
   virtual rocksdb::Status GetPropertiesOfTablesInRange(
       rocksdb::ColumnFamilyHandle* column_family, const rocksdb::Range* range, std::size_t n,
-      rocksdb::TablePropertiesCollection* props) {
+      rocksdb::TablePropertiesCollection* props) override {
     READ_LOCKER(lock, _rwlock);
     return _db->GetPropertiesOfTablesInRange(column_family, range, n, props);
   }
 
   virtual rocksdb::Status GetUpdatesSince(
       rocksdb::SequenceNumber seq_number, std::unique_ptr<rocksdb::TransactionLogIterator>* iter,
-      const rocksdb::TransactionLogIterator::ReadOptions& read_options) {
+      const rocksdb::TransactionLogIterator::ReadOptions& read_options) override {
     READ_LOCKER(lock, _rwlock);
     return _db->GetUpdatesSince(seq_number, iter, read_options);
   }
 
   virtual rocksdb::Status SuggestCompactRange(rocksdb::ColumnFamilyHandle* column_family,
                                      const rocksdb::Slice* begin,
-                                     const rocksdb::Slice* end) {
+                                     const rocksdb::Slice* end) override {
     READ_LOCKER(lock, _rwlock);
     return _db->SuggestCompactRange(column_family, begin, end);
   }
 
   virtual rocksdb::Status PromoteL0(rocksdb::ColumnFamilyHandle* column_family,
-                           int target_level) {
+                           int target_level) override {
     READ_LOCKER(lock, _rwlock);
     return _db->PromoteL0(column_family, target_level);
   }
 
-  virtual rocksdb::ColumnFamilyHandle* DefaultColumnFamily() const {
+  virtual rocksdb::ColumnFamilyHandle* DefaultColumnFamily() const override {
     READ_LOCKER(lock, _rwlock);
     return _db->DefaultColumnFamily();
   }
@@ -589,56 +591,56 @@ class RocksDBWrapperIterator : public rocksdb::Iterator {
     } // if
   }
 
-  virtual bool Valid() const {
+  virtual bool Valid() const override {
     return _isValid ? _it->Valid() : false;
   }
 
-  virtual void SeekToFirst() {
+  virtual void SeekToFirst() override {
     READ_LOCKER(lock, _dbWrap.rwlock());
     if (_isValid) _it->SeekToFirst();
   }
 
-  virtual void SeekToLast() {
+  virtual void SeekToLast() override {
     READ_LOCKER(lock, _dbWrap.rwlock());
     if (_isValid) _it->SeekToLast();
   }
 
-  virtual void Seek(const rocksdb::Slice& target) {
+  virtual void Seek(const rocksdb::Slice& target) override {
     READ_LOCKER(lock, _dbWrap.rwlock());
     if (_isValid) _it->Seek(target);
   }
 
-  virtual void SeekForPrev(const rocksdb::Slice& target) {
+  virtual void SeekForPrev(const rocksdb::Slice& target) override {
     READ_LOCKER(lock, _dbWrap.rwlock());
     if (_isValid) _it->SeekForPrev(target);
   }
 
-  virtual void Next() {
+  virtual void Next() override {
     READ_LOCKER(lock, _dbWrap.rwlock());
     if (_isValid) _it->Next();
   }
 
-  virtual void Prev() {
+  virtual void Prev() override {
     READ_LOCKER(lock, _dbWrap.rwlock());
     if (_isValid) _it->Prev();
   }
 
-  virtual rocksdb::Slice key() const {
+  virtual rocksdb::Slice key() const override {
     READ_LOCKER(lock, _dbWrap.rwlock());
     return _isValid ? _it->key() : rocksdb::Slice();
   };
 
-  virtual rocksdb::Slice value() const {
+  virtual rocksdb::Slice value() const override {
     READ_LOCKER(lock, _dbWrap.rwlock());
     return _isValid ? _it->value() : rocksdb::Slice();
   };
 
-  virtual rocksdb::Status status() const {
+  virtual rocksdb::Status status() const override {
     READ_LOCKER(lock, _dbWrap.rwlock());
     return _isValid ? _it->status() : rocksdb::Status::Aborted();
   };
 
-  virtual rocksdb::Status Refresh() {
+  virtual rocksdb::Status Refresh() override {
     READ_LOCKER(lock, _dbWrap.rwlock());
     return _isValid ? _it->Refresh() : rocksdb::Status::Aborted();
   };
@@ -693,7 +695,7 @@ class RocksDBWrapperSnapshot : public rocksdb::Snapshot {
     delete this;
   }
 
-  virtual rocksdb::SequenceNumber GetSequenceNumber() const {
+  virtual rocksdb::SequenceNumber GetSequenceNumber() const override {
     READ_LOCKER(lock, _dbWrap.rwlock());
     return _isValid ? _snap->GetSequenceNumber() : (rocksdb::SequenceNumber) 0 ;
   }
