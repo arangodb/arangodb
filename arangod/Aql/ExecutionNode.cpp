@@ -1309,15 +1309,13 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
-  bool allowCoveringIndexOptimization = true;
 
   EnumerateCollectionExecutorInfos infos(
       variableToRegisterId(_outVariable),
       getRegisterPlan()->nrRegs[previousNode->getDepth()],
       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
-      &engine, this->_collection, _outVariable,
-      this->isVarUsedLater(_outVariable), this->projections(), trxPtr,
-      this->coveringIndexAttributePositions(), allowCoveringIndexOptimization,
+      &engine, this->_collection, _outVariable, this->isVarUsedLater(_outVariable),
+      this->projections(), trxPtr, this->coveringIndexAttributePositions(),
       EngineSelectorFeature::ENGINE->useRawDocumentPointers(), this->_random);
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(&engine, this,
                                                                            std::move(infos));

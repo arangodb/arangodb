@@ -220,7 +220,7 @@ Query::~Query() {
 void Query::addDataSource(                                  // track DataSource
     std::shared_ptr<arangodb::LogicalDataSource> const& ds  // DataSource to track
 ) {
-  _queryDataSources.emplace(ds);
+  _queryDataSources.emplace(ds->guid(), ds->name());
 }
 
 /// @brief clone a query
@@ -575,11 +575,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
             // got a result from the query cache
             if (exe != nullptr) {
               for (auto& dataSource : cacheEntry->_dataSources) {
-                if (!dataSource) {
-                  continue;
-                }
-
-                auto& dataSourceName = dataSource->name();
+                auto const& dataSourceName = dataSource.second;
 
                 if (!exe->canUseCollection(dataSourceName, auth::Level::RO)) {
                   // cannot use query cache result because of permissions
@@ -686,7 +682,8 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
 
           _trx->state()->allCollections(  // collect transaction DataSources
               [&dataSources](TransactionCollection& trxCollection) -> bool {
-                dataSources.emplace(trxCollection.collection());  // add collection from transaction
+                auto const& c = trxCollection.collection();
+                dataSources.emplace(c->guid(), c->name());
                 return true;  // continue traversal
               });
 
@@ -791,12 +788,8 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
 
         // got a result from the query cache
         if (exe != nullptr) {
-          for (auto& dataSource : cacheEntry->_dataSources) {
-            if (!dataSource) {
-              continue;
-            }
-
-            auto& dataSourceName = dataSource->name();
+          for (auto const& dataSource : cacheEntry->_dataSources) {
+            auto const& dataSourceName = dataSource.second;
 
             if (!exe->canUseCollection(dataSourceName, auth::Level::RO)) {
               // cannot use query cache result because of permissions
@@ -912,7 +905,8 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
 
       _trx->state()->allCollections(  // collect transaction DataSources
           [&dataSources](TransactionCollection& trxCollection) -> bool {
-            dataSources.emplace(trxCollection.collection());  // add collection from transaction
+            auto const& c = trxCollection.collection();
+            dataSources.emplace(c->guid(), c->name());
             return true;  // continue traversal
           });
 

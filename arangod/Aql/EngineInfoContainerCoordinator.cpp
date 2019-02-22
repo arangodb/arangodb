@@ -21,7 +21,6 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "EngineInfoContainerCoordinator.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlResult.h"
 #include "Aql/ClusterBlocks.h"
@@ -31,6 +30,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "EngineInfoContainerCoordinator.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
@@ -86,7 +86,7 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
   // For _id == 0 this thread will always maintain the handle to
   // the engine and will clean up. We do not keep track of it seperately
   if (_id != 0) {
-    double ttl = queryRegistry->defaultTTL();
+    double ttl = query->queryOptions().ttl;
     TRI_ASSERT(ttl > 0);
     try {
       queryRegistry->insert(_id, query, ttl, true, false);

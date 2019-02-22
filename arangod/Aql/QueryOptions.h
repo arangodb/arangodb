@@ -54,13 +54,14 @@ struct QueryOptions {
 
   void fromVelocyPack(arangodb::velocypack::Slice const&);
   void toVelocyPack(arangodb::velocypack::Builder&, bool disableOptimizerRules) const;
-  TEST_VIRTUAL ProfileLevel getProfileLevel () {return profile; };
+  TEST_VIRTUAL ProfileLevel getProfileLevel() { return profile; };
 
   size_t memoryLimit;
   size_t maxNumberOfPlans;
   size_t maxWarningCount;
   int64_t literalSizeThreshold;
   double satelliteSyncWait;
+  double ttl;
   /// Level 0 nothing, Level 1 profile, Level 2,3 log tracing info
   ProfileLevel profile;
   bool allPlans;
