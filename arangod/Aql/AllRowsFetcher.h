@@ -97,7 +97,7 @@ class AllRowsFetcher {
    *           If HASMORE => impossible
    *           If DONE => Number contains the correct number of rows upstream.
    */
-  TEST_VIRTUAL std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost);
+  TEST_VIRTUAL std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t);
 
  private:
   BlockFetcher<false>* _blockFetcher;

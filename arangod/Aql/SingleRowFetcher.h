@@ -89,10 +89,8 @@ class SingleRowFetcher {
   std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t atMost);
 
   std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost) {
-    if (_upstreamState == ExecutionState::WAITING ||
-        (_upstreamState == ExecutionState::HASMORE &&
-         (_currentBlock == nullptr /* nothing fetched */ ||
-          _currentBlock->block().size() >= _rowIndex /* fully consumed */))) {
+    if (_upstreamState != ExecutionState::DONE && !indexIsValid()) {
+      // We have exhausted the current block and need to fetch a new one
       ExecutionState state;
       std::shared_ptr<AqlItemBlockShell> newBlock;
       std::tie(state, newBlock) = fetchBlock(atMost);
@@ -105,6 +103,9 @@ class SingleRowFetcher {
       _currentBlock = std::move(newBlock);
       _rowIndex = 0;
     }
+
+    // The block before can put upstreamState to DONE.
+    // So we cannot swap the blocks
     if (_upstreamState == ExecutionState::DONE) {
       if (_currentBlock == nullptr) {
         // There is nothing more from upstream
@@ -115,6 +116,8 @@ class SingleRowFetcher {
       TRI_ASSERT(_rowIndex < _currentBlock->block().size());
       return {_upstreamState, (std::min)(_currentBlock->block().size() - _rowIndex, atMost)};
     }
+
+    TRI_ASSERT(_upstreamState == ExecutionState::HASMORE);
     TRI_ASSERT(_currentBlock != nullptr);
     // Here we can only assume that we have enough from upstream
     // We do not want to pull additional block

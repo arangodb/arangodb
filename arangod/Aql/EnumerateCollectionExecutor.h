@@ -95,6 +95,9 @@ class EnumerateCollectionExecutor {
   struct Properties {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
+    /* With some more modifications this could be turned to true. Actually the
+   output of this block is input * itemsInList */
+    static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = EnumerateCollectionExecutorInfos;

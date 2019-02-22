@@ -41,7 +41,7 @@ namespace aql {
 
 class InputAqlItemRow;
 class ExecutorInfos;
-template<bool>
+template <bool>
 class SingleRowFetcher;
 
 class LimitExecutorInfos : public ExecutorInfos {
@@ -81,6 +81,7 @@ class LimitExecutor {
   struct Properties {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
+    static const bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = LimitExecutorInfos;
@@ -126,10 +127,10 @@ class LimitExecutor {
   };
 
   /**
-  * @brief Returns the current state of the executor, based on _counter (i.e.
-  * number of lines seen), limit, offset and fullCount.
-  * @return See LimitState comments for a description.
-  */
+   * @brief Returns the current state of the executor, based on _counter (i.e.
+   * number of lines seen), limit, offset and fullCount.
+   * @return See LimitState comments for a description.
+   */
   LimitState currentState() const noexcept {
     // Note that not only offset, but also limit can be zero. Thus the order
     // of all following checks is important, even the first two!

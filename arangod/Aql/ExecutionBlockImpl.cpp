@@ -355,8 +355,7 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems, RegisterId nrR
       }
     }
 #endif
-  } else if (std::is_same<Executor, SortExecutor>::value ||
-             std::is_same<Executor, FilterExecutor>::value) {
+  } else if /* constexpr */ (Executor::Properties::inputSizeRestrictsOutputSize) {
     // The SortExecutor should refetch a block to save memory in case if only few elements to sort
     ExecutionState state;
     size_t expectedRows = 0;
