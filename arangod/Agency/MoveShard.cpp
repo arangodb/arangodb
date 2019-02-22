@@ -775,6 +775,10 @@ arangodb::Result MoveShard::abort() {
   Builder trx;  // to build the transaction
 
   // Now look after a PENDING job:
+
+  // 1. Try to revert if and only if _to is not leader in current for any shard
+  // 2. Go forward abort without any changes.
+  
   {
     VPackArrayBuilder arrayForTransactionPair(&trx);
     {
@@ -840,11 +844,15 @@ arangodb::Result MoveShard::abort() {
     result = Result(TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
                     std::string("Lost leadership"));
     return result;
-  } else if (res.indices[0] == 0) {
-    result = Result(
-        TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
-        std::string("Precondition failed while aborting moveShard job ") + _jobId);
-    return result;
+  }
+
+  if (res.indices[0] == 0) { // New leader already in
+
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "Aborting MoveShard through rollback failed as new leadership is in charge. Aborting as is."
+    finish(_to, _shard, false, "something seriously wrong");
+    return result; 
+
   }
 
   return result;
