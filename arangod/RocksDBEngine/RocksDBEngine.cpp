@@ -639,22 +639,6 @@ void RocksDBEngine::start() {
     FATAL_ERROR_EXIT();
   }
 
-  // give throttle access to families
-  if (_useThrottle) {
-    _listener->SetFamilies(cfHandles);
-  }
-
-  // set our column families
-  RocksDBColumnFamily::_definitions = cfHandles[0];
-  RocksDBColumnFamily::_documents = cfHandles[1];
-  RocksDBColumnFamily::_primary = cfHandles[2];
-  RocksDBColumnFamily::_edge = cfHandles[3];
-  RocksDBColumnFamily::_vpack = cfHandles[4];
-  RocksDBColumnFamily::_geo = cfHandles[5];
-  RocksDBColumnFamily::_fulltext = cfHandles[6];
-  RocksDBColumnFamily::_allHandles = cfHandles;
-  TRI_ASSERT(RocksDBColumnFamily::_definitions->GetID() == 0);
-
   // will crash the process if version does not match
   arangodb::rocksdbStartupVersionCheck(_db, dbExisted);
 
@@ -834,9 +818,23 @@ rocksdb::Status RocksDBEngine::callRocksDBOpen(const rocksdb::TransactionDBOptio
   } // else
 
 
-/// add handle populate
+  // give throttle access to families
+  if (_useThrottle) {
+    _listener->SetFamilies((*handles));
+  }
 
+  // set our column families
+  RocksDBColumnFamily::_definitions = (*handles)[0];
+  RocksDBColumnFamily::_documents = (*handles)[1];
+  RocksDBColumnFamily::_primary = (*handles)[2];
+  RocksDBColumnFamily::_edge = (*handles)[3];
+  RocksDBColumnFamily::_vpack = (*handles)[4];
+  RocksDBColumnFamily::_geo = (*handles)[5];
+  RocksDBColumnFamily::_fulltext = (*handles)[6];
+  RocksDBColumnFamily::_allHandles = (*handles);
+  TRI_ASSERT(RocksDBColumnFamily::_definitions->GetID() == 0);
 
+  /// version check???  if so, fail or crash on reOpen?
 
   return retStatus;
 
