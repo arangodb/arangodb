@@ -43,6 +43,18 @@ When the _Leader_ goes down, this is automatically detected by the _Agency_
 instance, which is also started in this mode. This instance will make the
 previous follower stop its replication and make it the new _Leader_.
 
+{% hint 'info' %}
+The different instances that form an Active Failover are supposed to be run in the same
+_Data Center_ (DC), with reliable and high-speed network connection between
+all the machines participating to the Active Failover.
+
+Multi-datacenter Active Failover setups are currently not supported.
+
+A multi-datacenter solution currently supported is the Datacenter to Datacenter replication
+among ArangoDB Clusters. See [Datacenter to datacenter replication](../DC2DC/README.md)
+(DC2DC) for further details.
+{% endhint %}
+
 Operative Behaviour
 -------------------
 
