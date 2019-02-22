@@ -450,7 +450,7 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
 
 void Job::doForAllShards(Node const& snapshot, std::string& database,
                          std::vector<shard_t>& shards,
-                         std::function<void(Slice plan, Slice current, std::string& planPath)> worker) {
+                         std::function<void(Slice plan, Slice current, std::string& planPath, std::string& curPath)> worker) {
   for (auto const& collShard : shards) {
     std::string shard = collShard.shard;
     std::string collection = collShard.collection;
@@ -463,7 +463,7 @@ void Job::doForAllShards(Node const& snapshot, std::string& database,
     Slice plan = snapshot.hasAsSlice(planPath).first;
     Slice current = snapshot.hasAsSlice(curPath).first;
 
-    worker(plan, current, planPath);
+    worker(plan, current, planPath, curPath);
   }
 }
 
