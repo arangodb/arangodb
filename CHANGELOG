@@ -1,6 +1,17 @@
 devel
 -----
 
+* add "PRUNE <condition>" to AQL Traversals. This allows to early abort searching of
+  unnecessary branches within a traversal.
+  PRUNE is only allowed in the Traversal statement and only between the graphdefinition
+  and the options of the traversal.
+  e.g.:
+  FOR v, e, p IN 1..3 OUTBOUND @source GRAPH "myGraph"
+    PRUNE v.value == "bar"
+    OPTIONS {} /* These options remain optional */
+    RETURN v
+  for more details refer to the documentation chapter.
+
 * add "TTL" index type, for optional auto-expiration of documents 
 
 * disable selection of index types "persistent" and "skiplist" in the web
@@ -24,7 +35,6 @@ devel
  
 
 * fixed JS AQL query objects with empty query strings not being recognized as AQL queries
->>>>>>> 492d05c1f1bd5cff4e067ae7d6593b9f03cebe37
 
 * report run-time openssl version (for dynamically linked executables)
 
