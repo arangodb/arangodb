@@ -245,7 +245,7 @@ bool AddFollower::start() {
 
       // --- Plan changes
       doForAllShards(_snapshot, _database, shardsLikeMe,
-                     [&trx, &chosen](Slice plan, Slice current, std::string& planPath) {
+                     [&trx, &chosen](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
                        trx.add(VPackValue(planPath));
                        {
                          VPackArrayBuilder serverList(&trx);
