@@ -348,7 +348,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
           // no sync thread present... this may be the case if automatic
           // syncing is completely turned off. in this case, use the
           // static sync method
-          result = RocksDBSyncThread::sync(engine->db()->GetBaseDB());
+          result = RocksDBSyncThread::sync(engine->db());
         }
       }
 #endif

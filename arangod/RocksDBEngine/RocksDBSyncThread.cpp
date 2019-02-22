@@ -45,7 +45,7 @@ Result RocksDBSyncThread::syncWal() {
   // > Currently only works if allow_mmap_writes = false in Options.
   TRI_ASSERT(!_engine->rocksDBOptions().allow_mmap_writes);
 
-  auto db = _engine->db()->GetBaseDB();
+  RocksDBWrapper * db = _engine->db();
 
   // set time of last syncing under the lock
   auto const now = std::chrono::steady_clock::now();
@@ -93,7 +93,7 @@ void RocksDBSyncThread::beginShutdown() {
 
 void RocksDBSyncThread::run() {
   TRI_ASSERT(_engine != nullptr);
-  auto db = _engine->db()->GetBaseDB();
+  RocksDBWrapper * db = _engine->db();
 
   LOG_TOPIC(TRACE, Logger::ENGINES)
       << "starting RocksDB sync thread with interval " << _interval.count()

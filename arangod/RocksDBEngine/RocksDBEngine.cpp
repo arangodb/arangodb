@@ -190,7 +190,7 @@ void RocksDBEngine::shutdownRocksDBInstance(bool deleteDB) noexcept {
 
   try {
     // do a final WAL sync here before shutting down
-    Result res = RocksDBSyncThread::sync(_db->GetBaseDB());
+    Result res = RocksDBSyncThread::sync(_db);
     if (res.fail()) {
       LOG_TOPIC(WARN, Logger::ENGINES)
           << "could not sync RocksDB WAL: " << res.errorMessage();
@@ -1616,7 +1616,7 @@ Result RocksDBEngine::flushWal(bool waitForSync, bool waitForCollector,
     flushOptions.wait = waitForSync;
 
     for (auto cf : RocksDBColumnFamily::_allHandles) {
-      rocksdb::Status status = _db->GetBaseDB()->Flush(flushOptions, cf);
+      rocksdb::Status status = _db->Flush(flushOptions, cf);
       if (!status.ok()) {
         return rocksutils::convertStatus(status);
       }
