@@ -1129,14 +1129,14 @@ Result RocksDBEngine::writeDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& s
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
   batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
-  rocksdb::Status res = _db->GetRootDB()->Write(wo, &batch);
+  rocksdb::Status res = _db->Write(wo, &batch);
   return rocksutils::convertStatus(res);
 }
 
 int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
                                                TRI_voc_cid_t cid, VPackSlice const& slice,
                                                RocksDBLogValue&& logValue) {
-  rocksdb::DB* db = _db->GetRootDB();
+//  rocksdb::DB* db = _db->GetRootDB();
 
   RocksDBKey key;
   key.constructCollection(databaseId, cid);
@@ -1148,7 +1148,7 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
   batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
-  rocksdb::Status res = db->Write(wo, &batch);
+  rocksdb::Status res = _db->Write(wo, &batch);
 
   auto result = rocksutils::convertStatus(res);
   return result.errorNumber();
@@ -1225,7 +1225,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   bool const prefixSameAsStart = true;
   bool const useRangeDelete = coll->numberDocuments() >= 32 * 1024;
 
-  rocksdb::DB* db = _db->GetRootDB();
+//  rocksdb::DB* db = _db->GetRootDB();
 
   // If we get here the collection is safe to drop.
   //
@@ -1258,7 +1258,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   batch.Delete(RocksDBColumnFamily::definitions(), key.string());
 
   rocksdb::WriteOptions wo;
-  rocksdb::Status s = db->Write(wo, &batch);
+  rocksdb::Status s = _db->Write(wo, &batch);
 
   // TODO FAILURE Simulate !res.ok()
   if (!s.ok()) {
@@ -1427,7 +1427,7 @@ arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t& vocbase, LogicalView& vi
   batch.Delete(RocksDBColumnFamily::definitions(), key.string());
 
   rocksdb::WriteOptions wo;
-  auto res = _db->GetRootDB()->Write(wo, &batch);
+  auto res = _db->Write(wo, &batch);
   LOG_TOPIC_IF(TRACE, Logger::VIEWS, !res.ok())
       << "could not create view: " << res.ToString();
   return rocksutils::convertStatus(res);
@@ -1718,7 +1718,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   using namespace rocksutils;
   arangodb::Result res;
   rocksdb::WriteOptions wo;
-  rocksdb::DB* db = _db->GetRootDB();
+//  rocksdb::DB* db = _db->GetRootDB();
 
   // remove view definitions
   res = rocksutils::removeLargeRange(_db, RocksDBKeyBounds::DatabaseViews(id),
@@ -1793,7 +1793,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     }
     // remove collection entry
     rocksdb::Status s =
-        db->Delete(wo, RocksDBColumnFamily::definitions(), value.string());
+      _db->Delete(wo, RocksDBColumnFamily::definitions(), value.string());
     if (!s.ok()) {
       LOG_TOPIC(WARN, Logger::ENGINES)
           << "error deleting collection definition: " << s.ToString();
@@ -1813,7 +1813,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   // remove database meta-data
   RocksDBKey key;
   key.constructDatabase(id);
-  rocksdb::Status s = db->Delete(wo, RocksDBColumnFamily::definitions(), key.string());
+  rocksdb::Status s = _db->Delete(wo, RocksDBColumnFamily::definitions(), key.string());
   if (!s.ok()) {
     LOG_TOPIC(WARN, Logger::ENGINES)
         << "error deleting database definition: " << s.ToString();

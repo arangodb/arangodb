@@ -34,6 +34,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+#include "rocksdb/utilities/checkpoint.h"
+#include "rocksdb/utilities/convenience.h"
 #include "rocksdb/utilities/transaction_db.h"
 
 #include "Basics/Mutex.h"
@@ -85,10 +87,12 @@ class RocksDBWrapper : public rocksdb::DB /*: public rocksdb::TransactionDB*/ {
 
   // do NOT support GetRootDB() or GetBaseDB() ... allows routines to bypass
   //  need rwlock.
-  //  virtual rocksdb::DB* GetRootDB() { return _db->GetRootDB(); }
+private:
+  virtual rocksdb::DB* GetRootDB() { return _db->GetRootDB(); }
 
-  //  virtual rocksdb::DB* GetBaseDB() { return _db->GetBaseDB(); }
+  virtual rocksdb::DB* GetBaseDB() { return _db->GetBaseDB(); }
 
+public:
   virtual rocksdb::Transaction* BeginTransaction(
     const rocksdb::WriteOptions& write_options,
     const rocksdb::TransactionOptions& txn_options = rocksdb::TransactionOptions(),
@@ -518,6 +522,43 @@ class RocksDBWrapper : public rocksdb::DB /*: public rocksdb::TransactionDB*/ {
     READ_LOCKER(lock, _rwlock);
     return _db->DefaultColumnFamily();
   }
+
+  ///
+  /// static routines from include/rocksdb/convenience.h
+  ///
+
+  // Delete files which are entirely in the given range
+  // Could leave some keys in the range which are in files which are not
+  // entirely in the range. Also leaves L0 files regardless of whether they're
+  // in the range.
+  // Snapshots before the delete might not see the data in the given range.
+  rocksdb::Status DeleteFilesInRange(rocksdb::ColumnFamilyHandle* column_family,
+                                              const rocksdb::Slice* begin, const rocksdb::Slice* end,
+                                              bool include_end = true) {
+    READ_LOCKER(lock, _rwlock);
+    return rocksdb::DeleteFilesInRange(_db, column_family, begin, end, include_end);
+  }
+
+  // Delete files in multiple ranges at once
+  // Delete files in a lot of ranges one at a time can be slow, use this API for
+  // better performance in that case.
+  rocksdb::Status DeleteFilesInRanges(rocksdb::ColumnFamilyHandle* column_family,
+                                               const rocksdb::RangePtr* ranges, size_t n,
+                                               bool include_end = true) {
+    READ_LOCKER(lock, _rwlock);
+    return rocksdb::DeleteFilesInRanges(_db, column_family, ranges, n, include_end);
+  }
+
+  ///
+  /// static routines from include/rocksdb/utilities/checkpoint.h
+  ///
+
+  rocksdb::Status CreateCheckpointObject(rocksdb::Checkpoint** checkpoint_ptr) {
+    READ_LOCKER(lock, _rwlock);
+    return rocksdb::Checkpoint::Create(_db, checkpoint_ptr);
+  }
+
+
 
   ///
   bool pauseRocksDB(std::chrono::milliseconds timeout);

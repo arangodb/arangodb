@@ -37,7 +37,7 @@
 #include "Transaction/Methods.h"
 
 #include <rocksdb/comparator.h>
-#include <rocksdb/convenience.h>
+// #include <rocksdb/convenience.h> ... do not use, breaks RocksDBWrapper
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Iterator.h>
 
@@ -155,15 +155,15 @@ Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
   LOG_TOPIC(DEBUG, Logger::ENGINES) << "removing large range: " << bounds;
 
   rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
-  rocksdb::DB* bDB = db->GetRootDB();
-  TRI_ASSERT(bDB != nullptr);
+//  rocksdb::DB* bDB = db->GetRootDB();
+//  TRI_ASSERT(bDB != nullptr);
 
   try {
     // delete files in range lower..upper
     rocksdb::Slice lower(bounds.start());
     rocksdb::Slice upper(bounds.end());
     {
-      rocksdb::Status s = rocksdb::DeleteFilesInRange(bDB, cf, &lower, &upper);
+      rocksdb::Status s = globalRocksDB()->DeleteFilesInRange(cf, &lower, &upper);
       if (!s.ok()) {
         // if file deletion failed, we will still iterate over the remaining
         // keys, so we don't need to abort and raise an error here
@@ -177,7 +177,7 @@ Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
     // necessarily find them all, just complete files)
     if (useRangeDelete) {
       rocksdb::WriteOptions wo;
-      rocksdb::Status s = bDB->DeleteRange(wo, cf, lower, upper);
+      rocksdb::Status s = db->DeleteRange(wo, cf, lower, upper);
       if (!s.ok()) {
         LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
             << "RocksDB key deletion failed: " << s.ToString();
@@ -194,7 +194,7 @@ Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
     readOptions.total_order_seek = !prefixSameAsStart;
     readOptions.verify_checksums = false;
     readOptions.fill_cache = false;
-    std::unique_ptr<rocksdb::Iterator> it(bDB->NewIterator(readOptions, cf));
+    std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(readOptions, cf));
 
     rocksdb::WriteOptions wo;
 
@@ -212,7 +212,7 @@ Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
       if (counter >= 1000) {
         LOG_TOPIC(DEBUG, Logger::ENGINES) << "intermediate delete write";
         // Persist deletes all 1000 documents
-        rocksdb::Status status = bDB->Write(wo, &batch);
+        rocksdb::Status status = db->Write(wo, &batch);
         if (!status.ok()) {
           LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
               << "RocksDB key deletion failed: " << status.ToString();
@@ -230,7 +230,7 @@ Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
       LOG_TOPIC(DEBUG, Logger::ENGINES) << "intermediate delete write";
       // We still have sth to write
       // now apply deletion batch
-      rocksdb::Status status = bDB->Write(rocksdb::WriteOptions(), &batch);
+      rocksdb::Status status = db->Write(rocksdb::WriteOptions(), &batch);
 
       if (!status.ok()) {
         LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
