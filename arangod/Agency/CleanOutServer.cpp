@@ -512,9 +512,9 @@ arangodb::Result CleanOutServer::abort() {
   auto payload = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder p(payload.get());
-    payload->add(VPackValue(toBeCleanedPrefix));
+    payload->add(VPackValue("/Target/ToBeCleanedServers"));
     {
-      VPackBuilder pp(payload.get());
+      VPackObjectBuilder pp(payload.get());
       payload->add("op", VPackValue("erase"));
       payload->add("val", VPackValue(_server));
     }
