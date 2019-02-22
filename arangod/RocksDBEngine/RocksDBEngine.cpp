@@ -1771,7 +1771,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         // check if documents have been deleted
-        numDocsLeft += rocksutils::countKeyRange(db, bounds, prefixSameAsStart);
+        numDocsLeft += rocksutils::countKeyRange(_db, bounds, prefixSameAsStart);
 #endif
       }
     }
@@ -1802,7 +1802,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // check if documents have been deleted
-    numDocsLeft += rocksutils::countKeyRange(db, bounds, true);
+    numDocsLeft += rocksutils::countKeyRange(_db, bounds, true);
 #endif
   });
 
