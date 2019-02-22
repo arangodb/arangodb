@@ -73,30 +73,11 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(TRI_vocbase_t& vocbase,
 
 /// @brief save the current applier state
 Result DatabaseTailingSyncer::saveApplierState() {
-  LOG_TOPIC(TRACE, Logger::REPLICATION)
-      << "saving replication applier state. last applied continuous tick: "
-      << applier()->_state._lastAppliedContinuousTick
-      << ", safe resume tick: " << applier()->_state._safeResumeTick;
-
-  try {
-    _applier->persistState(false);
-    return Result();
-  } catch (basics::Exception const& ex) {
-    std::string errorMsg =
-        std::string("unable to save replication applier state: ") + ex.what();
-    LOG_TOPIC(WARN, Logger::REPLICATION) << errorMsg;
-    THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), errorMsg);
-  } catch (std::exception const& ex) {
-    std::string errorMsg =
-        std::string("unable to save replication applier state: ") + ex.what();
-    LOG_TOPIC(WARN, Logger::REPLICATION) << errorMsg;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "caught unknown exception while saving applier state");
+  auto rv = _applier->persistStateResult(false);
+  if (rv.fail()){
+    THROW_ARANGO_EXCEPTION(rv);
   }
-  return TRI_ERROR_INTERNAL;
+  return rv;
 }
 
 /// @brief finalize the synchronization of a collection by tailing the WAL
