@@ -58,19 +58,21 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
     RegisterId reg;
     std::string value;
 
-    InputVertex(std::string const& value)
+    InputVertex(std::string const value)
         : type(CONSTANT), reg(0), value(value) {}
     InputVertex(RegisterId reg) : type(REGISTER), reg(reg), value("") {}
   };
 
   enum OutputName { VERTEX, EDGE };
+  struct OutputNameHash { size_t operator()(OutputName v) const noexcept { return size_t(v); } };
+
   ShortestPathExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
                             std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
                             RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                             std::unordered_set<RegisterId> registersToClear,
                             std::unordered_set<RegisterId> registersToKeep,
                             std::unique_ptr<graph::ShortestPathFinder>&& finder,
-                            std::unordered_map<OutputName, RegisterId>&& registerMapping,
+    std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
                             InputVertex&& source, InputVertex&& target);
 
   ShortestPathExecutorInfos() = delete;
@@ -121,7 +123,7 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
   std::unique_ptr<arangodb::graph::ShortestPathFinder> _finder;
 
   /// @brief Mapping outputType => register
-  std::unordered_map<OutputName, RegisterId> _registerMapping;
+  std::unordered_map<OutputName, RegisterId, OutputNameHash> _registerMapping;
 
   /// @brief Information about the source vertex
   InputVertex const _source;
@@ -207,4 +209,5 @@ class ShortestPathExecutor {
 };
 }  // namespace aql
 }  // namespace arangodb
+
 #endif

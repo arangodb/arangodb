@@ -51,7 +51,7 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     Collection const* collection, Variable const* outVariable, bool produceResult,
     std::vector<std::string> const& projections, transaction::Methods* trxPtr,
     std::vector<size_t> const& coveringIndexAttributePositions,
-    bool allowCoveringIndexOptimization, bool useRawDocumentPointers, bool random)
+    bool useRawDocumentPointers, bool random)
     : ExecutorInfos(make_shared_unordered_set(),
                     make_shared_unordered_set({outputRegister}),
                     nrInputRegisters, nrOutputRegisters,
@@ -63,7 +63,6 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
       _projections(projections),
       _trxPtr(trxPtr),
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
-      _allowCoveringIndexOptimization(allowCoveringIndexOptimization),
       _useRawDocumentPointers(useRawDocumentPointers),
       _produceResult(produceResult),
       _random(random) {}
@@ -73,6 +72,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
       _fetcher(fetcher),
       _state(ExecutionState::HASMORE),
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
+      _allowCoveringIndexOptimization(true),
       _cursorHasMore(false) {
   _cursor =
       _infos.getTrxPtr()->indexScan(_infos.getCollection()->name(),
@@ -90,7 +90,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
   this->setProducingFunction(buildCallback(
         _documentProducer, _infos.getOutVariable(), _infos.getProduceResult(),
         _infos.getProjections(), _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
-        _infos.getAllowCoveringIndexOptimization(), _infos.getUseRawDocumentPointers()));
+        _allowCoveringIndexOptimization, _infos.getUseRawDocumentPointers()));
 
 };
 

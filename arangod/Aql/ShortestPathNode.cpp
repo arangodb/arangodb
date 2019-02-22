@@ -251,7 +251,7 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
   }
 
   auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-  std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId> outputRegisterMapping;
+  std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId, ShortestPathExecutorInfos::OutputNameHash> outputRegisterMapping;
   if (usesVertexOutVariable()) {
     auto it = varInfo.find(vertexOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
