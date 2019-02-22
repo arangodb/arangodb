@@ -475,7 +475,18 @@ void ClusterInfo::loadPlan() {
     return;
   }
 
-  auto slice = result.slice()[0].get( // get slice
+  auto resultSlice = result.slice();
+
+  if (!resultSlice.isArray() || resultSlice.length() != 1) {
+    LOG_TOPIC(DEBUG, Logger::CLUSTER)
+      << "Error while loading " << prefixPlan << " response structure is not an array of size 1"
+      << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
+      << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+
+    return;
+  }
+
+  auto slice = resultSlice[0].get( // get slice
     std::vector<std::string>({AgencyCommManager::path(), "Plan"}) // args
   );
   auto planBuilder = std::make_shared<velocypack::Builder>();
@@ -966,7 +977,18 @@ void ClusterInfo::loadCurrent() {
     return;
   }
 
-  auto slice = result.slice()[0].get( // get slice
+  auto resultSlice = result.slice();
+
+  if (!resultSlice.isArray() || resultSlice.length() != 1) {
+    LOG_TOPIC(DEBUG, Logger::CLUSTER)
+      << "Error while loading " << prefixCurrent << " response structure is not an array of size 1"
+      << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode()
+      << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+
+    return;
+  }
+
+  auto slice = resultSlice[0].get( // get slice
     std::vector<std::string>({AgencyCommManager::path(), "Current"}) // args
   );
   auto currentBuilder = std::make_shared<velocypack::Builder>();
