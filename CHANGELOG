@@ -1,5 +1,7 @@
-v3.4.4 (XXXX-XX-XX)
+V3.4.4 (2019-XX-XX)
 -------------------
+
+* fixed overflow in windows NowNanos in RocksDB
 
 * fixed issue #8165: AQL optimizer does not pick up multiple Geo index
 
