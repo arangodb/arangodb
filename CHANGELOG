@@ -12,6 +12,9 @@ devel
     RETURN v
   for more details refer to the documentation chapter.
 
+* `--query.registry-ttl` is now honored in single-server mode, and cursor TTLs
+  are now honored on DBServers in cluster mode
+  
 * add "TTL" index type, for optional auto-expiration of documents 
 
 * disable selection of index types "persistent" and "skiplist" in the web

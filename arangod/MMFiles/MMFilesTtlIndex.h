@@ -56,7 +56,24 @@ class MMFilesTtlIndex final : public MMFilesSkiplistIndex {
   
   void toVelocyPack(arangodb::velocypack::Builder& builder,
                     std::underlying_type<Index::Serialize>::type flags) const override;
+
+ protected:
+  // special override method that extracts a timestamp value from the index attribute
+  Result insert(transaction::Methods& trx,
+                LocalDocumentId const& documentId,
+                velocypack::Slice const& doc, Index::OperationMode mode) override;
+
+  // special override method that extracts a timestamp value from the index attribute
+  Result remove(transaction::Methods& trx, 
+                LocalDocumentId const& documentId,
+                velocypack::Slice const& doc, Index::OperationMode mode) override;
  
+ private:
+  /// @brief extract a timestamp value from the index attribute value
+  /// returns a negative timestamp if the index attribute value is not convertible
+  /// properly into a timestamp
+  double getTimestamp(arangodb::velocypack::Slice const& doc) const;
+
  private:
   double const _expireAfter;
 };

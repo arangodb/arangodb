@@ -427,7 +427,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     TRI_ASSERT(getStartVertex().empty());
   }
   auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-  std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId> outputRegisterMapping;
+  std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId, TraversalExecutorInfos::OutputNameHash> outputRegisterMapping;
 
   if (usesVertexOutVariable()) {
     auto it = varInfo.find(vertexOutVariable()->id);
@@ -774,4 +774,5 @@ void TraversalNode::checkConditionsDefined() const {
   TRI_ASSERT(_toCondition != nullptr);
   TRI_ASSERT(_toCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
 }
+
 #endif
