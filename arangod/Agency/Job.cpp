@@ -38,6 +38,7 @@ std::string const failedPrefix = "/Target/Failed/";
 std::string const finishedPrefix = "/Target/Finished/";
 std::string const toDoPrefix = "/Target/ToDo/";
 std::string const cleanedPrefix = "/Target/CleanedServers";
+std::string const toBeCleanedPrefix = "/Target/ToBeCleanedServers";
 std::string const failedServersPrefix = "/Target/FailedServers";
 std::string const planColPrefix = "/Plan/Collections/";
 std::string const curColPrefix = "/Current/Collections/";
@@ -139,53 +140,56 @@ bool Job::finish(std::string const& server, std::string const& shard,
   return false;
 }
 
-std::string Job::randomIdleGoodAvailableServer(Node const& snap,
+std::string Job::randomIdleAvailableServer(Node const& snap,
                                                std::vector<std::string> const& exclude) {
   std::vector<std::string> as = availableServers(snap);
   std::string ret;
-  auto ex(exclude);
 
-  // ungood;
+  // Prefer good servers over bad servers
+  std::vector<std::string> good;
+  std::vector<std::string> bad;
+
+  // unfailed; - servers that have are just temporarily bad, should be considered
+  // as valid server.
   try {
     for (auto const& srv : snap.hasAsChildren(healthPrefix).first) {
-      if ((*srv.second).hasAsString("Status").first != "GOOD") {
-        ex.push_back(srv.first);
+      // ignore excluded servers
+      if (std::find(std::begin(exclude), std::end(exclude), srv.first) != std::end(exclude)) {
+        continue ;
+      }
+
+      std::string const& status = (*srv.second).hasAsString("Status").first;
+      if (status == "GOOD") {
+        good.push_back(srv.first);
+      } else if (status == "BAD") {
+        bad.push_back(srv.first);
       }
     }
   } catch (...) {
   }
 
-  // blocked;
-  try {
-    for (auto const& srv : snap.hasAsChildren(blockedServersPrefix).first) {
-      ex.push_back(srv.first);
+  if (good.empty()) {
+    if (bad.empty()) {
+      return ret;
     }
-  } catch (...) {
+    good = std::move(bad);
   }
 
-  // Remove excluded servers
-  std::sort(std::begin(ex), std::end(ex));
-  as.erase(std::remove_if(std::begin(as), std::end(as),
-                          [&](std::string const& s) {
-                            return std::binary_search(std::begin(ex), std::end(ex), s);
-                          }),
-           std::end(as));
-
   // Choose random server from rest
-  if (!as.empty()) {
-    if (as.size() == 1) {
-      ret = as[0];
+  if (!good.empty()) {
+    if (good.size() == 1) {
+      ret = good[0];
     } else {
-      uint16_t interval = static_cast<uint16_t>(as.size() - 1);
+      uint16_t interval = static_cast<uint16_t>(good.size() - 1);
       uint16_t random = RandomGenerator::interval(interval);
-      ret = as.at(random);
+      ret = good.at(random);
     }
   }
 
   return ret;
 }
 
-std::string Job::randomIdleGoodAvailableServer(Node const& snap, Slice const& exclude) {
+std::string Job::randomIdleAvailableServer(Node const& snap, Slice const& exclude) {
   std::vector<std::string> ev;
   if (exclude.isArray()) {
     for (const auto& s : VPackArrayIterator(exclude)) {
@@ -194,7 +198,7 @@ std::string Job::randomIdleGoodAvailableServer(Node const& snap, Slice const& ex
       }
     }
   }
-  return randomIdleGoodAvailableServer(snap, ev);
+  return randomIdleAvailableServer(snap, ev);
 }
 
 // The following counts in a given server list how many of the servers are
@@ -229,7 +233,7 @@ size_t Job::countGoodServersInList(Node const& snap, VPackSlice const& serverLis
   return count;
 }
 
-/// @brief Get servers from plan, which are not failed or cleaned out
+/// @brief Get servers from plan, which are not failed or (to be) cleaned out
 std::vector<std::string> Job::availableServers(Node const& snapshot) {
   std::vector<std::string> ret;
 
@@ -239,22 +243,31 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
     ret.push_back(srv.first);
   }
 
-  // Remove cleaned servers from list (test first to avoid warning log
-  if (snapshot.has(cleanedPrefix)) try {
-      for (auto const& srv :
-           VPackArrayIterator(snapshot.hasAsSlice(cleanedPrefix).first)) {
-        ret.erase(std::remove(ret.begin(), ret.end(), srv.copyString()), ret.end());
-      }
-    } catch (...) {
-    }
+  auto excludePrefix = [&ret, &snapshot](std::string const& prefix, bool isArray) {
 
-  // Remove failed servers from list (test first to avoid warning log)
-  if (snapshot.has(failedServersPrefix)) try {
-      for (auto const& srv : snapshot.hasAsChildren(failedServersPrefix).first) {
+    bool has;
+    VPackSlice slice;
+    Node::Children children;
+
+    if (isArray) {
+      std::tie(slice, has) = snapshot.hasAsSlice(prefix);
+      if (has) {
+        for (auto const& srv : VPackArrayIterator(slice)) {
+          ret.erase(std::remove(ret.begin(), ret.end(), srv.copyString()), ret.end());
+        }
+      }
+    } else {
+      std::tie(children, has) = snapshot.hasAsChildren(prefix);
+      for (auto const& srv : children) {
         ret.erase(std::remove(ret.begin(), ret.end(), srv.first), ret.end());
       }
-    } catch (...) {
     }
+  };
+
+  // Remove (to be) cleaned and failed servers from the list
+  excludePrefix(cleanedPrefix, true);
+  excludePrefix(failedServersPrefix, false);
+  excludePrefix(toBeCleanedPrefix, true);
 
   return ret;
 }
