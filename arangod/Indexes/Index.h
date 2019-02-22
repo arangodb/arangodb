@@ -78,7 +78,7 @@ class Index {
   Index(Index const&) = delete;
   Index& operator=(Index const&) = delete;
 
-  Index(TRI_idx_iid_t iid, LogicalCollection& collection,
+  Index(TRI_idx_iid_t iid, LogicalCollection& collection, std::string const& name,
         std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
         bool unique, bool sparse);
 
@@ -113,6 +113,9 @@ class Index {
  public:
   /// @brief return the index id
   inline TRI_idx_iid_t id() const { return _iid; }
+
+  /// @brief return the index name
+  inline std::string const& name() const { return _name; }
 
   /// @brief return the index fields
   inline std::vector<std::vector<arangodb::basics::AttributeName>> const& fields() const {
@@ -258,9 +261,10 @@ class Index {
   /// @brief return the selectivity estimate of the index
   /// must only be called if hasSelectivityEstimate() returns true
   ///
-  /// The extra arangodb::velocypack::StringRef is only used in the edge index as direction
-  /// attribute attribute, a Slice would be more flexible.
-  virtual double selectivityEstimate(arangodb::velocypack::StringRef const& extra = arangodb::velocypack::StringRef()) const;
+  /// The extra arangodb::velocypack::StringRef is only used in the edge index
+  /// as direction attribute attribute, a Slice would be more flexible.
+  virtual double selectivityEstimate(arangodb::velocypack::StringRef const& extra =
+                                         arangodb::velocypack::StringRef()) const;
 
   /// @brief update the cluster selectivity estimate
   virtual void updateClusterSelectivityEstimate(double /*estimate*/) {
@@ -381,6 +385,7 @@ class Index {
 
   TRI_idx_iid_t const _iid;
   LogicalCollection& _collection;
+  std::string _name;
   std::vector<std::vector<arangodb::basics::AttributeName>> const _fields;
   bool const _useExpansion;
 

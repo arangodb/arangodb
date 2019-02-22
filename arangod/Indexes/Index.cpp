@@ -21,7 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Index.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
@@ -31,6 +30,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
+#include "Index.h"
 
 #ifdef USE_IRESEARCH
 #include "IResearch/IResearchCommon.h"
@@ -95,14 +95,13 @@ bool canBeNull(arangodb::aql::AstNode const* op, arangodb::aql::AstNode const* a
   TRI_ASSERT(op != nullptr);
   TRI_ASSERT(access != nullptr);
 
-  if (access->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS && 
+  if (access->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS &&
       access->getMemberUnchecked(0)->type == arangodb::aql::NODE_TYPE_REFERENCE) {
     // a.b
     // now check if the accessed attribute is _key, _rev or _id.
     // all of these cannot be null
     auto attributeName = access->getStringRef();
-    if (attributeName == StaticStrings::KeyString ||
-        attributeName == StaticStrings::IdString ||
+    if (attributeName == StaticStrings::KeyString || attributeName == StaticStrings::IdString ||
         attributeName == StaticStrings::RevString) {
       return false;
     }
@@ -160,10 +159,12 @@ bool typeMatch(char const* type, size_t len, char const* expected) {
 // logical collection because it could be gone!
 
 Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection,
+             std::string const& name,
              std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
              bool unique, bool sparse)
     : _iid(iid),
       _collection(collection),
+      _name(name),
       _fields(fields),
       _useExpansion(::hasExpansion(_fields)),
       _unique(unique),
@@ -174,6 +175,7 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection,
 Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection, VPackSlice const& slice)
     : _iid(iid),
       _collection(collection),
+      _name(arangodb::basics::VelocyPackHelper::getStringValue(slice, arangodb::StaticStrings::IndexName)),
       _fields(::parseFields(slice.get(arangodb::StaticStrings::IndexFields),
                             Index::allowExpansion(Index::type(
                                 slice.get(arangodb::StaticStrings::IndexType).copyString())))),

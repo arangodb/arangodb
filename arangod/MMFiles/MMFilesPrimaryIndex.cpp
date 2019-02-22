@@ -21,7 +21,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MMFilesPrimaryIndex.h"
 #include "Aql/AstNode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
@@ -31,6 +30,7 @@
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesIndexLookupContext.h"
+#include "MMFilesPrimaryIndex.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -229,7 +229,7 @@ void MMFilesAnyIndexIterator::reset() {
 }
 
 MMFilesPrimaryIndex::MMFilesPrimaryIndex(arangodb::LogicalCollection& collection)
-    : MMFilesIndex(0, collection,
+    : MMFilesIndex(0, collection, StaticStrings::IndexNamePrimary,
                    std::vector<std::vector<arangodb::basics::AttributeName>>(
                        {{arangodb::basics::AttributeName(StaticStrings::KeyString, false)}}),
                    /*unique*/ true, /*sparse*/ false) {

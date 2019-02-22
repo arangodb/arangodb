@@ -21,7 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBPrimaryIndex.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Basics/Exceptions.h"
@@ -42,6 +41,7 @@
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBValue.h"
+#include "RocksDBPrimaryIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -65,9 +65,9 @@
 using namespace arangodb;
 
 namespace {
-  std::string const lowest;               // smallest possible key
-  std::string const highest = "\xFF";    // greatest possible key
-}
+std::string const lowest;            // smallest possible key
+std::string const highest = "\xFF";  // greatest possible key
+}  // namespace
 
 RocksDBPrimaryIndexRangeIterator::RocksDBPrimaryIndexRangeIterator(
     LogicalCollection* collection, transaction::Methods* trx,
@@ -210,7 +210,8 @@ bool RocksDBPrimaryIndexEqIterator::next(LocalDocumentIdCallback const& cb, size
   }
 
   _done = true;
-  LocalDocumentId documentId = _index->lookupKey(_trx, arangodb::velocypack::StringRef(_key->slice()));
+  LocalDocumentId documentId =
+      _index->lookupKey(_trx, arangodb::velocypack::StringRef(_key->slice()));
   if (documentId.isSet()) {
     cb(documentId);
   }
@@ -227,7 +228,8 @@ bool RocksDBPrimaryIndexEqIterator::nextCovering(DocumentCallback const& cb, siz
   }
 
   _done = true;
-  LocalDocumentId documentId = _index->lookupKey(_trx, arangodb::velocypack::StringRef(_key->slice()));
+  LocalDocumentId documentId =
+      _index->lookupKey(_trx, arangodb::velocypack::StringRef(_key->slice()));
   if (documentId.isSet()) {
     cb(documentId, _key->slice());
   }
@@ -263,7 +265,8 @@ bool RocksDBPrimaryIndexInIterator::next(LocalDocumentIdCallback const& cb, size
   }
 
   while (limit > 0) {
-    LocalDocumentId documentId = _index->lookupKey(_trx, arangodb::velocypack::StringRef(*_iterator));
+    LocalDocumentId documentId =
+        _index->lookupKey(_trx, arangodb::velocypack::StringRef(*_iterator));
     if (documentId.isSet()) {
       cb(documentId);
       --limit;
@@ -287,7 +290,8 @@ bool RocksDBPrimaryIndexInIterator::nextCovering(DocumentCallback const& cb, siz
   }
 
   while (limit > 0) {
-    LocalDocumentId documentId = _index->lookupKey(_trx, arangodb::velocypack::StringRef(*_iterator));
+    LocalDocumentId documentId =
+        _index->lookupKey(_trx, arangodb::velocypack::StringRef(*_iterator));
     if (documentId.isSet()) {
       cb(documentId, *_iterator);
       --limit;
@@ -307,7 +311,7 @@ void RocksDBPrimaryIndexInIterator::reset() { _iterator.reset(); }
 
 RocksDBPrimaryIndex::RocksDBPrimaryIndex(arangodb::LogicalCollection& collection,
                                          arangodb::velocypack::Slice const& info)
-    : RocksDBIndex(0, collection,
+    : RocksDBIndex(0, collection, StaticStrings::IndexNamePrimary,
                    std::vector<std::vector<arangodb::basics::AttributeName>>(
                        {{arangodb::basics::AttributeName(StaticStrings::KeyString, false)}}),
                    true, false, RocksDBColumnFamily::primary(),
@@ -405,7 +409,8 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 /// the case for older collections
 /// in this case the caller must fetch the revision id from the actual
 /// document
-bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx, arangodb::velocypack::StringRef keyRef,
+bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
+                                         arangodb::velocypack::StringRef keyRef,
                                          LocalDocumentId& documentId,
                                          TRI_voc_rid_t& revisionId) const {
   documentId.clear();
@@ -530,8 +535,8 @@ bool RocksDBPrimaryIndex::supportsFilterCondition(
 
   std::size_t values = 0;
   SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found,
-                                                 values, nonNullAttributes,
-                                                 /*skip evaluation (during execution)*/ false);
+                                               values, nonNullAttributes,
+                                               /*skip evaluation (during execution)*/ false);
   estimatedItems = values;
   return !found.empty();
 }
@@ -541,8 +546,8 @@ bool RocksDBPrimaryIndex::supportsSortCondition(arangodb::aql::SortCondition con
                                                 size_t itemsInIndex, double& estimatedCost,
                                                 size_t& coveredAttributes) const {
   return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
-                                                              itemsInIndex, estimatedCost,
-                                                              coveredAttributes);
+                                                            itemsInIndex, estimatedCost,
+                                                            coveredAttributes);
 }
 
 /// @brief creates an IndexIterator for the given Condition
@@ -591,8 +596,7 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
     // fall-through intentional here
   }
 
-  auto removeCollectionFromString =
-      [this, &trx](bool isId, std::string& value) -> int {
+  auto removeCollectionFromString = [this, &trx](bool isId, std::string& value) -> int {
     if (isId) {
       char const* key = nullptr;
       size_t outLength = 0;
@@ -642,11 +646,9 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
 
     auto type = comp->type;
 
-    if (!(type == aql::NODE_TYPE_OPERATOR_BINARY_LE ||
-          type == aql::NODE_TYPE_OPERATOR_BINARY_LT || type == aql::NODE_TYPE_OPERATOR_BINARY_GE ||
-          type == aql::NODE_TYPE_OPERATOR_BINARY_GT ||
-          type == aql::NODE_TYPE_OPERATOR_BINARY_EQ
-        )) {
+    if (!(type == aql::NODE_TYPE_OPERATOR_BINARY_LE || type == aql::NODE_TYPE_OPERATOR_BINARY_LT ||
+          type == aql::NODE_TYPE_OPERATOR_BINARY_GE || type == aql::NODE_TYPE_OPERATOR_BINARY_GT ||
+          type == aql::NODE_TYPE_OPERATOR_BINARY_EQ)) {
       return new EmptyIndexIterator(&_collection, trx);
     }
 
@@ -663,7 +665,7 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
     TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS);
     bool const isId = (attrNode->stringEquals(StaticStrings::IdString));
 
-    std::string value; // empty string == lower bound
+    std::string value;  // empty string == lower bound
     if (valNode->isStringValue()) {
       value = valNode->getString();
     } else if (valNode->isObject() || valNode->isArray()) {
@@ -673,7 +675,9 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
       // any null, bool or numeric value is lower than any potential key
       // keep lower bound
     } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("unhandled type for valNode: ") + valNode->getTypeString());
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          std::string("unhandled type for valNode: ") + valNode->getTypeString());
     }
 
     // strip collection name prefix from comparison value
@@ -692,7 +696,8 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
         lower = std::move(value);
         lowerFound = true;
       }
-    } else if (type == aql::NODE_TYPE_OPERATOR_BINARY_LE || type == aql::NODE_TYPE_OPERATOR_BINARY_LT) {
+    } else if (type == aql::NODE_TYPE_OPERATOR_BINARY_LE ||
+               type == aql::NODE_TYPE_OPERATOR_BINARY_LT) {
       // a.b < value
       if (cmpResult > 0) {
         // doc._id < collection with "bigger" name
@@ -709,7 +714,8 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
         }
       }
       upperFound = true;
-    } else if (type == aql::NODE_TYPE_OPERATOR_BINARY_GE || type == aql::NODE_TYPE_OPERATOR_BINARY_GT) {
+    } else if (type == aql::NODE_TYPE_OPERATOR_BINARY_GE ||
+               type == aql::NODE_TYPE_OPERATOR_BINARY_GT) {
       // a.b > value
       if (cmpResult < 0) {
         // doc._id > collection with "smaller" name

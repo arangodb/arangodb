@@ -22,7 +22,6 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBEdgeIndex.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
@@ -32,6 +31,7 @@
 #include "Cache/CachedValue.h"
 #include "Cache/TransactionalCache.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBKey.h"
@@ -478,7 +478,8 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(arangodb::velocypack::StringRef f
 
     // adding revision ID and _from or _to value
     _builder.add(VPackValue(documentId.id()));
-    arangodb::velocypack::StringRef vertexId = RocksDBValue::vertexId(_iterator->value());
+    arangodb::velocypack::StringRef vertexId =
+        RocksDBValue::vertexId(_iterator->value());
     _builder.add(VPackValuePair(vertexId.data(), vertexId.size(), VPackValueType::String));
 
     _iterator->Next();
@@ -530,6 +531,8 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollectio
                                    arangodb::velocypack::Slice const& info,
                                    std::string const& attr)
     : RocksDBIndex(iid, collection,
+                   ((attr == StaticStrings::FromString) ? StaticStrings::IndexNameEdgeFrom
+                                                        : StaticStrings::IndexNameEdgeTo),
                    std::vector<std::vector<AttributeName>>({{AttributeName(attr, false)}}),
                    false, false, RocksDBColumnFamily::edge(),
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
@@ -585,8 +588,7 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
 
 Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                 LocalDocumentId const& documentId,
-                                velocypack::Slice const& doc,
-                                Index::OperationMode mode) {
+                                velocypack::Slice const& doc, Index::OperationMode mode) {
   Result res;
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
@@ -600,7 +602,8 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                           ? transaction::helpers::extractToFromDocument(doc)
                           : transaction::helpers::extractFromFromDocument(doc);
   TRI_ASSERT(toFrom.isString());
-  RocksDBValue value = RocksDBValue::EdgeIndexValue(arangodb::velocypack::StringRef(toFrom));
+  RocksDBValue value =
+      RocksDBValue::EdgeIndexValue(arangodb::velocypack::StringRef(toFrom));
 
   // blacklist key in cache
   blackListKey(fromToRef);
@@ -622,8 +625,7 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
 
 Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                                 LocalDocumentId const& documentId,
-                                velocypack::Slice const& doc,
-                                Index::OperationMode mode) {
+                                velocypack::Slice const& doc, Index::OperationMode mode) {
   Result res;
 
   // VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
@@ -636,7 +638,8 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                           ? transaction::helpers::extractToFromDocument(doc)
                           : transaction::helpers::extractFromFromDocument(doc);
   TRI_ASSERT(toFrom.isString());
-  RocksDBValue value = RocksDBValue::EdgeIndexValue(arangodb::velocypack::StringRef(toFrom));
+  RocksDBValue value =
+      RocksDBValue::EdgeIndexValue(arangodb::velocypack::StringRef(toFrom));
 
   // blacklist key in cache
   blackListKey(fromToRef);
