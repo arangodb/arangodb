@@ -147,7 +147,7 @@ bool AddFollower::start() {
   // First check that we still have too few followers for the current
   // `replicationFactor`:
   size_t desiredReplFactor = collection.hasAsUInt("replicationFactor").first;
-  size_t actualReplFactor = planned.length();
+  size_t actualReplFactor = Job::countGoodServersInList(_snapshot, planned);
   if (actualReplFactor >= desiredReplFactor) {
     finish("", "", true, "job no longer necessary, have enough replicas");
     return true;

@@ -1226,7 +1226,8 @@ void Supervision::enforceReplication() {
         for (auto const& shard_ : col.hasAsChildren("shards").first) {  // Pl shards
           auto const& shard = *(shard_.second);
 
-          size_t actualReplicationFactor = shard.slice().length();
+          size_t actualReplicationFactor
+            = Job::countGoodServersInList(_snapshot, shard.slice());
           if (actualReplicationFactor != replicationFactor) {
             // Check that there is not yet an addFollower or removeFollower
             // or moveShard job in ToDo for this shard:

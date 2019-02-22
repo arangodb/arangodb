@@ -197,6 +197,38 @@ std::string Job::randomIdleGoodAvailableServer(Node const& snap, Slice const& ex
   return randomIdleGoodAvailableServer(snap, ev);
 }
 
+// The following counts in a given server list how many of the servers are
+// in Status "GOOD".
+size_t Job::countGoodServersInList(Node const& snap, VPackSlice const& serverList) {
+  size_t count = 0;
+  if (!serverList.isArray()) {
+    // No array, strange, return 0
+    return count;
+  }
+  for (VPackSlice const serverName : VPackArrayIterator(serverList)) {
+    if (serverName.isString()) {
+      // serverName not a string? Then don't count
+      std::string serverStr = serverName.copyString();
+      auto health = snap.hasAsChildren(healthPrefix);
+      // Do we have a Health substructure?
+      if (health.second) {
+        Node::Children& healthData = health.first; // List of servers in Health
+        // Now look up this server:
+        auto it = healthData.find(serverStr);
+        if (it != healthData.end()) {
+          // Only check if found
+          std::shared_ptr<Node> healthNode = it->second;
+          // Check its status:
+          if (healthNode->hasAsString("Status").first == "GOOD") {
+            ++count;
+          }
+        }
+      }
+    }
+  }
+  return count;
+}
+
 /// @brief Get servers from plan, which are not failed or cleaned out
 std::vector<std::string> Job::availableServers(Node const& snapshot) {
   std::vector<std::string> ret;
