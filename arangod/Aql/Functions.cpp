@@ -974,7 +974,7 @@ AqlValue dateFromParameters(
   duration<int64_t, std::milli> time;
 
   if (parameters.size() == 1) {
-    if (!parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
+    if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
       return AqlValue(AqlValueHintNull());
     }
     time = tp.time_since_epoch();

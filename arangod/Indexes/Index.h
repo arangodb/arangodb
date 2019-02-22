@@ -363,6 +363,11 @@ class Index {
   static size_t sortWeight(arangodb::aql::AstNode const* node);
 
  protected:
+  /// @brief return the name of the (sole) index attribute
+  /// it is only allowed to call this method if the index contains a
+  /// single attribute
+  std::string const& getAttribute() const;
+ 
   /// @brief generate error result
   /// @param code the error key
   /// @param key the conflicting key
@@ -378,6 +383,11 @@ class Index {
   /// @brief generate error result
   /// @param key the conflicting key
   arangodb::Result& addErrorMsg(Result& r, std::string const& key = "");
+
+  /// @brief extracts a timestamp value from a document
+  /// returns a negative value if the document does not contain the specified
+  /// attribute, or the attribute does not contain a valid timestamp or date string
+  double getTimestamp(arangodb::velocypack::Slice const& doc, std::string const& attributeName) const;
 
   TRI_idx_iid_t const _iid;
   LogicalCollection& _collection;

@@ -86,7 +86,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
-  bool hasCovering() const override { return true; }
+  bool hasCovering() const override;
 
  private:
   arangodb::RocksDBVPackIndex const* _index;
@@ -122,7 +122,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
-  bool hasCovering() const override { return true; }
+  bool hasCovering() const override;
 
  private:
   inline bool outOfRange() const {

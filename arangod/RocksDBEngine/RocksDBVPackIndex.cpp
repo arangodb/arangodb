@@ -90,6 +90,10 @@ void RocksDBVPackUniqueIndexIterator::reset() {
 
   _done = false;
 }
+    
+bool RocksDBVPackUniqueIndexIterator::hasCovering() const {
+  return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX; 
+}
 
 bool RocksDBVPackUniqueIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
@@ -190,6 +194,10 @@ void RocksDBVPackIndexIterator::reset() {
   } else {
     _iterator->Seek(_bounds.start());
   }
+}
+
+bool RocksDBVPackIndexIterator::hasCovering() const {
+  return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX; 
 }
 
 bool RocksDBVPackIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
