@@ -36,7 +36,6 @@ using namespace arangodb::aql;
 ModificationExecutorBase::ModificationExecutorBase(Fetcher& fetcher, Infos& infos)
     : _infos(infos), _fetcher(fetcher), _prepared(false){};
 
-
 // /// @brief skips over the taken rows if the input value is no
 // /// array or empty. updates dstRow in this case and returns true!
 // bool ModificationExecutorBase::skipEmptyValues(VPackSlice const& values,
@@ -67,7 +66,9 @@ ModificationExecutorBase::ModificationExecutorBase(Fetcher& fetcher, Infos& info
 
 template <typename Modifier>
 ModificationExecutor<Modifier>::ModificationExecutor(Fetcher& fetcher, Infos& infos)
-    : ModificationExecutorBase(fetcher, infos), _modifier(){};
+    : ModificationExecutorBase(fetcher, infos), _modifier() {
+  _infos._trx->pinData(_infos._aqlCollection->id()); //important for mmfiles
+};
 
 template <typename Modifier>
 ModificationExecutor<Modifier>::~ModificationExecutor() = default;
