@@ -89,7 +89,7 @@ past their expiration time will actually be removed.
 Please note that the numeric timestamp values for the index attribute should be 
 specified in seconds since January 1st 1970 (Unix timestamp). To calculate the current 
 timestamp from JavaScript in this format, there is `Date.now() / 1000`, to calculate it 
-from an arbitrary date string, there is `Date.getTime() / 1000`.
+from an arbitrary Date instance, there is `Date.getTime() / 1000`.
 
 Alternatively, the index attribute values can be specified as a date string in format
 `YYYY-MM-DDTHH:MM:SS` with optional milliseconds. All date strings will be interpreted 
