@@ -163,7 +163,8 @@ DOCUMENT("users/john")
 DOCUMENT( [ "users/john", "users/amy" ] )
 ```
 
-Please also consider [to use `DOCUMENT` in conjunction with `WITH`](../Operations/With.md)
+Please also consider to use
+[`DOCUMENT` in conjunction with `WITH`](../Operations/With.md)
 
 ### LENGTH()
 
@@ -182,6 +183,8 @@ the [character length](String.md#length) of a string.
 
 Hash functions
 --------------
+
+### HASH()
 
 `HASH(value) → hashNumber`
 
@@ -203,6 +206,12 @@ The hash value returned by this function is a number. The hash algorithm is not
 guaranteed to remain the same in future versions of ArangoDB. The hash values
 should therefore be used only for temporary calculations, e.g. to compare if two
 documents are the same, or for grouping values in queries.
+
+### String-based hashing
+
+See the string functions [SHA1()](String.md#sha1),
+[SHA512()](String.md#sha512) and
+[MD5()](String.md#md5).
 
 Function calling
 ----------------
@@ -228,15 +237,16 @@ APPLY( "SUBSTRING", [ "this is a test", 0, 7 ] )
 
 ### ASSERT() / WARN()
 
-`ASSERT(expression, message) → retVal`
+`ASSERT(expr, message) → retVal`<br>
+`WARN(expr, message) → retVal`
 
-The 2 functions evaluate an expression. In case the expression evaluates to
+The two functions evaluate an expression. In case the expression evaluates to
 *true* both functions will return *true*. If the expression evaluates to
 *false* *ASSERT* will throw an error and *WARN* will issue a warning and return
 *false*. This behavior allows the use of *ASSERT* and *WARN* in *FILTER*
 conditions.
 
-- **expression** (AqlValue): AQL expression to be evaluated
+- **expr** (expression): AQL expression to be evaluated
 - **message** (string): message that will be used in exception or warning if expression evaluates to false
 - returns **retVal** (bool): returns true if expression evaluates to true
 
