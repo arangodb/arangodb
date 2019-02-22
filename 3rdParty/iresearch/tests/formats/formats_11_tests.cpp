@@ -34,6 +34,252 @@ NS_LOCAL
 class format_11_test_case : public tests::directory_test_case_base {
 };
 
+TEST_P(format_11_test_case, read_zero_block_encryption) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+
+  tests::document const* doc1 = gen.next();
+
+  // replace encryption
+  ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
+
+  // write segment with format10
+  {
+    auto codec = irs::formats::get("1_1");
+    ASSERT_NE(nullptr, codec);
+    auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
+    ASSERT_NE(nullptr, writer);
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    writer->commit();
+  }
+
+  // replace encryption
+  ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
+  dir().attributes().emplace<tests::rot13_encryption>(6);
+
+  // can't open encrypted index without encryption
+  ASSERT_THROW(irs::directory_reader::open(dir()), irs::index_error);
+}
+
+TEST_P(format_11_test_case, write_zero_block_encryption) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+
+  tests::document const* doc1 = gen.next();
+
+  // replace encryption
+  ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
+  dir().attributes().emplace<tests::rot13_encryption>(0);
+
+  // write segment with format10
+  auto codec = irs::formats::get("1_1");
+  ASSERT_NE(nullptr, codec);
+  auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
+  ASSERT_NE(nullptr, writer);
+
+  ASSERT_TRUE(insert(*writer,
+    doc1->indexed.begin(), doc1->indexed.end(),
+    doc1->stored.begin(), doc1->stored.end()
+  ));
+
+  ASSERT_THROW(writer->commit(), irs::index_error);
+}
+
+TEST_P(format_11_test_case, open_ecnrypted_with_wrong_encryption) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+
+  tests::document const* doc1 = gen.next();
+
+  ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
+
+  // write segment with format10
+  {
+    auto codec = irs::formats::get("1_1");
+    ASSERT_NE(nullptr, codec);
+    auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
+    ASSERT_NE(nullptr, writer);
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    writer->commit();
+  }
+
+  // replace encryption
+  ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
+  dir().attributes().emplace<tests::rot13_encryption>(6);
+
+  // can't open encrypted index without encryption
+  ASSERT_THROW(irs::directory_reader::open(dir()), irs::index_error);
+}
+
+TEST_P(format_11_test_case, open_ecnrypted_with_non_encrypted) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+
+  tests::document const* doc1 = gen.next();
+
+  ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
+
+  // write segment with format10
+  {
+    auto codec = irs::formats::get("1_1");
+    ASSERT_NE(nullptr, codec);
+    auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
+    ASSERT_NE(nullptr, writer);
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    writer->commit();
+  }
+
+  // remove encryption
+  dir().attributes().remove<tests::rot13_encryption>();
+
+  // can't open encrypted index without encryption
+  ASSERT_THROW(irs::directory_reader::open(dir()), irs::index_error);
+}
+
+TEST_P(format_11_test_case, open_non_ecnrypted_with_encrypted) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+
+  tests::document const* doc1 = gen.next();
+
+  ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
+
+  // write segment with format10
+  {
+    auto codec = irs::formats::get("1_1");
+    ASSERT_NE(nullptr, codec);
+    auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
+    ASSERT_NE(nullptr, writer);
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    writer->commit();
+  }
+
+  // add cipher
+  dir().attributes().emplace<tests::rot13_encryption>(7);
+
+  // check index
+  auto index = irs::directory_reader::open(dir());
+  ASSERT_TRUE(index);
+  ASSERT_EQ(1, index->size());
+  ASSERT_EQ(1, index->docs_count());
+  ASSERT_EQ(1, index->live_docs_count());
+
+  // check segment 0
+  {
+    auto& segment = index[0];
+    ASSERT_EQ(1, segment.size());
+    ASSERT_EQ(1, segment.docs_count());
+    ASSERT_EQ(1, segment.live_docs_count());
+
+    std::unordered_set<irs::string_ref> expectedName = { "A" };
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+
+    irs::bytes_ref actual_value;
+    for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+    }
+
+    ASSERT_TRUE(expectedName.empty());
+  }
+}
+
+TEST_P(format_11_test_case, open_10_with_11) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+
+  tests::document const* doc1 = gen.next();
+
+  // write segment with format10
+  {
+    auto codec = irs::formats::get("1_0");
+    ASSERT_NE(nullptr, codec);
+    auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
+    ASSERT_NE(nullptr, writer);
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+
+    writer->commit();
+  }
+
+  // check index
+  auto codec = irs::formats::get("1_1");
+  ASSERT_NE(nullptr, codec);
+  auto index = irs::directory_reader::open(dir(), codec);
+  ASSERT_TRUE(index);
+  ASSERT_EQ(1, index->size());
+  ASSERT_EQ(1, index->docs_count());
+  ASSERT_EQ(1, index->live_docs_count());
+
+  // check segment 0
+  {
+    auto& segment = index[0];
+    ASSERT_EQ(1, segment.size());
+    ASSERT_EQ(1, segment.docs_count());
+    ASSERT_EQ(1, segment.live_docs_count());
+
+    std::unordered_set<irs::string_ref> expectedName = { "A" };
+    const auto* column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+    ASSERT_EQ(expectedName.size(), segment.docs_count()); // total count of documents
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator();
+    ASSERT_TRUE(termItr->next());
+
+    irs::bytes_ref actual_value;
+    for (auto docsItr = termItr->postings(iresearch::flags()); docsItr->next();) {
+      ASSERT_TRUE(values(docsItr->value(), actual_value));
+      ASSERT_EQ(1, expectedName.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+    }
+
+    ASSERT_TRUE(expectedName.empty());
+  }
+}
+
 TEST_P(format_11_test_case, formats_10_11) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),

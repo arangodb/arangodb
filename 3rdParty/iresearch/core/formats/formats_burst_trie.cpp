@@ -1569,23 +1569,27 @@ void field_writer::prepare(const irs::flush_state& state) {
   term_count_ = 0;
   fields_count_ = 0;
 
-  // prepare terms and index output
   std::string filename;
+  bstring enc_header;
+  auto* enc = get_encryption(state.dir->attributes());
+
+  // prepare terms dictionary
   prepare_output(filename, terms_out_, state, TERMS_EXT, FORMAT_TERMS, version_);
+
+  if (version_ > FORMAT_MIN) {
+    // encrypt term dictionary
+    const auto encrypt = irs::encrypt(filename, *terms_out_, enc, enc_header, terms_out_cipher_);
+    assert(!encrypt || (terms_out_cipher_ && terms_out_cipher_->block_size()));
+    UNUSED(encrypt);
+  }
+
+  // prepare term index
   prepare_output(filename, index_out_, state, TERMS_INDEX_EXT, FORMAT_TERMS_INDEX, version_);
 
   if (version_ > FORMAT_MIN) {
-    bstring enc_header;
-    auto* enc = get_encryption(state.dir->attributes());
-
-    if (irs::encrypt(filename, enc, enc_header, terms_out_cipher_)) {
-      assert(terms_out_cipher_ && terms_out_cipher_->block_size());
-      irs::write_string(*terms_out_, enc_header);
-    }
-
-    if (irs::encrypt(filename, enc, enc_header, index_out_cipher_)) {
+    // encrypt term index
+    if (irs::encrypt(filename, *index_out_, enc, enc_header, index_out_cipher_)) {
       assert(index_out_cipher_ && index_out_cipher_->block_size());
-      irs::write_string(*index_out_, enc_header);
 
       const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/index_out_cipher_->block_size();
       index_out_ = index_output::make<encrypted_output>(std::move(index_out_), *index_out_cipher_, buffer_size);
@@ -1830,14 +1834,10 @@ void field_reader::prepare(
   encryption::stream::ptr index_in_cipher;
 
   if (term_index_version > field_writer::FORMAT_MIN) {
-    const auto enc_header = irs::read_string<bstring>(*index_in);
+    if (irs::decrypt(filename, *index_in, enc, index_in_cipher)) {
+      assert(index_in_cipher && index_in_cipher->block_size());
 
-    if (irs::decrypt(filename, enc, enc_header, index_in_cipher)) {
-      assert(index_in_cipher);
-
-      const auto block_size = index_in_cipher->block_size();
-      assert(block_size); // already checked in 'irs::decrypt'
-      const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/block_size;
+      const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/index_in_cipher->block_size();
 
       index_in = index_input::make<encrypted_input>(
         std::move(index_in), *index_in_cipher, buffer_size, FOOTER_LEN
@@ -1911,9 +1911,9 @@ void field_reader::prepare(
   }
 
   if (term_dict_version > field_writer::FORMAT_MIN) {
-    const auto enc_header = read_string<bstring>(*terms_in_);
-
-    irs::decrypt(filename, enc, enc_header, terms_in_cipher_);
+    if (irs::decrypt(filename, *terms_in_, enc, terms_in_cipher_)) {
+      assert(terms_in_cipher_ && terms_in_cipher_->block_size());
+    }
   }
 
   // prepare postings reader

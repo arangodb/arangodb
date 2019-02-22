@@ -259,7 +259,7 @@ class fs_index_input : public buffered_index_input {
     const auto end = (std::min)(begin + offset, handle_->size);
 
     crc32c crc;
-    byte_type buf[1024];
+    byte_type buf[DEFAULT_BUFFER_SIZE];
 
     for (auto pos = begin; pos < end; ) {
       const auto to_read = (std::min)(end - pos, sizeof buf);
@@ -355,7 +355,7 @@ class fs_index_input : public buffered_index_input {
     pos_ = pos;
   }
 
-  virtual bool read_internal(byte_type* b, size_t len, size_t& read) override {
+  virtual size_t read_internal(byte_type* b, size_t len) override {
     assert(b);
     assert(handle_->handle);
 
@@ -372,7 +372,7 @@ class fs_index_input : public buffered_index_input {
       handle_->pos = pos_;
     }
 
-    read = fread(b, sizeof(byte_type), len, stream);
+    size_t read = fread(b, sizeof(byte_type), len, stream);
     pos_ = handle_->pos += read;
 
     if (read != len) {

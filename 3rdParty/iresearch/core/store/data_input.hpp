@@ -169,16 +169,7 @@ class IRESEARCH_API buffered_index_input : public index_input {
 
   virtual void seek_internal(size_t pos) = 0;
 
-  virtual bool read_internal(byte_type* b, size_t count, size_t& read) = 0;
-
-  // returns number of bytes read
-  size_t read_internal(byte_type* b, size_t count) {
-    size_t read;
-    const auto res = read_internal(b, count, read);
-    assert(res);
-    UNUSED(res);
-    return read;
-  }
+  virtual size_t read_internal(byte_type* b, size_t count) = 0;
 
  private:
   // returns number of bytes between begin_ & end_

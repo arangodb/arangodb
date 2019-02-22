@@ -26,7 +26,7 @@
 
 #include "store/directory.hpp"
 #include "store/directory_attributes.hpp"
-#include "utils/encryption.hpp"
+#include "utils/ctr_encryption.hpp"
 #include <memory>
 
 class test_base;
@@ -34,40 +34,62 @@ class test_base;
 namespace tests {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      rot13_cipher
+// --SECTION--                                                  rot13_encryption
 // -----------------------------------------------------------------------------
 
-class rot13_cipher final : public irs::cipher {
+class rot13_encryption final : public irs::ctr_encryption {
  public:
-  static std::shared_ptr<irs::cipher> make(size_t block_size) {
-    return std::make_shared<rot13_cipher>(block_size);
+  static std::shared_ptr<rot13_encryption> make(
+       size_t block_size,
+       size_t header_length = DEFAULT_HEADER_LENGTH) {
+    return std::make_shared<rot13_encryption>(block_size, header_length);
   }
 
-  explicit rot13_cipher(size_t block_size) NOEXCEPT
-    : block_size_(block_size) {
+  explicit rot13_encryption(
+      size_t block_size,
+      size_t header_length = DEFAULT_HEADER_LENGTH
+  ) NOEXCEPT
+    : irs::ctr_encryption(cipher_),
+      cipher_(block_size),
+      header_length_(header_length) {
   }
 
-  size_t block_size() const NOEXCEPT {
-    return block_size_;
-  }
-
-  virtual bool decrypt(irs::byte_type* data) const override {
-    for (size_t i = 0; i < block_size_; ++i) {
-      data[i] -= 13;
-    }
-    return true;
-  }
-
-  virtual bool encrypt(irs::byte_type* data) const override {
-    for (size_t i = 0; i < block_size_; ++i) {
-      data[i] += 13;
-    }
-    return true;
+  virtual size_t header_length() NOEXCEPT override {
+    return header_length_;
   }
 
  private:
-  size_t block_size_;
-}; // rot13_cipher
+  class rot13_cipher final : public irs::cipher {
+   public:
+    explicit rot13_cipher(size_t block_size) NOEXCEPT
+      : block_size_(block_size) {
+    }
+
+    virtual size_t block_size() const NOEXCEPT override {
+      return block_size_;
+    }
+
+    virtual bool decrypt(irs::byte_type* data) const override {
+      for (size_t i = 0; i < block_size_; ++i) {
+        data[i] -= 13;
+      }
+      return true;
+    }
+
+    virtual bool encrypt(irs::byte_type* data) const override {
+      for (size_t i = 0; i < block_size_; ++i) {
+        data[i] += 13;
+      }
+      return true;
+    }
+
+   private:
+    size_t block_size_;
+  }; // rot13_cipher
+
+  rot13_cipher cipher_;
+  size_t header_length_;
+}; // rot13_encryption
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               directory factories
@@ -83,16 +105,7 @@ std::pair<std::shared_ptr<irs::directory>, std::string> rot13_cipher_directory(c
   auto info = DirectoryGenerator(ctx);
 
   if (info.first) {
-    struct encryption : irs::ctr_encryption {
-      static std::shared_ptr<encryption> make() {
-        return std::make_shared<encryption>();
-      }
-
-      encryption() : irs::ctr_encryption(cipher), cipher(BlockSize) { }
-      rot13_cipher cipher;
-    };
-
-    info.first->attributes().emplace<encryption>();
+    info.first->attributes().emplace<rot13_encryption>(BlockSize);
   }
 
   return std::make_pair(info.first, info.second + "_cipher_rot13_" + std::to_string(BlockSize));

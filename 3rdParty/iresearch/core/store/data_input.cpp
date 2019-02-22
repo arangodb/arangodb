@@ -139,25 +139,13 @@ size_t buffered_index_input::read_bytes(byte_type* b, size_t count) {
     size = std::min(size, refill());
     std::memcpy(b, begin_, sizeof(byte_type) * size);
     begin_ += size;
-    read += size;
-  } else {
-    // read directly to output buffer if possible
-    if (read_internal(b, size, size)) {
-      start_ += (offset() + size);
-      begin_ = end_ = buf_.get(); // will trigger refill on the next read
-      read += size;
-    } else {
-      do {
-        size = std::min(size, refill());
-        std::memcpy(b, begin_, sizeof(byte_type) * size);
-        begin_ += size;
-        read += size;
-        b += size;
-      } while ((size = count - read));
-    }
+  } else { // read directly to output buffer if possible
+    size  = read_internal(b, size);
+    start_ += (offset() + size);
+    begin_ = end_ = buf_.get(); // will trigger refill on the next read
   }
 
-  return read;
+  return read += size;
 }
 
 size_t buffered_index_input::refill() {
@@ -186,9 +174,9 @@ void buffered_index_input::seek(size_t p) {
   if (p >= start_ && p < (start_ + size())) {
     begin_ = buf_.get() + p - start_;
   } else {
+    seek_internal(p);
     begin_ = end_ = buf_.get();
     start_ = p;
-    seek_internal(p);
   }
 }
 

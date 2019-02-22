@@ -24,300 +24,390 @@
 #include "tests_shared.hpp"
 #include "tests_param.hpp"
 
+#include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
+#include "utils/crc.hpp"
 #include "utils/encryption.hpp"
 
 NS_LOCAL
 
-using namespace iresearch;
+using irs::bstring;
+
+void assert_encryption(size_t block_size, size_t header_lenght) {
+  tests::rot13_encryption enc(block_size, header_lenght);
+
+  bstring encrypted_header;
+  encrypted_header.resize(enc.header_length());
+  ASSERT_TRUE(enc.create_header("encrypted", &encrypted_header[0]));
+  ASSERT_EQ(header_lenght, enc.header_length());
+
+  bstring header = encrypted_header;
+  auto cipher = enc.create_stream("encrypted", &header[0]);
+  ASSERT_NE(nullptr, cipher);
+  ASSERT_EQ(block_size, cipher->block_size());
+
+  // unencrypted part of the header: counter+iv
+  ASSERT_EQ(
+    irs::bytes_ref(encrypted_header.c_str(), 2*cipher->block_size()),
+    irs::bytes_ref(header.c_str(), 2*cipher->block_size())
+  );
+
+  // encrypted part of the header
+  ASSERT_TRUE(
+    encrypted_header.size() == 2*cipher->block_size()
+    || (irs::bytes_ref(encrypted_header.c_str()+2*cipher->block_size(), encrypted_header.size() - 2*cipher->block_size())
+        != irs::bytes_ref(header.c_str()+2*cipher->block_size(), header.size() - 2*cipher->block_size()))
+  );
+
+  const bstring data(
+    reinterpret_cast<const irs::byte_type*>("4jLFtfXSuSdsGXbXqH8IpmPqx5n6IWjO9Pj8nZ0yD2ibKvZxPdRaX4lNsz8N"),
+    30
+  );
+
+  // encrypt less than block size
+  {
+    bstring source(data.c_str(), 7);
+
+    {
+      size_t offset = 0;
+      ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
+      ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
+      ASSERT_EQ(
+        irs::bytes_ref(data.c_str(), source.size()),
+        irs::bytes_ref(source)
+      );
+    }
+
+    {
+      size_t offset = 4;
+      ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
+      ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
+      ASSERT_EQ(
+        irs::bytes_ref(data.c_str(), source.size()),
+        irs::bytes_ref(source)
+      );
+    }
+
+    {
+      size_t offset = 1023;
+      ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
+      ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
+      ASSERT_EQ(
+        irs::bytes_ref(data.c_str(), source.size()),
+        irs::bytes_ref(source)
+      );
+    }
+  }
+
+  // encrypt size of the block
+  {
+    bstring source(data.c_str(), 13);
+
+    {
+      size_t offset = 0;
+      ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
+      ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
+      ASSERT_EQ(
+        irs::bytes_ref(data.c_str(), source.size()),
+        irs::bytes_ref(source)
+      );
+    }
+
+    {
+      size_t offset = 4;
+      ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
+      ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
+      ASSERT_EQ(
+        irs::bytes_ref(data.c_str(), source.size()),
+        irs::bytes_ref(source)
+      );
+    }
+
+    {
+      size_t offset = 1023;
+      ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
+      ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
+      ASSERT_EQ(
+        irs::bytes_ref(data.c_str(), source.size()),
+        irs::bytes_ref(source)
+      );
+    }
+  }
+
+  // encrypt more than size of the block
+  {
+    bstring source = data;
+
+    {
+      size_t offset = 0;
+      ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
+      ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
+      ASSERT_EQ(
+        irs::bytes_ref(data.c_str(), source.size()),
+        irs::bytes_ref(source)
+      );
+    }
+
+    {
+      size_t offset = 4;
+      ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
+      ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
+      ASSERT_EQ(
+        irs::bytes_ref(data.c_str(), source.size()),
+        irs::bytes_ref(source)
+      );
+    }
+
+    {
+      size_t offset = 1023;
+      ASSERT_TRUE(cipher->encrypt(offset, &source[0], source.size()));
+      ASSERT_TRUE(cipher->decrypt(offset, &source[0], source.size()));
+      ASSERT_EQ(
+        irs::bytes_ref(data.c_str(), source.size()),
+        irs::bytes_ref(source)
+      );
+    }
+  }
+}
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 cipher_utils test
+// --SECTION--                                          ctr_encryption_test_case
 // -----------------------------------------------------------------------------
 
-//TEST(cipher_utils_test, ceil) {
-//  ASSERT_EQ(1, irs::ceil(tests::rot13_cipher(1), 1));
-//  ASSERT_EQ(2, irs::ceil(tests::rot13_cipher(2), 1));
-//  ASSERT_EQ(2, irs::ceil(tests::rot13_cipher(2), 2));
-//  ASSERT_EQ(4, irs::ceil(tests::rot13_cipher(2), 3));
-//  ASSERT_EQ(1024, irs::ceil(tests::rot13_cipher(2), 1023));
-//  ASSERT_EQ(3, irs::ceil(tests::rot13_cipher(3), 1));
-//  ASSERT_EQ(3, irs::ceil(tests::rot13_cipher(3), 2));
-//  ASSERT_EQ(3, irs::ceil(tests::rot13_cipher(3), 3));
-//  ASSERT_EQ(6, irs::ceil(tests::rot13_cipher(3), 4));
-//  ASSERT_EQ(6, irs::ceil(tests::rot13_cipher(3), 5));
-//  ASSERT_EQ(13, irs::ceil(tests::rot13_cipher(13), 5));
-//  ASSERT_EQ(26, irs::ceil(tests::rot13_cipher(13), 15));
-//  ASSERT_EQ(39, irs::ceil(tests::rot13_cipher(13), 27));
-//}
+TEST(ctr_encryption, static_consts) {
+  ASSERT_EQ(4096, size_t(irs::ctr_encryption::DEFAULT_HEADER_LENGTH));
+  ASSERT_EQ(sizeof(uint64_t), size_t(irs::ctr_encryption::MIN_HEADER_LENGTH));
+}
+
+TEST(ctr_encryption, create_header_stream) {
+  assert_encryption(1, irs::ctr_encryption::DEFAULT_HEADER_LENGTH);
+  assert_encryption(13, irs::ctr_encryption::DEFAULT_HEADER_LENGTH);
+  assert_encryption(16, irs::ctr_encryption::DEFAULT_HEADER_LENGTH);
+  assert_encryption(1, sizeof(uint64_t));
+  assert_encryption(4, sizeof(uint64_t));
+  assert_encryption(8, 2*sizeof(uint64_t));
+
+  // block_size == 0
+  {
+    tests::rot13_encryption enc(0);
+
+    bstring encrypted_header;
+    ASSERT_FALSE(enc.create_header("encrypted", &encrypted_header[0]));
+    ASSERT_FALSE(enc.create_stream("encrypted", &encrypted_header[0]));
+  }
+
+  // header is too small (< MIN_HEADER_LENGTH)
+  {
+    tests::rot13_encryption enc(1, 7);
+
+    bstring encrypted_header;
+    encrypted_header.resize(enc.header_length());
+    ASSERT_FALSE(enc.create_header("encrypted", &encrypted_header[0]));
+    ASSERT_FALSE(enc.create_stream("encrypted", &encrypted_header[0]));
+  }
+
+  // header is too small (< 2*block_size)
+  {
+    tests::rot13_encryption enc(13, 25);
+
+    bstring encrypted_header;
+    encrypted_header.resize(enc.header_length());
+    ASSERT_FALSE(enc.create_header("encrypted", &encrypted_header[0]));
+    ASSERT_FALSE(enc.create_stream("encrypted", &encrypted_header[0]));
+  }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              encryption_test_case
 // -----------------------------------------------------------------------------
 
-class encryption_test_case : public tests::directory_test_case_base { };
+class encryption_test_case : public tests::directory_test_case_base {
+ protected:
+  void assert_ecnrypted_streams(size_t block_size, size_t header_length, size_t buf_size) {
+    std::vector<std::string> const data{
+      "spM42fEO88t2","jNIvCMksYwpoxN","Re5eZWCkQexrZn","jjj003oxVAIycv","N9IJuRjFSlO8Pa","OPGG6Ic3JYJyVY","ZDGVji8xtjh9zI","DvBDXbjKgIfPIk",
+      "bZyCbyByXnGvlL","vjGDbNcZGDmQ2","J7by8eYg0ZGbYw","6UZ856mrVW9DeD","Ny6bZIbGQ43LSU","oaYAsO0tXnNBkR","Fr97cjyQoTs9Pf","7rLKaQN4REFIgn",
+      "EcFMetqynwG87T","oshFa26WK3gGSl","8keZ9MLvnkec8Q","HuiOGpLtqn79GP","Qnlj0JiQjBR3YW","k64uvviemlfM8p","32X34QY6JaCH3L","NcAU3Aqnn87LJW",
+      "Q4LLFIBU9ci40O","M5xpjDYIfos22t","Te9ZhWmGt2cTXD","HYO3hJ1C4n1DvD","qVRj2SyXcKQz3Z","vwt41rzEW7nkoi","cLqv5U8b8kzT2H","tNyCoJEOm0POyC",
+      "mLw6cl4HxmOHa","2eTVXvllcGmZ0e","NFF9SneLv6pX8h","kzCvqOVYlYA3QT","mxCkaGg0GeLxYq","PffuwSr8h3acP0","zDm0rAHgzhHsmv","8LYMjImx00le9c",
+      "Ju0FM0mJmqkue1","uNwn8A2SH4OSZW","R1Dm21RTJzb0aS","sUpQGy1n6TiH82","fhkCGcuQ5VnrEa","b6Xsq05brtAr88","NXVkmxvLmhzFRY","s9OuZyZX28uux0",
+      "DQaD4HyDMGkbg3","Fr2L3V4UzCZZcJ","7MgRPt0rLo6Cp4","c8lK5hjmKUuc3e","jzmu3ZcP3PF62X","pmUUUvAS00bPfa","lonoswip3le6Hs","TQ1G0ruVvknb8A",
+      "4XqPhpJv","gY0QFCjckHp1JI","v2a0yfs9yN5lY4","l1XKKtBXtktOs2","AGotoLgRxPe4Pr","x9zPgBi3Bw8DFD","OhX85k7OhY3FZM","riRP6PRhkq0CUi",
+      "1ToW1HIephPBlz","C8xo1SMWPZW8iE","tBa3qiFG7c1wiD","BRXFbUYzw646PS","mbR0ECXCash1rF","AVDjHnwujjOGAK","16bmhl4gvDpj44","OLa0D9RlpBLRgK",
+      "PgCSXvlxyHQFlQ","sMyrmGRcVTwg53","Fa6Fo687nt9bDV","P0lUFttS64mC7s","rxTZUQIpOPYkPp","oNEsVpak9SNgLh","iHmFTSjGutROen","aTMmlghno9p91a",
+      "tpb3rHs9ZWtL5m","iG0xrYN7gXXPTs","KsEl2f8WtF6Ylv","triXFZM9baNltC","MBFTh22Yos3vGt","DTuFyue5f9Mk3x","v2zm4kYxfar0J7","xtpwVgOMT0eIFS",
+      "8Wz7MrtXkSH9CA","FuURHWmPLb","YpIFnExqjgpSh0","2oaIkTM6EJ","s16qvfbrycGnVP","yUb2fcGIDRSujG","9rIfsuCyTCTiLY","HXTg5jWrVZNLNP",
+      "maLjUi6Oo6wsJr","C6iHChfoJHGxzO","6LxzytT8iSzNHZ","ex8znLIzbatFCo","HiYTSzZhBHgtaP","H5EpiJw2L5UgD1","ZhPvYoUMMFkoiL","y6014BfgqbE3ke",
+      "XXutx8GrPYt7Rq","DjYwLMixhS80an","aQxh91iigWOt4x","1J9ZC2r7CCfGIH","Sg9PzDCOb5Ezym","4PB3SukHVhA6SB","BfVm1XGLDOhabZ","ChEvexTp1CrLUL",
+      "M5nlO4VcxIOrxH","YO9rnNNFwzRphV","KzQhfZSnQQGhK9","r7Ez7Zwr0bn","fQipSie8ZKyT62","3yyLqJMcShXG9z","UTb12lz3k5xPPt","JjcWQnBnRFJ2Mv",
+      "zsKEX7BLJQTjCx","g0oPvTcOhiev1k","8P6HF4I6t1jwzu","LaOiJIU47kagqu","pyY9sV9WQ5YuQC","MCgpgJhEwrGKWM","Hq5Wgc3Am8cjWw","FnITVHg0jw03Bm",
+      "0Jq2YEnFf52861","y0FT03yG9Uvg6I","S6uehKP8uj6wUe","usC8CZobBmuk6","LrZuchHNpSs282","PsmFFySt7fKFOv","mXe9j6xNYttnSy","al9J6AZYlhAlWU",
+      "3v8PsohUeKegJI","QZCwr1URS1OWzX","UVCg1mVWmSBWRT","pO2lnQ4L6yHQic","w5EtZl2gZhj2ca","04B62aNIpnBslQ","0Sz6UCGXBwi7At","l49gEiyDkc3J00",
+      "2T9nyWrRwuZj9W","CTtHTPRhSAPRIW","sJZI3K8vP96JPm","HYEy1brtrtrBJskEYa2","UKb3uiFuGEi7m9","yeRCnG0EEZ8Vrr"
+    };
+    const size_t magic = 0x43219876;
 
-//TEST_P(cipher_utils_test_case, encrypted_io) {
-//  tests::rot13_cipher cipher(13);
-//
-//  // unencrypted + encrypted data
-//  {
-//    // write data
-//    {
-//      auto out = dir_->create("encrypted");
-//      irs::write_string(*out, irs::string_ref("header"));
-//      ASSERT_EQ(7, out->file_pointer());
-//
-//      irs::encrypted_output encryptor(std::move(out), cipher, 10);
-//      ASSERT_EQ(10*cipher.block_size(), encryptor.buffer_size());
-//      ASSERT_EQ(0, encryptor.file_pointer());
-//      irs::write_string(encryptor, irs::string_ref("encrypted header"));
-//      ASSERT_EQ(7, encryptor.stream().file_pointer());
-//      ASSERT_EQ(17, encryptor.file_pointer());
-//      ASSERT_THROW(encryptor.flush(), irs::io_error); // length is not multiple of cipher block size
-//      encryptor.append_and_flush();
-//      ASSERT_EQ(26, encryptor.file_pointer());
-//      ASSERT_EQ(33, encryptor.stream().file_pointer());
-//    }
-//
-//    // read data
-//    {
-//      auto in = dir_->open("encrypted", IOAdvice::NORMAL);
-//      ASSERT_EQ("header", irs::read_string<std::string>(*in));
-//      irs::encrypted_input decryptor(std::move(in), cipher, 13);
-//      ASSERT_EQ(decryptor.stream().length()-7, decryptor.length());
-//      ASSERT_EQ(2*cipher.block_size(), decryptor.length());
-//      ASSERT_EQ(13*cipher.block_size(), decryptor.buffer_size());
-//      ASSERT_EQ(0, decryptor.file_pointer());
-//      ASSERT_EQ("encrypted header", irs::read_string<std::string>(decryptor));
-//      ASSERT_EQ(17, decryptor.file_pointer());
-//      ASSERT_EQ(decryptor.stream().length(), decryptor.stream().file_pointer());
-//
-//      // check padding
-//      while (decryptor.file_pointer() < decryptor.length()) {
-//        ASSERT_EQ(0, decryptor.read_byte());
-//      }
-//    }
-//  }
-//
-//  // data is shorter than ciper block size
-//  {
-//    // write data
-//    {
-//      irs::encrypted_output encryptor(dir_->create("encrypted_small"), cipher, 0);
-//      ASSERT_EQ(cipher.block_size(), encryptor.buffer_size());
-//      ASSERT_EQ(0, encryptor.file_pointer());
-//      ASSERT_EQ(0, encryptor.stream().file_pointer());
-//      irs::write_string(encryptor, irs::string_ref("header"));
-//      ASSERT_EQ(0, encryptor.stream().file_pointer());
-//      ASSERT_EQ(7, encryptor.file_pointer());
-//      ASSERT_THROW(encryptor.flush(), irs::io_error); // length is not multiple of cipher block size
-//      encryptor.append_and_flush();
-//      ASSERT_EQ(13, encryptor.file_pointer());
-//      ASSERT_EQ(encryptor.file_pointer(), encryptor.stream().file_pointer());
-//    }
-//
-//    // read data
-//    {
-//      irs::encrypted_input decryptor(dir_->open("encrypted_small", IOAdvice::NORMAL), cipher, 0);
-//      ASSERT_EQ(decryptor.stream().length(), decryptor.length());
-//      ASSERT_EQ(cipher.block_size(), decryptor.length());
-//      ASSERT_EQ(cipher.block_size(), decryptor.buffer_size());
-//      ASSERT_EQ(0, decryptor.file_pointer());
-//      ASSERT_EQ("header", irs::read_string<std::string>(decryptor));
-//      ASSERT_EQ(7, decryptor.file_pointer());
-//
-//      // check padding
-//      while (decryptor.file_pointer() < decryptor.length()) {
-//        ASSERT_EQ(0, decryptor.read_byte());
-//      }
-//
-//      ASSERT_EQ(decryptor.stream().length(), decryptor.stream().file_pointer());
-//    }
-//  }
-//
-//  // data length is equal to ciper block size
-//  {
-//    // write data
-//    {
-//      irs::encrypted_output encryptor(dir_->create("encrypted_equal_to_block_size"), cipher, 0);
-//      ASSERT_EQ(cipher.block_size(), encryptor.buffer_size());
-//      ASSERT_EQ(0, encryptor.file_pointer());
-//      ASSERT_EQ(0, encryptor.stream().file_pointer());
-//      irs::write_string(encryptor, irs::string_ref("headerheader"));
-//      ASSERT_EQ(cipher.block_size(), encryptor.stream().file_pointer());
-//      ASSERT_EQ(cipher.block_size(), encryptor.file_pointer());
-//      encryptor.flush(); // length is multiple of cipher block size
-//      ASSERT_EQ(cipher.block_size(), encryptor.file_pointer());
-//      ASSERT_EQ(encryptor.file_pointer(), encryptor.stream().file_pointer());
-//    }
-//
-//    // read data
-//    {
-//      irs::encrypted_input decryptor(dir_->open("encrypted_equal_to_block_size", IOAdvice::NORMAL), cipher, 0);
-//      ASSERT_EQ(decryptor.stream().length(), decryptor.length());
-//      ASSERT_EQ(cipher.block_size(), decryptor.length());
-//      ASSERT_EQ(cipher.block_size(), decryptor.buffer_size());
-//      ASSERT_EQ(0, decryptor.file_pointer());
-//      ASSERT_EQ("headerheader", irs::read_string<std::string>(decryptor));
-//      ASSERT_EQ(cipher.block_size(), decryptor.file_pointer());
-//      ASSERT_EQ(decryptor.length(), decryptor.file_pointer());
-//      ASSERT_EQ(decryptor.stream().length(), decryptor.stream().file_pointer());
-//    }
-//  }
-//
-//  // data length is longer than ciper block size
-//  {
-//    // write data
-//    {
-//      irs::encrypted_output encryptor(dir_->create("encrypted_longer_than_block_size"), cipher, 0);
-//      ASSERT_EQ(cipher.block_size(), encryptor.buffer_size());
-//      ASSERT_EQ(0, encryptor.file_pointer());
-//      ASSERT_EQ(0, encryptor.stream().file_pointer());
-//      irs::write_string(encryptor, irs::string_ref("headerheaderh"));
-//      ASSERT_EQ(cipher.block_size(), encryptor.stream().file_pointer());
-//      ASSERT_EQ(14, encryptor.file_pointer());
-//      ASSERT_THROW(encryptor.flush(), irs::io_error); // length is not multiple of cipher block size
-//      encryptor.append_and_flush();
-//      ASSERT_EQ(2*cipher.block_size(), encryptor.file_pointer());
-//      ASSERT_EQ(encryptor.file_pointer(), encryptor.stream().file_pointer());
-//    }
-//
-//    // read data
-//    {
-//      irs::encrypted_input decryptor(dir_->open("encrypted_longer_than_block_size", IOAdvice::NORMAL), cipher, 0);
-//      ASSERT_EQ(2*cipher.block_size(), decryptor.length());
-//      ASSERT_EQ(decryptor.stream().length(), decryptor.length());
-//      ASSERT_EQ(cipher.block_size(), decryptor.buffer_size());
-//      ASSERT_EQ(0, decryptor.file_pointer());
-//      ASSERT_EQ("headerheaderh", irs::read_string<std::string>(decryptor));
-//      ASSERT_EQ(14, decryptor.file_pointer());
-//      ASSERT_EQ(decryptor.stream().length(), decryptor.stream().file_pointer());
-//
-//      // check padding
-//      while (decryptor.file_pointer() < decryptor.length()) {
-//        ASSERT_EQ(0, decryptor.read_byte());
-//      }
-//
-//      ASSERT_EQ(decryptor.length(), decryptor.file_pointer());
-//    }
-//  }
-//
-//  // long encrypted stream, small buffer
-//  {
-//    // write data
-//    {
-//      irs::encrypted_output encryptor(dir_->create("encrypted_long_string"), cipher, 0);
-//      ASSERT_EQ(cipher.block_size(), encryptor.buffer_size());
-//      ASSERT_EQ(0, encryptor.file_pointer());
-//      ASSERT_EQ(0, encryptor.stream().file_pointer());
-//      irs::write_string(encryptor, irs::string_ref("headerheaderheaderheaderheader"));
-//      ASSERT_EQ(2*cipher.block_size(), encryptor.stream().file_pointer());
-//      ASSERT_EQ(31, encryptor.file_pointer());
-//      ASSERT_THROW(encryptor.flush(), irs::io_error); // length is not multiple of cipher block size
-//      encryptor.append_and_flush();
-//      ASSERT_EQ(3*cipher.block_size(), encryptor.file_pointer());
-//      ASSERT_EQ(encryptor.file_pointer(), encryptor.stream().file_pointer());
-//    }
-//
-//    // read data
-//    {
-//      irs::encrypted_input decryptor(dir_->open("encrypted_long_string", IOAdvice::NORMAL), cipher, 0);
-//      ASSERT_EQ(3*cipher.block_size(), decryptor.length());
-//      ASSERT_EQ(cipher.block_size(), decryptor.buffer_size());
-//      ASSERT_EQ(0, decryptor.file_pointer());
-//      ASSERT_EQ("headerheaderheaderheaderheader", irs::read_string<std::string>(decryptor));
-//      ASSERT_EQ(decryptor.stream().length(), decryptor.stream().file_pointer());
-//      ASSERT_EQ(31, decryptor.file_pointer());
-//
-//      // check padding
-//      while (decryptor.file_pointer() < decryptor.length()) {
-//        ASSERT_EQ(0, decryptor.read_byte());
-//      }
-//    }
-//  }
-//
-//  // long encrypted stream, small buffer, blob is equal to cipher block size
-//  {
-//    const auto data = irs::ref_cast<irs::byte_type>(irs::string_ref("012345678912301234567891230123456789123"));
-//    ASSERT_EQ(3*cipher.block_size(), data.size());
-//
-//    // write data
-//    {
-//      irs::encrypted_output encryptor(dir_->create("encrypted_long_string_multiple_to_block_size"), cipher, 0);
-//      ASSERT_EQ(cipher.block_size(), encryptor.buffer_size());
-//      ASSERT_EQ(0, encryptor.file_pointer());
-//      ASSERT_EQ(0, encryptor.stream().file_pointer());
-//      encryptor.write_bytes(data.c_str(), data.size());
-//      ASSERT_EQ(3*cipher.block_size(), encryptor.stream().file_pointer());
-//      ASSERT_EQ(39, encryptor.file_pointer());
-//      encryptor.flush();
-//      ASSERT_EQ(3*cipher.block_size(), encryptor.file_pointer());
-//      ASSERT_EQ(encryptor.file_pointer(), encryptor.stream().file_pointer());
-//    }
-//
-//    // read data
-//    {
-//      irs::byte_type read[39];
-//
-//      irs::encrypted_input decryptor(dir_->open("encrypted_long_string_multiple_to_block_size", IOAdvice::NORMAL), cipher, 0);
-//      ASSERT_EQ(3*cipher.block_size(), decryptor.length());
-//      ASSERT_EQ(cipher.block_size(), decryptor.buffer_size());
-//      ASSERT_EQ(0, decryptor.file_pointer());
-//      decryptor.read_bytes(read, sizeof read);
-//      ASSERT_EQ(data, irs::bytes_ref(read, sizeof read));
-//      ASSERT_EQ(decryptor.stream().length(), decryptor.stream().file_pointer());
-//      ASSERT_EQ(39, decryptor.file_pointer());
-//    }
-//  }
-//
-//  // long encrypted stream
-//  {
-//    // write data
-//    {
-//      irs::encrypted_output encryptor(dir_->create("encrypted_long"), cipher, 0);
-//      ASSERT_EQ(cipher.block_size(), encryptor.buffer_size());
-//      ASSERT_EQ(0, encryptor.file_pointer());
-//      ASSERT_EQ(0, encryptor.stream().file_pointer());
-//      for (size_t step = 97, seed = 99, i = 0; i < 10000; ++i, seed += step) {
-//        encryptor.write_long(seed);
-//        encryptor.write_vlong(seed);
-//        const auto str = std::to_string(seed);
-//        irs::write_string(encryptor, str);
-//      }
-//      encryptor.append_and_flush();
-//      ASSERT_EQ(encryptor.file_pointer(), encryptor.stream().file_pointer());
-//    }
-//
-//    // read data
-//    {
-//      irs::byte_type read[39];
-//
-//      irs::encrypted_input decryptor(dir_->open("encrypted_long", IOAdvice::NORMAL), cipher, 0);
-//      ASSERT_EQ(cipher.block_size(), decryptor.buffer_size());
-//      ASSERT_EQ(0, decryptor.file_pointer());
-//      for (size_t step = 97, seed = 99, i = 0; i < 10000; ++i, seed += step) {
-//        ASSERT_EQ(seed, decryptor.read_long());
-//        ASSERT_EQ(seed, decryptor.read_vlong());
-//        const auto expected_str = std::to_string(seed);
-//        auto str = irs::read_string<std::string>(decryptor);
-//        ASSERT_EQ(expected_str, str);
-//      }
-//      // check padding
-//      while (decryptor.file_pointer() < decryptor.length()) {
-//        ASSERT_EQ(0, decryptor.read_byte());
-//      }
-//      ASSERT_EQ(decryptor.stream().length(), decryptor.stream().file_pointer());
-//    }
-//  }
-//
+    ASSERT_FALSE(dir().attributes().contains<irs::encryption>());
+    auto& enc = dir().attributes().emplace<tests::rot13_encryption>(block_size, header_length);
+
+    uint64_t fp_magic = 0;
+    uint64_t encrypted_length = 0;
+    uint64_t checksum = 0;
+
+    // write encrypted data
+    {
+      bstring header(enc->header_length(), 0);
+      ASSERT_TRUE(enc->create_header("encrypted", &header[0]));
+
+      auto out = dir().create("encrypted");
+      auto raw_out = dir().create("raw");
+      ASSERT_NE(nullptr, out);
+      irs::write_string(*out, header);
+      ASSERT_EQ(irs::bytes_io<uint64_t>::vsize(header.size()) + header.size(), out->file_pointer());
+      auto cipher = enc->create_stream("encrypted", &header[0]);
+      ASSERT_NE(nullptr, cipher);
+      ASSERT_EQ(block_size, cipher->block_size());
+
+      irs::encrypted_output encryptor(std::move(out), *cipher, buf_size);
+      ASSERT_EQ(nullptr, out);
+      ASSERT_EQ(enc->header_length() + irs::bytes_io<uint64_t>::vsize(header.size()), encryptor.stream().file_pointer());
+      ASSERT_EQ(std::max(buf_size,size_t(1))*cipher->block_size(), encryptor.buffer_size());
+      ASSERT_EQ(0, encryptor.file_pointer());
+
+      size_t step = 321;
+      for (auto& str : data) {
+        irs::write_string(encryptor, str);
+        irs::write_string(*raw_out, str);
+      }
+
+      fp_magic = encryptor.file_pointer();
+
+      encryptor.write_long(magic);
+      raw_out->write_long(magic);
+
+      for (size_t i = 0, step = 321; i < data.size(); ++i) {
+        auto value = 9886 + step;
+        encryptor.write_vlong(value);
+        raw_out->write_vlong(value);
+
+        step += step;
+        value = 9886 + step;
+
+        encryptor.write_long(value);
+        raw_out->write_long(value);
+
+        step += step;
+      }
+
+      encryptor.flush();
+      ASSERT_EQ(raw_out->file_pointer(), encryptor.file_pointer());
+      encrypted_length = encryptor.file_pointer();
+      checksum = raw_out->checksum();
+      out = encryptor.release();
+      ASSERT_NE(nullptr, out);
+      ASSERT_EQ(out->file_pointer(), irs::bytes_io<uint64_t>::vsize(header.size()) + header.size() + encrypted_length);
+    }
+
+    // read encrypted data
+    {
+      auto in = dir_->open("encrypted", irs::IOAdvice::NORMAL);
+      bstring header = irs::read_string<bstring>(*in);
+      ASSERT_EQ(irs::bytes_io<uint64_t>::vsize(header.size()) + header.size() + encrypted_length, in->length());
+      ASSERT_EQ(enc->header_length(), header.size());
+      ASSERT_EQ(enc->header_length() + irs::bytes_io<uint64_t>::vsize(header.size()), in->file_pointer());
+
+      auto cipher = enc->create_stream("encrypted", &header[0]);
+      ASSERT_NE(nullptr, cipher);
+      ASSERT_EQ(block_size, cipher->block_size());
+
+      irs::encrypted_input decryptor(std::move(in), *cipher, buf_size);
+      ASSERT_EQ(nullptr, in);
+      ASSERT_EQ(enc->header_length() + irs::bytes_io<uint64_t>::vsize(header.size()), decryptor.stream().file_pointer());
+      ASSERT_EQ(std::max(buf_size,size_t(1))*cipher->block_size(), decryptor.buffer_size());
+      ASSERT_EQ(0, decryptor.file_pointer());
+
+      decryptor.seek(fp_magic);
+      ASSERT_EQ(magic, decryptor.read_long());
+      ASSERT_EQ(fp_magic + sizeof(uint64_t), decryptor.file_pointer());
+      decryptor.seek(0);
+
+      // check dup
+      {
+        auto dup = decryptor.dup();
+        dup->seek(fp_magic);
+        ASSERT_EQ(magic, dup->read_long());
+        ASSERT_EQ(fp_magic + sizeof(uint64_t), dup->file_pointer());
+        for (size_t i = 0, step = 321; i < data.size(); ++i) {
+          ASSERT_EQ(9886 + step, dup->read_vlong());
+          step += step;
+          ASSERT_EQ(9886 + step, dup->read_long());
+          step += step;
+        }
+      }
+
+      // check reopen
+      {
+        auto dup = decryptor.reopen();
+        dup->seek(fp_magic);
+        ASSERT_EQ(magic, dup->read_long());
+        ASSERT_EQ(fp_magic + sizeof(uint64_t), dup->file_pointer());
+        for (size_t i = 0, step = 321; i < data.size(); ++i) {
+          ASSERT_EQ(9886 + step, dup->read_vlong());
+          step += step;
+          ASSERT_EQ(9886 + step, dup->read_long());
+          step += step;
+        }
+      }
+
+      // checksum
+      {
+        auto dup = decryptor.reopen();
+        dup->seek(0);
+        ASSERT_EQ(checksum, dup->checksum(dup->length()));
+        ASSERT_EQ(0, dup->file_pointer()); // checksum doesn't change position
+      }
+
+      for (auto& str : data) {
+        const auto fp = decryptor.file_pointer();
+        ASSERT_EQ(str, irs::read_string<std::string>(decryptor));
+        decryptor.seek(fp);
+        ASSERT_EQ(str, irs::read_string<std::string>(decryptor));
+      }
+      ASSERT_EQ(fp_magic, decryptor.file_pointer());
+      ASSERT_EQ(magic, decryptor.read_long());
+
+      for (size_t i = 0, step = 321; i < data.size(); ++i) {
+        ASSERT_EQ(9886 + step, decryptor.read_vlong());
+        step += step;
+        ASSERT_EQ(9886 + step, decryptor.read_long());
+        step += step;
+      }
+
+      const auto fp = decryptor.file_pointer();
+      in = decryptor.release();
+      ASSERT_NE(nullptr, in);
+      ASSERT_EQ(in->file_pointer(), header_length + irs::bytes_io<uint64_t>::vsize(header.size()) + fp);
+    }
+
+    ASSERT_TRUE(dir().attributes().remove<irs::encryption>());
+  }
+};
+
+TEST_P(encryption_test_case, encrypted_io) {
+  assert_ecnrypted_streams(13, irs::ctr_encryption::DEFAULT_HEADER_LENGTH, 0);
+  assert_ecnrypted_streams(13, irs::ctr_encryption::DEFAULT_HEADER_LENGTH, 1);
+  assert_ecnrypted_streams(7, irs::ctr_encryption::DEFAULT_HEADER_LENGTH, 5);
+  assert_ecnrypted_streams(16, irs::ctr_encryption::DEFAULT_HEADER_LENGTH, 64);
+}
+
 //  // FIXME
 //  // - try to avoid copying data into buffered stream buffer in case if encrypted buffer size matches underlying buffer size
 //  // - test cipher with block size == 0
 //  // - test format with different cipher block sizes (e.g. 13, 16, 7)
 //  // - test different block sizes and underlying stream buffer sizes
 //  // - extend index tests to use encrypted format
-//  // - fixme test block size < sizeof(uint64_t)/2
+//  // - write/read checksum over unencrypted data checksum
+//  // - test extreme values of block_size/header_length for ctr encryption
 //}
 
 INSTANTIATE_TEST_CASE_P(

@@ -2550,9 +2550,8 @@ void meta_writer::prepare(directory& dir, const segment_meta& meta) {
     bstring enc_header;
     auto* enc = get_encryption(dir.attributes());
 
-    if (irs::encrypt(filename, enc, enc_header, out_cipher_)) {
+    if (irs::encrypt(filename, *out_, enc, enc_header, out_cipher_)) {
       assert(out_cipher_ && out_cipher_->block_size());
-      irs::write_string(*out_, enc_header); // write encryption header
 
       const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/out_cipher_->block_size();
       out_ = index_output::make<encrypted_output>(std::move(out_), *out_cipher_, buffer_size);
@@ -2666,14 +2665,11 @@ bool meta_reader::prepare(
 
   if (version > meta_writer::FORMAT_MIN) {
     encryption* enc = get_encryption(dir.attributes());
-    const auto enc_header = read_string<bstring>(*in_); // read encryption header
 
-    if (irs::decrypt(filename, enc, enc_header, in_cipher_)) {
-      assert(in_cipher_);
+    if (irs::decrypt(filename, *in_, enc, in_cipher_)) {
+      assert(in_cipher_ && in_cipher_->block_size());
 
-      const auto block_size = in_cipher_->block_size();
-      assert(block_size); // already checked in 'irs::decrypt'
-      const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/block_size;
+      const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/in_cipher_->block_size();
       in_ = index_input::make<encrypted_input>(std::move(in_), *in_cipher_, buffer_size, FOOTER_LEN);
     }
   }
