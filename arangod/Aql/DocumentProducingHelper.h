@@ -39,12 +39,6 @@ namespace aql {
 
 typedef std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
 
-static DocumentProducingFunction buildCallback(
-    DocumentProducingFunction, Variable const* outVariable, bool produceResult,
-    std::vector<std::string> const& projections, transaction::Methods* trxPtr,
-    std::vector<size_t> const& coveringIndexAttributePositions,
-    bool allowCoveringIndexOptimization, bool useRawDocumentPointers);
-
 inline void handleProjections(std::vector<std::string> const& projections,
                               transaction::Methods const* trxPtr, VPackSlice slice,
                               VPackBuilder& b, bool useRawDocumentPointers) {
@@ -87,7 +81,7 @@ static DocumentProducingFunction buildCallback(
     DocumentProducingFunction documentProducer, Variable const* outVariable,
     bool produceResult, std::vector<std::string> const& projections,
     transaction::Methods* trxPtr, std::vector<size_t> const& coveringIndexAttributePositions,
-    bool allowCoveringIndexOptimization, bool useRawDocumentPointers) {
+    bool& allowCoveringIndexOptimization, bool useRawDocumentPointers) {
   if (!produceResult) {
     // no result needed
     documentProducer = [](InputAqlItemRow& input, OutputAqlItemRow& output,
@@ -103,7 +97,7 @@ static DocumentProducingFunction buildCallback(
     if (!coveringIndexAttributePositions.empty()) {
       // projections from an index value (covering index)
       documentProducer = [trxPtr, projections, coveringIndexAttributePositions,
-                          allowCoveringIndexOptimization,
+                          &allowCoveringIndexOptimization,
                           useRawDocumentPointers](InputAqlItemRow& input,
                                                   OutputAqlItemRow& output,
                                                   VPackSlice slice, RegisterId registerId) {

@@ -95,6 +95,19 @@ bool canBeNull(arangodb::aql::AstNode const* op, arangodb::aql::AstNode const* a
   TRI_ASSERT(op != nullptr);
   TRI_ASSERT(access != nullptr);
 
+  if (access->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS && 
+      access->getMemberUnchecked(0)->type == arangodb::aql::NODE_TYPE_REFERENCE) {
+    // a.b
+    // now check if the accessed attribute is _key, _rev or _id.
+    // all of these cannot be null
+    auto attributeName = access->getStringRef();
+    if (attributeName == StaticStrings::KeyString ||
+        attributeName == StaticStrings::IdString ||
+        attributeName == StaticStrings::RevString) {
+      return false;
+    }
+  }
+
   if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
       op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE ||
       op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
@@ -113,7 +126,7 @@ bool canBeNull(arangodb::aql::AstNode const* op, arangodb::aql::AstNode const* a
     // stringification may throw
   }
 
-  // for everything else we are unusure
+  // for everything else we are unsure
   return true;
 }
 
