@@ -2163,9 +2163,9 @@
   },
   "query.registry-ttl" : {
     "category" : "option",
-    "default" : 600,
+    "default" : 0,
     "deprecatedIn" : null,
-    "description" : "default time-to-live of query snippets (in seconds)",
+    "description" : "default time-to-live of cursors and query snippets (in seconds); if <= 0, value will default to 30 for single-server instances or 600 for cluster instances",
     "dynamic" : false,
     "enterpriseOnly" : false,
     "hidden" : true,
