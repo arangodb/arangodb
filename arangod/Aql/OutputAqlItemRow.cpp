@@ -66,6 +66,7 @@ void OutputAqlItemRow::doCopyRow(const InputAqlItemRow& sourceRow, bool ignoreMi
 
   if (mustClone) {
     for (auto itemId : registersToKeep()) {
+      TRI_ASSERT(sourceRow.isInitialized());
       if (ignoreMissing && itemId >= sourceRow.getNrRegisters()) {
         continue;
       }
