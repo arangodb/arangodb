@@ -103,6 +103,7 @@ class StaticStrings {
   static std::string const IndexNameEdge;
   static std::string const IndexNameEdgeFrom;
   static std::string const IndexNameEdgeTo;
+  static std::string const IndexNameInaccessible;
   static std::string const IndexNamePrimary;
 
   // HTTP headers

@@ -175,7 +175,7 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection,
 Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection, VPackSlice const& slice)
     : _iid(iid),
       _collection(collection),
-      _name(arangodb::basics::VelocyPackHelper::getStringValue(slice, arangodb::StaticStrings::IndexName)),
+      _name(slice.get(arangodb::StaticStrings::IndexName).copyString()),
       _fields(::parseFields(slice.get(arangodb::StaticStrings::IndexFields),
                             Index::allowExpansion(Index::type(
                                 slice.get(arangodb::StaticStrings::IndexType).copyString())))),
@@ -437,6 +437,7 @@ void Index::toVelocyPack(VPackBuilder& builder,
               arangodb::velocypack::Value(std::to_string(_iid)));
   builder.add(arangodb::StaticStrings::IndexType,
               arangodb::velocypack::Value(oldtypeName(type())));
+  builder.add(arangodb::StaticStrings::IndexName, arangodb::velocypack::Value(name()));
 
   builder.add(arangodb::velocypack::Value(arangodb::StaticStrings::IndexFields));
   builder.openArray();

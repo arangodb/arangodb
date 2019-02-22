@@ -104,6 +104,7 @@ std::string const StaticStrings::IndexInBackground("inBackground");
 std::string const StaticStrings::IndexNameEdge("edge");
 std::string const StaticStrings::IndexNameEdgeFrom("edge_from");
 std::string const StaticStrings::IndexNameEdgeTo("edge_to");
+std::string const StaticStrings::IndexNameInaccessible("inaccessible");
 std::string const StaticStrings::IndexNamePrimary("primary");
 
 // HTTP headers

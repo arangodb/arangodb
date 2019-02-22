@@ -385,7 +385,7 @@ class Index {
 
   TRI_idx_iid_t const _iid;
   LogicalCollection& _collection;
-  std::string _name;
+  std::string const _name;
   std::vector<std::vector<arangodb::basics::AttributeName>> const _fields;
   bool const _useExpansion;
 
