@@ -29,6 +29,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/SortRegister.h"
 #include "Basics/Common.h"
+#include "Cluster/ClusterComm.h"
 #include "Rest/GeneralRequest.h"
 
 #include <velocypack/Builder.h>
@@ -272,6 +273,10 @@ class RemoteBlock final : public ExecutionBlock {
 
   /// @brief the last remote response Result object, may contain an error.
   arangodb::Result _lastError;
+
+  OperationID _lastTicketId;
+
+  bool _hasTriggeredShutdown;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

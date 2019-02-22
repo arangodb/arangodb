@@ -710,11 +710,11 @@ arangodb::Result RemoteBlock::handleCommErrors(ClusterCommResult* res) const {
 
     if (shardID.empty()) {
       errorMessage = std::string("Error message received from cluster node '") +
-        std::string(res->serverID) + std::string("': ");
+                     std::string(res->serverID) + std::string("': ");
     } else {
       errorMessage = std::string("Error message received from shard '") +
-        std::string(shardID) + std::string("' on cluster node '") +
-        std::string(res->serverID) + std::string("': ");
+                     std::string(shardID) + std::string("' on cluster node '") +
+                     std::string(res->serverID) + std::string("': ");
     }
 
     int errorNum = TRI_ERROR_INTERNAL;
@@ -795,7 +795,9 @@ RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
       _queryId(queryId),
       _isResponsibleForInitializeCursor(en->isResponsibleForInitializeCursor()),
       _lastResponse(nullptr),
-      _lastError(TRI_ERROR_NO_ERROR) {
+      _lastError(TRI_ERROR_NO_ERROR),
+      _lastTicketId(0),
+      _hasTriggeredShutdown(false) {
   TRI_ASSERT(!queryId.empty());
   TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() && ownName.empty()) ||
              (!arangodb::ServerState::instance()->isCoordinator() && !ownName.empty()));
@@ -827,8 +829,8 @@ Result RemoteBlock::sendAsyncRequest(arangodb::rest::RequestType type,
       std::make_shared<WakeupQueryCallback>(this, _engine->getQuery());
 
   // TODO Returns OperationID do we need it in any way?
-  cc->asyncRequest(coordTransactionId, _server, type, std::move(url), body,
-                   headers, callback, defaultTimeOut, true);
+  _lastTicketId = cc->asyncRequest(coordTransactionId, _server, type, std::move(url),
+                                   body, headers, callback, defaultTimeOut, true);
 
   return {TRI_ERROR_NO_ERROR};
 }
@@ -885,7 +887,6 @@ std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(AqlItemBlock* it
 
   auto res = sendAsyncRequest(rest::RequestType::PUT,
                               "/_api/aql/initializeCursor/", bodyString);
-
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -894,17 +895,34 @@ std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(AqlItemBlock* it
 }
 
 bool RemoteBlock::handleAsyncResult(ClusterCommResult* result) {
-  // TODO Handle exceptions thrown while we are in this code
-  // Query will not be woken up again.
-  _lastError = handleCommErrors(result);
-  if (_lastError.ok()) {
-    _lastResponse = result->result;
+  if (_lastTicketId == result->operationID) {
+    // TODO Handle exceptions thrown while we are in this code
+    // Query will not be woken up again.
+    _lastError = handleCommErrors(result);
+    if (_lastError.ok()) {
+      _lastResponse = result->result;
+    }
+    _lastTicketId = 0;
   }
   return true;
 }
 
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> RemoteBlock::shutdown(int errorCode) {
+  if (!_hasTriggeredShutdown) {
+    if (_lastTicketId != 0) {
+      auto cc = ClusterComm::instance();
+      if (cc == nullptr) {
+        // nullptr only happens on controlled shutdown
+        return {ExecutionState::DONE, TRI_ERROR_SHUTTING_DOWN};
+      }
+      cc->drop(0, _lastTicketId, "");
+    }
+    _lastTicketId = 0;
+    _lastError.reset(TRI_ERROR_NO_ERROR);
+    _lastResponse.reset();
+    _hasTriggeredShutdown = true;
+  }
   /* We need to handle this here in ASYNC case
     if (isShutdown && errorNum == TRI_ERROR_QUERY_NOT_FOUND) {
       // this error may happen on shutdown and is thus tolerated
@@ -968,11 +986,9 @@ std::pair<ExecutionState, Result> RemoteBlock::shutdown(int errorCode) {
   auto bodyString = std::make_shared<std::string const>(bodyBuilder.slice().toJson());
 
   auto res = sendAsyncRequest(rest::RequestType::PUT, "/_api/aql/shutdown/", bodyString);
-
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-
   return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
 }
 
@@ -1194,7 +1210,7 @@ SortingGatherBlock::SortingGatherBlock(ExecutionEngine& engine, GatherNode const
       _strategy = std::make_unique<MinElementSorting>(_trx, _gatherBlockBuffer, _sortRegisters);
       break;
     case GatherNode::SortMode::Heap:
-    case GatherNode::SortMode::Default: // use heap by default
+    case GatherNode::SortMode::Default:  // use heap by default
       _strategy = std::make_unique<HeapSorting>(_trx, _gatherBlockBuffer, _sortRegisters);
       break;
     default:
