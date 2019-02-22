@@ -92,19 +92,8 @@ bool NeighborsEnumerator::next() {
           if (_allFound.find(v) == _allFound.end()) {
             if (_traverser->vertexMatchesConditions(v, _searchDepth + 1)) {
               _allFound.emplace(v);
-              // Prune here
-              if (_opts->usesPrune()) {
-                auto* evaluator = _opts->getPruneEvaluator();
-                if (evaluator->needsVertex()) {
-                  evaluator->injectVertex(_traverser->fetchVertexData(v).slice());
-                }
-                // We cannot support these two here
-                TRI_ASSERT(!evaluator->needsEdge());
-                TRI_ASSERT(!evaluator->needsPath());
-                if (evaluator->evaluate()) {
-                  // Do not prune, so add.
-                  _toPrune.emplace(v);
-                }
+              if (shouldPrune(v)) {
+                _toPrune.emplace(v);
               }
               _currentDepth.emplace(v);
             }
@@ -158,4 +147,21 @@ void NeighborsEnumerator::swapLastAndCurrentDepth() {
   }
   _lastDepth.swap(_currentDepth);
   _currentDepth.clear();
+}
+
+bool NeighborsEnumerator::shouldPrune(arangodb::velocypack::StringRef v) {
+  // Prune here
+  if (_opts->usesPrune()) {
+    auto* evaluator = _opts->getPruneEvaluator();
+    if (evaluator->needsVertex()) {
+      evaluator->injectVertex(_traverser->fetchVertexData(v).slice());
+    }
+    // We cannot support these two here
+    TRI_ASSERT(!evaluator->needsEdge());
+    TRI_ASSERT(!evaluator->needsPath());
+    if (evaluator->evaluate()) {
+      return true;
+    }
+  }
+  return false;
 }

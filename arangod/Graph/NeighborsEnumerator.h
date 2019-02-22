@@ -69,6 +69,8 @@ class NeighborsEnumerator final : public arangodb::traverser::PathEnumerator {
 
  private:
   void swapLastAndCurrentDepth();
+
+  bool shouldPrune(arangodb::velocypack::StringRef v);
 };
 
 }  // namespace graph

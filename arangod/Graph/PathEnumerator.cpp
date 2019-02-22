@@ -54,6 +54,9 @@ DepthFirstEnumerator::~DepthFirstEnumerator() {}
 bool DepthFirstEnumerator::next() {
   if (_isFirst) {
     _isFirst = false;
+    if (shouldPrune()) {
+      _pruneNext = true;
+    }
     if (_opts->minDepth == 0) {
       return true;
     }
@@ -150,25 +153,9 @@ bool DepthFirstEnumerator::next() {
 
       if (cursor->next(callback)) {
         if (foundPath) {
-          // We need to call prune here
-          if (_opts->usesPrune()) {
-            auto* evaluator = _opts->getPruneEvaluator();
-            if (evaluator->needsVertex()) {
-              evaluator->injectVertex(lastVertexToAqlValue().slice());
-            }
-            if (evaluator->needsEdge()) {
-              evaluator->injectEdge(lastEdgeToAqlValue().slice());
-            }
-            transaction::BuilderLeaser builder(_opts->trx());
-            if (evaluator->needsPath()) {
-              aql::AqlValue val = pathToAqlValue(*builder.get());
-              evaluator->injectPath(val.slice());
-            }
-            if (evaluator->evaluate()) {
-              _pruneNext = true;
-            }
+          if (shouldPrune()) {
+            _pruneNext = true;
           }
-
           if (_enumeratedPath.edges.size() < _opts->minDepth) {
             // We have a valid prefix, but do NOT return this path
             break;
@@ -226,4 +213,26 @@ arangodb::aql::AqlValue DepthFirstEnumerator::pathToAqlValue(arangodb::velocypac
   result.close();
   result.close();
   return arangodb::aql::AqlValue(result.slice());
+}
+
+bool DepthFirstEnumerator::shouldPrune() {
+  // We need to call prune here
+  if (_opts->usesPrune()) {
+    auto* evaluator = _opts->getPruneEvaluator();
+    if (evaluator->needsVertex()) {
+      evaluator->injectVertex(lastVertexToAqlValue().slice());
+    }
+    if (evaluator->needsEdge()) {
+      evaluator->injectEdge(lastEdgeToAqlValue().slice());
+    }
+    transaction::BuilderLeaser builder(_opts->trx());
+    if (evaluator->needsPath()) {
+      aql::AqlValue val = pathToAqlValue(*builder.get());
+      evaluator->injectPath(val.slice());
+    }
+    if (evaluator->evaluate()) {
+      return true;
+    }
+  }
+  return false;
 }

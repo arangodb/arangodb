@@ -130,6 +130,9 @@ class DepthFirstEnumerator final : public PathEnumerator {
   aql::AqlValue lastEdgeToAqlValue() override;
 
   aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder& result) override;
+
+ private:
+  bool shouldPrune();
 };
 }  // namespace traverser
 }  // namespace arangodb

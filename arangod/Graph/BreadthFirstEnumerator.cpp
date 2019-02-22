@@ -52,7 +52,7 @@ BreadthFirstEnumerator::PathStep::PathStep(PathStep& other)
 BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser, VPackSlice startVertex,
                                                TraverserOptions* opts)
     : PathEnumerator(traverser, startVertex.copyString(), opts),
-      _schreierIndex(1),
+      _schreierIndex(0),
       _lastReturned(0),
       _currentDepth(0),
       _toSearchPos(0) {
@@ -69,6 +69,13 @@ BreadthFirstEnumerator::~BreadthFirstEnumerator() {}
 bool BreadthFirstEnumerator::next() {
   if (_isFirst) {
     _isFirst = false;
+    if (shouldPrune()) {
+      TRI_ASSERT(_toSearch.size() == 1);
+      // Throw the next one away
+      _toSearch.clear();
+    }
+    // We have faked the 0 position in schreier for pruning
+    _schreierIndex++;
     if (_opts->minDepth == 0) {
       return true;
     }
@@ -143,24 +150,7 @@ bool BreadthFirstEnumerator::next() {
           _schreier.emplace_back(std::make_unique<PathStep>(nextIdx, std::move(eid), vId));
           if (_currentDepth < _opts->maxDepth - 1) {
             // Prune here
-            if (_opts->usesPrune()) {
-              auto* evaluator = _opts->getPruneEvaluator();
-              if (evaluator->needsVertex()) {
-                evaluator->injectVertex(vertexToAqlValue(_schreierIndex).slice());
-              }
-              if (evaluator->needsEdge()) {
-                evaluator->injectEdge(edgeToAqlValue(_schreierIndex).slice());
-              }
-              transaction::BuilderLeaser builder(_opts->trx());
-              if (evaluator->needsPath()) {
-                aql::AqlValue val = pathToIndexToAqlValue(*builder.get(), _schreierIndex);
-                evaluator->injectPath(val.slice());
-              }
-              if (!evaluator->evaluate()) {
-                // Do not prune, so add.
-                _nextDepth.emplace_back(NextStep(_schreierIndex));
-              }
-            } else {
+            if (!shouldPrune()) {
               _nextDepth.emplace_back(NextStep(_schreierIndex));
             }
           }
@@ -303,4 +293,25 @@ bool BreadthFirstEnumerator::prepareSearchOnNextDepth() {
   TRI_ASSERT(_nextDepth.empty());
   TRI_ASSERT(_currentDepth < _opts->maxDepth);
   return true;
+}
+
+bool BreadthFirstEnumerator::shouldPrune() {
+  if (_opts->usesPrune()) {
+    auto* evaluator = _opts->getPruneEvaluator();
+    if (evaluator->needsVertex()) {
+      evaluator->injectVertex(vertexToAqlValue(_schreierIndex).slice());
+    }
+    if (evaluator->needsEdge()) {
+      evaluator->injectEdge(edgeToAqlValue(_schreierIndex).slice());
+    }
+    transaction::BuilderLeaser builder(_opts->trx());
+    if (evaluator->needsPath()) {
+      aql::AqlValue val = pathToIndexToAqlValue(*builder.get(), _schreierIndex);
+      evaluator->injectPath(val.slice());
+    }
+    if (evaluator->evaluate()) {
+      return true;
+    }
+  }
+  return false;
 }
