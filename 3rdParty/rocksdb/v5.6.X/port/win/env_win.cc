@@ -680,8 +680,11 @@ uint64_t WinEnvIO::NowNanos() {
   QueryPerformanceCounter(&li);
   // Convert to nanoseconds first to avoid loss of precision
   // and divide by frequency
-  li.QuadPart *= std::nano::den;
-  li.QuadPart /= perf_counter_frequency_;
+  if (perf_counter_frequency_ < std::nano::den) {
+    li.QuadPart *= (std::nano::den / perf_counter_frequency_);
+  } else {
+    li.QuadPart /= (perf_counter_frequency_ / std::nano::den);
+  } // else
   return li.QuadPart;
 }
 
