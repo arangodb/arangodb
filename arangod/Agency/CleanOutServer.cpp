@@ -509,6 +509,16 @@ arangodb::Result CleanOutServer::abort() {
     }
   }
 
+  // Missing here: Add a payload to the abort which removes
+  // Something along these lines:
+  //  reportTrx.add(VPackValue("/Target/ToBeCleanedServers"));
+  //  {
+  //    VPackObjectBuilder guard4(&reportTrx);
+  //    reportTrx.add("op", VPackValue("erase"));
+  //    reportTrx.add("val", VPackValue(_server));
+  //  }
+  // Still needs to be finished. Follow example in FailedLeader::rollback
+
   finish(_server, "", false, "job aborted");
 
   return result;
