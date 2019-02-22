@@ -42,6 +42,7 @@
 namespace rocksdb {
 
 class TransactionDB;
+class EncryptionProvider;
 }
 
 namespace arangodb {

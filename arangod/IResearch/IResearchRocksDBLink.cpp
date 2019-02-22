@@ -31,6 +31,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
+#include <rocksdb/env_encryption.h>
+
 #include "IResearchRocksDBLink.h"
 #include "utils/encryption.hpp"
 
@@ -90,10 +92,10 @@ class RocksDBEncryptionProvider final : public irs::encryption {
 
   virtual encryption::stream::ptr create_stream(
       std::string const& filename,
-      irs::bytes_ref const& header) override {
+      irs::byte_type* header) override {
     rocksdb::Slice headerSlice(
-      reinterpret_cast<char const*>(header.c_str()),
-      header.size()
+      reinterpret_cast<char const*>(header),
+      header_length()
     );
 
     std::unique_ptr<rocksdb::BlockAccessCipherStream> stream;
