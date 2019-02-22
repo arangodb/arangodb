@@ -23,6 +23,7 @@
 
 #include "RocksDBTtlIndex.h"
 #include "Basics/StaticStrings.h"
+#include "Transaction/Helpers.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
@@ -59,4 +60,42 @@ void RocksDBTtlIndex::toVelocyPack(arangodb::velocypack::Builder& builder,
   );
   builder.add(StaticStrings::IndexExpireAfter, VPackValue(_expireAfter));
   builder.close();
+}
+
+/// @brief inserts a document into the index
+Result RocksDBTtlIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
+                               LocalDocumentId const& documentId,
+                               velocypack::Slice const& doc,
+                               Index::OperationMode mode) {
+  double timestamp = getTimestamp(doc);
+  if (timestamp < 0) {
+    // index attribute not present or invalid. nothing to do 
+    return Result();
+  }
+  transaction::BuilderLeaser leased(&trx);
+  leased->openObject();
+  leased->add(getAttribute(), VPackValue(timestamp));
+  leased->close(); 
+  return RocksDBVPackIndex::insert(trx, mthds, documentId, leased->slice(), mode);
+}
+
+/// @brief removes a document from the index
+Result RocksDBTtlIndex::remove(transaction::Methods& trx, RocksDBMethods* mthds,
+                               LocalDocumentId const& documentId,
+                               velocypack::Slice const& doc,
+                               Index::OperationMode mode) {
+  double timestamp = getTimestamp(doc);
+  if (timestamp < 0) {
+    // index attribute not present or invalid. nothing to do 
+    return Result();
+  }
+  transaction::BuilderLeaser leased(&trx);
+  leased->openObject();
+  leased->add(getAttribute(), VPackValue(timestamp));
+  leased->close(); 
+  return RocksDBVPackIndex::remove(trx, mthds, documentId, leased->slice(), mode);
+}
+ 
+double RocksDBTtlIndex::getTimestamp(arangodb::velocypack::Slice const& doc) const {
+  return Index::getTimestamp(doc, getAttribute());
 }
