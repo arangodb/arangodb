@@ -1228,7 +1228,10 @@ void Supervision::enforceReplication() {
 
           size_t actualReplicationFactor
             = Job::countGoodServersInList(_snapshot, shard.slice());
-          if (actualReplicationFactor != replicationFactor) {
+          size_t apparentReplicationFactor = shard.slice().length();
+
+          if (actualReplicationFactor != replicationFactor ||
+              apparentReplicationFactor != replicationFactor) {
             // Check that there is not yet an addFollower or removeFollower
             // or moveShard job in ToDo for this shard:
             auto const& todo = _snapshot.hasAsChildren(toDoPrefix).first;
@@ -1259,7 +1262,7 @@ void Supervision::enforceReplication() {
                 AddFollower(_snapshot, _agent, std::to_string(_jobId++),
                             "supervision", db_.first, col_.first, shard_.first)
                     .run();
-              } else {
+              } else if (apparentReplicationFactor > replicationFactor) {
                 RemoveFollower(_snapshot, _agent, std::to_string(_jobId++),
                                "supervision", db_.first, col_.first, shard_.first)
                     .run();
