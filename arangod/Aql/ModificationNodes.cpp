@@ -131,7 +131,7 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
   OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
-      inDocRegister, boost::none, boost::none, outputNew, outputOld,
+      inDocRegister, boost::none, boost::none, outputNew, outputOld, boost::none /*output*/,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
       calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
@@ -202,7 +202,7 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
   OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
-      inputRegister, boost::none, boost::none, outputNew, outputOld,
+      inputRegister, boost::none, boost::none, outputNew, outputOld, boost::none /*output*/,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
       calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
@@ -298,7 +298,7 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
   OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
-      inDocRegister, inKeyRegister, boost::none, outputNew, outputOld,
+      inDocRegister, inKeyRegister, boost::none, outputNew, outputOld, boost::none /*output*/,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
       calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
@@ -376,7 +376,7 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
   OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
-      inDocRegister, inKeyRegister, boost::none, outputNew, outputOld,
+      inDocRegister, inKeyRegister, boost::none, outputNew, outputOld, boost::none /*output*/,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
       calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
@@ -385,7 +385,7 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
       false /*is replace (needed by upsert)*/, _options.ignoreDocumentNotFound);
 
   return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Replace>>>(&engine, this,
-                                                                            std::move(infos));
+                                                                             std::move(infos));
 }
 
 /// @brief clone ExecutionNode recursively
@@ -470,7 +470,7 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
   OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
-      inDoc, insert, update, outputNew, outputOld,
+      inDoc, insert, update, outputNew, outputOld, boost::none /*output*/,
       getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
       getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
       calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),

@@ -101,6 +101,7 @@ class ModificationExecutorInfos : public ExecutorInfos {
                             boost::optional<RegisterId> input3RegisterId,
                             boost::optional<RegisterId> outputNewRegisterId,
                             boost::optional<RegisterId> outputOldRegisterId,
+                            boost::optional<RegisterId> outputRegisterId,
                             RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                             std::unordered_set<RegisterId> registersToClear,
                             std::unordered_set<RegisterId> registersToKeep,
@@ -155,6 +156,7 @@ class ModificationExecutorInfos : public ExecutorInfos {
 
   boost::optional<RegisterId> _outputNewRegisterId;
   boost::optional<RegisterId> _outputOldRegisterId;
+  boost::optional<RegisterId> _outputRegisterId;
 };
 
 struct ModificationExecutorBase {
