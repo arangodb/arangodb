@@ -23,7 +23,7 @@ If you are running a single ArangoDB instance in single-server mode, there are n
 of your data. All you need is at least one vertex collection and one edge collection. Note that the performance may be
 better, if the number of your shards / collections matches the number of CPU cores.
 
-When you use ArangoDB Community edition in cluster mode, you might need to model your collections in a certain way to
+When you use ArangoDB Community Edition in cluster mode, you might need to model your collections in a certain way to
 ensure correct results. For more information see the next section.
 
 ### Requirements for Collections in a Cluster (Non Smart Graph)
