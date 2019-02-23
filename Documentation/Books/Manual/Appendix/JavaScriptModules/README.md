@@ -15,12 +15,14 @@ ArangoDB supports a number of modules for compatibility with Node.js, including:
 * [buffer](http://nodejs.org/api/buffer.html) implements a binary data type for JavaScript.
 
 * [console](Console.md) is a well known logging facility to all the JavaScript developers.
-  ArangoDB implements most of the [Console API](http://wiki.commonjs.org/wiki/Console),
+  ArangoDB implements most of the
+  [Console API](http://wiki.commonjs.org/wiki/Console),
   with the exceptions of *profile* and *count*.
 
 * [events](http://nodejs.org/api/events.html) implements an event emitter.
 
-* [fs](FileSystem.md) provides a file system API for the manipulation of paths, directories, files, links, and the construction of file streams. ArangoDB implements most [Filesystem/A](http://wiki.commonjs.org/wiki/Filesystem/A) functions.
+* [fs](FileSystem.md) provides a file system API for the manipulation of paths, directories, files, links, and the construction of file streams.
+  ArangoDB implements most [Filesystem/A](http://wiki.commonjs.org/wiki/Filesystem/A) functions.
 
 * [module](http://nodejs.org/api/modules.html) provides direct access to the module system.
 

@@ -58,9 +58,11 @@ router.get('/hello-world', function (req, res) {
 
 The `router` provides the methods `get`, `post`, etc corresponding to each HTTP verb as well as the catch-all `all`. These methods indicate that the given route should be used to handle incoming requests with the given HTTP verb (or any method when using `all`).
 
-These methods take an optional path (if omitted, it defaults to `"/"`) as well as a request handler, which is a function taking the `req` ([request](Router/Request.md))
-and `res` ([response](Router/Response.md)) objects to handle the incoming request and generate the outgoing response. If you have used the express framework in Node.js, you may already be familiar with how this works,
-otherwise check out [the chapter on routes](Router/Endpoints.md).
+These methods take an optional path (if omitted, it defaults to `"/"`) as well as a request handler,
+which is a function taking the `req` ([request](Router/Request.md))
+and `res` ([response](Router/Response.md)) objects to handle the incoming request and generate the
+outgoing response. If you have used the express framework in Node.js, you may already be familiar
+with how this works, otherwise check out [the chapter on routes](Router/Endpoints.md).
 
 The object returned by the router's methods provides additional methods to attach metadata and validation to the route. We're using `summary` and `description` to document what the route does -- these aren't strictly necessary but give us some nice auto-generated documentation. The `response` method lets us additionally document the response content type and what the response body will represent.
 
@@ -336,7 +338,8 @@ You now know how to create a Foxx service from scratch, how to handle user input
 
 * Writing a single page app? You could [store some basic assets](Assets.md) right inside your Foxx service.
 
-* Need to integrate external services? You can [make HTTP requests](Modules.md) from inside Foxx and use [queued jobs](Scripts.md) to perform that work in the background.
+* Need to integrate external services? You can [make HTTP requests](Modules.md) from inside Foxx and use 
+ [queued jobs](Scripts.md) to perform that work in the background.
 
 * Tired of reinventing the wheel? Learn about [dependencies](Dependencies.md).
 

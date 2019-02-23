@@ -13,7 +13,8 @@ Another possibility is to start Docker via network mode `host`. This is possible
 
 #### Docker and Cluster tasks
 
-To start the cluster via Docker is basically the same as starting [locally](Local.md) or on [multiple machines](Distributed.md). However just like with the single networking image we will face networking issues. You can simply use the `-p` flag to make the individual task available on the host machine or you could use Docker's [links](https://docs.docker.com/engine/reference/run/) to enable task intercommunication.
+To start the cluster via Docker is basically the same as starting [locally](Local.md)
+or on [multiple machines](Distributed.md). However just like with the single networking image we will face networking issues. You can simply use the `-p` flag to make the individual task available on the host machine or you could use Docker's [links](https://docs.docker.com/engine/reference/run/) to enable task intercommunication.
 
 Please note that there are some flags that specify how ArangoDB can reach a task from the outside. These are very important and built for this exact usecase. An example configuration might look like this:
 
