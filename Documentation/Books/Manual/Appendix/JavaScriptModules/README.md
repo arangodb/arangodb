@@ -26,7 +26,8 @@ ArangoDB supports a number of modules for compatibility with Node.js, including:
 
 * [path](http://nodejs.org/api/path.html) implements functions dealing with filenames and paths.
 
-* [punycode](http://nodejs.org/api/punycode.html) implements conversion functions for [punycode](http://en.wikipedia.org/wiki/Punycode) encoding.
+* [punycode](http://nodejs.org/api/punycode.html) implements conversion functions for 
+  [punycode](http://en.wikipedia.org/wiki/Punycode) encoding.
 
 * [querystring](http://nodejs.org/api/querystring.html) provides utilities for dealing with query strings.
 

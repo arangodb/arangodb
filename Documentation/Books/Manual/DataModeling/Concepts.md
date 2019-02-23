@@ -6,13 +6,15 @@ Database Interaction
 
 ArangoDB is a database that serves documents to clients. These documents are
 transported using [JSON](https://en.wikipedia.org/wiki/JSON) via a TCP connection,
-using the HTTP protocol. A [REST API](https://en.wikipedia.org/wiki/Representational_state_transfer)
+using the HTTP protocol. 
+A [REST API](https://en.wikipedia.org/wiki/Representational_state_transfer)
 is provided to interact with the database system.
 
 The [web interface](../Administration/WebInterface/README.md) that comes with
 ArangoDB, called *Aardvark*, provides graphical user interface that is easy to use.
 An [interactive shell](../GettingStarted/Arangosh.md), called *Arangosh*, is also
-shipped. In addition, there are so called [drivers](https://arangodb.com/downloads/arangodb-drivers/)
+shipped. In addition, there are so called
+[drivers](https://arangodb.com/downloads/arangodb-drivers/)
 that make it easy to use the database system in various environments and
 programming languages. All these tools use the HTTP interface of the server and
 remove the necessity to roll own low-level code for basic communication in most
@@ -70,4 +72,5 @@ the [ArangoDB Query Language](../../AQL/index.html) (AQL).
 easily processable batches instead of one big hunk.
 
 **Indexes** are used to speed up searches. There are various types of indexes,
-such as [hash indexes](../Indexing/Hash.md) and [geo indexes](../Indexing/Geo.md).
+such as [hash indexes](../Indexing/Hash.md) and 
+[geo indexes](../Indexing/Geo.md).

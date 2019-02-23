@@ -1,7 +1,8 @@
 Endpoints
 =========
 
-Endpoints are returned by the `use`, `all` and HTTP verb (e.g. `get`, `post`) methods of [routers](./README.md) as well as the `use` method of the [service context](../Context.md). They can be used to attach metadata to mounted routes, middleware and child routers that affects how requests and responses are processed or provides API documentation.
+Endpoints are returned by the `use`, `all` and HTTP verb (e.g. `get`, `post`) methods of [routers](./README.md)
+as well as the `use` method of the [service context](../Context.md). They can be used to attach metadata to mounted routes, middleware and child routers that affects how requests and responses are processed or provides API documentation.
 
 Endpoints should only be used to invoke the following methods. Endpoint methods can be chained together (each method returns the endpoint itself).
 
@@ -182,7 +183,8 @@ If the endpoint is a child router, all routes of that router will use this respo
 
 * **status**: `number | string` (Default: `200` or `204`)
 
-  HTTP status code the response applies to. If a string is provided instead of a numeric status code it will be used to look up a numeric status code using the [statuses](https://github.com/jshttp/statuses) module.
+  HTTP status code the response applies to. If a string is provided instead of a numeric status code it will be used to look up a numeric status code using the
+ [statuses](https://github.com/jshttp/statuses) module.
 
 * **model**: `Model | Schema | null` (optional)
 
@@ -270,7 +272,8 @@ This method only affects the generated API documentation and has not other effec
 
 * **status**: `number | string`
 
-  HTTP status code for the error (e.g. `400` for "bad request"). If a string is provided instead of a numeric status code it will be used to look up a numeric status code using the [statuses](https://github.com/jshttp/statuses) module.
+  HTTP status code for the error (e.g. `400` for "bad request"). If a string is provided instead of a numeric status code it will be used to look up a numeric status code using the 
+ [statuses](https://github.com/jshttp/statuses) module.
 
 * **description**: `string` (optional)
 

@@ -15,7 +15,8 @@ Please note that ArangoDB will only work on 64bit.
 
 ### Docker
 
-The simplest way to deploy ArangoDB is using [Docker](https://docker.io/). To get a general understanding of Docker have a look at [their excellent documentation](https://docs.docker.com/).
+The simplest way to deploy ArangoDB is using [Docker](https://docker.io/). To get a general understanding of Docker have a look at
+[their excellent documentation](https://docs.docker.com/).
 
 #### Authentication
 
