@@ -20,11 +20,10 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SINGLE_REMOTE_EXECUTOR_H
-#define ARANGOD_AQL_SINGLE_REMOTE_EXECUTOR_H
+#ifndef ARANGOD_AQL_SINGLE_REMOTE_MODIFICATION_EXECUTOR_H
+#define ARANGOD_AQL_SINGLE_REMOTE_MODIFICATION_EXECUTOR_H 1
 
 #include "Aql/ModificationExecutor.h"
-#include "Aql/SingleRemoteExecutor.h"
 
 namespace arangodb {
 namespace aql {
@@ -32,7 +31,7 @@ namespace aql {
 struct Index {};
 
 template <typename Modifier>
-struct SingleRemoteExecutor {
+struct SingleRemoteModificationExecutor {
   struct Properties {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
@@ -42,8 +41,8 @@ struct SingleRemoteExecutor {
   using Stats = ModificationStats;
   using Modification = Modifier;
 
-  SingleRemoteExecutor(Fetcher&, Infos&);
-  ~SingleRemoteExecutor();
+  SingleRemoteModificationExecutor(Fetcher&, Infos&);
+  ~SingleRemoteModificationExecutor();
 
   /**
    * @brief produce the next Row of Aql Values.
@@ -54,7 +53,7 @@ struct SingleRemoteExecutor {
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
  protected:
-  bool doSingleRemoteOperation(InputAqlItemRow&, OutputAqlItemRow&, Stats&);
+  bool doSingleRemoteModificationOperation(InputAqlItemRow&, OutputAqlItemRow&, Stats&);
 
   ModificationExecutorInfos& _info;
   Fetcher& _fetcher;

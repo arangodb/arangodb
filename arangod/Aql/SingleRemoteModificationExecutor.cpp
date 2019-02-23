@@ -20,7 +20,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/SingleRemoteExecutor.h"
+#include "Aql/SingleRemoteModificationExecutor.h"
 
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
@@ -36,15 +36,15 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 template <typename Modifier>
-SingleRemoteExecutor<Modifier>::SingleRemoteExecutor(Fetcher& fetcher, Infos& info)
+SingleRemoteModificationExecutor<Modifier>::SingleRemoteModificationExecutor(Fetcher& fetcher, Infos& info)
     : _info(info), _fetcher(fetcher), _upstreamState(ExecutionState::HASMORE){};
 
 template <typename Modifier>
-SingleRemoteExecutor<Modifier>::~SingleRemoteExecutor() = default;
+SingleRemoteModificationExecutor<Modifier>::~SingleRemoteModificationExecutor() = default;
 
 template <typename Modifier>
-std::pair<ExecutionState, typename SingleRemoteExecutor<Modifier>::Stats>
-SingleRemoteExecutor<Modifier>::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, typename SingleRemoteModificationExecutor<Modifier>::Stats>
+SingleRemoteModificationExecutor<Modifier>::produceRow(OutputAqlItemRow& output) {
   Stats stats;
   InputAqlItemRow input = InputAqlItemRow(CreateInvalidInputRowHint{});
 
@@ -57,7 +57,7 @@ SingleRemoteExecutor<Modifier>::produceRow(OutputAqlItemRow& output) {
   if (input.isInitialized()) {
     TRI_ASSERT(_upstreamState == ExecutionState::HASMORE ||
                _upstreamState == ExecutionState::DONE);
-    doSingleRemoteOperation(input, output, stats);
+    doSingleRemoteModificationOperation(input, output, stats);
   } else {
     TRI_ASSERT(_upstreamState == ExecutionState::WAITING ||
                _upstreamState == ExecutionState::DONE);
@@ -66,7 +66,7 @@ SingleRemoteExecutor<Modifier>::produceRow(OutputAqlItemRow& output) {
 }
 
 template <typename Modifier>
-bool SingleRemoteExecutor<Modifier>::doSingleRemoteOperation(InputAqlItemRow& input,
+bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOperation(InputAqlItemRow& input,
                                                              OutputAqlItemRow& output,
                                                              Stats& stats) {
   const bool isIndex = std::is_same<Modifier, Index>::value;
@@ -206,15 +206,15 @@ bool SingleRemoteExecutor<Modifier>::doSingleRemoteOperation(InputAqlItemRow& in
   }
 
 
-  TRI_IF_FAILURE("SingleRemoteOperationBlock::moreDocuments") {
+  TRI_IF_FAILURE("SingleRemoteModificationOperationBlock::moreDocuments") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
   return true;
 }
 
-template struct ::arangodb::aql::SingleRemoteExecutor<Insert>;
-template struct ::arangodb::aql::SingleRemoteExecutor<Remove>;
-template struct ::arangodb::aql::SingleRemoteExecutor<Replace>;
-template struct ::arangodb::aql::SingleRemoteExecutor<Update>;
-template struct ::arangodb::aql::SingleRemoteExecutor<Upsert>;
+template struct ::arangodb::aql::SingleRemoteModificationExecutor<Insert>;
+template struct ::arangodb::aql::SingleRemoteModificationExecutor<Remove>;
+template struct ::arangodb::aql::SingleRemoteModificationExecutor<Replace>;
+template struct ::arangodb::aql::SingleRemoteModificationExecutor<Update>;
+template struct ::arangodb::aql::SingleRemoteModificationExecutor<Upsert>;
