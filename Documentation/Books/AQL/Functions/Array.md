@@ -352,7 +352,8 @@ UNION(
 ```
 
 Note: No duplicates will be removed. In order to remove duplicates, please use
-either [UNION_DISTINCT()](#uniondistinct) or apply [UNIQUE()](#unique) on the
+either [UNION_DISTINCT()](#uniondistinct) 
+or apply [UNIQUE()](#unique) on the
 result of *UNION()*:
 
 ```js
