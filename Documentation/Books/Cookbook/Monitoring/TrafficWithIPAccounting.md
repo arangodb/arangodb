@@ -195,7 +195,7 @@ Now we restart collectd with `/etc/init.d/collectd restart`, watch the syslog fo
 
 We can inspect our values with kcollectd:
 
-![Kcollectd screenshot](/assets/MonitoringWithCollectd/KCollectdIPtablesAccounting.png)
+![Kcollectd screenshot](../assets/MonitoringWithCollectd/KCollectdIPtablesAccounting.png)
 
 **Author:** [Wilfried Goesgens](https://github.com/dothebart)
 
