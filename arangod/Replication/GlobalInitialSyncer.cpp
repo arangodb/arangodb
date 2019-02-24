@@ -371,6 +371,9 @@ Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
   if (_state.applier._includeSystem) {
     url += "&includeSystem=true";
   }
+  if (_state.applier._includeFoxxQueues) {
+    url += "&includeFoxxQueues=true";
+  }
 
   // send request
   std::unique_ptr<httpclient::SimpleHttpResult> response;

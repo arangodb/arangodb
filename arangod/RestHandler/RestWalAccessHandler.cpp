@@ -109,6 +109,7 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
   }
 
   filter.includeSystem = _request->parsedValue("includeSystem", filter.includeSystem);
+  filter.includeFoxxQueues = _request->parsedValue("includeFoxxQueues", true);
 
   // grab list of transactions from the body value
   if (_request->requestType() == arangodb::rest::RequestType::PUT) {
