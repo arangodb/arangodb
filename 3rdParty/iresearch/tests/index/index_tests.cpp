@@ -21923,7 +21923,7 @@ TEST_P(index_test_case, writer_close) {
 }
 
 INSTANTIATE_TEST_CASE_P(
-  index_test,
+  index_test_10,
   index_test_case,
   ::testing::Combine(
     ::testing::Values(
@@ -21932,6 +21932,20 @@ INSTANTIATE_TEST_CASE_P(
       &tests::mmap_directory
     ),
     ::testing::Values("1_0")
+  ),
+  tests::to_string
+);
+
+INSTANTIATE_TEST_CASE_P(
+  index_test_11,
+  index_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
+      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
+      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
+    ),
+    ::testing::Values("1_1")
   ),
   tests::to_string
 );

@@ -157,10 +157,10 @@ bool decrypt(
 // -----------------------------------------------------------------------------
 
 encrypted_output::encrypted_output(
-    index_output::ptr&& out,
+    index_output& out,
     encryption::stream& cipher,
     size_t buf_size)
-  : out_(std::move(out)),
+  : out_(&out),
     cipher_(&cipher),
     buf_size_(cipher.block_size() * std::max(size_t(1), buf_size)),
     buf_(memory::make_unique<byte_type[]>(buf_size_)),
@@ -169,6 +169,15 @@ encrypted_output::encrypted_output(
     end_(pos_ + buf_size_) {
   assert(buf_size_);
 }
+
+encrypted_output::encrypted_output(
+    index_output::ptr&& out,
+    encryption::stream& cipher,
+    size_t buf_size)
+  : encrypted_output(*out, cipher, buf_size) {
+  managed_out_ = std::move(out);
+}
+
 
 void encrypted_output::write_int(int32_t value) {
   if (remain() < sizeof(uint32_t)) {
@@ -281,12 +290,12 @@ void encrypted_output::close() {
 // -----------------------------------------------------------------------------
 
 encrypted_input::encrypted_input(
-    index_input::ptr&& in,
+    index_input& in,
     encryption::stream& cipher,
     size_t buf_size,
     size_t padding /* = 0*/
 ) : buffered_index_input(cipher.block_size() * std::max(size_t(1), buf_size)),
-    in_(std::move(in)),
+    in_(&in),
     cipher_(&cipher),
     start_(in_->file_pointer()),
     length_(in_->length() - start_ - padding) {
@@ -294,9 +303,19 @@ encrypted_input::encrypted_input(
   assert(in_ && in_->length() >= in_->file_pointer() + padding);
 }
 
+encrypted_input::encrypted_input(
+    index_input::ptr&& in,
+    encryption::stream& cipher,
+    size_t buf_size,
+    size_t padding /* = 0*/
+) : encrypted_input(*in, cipher, buf_size, padding) {
+  managed_in_ = std::move(in);
+}
+
 encrypted_input::encrypted_input(const encrypted_input& rhs, index_input::ptr&& in) NOEXCEPT
   : buffered_index_input(rhs.buffer_size()),
-    in_(std::move(in)),
+    managed_in_(std::move(in)),
+    in_(managed_in_.get()),
     cipher_(rhs.cipher_),
     start_(rhs.start_),
     length_(rhs.length_) {

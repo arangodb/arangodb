@@ -71,13 +71,17 @@ inline size_t roundup_power2(size_t v) NOEXCEPT {
 /// @brief rounds the result of division (num/den) to
 ///        the next greater integer value
 CONSTEXPR inline uint64_t div_ceil64(uint64_t num, uint64_t den) NOEXCEPT {
-  return IRS_ASSERT(den != 0), (num + den - 1)/den;
+  // ensure no overflow
+  return IRS_ASSERT(den != 0 && (num + den) >= num && (num + den >= den)),
+         (num + den - 1)/den;
 }
 
 /// @brief rounds the result of division (num/den) to
 ///        the next greater integer value
 CONSTEXPR inline uint32_t div_ceil32(uint32_t num, uint32_t den) NOEXCEPT {
-  return IRS_ASSERT(den != 0), (num + den - 1)/den;
+  // ensure no overflow
+  return IRS_ASSERT(den != 0 && (num + den) >= num && (num + den >= den)),
+         (num + den - 1)/den;
 }
 
 /// @brief rounds the specified 'value' to the next greater

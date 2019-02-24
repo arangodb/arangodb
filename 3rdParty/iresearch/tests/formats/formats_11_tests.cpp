@@ -94,6 +94,108 @@ TEST_P(format_11_test_case, write_zero_block_encryption) {
   ASSERT_THROW(writer->commit(), irs::index_error);
 }
 
+TEST_P(format_11_test_case, fields_read_write_wrong_encryption) {
+  // create sorted && unsorted terms
+  typedef std::set<irs::bytes_ref> sorted_terms_t;
+  typedef std::vector<irs::bytes_ref> unsorted_terms_t;
+  sorted_terms_t sorted_terms;
+  unsorted_terms_t unsorted_terms;
+
+  tests::json_doc_generator gen(
+    resource("fst_prefixes.json"),
+    [&sorted_terms, &unsorted_terms] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+      doc.insert(std::make_shared<tests::templates::string_field>(
+        irs::string_ref(name),
+        data.str
+      ));
+
+      auto ref = irs::ref_cast<irs::byte_type>((doc.indexed.end() - 1).as<tests::templates::string_field>().value());
+      sorted_terms.emplace(ref);
+      unsorted_terms.emplace_back(ref);
+  });
+
+  // define field
+  irs::field_meta field;
+  field.name = "field";
+  field.norm = 5;
+
+  auto codec = irs::formats::get("1_1");
+  ASSERT_NE(nullptr, codec);
+  ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
+
+  // write fields
+  {
+    irs::flush_state state;
+    state.dir = &dir();
+    state.doc_count = 100;
+    state.name = "segment_name";
+    state.features = &field.features;
+
+    // should use sorted terms on write
+    tests::format_test_case::terms<sorted_terms_t::iterator> terms(
+      sorted_terms.begin(), sorted_terms.end()
+    );
+
+    auto writer = codec->get_field_writer(false);
+    ASSERT_NE(nullptr, writer);
+    writer->prepare(state);
+    writer->write(field.name, field.norm, field.features, terms);
+    writer->end();
+  }
+
+  irs::segment_meta meta;
+  meta.name = "segment_name";
+  irs::document_mask docs_mask;
+
+  auto reader = codec->get_field_reader();
+  ASSERT_NE(nullptr, reader);
+
+  // can't open encrypted index without encryption
+  ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
+  ASSERT_THROW(reader->prepare(dir(), meta, docs_mask), irs::index_error);
+
+  // can't open encrypted index with wrong encryption
+  dir().attributes().emplace<tests::rot13_encryption>(6);
+  ASSERT_THROW(reader->prepare(dir(), meta, docs_mask), irs::index_error);
+}
+
+TEST_P(format_11_test_case, column_meta_read_write_wrong_encryption) {
+  auto codec = irs::formats::get("1_1");
+  ASSERT_NE(nullptr, codec);
+
+  ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
+
+  irs::segment_meta meta;
+  meta.name = "_1";
+
+  // write meta
+  {
+    auto writer = codec->get_column_meta_writer();
+    irs::segment_meta meta1;
+
+    // write segment _1
+    writer->prepare(dir(), meta);
+    writer->write("_1_column1", 1);
+    writer->write("_1_column2", 2);
+    writer->write("_1_column0", 0);
+    writer->flush();
+  }
+
+  size_t count = 0;
+  irs::field_id max_id = 0;
+
+  auto reader = codec->get_column_meta_reader();
+  ASSERT_NE(nullptr, reader);
+
+  // can't open encrypted index without encryption
+  ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
+  ASSERT_THROW(reader->prepare(dir(), meta, count, max_id), irs::index_error);
+
+  // can't open encrypted index with wrong encryption
+  dir().attributes().emplace<tests::rot13_encryption>(6);
+  ASSERT_THROW(reader->prepare(dir(), meta, count, max_id), irs::index_error);
+}
+
 TEST_P(format_11_test_case, open_ecnrypted_with_wrong_encryption) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
@@ -119,11 +221,9 @@ TEST_P(format_11_test_case, open_ecnrypted_with_wrong_encryption) {
     writer->commit();
   }
 
-  // replace encryption
+  // can't open encrypted index with wrong encryption
   ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
   dir().attributes().emplace<tests::rot13_encryption>(6);
-
-  // can't open encrypted index without encryption
   ASSERT_THROW(irs::directory_reader::open(dir()), irs::index_error);
 }
 

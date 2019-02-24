@@ -2553,8 +2553,16 @@ void meta_writer::prepare(directory& dir, const segment_meta& meta) {
     if (irs::encrypt(filename, *out_, enc, enc_header, out_cipher_)) {
       assert(out_cipher_ && out_cipher_->block_size());
 
-      const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/out_cipher_->block_size();
-      out_ = index_output::make<encrypted_output>(std::move(out_), *out_cipher_, buffer_size);
+      const auto blocks_in_buffer = math::div_ceil64(
+        buffered_index_output::DEFAULT_BUFFER_SIZE,
+        out_cipher_->block_size()
+      );
+
+      out_ = index_output::make<encrypted_output>(
+        std::move(out_),
+        *out_cipher_,
+        blocks_in_buffer
+      );
     }
   }
 }
@@ -2669,8 +2677,17 @@ bool meta_reader::prepare(
     if (irs::decrypt(filename, *in_, enc, in_cipher_)) {
       assert(in_cipher_ && in_cipher_->block_size());
 
-      const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/in_cipher_->block_size();
-      in_ = index_input::make<encrypted_input>(std::move(in_), *in_cipher_, buffer_size, FOOTER_LEN);
+      const auto blocks_in_buffer= math::div_ceil64(
+        buffered_index_input::DEFAULT_BUFFER_SIZE,
+        in_cipher_->block_size()
+      );
+
+      in_ = index_input::make<encrypted_input>(
+        std::move(in_),
+        *in_cipher_,
+        blocks_in_buffer,
+        FOOTER_LEN
+      );
     }
   }
 

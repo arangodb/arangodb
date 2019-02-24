@@ -171,6 +171,11 @@ class IRESEARCH_API buffered_index_input : public index_input {
 
   virtual size_t read_internal(byte_type* b, size_t count) = 0;
 
+  // returns number of reamining bytes in the buffer
+  FORCE_INLINE size_t remain() const {
+    return std::distance(begin_, end_);
+  }
+
  private:
   // returns number of bytes between begin_ & end_
   size_t refill();
@@ -178,11 +183,6 @@ class IRESEARCH_API buffered_index_input : public index_input {
   // returns number of elements between current position and beginning of the buffer
   FORCE_INLINE size_t offset() const { 
     return std::distance(buf_.get(), begin_); 
-  }
-
-  // returns number of reamining bytes in the buffer 
-  FORCE_INLINE size_t remain() const { 
-    return std::distance(begin_, end_); 
   }
 
   // returns number of valid bytes in the buffer 

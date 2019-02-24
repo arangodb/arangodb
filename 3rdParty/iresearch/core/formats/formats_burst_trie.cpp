@@ -1591,8 +1591,16 @@ void field_writer::prepare(const irs::flush_state& state) {
     if (irs::encrypt(filename, *index_out_, enc, enc_header, index_out_cipher_)) {
       assert(index_out_cipher_ && index_out_cipher_->block_size());
 
-      const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/index_out_cipher_->block_size();
-      index_out_ = index_output::make<encrypted_output>(std::move(index_out_), *index_out_cipher_, buffer_size);
+      const auto blocks_in_buffer = math::div_ceil64(
+        buffered_index_output::DEFAULT_BUFFER_SIZE,
+        index_out_cipher_->block_size()
+      );
+
+      index_out_ = index_output::make<encrypted_output>(
+        std::move(index_out_),
+        *index_out_cipher_,
+        blocks_in_buffer
+      );
     }
   }
 
@@ -1837,10 +1845,16 @@ void field_reader::prepare(
     if (irs::decrypt(filename, *index_in, enc, index_in_cipher)) {
       assert(index_in_cipher && index_in_cipher->block_size());
 
-      const auto buffer_size = buffered_index_output::DEFAULT_BUFFER_SIZE/index_in_cipher->block_size();
+      const auto blocks_in_buffer = math::div_ceil64(
+        buffered_index_input::DEFAULT_BUFFER_SIZE,
+        index_in_cipher->block_size()
+      );
 
       index_in = index_input::make<encrypted_input>(
-        std::move(index_in), *index_in_cipher, buffer_size, FOOTER_LEN
+        std::move(index_in),
+        *index_in_cipher,
+        blocks_in_buffer,
+        FOOTER_LEN
       );
     }
   }

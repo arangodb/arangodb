@@ -110,19 +110,25 @@ IRESEARCH_API bool decrypt(
 ////////////////////////////////////////////////////////////////////////////////
 ///// @class encrypted_output
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API encrypted_output final : public irs::index_output, util::noncopyable {
+class IRESEARCH_API encrypted_output : public irs::index_output, util::noncopyable {
  public:
+  encrypted_output(
+    index_output& out,
+    encryption::stream& cipher,
+    size_t buf_size
+  );
+
   encrypted_output(
     index_output::ptr&& out,
     encryption::stream& cipher,
     size_t buf_size
   );
 
-  virtual void flush() override;
+  virtual void flush() override final;
 
-  virtual void close() override;
+  virtual void close() override final;
 
-  virtual size_t file_pointer() const override;
+  virtual size_t file_pointer() const override final;
 
   virtual void write_byte(byte_type b) override final;
 
@@ -137,16 +143,18 @@ class IRESEARCH_API encrypted_output final : public irs::index_output, util::non
   virtual void write_long(int64_t v) override final;
 
   virtual int64_t checksum() const override final {
+    // FIXME do we need to calculate checksum over
+    // unencrypted data here? That will slow down writes.
     return out_->checksum();
   }
 
   size_t buffer_size() const NOEXCEPT { return buf_size_; }
 
-  index_output::ptr release() NOEXCEPT {
-    return std::move(out_);
-  }
-
   const index_output& stream() const NOEXCEPT { return *out_; }
+
+  index_output::ptr release() NOEXCEPT {
+    return std::move(managed_out_);
+  }
 
  private:
   /// @returns number of remaining bytes in the buffer
@@ -155,7 +163,8 @@ class IRESEARCH_API encrypted_output final : public irs::index_output, util::non
   }
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  index_output::ptr out_;
+  index_output::ptr managed_out_;
+  index_output* out_;
   encryption::stream* cipher_;
   const size_t buf_size_;
   std::unique_ptr<byte_type[]> buf_;
@@ -165,8 +174,15 @@ class IRESEARCH_API encrypted_output final : public irs::index_output, util::non
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // encrypted_output
 
-class IRESEARCH_API encrypted_input final : public buffered_index_input, util::noncopyable {
+class IRESEARCH_API encrypted_input : public buffered_index_input, util::noncopyable {
  public:
+  encrypted_input(
+    index_input& in,
+    encryption::stream& cipher,
+    size_t buf_size,
+    size_t padding = 0
+  );
+
   encrypted_input(
     index_input::ptr&& in,
     encryption::stream& cipher,
@@ -189,22 +205,24 @@ class IRESEARCH_API encrypted_input final : public buffered_index_input, util::n
   }
 
   index_input::ptr release() NOEXCEPT {
-    return std::move(in_);
+    return std::move(managed_in_);
   }
 
  protected:
-  virtual void seek_internal(size_t pos) override;
+  virtual void seek_internal(size_t pos) override final;
 
-  virtual size_t read_internal(byte_type* b, size_t count) override;
+  virtual size_t read_internal(byte_type* b, size_t count) override final;
 
  private:
   encrypted_input(const encrypted_input& rhs, index_input::ptr&& in) NOEXCEPT;
 
-  index_input::ptr in_;
+  index_input::ptr managed_in_;
+  index_input* in_;
   encryption::stream* cipher_;
   const uint64_t start_;
   const size_t length_;
 }; // encrypted_input
+
 
 NS_END // ROOT
 
