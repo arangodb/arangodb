@@ -576,7 +576,8 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
       if (collection == nullptr) {
         return false;
       }
-      return !TRI_ExcludeCollectionReplication(collection->name(), _includeSystem);
+      return !TRI_ExcludeCollectionReplication(collection->name(), _includeSystem,
+                                               /*includeFoxxQueues*/ false);
     }
     return false;
   }
