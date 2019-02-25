@@ -157,6 +157,10 @@ std::string Job::randomIdleAvailableServer(Node const& snap,
       if (std::find(std::begin(exclude), std::end(exclude), srv.first) != std::end(exclude)) {
         continue ;
       }
+      // ignore servers not in availableServers above:
+      if (std::find(std::begin(as), std::end(as), srv.first) == std::end(as)) {
+        continue ;
+      }
 
       std::string const& status = (*srv.second).hasAsString("Status").first;
       if (status == "GOOD") {
