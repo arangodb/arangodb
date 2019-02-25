@@ -323,7 +323,7 @@ static bool MustReplicateWalMarker(MMFilesReplicationDumpContext* dump,
   if (cid != 0) {
     std::string const& name = nameFromCid(dump, cid);
 
-    if (!name.empty() && TRI_ExcludeCollectionReplication(name, dump->_includeSystem)) {
+    if (!name.empty() && TRI_ExcludeCollectionReplication(name, dump->_includeSystem, /*includeFoxxQueues*/false)) {
       return false;
     }
   }
