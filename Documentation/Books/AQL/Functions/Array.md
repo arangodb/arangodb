@@ -386,7 +386,8 @@ RETURN POSITION( [2,4,6,8], 4, true )
 Append *value* to *anyArray* (right side).
 
 To remove the last element, see [POP()](#pop).<br>
-To prepend a value (left side), see [UNSHIFT()](#unshift).
+To prepend a value (left side), see [UNSHIFT()](#unshift).<br>
+To append multiple elements, see [APPEND()](#append).
 
 - **anyArray** (array): array with elements of arbitrary type
 - **value** (any): an element of arbitrary type
