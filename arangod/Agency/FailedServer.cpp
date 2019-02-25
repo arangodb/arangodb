@@ -71,6 +71,12 @@ bool FailedServer::start() {
     LOG_TOPIC(INFO, Logger::SUPERVISION) << reason.str();
     finish(_server, "", false, reason.str());
     return false;
+  } else if(!status.second) {
+    std::stringstream reason;
+    reason << "Server " << _server << " no longer in health. Already removed. Abort.";
+    LOG_TOPIC(INFO, Logger::SUPERVISION) << reason.str();
+    finish(_server, "", false, reason.str()); // Finish or abort?
+    return false;
   }
 
   // Abort job blocking server if abortable
@@ -107,10 +113,10 @@ bool FailedServer::start() {
     {
       VPackObjectBuilder oper(transactions.get());
       // Add pending
-  
+
       auto const& databases = _snapshot.hasAsChildren("/Plan/Collections").first;
       // auto const& current = _snapshot.hasAsChildren("/Current/Collections").first;
-  
+
       size_t sub = 0;
 
       // FIXME: looks OK, but only the non-clone shards are put into the job
@@ -124,11 +130,11 @@ bool FailedServer::start() {
             collection.hasAsNode("replicationFactor");
           if (replicationFactorPair.second) {
             VPackSlice const replicationFactor = replicationFactorPair.first.slice();
-            
+
             if (!replicationFactor.isNumber()) {
               continue;  // no point to try salvaging unreplicated data
             }
-            
+
             uint64_t number = 1;
             try {
               number = replicationFactor.getNumber<uint64_t>();
