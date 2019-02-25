@@ -1311,6 +1311,9 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
   if (_config.applier._includeSystem) {
     url += "&includeSystem=true";
   }
+  if (_config.applier._includeFoxxQueues) {
+    url += "&includeFoxxQueues=true";
+  }
 
   // send request
   _config.progress.set("fetching master inventory from " + url);
@@ -1384,7 +1387,8 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
                     "collection name is missing in response");
     }
 
-    if (TRI_ExcludeCollectionReplication(masterName, _config.applier._includeSystem)) {
+    if (TRI_ExcludeCollectionReplication(masterName, _config.applier._includeSystem,
+                                         _config.applier._includeFoxxQueues)) {
       continue;
     }
 
