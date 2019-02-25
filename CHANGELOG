@@ -1,6 +1,11 @@
 devel
 -----
 
+* upgraded lodash to 4.17.11 because of CVE-2018-16487
+
+* `--query.registry-ttl` is now honored in single-server mode, and cursor TTLs
+  are now honored on DBServers in cluster mode
+  
 * add "TTL" index type, for optional auto-expiration of documents 
 
 * disable selection of index types "persistent" and "skiplist" in the web
@@ -24,7 +29,6 @@ devel
  
 
 * fixed JS AQL query objects with empty query strings not being recognized as AQL queries
->>>>>>> 492d05c1f1bd5cff4e067ae7d6593b9f03cebe37
 
 * report run-time openssl version (for dynamically linked executables)
 

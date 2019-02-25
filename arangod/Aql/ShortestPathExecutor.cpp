@@ -53,7 +53,7 @@ ShortestPathExecutorInfos::ShortestPathExecutorInfos(
     RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
     std::unordered_set<RegisterId> registersToKeep,
     std::unique_ptr<graph::ShortestPathFinder>&& finder,
-    std::unordered_map<OutputName, RegisterId>&& registerMapping,
+    std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
     InputVertex&& source, InputVertex&& target)
     : ExecutorInfos(inputRegisters, outputRegisters, nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),

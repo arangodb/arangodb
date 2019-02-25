@@ -58,14 +58,19 @@ the default paths for the installation in subsequent steps.
 The default installation paths are:
 
 Multi User Default:
-- Installation: *C:\Program Files\ArangoDB-3.x.x*
-- DataBase:     *C:\ProgramData\ArangoDB*
-- Foxx Service: *C:\ProgramData\ArangoDB-apps*
+- Installation: `%PROGRAMFILES%\ArangoDB-3.x.x`
+- DataBase:     `%PROGRAMDATA%\ArangoDB`
+- Foxx Service: `%PROGRAMDATA%\ArangoDB-apps`
 
 Single User Default:
-- Installation: *C:\Users\\\<your user\>\AppData\Local\ArangoDB-3.x.x*
-- DataBase:     *C:\Users\\\<your user\>\AppData\Local\ArangoDB*
-- Foxx Service: *C:\Users\\\<your user\>\AppData\Local\ArangoDB-apps*
+- Installation: `%LOCALAPPDATA%\ArangoDB-3.x.x\`
+- DataBase:     `%LOCALAPPDATA%\ArangoDB\`
+- Foxx Service: `%LOCALAPPDATA%\ArangoDB-apps\`
+
+The environment variables are typically:
+- `%PROGRAMFILES%`: `C:\Program Files`
+- `%PROGRAMDATA%`: `C:\ProgramData`
+- `%LOCALAPPDATA%`: `C:\Users\<YourName>\AppData\Local`
 
 We are not using the roaming part of the user's profile, because doing so
 avoids the data being synced to the windows domain controller.
