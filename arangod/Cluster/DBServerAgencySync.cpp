@@ -255,9 +255,10 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
           }
           operations.push_back(AgencyOperation("Current/Version",
                                                AgencySimpleOperationType::INCREMENT_OP));
-          AgencyPrecondition precondition("Plan/Version",
-            AgencyPrecondition::Type::VALUE, plan->slice().get("Version"));
-          AgencyWriteTransaction currentTransaction(operations, precondition);
+          //AgencyPrecondition precondition("Plan/Version",
+          //  AgencyPrecondition::Type::VALUE, plan->slice().get("Version"));
+          //AgencyWriteTransaction currentTransaction(operations, precondition);
+          AgencyWriteTransaction currentTransaction(operations);
           AgencyCommResult r = comm.sendTransactionWithFailover(currentTransaction);
           if (!r.successful()) {
             LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Error reporting to agency";
