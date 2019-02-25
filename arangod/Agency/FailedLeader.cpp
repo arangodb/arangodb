@@ -161,7 +161,7 @@ bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
   }
 
   return true;
-  
+
 }
 
 bool FailedLeader::start() {
@@ -232,7 +232,7 @@ bool FailedLeader::start() {
   }
 
   // Additional follower, if applicable
-  auto additionalFollower = randomIdleGoodAvailableServer(_snapshot, planned);
+  auto additionalFollower = randomIdleAvailableServer(_snapshot, planned);
   if (!additionalFollower.empty()) {
     planv.push_back(additionalFollower);
   }

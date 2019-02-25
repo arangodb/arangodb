@@ -4,6 +4,23 @@ v3.3.23 (XXXX-XX-XX)
 * fix supervision's failed server handling to transactionally create
   all failed leader/followers along
 
+* Supervision fix: abort MoveShard job does not leave a lock behind,
+
+* Supervision fix: abort MoveShard (leader) job moves forwards when point
+  of no return has been reached,
+
+* Supervision fix: move shard with data stopped to early due to wrong usage 
+  of compare function
+
+* Supervision fix: AddFollower only counts good followers, fixing a
+  situation after a FailedLeader job could not find a new working
+  follower
+
+* Supervision fix: FailedLeader now also considers temporarily BAD
+  servers as replacement followers and does not block servers which
+  currently receive a new shard
+
+* Maintenance fix: added precondition of unchanged Plan in phase2
 
 v3.3.22 (2019-02-01)
 --------------------
