@@ -44,6 +44,11 @@
 
 namespace arangodb {
 
+const char * RocksDBHotBackup::dirCreatingString = "CREATING";
+const char * RocksDBHotBackup::dirRestoringString = "RESTORING";
+const char * RocksDBHotBackup::dirDownloadingString = "DOWNLOADING";
+
+
 //
 // @brief static function to pick proper operation object and then have it
 //        parse parameters
@@ -160,6 +165,33 @@ std::string RocksDBHotBackup::rebuildPath(const std::string & suffix) {
   return ret_string;
 
 } // RocksDBHotBackup::rebuildPath
+
+
+//
+// @brief Remove file or dir currently occupying "path"
+//
+bool RocksDBHotBackup::clearPath(const std::string & path) {
+  bool retFlag = {true};
+
+  if (basics::FileUtils::exists(path)) {
+    if (basics::FileUtils::isDirectory(path)) {
+      TRI_RemoveDirectory(path.c_str());
+    } else {
+      basics::FileUtils::remove(path);
+    } // else
+
+    // test if still there and error out?
+    if (basics::FileUtils::exists(path)) {
+      retFlag = false;
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "RocksDBHotBackup::clearPath:  unable to remove previous " << path;
+    } // if
+  } // if
+
+  return retFlag;
+
+} // RocksDBHotBackup::clearPath
+
 
 //
 // @brief Common routine for retrieving parameter from request body.
@@ -433,13 +465,16 @@ void RocksDBHotBackupCreate::executeCreate() {
 
   rocksdb::Checkpoint * ptr(nullptr);
   rocksdb::Status stat;
-  std::string dirPath;
-  bool gotLock(false);
+  std::string dirPathTemp, dirPathFinal;
+  bool gotLock(false), flag;
+
+  dirPathFinal = buildDirectoryPath(_timestamp, _userString);
+  dirPathTemp = rebuildPath(dirCreatingString);
+  flag = clearPath(dirCreatingString);
 
   stat = rocksutils::globalRocksDB()->CreateCheckpointObject(&ptr);
 
-  if (stat.ok()) {
-    dirPath = buildDirectoryPath(_timestamp, _userString);
+  if (stat.ok() && flag) {
 
     // make sure the transaction hold is released
     {
@@ -450,7 +485,7 @@ void RocksDBHotBackupCreate::executeCreate() {
 
       if (gotLock || _forceBackup) {
         EngineSelectorFeature::ENGINE->flushWal(true, true);
-        stat = ptr->CreateCheckpoint(dirPath);
+        stat = ptr->CreateCheckpoint(dirPathTemp);
         _success = stat.ok();
       } // if
     } // guardHold released
@@ -460,10 +495,16 @@ void RocksDBHotBackupCreate::executeCreate() {
 
     if (_success) {
       std::string errors;
+      long systemError;
+      int retVal;
 
       std::function<basics::FileUtils::TRI_copy_recursive_e(std::string const&)>  filter=linkShaFiles;
-      /*_success =*/ basics::FileUtils::copyRecursive(getRocksDBPath(), dirPath,
+      /*_success =*/ basics::FileUtils::copyRecursive(getRocksDBPath(), dirPathTemp,
                                                   filter, errors);
+
+      // now rename
+      retVal = TRI_RenameFile(dirPathTemp.c_str(), dirPathFinal.c_str(), &systemError, &errors);
+      _success = (TRI_ERROR_NO_ERROR == retVal);
     } // if
   } // if
 
@@ -475,7 +516,7 @@ void RocksDBHotBackupCreate::executeCreate() {
     // velocypack loves to throw. wrap it.
     try {
       _result.add(VPackValue(VPackValueType::Object));
-      _result.add("directory", VPackValue(dirPath));
+      _result.add("directory", VPackValue(dirPathFinal));
       _result.add("forced", VPackValue(!gotLock));
       _result.close();
     } catch (...) {
@@ -678,28 +719,18 @@ void RocksDBHotBackupRestore::execute() {
 
 
 /// @brief clear previous restoring directory and populate new
-///        with files from desired hotbackup
+///        with files from desired hotbackup.
+///        restoreDirOutput is created and passed to caller
 bool RocksDBHotBackupRestore::createRestoringDirectory(std::string & restoreDirOutput) {
   bool retFlag={true};
   std::string errors, fullDirectoryRestore = rebuildPath(_directoryRestore);
 
   try {
     // create path name (used here and returned)
-    restoreDirOutput = rebuildPath("restoring");
+    restoreDirOutput = rebuildPath(dirRestoringString);
 
     // git rid of an old restoring directory/file if it exists
-    if (basics::FileUtils::exists(restoreDirOutput)) {
-      if (basics::FileUtils::isDirectory(restoreDirOutput)) {
-        TRI_RemoveDirectory(restoreDirOutput.c_str());
-      } else {
-        basics::FileUtils::remove(restoreDirOutput);
-      } // else
-
-      // test if still there and error out?
-      if (basics::FileUtils::exists(restoreDirOutput)) {
-        retFlag = false;
-      } // if
-    } // if
+    retFlag = clearPath(restoreDirOutput);
 
     // now create a new restoring directory
     if (retFlag) {

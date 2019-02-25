@@ -64,6 +64,7 @@ public:
 
 protected:
   virtual std::string buildDirectoryPath(const std::string & timestamp, const std::string & userString);
+  bool clearPath(const std::string & path);
 
   // retrieve configuration values from request's body
   void getParamValue(const char * key, std::string & value, bool required);
@@ -81,6 +82,11 @@ protected:
   VPackBuilder _result;
 
   unsigned _timeoutSeconds; // used to stop transaction, used again to stop rocksdb
+
+  static const char * dirCreatingString;
+  static const char * dirRestoringString;
+  static const char * dirDownloadingString;
+
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The following wrapper routines simplify unit testing
