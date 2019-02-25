@@ -510,8 +510,8 @@ bool ServerState::checkEngineEquality(AgencyComm& comm) {
 //////////////////////////////////////////////////////////////////////////////
 
 bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::RoleEnum& role) {
-  std::string agencyListKey = roleToAgencyListKey(role);
-  std::string latestIdKey = "Latest" + roleToAgencyKey(role) + "Id";
+  std::string const agencyListKey = roleToAgencyListKey(role);
+  std::string const latestIdKey = "Latest" + roleToAgencyKey(role) + "Id";
 
   VPackBuilder builder;
   builder.add(VPackValue("none"));
@@ -548,7 +548,11 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
        AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP)},
       AgencyPrecondition(currentUrl, AgencyPrecondition::Type::EMPTY, true));
   // ok to fail..if it failed we are already registered
-  comm.sendTransactionWithFailover(creg, 0.0);
+  AgencyCommResult res = comm.sendTransactionWithFailover(creg, 0.0);
+
+  // coordinator is already/still registered from an previous unclean shutdown;
+  // must establish a new short ID
+  bool forceChangeShortId = (!res.successful() && isCoordinator(role));
 
   std::string targetIdPath = "Target/" + latestIdKey;
   std::string targetUrl = "Target/MapUniqueToShortID/" + _id;
@@ -571,7 +575,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
         {AgencyCommManager::path(), "Target", "MapUniqueToShortID", _id}));
 
     // already registered
-    if (!mapSlice.isNone()) {
+    if (!mapSlice.isNone() && !forceChangeShortId) {
       VPackSlice s = mapSlice.get("TransactionID");
       if (s.isNumber()) {
         uint32_t shortId = s.getNumericValue<uint32_t>();
@@ -618,8 +622,8 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
                                          localIdBuilder.slice()));
 
     preconditions.push_back(*(latestIdPrecondition.get()));
-    preconditions.push_back(
-        AgencyPrecondition(targetUrl, AgencyPrecondition::Type::EMPTY, true));
+    preconditions.push_back(AgencyPrecondition(targetUrl, AgencyPrecondition::Type::EMPTY,
+                                               !forceChangeShortId));
 
     AgencyWriteTransaction trx(operations, preconditions);
     result = comm.sendTransactionWithFailover(trx, 0.0);
@@ -628,6 +632,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
       setShortId(num + 1);  // save short ID for generating server-specific ticks
       return true;
     }
+
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
