@@ -300,7 +300,7 @@ static void RunTestWithFullCombination(ShortestPathExecutorInfos::InputVertex&& 
       std::initializer_list<RegisterId>{});
   auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
       std::initializer_list<RegisterId>{vOutReg});
-  std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId> registerMapping{
+  std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId, ShortestPathExecutorInfos::OutputNameHash> registerMapping{
       {ShortestPathExecutorInfos::OutputName::VERTEX, vOutReg}};
   if (useEdgeOutput) {
     registerMapping.emplace(ShortestPathExecutorInfos::OutputName::EDGE, eOutReg);

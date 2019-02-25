@@ -1,6 +1,8 @@
 devel
 -----
 
+* upgraded lodash to 4.17.11 because of CVE-2018-16487
+
 * `--query.registry-ttl` is now honored in single-server mode, and cursor TTLs
   are now honored on DBServers in cluster mode
   

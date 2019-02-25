@@ -24,6 +24,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
+#include "Basics/datetime.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HashSet.h"
 #include "Basics/StaticStrings.h"
@@ -41,13 +42,15 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
+#include <date/date.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <iostream>
-#include <ostream>
 
 using namespace arangodb;
+using namespace std::chrono;
+using namespace date;
 
 namespace {
 
@@ -944,6 +947,34 @@ std::ostream& operator<<(std::ostream& stream, arangodb::Index const& index) {
   return stream;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+double Index::getTimestamp(arangodb::velocypack::Slice const& doc, std::string const& attributeName) const {
+  VPackSlice value = doc.get(attributeName);
+
+  if (value.isString()) {
+    // string value. we expect it to be YYYY-MM-DD etc.
+    tp_sys_clock_ms tp;
+    if (basics::parseDateTime(value.copyString(), tp)) {
+      return static_cast<double>(std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count());
+    } 
+    // invalid date format
+    // fall-through intentional
+  } else if (value.isNumber()) {
+    // numeric value. we take it as it is
+    return value.getNumericValue<double>();
+  }
+  
+  // attribute not found in document, or invalid type
+  return -1.0;
+}
+
+/// @brief return the name of the (sole) index attribute
+/// it is only allowed to call this method if the index contains a
+/// single attribute
+std::string const& Index::getAttribute() const {
+  TRI_ASSERT(_fields.size() == 1);
+  auto const& fields = _fields[0];
+  TRI_ASSERT(fields.size() == 1);
+  auto const& field = fields[0];
+  TRI_ASSERT(!field.shouldExpand);
+  return field.name;
+}
