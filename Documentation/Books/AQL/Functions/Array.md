@@ -327,7 +327,7 @@ RETURN OUTERSECTION( [ 1, 2, 3 ], [ 2, 3, 4 ], [ 3, 4, 5 ] )
 Remove the last element of *array*.
 
 To append an element (right side), see [PUSH()](#push).<br>
-To remove first element, see [SHIFT()](#shift).<br>
+To remove the first element, see [SHIFT()](#shift).<br>
 To remove an element at an arbitrary position, see [REMOVE_NTH()](#removenth).
 
 - **anyArray** (array): an array with elements of arbitrary type
@@ -419,6 +419,9 @@ RETURN PUSH([ 1, 2, 2, 3 ], 2, true)
 `REMOVE_NTH(anyArray, position) → newArray`
 
 Remove the element at *position* from the *anyArray*.
+
+To remove the first element, see [SHIFT()](#shift).<br>
+To remove the last element, see [POP()](#pop).
 
 - **anyArray** (array): array with elements of arbitrary type
 - **position** (number): the position of the element to remove. Positions start
