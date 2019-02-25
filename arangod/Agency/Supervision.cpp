@@ -1225,9 +1225,20 @@ void Supervision::enforceReplication() {
       if (!clone) {
         for (auto const& shard_ : col.hasAsChildren("shards").first) {  // Pl shards
           auto const& shard = *(shard_.second);
-
+          VPackBuilder onlyFollowers;
+          {
+            VPackArrayBuilder guard(&onlyFollowers);
+            bool first = true;
+            for (auto const& pp : VPackArrayIterator(shard.slice())) {
+              if (!first) {
+                onlyFollowers.add(pp);
+              }
+              first = false;
+            }
+          }
           size_t actualReplicationFactor
-            = Job::countGoodServersInList(_snapshot, shard.slice());
+            = 1 + Job::countGoodServersInList(_snapshot, onlyFollowers.slice());
+            // leader plus GOOD followers
           size_t apparentReplicationFactor = shard.slice().length();
 
           if (actualReplicationFactor != replicationFactor ||

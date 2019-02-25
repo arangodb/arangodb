@@ -147,7 +147,20 @@ bool AddFollower::start() {
   // First check that we still have too few followers for the current
   // `replicationFactor`:
   size_t desiredReplFactor = collection.hasAsUInt("replicationFactor").first;
-  size_t actualReplFactor = Job::countGoodServersInList(_snapshot, planned);
+  VPackBuilder onlyFollowers;
+  {
+    VPackArrayBuilder guard(&onlyFollowers);
+    bool first = true;
+    for (auto const& pp : VPackArrayIterator(planned)) {
+      if (!first) {
+        onlyFollowers.add(pp);
+      }
+      first = false;
+    }
+  }
+  size_t actualReplFactor
+      = 1 + Job::countGoodServersInList(_snapshot, onlyFollowers.slice());
+      // Leader plus good followers in plan
   if (actualReplFactor >= desiredReplFactor) {
     finish("", "", true, "job no longer necessary, have enough replicas");
     return true;
