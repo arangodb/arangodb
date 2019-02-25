@@ -229,9 +229,9 @@ This includes partial dates such as *"2015"* or *"2015-10"* and strings
 containing properly formatted but invalid dates such as *"2015-02-31"*.
 
 - **str** (string): date string to test
-- returns **bool** (boolean): whether *str* is a correctly formatted date string.
-  Returns *false* for all non-string values, even if some of them may be usable
-  in date functions.
+- returns **bool** (boolean): *true* if *str* is a correctly formatted date string,
+  *false* otherwise including all non-string values, even if some of them may be usable
+  in date functions (numeric timestamps)
 
 ### IS_KEY()
 
