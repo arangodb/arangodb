@@ -495,7 +495,7 @@ arangodb::Result CleanOutServer::abort() {
     }
   }
 
-  finish(_server, "", false, "job aborted", payload);
+  finish(_server, "", false, "job aborted");
 
   return result;
 }
