@@ -765,7 +765,7 @@ arangodb::Result MoveShard::abort() {
         curColPrefix + _database + "/" + i.collection + "/" + i.shard + "/" + "servers");
       if (cur.second && cur.first[0].copyString() == _to) {
         LOG_TOPIC(DEBUG, Logger::SUPERVISION) <<
-          "MoveShard can not longer abort through reversion to where it started. Flight forward";
+          "MoveShard can no longer abort through reversion to where it started. Flight forward";
         finish(_to, _shard, true, "job aborted - new leader already in place");
         return result;
       }
