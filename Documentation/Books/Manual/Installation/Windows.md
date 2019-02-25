@@ -58,14 +58,19 @@ the default paths for the installation in subsequent steps.
 The default installation paths are:
 
 Multi User Default:
-- Installation: *C:\Program Files\ArangoDB-3.x.x*
-- DataBase:     *C:\ProgramData\ArangoDB*
-- Foxx Service: *C:\ProgramData\ArangoDB-apps*
+- Installation: `%PROGRAMFILES%\ArangoDB-3.x.x`
+- DataBase:     `%PROGRAMDATA%\ArangoDB`
+- Foxx Service: `%PROGRAMDATA%\ArangoDB-apps`
 
 Single User Default:
-- Installation: *C:\Users\\\<your user\>\AppData\Local\ArangoDB-3.x.x*
-- DataBase:     *C:\Users\\\<your user\>\AppData\Local\ArangoDB*
-- Foxx Service: *C:\Users\\\<your user\>\AppData\Local\ArangoDB-apps*
+- Installation: `%LOCALAPPDATA%\ArangoDB-3.x.x\`
+- DataBase:     `%LOCALAPPDATA%\ArangoDB\`
+- Foxx Service: `%LOCALAPPDATA%\ArangoDB-apps\`
+
+The environment variables are typically:
+- `%PROGRAMFILES%`: `C:\Program Files`
+- `%PROGRAMDATA%`: `C:\ProgramData`
+- `%LOCALAPPDATA%`: `C:\Users\<YourName>\AppData\Local`
 
 We are not using the roaming part of the user's profile, because doing so
 avoids the data being synced to the windows domain controller.
@@ -74,7 +79,7 @@ avoids the data being synced to the windows domain controller.
 
 If this checkbox is selected the installer will attempt to perform an automatic
 update. For more information please see
-[Upgrading from Previous Version](#upgrading-from-previous-version).
+[Upgrading on Windows](../Upgrading/OSSpecificInfo/Windows.md).
 
 #### Keep Backup
 
@@ -94,15 +99,6 @@ Select if you want the installer to create Desktop Icons that let you:
 - access the web inteface
 - start the commandline client (arangosh)
 - start the database server (single user installation only)
-
-### Upgrading from Previous Version
-
-If you are upgrading ArangoDB from an earlier version you need to copy your old
-database directory [to the new default paths](#custom-install-paths). Upgrading
-will keep your old data, password and choice of storage engine as it is.
-Switching to the RocksDB storage engine requires an
-[export](../Programs/Arangoexport/README.md) and
-[reimport](../Programs/Arangoimport/README.md) of your data.
 
 ### Starting
 

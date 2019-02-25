@@ -45,11 +45,12 @@ arangodb::velocypack::StringRef const SortModeMinElement("minelement");
 arangodb::velocypack::StringRef const SortModeHeap("heap");
 
 bool toSortMode(arangodb::velocypack::StringRef const& str, GatherNode::SortMode& mode) noexcept {
-  // std::map ~25-30% faster than std::unordered_map for small number of
-  // elements
+  // std::map ~25-30% faster than std::unordered_map for small number of elements
   static std::map<arangodb::velocypack::StringRef, GatherNode::SortMode> const NameToValue{
       {SortModeMinElement, GatherNode::SortMode::MinElement},
-      {SortModeHeap, GatherNode::SortMode::Heap}};
+      {SortModeHeap, GatherNode::SortMode::Heap},
+      {SortModeUnset, GatherNode::SortMode::Default}
+  };
 
   auto const it = NameToValue.find(str);
 
@@ -68,6 +69,8 @@ arangodb::velocypack::StringRef toString(GatherNode::SortMode mode) noexcept {
       return SortModeMinElement;
     case GatherNode::SortMode::Heap:
       return SortModeHeap;
+    case GatherNode::SortMode::Default:
+      return SortModeUnset;
     default:
       TRI_ASSERT(false);
       return {};
@@ -243,18 +246,8 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags) c
   builder.close();
 }
 
-/// @brief getVariablesUsedHere, returning a vector
-std::vector<Variable const*> DistributeNode::getVariablesUsedHere() const {
-  std::vector<Variable const*> vars;
-  vars.emplace_back(_variable);
-  if (_variable != _alternativeVariable) {
-    vars.emplace_back(_alternativeVariable);
-  }
-  return vars;
-}
-
 /// @brief getVariablesUsedHere, modifying the set in-place
-void DistributeNode::getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const {
+void DistributeNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
   vars.emplace(_variable);
   vars.emplace(_alternativeVariable);
 }

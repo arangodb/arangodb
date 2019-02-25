@@ -29,6 +29,7 @@
 #include "Basics/Exceptions.h"
 
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 
 #include <iosfwd>
 
@@ -235,7 +236,7 @@ struct AstNode {
   explicit AstNode(AstNodeType);
 
   /// @brief create a node, with defining a value
-  explicit AstNode(AstNodeValue value);
+  explicit AstNode(AstNodeValue const& value);
 
   /// @brief create the node from VPack
   explicit AstNode(Ast*, arangodb::velocypack::Slice const& slice);
@@ -253,6 +254,9 @@ struct AstNode {
 
   /// @brief return the string value of a node, as an std::string
   std::string getString() const;
+  
+  /// @brief return the string value of a node, as a arangodb::velocypack::StringRef
+  arangodb::velocypack::StringRef getStringRef() const noexcept;
 
   /// @brief test if all members of a node are equality comparisons
   bool isOnlyEqualityMatch() const;
@@ -262,6 +266,7 @@ struct AstNode {
 
 /// @brief dump the node (for debugging purposes)
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::ostream& toStream(std::ostream& os, int indent) const;
   void dump(int indent) const;
 #endif
 

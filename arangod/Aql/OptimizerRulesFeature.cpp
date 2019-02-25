@@ -20,18 +20,19 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRulesFeature.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
-#include "Basics/StringRef.h"
 #include "Cluster/ServerState.h"
+#include "OptimizerRulesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
 #ifdef USE_IRESEARCH
 #include "IResearch/IResearchViewOptimizerRules.h"
 #endif
+
+#include <velocypack/StringRef.h>
 
 using namespace arangodb::application_features;
 
@@ -284,6 +285,11 @@ void OptimizerRulesFeature::addRules() {
                                       OptimizerRule::applyGeoIndexRule,
                                       DoesNotCreateAdditionalPlans, CanBeDisabled);
 
+  // make sort node aware of subsequent limit statements for internal optimizations
+  OptimizerRulesFeature::registerRule("sort-limit", sortLimitRule,
+                                      OptimizerRule::applySortLimitRule,
+                                      DoesNotCreateAdditionalPlans, CanBeDisabled);
+
   if (arangodb::ServerState::instance()->isCoordinator()) {
     registerRule("optimize-cluster-single-document-operations",
                  substituteClusterSingleDocumentOperations,
@@ -406,7 +412,7 @@ void OptimizerRulesFeature::disableRule(std::string const& name,
   char const* p = name.data() + 1;
   size_t size = name.size() - 1;
 
-  if (StringRef(p, size) == "all") {
+  if (arangodb::velocypack::StringRef(p, size) == "all") {
     // disable all rules
     for (auto const& it : _rules) {
       if (it.second.canBeDisabled) {
@@ -434,7 +440,7 @@ void OptimizerRulesFeature::enableRule(std::string const& name,
     --size;
   }
 
-  if (StringRef(p, size) == "all") {
+  if (arangodb::velocypack::StringRef(p, size) == "all") {
     // enable all rules
     disabled.clear();
   } else {

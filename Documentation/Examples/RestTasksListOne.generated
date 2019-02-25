@@ -4,14 +4,14 @@ EOF
 
 <span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/tasks/testTask</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"id"</span> : <span class="hljs-string">"testTask"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"user-defined task"</span>, 
-  <span class="hljs-string">"created"</span> : <span class="hljs-number">1535639279.617433</span>, 
+  <span class="hljs-string">"created"</span> : <span class="hljs-number">1550658791.3349102</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"timed"</span>, 
   <span class="hljs-string">"offset"</span> : <span class="hljs-number">10000</span>, 
   <span class="hljs-string">"command"</span> : <span class="hljs-string">"(function (params) { console.log('Hello from task!'); } )(params);"</span>, 

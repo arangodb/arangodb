@@ -24,7 +24,7 @@
 #include "catch.hpp"
 #include "common.h"
 
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #include "Aql/AqlFunctionFeature.h"
 
@@ -317,7 +317,8 @@ SECTION("FieldIterator_traverse_complex_object_custom_nested_delimiter") {
     arangodb::transaction::Options()
   );
 
-  arangodb::iresearch::FieldIterator it(trx, slice, linkMeta);
+  arangodb::iresearch::FieldIterator it(trx);
+  it.reset(slice, linkMeta);
   CHECK(it != arangodb::iresearch::FieldIterator(trx));
 
   // default analyzer
@@ -395,7 +396,8 @@ SECTION("FieldIterator_traverse_complex_object_all_fields") {
     arangodb::transaction::Options()
   );
 
-  arangodb::iresearch::FieldIterator it(trx, slice, linkMeta);
+  arangodb::iresearch::FieldIterator it(trx);
+  it.reset(slice, linkMeta);
   CHECK(it != arangodb::iresearch::FieldIterator(trx));
 
   // default analyzer
@@ -498,7 +500,8 @@ SECTION("FieldIterator_traverse_complex_object_ordered_all_fields") {
     arangodb::transaction::Options()
   );
 
-  arangodb::iresearch::FieldIterator doc(trx, slice, linkMeta);
+  arangodb::iresearch::FieldIterator doc(trx);
+  doc.reset(slice, linkMeta);
   for (;doc.valid(); ++doc) {
     auto& field = *doc;
     std::string const actualName = std::string(field.name());
@@ -550,7 +553,8 @@ SECTION("FieldIterator_traverse_complex_object_ordered_filtered") {
     arangodb::transaction::Options()
   );
 
-  arangodb::iresearch::FieldIterator it(trx, slice, linkMeta);
+  arangodb::iresearch::FieldIterator it(trx);
+  it.reset(slice, linkMeta);
   REQUIRE(it.valid());
   REQUIRE(it != arangodb::iresearch::FieldIterator(trx));
 
@@ -601,7 +605,8 @@ SECTION("FieldIterator_traverse_complex_object_ordered_filtered") {
     arangodb::transaction::Options()
   );
 
-  arangodb::iresearch::FieldIterator it(trx, slice, linkMeta);
+  arangodb::iresearch::FieldIterator it(trx);
+  it.reset(slice, linkMeta);
   CHECK(!it.valid());
   CHECK(it == arangodb::iresearch::FieldIterator(trx));
 }
@@ -636,7 +641,8 @@ SECTION("FieldIterator_traverse_complex_object_ordered_empty_analyzers") {
     arangodb::transaction::Options()
   );
 
-  arangodb::iresearch::FieldIterator it(trx, slice, linkMeta);
+  arangodb::iresearch::FieldIterator it(trx);
+  it.reset(slice, linkMeta);
   CHECK(!it.valid());
   CHECK(it == arangodb::iresearch::FieldIterator(trx));
 }
@@ -673,7 +679,8 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
     arangodb::transaction::Options()
   );
 
-  arangodb::iresearch::FieldIterator it(trx, slice, linkMeta);
+  arangodb::iresearch::FieldIterator it(trx);
+  it.reset(slice, linkMeta);
   CHECK(it != arangodb::iresearch::FieldIterator(trx));
 
   // stringValue (with IdentityAnalyzer)
@@ -850,7 +857,8 @@ SECTION("FieldIterator_reset") {
     arangodb::transaction::Options()
   );
 
-  arangodb::iresearch::FieldIterator it(trx, json0->slice(), linkMeta);
+  arangodb::iresearch::FieldIterator it(trx);
+  it.reset(json0->slice(), linkMeta);
   REQUIRE(it.valid());
 
   {
@@ -971,7 +979,8 @@ SECTION("FieldIterator_traverse_complex_object_ordered_all_fields_custom_list_of
     arangodb::transaction::Options()
   );
 
-  arangodb::iresearch::FieldIterator it(trx, slice, linkMeta);
+  arangodb::iresearch::FieldIterator it(trx);
+  it.reset(slice, linkMeta);
   CHECK(it != arangodb::iresearch::FieldIterator(trx));
 
   // default analyzer
@@ -1043,7 +1052,8 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     arangodb::transaction::Options()
   );
 
-  arangodb::iresearch::FieldIterator it(trx, slice, linkMeta);
+  arangodb::iresearch::FieldIterator it(trx);
+  it.reset(slice, linkMeta);
   REQUIRE(it.valid());
   REQUIRE(it != arangodb::iresearch::FieldIterator(trx));
 
@@ -1401,7 +1411,8 @@ SECTION("FieldIterator_nullptr_analyzer") {
       arangodb::transaction::Options()
     );
 
-    arangodb::iresearch::FieldIterator it(trx, slice, linkMeta);
+    arangodb::iresearch::FieldIterator it(trx);
+    it.reset(slice, linkMeta);
     REQUIRE(it.valid());
     REQUIRE(it != arangodb::iresearch::FieldIterator(trx));
 
@@ -1459,7 +1470,8 @@ SECTION("FieldIterator_nullptr_analyzer") {
       arangodb::transaction::Options()
     );
 
-    arangodb::iresearch::FieldIterator it(trx, slice, linkMeta);
+    arangodb::iresearch::FieldIterator it(trx);
+    it.reset(slice, linkMeta);
     REQUIRE(it.valid());
     REQUIRE(it != arangodb::iresearch::FieldIterator(trx));
 

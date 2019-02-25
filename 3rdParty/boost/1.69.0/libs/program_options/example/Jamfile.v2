@@ -1,0 +1,21 @@
+
+project 
+    : requirements <library>../build//boost_program_options
+      <hardcode-dll-paths>true
+      <link>static
+    ;
+
+exe first : first.cpp ;
+exe options_description : options_description.cpp ;
+exe multiple_sources : multiple_sources.cpp ;
+exe custom_syntax : custom_syntax.cpp ;
+
+exe real : real.cpp ;
+exe regex : regex.cpp /boost/regex//boost_regex ;
+
+# The following examples use C++ features beyond C++03.
+# It would be possible to make compilation of each conditional on specific config check,
+# for now just disable the compilation.
+#exe config_file_types : config_file_types.cpp ;
+#exe env_options : env_options.cpp ;
+#exe options_heirarchy : options_heirarchy.cpp ;

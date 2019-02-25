@@ -72,7 +72,6 @@ class TraversalNode : public GraphNode {
   };
 
   friend class ExecutionBlock;
-  friend class TraversalBlock;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
@@ -113,21 +112,7 @@ class TraversalNode : public GraphNode {
   bool usesInVariable() const { return _inVariable != nullptr; }
 
   /// @brief getVariablesUsedHere
-  std::vector<Variable const*> getVariablesUsedHere() const override final {
-    std::vector<Variable const*> result;
-    for (auto const& condVar : _conditionVariables) {
-      if (condVar != getTemporaryVariable()) {
-        result.emplace_back(condVar);
-      }
-    }
-    if (usesInVariable()) {
-      result.emplace_back(_inVariable);
-    }
-    return result;
-  }
-
-  /// @brief getVariablesUsedHere
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& result) const override final {
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& result) const override final {
     for (auto const& condVar : _conditionVariables) {
       if (condVar != getTemporaryVariable()) {
         result.emplace(condVar);
@@ -217,7 +202,7 @@ class TraversalNode : public GraphNode {
   Condition* _condition;
 
   /// @brief variables that are inside of the condition
-  std::unordered_set<Variable const*> _conditionVariables;
+  arangodb::HashSet<Variable const*> _conditionVariables;
 
   /// @brief The hard coded condition on _from
   AstNode* _fromCondition;

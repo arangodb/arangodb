@@ -562,7 +562,7 @@ void Condition::normalize() {
 
 void Condition::collectOverlappingMembers(ExecutionPlan const* plan, Variable const* variable,
                                           AstNode const* andNode, AstNode const* otherAndNode,
-                                          std::unordered_set<size_t>& toRemove,
+                                          arangodb::HashSet<size_t>& toRemove,
                                           Index const* index, /* may be nullptr */
                                           bool isFromTraverser) {
   bool const isSparse = (index != nullptr && index->sparse());
@@ -664,7 +664,7 @@ AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan, Variable con
   auto conditionAndNode = condition->getMemberUnchecked(0);
   TRI_ASSERT(conditionAndNode->type == NODE_TYPE_OPERATOR_NARY_AND);
 
-  std::unordered_set<size_t> toRemove;
+  arangodb::HashSet<size_t> toRemove;
   collectOverlappingMembers(plan, variable, andNode, conditionAndNode, toRemove, index, false);
 
   if (toRemove.empty()) {
@@ -713,7 +713,7 @@ AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
   TRI_ASSERT(otherAndNode->type == NODE_TYPE_OPERATOR_NARY_AND);
   size_t const n = andNode->numMembers();
 
-  std::unordered_set<size_t> toRemove;
+  arangodb::HashSet<size_t> toRemove;
   collectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove, nullptr, true);
 
   if (toRemove.empty()) {
@@ -741,7 +741,7 @@ AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
 }
 
 /// @brief remove (now) invalid variables from the condition
-bool Condition::removeInvalidVariables(std::unordered_set<Variable const*> const& validVars) {
+bool Condition::removeInvalidVariables(arangodb::HashSet<Variable const*> const& validVars) {
   if (_root == nullptr) {
     return false;
   }
@@ -757,7 +757,7 @@ bool Condition::removeInvalidVariables(std::unordered_set<Variable const*> const
 
   // handle sub nodes of top-level OR node
   size_t const n = _root->numMembers();
-  std::unordered_set<Variable const*> varsUsed;
+  arangodb::HashSet<Variable const*> varsUsed;
 
   for (size_t i = 0; i < n; ++i) {
     auto oldAndNode = _root->getMemberUnchecked(i);

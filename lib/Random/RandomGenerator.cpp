@@ -440,13 +440,19 @@ class RandomDeviceWin32 : public RandomDevice {
 // RandomGenerator
 // -----------------------------------------------------------------------------
 
-Mutex RandomGenerator::_lock;
-std::unique_ptr<RandomDevice> RandomGenerator::_device(nullptr);
+RandomGenerator::RandomType RandomGenerator::_type;
+thread_local std::unique_ptr<RandomDevice> RandomGenerator::_device(nullptr);
 
 void RandomGenerator::initialize(RandomType type) {
-  MUTEX_LOCKER(guard, _lock);
+  _type = type;
+}
 
-  switch (type) {
+void RandomGenerator::ensureDeviceIsInitialized() {
+  if (_device) {
+    return;
+  }
+
+  switch (_type) {
     case RandomType::MERSENNE: {
       _device.reset(new RandomDeviceMersenne());
       break;
@@ -467,7 +473,6 @@ void RandomGenerator::initialize(RandomType type) {
       _device.reset(new RandomDeviceCombined<600>("/dev/random"));
       break;
     }
-
 #endif
 
 #ifdef _WIN32
@@ -484,7 +489,10 @@ void RandomGenerator::initialize(RandomType type) {
   }
 }
 
-void RandomGenerator::shutdown() { _device.reset(nullptr); }
+void RandomGenerator::shutdown() {
+  // nothing to do...
+  // thread-local devices will be released when their respective threads terminate.
+}
 
 int16_t RandomGenerator::interval(int16_t left, int16_t right) {
   uint16_t value = static_cast<int16_t>(
@@ -495,13 +503,7 @@ int16_t RandomGenerator::interval(int16_t left, int16_t right) {
 }
 
 int32_t RandomGenerator::interval(int32_t left, int32_t right) {
-  MUTEX_LOCKER(locker, _lock);
-
-  if (_device == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "random generator not initialized");
-  }
-
+  ensureDeviceIsInitialized();
   int32_t value = _device->interval(left, right);
   TRI_ASSERT(value >= left && value <= right);
   return value;
@@ -561,13 +563,7 @@ uint16_t RandomGenerator::interval(uint16_t right) {
 }
 
 uint32_t RandomGenerator::interval(uint32_t right) {
-  MUTEX_LOCKER(locker, _lock);
-
-  if (_device == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "random generator not initialized");
-  }
-
+  ensureDeviceIsInitialized();
   uint32_t value = _device->interval(static_cast<uint32_t>(0), right);
   TRI_ASSERT(value <= right);
   return value;
@@ -603,10 +599,7 @@ uint64_t RandomGenerator::interval(uint64_t right) {
 }
 
 void RandomGenerator::seed(uint64_t seed) {
-  MUTEX_LOCKER(locker, _lock);
-  if (!_device) {
-    throw std::runtime_error("Random device not yet initialized!");
-  }
+  ensureDeviceIsInitialized();
   if (RandomDeviceMersenne* dev = dynamic_cast<RandomDeviceMersenne*>(_device.get())) {
     dev->seed(seed);
     return;

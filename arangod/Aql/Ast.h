@@ -33,12 +33,13 @@
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
 
+#include <velocypack/StringRef.h>
+
 #include <functional>
 #include <iterator>
 #include <vector>
 
 namespace arangodb {
-class StringRef;
 
 namespace velocypack {
 class Slice;
@@ -416,7 +417,7 @@ class Ast {
   void validateAndOptimize();
 
   /// @brief determines the variables referenced in an expression
-  static void getReferencedVariables(AstNode const*, std::unordered_set<Variable const*>&);
+  static void getReferencedVariables(AstNode const*, arangodb::HashSet<Variable const*>&);
 
   /// @brief count how many times a variable is referenced in an expression
   static size_t countReferences(AstNode const*, Variable const*);
@@ -556,11 +557,11 @@ class Ast {
 
   /// @brief validate the name of the given datasource
   /// in case validation fails, will throw an exception
-  void validateDataSourceName(arangodb::StringRef const& name, bool validateStrict);
+  void validateDataSourceName(arangodb::velocypack::StringRef const& name, bool validateStrict);
 
   /// @brief create an AST collection node
   /// private function, does no validation
-  AstNode* createNodeCollectionNoValidation(arangodb::StringRef const& name,
+  AstNode* createNodeCollectionNoValidation(arangodb::velocypack::StringRef const& name,
                                             AccessMode::Type accessType);
 
   void extractCollectionsFromGraph(AstNode const* graphNode);

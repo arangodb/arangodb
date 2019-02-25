@@ -27,7 +27,6 @@
 #include "Aql/QueryCache.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/fasthash.h"
@@ -47,6 +46,7 @@
 #include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Collection.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -816,7 +816,8 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
 #if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(_vocbase);
 #endif
-  arangodb::aql::QueryCache::instance()->invalidate(&vocbase(), name());
+
+  arangodb::aql::QueryCache::instance()->invalidate(&vocbase(), guid());
 
   bool result = _physical->dropIndex(iid);
 
@@ -826,6 +827,7 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
       DatabaseFeature::DATABASE->versionTracker()->track("drop index");
     }
   }
+
   return result;
 }
 
@@ -851,7 +853,7 @@ void LogicalCollection::deferDropCollection(std::function<bool(LogicalCollection
 }
 
 /// @brief reads an element from the document collection
-Result LogicalCollection::read(transaction::Methods* trx, StringRef const& key,
+Result LogicalCollection::read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
                                ManagedDocumentResult& result, bool lock) {
   TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
   return getPhysical()->read(trx, key, result, lock);
@@ -884,7 +886,7 @@ Result LogicalCollection::truncate(transaction::Methods& trx, OperationOptions& 
 Result LogicalCollection::insert(transaction::Methods* trx, VPackSlice const slice,
                                  ManagedDocumentResult& result, OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                 TRI_voc_tick_t& revisionId, KeyLockInfo* keyLockInfo,
+                                 TRI_voc_rid_t& revisionId, KeyLockInfo* keyLockInfo,
                                  std::function<Result(void)> callbackDuringLock) {
   TRI_IF_FAILURE("LogicalCollection::insert") {
     return Result(TRI_ERROR_DEBUG);

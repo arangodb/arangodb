@@ -37,9 +37,14 @@
 
 namespace arangodb {
 namespace maskings {
+void InstallMaskings();
+  
 class AttributeMasking {
  public:
   static ParseResult<AttributeMasking> parse(Maskings*, VPackSlice const&);
+  static void installMasking(std::string const& name, ParseResult<AttributeMasking> (* func)(Path, Maskings*, VPackSlice const&)) {
+    _maskings[name] = func;
+  }
 
  public:
   AttributeMasking() = default;
@@ -51,6 +56,9 @@ class AttributeMasking {
   bool match(std::vector<std::string> const&) const;
 
   MaskingFunction* func() const { return _func.get(); }
+
+ private:
+  static std::unordered_map<std::string, ParseResult<AttributeMasking> (*)(Path, Maskings*, VPackSlice const&)> _maskings;
 
  private:
   Path _path;

@@ -34,6 +34,7 @@
 #include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/SortNode.h"
+#include "Basics/HashSet.h"
 #include "Basics/StaticStrings.h"
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
@@ -73,7 +74,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
   plan->findNodesOfType(nodes, ::reduceExtractionToProjectionTypes, true);
 
   bool modified = false;
-  std::unordered_set<Variable const*> vars;
+  arangodb::HashSet<Variable const*> vars;
   std::unordered_set<std::string> attributes;
 
   for (auto& n : nodes) {
@@ -90,7 +91,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
     ExecutionNode* current = n->getFirstParent();
     while (current != nullptr) {
       bool doRegularCheck = false;
-
+    
       if (current->getType() == EN::REMOVE) {
         RemoveNode const* removeNode = ExecutionNode::castTo<RemoveNode const*>(current);
         if (removeNode->inVariable() == v) {
@@ -144,6 +145,22 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
             attributes.emplace(it.attributePath[0]);
           }
         }
+      } else if (current->getType() == EN::INDEX) {
+        Condition const* condition = ExecutionNode::castTo<IndexNode const*>(current)->condition();
+
+        if (condition != nullptr && condition->root() != nullptr) {
+          AstNode const* node = condition->root();
+          vars.clear();
+          current->getVariablesUsedHere(vars);
+
+          if (vars.find(v) != vars.end()) {
+            if (!Ast::getReferencedAttributes(node, v, attributes)) {
+              stop = true;
+              break;
+            }
+            optimize = true;
+          }
+        }
       } else {
         // all other node types mandate a check
         doRegularCheck = true;
@@ -169,12 +186,8 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 
     // projections are currently limited (arbitrarily to 5 attributes)
     if (optimize && !stop && !attributes.empty() && attributes.size() <= 5) {
-      std::vector<std::string> r;
-      for (auto& it : attributes) {
-        r.emplace_back(std::move(it));
-      }
       // store projections in DocumentProducingNode
-      e->projections(std::move(r));
+      e->projections(std::move(attributes));
 
       if (n->getType() == ExecutionNode::INDEX) {
         // need to update _indexCoversProjections value in an IndexNode

@@ -24,7 +24,6 @@
 #include "ClusterMethods.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
@@ -33,6 +32,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Traverser.h"
 #include "Indexes/Index.h"
+#include "RestServer/TtlFeature.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/KeyGenerator.h"
@@ -953,7 +953,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& cname,
         return static_cast<int>(res.answer_code);
       }
     } else {
-      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+      return handleGeneralCommErrors(&req.result);
     }
   }
 
@@ -1035,7 +1035,7 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
           for (auto const& identifier :
                VPackObjectIterator(answer.get("identifiers"))) {
             if (identifier.value.hasKey("selectivityEstimate")) {
-              StringRef shard_index_id(identifier.key);
+              arangodb::velocypack::StringRef shard_index_id(identifier.key);
               auto split_point =
                   std::find(shard_index_id.begin(), shard_index_id.end(), '/');
               std::string index(split_point + 1, shard_index_id.end());
@@ -1052,7 +1052,7 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
         return static_cast<int>(res.answer_code);
       }
     } else {
-      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+      return handleGeneralCommErrors(&req.result);
     }
   }
 
@@ -1272,7 +1272,7 @@ int deleteDocumentOnCoordinator(std::string const& dbname, std::string const& co
                           &reverseMapping](VPackSlice const value) -> int {
       // Sort out the _key attribute and identify the shard responsible for it.
 
-      StringRef _key(transaction::helpers::extractKeyPart(value));
+      arangodb::velocypack::StringRef _key(transaction::helpers::extractKeyPart(value));
       ShardID shardID;
       if (_key.empty()) {
         // We have invalid input at this point.
@@ -1771,7 +1771,7 @@ int getDocumentOnCoordinator(std::string const& dbname, std::string const& colln
 int fetchEdgesFromEngines(std::string const& dbname,
                           std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
                           VPackSlice const vertexId, size_t depth,
-                          std::unordered_map<StringRef, VPackSlice>& cache,
+                          std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache,
                           std::vector<VPackSlice>& result,
                           std::vector<std::shared_ptr<VPackBuilder>>& datalake,
                           VPackBuilder& builder, size_t& filtered, size_t& read) {
@@ -1837,7 +1837,7 @@ int fetchEdgesFromEngines(std::string const& dbname,
         LOG_TOPIC(ERR, Logger::GRAPHS) << "got invalid edge id type: " << id.typeName();
         continue;
       }
-      StringRef idRef(id);
+      arangodb::velocypack::StringRef idRef(id);
       auto resE = cache.insert({idRef, e});
       if (resE.second) {
         // This edge is not yet cached.
@@ -1866,8 +1866,8 @@ int fetchEdgesFromEngines(std::string const& dbname,
 void fetchVerticesFromEngines(
     std::string const& dbname,
     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-    std::unordered_set<StringRef>& vertexIds,
-    std::unordered_map<StringRef, std::shared_ptr<VPackBuffer<uint8_t>>>& result,
+    std::unordered_set<arangodb::velocypack::StringRef>& vertexIds,
+    std::unordered_map<arangodb::velocypack::StringRef, std::shared_ptr<VPackBuffer<uint8_t>>>& result,
     VPackBuilder& builder) {
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
@@ -1928,7 +1928,7 @@ void fetchVerticesFromEngines(
                                                TRI_errno_string(code)));
     }
     for (auto const& pair : VPackObjectIterator(resSlice)) {
-      StringRef key(pair.key);
+      arangodb::velocypack::StringRef key(pair.key);
       if (vertexIds.erase(key) == 0) {
         // We either found the same vertex twice,
         // or found a vertex we did not request.
@@ -1945,7 +1945,7 @@ void fetchVerticesFromEngines(
         continue;
       }
       TRI_ASSERT(id.isString());
-      result.emplace(StringRef(id), val.steal());
+      result.emplace(arangodb::velocypack::StringRef(id), val.steal());
     }
   }
 
@@ -1970,8 +1970,8 @@ void fetchVerticesFromEngines(
 void fetchVerticesFromEngines(
     std::string const& dbname,
     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-    std::unordered_set<StringRef>& vertexIds,
-    std::unordered_map<StringRef, arangodb::velocypack::Slice>& result,
+    std::unordered_set<arangodb::velocypack::StringRef>& vertexIds,
+    std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>& result,
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake,
     VPackBuilder& builder) {
   auto cc = ClusterComm::instance();
@@ -2035,7 +2035,7 @@ void fetchVerticesFromEngines(
     bool cached = false;
 
     for (auto const& pair : VPackObjectIterator(resSlice)) {
-      StringRef key(pair.key);
+      arangodb::velocypack::StringRef key(pair.key);
       if (vertexIds.erase(key) == 0) {
         // We either found the same vertex twice,
         // or found a vertex we did not request.
@@ -2299,7 +2299,7 @@ int modifyDocumentOnCoordinator(
           return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
         }
 
-        StringRef keyStr(keySlice);
+        arangodb::velocypack::StringRef keyStr(keySlice);
         // We send to single endpoint
         requests.emplace_back("shard:" + it.first, reqType,
                               baseUrl + StringUtils::urlEncode(it.first) + "/" +
@@ -2501,6 +2501,182 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWa
   return TRI_ERROR_NO_ERROR;
 }
 
+/// @brief get TTL statistics from all DBservers and aggregate them
+Result getTtlStatisticsFromAllDBServers(TtlStatistics& out) {
+  ClusterInfo* ci = ClusterInfo::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return Result(TRI_ERROR_SHUTTING_DOWN);
+  }
+  std::vector<ServerID> DBservers = ci->getCurrentDBServers();
+  CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  std::string const url("/_api/ttl/statistics");
+
+  auto body = std::make_shared<std::string const>();
+  std::unordered_map<std::string, std::string> headers;
+  for (auto it = DBservers.begin(); it != DBservers.end(); ++it) {
+    // set collection name (shard id)
+    cc->asyncRequest(coordTransactionID, "server:" + *it, arangodb::rest::RequestType::GET,
+                     url, body, headers, nullptr, 120.0);
+  }
+  
+  // Now listen to the results:
+  int count;
+  int nrok = 0;
+  int globalErrorCode = TRI_ERROR_INTERNAL;
+  for (count = (int)DBservers.size(); count > 0; count--) {
+    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
+    if (res.status == CL_COMM_RECEIVED) {
+      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
+        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
+        VPackSlice answer = answerBuilder->slice();
+        out += answer.get("result");
+        nrok++;
+      } else {
+        // got an error. Now try to find the errorNum value returned (if any)
+        TRI_ASSERT(res.answer != nullptr);
+        auto resBody = res.answer->toVelocyPackBuilderPtr();
+        VPackSlice resSlice = resBody->slice();
+        if (resSlice.isObject()) {
+          int code = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+              resSlice, "errorNum", TRI_ERROR_INTERNAL);
+
+          if (code != TRI_ERROR_NO_ERROR) {
+            globalErrorCode = code;
+          }
+        }
+      }
+    }
+  }
+
+  if (nrok != (int)DBservers.size()) {
+    return Result(globalErrorCode);
+  }
+
+  return Result();
+}
+
+/// @brief get TTL properties from all DBservers
+Result getTtlPropertiesFromAllDBServers(VPackBuilder& out) {
+  ClusterInfo* ci = ClusterInfo::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return Result(TRI_ERROR_SHUTTING_DOWN);
+  }
+  std::vector<ServerID> DBservers = ci->getCurrentDBServers();
+  CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  std::string const url("/_api/ttl/properties");
+
+  auto body = std::make_shared<std::string const>();
+  std::unordered_map<std::string, std::string> headers;
+  for (auto it = DBservers.begin(); it != DBservers.end(); ++it) {
+    // set collection name (shard id)
+    cc->asyncRequest(coordTransactionID, "server:" + *it, arangodb::rest::RequestType::GET,
+                     url, body, headers, nullptr, 120.0);
+  }
+  
+  // Now listen to the results:
+  bool set = false;
+  int count;
+  int nrok = 0;
+  int globalErrorCode = TRI_ERROR_INTERNAL;
+  for (count = (int)DBservers.size(); count > 0; count--) {
+    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
+    if (res.status == CL_COMM_RECEIVED) {
+      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
+        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
+        VPackSlice answer = answerBuilder->slice();
+        if (!set) {
+          out.add(answer.get("result"));
+          set = true;
+        }
+        nrok++;
+      } else {
+        // got an error. Now try to find the errorNum value returned (if any)
+        TRI_ASSERT(res.answer != nullptr);
+        auto resBody = res.answer->toVelocyPackBuilderPtr();
+        VPackSlice resSlice = resBody->slice();
+        if (resSlice.isObject()) {
+          int code = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+              resSlice, "errorNum", TRI_ERROR_INTERNAL);
+
+          if (code != TRI_ERROR_NO_ERROR) {
+            globalErrorCode = code;
+          }
+        }
+      }
+    }
+  }
+
+  if (nrok != (int)DBservers.size()) {
+    return Result(globalErrorCode);
+  }
+
+  return Result();
+}
+
+/// @brief set TTL properties on all DBservers
+Result setTtlPropertiesOnAllDBServers(VPackSlice const& properties, VPackBuilder& out) {
+  ClusterInfo* ci = ClusterInfo::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return Result(TRI_ERROR_SHUTTING_DOWN);
+  }
+  std::vector<ServerID> DBservers = ci->getCurrentDBServers();
+  CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  std::string const url("/_api/ttl/properties");
+
+  auto body = std::make_shared<std::string>(properties.toJson());
+  std::unordered_map<std::string, std::string> headers;
+  for (auto it = DBservers.begin(); it != DBservers.end(); ++it) {
+    // set collection name (shard id)
+    cc->asyncRequest(coordTransactionID, "server:" + *it, arangodb::rest::RequestType::PUT,
+                     url, body, headers, nullptr, 120.0);
+  }
+  
+  // Now listen to the results:
+  bool set = false;
+  int count;
+  int nrok = 0;
+  int globalErrorCode = TRI_ERROR_INTERNAL;
+  for (count = (int)DBservers.size(); count > 0; count--) {
+    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
+    if (res.status == CL_COMM_RECEIVED) {
+      if (res.answer_code == arangodb::rest::ResponseCode::OK) {
+        std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
+        VPackSlice answer = answerBuilder->slice();
+        if (!set) {
+          out.add(answer.get("result"));
+          set = true;
+        }
+        nrok++;
+      } else {
+        // got an error. Now try to find the errorNum value returned (if any)
+        TRI_ASSERT(res.answer != nullptr);
+        auto resBody = res.answer->toVelocyPackBuilderPtr();
+        VPackSlice resSlice = resBody->slice();
+        if (resSlice.isObject()) {
+          int code = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+              resSlice, "errorNum", TRI_ERROR_INTERNAL);
+
+          if (code != TRI_ERROR_NO_ERROR) {
+            globalErrorCode = code;
+          }
+        }
+      }
+    }
+  }
+
+  if (nrok != (int)DBservers.size()) {
+    return Result(globalErrorCode);
+  }
+
+  return Result();
+}
+
 #ifndef USE_ENTERPRISE
 std::shared_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator(
     TRI_col_type_e collectionType, TRI_vocbase_t& vocbase,
@@ -2596,21 +2772,21 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   std::unordered_set<std::string> const ignoreKeys{
       "allowUserKeys", "cid",     "globallyUniqueId", "count",
       "planId",        "version", "objectId"};
-  col->setStatus(TRI_VOC_COL_STATUS_LOADED);
-  VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false, false);
 
+  col->setStatus(TRI_VOC_COL_STATUS_LOADED);
+
+  VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false, false);
   auto& dbName = col->vocbase().name();
-  std::string errorMsg;
-  int myerrno = ci->createCollectionCoordinator(dbName, std::to_string(col->id()),
+  auto res = ci->createCollectionCoordinator( // create collection
+    dbName, std::to_string(col->id()),
                                                 col->numberOfShards(),
                                                 col->replicationFactor(), waitForSyncReplication,
-                                                velocy.slice(), errorMsg, 240.0);
+    velocy.slice(), // collection definition
+    240.0 // request timeout
+  );
 
-  if (myerrno != TRI_ERROR_NO_ERROR) {
-    if (errorMsg.empty()) {
-      errorMsg = TRI_errno_string(myerrno);
-    }
-    THROW_ARANGO_EXCEPTION_MESSAGE(myerrno, errorMsg);
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   ci->loadPlan();
@@ -2637,7 +2813,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
 int fetchEdgesFromEngines(std::string const& dbname,
                           std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
                           VPackSlice const vertexId, bool backward,
-                          std::unordered_map<StringRef, VPackSlice>& cache,
+                          std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache,
                           std::vector<VPackSlice>& result,
                           std::vector<std::shared_ptr<VPackBuilder>>& datalake,
                           VPackBuilder& builder, size_t& read) {
@@ -2700,7 +2876,7 @@ int fetchEdgesFromEngines(std::string const& dbname,
         LOG_TOPIC(ERR, Logger::GRAPHS) << "got invalid edge id type: " << id.typeName();
         continue;
       }
-      StringRef idRef(id);
+      arangodb::velocypack::StringRef idRef(id);
       auto resE = cache.insert({idRef, e});
       if (resE.second) {
         // This edge is not yet cached.

@@ -773,6 +773,10 @@ uint8_t* Builder::set(Value const& item) {
       throw Exception(Exception::NotImplemented);
     }
     case ValueType::Custom: {
+      if (options->disallowCustom) {
+        // Custom values explicitly disallowed as a security precaution
+        throw Exception(Exception::BuilderCustomDisallowed);
+      }
       throw Exception(Exception::BuilderUnexpectedType,
                       "Cannot set a ValueType::Custom with this method");
     }
@@ -785,7 +789,12 @@ uint8_t* Builder::set(Value const& item) {
 }
 
 uint8_t* Builder::set(Slice const& item) {
-  checkKeyIsString(item.isString());
+  checkKeyIsString(item);
+
+  if (VELOCYPACK_UNLIKELY(options->disallowCustom && item.isCustom())) {
+    // Custom values explicitly disallowed as a security precaution
+    throw Exception(Exception::BuilderCustomDisallowed);
+  }
 
   ValueLength const l = item.byteSize();
   reserve(l);
@@ -829,6 +838,10 @@ uint8_t* Builder::set(ValuePair const& pair) {
     advance(size);
     return _start + oldPos;
   } else if (pair.valueType() == ValueType::Custom) {
+    if (options->disallowCustom) {
+      // Custom values explicitly disallowed as a security precaution
+      throw Exception(Exception::BuilderCustomDisallowed);
+    }
     // We only reserve space here, the caller has to fill in the custom type
     uint64_t size = pair.getSize();
     reserve(size);

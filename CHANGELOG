@@ -1,9 +1,94 @@
 devel
 -----
 
-* Use base64url to encode and decode JWT parts.
+* upgraded lodash to 4.17.11 because of CVE-2018-16487
 
-* updated bundled curl library to version 7.63
+* `--query.registry-ttl` is now honored in single-server mode, and cursor TTLs
+  are now honored on DBServers in cluster mode
+  
+* add "TTL" index type, for optional auto-expiration of documents 
+
+* disable selection of index types "persistent" and "skiplist" in the web
+  interface when using the RocksDB engine. The index types "hash", "skiplist"
+  and "persistent" are just aliases of each other with the RocksDB engine,
+  so there is no need to offer all of them.
+
+* fixed JS AQL query objects with empty query strings not being recognized 
+  as AQL queries
+
+* update V8 to 7.1.302.28
+
+  New V8 behavior introduced herein: 
+
+  - ES2016 changed the default timezone of date strings to be conditional on
+    whether a time part is included. The semantics were a compromise approach
+    based on web compatibility feedback from V8, but until now, we have been
+    shipping ES5.1 default timezone semantics. This patch implements the
+    new semantics, following ChakraCore and SpiderMonkey (though JSC
+    implements V8's previous semantics).
+ 
+
+* fixed JS AQL query objects with empty query strings not being recognized as AQL queries
+
+* report run-time openssl version (for dynamically linked executables)
+
+* added greeting warning about maintainer mode
+
+* improve insertion time into non-unique secondary indexes with the RocksDB
+  engine
+
+* fixed possible segfault when using COLLECT with a LIMIT and an offset
+
+* fixed COLLECT forgetting top-level variables after 1000 rows
+
+* added sort-limit optimization in AQL; improves memory usage and execution
+  time for some queries
+
+* upgraded to OpenSSL 1.1.0j
+
+* added configurable masking of dumped data via `arangodump` tool to obfuscate 
+  exported sensible data
+
+* fixed arangoimp script for MacOSX CLI Bundle
+
+* added "peakMemoryUsage" in query results figures, showing the peak memory
+  usage of the executed query. In a cluster, the value the peak memory usage
+  of all shards, but it is not summed up across shards.
+
+* fixed an issue where a crashed coordinator can lead to some Foxx queue jobs
+  erroneously either left hanging or being restarted
+
+* fix issue #7900: Bind values of `null` are not replaced by
+  empty string anymore, when toggling between json and table
+  view in the web-ui.
+
+* fix issue #7903: Regression on ISO8601 string compatibility in AQL
+
+  millisecond parts of AQL date values were limited to up to 3 digits.
+  Now the length of the millisecond part is unrestricted, but the 
+  millisecond precision is still limited to up to 3 digits.
+
+* the RocksDB primary index can now be used by the optimizer to optimize queries
+  that use `_key` or `_id` for sorting or for range queries.
+
+* the web UI will now by default show the documents of a collection lexicographically
+  sorted when sorting documents by their `_key` values.
+
+  Previous versions of ArangoDB tried to interpret `_key` values as numeric values if
+  possible and sorted by these. That previous sort strategy never used an index and 
+  could have caused unnecessary overhead. The new version will now use an index for
+  sorting for the RocksDB engine, but may change the order in which documents are
+  shown in the web UI (e.g. now a `_key` value of "10" will be shown before a `_key`
+  value of "9").
+
+* fixed known issue #445: ArangoSearch ignores `_id` attribute even if `includeAllFields`
+  is set to `true`.
+
+* upgraded bundled boost library to version 1.69.0
+
+* upgraded bundled curl library to version 7.63
+
+* Use base64url to encode and decode JWT parts.
 
 * Added --server.jwt-secret-keyfile option.
 

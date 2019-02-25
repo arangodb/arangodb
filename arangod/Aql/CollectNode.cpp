@@ -24,6 +24,9 @@
 #include "CollectNode.h"
 #include "Aql/Ast.h"
 #include "Aql/CollectBlock.h"
+#include "Aql/CountCollectExecutor.h"
+#include "Aql/DistinctCollectExecutor.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/VariableGenerator.h"
 #include "Aql/WalkerWorker.h"
@@ -126,10 +129,58 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       return std::make_unique<HashedCollectBlock>(&engine, this);
     case CollectOptions::CollectMethod::SORTED:
       return std::make_unique<SortedCollectBlock>(&engine, this);
-    case CollectOptions::CollectMethod::DISTINCT:
-      return std::make_unique<DistinctCollectBlock>(&engine, this);
-    case CollectOptions::CollectMethod::COUNT:
-      return std::make_unique<CountCollectBlock>(&engine, this);
+    case CollectOptions::CollectMethod::COUNT: {
+      ExecutionNode const* previousNode = getFirstDependency();
+      TRI_ASSERT(previousNode != nullptr);
+
+      auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
+      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+      RegisterId collectRegister = (*it).second.registerId;
+
+      CountCollectExecutorInfos infos(collectRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                                      getRegisterPlan()->nrRegs[getDepth()],
+                                      getRegsToClear(), calcRegsToKeep());
+
+      return std::make_unique<ExecutionBlockImpl<CountCollectExecutor>>(&engine, this,
+                                                                        std::move(infos));
+    }
+    case CollectOptions::CollectMethod::DISTINCT: {
+      ExecutionNode const* previousNode = getFirstDependency();
+      TRI_ASSERT(previousNode != nullptr);
+
+      std::unordered_set<RegisterId> readableInputRegisters;
+      std::unordered_set<RegisterId> writeableInputRegisters;
+
+      std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
+      for (auto const& p : _groupVariables) {
+        // We know that planRegisters() has been run, so
+        // getPlanNode()->_registerPlan is set up
+        auto itOut = getRegisterPlan()->varInfo.find(p.first->id);
+        TRI_ASSERT(itOut != getRegisterPlan()->varInfo.end());
+
+        auto itIn = getRegisterPlan()->varInfo.find(p.second->id);
+        TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
+        TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
+        TRI_ASSERT((*itOut).second.registerId < ExecutionNode::MaxRegisterId);
+        groupRegisters.emplace_back(std::make_pair((*itOut).second.registerId,
+                                                   (*itIn).second.registerId));
+        writeableInputRegisters.insert((*itOut).second.registerId);
+        readableInputRegisters.insert((*itIn).second.registerId);
+      }
+
+      // fill writeable and readable input/output registers TODO (1st & 2nd parameters of executor infos) !!!!!!
+
+      transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
+      DistinctCollectExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                                         getRegisterPlan()->nrRegs[getDepth()],
+                                         getRegsToClear(), calcRegsToKeep(),
+                                         std::move(readableInputRegisters),
+                                         std::move(writeableInputRegisters),
+                                         std::move(groupRegisters), trxPtr);
+
+      return std::make_unique<ExecutionBlockImpl<DistinctCollectExecutor>>(&engine, this,
+                                                                           std::move(infos));
+    }
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "cannot instantiate CollectBlock with "
@@ -225,20 +276,8 @@ struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
   }
 };
 
-/// @brief getVariablesUsedHere, returning a vector
-std::vector<Variable const*> CollectNode::getVariablesUsedHere() const {
-  std::unordered_set<Variable const*> v;
-  // actual work is done by that method
-  getVariablesUsedHere(v);
-
-  // copy result into vector
-  std::vector<Variable const*> vv;
-  vv.insert(vv.begin(), v.begin(), v.end());
-  return vv;
-}
-
 /// @brief getVariablesUsedHere, modifying the set in-place
-void CollectNode::getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const {
+void CollectNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
   for (auto const& p : _groupVariables) {
     vars.emplace(p.second);
   }

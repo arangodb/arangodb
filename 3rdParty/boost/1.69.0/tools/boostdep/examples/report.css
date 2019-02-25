@@ -1,0 +1,24 @@
+/* Copyright 2017 Peter Dimov
+   Distributed under the Boost Software License, Version 1.0. */
+
+A { color: #06C; text-decoration: none; }
+A:hover { text-decoration: underline; }
+
+body { max-width: 60em; margin-left: auto; margin-right: auto; color: #4A6484; font-family: sans-serif; }
+
+.logo { font-family: sans-serif; font-style: italic; }
+.logo .upper { font-size: 48pt; font-weight: 800; }
+.logo .lower { font-size: 17pt; }
+.logo .description { font-size: small; margin-top: 2em; }
+
+.primary-list { font-size: small; }
+.secondary-list { font-size: small; }
+
+#module-overview .primary-list { margin-left: 1em; }
+
+#module-levels h3 { margin-left: 1em; }
+#module-levels .primary-list { margin-left: 2em; }
+
+#module-weights h3 { margin-left: 1em; }
+#module-weights .primary-list { margin-left: 2em; }
+#module-weights .secondary-list { margin-left: 2em; padding-left: 1em; border-left: 1px dotted; }

@@ -107,7 +107,8 @@ static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force
 }
 
 static Result restoreDataParser(char const* ptr, char const* pos,
-                                std::string const& collectionName, std::string& key,
+                                std::string const& collectionName, int line,
+                                std::string& key,
                                 VPackBuilder& builder, VPackSlice& doc,
                                 TRI_replication_operation_e& type) {
   builder.clear();
@@ -115,16 +116,11 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   try {
     VPackParser parser(builder, builder.options);
     parser.parse(ptr, static_cast<size_t>(pos - ptr));
-  } catch (VPackException const& ex) {
-    // Could not parse the given string
-    return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  "received invalid JSON data for collection '" +
-                      collectionName + "': " + ex.what()};
   } catch (std::exception const& ex) {
     // Could not even build the string
     return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
                   "received invalid JSON data for collection '" +
-                      collectionName + "': " + ex.what()};
+                      collectionName + "' on line " + std::to_string(line) + ": " + ex.what()};
   } catch (...) {
     return Result{TRI_ERROR_INTERNAL};
   }
@@ -134,7 +130,7 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   if (!slice.isObject()) {
     return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
                   "received invalid JSON data for collection '" +
-                      collectionName + "': data is no object"};
+                      collectionName + "' on line " + std::to_string(line) + ": data is no object"};
   }
 
   type = REPLICATION_INVALID;
@@ -143,7 +139,7 @@ static Result restoreDataParser(char const* ptr, char const* pos,
     if (!pair.key.isString()) {
       return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
                     "received invalid JSON data for collection '" +
-                        collectionName + "': got a non-string key"};
+                        collectionName + "' on line " + std::to_string(line) + ": got a non-string key"};
     }
 
     if (pair.key.isEqualString(::typeString)) {
@@ -174,13 +170,13 @@ static Result restoreDataParser(char const* ptr, char const* pos,
 
   if (type == REPLICATION_MARKER_DOCUMENT && !doc.isObject()) {
     return Result{TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "got document marker without contents"};
+                  "got document marker without object contents for collection '" + collectionName + "' on line " + std::to_string(line) + ": " + doc.toJson()};
   }
 
   if (key.empty()) {
     return Result{TRI_ERROR_HTTP_BAD_PARAMETER,
                   "received invalid JSON data for collection '" +
-                      collectionName + "': empty key"};
+                      collectionName + "' on line " + std::to_string(line) + ": empty key"};
   }
 
   return Result{TRI_ERROR_NO_ERROR};
@@ -1004,14 +1000,14 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
     // drop an existing collection if it exists
     if (dropExisting) {
-      std::string errorMsg;
-      int res = ci->dropCollectionCoordinator(dbName, std::to_string(col->id()),
-                                              errorMsg, 0.0);
+      auto result = ci->dropCollectionCoordinator(dbName, std::to_string(col->id()), 0.0);
 
-      if (res == TRI_ERROR_FORBIDDEN ||
-          res == TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE) {
+      if (TRI_ERROR_FORBIDDEN == result.errorNumber()  // forbidden
+          || TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE ==
+                 result.errorNumber()) {
         // some collections must not be dropped
-        res = truncateCollectionOnCoordinator(dbName, name);
+        auto res = truncateCollectionOnCoordinator(dbName, name);
+
         if (res != TRI_ERROR_NO_ERROR) {
           return Result(
               res,
@@ -1019,12 +1015,14 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
                   "unable to truncate collection (dropping is forbidden): '") +
                   name + "'");
         }
+
         return Result(res);
       }
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        return Result(res, std::string("unable to drop collection '") + name +
-                               "': " + TRI_errno_string(res));
+      if (!result.ok()) {
+        return Result(             // result
+            result.errorNumber(),  // code
+            std::string("unable to drop collection '") + name + "': " + result.errorMessage());
       }
     } else {
       return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
@@ -1207,6 +1205,7 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
   // entry.
 
   {
+    int line = 0;
     VPackArrayBuilder guard(&allMarkers);
     std::string key;
     while (ptr < end) {
@@ -1216,6 +1215,7 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
         pos = end;
       } else {
         *((char*)pos) = '\0';
+        ++line;
       }
 
       if (pos - ptr > 1) {
@@ -1224,7 +1224,7 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
         VPackSlice doc;
         TRI_replication_operation_e type = REPLICATION_INVALID;
 
-        Result res = restoreDataParser(ptr, pos, collectionName, key, builder, doc, type);
+        Result res = restoreDataParser(ptr, pos, collectionName, line, key, builder, doc, type);
         if (res.fail()) {
           return res;
         }
@@ -1290,8 +1290,8 @@ Result RestReplicationHandler::processRestoreUsersBatch(std::string const& colle
       // In the _users case we silently remove the _key value.
       bindVars->openObject();
       for (auto const& it : VPackObjectIterator(doc)) {
-        if (StringRef(it.key) != StaticStrings::KeyString &&
-            StringRef(it.key) != StaticStrings::IdString) {
+        if (arangodb::velocypack::StringRef(it.key) != StaticStrings::KeyString &&
+            arangodb::velocypack::StringRef(it.key) != StaticStrings::IdString) {
           bindVars->add(it.key);
           bindVars->add(it.value);
         }
@@ -1429,8 +1429,8 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
           // In the _users case we silently remove the _key value.
           builder.openObject();
           for (auto const& it : VPackObjectIterator(doc)) {
-            if (StringRef(it.key) != StaticStrings::KeyString &&
-                StringRef(it.key) != StaticStrings::IdString) {
+            if (arangodb::velocypack::StringRef(it.key) != StaticStrings::KeyString &&
+                arangodb::velocypack::StringRef(it.key) != StaticStrings::IdString) {
               builder.add(it.key);
               builder.add(it.value);
             }
@@ -1718,18 +1718,19 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(VPackSlice const
       "Cluster");
 
   Result res;
+
   for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
     VPackSlice type = idxDef.get(StaticStrings::IndexType);
+
     if (type.isString() && (type.copyString() == "primary" || type.copyString() == "edge")) {
       // must ignore these types of indexes during restore
       continue;
     }
 
     VPackBuilder tmp;
-    std::string errorMsg;
-    res = ci->ensureIndexCoordinator(  // returns int that gets converted to
-                                       // result
-        dbName, std::to_string(col->id()), idxDef, true, tmp, errorMsg,
+
+    res = ci->ensureIndexCoordinator(  // result
+        dbName, std::to_string(col->id()), idxDef, true, tmp,
         cluster->indexCreationTimeout());
 
     if (res.fail()) {
@@ -2186,7 +2187,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   ResultT<std::string> referenceChecksum =
       computeCollectionChecksum(readLockId, col.get());
   if (!referenceChecksum.ok()) {
-    generateError(referenceChecksum);
+    generateError(std::move(referenceChecksum).result());
     return;
   }
 
@@ -2382,7 +2383,7 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Test if Lock " << id << " is still active.";
   auto res = isLockHeld(id);
   if (!res.ok()) {
-    generateError(res);
+    generateError(std::move(res).result());
     return;
   }
 
@@ -2429,7 +2430,7 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
   if (!res.ok()) {
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
         << "Lock " << id << " not canceled because of: " << res.errorMessage();
-    generateError(res);
+    generateError(std::move(res).result());
     return;
   }
 

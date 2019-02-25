@@ -253,22 +253,12 @@ Result LogicalView::rename(std::string&& newName) {
     }
 
     builder.close();
+    res = engine->createViewCoordinator( // create view
+      vocbase.name(), std::to_string(impl->id()), builder.slice() // args
+    );
 
-    std::string error;
-    auto resNum =
-        engine->createViewCoordinator(vocbase.name(), std::to_string(impl->id()),
-                                      builder.slice(), error);
-
-    if (TRI_ERROR_NO_ERROR != resNum) {
-      if (error.empty()) {
-        error = TRI_errno_string(resNum);
-      }
-
-      return arangodb::Result(
-          resNum,
-          std::string("failure during ClusterInfo persistance of created view "
-                      "while creating arangosearch View in database '") +
-              vocbase.name() + "', error: " + error);
+    if (!res.ok()) {
+      return res;
     }
 
     view = engine->getView(vocbase.name(),
@@ -306,22 +296,9 @@ Result LogicalView::rename(std::string&& newName) {
               view.name() + "' from database '" + view.vocbase().name() + "'");
     }
 
-    std::string error;
-    auto res = engine->dropViewCoordinator(view.vocbase().name(),
-                                           std::to_string(view.id()), error);
-
-    if (TRI_ERROR_NO_ERROR == res) {
-      return Result();
-    }
-
-    if (error.empty()) {
-      error = TRI_errno_string(res);
-    }
-
-    return Result(res,
-                  std::string("failure during ClusterInfo removal of view '") +
-                      view.name() + "' from database '" +
-                      view.vocbase().name() + "': " + error);
+    return engine->dropViewCoordinator( // drop view
+      view.vocbase().name(), std::to_string(view.id()) // args
+    );
   } catch (basics::Exception const& e) {
     return Result(e.code());  // noexcept constructor
   } catch (...) {

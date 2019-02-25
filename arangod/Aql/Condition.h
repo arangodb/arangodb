@@ -27,6 +27,7 @@
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
+#include "Basics/HashSet.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Slice.h>
@@ -180,7 +181,7 @@ class Condition {
   /// @brief: note: index may be a nullptr
   static void collectOverlappingMembers(ExecutionPlan const* plan, Variable const* variable,
                                         AstNode const* andNode, AstNode const* otherAndNode,
-                                        std::unordered_set<size_t>& toRemove,
+                                        arangodb::HashSet<size_t>& toRemove,
                                         Index const* index, bool isFromTraverser);
 
   /// @brief return the condition root
@@ -230,7 +231,7 @@ class Condition {
   AstNode* removeTraversalCondition(ExecutionPlan const*, Variable const*, AstNode*);
 
   /// @brief remove (now) invalid variables from the condition
-  bool removeInvalidVariables(std::unordered_set<Variable const*> const&);
+  bool removeInvalidVariables(arangodb::HashSet<Variable const*> const&);
 
   /// @brief locate indexes which can be used for conditions
   /// return value is a pair indicating whether the index can be used for

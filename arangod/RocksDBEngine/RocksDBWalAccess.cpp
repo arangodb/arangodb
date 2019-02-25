@@ -21,7 +21,6 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBEngine/RocksDBWalAccess.h"
 #include "Basics/StaticStrings.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
@@ -29,6 +28,7 @@
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "RocksDBEngine/RocksDBWalAccess.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -178,7 +178,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
           if (vocbase != nullptr) {
             {  // tick number
-              StringRef uuid = RocksDBLogValue::viewUUID(blob);
+              arangodb::velocypack::StringRef uuid = RocksDBLogValue::viewUUID(blob);
               TRI_ASSERT(!uuid.empty());
               uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
               VPackObjectBuilder marker(&_builder, true);
@@ -288,7 +288,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
           if (vocbase != nullptr) {
             {  // tick number
-              StringRef uuid = RocksDBLogValue::collectionUUID(blob);
+              arangodb::velocypack::StringRef uuid = RocksDBLogValue::collectionUUID(blob);
               TRI_ASSERT(!uuid.empty());
               uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
               VPackObjectBuilder marker(&_builder, true);
@@ -387,11 +387,12 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
         break;
       }
 
-      case RocksDBLogType::IResearchLinkDrop:  // do nothing
       case RocksDBLogType::DocumentOperationsPrologue:
       case RocksDBLogType::DocumentRemove:
       case RocksDBLogType::DocumentRemoveAsPartOfUpdate:
-        break;  // ignore deprecated markers
+      case RocksDBLogType::TrackedDocumentInsert:
+      case RocksDBLogType::TrackedDocumentRemove:
+        break;  // ignore deprecated / unused markers
 
       default:
         LOG_TOPIC(WARN, Logger::REPLICATION)
@@ -554,7 +555,9 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
 
     if (cfId != _primaryCF) {
       return;  // ignore all document operations
-    } else if (_state != TRANSACTION && _state != SINGLE_REMOVE) {
+    }
+
+    if (_state != TRANSACTION && _state != SINGLE_REMOVE) {
       resetTransientState();
       return;
     }
@@ -571,7 +574,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
       return;              // no reset here
     }
 
-    StringRef docKey = RocksDBKey::primaryKey(key);
+    arangodb::velocypack::StringRef docKey = RocksDBKey::primaryKey(key);
     TRI_ASSERT(_state != TRANSACTION || _trxDbId == dbid);
 
     TRI_vocbase_t* vocbase = loadVocbase(dbid);
@@ -615,12 +618,6 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
                                 const rocksdb::Slice& /*end_key*/) override {
     incTick();
     // drop and truncate may use this, but we do not print anything
-    return rocksdb::Status();  // make WAL iterator happy
-  }
-
-  rocksdb::Status MergeCF(uint32_t, const rocksdb::Slice&, const rocksdb::Slice&) override {
-    incTick();
-    // not used for anything in ArangoDB currently
     return rocksdb::Status();  // make WAL iterator happy
   }
 
@@ -766,12 +763,6 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
       << "WAL tailing call. Scan since: " << since << ", tick start: " << filter.tickStart
       << ", tick end: " << filter.tickEnd << ", chunk size: " << chunkSize;
   while (iterator->Valid() && lastScannedTick <= filter.tickEnd) {
-    s = iterator->status();
-    if (!s.ok()) {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "error during WAL scan: " << s.ToString();
-      break;  // s is considered in the end
-    }
-
     rocksdb::BatchResult batch = iterator->GetBatch();
     // record the first tick we are actually considering
     if (firstTick == UINT64_MAX) {
@@ -816,7 +807,7 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   WalAccessResult result(TRI_ERROR_NO_ERROR, firstTick <= filter.tickStart,
                          lastWrittenTick, lastScannedTick, latestTick);
   if (!s.ok()) {
-    result.Result::reset(convertStatus(s, rocksutils::StatusHint::wal));
+    result.reset(convertStatus(s, rocksutils::StatusHint::wal));
   }
   // LOG_TOPIC(WARN, Logger::REPLICATION) << "2. firstTick: " << firstTick << "
   // lastWrittenTick: " << lastWrittenTick

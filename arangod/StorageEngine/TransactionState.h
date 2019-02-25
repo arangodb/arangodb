@@ -103,6 +103,8 @@ class TransactionState {
   inline bool isRunning() const {
     return _status == transaction::Status::RUNNING;
   }
+  void setRegistered() noexcept { _registeredTransaction = true; }
+  bool wasRegistered() const noexcept { return _registeredTransaction; }
 
   int increaseNesting() { return ++_nestingLevel; }
   int decreaseNesting() {
@@ -130,9 +132,6 @@ class TransactionState {
     _options.allowImplicitCollections = value;
   }
 
-  std::vector<std::string> collectionNames(std::unordered_set<std::string> const& initial =
-                                               std::unordered_set<std::string>()) const;
-
   /// @brief return the collection from a transaction
   TransactionCollection* collection(TRI_voc_cid_t cid, AccessMode::Type accessType);
 
@@ -147,7 +146,7 @@ class TransactionState {
   Result useCollections(int nestingLevel);
 
   /// @brief run a callback on all collections of the transaction
-  void allCollections(std::function<bool(TransactionCollection*)> const& cb);
+  void allCollections(std::function<bool(TransactionCollection&)> const& cb);
 
   /// @brief return the number of collections in the transaction
   size_t numCollections() const { return _collections.size(); }
@@ -248,6 +247,7 @@ class TransactionState {
 
   transaction::Hints _hints;  // hints;
   int _nestingLevel;
+  bool _registeredTransaction;
 
   transaction::Options _options;
 

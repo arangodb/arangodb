@@ -1,3 +1,0 @@
-# Empty Jamfile because the super project still expects one to appear here.
-# Can be deleted once 'status/Jamfile.v2' has been updated in the super
-# project.

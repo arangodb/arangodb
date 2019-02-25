@@ -29,7 +29,6 @@
 #include "Aql/AstNode.h"
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
-#include "Basics/StringRef.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -39,12 +38,11 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <rocksdb/comparator.h>
+#include <rocksdb/iterator.h>
 #include <velocypack/Buffer.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/Slice.h>
-
-namespace rocksdb {
-class Iterator;
-}
 
 namespace arangodb {
 namespace aql {
@@ -87,7 +85,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
-  bool hasCovering() const override { return true; }
+  bool hasCovering() const override;
 
  private:
   arangodb::RocksDBVPackIndex const* _index;
@@ -123,10 +121,26 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
-  bool hasCovering() const override { return true; }
+  bool hasCovering() const override;
 
  private:
-  bool outOfRange() const;
+  inline bool outOfRange() const {
+    if (_reverse) {
+      return (_cmp->Compare(_iterator->key(), _rangeBound) < 0);
+    } else {
+      return (_cmp->Compare(_iterator->key(), _rangeBound) > 0);
+    }
+  }
+
+  inline bool advance() {
+    if (_reverse) {
+      _iterator->Prev();
+    } else {
+      _iterator->Next();
+    }
+
+    return _iterator->Valid() && !outOfRange();
+  }
 
   arangodb::RocksDBVPackIndex const* _index;
   rocksdb::Comparator const* _cmp;
@@ -152,7 +166,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
+  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
 
   RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
   void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) override;
@@ -170,8 +184,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// @brief return the attribute paths, a -1 entry means none is expanding,
   /// otherwise the non-negative number is the index of the expanding one.
   std::vector<int> const& expanding() const { return _expanding; }
-
-  bool implicitlyUnique() const override;
 
   static constexpr size_t minimalPrefixSize() { return sizeof(TRI_voc_tick_t); }
 
@@ -202,18 +214,18 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void afterTruncate(TRI_voc_tick_t tick) override;
 
  protected:
-  Result insertInternal(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& documentId,
-                        velocypack::Slice const& doc, Index::OperationMode mode) override;
+  Result insert(transaction::Methods& trx, RocksDBMethods* methods,
+                LocalDocumentId const& documentId,
+                velocypack::Slice const& doc, Index::OperationMode mode) override;
 
-  Result removeInternal(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& documentId,
-                        velocypack::Slice const& doc, Index::OperationMode mode) override;
+  Result remove(transaction::Methods& trx, RocksDBMethods* methods,
+                LocalDocumentId const& documentId,
+                velocypack::Slice const& doc, Index::OperationMode mode) override;
 
-  Result updateInternal(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& oldDocumentId,
-                        velocypack::Slice const& oldDoc, LocalDocumentId const& newDocumentId,
-                        velocypack::Slice const& newDoc, Index::OperationMode mode) override;
+  Result update(transaction::Methods& trx, RocksDBMethods* methods,
+                LocalDocumentId const& oldDocumentId,
+                velocypack::Slice const& oldDoc, LocalDocumentId const& newDocumentId,
+                velocypack::Slice const& newDoc, Index::OperationMode mode) override;
 
  private:
   /// @brief return the number of paths

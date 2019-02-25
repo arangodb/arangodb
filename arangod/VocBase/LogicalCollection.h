@@ -35,6 +35,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 typedef std::string ServerID;  // ID of a server
@@ -52,23 +53,33 @@ struct OperationOptions;
 class PhysicalCollection;
 class Result;
 class ShardingInfo;
-class StringRef;
 
 namespace transaction {
 class Methods;
 }
 
-class ChecksumResult : public Result {
+class ChecksumResult {
  public:
-  explicit ChecksumResult(Result&& result) : Result(std::move(result)) {}
+  explicit ChecksumResult(Result&& result) : _result(std::move(result)) {}
   explicit ChecksumResult(velocypack::Builder&& builder)
-      : Result(TRI_ERROR_NO_ERROR), _builder(std::move(builder)) {}
+      : _result(TRI_ERROR_NO_ERROR), _builder(std::move(builder)) {}
 
   velocypack::Builder builder() { return _builder; }
 
   velocypack::Slice slice() { return _builder.slice(); }
 
+  // forwarded methods
+  bool ok() const { return _result.ok(); }
+  bool fail() const { return _result.fail(); }
+  int errorNumber() const { return _result.errorNumber(); }
+  std::string errorMessage() const { return _result.errorMessage(); }
+
+  // access methods
+  Result const& result() const& { return _result; }
+  Result result() && { return std::move(_result); }
+
  private:
+  Result _result;
   velocypack::Builder _builder;
 };
 
@@ -151,7 +162,10 @@ class LogicalCollection : public LogicalDataSource {
   TRI_voc_rid_t revision(transaction::Methods*) const;
   bool waitForSync() const;
   bool isSmart() const;
+  /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
+  /// @brief is this a cluster-wide Plan (ClusterInfo) collection
+  bool isClusterGlobal() const { return _isAStub; }
 
   void waitForSync(bool value) { _waitForSync = value; }
 
@@ -262,7 +276,7 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Index access (local only)
 
   /// @brief reads an element from the document collection
-  Result read(transaction::Methods* trx, StringRef const& key,
+  Result read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
               ManagedDocumentResult& mdr, bool lock);
   Result read(transaction::Methods*, arangodb::velocypack::Slice const&,
               ManagedDocumentResult& result, bool);
@@ -274,7 +288,7 @@ class LogicalCollection : public LogicalDataSource {
   Result insert(transaction::Methods* trx, velocypack::Slice const slice,
                 ManagedDocumentResult& result, OperationOptions& options,
                 TRI_voc_tick_t& resultMarkerTick, bool lock) {
-    TRI_voc_tick_t unused;
+    TRI_voc_rid_t unused;
     return insert(trx, slice, result, options, resultMarkerTick, lock, unused,
                   nullptr, nullptr);
   }
@@ -286,9 +300,8 @@ class LogicalCollection : public LogicalDataSource {
    */
   Result insert(transaction::Methods* trx, velocypack::Slice slice,
                 ManagedDocumentResult& result, OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock,
-                TRI_voc_tick_t& revisionId, KeyLockInfo* keyLockInfo,
-                std::function<Result(void)> callbackDuringLock);
+                TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& revisionId,
+                KeyLockInfo* keyLockInfo, std::function<Result(void)> callbackDuringLock);
 
   Result update(transaction::Methods*, velocypack::Slice,
                 ManagedDocumentResult& result, OperationOptions&, TRI_voc_tick_t&,

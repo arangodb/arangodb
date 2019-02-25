@@ -24,7 +24,7 @@
 #include "catch.hpp"
 #include "common.h"
 
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
@@ -65,7 +65,7 @@
 
 #include <velocypack/Iterator.h>
 
-NS_LOCAL
+namespace {
 
 struct TestTermAttribute: public irs::term_attribute {
  public:
@@ -131,7 +131,7 @@ class TestDelimAnalyzer: public irs::analysis::analyzer {
 DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
 REGISTER_ANALYZER_JSON(TestDelimAnalyzer, TestDelimAnalyzer::make);
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down

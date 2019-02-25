@@ -1,0 +1,11 @@
+#  Boost.SafeNumerics Library example Jamfile
+#
+#  Copyright (c) 2017 Robert Ramey
+#
+#  Distributed under the Boost Software License, Version 1.0.
+#  See accompanying file LICENSE_1_0.txt or copy at
+#  http://www.boost.org/LICENSE_1_0.txt
+
+build-project example ;
+build-project test ;
+#build-project performance ;

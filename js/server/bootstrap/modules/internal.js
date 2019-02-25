@@ -149,6 +149,18 @@
       return global.WAL_WAITCOLLECTOR.apply(null, arguments);
     }
   };
+  
+  // / @brief ttlStatistics
+  if (global.SYS_TTL_STATISTICS) {
+    exports.ttlStatistics = global.SYS_TTL_STATISTICS;
+    delete global.SYS_TTL_STATISTICS;
+  }
+  
+  // / @brief ttlProperties
+  if (global.SYS_TTL_PROPERTIES) {
+    exports.ttlProperties = global.SYS_TTL_PROPERTIES;
+    delete global.SYS_TTL_PROPERTIES;
+  }
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief defines an action
@@ -440,6 +452,15 @@
   if (global.SYS_DEBUG_REMOVE_FAILAT) {
     exports.debugRemoveFailAt = global.SYS_DEBUG_REMOVE_FAILAT;
     delete global.SYS_DEBUG_REMOVE_FAILAT;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief debugShouldFailAt
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_DEBUG_SHOULD_FAILAT) {
+    exports.debugShouldFailAt = global.SYS_DEBUG_SHOULD_FAILAT;
+    delete global.SYS_DEBUG_SHOULD_FAILAT;
   }
 
   // //////////////////////////////////////////////////////////////////////////////

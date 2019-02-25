@@ -116,7 +116,7 @@ class RocksDBCollection final : public PhysicalCollection {
   bool lookupRevision(transaction::Methods* trx, velocypack::Slice const& key,
                       TRI_voc_rid_t& revisionId) const;
 
-  Result read(transaction::Methods*, arangodb::StringRef const& key,
+  Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
               ManagedDocumentResult& result, bool) override;
 
   Result read(transaction::Methods* trx, arangodb::velocypack::Slice const& key,
@@ -124,7 +124,7 @@ class RocksDBCollection final : public PhysicalCollection {
     if (!key.isString()) {
       return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
     }
-    return this->read(trx, arangodb::StringRef(key), result, locked);
+    return this->read(trx, arangodb::velocypack::StringRef(key), result, locked);
   }
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
@@ -181,12 +181,8 @@ class RocksDBCollection final : public PhysicalCollection {
   RocksDBCollectionMeta& meta() { return _meta; }
 
  private:
-  /// @brief track the usage of waitForSync option in an operation
-  void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
-
   /// @brief return engine-specific figures
   void figuresSpecific(std::shared_ptr<velocypack::Builder>&) override;
-  void addIndex(std::shared_ptr<arangodb::Index> idx);
 
   // @brief return the primary index
   // WARNING: Make sure that this instance
@@ -232,7 +228,14 @@ class RocksDBCollection final : public PhysicalCollection {
     return (_cacheEnabled && _cachePresent);
   }
 
+  /// @brief track key in file
   void blackListKey(char const* data, std::size_t len) const;
+
+  /// @brief track the usage of waitForSync option in an operation
+  void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
+
+  /// @brief can use non transactional range delete in write ahead log
+  bool canUseRangeDeleteInWal() const;
 
  private:
   uint64_t const _objectId;     // rocksdb-specific object id for collection
@@ -247,10 +250,13 @@ class RocksDBCollection final : public PhysicalCollection {
   mutable basics::ReadWriteLock _exclusiveLock;
   /// @brief document cache (optional)
   mutable std::shared_ptr<cache::Cache> _cache;
+
   // we use this boolean for testing whether _cache is set.
   // it's quicker than accessing the shared_ptr each time
   mutable bool _cachePresent;
   bool _cacheEnabled;
+  /// @brief number of index creations in progress
+  std::atomic<int> _numIndexCreations;
 };
 
 inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {

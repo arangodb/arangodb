@@ -28,10 +28,12 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
-#include "Basics/StringRef.h"
+#include "Basics/StaticStrings.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/StringRef.h>
 
 #include <iosfwd>
 
@@ -60,6 +62,16 @@ namespace transaction {
 class Methods;
 }
 
+/// @brief static limits for fulltext index
+struct FulltextIndexLimits {
+  /// @brief maximum length of an indexed word in characters
+  static constexpr int maxWordLength = 40;
+  /// @brief default minimum word length for a fulltext index
+  static constexpr int minWordLengthDefault = 2;
+  /// @brief maximum number of search words in a query
+  static constexpr int maxSearchWords = 32;
+};
+
 class Index {
  public:
   Index() = delete;
@@ -87,6 +99,7 @@ class Index {
     TRI_IDX_TYPE_EDGE_INDEX,
     TRI_IDX_TYPE_FULLTEXT_INDEX,
     TRI_IDX_TYPE_SKIPLIST_INDEX,
+    TRI_IDX_TYPE_TTL_INDEX,
     TRI_IDX_TYPE_PERSISTENT_INDEX,
 #ifdef USE_IRESEARCH
     TRI_IDX_TYPE_IRESEARCH_LINK,
@@ -148,11 +161,17 @@ class Index {
   }
 
   /// @brief whether or not any attribute is expanded
-  inline bool attributeMatches(std::vector<arangodb::basics::AttributeName> const& attribute) const {
+  inline bool attributeMatches(std::vector<arangodb::basics::AttributeName> const& attribute,
+                               bool isPrimary = false) const {
     for (auto const& it : _fields) {
       if (arangodb::basics::AttributeName::isIdentical(attribute, it, true)) {
         return true;
       }
+    }
+    if (isPrimary) {
+      static std::vector<arangodb::basics::AttributeName> const vec_id{
+          {StaticStrings::IdString, false}};
+      return arangodb::basics::AttributeName::isIdentical(attribute, vec_id, true);
     }
     return false;
   }
@@ -186,11 +205,6 @@ class Index {
 
   static IndexType type(std::string const& type);
 
-  static bool isGeoIndex(IndexType type) {
-    return type == TRI_IDX_TYPE_GEO1_INDEX || type == TRI_IDX_TYPE_GEO2_INDEX ||
-           type == TRI_IDX_TYPE_GEO_INDEX;
-  }
-
   virtual char const* typeName() const = 0;
 
   static bool allowExpansion(IndexType type) {
@@ -216,6 +230,10 @@ class Index {
   /// contents are the same
   static bool Compare(velocypack::Slice const& lhs, velocypack::Slice const& rhs);
 
+  /// @brief whether or not the index is persistent (storage on durable media)
+  /// or not (RAM only)
+  virtual bool isPersistent() const = 0;
+
   virtual bool canBeDropped() const = 0;
 
   /// @brief whether or not the index provides an iterator that can extract
@@ -240,9 +258,9 @@ class Index {
   /// @brief return the selectivity estimate of the index
   /// must only be called if hasSelectivityEstimate() returns true
   ///
-  /// The extra StringRef is only used in the edge index as direction
+  /// The extra arangodb::velocypack::StringRef is only used in the edge index as direction
   /// attribute attribute, a Slice would be more flexible.
-  virtual double selectivityEstimate(arangodb::StringRef const& extra = arangodb::StringRef()) const;
+  virtual double selectivityEstimate(arangodb::velocypack::StringRef const& extra = arangodb::velocypack::StringRef()) const;
 
   /// @brief update the cluster selectivity estimate
   virtual void updateClusterSelectivityEstimate(double /*estimate*/) {
@@ -252,7 +270,7 @@ class Index {
   /// @brief whether or not the index is implicitly unique
   /// this can be the case if the index is not declared as unique,
   /// but contains a unique attribute such as _key
-  virtual bool implicitlyUnique() const;
+  bool implicitlyUnique() const;
 
   virtual size_t memory() const = 0;
 
@@ -293,16 +311,6 @@ class Index {
 
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
-
-  virtual void batchInsert(transaction::Methods& trx,
-                           std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const& docs,
-                           std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);
-
-  virtual Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const& doc, OperationMode mode) = 0;
-
-  virtual Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const& doc, OperationMode mode) = 0;
 
   virtual void load() = 0;
   virtual void unload() = 0;
@@ -355,6 +363,11 @@ class Index {
   static size_t sortWeight(arangodb::aql::AstNode const* node);
 
  protected:
+  /// @brief return the name of the (sole) index attribute
+  /// it is only allowed to call this method if the index contains a
+  /// single attribute
+  std::string const& getAttribute() const;
+ 
   /// @brief generate error result
   /// @param code the error key
   /// @param key the conflicting key
@@ -371,6 +384,11 @@ class Index {
   /// @param key the conflicting key
   arangodb::Result& addErrorMsg(Result& r, std::string const& key = "");
 
+  /// @brief extracts a timestamp value from a document
+  /// returns a negative value if the document does not contain the specified
+  /// attribute, or the attribute does not contain a valid timestamp or date string
+  double getTimestamp(arangodb::velocypack::Slice const& doc, std::string const& attributeName) const;
+
   TRI_idx_iid_t const _iid;
   LogicalCollection& _collection;
   std::vector<std::vector<arangodb::basics::AttributeName>> const _fields;
@@ -378,6 +396,9 @@ class Index {
 
   mutable bool _unique;
   mutable bool _sparse;
+
+  // use this with c++17  --  attributeMatches
+  // static inline std::vector<arangodb::basics::AttributeName> const vec_id {{ StaticStrings::IdString, false }};
 };
 }  // namespace arangodb
 

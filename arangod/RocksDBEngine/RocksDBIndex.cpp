@@ -239,21 +239,21 @@ void RocksDBIndex::afterTruncate(TRI_voc_tick_t) {
   }
 }
 
-Result RocksDBIndex::updateInternal(transaction::Methods& trx, RocksDBMethods* mthd,
-                                    LocalDocumentId const& oldDocumentId,
-                                    velocypack::Slice const& oldDoc,
-                                    LocalDocumentId const& newDocumentId,
-                                    velocypack::Slice const& newDoc,
-                                    Index::OperationMode mode) {
+Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
+                            LocalDocumentId const& oldDocumentId,
+                            velocypack::Slice const& oldDoc,
+                            LocalDocumentId const& newDocumentId,
+                            velocypack::Slice const& newDoc,
+                            Index::OperationMode mode) {
   // It is illegal to call this method on the primary index
   // RocksDBPrimaryIndex must override this method accordingly
   TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX);
 
-  Result res = removeInternal(trx, mthd, oldDocumentId, oldDoc, mode);
+  Result res = remove(trx, mthd, oldDocumentId, oldDoc, mode);
   if (!res.ok()) {
     return res;
   }
-  return insertInternal(trx, mthd, newDocumentId, newDoc, mode);
+  return insert(trx, mthd, newDocumentId, newDoc, mode);
 }
 
 /// @brief return the memory usage of the index
@@ -307,6 +307,7 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type, uint64_t objectI
       return RocksDBKeyBounds::EdgeIndex(objectId);
     case RocksDBIndex::TRI_IDX_TYPE_HASH_INDEX:
     case RocksDBIndex::TRI_IDX_TYPE_SKIPLIST_INDEX:
+    case RocksDBIndex::TRI_IDX_TYPE_TTL_INDEX:
     case RocksDBIndex::TRI_IDX_TYPE_PERSISTENT_INDEX:
       if (unique) {
         return RocksDBKeyBounds::UniqueVPackIndex(objectId);

@@ -134,9 +134,8 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
       auto member = optionsNode->getMember(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        std::string const name = member->getString();
+        auto const name = member->getStringRef();
         auto value = member->getMember(0);
-
         TRI_ASSERT(value->isConstant());
 
         if (name == "bfs") {
@@ -188,7 +187,7 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Que
       auto member = node->getMember(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        std::string const name = member->getString();
+        auto const name = member->getStringRef();
         auto value = member->getMember(0);
 
         TRI_ASSERT(value->isConstant());
@@ -654,11 +653,11 @@ bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
     auto member = node->getMember(i);
 
     if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-      std::string const name = member->getString();
-      auto value = member->getMember(0);
+      auto const name = member->getStringRef();
 
-      TRI_ASSERT(value->isConstant());
       if (name == "exclusive") {
+        auto value = member->getMember(0);
+        TRI_ASSERT(value->isConstant());
         return value->isTrue();
       }
     }
@@ -679,7 +678,7 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
       auto member = node->getMember(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        std::string const name = member->getString();
+        auto const name = member->getStringRef();
         auto value = member->getMember(0);
 
         TRI_ASSERT(value->isConstant());
@@ -757,7 +756,7 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
       auto member = node->getMember(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        std::string const name = member->getString();
+        auto const name = member->getStringRef();
         if (name == "method") {
           auto value = member->getMember(0);
           if (value->isStringValue()) {
@@ -908,12 +907,14 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous, AstNode c
   TRI_ASSERT(node->numMembers() == 4);
 
   auto const* variable = node->getMember(0);
+  TRI_ASSERT(variable);
   auto const* expression = node->getMember(1);
+  TRI_ASSERT(expression);
 
   // fetch 1st operand (out variable name)
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
   auto v = static_cast<Variable*>(variable->getData());
-  TRI_ASSERT(v != nullptr);
+  TRI_ASSERT(v);
 
   ExecutionNode* en = nullptr;
 
@@ -949,19 +950,20 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous, AstNode c
   }
 
   if (!view) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                                    "no view for EnumerateView");
   }
 
   auto* search = node->getMember(2);
+  TRI_ASSERT(search);
   TRI_ASSERT(search->type == NODE_TYPE_FILTER);
   TRI_ASSERT(search->numMembers() == 1);
 
   auto* options = node->getMemberUnchecked(3);
+  TRI_ASSERT(options);
+
   if (options->type == NODE_TYPE_NOP) {
     options = nullptr;
-  } else if (!options->isConstObject()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS);
   }
 
   en = registerNode(new iresearch::IResearchViewNode(*this, nextId(), vocbase, view, *v,
@@ -1987,8 +1989,8 @@ void ExecutionPlan::findEndNodes(SmallVector<ExecutionNode*>& result,
 
 /// @brief helper struct for findVarUsage
 struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
-  std::unordered_set<Variable const*> _usedLater;
-  std::unordered_set<Variable const*> _valid;
+  arangodb::HashSet<Variable const*> _usedLater;
+  arangodb::HashSet<Variable const*> _valid;
   std::unordered_map<VariableId, ExecutionNode*>* _varSetBy;
   bool const _ownsVarSetBy;
 
@@ -2067,6 +2069,12 @@ bool ExecutionPlan::varUsageComputed() const { return _varUsageComputed; }
 /// @brief unlinkNodes, note that this does not delete the removed
 /// nodes and that one cannot remove the root node of the plan.
 void ExecutionPlan::unlinkNodes(std::unordered_set<ExecutionNode*> const& toRemove) {
+  for (auto& node : toRemove) {
+    unlinkNode(node);
+  }
+}
+
+void ExecutionPlan::unlinkNodes(arangodb::HashSet<ExecutionNode*> const& toRemove) {
   for (auto& node : toRemove) {
     unlinkNode(node);
   }

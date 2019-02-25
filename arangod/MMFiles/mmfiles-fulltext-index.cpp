@@ -24,6 +24,7 @@
 #include "mmfiles-fulltext-index.h"
 
 #include "Basics/Exceptions.h"
+#include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "MMFiles/mmfiles-fulltext-list.h"
 #include "MMFiles/mmfiles-fulltext-query.h"
@@ -45,7 +46,7 @@ using namespace arangodb;
 
 /// @brief maximum length of an indexed word in bytes
 /// a UTF-8 character can contain up to 4 bytes
-#define MAX_WORD_BYTES ((TRI_FULLTEXT_MAX_WORD_LENGTH)*4)
+#define MAX_WORD_BYTES (arangodb::FulltextIndexLimits::maxWordLength * 4)
 
 /// @brief the type of characters indexed. should be one byte long
 typedef uint8_t node_char_t;

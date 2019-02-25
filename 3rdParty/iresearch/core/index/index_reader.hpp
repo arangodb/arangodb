@@ -94,7 +94,7 @@ struct IRESEARCH_API index_reader {
   }; // reader_iterator
 
   DECLARE_SHARED_PTR(const index_reader);
-  DEFINE_FACTORY_INLINE(index_reader);
+  DEFINE_FACTORY_INLINE(index_reader)
 
   virtual ~index_reader();
 
@@ -127,7 +127,7 @@ struct IRESEARCH_API index_reader {
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API sub_reader : index_reader {
   DECLARE_SHARED_PTR(const sub_reader);
-  DEFINE_FACTORY_INLINE(sub_reader);
+  DEFINE_FACTORY_INLINE(sub_reader)
 
   static const sub_reader& empty() NOEXCEPT;
 
@@ -156,6 +156,6 @@ struct IRESEARCH_API sub_reader : index_reader {
 
 NS_END
 
-MSVC_ONLY(template class IRESEARCH_API std::function<bool(iresearch::doc_id_t)>); // sub_reader::value_visitor_f
+MSVC_ONLY(template class IRESEARCH_API std::function<bool(iresearch::doc_id_t)>;) // sub_reader::value_visitor_f
 
 #endif

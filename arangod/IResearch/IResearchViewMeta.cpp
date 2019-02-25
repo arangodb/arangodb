@@ -34,7 +34,7 @@
 
 #include "IResearchViewMeta.h"
 
-NS_LOCAL
+namespace {
 
 const std::string POLICY_BYTES_ACCUM =
     "bytes_accum";  // {threshold} > (segment_bytes +
@@ -172,13 +172,14 @@ arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationP
       irs::index_utils::consolidation_policy(options), std::move(properties)};
 }
 
-NS_END
+}  // namespace
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
     : _cleanupIntervalStep(mask),
+      _commitIntervalMsec(mask),
       _consolidationIntervalMsec(mask),
       _consolidationPolicy(mask),
       _locale(mask),
@@ -189,6 +190,7 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
 
 IResearchViewMeta::IResearchViewMeta()
     : _cleanupIntervalStep(10),
+      _commitIntervalMsec(60 * 1000),
       _consolidationIntervalMsec(60 * 1000),
       _locale(std::locale::classic()),
       _version(LATEST_VERSION),
@@ -219,6 +221,7 @@ IResearchViewMeta::IResearchViewMeta(IResearchViewMeta&& other) noexcept
 IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexcept {
   if (this != &other) {
     _cleanupIntervalStep = std::move(other._cleanupIntervalStep);
+    _commitIntervalMsec = std::move(other._commitIntervalMsec);
     _consolidationIntervalMsec = std::move(other._consolidationIntervalMsec);
     _consolidationPolicy = std::move(other._consolidationPolicy);
     _locale = std::move(other._locale);
@@ -234,6 +237,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
 IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) {
   if (this != &other) {
     _cleanupIntervalStep = other._cleanupIntervalStep;
+    _commitIntervalMsec = other._commitIntervalMsec;
     _consolidationIntervalMsec = other._consolidationIntervalMsec;
     _consolidationPolicy = other._consolidationPolicy;
     _locale = other._locale;
@@ -251,12 +255,20 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
     return false;  // values do not match
   }
 
+  if (_commitIntervalMsec != other._commitIntervalMsec) {
+    return false; // values do not match
+  }
+
   if (_consolidationIntervalMsec != other._consolidationIntervalMsec) {
     return false;  // values do not match
   }
 
-  if (!_consolidationPolicy.properties().equals(other._consolidationPolicy.properties())) {
-    return false;  // values do not match
+  try {
+    if (!_consolidationPolicy.properties().equals(other._consolidationPolicy.properties())) {
+      return false; // values do not match
+    }
+  } catch (...) {
+    return false; // exception during match
   }
 
   if (irs::locale_utils::language(_locale) != irs::locale_utils::language(other._locale) ||
@@ -339,6 +351,25 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
       auto field = slice.get(fieldName);
 
       if (!getNumber(_cleanupIntervalStep, field)) {
+        errorField = fieldName;
+
+        return false;
+      }
+    }
+  }
+
+  {
+    // optional size_t
+    static const std::string fieldName("commitIntervalMsec");
+
+    mask->_commitIntervalMsec = slice.hasKey(fieldName);
+
+    if (!mask->_commitIntervalMsec) {
+      _commitIntervalMsec = defaults._commitIntervalMsec;
+    } else {
+      auto field = slice.get(fieldName);
+
+      if (!getNumber(_commitIntervalMsec, field)) {
         errorField = fieldName;
 
         return false;
@@ -530,6 +561,13 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
   if ((!ignoreEqual || _cleanupIntervalStep != ignoreEqual->_cleanupIntervalStep) &&
       (!mask || mask->_cleanupIntervalStep)) {
     builder.add("cleanupIntervalStep", arangodb::velocypack::Value(_cleanupIntervalStep));
+  }
+
+  if ((!ignoreEqual || _commitIntervalMsec != ignoreEqual->_commitIntervalMsec) // if requested or different
+      && (!mask || mask->_commitIntervalMsec)) {
+    builder.add( // add value
+      "commitIntervalMsec", arangodb::velocypack::Value(_commitIntervalMsec) // args
+    );
   }
 
   if ((!ignoreEqual || _consolidationIntervalMsec != ignoreEqual->_consolidationIntervalMsec) &&
@@ -727,9 +765,9 @@ size_t IResearchViewMetaState::memory() const {
   return size;
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

@@ -32,16 +32,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-/// @brief maximum length of an indexed word in characters
-/// a character may consist of up to 4 bytes
-#define TRI_FULLTEXT_MAX_WORD_LENGTH 40
-
-/// @brief default minimum word length for a fulltext index
-#define TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT 2
-
-/// @brief maximum number of search words in a query
-#define TRI_FULLTEXT_SEARCH_MAX_WORDS 32
-
 namespace arangodb {
 class LocalDocumentId;
 
@@ -104,14 +94,14 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
  protected:
   /// insert index elements into the specified write batch.
-  Result insertInternal(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& documentId,
-                        velocypack::Slice const& doc, Index::OperationMode mode) override;
+  Result insert(transaction::Methods& trx, RocksDBMethods* methods,
+                LocalDocumentId const& documentId,
+                velocypack::Slice const& doc, Index::OperationMode mode) override;
 
   /// remove index elements and put it in the specified write batch.
-  Result removeInternal(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& documentId,
-                        velocypack::Slice const& doc, Index::OperationMode mode) override;
+  Result remove(transaction::Methods& trx, RocksDBMethods* methods,
+                LocalDocumentId const& documentId,
+                velocypack::Slice const& doc, Index::OperationMode mode) override;
 
  private:
   std::set<std::string> wordlist(arangodb::velocypack::Slice const&);

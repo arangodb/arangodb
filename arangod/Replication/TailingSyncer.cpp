@@ -1033,7 +1033,6 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
     }
 
     // update tick value
-    // postApplyMarker(processedMarkers, skipped);
     WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
     if (markerTick > firstRegularTick &&
@@ -1177,7 +1176,10 @@ retry:
   if (res.fail()) {
     // stop ourselves
     if (res.is(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT) ||
+        res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) || // data source -- collection or view
         res.is(TRI_ERROR_REPLICATION_NO_START_TICK)) {
+
+      // additional logging
       if (res.is(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT)) {
         LOG_TOPIC(WARN, Logger::REPLICATION)
             << "replication applier stopped for database '" << _state.databaseName
@@ -1189,29 +1191,13 @@ retry:
       }
 
       // remove previous applier state
-      abortOngoingTransactions();
+      abortOngoingTransactions(); //ties to clear map - no further side effects
 
-      _applier->removeState();
-
-      // TODO: merge with removeState
-      {
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-
-        LOG_TOPIC(DEBUG, Logger::REPLICATION)
-            << "stopped replication applier for database '" << _state.databaseName
-            << "' with lastProcessedContinuousTick: " << _applier->_state._lastProcessedContinuousTick
-            << ", lastAppliedContinuousTick: " << _applier->_state._lastAppliedContinuousTick
-            << ", safeResumeTick: " << _applier->_state._safeResumeTick;
-
-        _applier->_state._lastProcessedContinuousTick = 0;
-        _applier->_state._lastAppliedContinuousTick = 0;
-        _applier->_state._safeResumeTick = 0;
-        _applier->_state._failedConnects = 0;
-        _applier->_state._totalRequests = 0;
-        _applier->_state._totalFailedConnects = 0;
-        _applier->_state._totalResyncs = 0;
-
-        saveApplierState();
+      LOG_TOPIC(DEBUG, Logger::REPLICATION)
+            << "stopped replication applier for database '" << _state.databaseName;
+      auto rv = _applier->resetState(true /*reducedSet*/);
+      if(rv.fail()){
+        return rv;
       }
 
       setAborted(false);
@@ -1253,9 +1239,9 @@ retry:
         // increase number of syncs counter
         WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
         ++_applier->_state._totalResyncs;
-       
+
         // necessary to reset the state here, because otherwise running the
-        // InitialSyncer may fail with "applier is running" errors 
+        // InitialSyncer may fail with "applier is running" errors
         _applier->_state._phase = ReplicationApplierState::ActivityPhase::INACTIVE;
       }
 
@@ -1702,7 +1688,7 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
                                        TRI_voc_tick_t& fetchTick, TRI_voc_tick_t& lastScannedTick,
                                        TRI_voc_tick_t firstRegularTick, uint64_t& ignoreCount,
                                        bool& worked, bool& mustFetchBatch) {
-  LOG_TOPIC(TRACE, Logger::REPLICATION)
+  LOG_TOPIC(DEBUG, Logger::REPLICATION)
       << "entering processMasterLog. fetchTick: " << fetchTick
       << ", worked: " << worked << ", mustFetchBatch: " << mustFetchBatch;
 
@@ -1756,9 +1742,12 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
                       StaticStrings::ReplicationHeaderLastIncluded +
                       " is missing in logger-follow response");
   }
-
+    
   TRI_voc_tick_t lastIncludedTick =
       getUIntHeader(response, StaticStrings::ReplicationHeaderLastIncluded);
+  TRI_voc_tick_t tick = getUIntHeader(response, StaticStrings::ReplicationHeaderLastTick);
+  
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "applyLog. fetchTick: " << fetchTick << ", checkMore: " << checkMore << ", fromIncluded: " << fromIncluded << ", lastScannedTick: " << lastScannedTick << ", lastIncludedTick: " << lastIncludedTick << ", tick: " << tick;
 
   if (lastIncludedTick == 0 && lastScannedTick > 0 && lastScannedTick > fetchTick) {
     // master did not have any news for us
@@ -1772,6 +1761,7 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
   } else {
     // we got the same tick again, this indicates we're at the end
     checkMore = false;
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "applyLog. got the same tick again, turning off checkMore";
   }
 
   if (!hasHeader(response, StaticStrings::ReplicationHeaderLastTick)) {
@@ -1783,7 +1773,6 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
   }
 
   bool bumpTick = false;
-  TRI_voc_tick_t tick = getUIntHeader(response, StaticStrings::ReplicationHeaderLastTick);
 
   if (!checkMore && tick > lastIncludedTick) {
     // the master has a tick value which is not contained in this result
@@ -1791,6 +1780,7 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
     // so it's probably a tick from an invisible operation (such as
     // closing a WAL file)
     bumpTick = true;
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "applyLog. bumping tick";
   }
 
   {
@@ -1836,6 +1826,12 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
 
   uint64_t processedMarkers = 0;
   Result r = applyLog(response.get(), firstRegularTick, processedMarkers, ignoreCount);
+
+  if (r.fail()) {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "applyLog failed with error: " << r.errorMessage();
+  } else {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "applyLog successful, lastAppliedTick: " << lastAppliedTick << ", firstRegularTick: " << firstRegularTick << ", processedMarkers: " << processedMarkers;
+  }
 
   // cppcheck-suppress *
   if (processedMarkers > 0) {

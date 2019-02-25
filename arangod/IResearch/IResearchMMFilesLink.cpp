@@ -35,8 +35,8 @@
 
 #include "IResearchMMFilesLink.h"
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchMMFilesLink-specific implementation of an IndexTypeFactory
@@ -165,7 +165,7 @@ bool IResearchMMFilesLink::isPersistent() const {
   auto* engine = arangodb::EngineSelectorFeature::ENGINE;
 
   // FIXME TODO remove once MMFilesEngine will fillIndex(...) during recovery
-  // currently the index is created but fill is deffered untill the end of
+  // currently the index is created but fill is deferred until the end of
   // recovery at the end of recovery only non-persistent indexes are filled
   if (engine && engine->inRecovery()) {
     return false;
@@ -174,9 +174,9 @@ bool IResearchMMFilesLink::isPersistent() const {
   return true;  // records persisted into the iResearch view
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION-- END-OF-FILE
+// -----------------------------------------------------------------------------

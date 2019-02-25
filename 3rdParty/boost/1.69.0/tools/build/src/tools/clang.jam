@@ -1,0 +1,65 @@
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt
+# or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+# This is a generic 'clang' toolset. Depending on the current system, it
+# forwards either to 'clang-linux' or 'clang-darwin' modules.
+
+import feature ;
+import os ;
+import toolset ;
+import sequence ;
+import regex ;
+import set ;
+
+feature.extend toolset : clang ;
+feature.subfeature toolset clang : platform : : propagated link-incompatible ;
+
+rule init ( * : * )
+{
+    if $(1) = win
+    {
+        toolset.using clang-win :
+          $(2) : $(3) : $(4) : $(5) : $(6) : $(7) : $(8) : $(9) ;
+    }
+    else if [ os.name ] = MACOSX
+    {
+        toolset.using clang-darwin : 
+          $(1) : $(2) : $(3) : $(4) : $(5) : $(6) : $(7) : $(8) : $(9) ;
+    }
+    else
+    {
+        toolset.using clang-linux : 
+          $(1) : $(2) : $(3) : $(4) : $(5) : $(6) : $(7) : $(8) : $(9) ;
+    }
+}
+
+
+local rule cxxstd-flags ( toolset : condition * : options * )
+{
+    toolset.flags $(toolset).compile.c++ OPTIONS $(condition) : $(options) : unchecked ;
+    toolset.flags $(toolset).link OPTIONS $(condition) : $(options) : unchecked ;
+}
+
+local rule version-ge ( lhs : rhs )
+{
+    lhs = [ regex.split $(lhs) "[.]" ] ;
+    rhs = [ regex.split $(rhs) "[.]" ] ;
+    return [ sequence.compare $(rhs) : $(lhs) : numbers.less ] ;
+}
+
+# Version specific flags
+rule init-cxxstd-flags ( toolset : condition * : version )
+{
+    local cxxstd = [ feature.values <cxxstd> ] ;
+    local dialects = [ feature.values <cxxstd-dialect> ] ;
+    dialects = [ set.difference $(dialects) : gnu iso ] ;
+    local std ;
+    if [ version-ge $(version) : 3.5 ] { std = 1z ; }
+    else if [ version-ge $(version) : 3.4 ] { std = 14 ; }
+    else if [ version-ge $(version) : 3.3 ] { std = 11 ; }
+    else { std = 03 ; }
+    cxxstd-flags $(toolset) : $(condition)/<cxxstd>latest/<cxxstd-dialect>iso : -std=c++$(std) ;
+    cxxstd-flags $(toolset) : $(condition)/<cxxstd>latest/<cxxstd-dialect>gnu : -std=gnu++$(std) ;
+    cxxstd-flags $(toolset) : $(condition)/<cxxstd>latest/<cxxstd-dialect>$(dialects) : -std=c++$(std) ;
+}

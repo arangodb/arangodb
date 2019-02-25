@@ -31,6 +31,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
@@ -47,6 +48,7 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
       _serverRole(ServerState::instance()->getRole()),
       _hints(),
       _nestingLevel(0),
+      _registeredTransaction(false),
       _options(options) {}
 
 /// @brief free a transaction container
@@ -59,22 +61,6 @@ TransactionState::~TransactionState() {
   for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
     delete (*it);
   }
-}
-
-std::vector<std::string> TransactionState::collectionNames(
-    std::unordered_set<std::string> const& initial) const {
-  std::vector<std::string> result;
-  result.reserve(_collections.size() + initial.size());
-  for (auto const& it : initial) {
-    result.emplace_back(it);
-  }
-  for (auto const& trxCollection : _collections) {
-    if (trxCollection->collection() != nullptr) {
-      result.emplace_back(trxCollection->collectionName());
-    }
-  }
-
-  return result;
 }
 
 /// @brief return the collection from a transaction
@@ -193,9 +179,12 @@ Result TransactionState::ensureCollections(int nestingLevel) {
 }
 
 /// @brief run a callback on all collections
-void TransactionState::allCollections(std::function<bool(TransactionCollection*)> const& cb) {
+void TransactionState::allCollections( // iterate
+    std::function<bool(TransactionCollection&)> const& cb // callback to invoke
+) {
   for (auto& trxCollection : _collections) {
-    if (!cb(trxCollection)) {
+    TRI_ASSERT(trxCollection); // ensured by addCollection(...)
+    if (!cb(*trxCollection)) {
       // abort early
       return;
     }
@@ -387,9 +376,12 @@ void TransactionState::clearQueryCache() {
     std::vector<std::string> collections;
 
     for (auto& trxCollection : _collections) {
-      if (trxCollection->hasOperations()) {
+      if (trxCollection // valid instance
+          && trxCollection->collection() // has a valid collection
+          && trxCollection->hasOperations() // may have been modified
+         ) {
         // we're only interested in collections that may have been modified
-        collections.emplace_back(trxCollection->collectionName());
+        collections.emplace_back(trxCollection->collection()->guid());
       }
     }
 

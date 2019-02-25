@@ -379,16 +379,16 @@ static std::wstring makeWindowsArgs(ExternalProcess* external) {
     }
   }
 
-  UnicodeString uwargs(external->_executable.c_str());
+  icu::UnicodeString uwargs(external->_executable.c_str());
 
-  err = wAppendQuotedArg(res, uwargs.getTerminatedBuffer());
+  err = wAppendQuotedArg(res, static_cast<const wchar_t*>(uwargs.getTerminatedBuffer()));
   if (err != TRI_ERROR_NO_ERROR) {
     return nullptr;
   }
   for (i = 1; i < external->_numberArguments; i++) {
     res += L' ';
     uwargs = external->_arguments[i];
-    err = wAppendQuotedArg(res, uwargs.getTerminatedBuffer());
+    err = wAppendQuotedArg(res, static_cast<const wchar_t*>(uwargs.getTerminatedBuffer()));
     if (err != TRI_ERROR_NO_ERROR) {
       return nullptr;
     }
@@ -1197,6 +1197,9 @@ static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
 #ifndef _WIN32
 static bool killProcess(ExternalProcess* pid, int signal) {
   TRI_ASSERT(pid != nullptr);
+  if (signal == SIGKILL) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "sending SIGKILL signal to process: " << pid->_pid;
+  }
   if (kill(pid->_pid, signal) == 0) {
     return true;
   }
@@ -1417,11 +1420,12 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool i
         return status;
       }
       std::this_thread::sleep_for(std::chrono::seconds(1));
-      if (count >= 8) {
+      if (count >= 13) {
         TRI_ASSERT(external != nullptr);
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "about to send SIGKILL signal to process: " << external->_pid << ", status: " << (int) status._status;
         killProcess(external, SIGKILL);
       }
-      if (count > 20) {
+      if (count > 25) {
         return status;
       }
       count++;
@@ -1429,6 +1433,14 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool i
   }
   return TRI_CheckExternalProcess(pid, false);
 }
+
+#ifdef _WIN32
+typedef LONG (NTAPI *NtSuspendProcess)(IN HANDLE ProcessHandle);
+typedef LONG (NTAPI *NtResumeProcess)(IN HANDLE ProcessHandle);
+
+NtSuspendProcess pfnNtSuspendProcess = (NtSuspendProcess)GetProcAddress(GetModuleHandle("ntdll"), "NtSuspendProcess");
+NtResumeProcess pfnNtResumeProcess = (NtResumeProcess)GetProcAddress(GetModuleHandle("ntdll"), "NtResumeProcess");
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stops an external process, only on Unix
@@ -1440,7 +1452,17 @@ bool TRI_SuspendExternalProcess(ExternalId pid) {
 #ifndef _WIN32
   return 0 == kill(pid._pid, SIGSTOP);
 #else
-  return true;
+  TRI_ERRORBUF;
+  
+  HANDLE processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid._pid);
+  bool rc = pfnNtSuspendProcess(processHandle) == 0;
+  if (!rc) {
+    TRI_SYSTEM_ERROR();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) <<
+      "suspending of '" << pid._pid << "' failed, error: " << GetLastError() << " " << TRI_GET_ERRORBUF;
+  }
+  CloseHandle(processHandle);
+  return rc;
 #endif
 }
 
@@ -1454,7 +1476,17 @@ bool TRI_ContinueExternalProcess(ExternalId pid) {
 #ifndef _WIN32
   return 0 == kill(pid._pid, SIGCONT);
 #else
-  return true;
+  TRI_ERRORBUF;
+
+  HANDLE processHandle = OpenProcess(PROCESS_SUSPEND_RESUME, FALSE, pid._pid);
+  bool rc = processHandle != NULL && pfnNtResumeProcess(processHandle) == 0;
+  if (!rc) {
+    TRI_SYSTEM_ERROR();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) <<
+      "resuming of '" << pid._pid << "' failed, error: " << GetLastError() << " " << TRI_GET_ERRORBUF;
+  }
+  CloseHandle(processHandle);
+  return rc;
 #endif
 }
 

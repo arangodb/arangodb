@@ -49,13 +49,24 @@ class MMFilesIndex : public Index {
   virtual bool isHidden() const override {
     return false;  // do not generally hide MMFiles indexes
   }
+  
+  virtual bool isPersistent() const override { return false; };
 
+  virtual void batchInsert(transaction::Methods& trx,
+                           std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const& docs,
+                           std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);
+  
+  virtual Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
+                        arangodb::velocypack::Slice const& doc, OperationMode mode) = 0;
+  
+  virtual Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
+                        arangodb::velocypack::Slice const& doc, OperationMode mode) = 0;
+  
   void afterTruncate(TRI_voc_tick_t) override {
     // for mmfiles, truncating the index just unloads it
     unload();
   }
 
-  virtual bool isPersistent() const { return false; };
 };
 }  // namespace arangodb
 

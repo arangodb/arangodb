@@ -44,6 +44,7 @@
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -53,6 +54,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
@@ -215,6 +217,12 @@ Query::~Query() {
   AqlFeature::unlease();
 }
 
+void Query::addDataSource(                                  // track DataSource
+    std::shared_ptr<arangodb::LogicalDataSource> const& ds  // DataSource to track
+) {
+  _queryDataSources.emplace(ds->guid(), ds->name());
+}
+
 /// @brief clone a query
 /// note: as a side-effect, this will also create and start a transaction for
 /// the query
@@ -263,14 +271,12 @@ Query* Query::clone(QueryPart part, bool withPlan) {
   return clone.release();
 }
 
-/// @brief whether or not the query is killed
-bool Query::killed() const { return _killed; }
-
 /// @brief set the query to killed
 void Query::kill() { _killed = true; }
 
 void Query::setExecutionTime() {
   if (_engine != nullptr) {
+    _engine->_stats.setPeakMemoryUsage(_resourceMonitor.currentResources.peakMemoryUsage);
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
   }
 }
@@ -564,11 +570,13 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
 
           if (cacheEntry != nullptr) {
             bool hasPermissions = true;
-
             ExecContext const* exe = ExecContext::CURRENT;
+
             // got a result from the query cache
             if (exe != nullptr) {
-              for (std::string const& dataSourceName : cacheEntry->_dataSources) {
+              for (auto& dataSource : cacheEntry->_dataSources) {
+                auto const& dataSourceName = dataSource.second;
+
                 if (!exe->canUseCollection(dataSourceName, auth::Level::RO)) {
                   // cannot use query cache result because of permissions
                   hasPermissions = false;
@@ -658,7 +666,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
             }
           }
 
-          _engine->_itemBlockManager.returnBlock(std::move(res.second));
+          _engine->itemBlockManager().returnBlock(std::move(res.second));
 
           if (res.first == ExecutionState::DONE) {
             break;
@@ -670,16 +678,28 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
         _resultBuilder->close();
 
         if (useQueryCache && _warnings.empty()) {
+          auto dataSources = _queryDataSources;
+
+          _trx->state()->allCollections(  // collect transaction DataSources
+              [&dataSources](TransactionCollection& trxCollection) -> bool {
+                auto const& c = trxCollection.collection();
+                dataSources.emplace(c->guid(), c->name());
+                return true;  // continue traversal
+              });
+
           // create a query cache entry for later storage
-          _cacheEntry = std::make_unique<QueryCacheResultEntry>(
-              hash(), _queryString, _resultBuilder, bindParameters(),
-              _trx->state()->collectionNames(_views));
+          _cacheEntry =
+              std::make_unique<QueryCacheResultEntry>(hash(), _queryString, _resultBuilder,
+                                                      bindParameters(),
+                                                      std::move(dataSources)  // query DataSources
+              );
         }
 
         queryResult.result = std::move(_resultBuilder);
         queryResult.context = _trx->transactionContext();
         _executionPhase = ExecutionPhase::FINALIZE;
       }
+
       // intentionally falls through
       case ExecutionPhase::FINALIZE: {
         // will set warnings, stats, profile and cleanup plan and engine
@@ -768,7 +788,9 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
 
         // got a result from the query cache
         if (exe != nullptr) {
-          for (std::string const& dataSourceName : cacheEntry->_dataSources) {
+          for (auto const& dataSource : cacheEntry->_dataSources) {
+            auto const& dataSourceName = dataSource.second;
+
             if (!exe->canUseCollection(dataSourceName, auth::Level::RO)) {
               // cannot use query cache result because of permissions
               hasPermissions = false;
@@ -864,7 +886,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
           }
         }
 
-        _engine->_itemBlockManager.returnBlock(std::move(value));
+        _engine->itemBlockManager().returnBlock(std::move(value));
       }
 
       builder->close();
@@ -879,12 +901,22 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
     queryResult.context = _trx->transactionContext();
 
     if (useQueryCache && _warnings.empty()) {
+      auto dataSources = _queryDataSources;
+
+      _trx->state()->allCollections(  // collect transaction DataSources
+          [&dataSources](TransactionCollection& trxCollection) -> bool {
+            auto const& c = trxCollection.collection();
+            dataSources.emplace(c->guid(), c->name());
+            return true;  // continue traversal
+          });
+
       // create a cache entry for later usage
-      _cacheEntry =
-          std::make_unique<QueryCacheResultEntry>(hash(), _queryString, builder,
-                                                  bindParameters(),
-                                                  _trx->state()->collectionNames(_views));
+      _cacheEntry = std::make_unique<QueryCacheResultEntry>(hash(), _queryString,
+                                                            builder, bindParameters(),
+                                                            std::move(dataSources)  // query DataSources
+      );
     }
+
     // will set warnings, stats, profile and cleanup plan and engine
     ExecutionState state = finalize(queryResult);
     while (state == ExecutionState::WAITING) {
@@ -934,7 +966,7 @@ ExecutionState Query::finalize(QueryResult& result) {
         << "Query::finalize: before cleanupPlanAndEngine"
         << " this: " << (uintptr_t)this;
 
-    _engine->_stats.setExecutionTime(runTime());
+    setExecutionTime();
     enterState(QueryExecutionState::ValueType::FINALIZATION);
 
     result.extra = std::make_shared<VPackBuilder>();
@@ -967,7 +999,7 @@ ExecutionState Query::finalize(QueryResult& result) {
   // patch executionTime stats value in place
   // we do this because "executionTime" should include the whole span of the
   // execution and we have to set it at the very end
-  double const rt = runTime(now);
+  double const rt = now - _startTime;
   basics::VelocyPackHelper::patchDouble(result.extra->slice().get("stats").get("executionTime"),
                                         rt);
 
@@ -1134,12 +1166,13 @@ void Query::prepareV8Context() {
 
   {
     v8::HandleScope scope(isolate);
+    v8::ScriptOrigin scriptOrigin(TRI_V8_ASCII_STRING(isolate, "--script--"));
     v8::Handle<v8::Script> compiled =
-        v8::Script::Compile(TRI_V8_STD_STRING(isolate, body),
-                            TRI_V8_ASCII_STRING(isolate, "--script--"));
+        v8::Script::Compile(TRI_IGETC, TRI_V8_STD_STRING(isolate, body), &scriptOrigin)
+            .FromMaybe(v8::Local<v8::Script>());
 
     if (!compiled.IsEmpty()) {
-      compiled->Run();
+      compiled->Run(TRI_IGETC).FromMaybe(v8::Local<v8::Value>());  // TODO: Result?
       _preparedV8Context = true;
     }
   }
@@ -1202,7 +1235,7 @@ void Query::exitContext() {
 /// @brief returns statistics for current query.
 void Query::getStats(VPackBuilder& builder) {
   if (_engine != nullptr) {
-    _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
+    setExecutionTime();
     _engine->_stats.toVelocyPack(builder, _queryOptions.fullCount);
   } else {
     ExecutionStats::toVelocyPackStatic(builder);

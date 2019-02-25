@@ -28,7 +28,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -241,12 +240,21 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
     VPackSlice extra = slice.get("extra");
     Result res = um->storeUser(false, user, passwd, active, VPackSlice::noneSlice());
     if (res.fail() && !res.is(TRI_ERROR_USER_DUPLICATE)) {
-      LOG_TOPIC(WARN, Logger::STARTUP) << "could not add database user " << user;
+      LOG_TOPIC(WARN, Logger::STARTUP) << "could not add database user " << user << ": " << res.errorMessage();
     } else if (extra.isObject() && !extra.isEmptyObject()) {
       um->updateUser(user, [&](auth::User& user) {
         user.setUserData(VPackBuilder(extra));
         return TRI_ERROR_NO_ERROR;
       });
+    }
+  
+    res = um->updateUser(user, [&](auth::User& entry) {
+      entry.grantDatabase(vocbase.name(), auth::Level::RW);
+      entry.grantCollection(vocbase.name(), "*", auth::Level::RW);
+      return TRI_ERROR_NO_ERROR;
+    });
+    if (res.fail()) {
+      LOG_TOPIC(WARN, Logger::STARTUP) << "could not set permissions for new user " << user << ": " << res.errorMessage();
     }
   }
   return true;

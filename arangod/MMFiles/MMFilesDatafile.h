@@ -43,6 +43,7 @@ enum TRI_df_state_e {
 };
 
 /// @brief type of the marker
+/// @note for deprecated values please leave the value in the enum as a comment
 enum MMFilesMarkerType : uint8_t {
   TRI_DF_MARKER_MIN = 9,  // not a real marker type,
                           // but used for bounds checking
@@ -71,6 +72,7 @@ enum MMFilesMarkerType : uint8_t {
   TRI_DF_MARKER_VPACK_CREATE_VIEW = 80,
   TRI_DF_MARKER_VPACK_DROP_VIEW = 81,
   TRI_DF_MARKER_VPACK_CHANGE_VIEW = 82,
+  TRI_DF_MARKER_VPACK_FLUSH_SYNC = 83, // @see FlushFeature
 
   TRI_DF_MARKER_MAX  // again, this is not a real
                      // marker, but we use it for
