@@ -86,11 +86,11 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
                             std::function<bool(std::string const&)> const& filter,
                             std::string& error);
 
-typedef enum {
+enum TRI_copy_recursive_e {
   TRI_COPY_IGNORE,
   TRI_COPY_COPY,
   TRI_COPY_LINK
-} TRI_copy_recursive_e;
+};
 
 
 /// @brief copies directories / files recursive
