@@ -121,7 +121,7 @@ JOB_STATUS CleanOutServer::status() {
         reportTrx.add("op", VPackValue("push"));
         reportTrx.add("new", VPackValue(_server));
       }
-      reportTrx.add(VPackValue("/Target/ToBeCleanedServers"));
+      reportTrx.add(VPackValue(toBeCleanedPrefix));
       {
         VPackObjectBuilder guard4(&reportTrx);
         reportTrx.add("op", VPackValue("erase"));
@@ -318,7 +318,7 @@ bool CleanOutServer::start() {
       addBlockServer(*pending, _server, _jobId);
 
       // Put ourselves in list of servers to be cleaned:
-      pending->add(VPackValue("/Target/ToBeCleanedServers"));
+      pending->add(VPackValue(toBeCleanedPrefix));
       {
         VPackObjectBuilder guard4(pending.get());
         pending->add("op", VPackValue("push"));
@@ -512,7 +512,7 @@ arangodb::Result CleanOutServer::abort() {
   auto payload = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder p(payload.get());
-    payload->add(VPackValue("/Target/ToBeCleanedServers"));
+    payload->add(VPackValue(toBeCleanedPrefix));
     {
       VPackObjectBuilder pp(payload.get());
       payload->add("op", VPackValue("erase"));

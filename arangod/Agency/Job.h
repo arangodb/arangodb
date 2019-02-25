@@ -48,6 +48,7 @@ extern std::string const failedPrefix;
 extern std::string const finishedPrefix;
 extern std::string const toDoPrefix;
 extern std::string const cleanedPrefix;
+extern std::string const toBeCleanedPrefix;
 extern std::string const failedServersPrefix;
 extern std::string const planColPrefix;
 extern std::string const curColPrefix;
