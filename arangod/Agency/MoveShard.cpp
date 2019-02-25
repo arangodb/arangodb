@@ -764,7 +764,7 @@ arangodb::Result MoveShard::abort() {
       auto const& cur = _snapshot.hasAsArray(
         curColPrefix + _database + "/" + i.collection + "/" + i.shard + "/" + "servers");
       if (cur.second && cur.first[0].copyString() == _to) {
-        LOG_TOPIC(DEBUG, Logger::SUPERVISION) <<
+        LOG_TOPIC(WARN, Logger::SUPERVISION) <<
           "MoveShard can no longer abort through reversion to where it started. Flight forward";
         finish(_to, _shard, true, "job aborted - new leader already in place");
         return result;
