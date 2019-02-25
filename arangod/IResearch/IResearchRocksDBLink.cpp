@@ -18,7 +18,8 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov ////////////////////////////////////////////////////////////////////////////////
+/// @author Vasiliy Nabatchikov 
+////////////////////////////////////////////////////////////////////////////////
 #include "Basics/Common.h"  // required for RocksDBColumnFamily.h
 #include "IResearchLinkHelper.h"
 #include "IResearchView.h"
