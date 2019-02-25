@@ -216,7 +216,7 @@ Result IndexFactory::enhanceIndexDefinition(velocypack::Slice const definition,
     auto nameSlice = definition.get(StaticStrings::IndexName);
     std::string name;
 
-    if (nameSlice.isString()) {
+    if (nameSlice.isString() && (nameSlice.getStringLength() != 0)) {
       name = nameSlice.copyString();
       // TODO validate name?
     } else {

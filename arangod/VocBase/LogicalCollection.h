@@ -271,6 +271,9 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief Find index by iid
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
 
+  /// @brief Find index by name
+  std::shared_ptr<Index> lookupIndex(std::string const&) const;
+
   bool dropIndex(TRI_idx_iid_t iid);
 
   // SECTION: Index access (local only)

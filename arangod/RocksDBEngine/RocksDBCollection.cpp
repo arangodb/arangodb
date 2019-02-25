@@ -20,7 +20,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBCollection.h"
 #include "Aql/PlanCache.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
@@ -36,6 +35,7 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
@@ -273,6 +273,7 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
     for (auto const& it : _indexes) {
       if (it->id() == id) {  // index is there twice
         idx.reset();
+        break;
       }
     }
 
@@ -332,10 +333,12 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     if ((idx = findIndex(info, _indexes)) != nullptr) {
       // We already have this index.
       if (idx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "there can only be one ttl index per collection");
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "there can only be one ttl index per collection");
       }
 
-      created = false;  
+      created = false;
       return idx;
     }
   }
@@ -358,7 +361,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   {
     READ_LOCKER(guard, _indexesLock);
     for (auto const& other : _indexes) {  // conflicting index exists
-      if (other->id() == idx->id()) {
+      if (other->id() == idx->id() || other->name() == idx->name()) {
         return other;  // index already exists
       }
     }
@@ -382,7 +385,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
       VPackBuilder builder;
       builder.openObject();
       for (auto const& pair : VPackObjectIterator(VPackSlice(value.data()))) {
-        if (pair.key.isEqualString("indexes")) {  // append new index 
+        if (pair.key.isEqualString("indexes")) {  // append new index
           VPackArrayBuilder arrGuard(&builder, "indexes");
           builder.add(VPackArrayIterator(pair.value));
           buildIdx->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Internals));
@@ -411,7 +414,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   }
   TRI_ASSERT(res.fail() || locker.isLocked());  // always lock to avoid inconsistencies
   locker.lock();
-  
+
   // Step 5. cleanup
   if (res.ok()) {
     {
@@ -739,7 +742,8 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
   LocalDocumentId documentId;
   revisionId = 0;
   // lookup the revision id in the primary index
-  if (!primaryIndex()->lookupRevision(trx, arangodb::velocypack::StringRef(key), documentId, revisionId)) {
+  if (!primaryIndex()->lookupRevision(trx, arangodb::velocypack::StringRef(key),
+                                      documentId, revisionId)) {
     // document not found
     TRI_ASSERT(revisionId == 0);
     return false;
@@ -756,7 +760,8 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
   });
 }
 
-Result RocksDBCollection::read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
+Result RocksDBCollection::read(transaction::Methods* trx,
+                               arangodb::velocypack::StringRef const& key,
                                ManagedDocumentResult& result, bool) {
   LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, key);
   if (documentId.isSet()) {
@@ -1315,8 +1320,8 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
-    res = rIdx->update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId, newDoc,
-                       options.indexOperationMode);
+    res = rIdx->update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId,
+                       newDoc, options.indexOperationMode);
 
     if (res.fail()) {
       break;

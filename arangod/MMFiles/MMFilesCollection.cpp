@@ -21,7 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MMFilesCollection.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
 #include "Basics/Exceptions.h"
@@ -51,6 +50,7 @@
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesTransactionState.h"
+#include "MMFilesCollection.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -704,7 +704,7 @@ int MMFilesCollection::close() {
     // We also have to unload the indexes.
     WRITE_LOCKER(writeLocker, _dataLock);
 
-    READ_LOCKER_EVENTUAL(guard, _indexesLock); 
+    READ_LOCKER_EVENTUAL(guard, _indexesLock);
 
     for (auto& idx : _indexes) {
       idx->unload();
@@ -719,11 +719,11 @@ int MMFilesCollection::close() {
                           _ditches.contains(MMFilesDitch::TRI_DITCH_DATAFILE_RENAME) ||
                           _ditches.contains(MMFilesDitch::TRI_DITCH_REPLICATION) ||
                           _ditches.contains(MMFilesDitch::TRI_DITCH_COMPACTION));
-   
+
     if (!hasDocumentDitch && !hasOtherDitch) {
       // we can abort now
       break;
-    } 
+    }
 
     // give the cleanup thread more time to clean up
     {
@@ -733,9 +733,13 @@ int MMFilesCollection::close() {
 
     if ((++tries % 10) == 0) {
       if (hasDocumentDitch) {
-        LOG_TOPIC(WARN, Logger::ENGINES) << "waiting for cleanup of document ditches for collection '" << _logicalCollection.name() << "'. has other: " << hasOtherDitch; 
+        LOG_TOPIC(WARN, Logger::ENGINES)
+            << "waiting for cleanup of document ditches for collection '"
+            << _logicalCollection.name() << "'. has other: " << hasOtherDitch;
       } else {
-        LOG_TOPIC(WARN, Logger::ENGINES) << "waiting for cleanup of ditches for collection '" << _logicalCollection.name() << "'";
+        LOG_TOPIC(WARN, Logger::ENGINES)
+            << "waiting for cleanup of ditches for collection '"
+            << _logicalCollection.name() << "'";
       }
     }
 
@@ -2021,7 +2025,8 @@ Result MMFilesCollection::read(transaction::Methods* trx, VPackSlice const& key,
   return Result(TRI_ERROR_NO_ERROR);
 }
 
-Result MMFilesCollection::read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
+Result MMFilesCollection::read(transaction::Methods* trx,
+                               arangodb::velocypack::StringRef const& key,
                                ManagedDocumentResult& result, bool lock) {
   // copy string into a vpack string
   transaction::BuilderLeaser builder(trx);
@@ -2200,10 +2205,12 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods& trx,
   TRI_ASSERT(info.isObject());
   std::shared_ptr<Index> idx = PhysicalCollection::lookupIndex(info);
 
-  if (idx != nullptr) {  
+  if (idx != nullptr) {
     // We already have this index.
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "there can only be one ttl index per collection");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "there can only be one ttl index per collection");
     }
     created = false;
     return idx;
@@ -2227,6 +2234,9 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods& trx,
   }
 
   auto other = PhysicalCollection::lookupIndex(idx->id());
+  if (!other) {
+    other = PhysicalCollection::lookupIndex(idx->name());
+  }
   if (other) {
     return other;
   }
