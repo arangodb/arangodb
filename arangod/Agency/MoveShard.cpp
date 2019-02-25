@@ -839,12 +839,16 @@ arangodb::Result MoveShard::abort() {
                     std::string("Lost leadership"));
     return result;
   } else if (res.indices[0] == 0) {
-
-    // Tough luck. Things have changed. We'll move on
-    LOG_TOPIC(WARN, Logger::SUPERVISION) <<
-      "MoveShard can no longer abort through reversion to where it started. Flight forward";
-    finish(_to, _shard, true, "job aborted - new leader already in place");
-    return result;
+    if (_isLeader) {
+      // Tough luck. Things have changed. We'll move on
+      LOG_TOPIC(WARN, Logger::SUPERVISION) <<
+        "MoveShard can no longer abort through reversion to where it started. Flight forward";
+      finish(_to, _shard, true, "job aborted - new leader already in place");
+      return result;
+    }
+    result = Result(
+    TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
+    std::string("Precondition failed while aborting moveShard job ") + _jobId);
   }
 
   return result;
