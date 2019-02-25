@@ -365,7 +365,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
   // include system collections?
   bool includeSystem = _request->parsedValue("includeSystem", true);
-  bool includeFoxxQs = _request->parsedValue("includeFoxxQueues", true);
+  bool includeFoxxQs = _request->parsedValue("includeFoxxQueues", false);
 
   // produce inventory for all databases?
   bool isGlobal = false;
