@@ -543,7 +543,7 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
 
   // include system collections?
   bool includeSystem = _request->parsedValue("includeSystem", true);
-  bool includeFoxxQueues = _request->parsedValue("includeFoxxQueues", true);
+  bool includeFoxxQueues = _request->parsedValue("includeFoxxQueues", false);
 
   // produce inventory for all databases?
   bool global = _request->parsedValue("global", false);
