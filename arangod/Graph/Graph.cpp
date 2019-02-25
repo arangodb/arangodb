@@ -382,6 +382,12 @@ ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefi
     toSet.emplace(it.copyString());
   }
 
+  // We do not allow creating an edge definition with either an empty from
+  // or an empty to set
+  if (fromSet.size() == 0 || toSet.size() == 0) {
+    return Result(TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION);
+  }
+
   return EdgeDefinition{collection, std::move(fromSet), std::move(toSet)};
 }
 

@@ -192,34 +192,6 @@
     "section" : "",
     "type" : "boolean"
   },
-  "encryption.key-generator" : {
-    "category" : "option",
-    "default" : "",
-    "deprecatedIn" : null,
-    "description" : "program providing the encryption key on stdout. If set, encryption will be enabled.",
-    "dynamic" : false,
-    "enterpriseOnly" : true,
-    "hidden" : false,
-    "introducedIn" : null,
-    "obsolete" : false,
-    "requiresValue" : true,
-    "section" : "encryption",
-    "type" : "string"
-  },
-  "encryption.keyfile" : {
-    "category" : "option",
-    "default" : "",
-    "deprecatedIn" : null,
-    "description" : "file containing the encryption key. If set, encryption will be enabled.",
-    "dynamic" : false,
-    "enterpriseOnly" : true,
-    "hidden" : false,
-    "introducedIn" : null,
-    "obsolete" : false,
-    "requiresValue" : true,
-    "section" : "encryption",
-    "type" : "string"
-  },
   "force" : {
     "category" : "option",
     "default" : false,
@@ -292,7 +264,7 @@
   },
   "input-directory" : {
     "category" : "option",
-    "default" : "/oskar/work/ArangoDB/dump",
+    "default" : "/home/fceller/ArangoDB-3.4/dump",
     "deprecatedIn" : null,
     "description" : "input directory",
     "dynamic" : false,

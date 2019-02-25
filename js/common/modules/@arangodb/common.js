@@ -39,7 +39,7 @@ Object.keys(internal.errors).forEach(function(key) {
 });
 
 function isAqlQuery(query) {
-  return Boolean(query && query.query && query.bindVars);
+  return Boolean(query && typeof query.query === "string" && query.bindVars);
 }
 
 function isGeneratedAqlQuery(query) {

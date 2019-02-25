@@ -185,13 +185,14 @@ Result RocksDBFulltextIndex::insertInternal(transaction::Methods* trx, RocksDBMe
   // unique indexes have a different key structure
   RocksDBValue value = RocksDBValue::VPackIndexValue();
 
+  TRI_ASSERT(!_unique);
   int res = TRI_ERROR_NO_ERROR;
   // size_t const count = words.size();
   for (std::string const& word : words) {
     RocksDBKeyLeaser key(trx);
     key->constructFulltextIndexValue(_objectId, StringRef(word), documentId);
 
-    Result r = mthd->Put(_cf, key.ref(), value.string(), rocksutils::index);
+    Result r = mthd->PutUntracked(_cf, key.ref(), value.string(), rocksutils::index);
     if (!r.ok()) {
       res = r.errorNumber();
       break;
