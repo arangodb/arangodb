@@ -841,8 +841,8 @@ arangodb::Result MoveShard::abort() {
   } else if (res.indices[0] == 0) {
 
     // Tough luck. Things have changed. We'll move on
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION) <<
-      "MoveShard can not longer abort through reversion to where it started. Flight forward";
+    LOG_TOPIC(WARN, Logger::SUPERVISION) <<
+      "MoveShard can no longer abort through reversion to where it started. Flight forward";
     finish(_to, _shard, true, "job aborted - new leader already in place");
     return result;
   }
