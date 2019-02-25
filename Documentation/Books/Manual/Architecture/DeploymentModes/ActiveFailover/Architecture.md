@@ -45,7 +45,7 @@ previous follower stop its replication and make it the new _Leader_.
 
 {% hint 'info' %}
 The different instances participating in an Active Failover setup are supposed
-to be run in the same _Data Center_ (DC), with reliable and high-speed network
+to be run in the same _Data Center_ (DC), with a reliable high-speed network
 connection between all the machines participating in the Active Failover setup.
 
 Multi-datacenter Active Failover setups are currently not supported.
