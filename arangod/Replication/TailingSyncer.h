@@ -147,6 +147,9 @@ class TailingSyncer : public Syncer {
   /// @brief determines if we can work in parallel on master and slave
   void checkParallel();
 
+  /// @brief removes a single document, starting a single-operation transaction
+  arangodb::Result removeSingleDocument(arangodb::LogicalCollection* coll, std::string const& key);
+
  protected:
   virtual bool skipMarker(arangodb::velocypack::Slice const& slice) = 0;
 
@@ -178,9 +181,6 @@ class TailingSyncer : public Syncer {
   /// fetching
   /// data from a master
   bool _requireFromPresent;
-
-  /// @brief whether we can use single operation transactions
-  bool _supportsSingleOperations;
 
   /// @brief ignore rename, create and drop operations for collections
   bool _ignoreRenameCreateDrop;

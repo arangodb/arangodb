@@ -104,7 +104,6 @@ TailingSyncer::TailingSyncer(ReplicationApplier* applier,
       _usersModified(false),
       _useTick(useTick),
       _requireFromPresent(configuration._requireFromPresent),
-      _supportsSingleOperations(false),
       _ignoreRenameCreateDrop(false),
       _ignoreDatabaseMarkers(true),
       _workInParallel(false) {
@@ -115,7 +114,6 @@ TailingSyncer::TailingSyncer(ReplicationApplier* applier,
 
   // FIXME: move this into engine code
   std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
-  _supportsSingleOperations = (engineName == "mmfiles");
 
   // Replication for RocksDB expects only one open transaction at a time
   _supportsMultipleOpenTransactions = (engineName != "rocksdb");
@@ -414,6 +412,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
     trx->addCollectionAtRuntime(coll->id(), coll->name(), AccessMode::Type::EXCLUSIVE);
     Result r = applyCollectionDumpMarker(*trx, coll, type, applySlice);
+    TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
 
     if (r.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
       // ignore unique constraint violations for system collections
@@ -426,42 +425,106 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     return r;  // done
   }
 
-  // standalone operation
-  // update the apply tick for all standalone operations
-  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(*vocbase),
+  // this variable will store the key of a conflicting document we will have to remove first
+  // it is initially empty, and may be populated by a failing operation
+  std::string conflictDocumentKey;
+    
+  // normally we will go into this while loop just once. only in the very exceptional case
+  // that there is a unique constraint violation in one of the secondary indexes we will
+  // get into the while loop a second time
+  int tries = 0;
+  while (tries++ < 10) {
+    if (!conflictDocumentKey.empty()) {
+      // a rather exceptional case in which we have to remove a conflicting document,
+      // which is conflicting with the to-be-inserted document in one the unique
+      // secondary indexes
+
+      // intentionally ignore the return code here, as the operation will be followed
+      // by yet another insert/replace
+      removeSingleDocument(coll, conflictDocumentKey);
+      conflictDocumentKey.clear();
+    }
+    
+    // standalone operation
+    // update the apply tick for all standalone operations
+    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(*vocbase),
+                                    *coll, AccessMode::Type::EXCLUSIVE);
+
+    // we will always check if the target document already exists and then either
+    // carry out an insert or a replace.
+    // so we will be carrying out either a read-then-insert or a read-then-replace
+    // operation, which is a single write operation. and for MMFiles this is also
+    // safe as we have the exclusive lock on the underlying collection anyway 
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+
+    Result res = trx.begin();
+
+    // fix error handling here when function returns result
+    if (!res.ok()) {
+      return Result(res.errorNumber(),
+                    std::string("unable to create replication transaction: ") +
+                        res.errorMessage());
+    }
+
+    res = applyCollectionDumpMarker(trx, coll, type, applySlice);
+
+    if (res.is(TRI_ERROR_ARANGO_TRY_AGAIN)) {
+      // TRY_AGAIN we will only be getting when there is a conflicting document.
+      // the key of the conflicting document can be found in the errorMessage
+      // of the result :-|
+      TRI_ASSERT(!res.errorMessage().empty());
+      conflictDocumentKey = std::move(res.errorMessage());
+      // restart the while loop above
+      continue;
+    }
+
+    if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
+      // ignore unique constraint violations for system collections
+      res.reset();
+    }
+
+    // fix error handling here when function returns result
+    if (res.ok()) {
+      std::string const collectionName = trx.name();
+
+      res = trx.commit();
+
+      if (res.ok() && collectionName == TRI_COL_NAME_USERS) {
+        _usersModified = true;
+      }
+    }
+
+    return res;
+  }
+
+  return Result(TRI_ERROR_INTERNAL, "invalid state reached in processDocument");
+}
+
+Result TailingSyncer::removeSingleDocument(LogicalCollection* coll, std::string const& key) {
+  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(coll->vocbase()),
                                   *coll, AccessMode::Type::EXCLUSIVE);
 
-  if (_supportsSingleOperations) {
-    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  }
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
-
-  // fix error handling here when function returns result
-  if (!res.ok()) {
-    return Result(res.errorNumber(),
-                  std::string("unable to create replication transaction: ") +
-                      res.errorMessage());
+  if (res.fail()) {
+    return res;
   }
 
-  std::string collectionName = trx.name();
-
-  res = applyCollectionDumpMarker(trx, coll, type, applySlice);
-  if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
-    // ignore unique constraint violations for system collections
-    res.reset();
+  OperationOptions options;
+  options.silent = true;
+  options.ignoreRevs = true;
+  options.isRestore = true;
+            
+  VPackBuilder tmp;
+  tmp.add(VPackValue(key));
+  
+  OperationResult opRes = trx.remove(coll->name(), tmp.slice(), options);
+  if (opRes.fail()) {
+    return opRes.result;
   }
-
-  // fix error handling here when function returns result
-  if (res.ok()) {
-    res = trx.commit();
-
-    if (res.ok() && collectionName == TRI_COL_NAME_USERS) {
-      _usersModified = true;
-    }
-  }
-
-  return res;
+  
+  return trx.commit();
 }
 
 /// @brief starts a transaction, based on the VelocyPack provided

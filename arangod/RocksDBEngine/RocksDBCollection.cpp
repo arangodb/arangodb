@@ -748,9 +748,9 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
+  
+  bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
-  LocalDocumentId const documentId = LocalDocumentId::create();
-  auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
   Result res(newObjectForInsert(trx, slice, isEdgeCollection, *builder.get(),
                                 options.isRestore, revisionId));
@@ -776,9 +776,9 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     // in secondary indexes here, but defer it to the regular index insertion check
     VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(newSlice);
     if (keySlice.isString()) {
-      LocalDocumentId const documentId =
+      LocalDocumentId const oldDocumentId =
           primaryIndex()->lookupKey(trx, StringRef(keySlice));
-      if (documentId.isSet()) {
+      if (oldDocumentId.isSet()) {
         if (options.indexOperationMode == Index::OperationMode::internal) {
           // need to return the key of the conflict document
           return Result(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, keySlice.copyString());
@@ -787,6 +787,8 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       }
     }
   }
+  
+  LocalDocumentId const documentId = LocalDocumentId::create();
 
   RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
@@ -1361,27 +1363,27 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
 
   // We NEED to do the PUT first, otherwise WAL tailing breaks
-  RocksDBKeyLeaser newKey(trx);
-  newKey->constructDocument(_objectId, newDocumentId);
+  RocksDBKeyLeaser key(trx);
+  key->constructDocument(_objectId, newDocumentId);
   // TODO: given that this should have a unique revision ID, do
   // we really need to blacklist the new key?
-  blackListKey(newKey->string().data(), static_cast<uint32_t>(newKey->string().size()));
+  blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthd, trx->isSingleOperationTransaction());
 
-  Result res = mthd->PutUntracked(RocksDBColumnFamily::documents(), newKey.ref(),
+  Result res = mthd->PutUntracked(RocksDBColumnFamily::documents(), key.ref(),
                          rocksdb::Slice(reinterpret_cast<char const*>(newDoc.begin()),
                                         static_cast<size_t>(newDoc.byteSize())));
   if (!res.ok()) {
     return res;
   }
 
-  RocksDBKeyLeaser oldKey(trx);
-  oldKey->constructDocument(_objectId, oldDocumentId);
-  blackListKey(oldKey->string().data(), static_cast<uint32_t>(oldKey->string().size()));
+  key->clear();
+  key->constructDocument(_objectId, oldDocumentId);
+  blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
-  res = mthd->Delete(RocksDBColumnFamily::documents(), oldKey.ref());
+  res = mthd->Delete(RocksDBColumnFamily::documents(), key.ref());
   if (!res.ok()) {
     return res;
   }

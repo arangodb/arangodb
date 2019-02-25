@@ -328,11 +328,12 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx, RocksDBMet
                                            VPackSlice const& slice, OperationMode mode) {
   IndexResult res;
 
-  VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
+  VPackSlice keySlice;
+  TRI_voc_rid_t revision;
+  transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revision);
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
 
-  TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(slice);
   auto value = RocksDBValue::PrimaryIndexValue(documentId, revision);
 
   if (mthd->Exists(_cf, key.ref())) {
