@@ -45,17 +45,19 @@ HashedCollectExecutorInfos::HashedCollectExecutorInfos(
     std::unordered_set<RegisterId> registersToClear,
     std::unordered_set<RegisterId> registersToKeep,
     std::unordered_set<RegisterId>&& readableInputRegisters,
-    std::unordered_set<RegisterId>&& writeableInputRegisters,
+    std::unordered_set<RegisterId>&& writeableOutputRegisters,
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters, RegisterId collectRegister,
     std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
+    std::vector<std::pair<Variable const*, Variable const*>> groupVariables,
     transaction::Methods* trxPtr, bool count)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
-                    std::make_shared<std::unordered_set<RegisterId>>(writeableInputRegisters),
+                    std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _aggregateVariables(aggregateVariables),
       _groupRegisters(groupRegisters),
       _collectRegister(collectRegister),
+      _groupVariables(groupVariables),
       _count(count),
       _trxPtr(trxPtr) {
   TRI_ASSERT(!_groupRegisters.empty());
@@ -64,10 +66,14 @@ HashedCollectExecutorInfos::HashedCollectExecutorInfos(
 HashedCollectExecutor::HashedCollectExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
+      _state(ExecutionState::HASMORE),
+      _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _allGroups(1024,
                  AqlValueGroupHash(_infos.getTransaction(),
-                                   _infos.getGroupVariables().size()),
-                 AqlValueGroupEqual(_infos.getTransaction())){};
+                                   _infos.getGroupVariables().size()),  // TODO GROUP VARIABLES BROKEN
+                 AqlValueGroupEqual(_infos.getTransaction())),
+                 _done(false),
+                 _init(false){};
 
 HashedCollectExecutor::~HashedCollectExecutor() {
   // Generally, _allGroups should be empty when the block is destroyed - except
@@ -89,8 +95,6 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   NoStats stats{};
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
-  ExecutionState state;
 
   std::vector<AqlValue> groupValues;
   groupValues.reserve(_infos.getGroupRegisters().size());  // TODO CHECK
@@ -138,7 +142,7 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
   // _allGroups. additionally, .second is true iff a new group was emplaced.
   auto findOrEmplaceGroup = [this, &buildNewGroup](InputAqlItemRow& input)
       -> std::pair<decltype(_allGroups)::iterator, bool> {
-    std::vector<AqlValue> groupValues;
+    std::vector<AqlValue> groupValues;  // TODO store groupValues locally
     size_t const n = _infos.getGroupRegisters().size();
     groupValues.reserve(n);
 
@@ -169,44 +173,45 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
   };
 
   auto buildResult = [this](InputAqlItemRow& input, OutputAqlItemRow& output) {
-      TRI_ASSERT(!_infos.getCount() || _infos.getCollectRegister() != ExecutionNode::MaxRegisterId);
+    TRI_ASSERT(!_infos.getCount() || _infos.getCollectRegister() != ExecutionNode::MaxRegisterId);
 
-      // TODO CHECK -- size_t row = 0;
-      for (auto& it : _allGroups) {
-        auto& keys = it.first;
-        TRI_ASSERT(it.second != nullptr);
+    // TODO CHECK -- size_t row = 0;
+    auto& keys = _currentGroup->first;
+    TRI_ASSERT(_currentGroup->second != nullptr);
 
-        TRI_ASSERT(keys.size() == _infos.getGroupRegisters().size());
-        size_t i = 0;
-        for (auto& key : keys) {
-          output.cloneValueInto(_infos.getGroupRegisters()[i++].first, input, key);
-          const_cast<AqlValue*>(&key)->erase();  // to prevent double-freeing later
-        }
+    TRI_ASSERT(keys.size() == _infos.getGroupRegisters().size());
+    size_t i = 0;
+    for (auto& key : keys) {
+      output.cloneValueInto(_infos.getGroupRegisters()[i++].first, input, key);
+      // const_cast<AqlValue*>(&key)->erase();  // to prevent double-freeing later
+    }
 
-        if (!_infos.getCount()) {
-          TRI_ASSERT(it.second->size() == _infos.getAggregatedRegisters().size());
-          size_t j = 0;
-          for (auto const& r : *(it.second)) {
-            output.cloneValueInto(_infos.getAggregatedRegisters()[j++].first, input, r->stealValue());
-          }
-        } else {
-          // set group count in result register
-          TRI_ASSERT(!it.second->empty());
-          output.cloneValueInto(_infos.getCollectRegister(), input, it.second->back()->stealValue());
-        }
-
-        /* // TODO
-        if (row > 0) {
-          // re-use already copied AQLValues for remaining registers
-          result->copyValuesFromFirstRow(row, nrInRegs);
-        }
-
-        ++row;*/
+    if (!_infos.getCount()) {
+      TRI_ASSERT(_currentGroup->second->size() ==
+                 _infos.getAggregatedRegisters().size());
+      size_t j = 0;
+      for (auto const& r : *(_currentGroup->second)) {
+        output.cloneValueInto(_infos.getAggregatedRegisters()[j++].first, input,
+                              r->stealValue());
       }
+    } else {
+      // set group count in result register
+      TRI_ASSERT(!_currentGroup->second->empty());
+      output.cloneValueInto(_infos.getCollectRegister(), input,
+                            _currentGroup->second->back()->stealValue());
+    }
+
+    /* // TODO
+    if (row > 0) {
+      // re-use already copied AQLValues for remaining registers
+      result->copyValuesFromFirstRow(row, nrInRegs);
+    }
+
+    ++row;*/
   };
 
   // "adds" the current row to its group's aggregates.
-  auto reduceAggregates = [this, input](decltype(_allGroups)::iterator groupIt) {
+  auto reduceAggregates = [this](decltype(_allGroups)::iterator groupIt) {
     AggregateValuesType* aggregateValues = groupIt->second.get();
 
     if (_infos.getAggregateVariables().empty()) {
@@ -222,9 +227,9 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
       size_t j = 0;
       for (auto const& r : _infos.getAggregatedRegisters()) {
         if (r.second == ExecutionNode::MaxRegisterId) {
-          (*aggregateValues)[j]->reduce(EmptyValue); // TODO difference to AqlValue() ?
+          (*aggregateValues)[j]->reduce(EmptyValue);  // TODO difference to AqlValue() ?
         } else {
-          (*aggregateValues)[j]->reduce(input.getValue(r.second));
+          (*aggregateValues)[j]->reduce(_input.getValue(r.second));
           ++j;
         }
       }
@@ -232,34 +237,50 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
   };
 
   while (true) {
-    std::tie(state, input) = _fetcher.fetchRow();
+    if (_init) {
+      buildResult(_input, output);
 
-    if (state == ExecutionState::WAITING) {
-      return {state, stats};
+      if (_currentGroup == _allGroups.end()) {
+        _done = true;
+        return {ExecutionState::DONE, stats};
+      }
+      // incr the group iterator
+      _currentGroup++;
+      if (_currentGroup == _allGroups.end()) {
+        return {ExecutionState::DONE, stats};
+      }
+
+      return {ExecutionState::HASMORE, stats};
     }
 
-    if (!input) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return {state, stats};
+    if (_state != ExecutionState::DONE) {
+      std::tie(_state, _input) = _fetcher.fetchRow();
     }
-    TRI_ASSERT(input.isInitialized());
 
-    // TODO LOGIC HERE
-    // NOLINTNEXTLINE(hicpp-use-auto,modernize-use-auto)
-    decltype(_allGroups)::iterator currentGroupIt;
-    bool newGroup;
-    std::tie(currentGroupIt, newGroup) = findOrEmplaceGroup(input);
+    if (_state == ExecutionState::WAITING) {
+      return {_state, stats};
+    }
 
-    /*
-    if (newGroup) {
-      ++_skipped;
-    }*/
+    if (!_input && _done) {
+      TRI_ASSERT(_state == ExecutionState::DONE);
+      return {_state, stats};
+    }
 
-    reduceAggregates(currentGroupIt);
+    if (_input) {
+      // NOLINTNEXTLINE(hicpp-use-auto,modernize-use-auto)
+      decltype(_allGroups)::iterator currentGroupIt;
+      bool newGroup;
+      TRI_ASSERT(_input.isInitialized());
+      std::tie(currentGroupIt, newGroup) = findOrEmplaceGroup(_input);
+      reduceAggregates(currentGroupIt);
+    }
 
-    if (state == ExecutionState::DONE) {
-      // TODO check order of calls here
-      buildResult(input, output);
+    if (_state == ExecutionState::DONE) {
+      // setup the iterator
+      if (!_init) {
+        _currentGroup = _allGroups.begin();
+        _init = true;
+      }
     }
   }
 }

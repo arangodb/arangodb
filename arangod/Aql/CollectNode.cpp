@@ -28,6 +28,7 @@
 #include "Aql/DistinctCollectExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/HashedCollectExecutor.h"
 #include "Aql/VariableGenerator.h"
 #include "Aql/WalkerWorker.h"
 
@@ -125,8 +126,51 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const 
 std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   switch (aggregationMethod()) {
-    case CollectOptions::CollectMethod::HASH:
-      return std::make_unique<HashedCollectBlock>(&engine, this);
+    case CollectOptions::CollectMethod::HASH: {
+      ExecutionNode const* previousNode = getFirstDependency();
+      TRI_ASSERT(previousNode != nullptr);
+
+      RegisterId collectRegister = 0;
+      if (_outVariable != nullptr) {
+        auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
+        TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+        collectRegister = (*it).second.registerId;
+      } else {
+        collectRegister = -1; // TODO
+      }
+
+      std::unordered_set<RegisterId> readableInputRegisters;
+      std::unordered_set<RegisterId> writeableOutputRegisters;
+
+      std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
+      for (auto const& p : _groupVariables) {
+        // We know that planRegisters() has been run, so
+        // getPlanNode()->_registerPlan is set up
+        auto itOut = getRegisterPlan()->varInfo.find(p.first->id);
+        TRI_ASSERT(itOut != getRegisterPlan()->varInfo.end());
+
+        auto itIn = getRegisterPlan()->varInfo.find(p.second->id);
+        TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
+        TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
+        TRI_ASSERT((*itOut).second.registerId < ExecutionNode::MaxRegisterId);
+        groupRegisters.emplace_back(std::make_pair((*itOut).second.registerId,
+                                                   (*itIn).second.registerId));
+        writeableOutputRegisters.insert((*itOut).second.registerId);
+        readableInputRegisters.insert((*itIn).second.registerId);
+      }
+
+      transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
+      HashedCollectExecutorInfos infos(
+          getRegisterPlan()->nrRegs[previousNode->getDepth()],
+          getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+          calcRegsToKeep(), std::move(readableInputRegisters),
+          std::move(writeableOutputRegisters), std::move(groupRegisters),
+          collectRegister, _aggregateVariables, _groupVariables, trxPtr, _count);
+
+      return std::make_unique<ExecutionBlockImpl<HashedCollectExecutor>>(&engine, this,
+                                                                         std::move(infos));
+      // return std::make_unique<HashedCollectBlock>(&engine, this);
+    }
     case CollectOptions::CollectMethod::SORTED:
       return std::make_unique<SortedCollectBlock>(&engine, this);
     case CollectOptions::CollectMethod::COUNT: {
@@ -137,7 +181,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
       RegisterId collectRegister = (*it).second.registerId;
 
-      CountCollectExecutorInfos infos(collectRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
+      CountCollectExecutorInfos infos(collectRegister,
+                                      getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                       getRegisterPlan()->nrRegs[getDepth()],
                                       getRegsToClear(), calcRegsToKeep());
 
@@ -167,8 +212,6 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
         writeableInputRegisters.insert((*itOut).second.registerId);
         readableInputRegisters.insert((*itIn).second.registerId);
       }
-
-      // fill writeable and readable input/output registers TODO (1st & 2nd parameters of executor infos) !!!!!!
 
       transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
       DistinctCollectExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],

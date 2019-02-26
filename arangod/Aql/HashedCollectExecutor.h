@@ -50,13 +50,14 @@ class SingleRowFetcher;
 class HashedCollectExecutorInfos : public ExecutorInfos {
  public:
   HashedCollectExecutorInfos(
-      RegisterId nrInputRegisters,
-      RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+      std::unordered_set<RegisterId> registersToClear,
       std::unordered_set<RegisterId> registersToKeep,
       std::unordered_set<RegisterId>&& readableInputRegisters,
-      std::unordered_set<RegisterId>&& writeableInputRegisters,
+      std::unordered_set<RegisterId>&& writeableOutputRegisters,
       std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters, RegisterId collectRegister,
       std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
+      std::vector<std::pair<Variable const*, Variable const*>> groupVariables,
       transaction::Methods* trxPtr, bool count);
 
   HashedCollectExecutorInfos() = delete;
@@ -96,14 +97,14 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
   /// @brief pairs, consisting of out register and in register
   std::vector<std::pair<RegisterId, RegisterId>> _groupRegisters;
 
-  /// @brief input/output variables for the collection (out, in)
-  std::vector<std::pair<Variable const*, Variable const*>> _groupVariables;
-
   /// @brief the optional register that contains the values for each group
   /// if no values should be returned, then this has a value of MaxRegisterId
   /// this register is also used for counting in case WITH COUNT INTO var is
   /// used
   RegisterId _collectRegister;
+
+  /// @brief input/output variables for the collection (out, in)
+  std::vector<std::pair<Variable const*, Variable const*>> _groupVariables;
 
   /// @brief COUNTing node?
   bool _count;
@@ -150,9 +151,14 @@ class HashedCollectExecutor {
  private:
   Infos const& _infos;
   Fetcher& _fetcher;
+  ExecutionState _state;
+  InputAqlItemRow _input;
 
   /// @brief hashmap of all encountered groups
   std::unordered_map<std::vector<AqlValue>, std::unique_ptr<AggregateValuesType>, AqlValueGroupHash, AqlValueGroupEqual> _allGroups;
+  std::unordered_map<std::vector<AqlValue>, std::unique_ptr<AggregateValuesType>, AqlValueGroupHash, AqlValueGroupEqual>::iterator _currentGroup;
+  bool _done; // wrote last output row
+  bool _init; // done aggregating groups
 };
 
 }  // namespace aql
