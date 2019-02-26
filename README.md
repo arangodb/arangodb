@@ -16,7 +16,9 @@ aggregation point for your data.
 To get started, try one of our 10 minutes [tutorials](https://www.arangodb.com/tutorials)
 in your favorite programming language or try one of our [ArangoDB Cookbook recipes](https://docs.arangodb.com/cookbook).
 
-For the impatient: [download](https://www.arangodb.com/download) and install
+For the impatient: 
+- Start the ArangoDB container using `docker run -e ARANGO_ROOT_PASSWORD=test123 -p 8529:8529 -d arangodb/arangodb` and point your browser to `http://127.0.0.1:8529/`.
+- Alternatively, [download](https://www.arangodb.com/download) and install
 ArangoDB. Start the server `arangod` and point your browser to `http://127.0.0.1:8529/`.
 
 Key Features in ArangoDB
