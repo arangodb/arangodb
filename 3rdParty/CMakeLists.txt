@@ -132,7 +132,7 @@ if (USE_IRESEARCH)
   # IResearch on MacOS requires a complete build of ICU for encoding conversion
   if(APPLE)
     set(ICU_LIBS icu-static CACHE INTERNAL "ICU: Libraries" FORCE) # use complete ICU build
-    set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/v${V8_VERSION}/third_party/icu")
+    set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_SUB_DIR}/third_party/icu")
   elseif(MSVC)
     add_library(icu-shared STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch shared dependencies
     add_library(icudata-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
