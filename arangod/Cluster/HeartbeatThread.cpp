@@ -745,6 +745,7 @@ void HeartbeatThread::runSingleServer() {
         config._requireFromPresent = true;
         config._incremental = true;
         TRI_ASSERT(!config._skipCreateDrop);
+        config._includeFoxxQueues = true; // sync _queues and _jobs
 
         applier->forget();  // forget about any existing configuration
         applier->reconfigure(config);
