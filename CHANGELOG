@@ -1,6 +1,9 @@
 V3.4.4 (2019-XX-XX)
 -------------------
 
+* follow up to fix JWT authentication in arangosh (#7530):
+  also fix reconnect
+
 * fixed overflow in windows NowNanos in RocksDB
 
 * fixed issue #8165: AQL optimizer does not pick up multiple Geo index
