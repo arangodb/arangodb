@@ -24,16 +24,17 @@
 #include "store/mmap_directory.hpp"
 #include "store/store_utils.hpp"
 
-#include "Aql/QueryCache.h"
-#include "Basics/LocalTaskQueue.h"
-#include "Basics/StaticStrings.h"
-#include "Cluster/ClusterInfo.h"
 #include "IResearchCommon.h"
 #include "IResearchFeature.h"
 #include "IResearchLinkHelper.h"
 #include "IResearchPrimaryKeyFilter.h"
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
+#include "Aql/QueryCache.h"
+#include "Basics/LocalTaskQueue.h"
+#include "Basics/StaticStrings.h"
+#include "Cluster/ClusterInfo.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -376,6 +377,14 @@ void IResearchLink::batchInsert( // insert documents
   switch (_dataStore._recovery) {
    case RecoveryState::BEFORE_CHECKPOINT:
     return; // ignore all insertions before 'checkpoint'
+   case RecoveryState::AFTER_CHECKPOINT:
+    // FIXME TODO find a better way to force MMFiles WAL recovery
+    // workaround MMFilesWalRecoverState not replaying document insertion
+    // markers, but instead reinserting all documents into the index just before
+    // the end of recovery
+    if (!dynamic_cast<arangodb::MMFilesCollection*>(collection().getPhysical())) {
+      break; // skip for non-MMFiles (fallthough for MMFiles)
+    }
    case RecoveryState::DURING_CHECKPOINT:
     for (auto const& doc: batch) {
       ctx->remove(doc.first);

@@ -190,7 +190,7 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
 
 IResearchViewMeta::IResearchViewMeta()
     : _cleanupIntervalStep(10),
-      _commitIntervalMsec(60 * 1000),
+      _commitIntervalMsec(1000),
       _consolidationIntervalMsec(60 * 1000),
       _locale(std::locale::classic()),
       _version(LATEST_VERSION),
