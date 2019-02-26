@@ -1206,18 +1206,20 @@ void Supervision::enforceReplication() {
       auto const& col = *(col_.second);
 
       size_t replicationFactor;
-      if (col.hasAsUInt("replicationFactor").second) {
-        replicationFactor = col.hasAsUInt("replicationFactor").first;
+      auto replFact = col.hasAsUInt("replicationFactor");
+      if (replFact.second) {
+        replicationFactor = replFact.first;
       } else {
-        LOG_TOPIC(DEBUG, Logger::SUPERVISION)
-            << "no replicationFactor entry in " << col.toJson();
-        continue;
-      }
-
-      // mop: satellites => distribute to every server
-      if (replicationFactor == 0) {
-        auto available = Job::availableServers(_snapshot);
-        replicationFactor = available.size();
+        auto replFact2 = col.hasAsString("replicationFactor");
+        if (replFact2.second && replFact2.first == "satellite") {
+          // satellites => distribute to every server
+          auto available = Job::availableServers(_snapshot);
+          replicationFactor = available.size();
+        } else {
+          LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+              << "no replicationFactor entry in " << col.toJson();
+          continue;
+        }
       }
 
       bool clone = col.has("distributeShardsLike");
