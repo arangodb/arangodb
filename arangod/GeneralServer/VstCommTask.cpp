@@ -24,7 +24,6 @@
 #include "VstCommTask.h"
 
 #include "Basics/HybridLogicalClock.h"
-#include "Basics/MutexUnlocker.h"
 #include "Basics/Result.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
