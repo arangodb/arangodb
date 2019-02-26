@@ -184,18 +184,17 @@ void QueryList::remove(Query* query) {
 
 /// @brief kills a query
 int QueryList::kill(TRI_voc_tick_t id) {
-  // Yes, this is inefficient. But we have to avoid the case where the query we want
-  // to kill is getting removed (and possible deleted), and there is no better way ATM.
-  // Also, this is probably not performance critical.
-  for (auto it : _current) {
-    if (it.first == id) {
-      Query* query = it.second;
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-            << "killing AQL query " << id << " '" << query->queryString() << "'";
+  // Note: this works because for the vykuov_hash_map the iterator returned by
+  // find keeps a lock on the bucket. This prevents another thread from removing
+  // (and potentially deleting) the query we are trying to kill.
+  auto it = _current.find(id);
+  if (it != _current.end()) {
+    Query* query = (*it).second;
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "killing AQL query " << id << " '" << query->queryString() << "'";
 
-        query->kill();
-        return TRI_ERROR_NO_ERROR;
-    }
+      query->kill();
+      return TRI_ERROR_NO_ERROR;
   }
   return TRI_ERROR_QUERY_NOT_FOUND;
 }
