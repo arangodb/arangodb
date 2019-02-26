@@ -56,9 +56,15 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace {
+    
+arangodb::velocypack::StringRef const cuidRef("cuid");
+arangodb::velocypack::StringRef const dbRef("db");
+arangodb::velocypack::StringRef const databaseRef("database");
+arangodb::velocypack::StringRef const globallyUniqueIdRef("globallyUniqueId");
 
 /// @brief extract the collection id from VelocyPack
 TRI_voc_cid_t getCid(arangodb::velocypack::Slice const& slice) {
@@ -454,9 +460,9 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
   std::string name;
   if (slice.isObject()) {
     VPackSlice tmp;
-    if ((tmp = slice.get("db")).isString()) {  // wal access protocol
+    if ((tmp = slice.get(::dbRef)).isString()) {  // wal access protocol
       name = tmp.copyString();
-    } else if ((tmp = slice.get("database")).isString()) {  // pre 3.3
+    } else if ((tmp = slice.get(::databaseRef)).isString()) {  // pre 3.3
       name = tmp.copyString();
     }
   } else if (slice.isString()) {
@@ -496,9 +502,9 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
   if (!_state.master.simulate32Client() || cid == 0) {
     VPackSlice uuid;
 
-    if ((uuid = slice.get("cuid")).isString()) {
+    if ((uuid = slice.get(::cuidRef)).isString()) {
       return vocbase.lookupCollectionByUuid(uuid.copyString());
-    } else if ((uuid = slice.get("globallyUniqueId")).isString()) {
+    } else if ((uuid = slice.get(::globallyUniqueIdRef)).isString()) {
       return vocbase.lookupCollectionByUuid(uuid.copyString());
     }
   }
@@ -879,9 +885,9 @@ Result Syncer::dropView(arangodb::velocypack::Slice const& slice, bool reportErr
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  VPackSlice guidSlice = slice.get("globallyUniqueId");
+  VPackSlice guidSlice = slice.get(::globallyUniqueIdRef);
   if (guidSlice.isNone()) {
-    guidSlice = slice.get("cuid");
+    guidSlice = slice.get(::cuidRef);
   }
   if (!guidSlice.isString() || guidSlice.getStringLength() == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
