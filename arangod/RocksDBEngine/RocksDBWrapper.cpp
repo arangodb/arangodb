@@ -43,6 +43,8 @@ rocksdb::Status RocksDBWrapper::Open(const rocksdb::DBOptions& db_options,
     // create copies of all the parameters to ease reuse on hot backup restore
     RocksDBWrapper * new_wrap = new RocksDBWrapper(db_options, txn_db_options, dbname,
                                                    column_families, handles, trans_db);
+    new_wrap->buildCFWrappers();
+
     *dbptr = new_wrap;
   }
 
@@ -57,10 +59,11 @@ rocksdb::Status RocksDBWrapper::ReOpen() {
 
   rocksdb::Status ret_status;
   rocksdb::TransactionDB * trans_db={nullptr};
-
-  ret_status = rocksdb::TransactionDB::Open(_db_options, _txn_db_options, _dbname, _column_families, _handlesPtr, &trans_db);
+  std::vector<rocksdb::ColumnFamilyHandle *> newHandles;
+  ret_status = rocksdb::TransactionDB::Open(_db_options, _txn_db_options, _dbname, _column_families, &newHandles, &trans_db);
   _db = trans_db;
 
+  updateCFWrappers(newHandles);
   return ret_status;
 
 } // RocksDBWrapper::ReOpen
@@ -124,14 +127,11 @@ bool RocksDBWrapper::restartRocksDB(bool isRetry) {
 rocksdb::Iterator* RocksDBWrapper::NewIterator(const rocksdb::ReadOptions& opts,
                                                rocksdb::ColumnFamilyHandle* column_family) {
     READ_LOCKER(lock, _rwlock);
-#if 1
     rocksdb::ReadOptions local_options(opts);
     local_options.snapshot = rewriteSnapshot(opts.snapshot);
-    RocksDBWrapperIterator * wrapIt = new RocksDBWrapperIterator(_db->NewIterator(local_options, column_family), *this);
+    RocksDBWrapperIterator * wrapIt = new RocksDBWrapperIterator(_db->NewIterator(local_options, unwrapCF(column_family)), *this);
     return wrapIt;
-#else
-    return _db->NewIterator(opts, column_family);
-#endif
+
 } // RocksDBWrapper::NewIterator
 
 
@@ -254,6 +254,51 @@ void RocksDBWrapper::deactivateAllSnapshots() {
   return;
 
 } // RockDBWrapper::deactivateAllSnapshots
+
+/// @brief rocksdb populates handlesPtr with its vector of handles, swap them out
+///   for wrapped handles
+void RocksDBWrapper::buildCFWrappers() {
+  size_t index;
+
+  for (index=0; index < _handlesPtr->size(); ++index) {
+    rocksdb::ColumnFamilyHandle * rHandle;
+    RocksDBWrapperCFHandle * wrap;
+
+    rHandle = _handlesPtr->at(index);
+    wrap = new RocksDBWrapperCFHandle(this, rHandle);
+    _cfWrappers.push_back(std::shared_ptr<RocksDBWrapperCFHandle>(wrap));
+    _handlesPtr->at(index) = wrap;
+  } // for
+
+}  // RocksDBWrapper::buildCFWrappers
+
+/// @brief rocksdb populates handlesPtr with its vector of handles, swap them out
+///   for wrapped handles
+  void RocksDBWrapper::updateCFWrappers(std::vector<rocksdb::ColumnFamilyHandle *> & newHandles) {
+  size_t index;
+  TRI_ASSERT(nullptr != _handlesPtr);
+  TRI_ASSERT(_handlesPtr->size() == newHandles.size());
+
+  for (index=0; index < _handlesPtr->size(); ++index) {
+    RocksDBWrapperCFHandle * wrap;
+
+    wrap = (RocksDBWrapperCFHandle *)_handlesPtr->at(index);
+    wrap->SetColumnFamilyHandle(newHandles[index]);
+  } // for
+
+}  // RocksDBWrapper::updateCFWrappers
+
+
+
+rocksdb::ColumnFamilyHandle * RocksDBWrapper::unwrapCF(rocksdb::ColumnFamilyHandle * wrapper) {
+
+  return ((RocksDBWrapperCFHandle *)wrapper)->GetColumnFamilyHandle();
+}
+
+rocksdb::ColumnFamilyHandle * RocksDBWrapper::unwrapCF(const rocksdb::ColumnFamilyHandle * wrapper) const {
+
+  return ((RocksDBWrapperCFHandle *)wrapper)->GetColumnFamilyHandle();
+}
 
 
 }  // namespace arangodb

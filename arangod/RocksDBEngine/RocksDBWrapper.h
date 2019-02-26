@@ -46,16 +46,16 @@ namespace arangodb {
 
 class RocksDBWrapperIterator;
 class RocksDBWrapperSnapshot;
+class RocksDBWrapperCFHandle;
 
 ////////////////////////////////////////////////////////////////////////////////
 ///
-/// @brief The restore portion of RocksDBHotBackup needs the ability to pause
-///  API calls to rocksdb while closing, replacing, and reopening rocksdb.  This
-///  class creates that capability by wrapping the rocksdbTransactionDB class.
+/// @brief This is the primary wrapper for the database and its supporting objects.
+///  The primary goal is force use of read side of ReadWriteLock on every call.
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-class RocksDBWrapper : public rocksdb::DB /*: public rocksdb::TransactionDB*/ {
+class RocksDBWrapper : public rocksdb::DB {
  public:
   RocksDBWrapper() = delete;
   RocksDBWrapper(const RocksDBWrapper &) = delete;
@@ -153,7 +153,7 @@ public:
 
   virtual rocksdb::Status DropColumnFamily(rocksdb::ColumnFamilyHandle* column_family) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->DropColumnFamily(column_family);
+    return _db->DropColumnFamily(unwrapCF(column_family));
   }
 
   virtual rocksdb::Status DropColumnFamilies(
@@ -163,16 +163,19 @@ public:
   }
 
   virtual rocksdb::Status DestroyColumnFamilyHandle(
-      rocksdb::ColumnFamilyHandle* column_family) override {
+    rocksdb::ColumnFamilyHandle* column_family) override {
 //    READ_LOCKER(lock, _rwlock);  exempt because used in shutdownRocksDBInstance
-    return _db->DestroyColumnFamilyHandle(column_family);
+    rocksdb::Status status;
+    status = _db->DestroyColumnFamilyHandle(unwrapCF(column_family));
+    delete column_family;
+    return status;
   }
 
   virtual rocksdb::Status Put(const rocksdb::WriteOptions& options,
                      rocksdb::ColumnFamilyHandle* column_family, const rocksdb::Slice& key,
                      const rocksdb::Slice& val) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->Put(options, column_family, key, val);
+    return _db->Put(options, unwrapCF(column_family), key, val);
   }
 
   virtual rocksdb::Status Get(const rocksdb::ReadOptions& options,
@@ -181,7 +184,7 @@ public:
     READ_LOCKER(lock, _rwlock);
     rocksdb::ReadOptions local_options(options);
     local_options.snapshot = rewriteSnapshot(options.snapshot);
-    return _db->Get(local_options, column_family, key, value);
+    return _db->Get(local_options, unwrapCF(column_family), key, value);
   }
 
   virtual rocksdb::Status Get(const rocksdb::ReadOptions& options,
@@ -190,7 +193,7 @@ public:
     READ_LOCKER(lock, _rwlock);
     rocksdb::ReadOptions local_options(options);
     local_options.snapshot = rewriteSnapshot(options.snapshot);
-    return _db->Get(local_options, column_family, key, value);
+    return _db->Get(local_options, unwrapCF(column_family), key, value);
   }
 
   virtual std::vector<rocksdb::Status> MultiGet(
@@ -209,7 +212,7 @@ public:
       const std::vector<std::string>& external_files,
       const rocksdb::IngestExternalFileOptions& options) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->IngestExternalFile(column_family, external_files, options);
+    return _db->IngestExternalFile(unwrapCF(column_family), external_files, options);
   }
 
   virtual rocksdb::Status VerifyChecksum() override {
@@ -224,28 +227,28 @@ public:
     READ_LOCKER(lock, _rwlock);
     rocksdb::ReadOptions local_options(options);
     local_options.snapshot = rewriteSnapshot(options.snapshot);
-    return _db->KeyMayExist(local_options, column_family, key, value, value_found);
+    return _db->KeyMayExist(local_options, unwrapCF(column_family), key, value, value_found);
   }
 
   virtual rocksdb::Status Delete(const rocksdb::WriteOptions& wopts,
                         rocksdb::ColumnFamilyHandle* column_family,
                         const rocksdb::Slice& key) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->Delete(wopts, column_family, key);
+    return _db->Delete(wopts, unwrapCF(column_family), key);
   }
 
   virtual rocksdb::Status SingleDelete(const rocksdb::WriteOptions& wopts,
                               rocksdb::ColumnFamilyHandle* column_family,
                               const rocksdb::Slice& key) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->SingleDelete(wopts, column_family, key);
+    return _db->SingleDelete(wopts, unwrapCF(column_family), key);
   }
 
   virtual rocksdb::Status Merge(const rocksdb::WriteOptions& options,
                        rocksdb::ColumnFamilyHandle* column_family, const rocksdb::Slice& key,
                        const rocksdb::Slice& value) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->Merge(options, column_family, key, value);
+    return _db->Merge(options, unwrapCF(column_family), key, value);
   }
 
 
@@ -277,7 +280,7 @@ public:
   virtual bool GetProperty(rocksdb::ColumnFamilyHandle* column_family,
                            const rocksdb::Slice& property, std::string* value) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->GetProperty(column_family, property, value);
+    return _db->GetProperty(unwrapCF(column_family), property, value);
   }
   virtual bool GetProperty(const rocksdb::Slice& property, std::string* value) override {
     READ_LOCKER(lock, _rwlock);
@@ -288,13 +291,13 @@ public:
       rocksdb::ColumnFamilyHandle* column_family, const rocksdb::Slice& property,
       std::map<std::string, std::string>* value) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->GetMapProperty(column_family, property, value);
+    return _db->GetMapProperty(unwrapCF(column_family), property, value);
   }
 
   virtual bool GetIntProperty(rocksdb::ColumnFamilyHandle* column_family,
                               const rocksdb::Slice& property, uint64_t* value) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->GetIntProperty(column_family, property, value);
+    return _db->GetIntProperty(unwrapCF(column_family), property, value);
   }
 
   virtual bool GetAggregatedIntProperty(const rocksdb::Slice& property,
@@ -308,7 +311,7 @@ public:
                                    uint8_t include_flags
                                    = rocksdb::DB::INCLUDE_FILES) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->GetApproximateSizes(column_family, r, n, sizes,
+    return _db->GetApproximateSizes(unwrapCF(column_family), r, n, sizes,
                                     include_flags);
   }
 
@@ -317,14 +320,14 @@ public:
                                            uint64_t* const count,
                                            uint64_t* const size) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->GetApproximateMemTableStats(column_family, range, count, size);
+    return _db->GetApproximateMemTableStats(unwrapCF(column_family), range, count, size);
   }
 
   virtual rocksdb::Status CompactRange(const rocksdb::CompactRangeOptions& options,
                               rocksdb::ColumnFamilyHandle* column_family,
                               const rocksdb::Slice* begin, const rocksdb::Slice* end) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->CompactRange(options, column_family, begin, end);
+    return _db->CompactRange(options, unwrapCF(column_family), begin, end);
   }
 
   virtual rocksdb::Status CompactFiles(
@@ -335,7 +338,7 @@ public:
       std::vector<std::string>* const output_file_names = nullptr) override {
     READ_LOCKER(lock, _rwlock);
     return _db->CompactFiles(
-        compact_options, column_family, input_file_names,
+        compact_options, unwrapCF(column_family), input_file_names,
         output_level, output_path_id, output_file_names);
   }
 
@@ -356,19 +359,19 @@ public:
 
   virtual int NumberLevels(rocksdb::ColumnFamilyHandle* column_family) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->NumberLevels(column_family);
+    return _db->NumberLevels(unwrapCF(column_family));
   }
 
   virtual int MaxMemCompactionLevel(rocksdb::ColumnFamilyHandle* column_family) override
   {
     READ_LOCKER(lock, _rwlock);
-    return _db->MaxMemCompactionLevel(column_family);
+    return _db->MaxMemCompactionLevel(unwrapCF(column_family));
   }
 
   virtual int Level0StopWriteTrigger(rocksdb::ColumnFamilyHandle* column_family) override
   {
     READ_LOCKER(lock, _rwlock);
-    return _db->Level0StopWriteTrigger(column_family);
+    return _db->Level0StopWriteTrigger(unwrapCF(column_family));
   }
 
   virtual const std::string& GetName() const override {
@@ -383,7 +386,7 @@ public:
 
   virtual rocksdb::Options GetOptions(rocksdb::ColumnFamilyHandle* column_family) const override {
     READ_LOCKER(lock, _rwlock);
-    return _db->GetOptions(column_family);
+    return _db->GetOptions(unwrapCF(column_family));
   }
 
   virtual rocksdb::DBOptions GetDBOptions() const override {
@@ -394,7 +397,7 @@ public:
   virtual rocksdb::Status Flush(const rocksdb::FlushOptions& fopts,
                        rocksdb::ColumnFamilyHandle* column_family) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->Flush(fopts, column_family);
+    return _db->Flush(fopts, unwrapCF(column_family));
   }
 
   virtual rocksdb::Status SyncWAL() override {
@@ -429,7 +432,7 @@ public:
       rocksdb::ColumnFamilyHandle *column_family,
       rocksdb::ColumnFamilyMetaData* cf_meta) override {
     READ_LOCKER(lock, _rwlock);
-    _db->GetColumnFamilyMetaData(column_family, cf_meta);
+    _db->GetColumnFamilyMetaData(unwrapCF(column_family), cf_meta);
   }
 
 #endif  // ROCKSDB_LITE
@@ -469,7 +472,7 @@ public:
                             const std::unordered_map<std::string, std::string>&
                                 new_options) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->SetOptions(column_family_handle, new_options);
+    return _db->SetOptions(unwrapCF(column_family_handle), new_options);
   }
 
   virtual rocksdb::Status SetDBOptions(
@@ -488,14 +491,14 @@ public:
       rocksdb::ColumnFamilyHandle* column_family,
       rocksdb::TablePropertiesCollection* props) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->GetPropertiesOfAllTables(column_family, props);
+    return _db->GetPropertiesOfAllTables(unwrapCF(column_family), props);
   }
 
   virtual rocksdb::Status GetPropertiesOfTablesInRange(
       rocksdb::ColumnFamilyHandle* column_family, const rocksdb::Range* range, std::size_t n,
       rocksdb::TablePropertiesCollection* props) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->GetPropertiesOfTablesInRange(column_family, range, n, props);
+    return _db->GetPropertiesOfTablesInRange(unwrapCF(column_family), range, n, props);
   }
 
   virtual rocksdb::Status GetUpdatesSince(
@@ -509,13 +512,13 @@ public:
                                      const rocksdb::Slice* begin,
                                      const rocksdb::Slice* end) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->SuggestCompactRange(column_family, begin, end);
+    return _db->SuggestCompactRange(unwrapCF(column_family), begin, end);
   }
 
   virtual rocksdb::Status PromoteL0(rocksdb::ColumnFamilyHandle* column_family,
                            int target_level) override {
     READ_LOCKER(lock, _rwlock);
-    return _db->PromoteL0(column_family, target_level);
+    return _db->PromoteL0(unwrapCF(column_family), target_level);
   }
 
   virtual rocksdb::ColumnFamilyHandle* DefaultColumnFamily() const override {
@@ -536,7 +539,7 @@ public:
                                               const rocksdb::Slice* begin, const rocksdb::Slice* end,
                                               bool include_end = true) {
     READ_LOCKER(lock, _rwlock);
-    return rocksdb::DeleteFilesInRange(_db, column_family, begin, end, include_end);
+    return rocksdb::DeleteFilesInRange(_db, unwrapCF(column_family), begin, end, include_end);
   }
 
   // Delete files in multiple ranges at once
@@ -546,7 +549,7 @@ public:
                                                const rocksdb::RangePtr* ranges, size_t n,
                                                bool include_end = true) {
     READ_LOCKER(lock, _rwlock);
-    return rocksdb::DeleteFilesInRanges(_db, column_family, ranges, n, include_end);
+    return rocksdb::DeleteFilesInRanges(_db, unwrapCF(column_family), ranges, n, include_end);
   }
 
   ///
@@ -574,7 +577,13 @@ public:
   void registerSnapshot(RocksDBWrapperSnapshot *);
   void releaseSnapshot(RocksDBWrapperSnapshot *);
 
+  void buildCFWrappers();
+
  protected:
+  rocksdb::ColumnFamilyHandle * unwrapCF(rocksdb::ColumnFamilyHandle * wrapper);
+  rocksdb::ColumnFamilyHandle * unwrapCF(const rocksdb::ColumnFamilyHandle * wrapper) const;
+  void updateCFWrappers(std::vector<rocksdb::ColumnFamilyHandle *> & newHandles);
+
   void deactivateAllIterators();
   void deactivateAllSnapshots();
   const rocksdb::Snapshot * rewriteSnapshot(const rocksdb::Snapshot * snap);
@@ -585,6 +594,7 @@ public:
   const std::string _dbname;
   const std::vector<rocksdb::ColumnFamilyDescriptor> _column_families;
   std::vector<rocksdb::ColumnFamilyHandle*>* _handlesPtr; // special case, this is an output pointer
+  std::vector<std::shared_ptr<RocksDBWrapperCFHandle>> _cfWrappers;
 
   mutable basics::ReadWriteLock _rwlock; /// used in several "const" functions, must be mutable
 
@@ -768,5 +778,66 @@ protected:
   void operator=(const RocksDBWrapperSnapshot&);
 };
 
+
+////////////////////////////////////////////////////////////////////////////////
+///
+/// @brief The restore portion of RocksDBHotBackup needs the ability to pause
+///  API calls to rocksdb while closing, replacing, and reopening rocksdb.  These
+///  classes create that capability by wrapping the rocksdbTransactionDB classes.
+///
+////////////////////////////////////////////////////////////////////////////////
+
+class RocksDBWrapperCFHandle : public rocksdb::ColumnFamilyHandle {
+ public:
+  RocksDBWrapperCFHandle(RocksDBWrapper * dbWrap, rocksdb::ColumnFamilyHandle * handle)
+    : _db(dbWrap), _cfHandle(handle) {};
+
+  RocksDBWrapperCFHandle() = delete;
+
+  virtual ~RocksDBWrapperCFHandle() {}
+  // Returns the name of the column family associated with the current handle.
+  virtual const std::string& GetName() const override {
+    READ_LOCKER(lock, _db->rwlock());
+    return _cfHandle->GetName();
+  }
+  // Returns the ID of the column family associated with the current handle.
+  virtual uint32_t GetID() const override {
+    READ_LOCKER(lock, _db->rwlock());
+    return _cfHandle->GetID();
+  }
+  // Fills "*desc" with the up-to-date descriptor of the column family
+  // associated with this handle. Since it fills "*desc" with the up-to-date
+  // information, this call might internally lock and release DB mutex to
+  // access the up-to-date CF options.  In addition, all the pointer-typed
+  // options cannot be referenced any longer than the original options exist.
+  //
+  // Note that this function is not supported in RocksDBLite.
+  virtual rocksdb::Status GetDescriptor(rocksdb::ColumnFamilyDescriptor* desc) override {
+    READ_LOCKER(lock, _db->rwlock());
+    return _cfHandle->GetDescriptor(desc);
+  }
+  // Returns the comparator of the column family associated with the
+  // current handle.
+  virtual const rocksdb::Comparator* GetComparator() const override {
+    READ_LOCKER(lock, _db->rwlock());
+    return _cfHandle->GetComparator();
+  }
+
+  virtual void SetColumnFamilyHandle(rocksdb::ColumnFamilyHandle * handle) {
+    _cfHandle = handle;
+  };
+
+  virtual rocksdb::ColumnFamilyHandle * GetColumnFamilyHandle() {
+    return _cfHandle;
+  };
+
+  virtual void SetRocksDBWrapper(class RocksDBWrapper * wrapper) {
+    _db = wrapper;
+  };
+
+protected:
+  class RocksDBWrapper * _db;
+  rocksdb::ColumnFamilyHandle * _cfHandle;
+};
 
 } //  namespace rocksdb
