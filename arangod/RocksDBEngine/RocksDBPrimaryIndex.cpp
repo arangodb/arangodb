@@ -434,16 +434,18 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
                                    LocalDocumentId const& documentId,
                                    velocypack::Slice const& slice,
                                    Index::OperationMode mode) {
-  Result res;
-  VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
+  VPackSlice keySlice;
+  TRI_voc_rid_t revision;
+  transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revision);
+
   TRI_ASSERT(keySlice.isString());
   RocksDBKeyLeaser key(&trx);
-
   key->constructPrimaryIndexValue(_objectId, arangodb::velocypack::StringRef(keySlice));
 
   rocksdb::PinnableSlice val;
   rocksdb::Status s = mthd->Get(_cf, key->string(), &val);
 
+  Result res;
   if (s.ok()) {  // detected conflicting primary key
     std::string existingId = keySlice.copyString();
 
@@ -459,7 +461,6 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
 
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
-  TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(slice);
   auto value = RocksDBValue::PrimaryIndexValue(documentId, revision);
 
   s = mthd->Put(_cf, key.ref(), value.string());
