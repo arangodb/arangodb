@@ -207,10 +207,10 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
     _builder.jwtToken(
         fuerte::jwt::generateInternalToken(client->jwtSecret(), "arangosh"));
     _builder.authenticationType(fuerte::AuthenticationType::Jwt);
-  }
-  else if (!client->username().empty()) {
+  } else if (!client->username().empty()) {
     _builder.user(client->username()).password(client->password());
     _builder.authenticationType(fuerte::AuthenticationType::Basic);
+  }
 
   auto oldConnection = std::move(_connection);
   if (oldConnection) {
