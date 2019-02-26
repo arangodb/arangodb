@@ -11,6 +11,9 @@ devel
     OPTIONS {} /* These options remain optional */
     RETURN v
   for more details refer to the documentation chapter.
+* now also syncing _jobs and _queues collections in active failover mode
+
+* upgraded lodash to 4.17.11 because of CVE-2018-16487
 
 * `--query.registry-ttl` is now honored in single-server mode, and cursor TTLs
   are now honored on DBServers in cluster mode
