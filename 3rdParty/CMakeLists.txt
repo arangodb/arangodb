@@ -126,6 +126,10 @@ if (USE_IRESEARCH)
     IMPORTED_LOCATION "boost_locale;boost_system;boost_thread"
   )
 
+  # explicitly set since suppressing Boost search
+  set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}")
+
+  # IResearch on MacOS requires a complete build of ICU for encoding conversion
   if(APPLE)
     set(ICU_LIBS icu-static CACHE INTERNAL "ICU: Libraries" FORCE) # use complete ICU build
     set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/v5.7.492.77/third_party/icu")
@@ -156,9 +160,6 @@ if (USE_IRESEARCH)
     set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES "${ICU_LIBRARY_DIR}/libicuuc.a")
     set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
   endif()
-
-  # IResearch on MacOS requires a complete build of ICU for encoding conversion
-  set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
 
   if(NOT PERL_FOUND)
     set(PERL_FOUND TRUE) # suppress error for Perl not-found
