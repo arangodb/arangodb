@@ -23,6 +23,7 @@
 
 #include "ServerState.h"
 
+#include <algorithm>
 #include <iomanip>
 
 #include <boost/uuid/uuid.hpp>
@@ -610,7 +611,8 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
       VPackObjectBuilder b(&localIdBuilder);
       localIdBuilder.add("TransactionID", VPackValue(num + 1));
       std::stringstream ss;  // ShortName
-      ss << roleToAgencyKey(role) << std::setw(4) << std::setfill('0') << num + 1;
+      size_t width = std::max(std::to_string(num + 1).size(), static_cast<size_t>(4));
+      ss << roleToAgencyKey(role) << std::setw(width) << std::setfill('0') << num + 1;
       localIdBuilder.add("ShortName", VPackValue(ss.str()));
     }
 
