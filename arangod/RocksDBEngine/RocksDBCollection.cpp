@@ -1379,7 +1379,6 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
     return res;
   }
 
-  key->clear();
   key->constructDocument(_objectId, oldDocumentId);
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 

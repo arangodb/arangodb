@@ -58,12 +58,6 @@ class RocksDBKey {
   RocksDBKey& operator=(RocksDBKey const& other) = delete;
   RocksDBKey& operator=(RocksDBKey&& other) = delete;
 
-  void clear() {
-    _type = RocksDBEntryType::Document; // placeholder
-    _buffer.clear();
-    _slice = rocksdb::Slice();
-  }
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified database key
   //////////////////////////////////////////////////////////////////////////////
