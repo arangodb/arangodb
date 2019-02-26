@@ -434,7 +434,7 @@ bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node) {
 /// _volatilityMask & 1 == volatile filter
 /// _volatilityMask & 2 == volatile sort
 int evaluateVolatility(IResearchViewNode const& node) {
-  auto const inInnerLoop = isInInnerLoopOrSubquery(node);
+  auto const inDependentScope = isInInnerLoopOrSubquery(node);
   auto const& plan = *node.plan();
   auto const& outVariable = node.outVariable();
 
@@ -443,13 +443,13 @@ int evaluateVolatility(IResearchViewNode const& node) {
 
   // evaluate filter condition volatility
   auto& filterCondition = node.filterCondition();
-  if (!::filterConditionIsEmpty(&filterCondition) && inInnerLoop) {
+  if (!::filterConditionIsEmpty(&filterCondition) && inDependentScope) {
     irs::set_bit<0>(::hasDependencies(plan, filterCondition, outVariable, vars), mask);
   }
 
   // evaluate sort condition volatility
   auto& scorers = node.scorers();
-  if (!scorers.empty() && inInnerLoop) {
+  if (!scorers.empty() && inDependentScope) {
     vars.clear();
 
     for (auto const& scorer : scorers) {
