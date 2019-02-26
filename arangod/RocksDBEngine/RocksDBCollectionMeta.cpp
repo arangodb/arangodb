@@ -295,7 +295,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
 }
 
 /// @brief deserialize collection metadata, only called on startup
-Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll) {
+Result RocksDBCollectionMeta::deserializeMeta(RocksDBWrapper * db, LogicalCollection& coll) {
   RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
 
   // Step 1. load the counter
@@ -385,7 +385,7 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
 
 /// @brief load collection
 /*static*/ RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::loadCollectionCount(
-    rocksdb::DB* db, uint64_t objectId) {
+    RocksDBWrapper * db, uint64_t objectId) {
   auto cf = RocksDBColumnFamily::definitions();
   rocksdb::ReadOptions ro;
   ro.fill_cache = false;
@@ -403,7 +403,7 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
 }
 
 /// @brief remove collection metadata
-/*static*/ Result RocksDBCollectionMeta::deleteCollectionMeta(rocksdb::DB* db,
+/*static*/ Result RocksDBCollectionMeta::deleteCollectionMeta(RocksDBWrapper * db,
                                                               uint64_t objectId) {
   rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
   rocksdb::WriteOptions wo;
@@ -429,7 +429,7 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
 }
 
 /// @brief remove collection index estimate
-/*static*/ Result RocksDBCollectionMeta::deleteIndexEstimate(rocksdb::DB* db, uint64_t objectId) {
+/*static*/ Result RocksDBCollectionMeta::deleteIndexEstimate(RocksDBWrapper * db, uint64_t objectId) {
   rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
   rocksdb::WriteOptions wo;
 

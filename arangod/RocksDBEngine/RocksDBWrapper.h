@@ -55,7 +55,8 @@ class RocksDBWrapperCFHandle;
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-class RocksDBWrapper : public rocksdb::DB {
+                      // YES! "protected" to prevent accidental API usage leakage
+class RocksDBWrapper : protected rocksdb::DB {
  public:
   RocksDBWrapper() = delete;
   RocksDBWrapper(const RocksDBWrapper &) = delete;
@@ -92,6 +93,11 @@ private:
 
   virtual rocksdb::DB* GetBaseDB() { return _db->GetBaseDB(); }
 
+  // friend class gets access
+  rocksdb::DB * GetDB() {return _db;};
+
+  friend class RocksDBWrapperDBLock;
+
 public:
   virtual rocksdb::Transaction* BeginTransaction(
     const rocksdb::WriteOptions& write_options,
@@ -127,6 +133,13 @@ public:
   virtual void SetDeadlockInfoBufferSize(uint32_t target_size) {
     READ_LOCKER(lock, _rwlock);
     return _db->SetDeadlockInfoBufferSize(target_size);
+  }
+
+  // this is static.  lock not used.  here to force use of RocksDBWrapper namespace
+  static rocksdb::Status ListColumnFamilies(const rocksdb::DBOptions& db_options,
+                                            const std::string& name,
+                                            std::vector<std::string>* column_families) {
+    return rocksdb::DB::ListColumnFamilies(db_options, name, column_families);
   }
 
   virtual rocksdb::Status CreateColumnFamily(const rocksdb::ColumnFamilyOptions& options,
@@ -243,6 +256,16 @@ public:
     READ_LOCKER(lock, _rwlock);
     return _db->SingleDelete(wopts, unwrapCF(column_family), key);
   }
+
+  virtual rocksdb::Status DeleteRange(const rocksdb::WriteOptions& options,
+                                      rocksdb::ColumnFamilyHandle* column_family,
+                                      const rocksdb::Slice& begin_key,
+                                      const rocksdb::Slice& end_key) override {
+    READ_LOCKER(lock, _rwlock);
+    return _db->DeleteRange(options, unwrapCF(column_family), begin_key, end_key);
+  }
+
+
 
   virtual rocksdb::Status Merge(const rocksdb::WriteOptions& options,
                        rocksdb::ColumnFamilyHandle* column_family, const rocksdb::Slice& key,
@@ -577,7 +600,7 @@ public:
   void registerSnapshot(RocksDBWrapperSnapshot *);
   void releaseSnapshot(RocksDBWrapperSnapshot *);
 
-  void buildCFWrappers();
+  void buildCFWrappers(std::vector<rocksdb::ColumnFamilyHandle *> & newHandles);
 
  protected:
   rocksdb::ColumnFamilyHandle * unwrapCF(rocksdb::ColumnFamilyHandle * wrapper);
@@ -838,6 +861,36 @@ class RocksDBWrapperCFHandle : public rocksdb::ColumnFamilyHandle {
 protected:
   class RocksDBWrapper * _db;
   rocksdb::ColumnFamilyHandle * _cfHandle;
-};
+};// class RocksDBWrapperCFHandle
+
+
+class RocksDBWrapperDBLock {
+public:
+  explicit RocksDBWrapperDBLock(RocksDBWrapper * wrap)
+    : _db(wrap) {
+    wrap->rwlock().readLock();
+  }
+
+  explicit RocksDBWrapperDBLock(RocksDBWrapper & wrap)
+    : _db(&wrap) {
+    wrap.rwlock().readLock();
+  }
+
+  ~RocksDBWrapperDBLock() {
+    _db->rwlock().unlockRead();
+  }
+
+  RocksDBWrapperDBLock() = delete;
+  RocksDBWrapperDBLock(RocksDBWrapperDBLock const &) = delete;
+  RocksDBWrapperDBLock(RocksDBWrapperDBLock&&) = delete;
+  RocksDBWrapperDBLock & operator=(RocksDBWrapperDBLock const &) = delete;
+  RocksDBWrapperDBLock & operator=(RocksDBWrapperDBLock&&) = delete;
+
+  operator rocksdb::DB *() {return _db->GetDB();}
+
+protected:
+  RocksDBWrapper * _db;
+
+};// class RocksDBWrapperDBLock
 
 } //  namespace rocksdb

@@ -102,7 +102,7 @@ std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> mapObjectToIndex(uint64
 }
 
 /// @brief count all keys in the given column family
-std::size_t countKeys(rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cf) {
+std::size_t countKeys(RocksDBWrapper * db, rocksdb::ColumnFamilyHandle* cf) {
   TRI_ASSERT(cf != nullptr);
 
   rocksdb::ReadOptions opts;
@@ -123,7 +123,7 @@ std::size_t countKeys(rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cf) {
 }
 
 /// @brief iterate over all keys in range and count them
-std::size_t countKeyRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
+std::size_t countKeyRange(RocksDBWrapper * db, RocksDBKeyBounds const& bounds,
                           bool prefix_same_as_start) {
   rocksdb::Slice lower(bounds.start());
   rocksdb::Slice upper(bounds.end());
@@ -150,7 +150,7 @@ std::size_t countKeyRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
 
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
-Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
+Result removeLargeRange(RocksDBWrapper * db, RocksDBKeyBounds const& bounds,
                         bool prefixSameAsStart, bool useRangeDelete) {
   LOG_TOPIC(DEBUG, Logger::ENGINES) << "removing large range: " << bounds;
 

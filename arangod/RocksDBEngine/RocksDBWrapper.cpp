@@ -35,15 +35,16 @@ rocksdb::Status RocksDBWrapper::Open(const rocksdb::DBOptions& db_options,
                                      RocksDBWrapper** dbptr) {
   rocksdb::Status ret_status;
   rocksdb::TransactionDB * trans_db;
+  std::vector<rocksdb::ColumnFamilyHandle *> newHandles;
 
   *dbptr = nullptr;
-  ret_status = rocksdb::TransactionDB::Open(db_options, txn_db_options, dbname, column_families, handles, &trans_db);
+  ret_status = rocksdb::TransactionDB::Open(db_options, txn_db_options, dbname, column_families, &newHandles, &trans_db);
 
   if (ret_status.ok()) {
     // create copies of all the parameters to ease reuse on hot backup restore
     RocksDBWrapper * new_wrap = new RocksDBWrapper(db_options, txn_db_options, dbname,
                                                    column_families, handles, trans_db);
-    new_wrap->buildCFWrappers();
+    new_wrap->buildCFWrappers(newHandles);
 
     *dbptr = new_wrap;
   }
@@ -109,7 +110,6 @@ bool RocksDBWrapper::restartRocksDB(bool isRetry) {
   rocksdb::Status ret_status;
 
   rocksutils::globalRocksEngine()->setEventListeners();
-  _handlesPtr->clear();
 
   ret_status = rocksutils::globalRocksEngine()->callRocksDBOpen(_txn_db_options, _column_families, _handlesPtr);
     //TransactionDB::Open(_db_options, _txn_db_options, _dbname, _column_families, _handlesPtr, &_db);
@@ -257,17 +257,17 @@ void RocksDBWrapper::deactivateAllSnapshots() {
 
 /// @brief rocksdb populates handlesPtr with its vector of handles, swap them out
 ///   for wrapped handles
-void RocksDBWrapper::buildCFWrappers() {
+  void RocksDBWrapper::buildCFWrappers(std::vector<rocksdb::ColumnFamilyHandle *> & newHandles) {
   size_t index;
 
-  for (index=0; index < _handlesPtr->size(); ++index) {
+  for (index=0; index < newHandles.size(); ++index) {
     rocksdb::ColumnFamilyHandle * rHandle;
     RocksDBWrapperCFHandle * wrap;
 
-    rHandle = _handlesPtr->at(index);
+    rHandle = newHandles[index];
     wrap = new RocksDBWrapperCFHandle(this, rHandle);
     _cfWrappers.push_back(std::shared_ptr<RocksDBWrapperCFHandle>(wrap));
-    _handlesPtr->at(index) = wrap;
+    _handlesPtr->push_back(wrap);
   } // for
 
 }  // RocksDBWrapper::buildCFWrappers

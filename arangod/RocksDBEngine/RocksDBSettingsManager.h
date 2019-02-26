@@ -81,7 +81,7 @@ class RocksDBSettingsManager {
   std::atomic<bool> _syncing;
 
   /// @brief rocksdb instance
-  rocksdb::DB* _db;
+  RocksDBWrapper * _db;
 
   TRI_voc_tick_t _initialReleasedTick;
 };

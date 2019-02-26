@@ -522,7 +522,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx, OperationOptions& 
     RocksDBEngine* engine = rocksutils::globalRocksEngine();
     // add the assertion again here, so we are sure we can use RangeDeletes
     TRI_ASSERT(engine->canUseRangeDeleteInWal());
-    rocksdb::DB* db = engine->db();
+    RocksDBWrapper * db = engine->db();
 
     TRI_IF_FAILURE("RocksDBCollection::truncate::forceSync") {
       engine->settingsManager()->sync(false);
@@ -1173,7 +1173,7 @@ static arangodb::Result fillIndex(transaction::Methods* trx, RocksDBIndex* ridx,
   auto state = RocksDBTransactionState::toState(trx);
 
   // fillindex can be non transactional, we just need to clean up
-  rocksdb::DB* db = rocksutils::globalRocksDB();
+  RocksDBWrapper * db = rocksutils::globalRocksDB();
   TRI_ASSERT(db != nullptr);
 
   uint64_t numDocsWritten = 0;

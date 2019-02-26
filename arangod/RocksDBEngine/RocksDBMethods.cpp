@@ -347,7 +347,8 @@ bool RocksDBBatchedWithIndexMethods::Exists(rocksdb::ColumnFamilyHandle* cf,
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions ro;
   rocksdb::PinnableSlice val;  // do not care about value
-  rocksdb::Status s = _wb->GetFromBatchAndDB(_db, ro, cf, key.string(), &val);
+  RocksDBWrapperDBLock dbLock(_db);
+  rocksdb::Status s = _wb->GetFromBatchAndDB(dbLock, ro, cf, key.string(), &val);
   return !s.IsNotFound();
 }
 
@@ -356,7 +357,8 @@ arangodb::Result RocksDBBatchedWithIndexMethods::Get(rocksdb::ColumnFamilyHandle
                                                      std::string* val) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions ro;
-  rocksdb::Status s = _wb->GetFromBatchAndDB(_db, ro, cf, key, val);
+  RocksDBWrapperDBLock dbLock(_db);
+  rocksdb::Status s = _wb->GetFromBatchAndDB(dbLock, ro, cf, key, val);
   return s.ok() ? arangodb::Result()
                 : rocksutils::convertStatus(
                       s, rocksutils::StatusHint::document, "",

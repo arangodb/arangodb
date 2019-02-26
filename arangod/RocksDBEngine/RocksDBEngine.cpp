@@ -555,7 +555,7 @@ void RocksDBEngine::start() {
     testOptions.env = _options.env;
     std::vector<std::string> existingColumnFamilies;
     rocksdb::Status status =
-        rocksdb::DB::ListColumnFamilies(testOptions, _path, &existingColumnFamilies);
+      RocksDBWrapper::ListColumnFamilies(testOptions, _path, &existingColumnFamilies);
     if (!status.ok()) {
       // check if we have found the database directory or not
       Result res = rocksutils::convertStatus(status);

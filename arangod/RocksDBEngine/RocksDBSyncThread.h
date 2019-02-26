@@ -27,6 +27,7 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Result.h"
 #include "Basics/Thread.h"
+#include "RocksDBEngine/RocksDBWrapper.h"
 
 #include <rocksdb/types.h>
 
@@ -54,7 +55,7 @@ class RocksDBSyncThread final : public Thread {
   Result syncWal();
 
   /// @brief unconditionally syncs the RocksDB WAL, static variant
-  static Result sync(rocksdb::DB* db);
+  static Result sync(RocksDBWrapper * db);
 
  protected:
   void run() override;

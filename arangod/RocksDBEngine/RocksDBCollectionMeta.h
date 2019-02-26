@@ -25,6 +25,7 @@
 
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "RocksDBEngine/RocksDBWrapper.h"
 #include "VocBase/voc-types.h"
 
 #include <mutex>
@@ -114,16 +115,16 @@ struct RocksDBCollectionMeta final {
                                  rocksdb::SequenceNumber& appliedSeq);
 
   /// @brief deserialize collection metadata, only called on startup
-  arangodb::Result deserializeMeta(rocksdb::DB*, LogicalCollection&);
+  arangodb::Result deserializeMeta(RocksDBWrapper *, LogicalCollection&);
 
   /// @brief load collection
-  static DocCount loadCollectionCount(rocksdb::DB*, uint64_t objectId);
+  static DocCount loadCollectionCount(RocksDBWrapper *, uint64_t objectId);
 
   /// @brief remove collection metadata
-  static Result deleteCollectionMeta(rocksdb::DB*, uint64_t objectId);
+  static Result deleteCollectionMeta(RocksDBWrapper *, uint64_t objectId);
 
   /// @brief remove collection index estimate
-  static Result deleteIndexEstimate(rocksdb::DB*, uint64_t objectId);
+  static Result deleteIndexEstimate(RocksDBWrapper *, uint64_t objectId);
 
  private:
   /// @brief apply counter adjustments, only call from sync thread
