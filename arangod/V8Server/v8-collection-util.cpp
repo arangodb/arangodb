@@ -100,11 +100,17 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
     TRI_GET_GLOBAL_STRING(_IdKey);
     TRI_GET_GLOBAL_STRING(_DbNameKey);
     TRI_GET_GLOBAL_STRING(VersionKeyHidden);
-    result->ForceSet(_IdKey,
-                     TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->id()),
-                     v8::ReadOnly);
+    result
+        ->DefineOwnProperty(TRI_IGETC, _IdKey,
+                            TRI_V8UInt64String<TRI_voc_cid_t>(isolate,
+                                                              collection->id()),
+                            v8::ReadOnly)
+        .FromMaybe(true);  // Ignoring result
     result->Set(_DbNameKey, TRI_V8_STD_STRING(isolate, collection->vocbase().name()));
-    result->ForceSet(VersionKeyHidden, v8::Integer::NewFromUnsigned(isolate, 5), v8::DontEnum);
+    result
+        ->DefineOwnProperty(TRI_IGETC, VersionKeyHidden,
+                            v8::Integer::NewFromUnsigned(isolate, 5), v8::DontEnum)
+        .FromMaybe(false);  // ignore return value
   }
 
   return scope.Escape<v8::Object>(result);
@@ -114,6 +120,7 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
 /// @brief unwrap a LogicalCollection wrapped via WrapCollection(...)
 /// @return collection or nullptr on failure
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::LogicalCollection* UnwrapCollection(v8::Local<v8::Object> const& holder) {
-  return TRI_UnwrapClass<arangodb::LogicalCollection>(holder, WRP_VOCBASE_COL_TYPE);
+arangodb::LogicalCollection* UnwrapCollection(v8::Isolate* isolate,
+                                              v8::Local<v8::Object> const& holder) {
+  return TRI_UnwrapClass<arangodb::LogicalCollection>(holder, WRP_VOCBASE_COL_TYPE, TRI_IGETC);
 }

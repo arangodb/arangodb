@@ -60,9 +60,6 @@ class ExecutionBlock {
   RegisterId getRegister(VariableId id) const;
   RegisterId getRegister(Variable const* variable) const;
 
-  /// @brief whether or not the query was killed
-  bool isKilled() const;
-
   /// @brief throw an exception if query was killed
   void throwIfKilled();
 

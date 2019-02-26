@@ -21,7 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestCursorHandler.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
@@ -29,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
+#include "RestCursorHandler.h"
 #include "Transaction/Context.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
@@ -151,7 +151,8 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
 
   bool stream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
   size_t batchSize = VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
-  double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl", 30);
+  double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl",
+                                                         _queryRegistry->defaultTTL());
   bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
 
   if (stream) {
@@ -444,7 +445,9 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
   }
 
   VPackSlice ttl = slice.get("ttl");
-  _options->add("ttl", VPackValue(ttl.isNumber() ? ttl.getNumber<double>() : 30));
+  _options->add("ttl", VPackValue(ttl.isNumber() && ttl.getNumber<double>() > 0
+                                      ? ttl.getNumber<double>()
+                                      : _queryRegistry->defaultTTL()));
 }
 
 //////////////////////////////////////////////////////////////////////////////

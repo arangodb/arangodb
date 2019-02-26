@@ -274,7 +274,7 @@ TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate* isolate) {
 }
 
 /// @brief adds a method to an object
-void TRI_AddMethodVocbase(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> tpl,
+bool TRI_AddMethodVocbase(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> tpl,
                           v8::Handle<v8::String> name,
                           void (*func)(v8::FunctionCallbackInfo<v8::Value> const&),
                           bool isHidden) {
@@ -285,38 +285,55 @@ void TRI_AddMethodVocbase(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> t
     // normal method
     tpl->Set(name, v8::FunctionTemplate::New(isolate, func));
   }
+  return true;
 }
 
 /// @brief adds a global function to the given context
-void TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate, v8::Handle<v8::String> name,
+bool TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate, v8::Handle<v8::String> name,
                                   void (*func)(v8::FunctionCallbackInfo<v8::Value> const&),
                                   bool isHidden) {
   // all global functions are read-only
   if (isHidden) {
-    isolate->GetCurrentContext()->Global()->ForceSet(
-        name, v8::FunctionTemplate::New(isolate, func)->GetFunction(),
-        static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
+    return isolate->GetCurrentContext()
+        ->Global()
+        ->DefineOwnProperty(TRI_IGETC, name,
+                            v8::FunctionTemplate::New(isolate, func)->GetFunction(),
+                            static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum))
+        .FromMaybe(false);
   } else {
-    isolate->GetCurrentContext()->Global()->ForceSet(
-        name, v8::FunctionTemplate::New(isolate, func)->GetFunction(), v8::ReadOnly);
+    return isolate->GetCurrentContext()
+        ->Global()
+        ->DefineOwnProperty(TRI_IGETC, name,
+                            v8::FunctionTemplate::New(isolate, func)->GetFunction(),
+                            v8::ReadOnly)
+        .FromMaybe(false);
   }
 }
 
 /// @brief adds a global function to the given context
-void TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate, v8::Handle<v8::String> name,
+bool TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate, v8::Handle<v8::String> name,
                                   v8::Handle<v8::Function> func, bool isHidden) {
   // all global functions are read-only
   if (isHidden) {
-    isolate->GetCurrentContext()->Global()->ForceSet(
-        name, func, static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
+    return isolate->GetCurrentContext()
+        ->Global()
+        ->DefineOwnProperty(TRI_IGETC, name, func,
+                            static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum))
+        .FromMaybe(false);
   } else {
-    isolate->GetCurrentContext()->Global()->ForceSet(name, func, v8::ReadOnly);
+    return isolate->GetCurrentContext()
+        ->Global()
+        ->DefineOwnProperty(TRI_IGETC, name, func, v8::ReadOnly)
+        .FromMaybe(false);
   }
 }
 
 /// @brief adds a global read-only variable to the given context
-void TRI_AddGlobalVariableVocbase(v8::Isolate* isolate, v8::Handle<v8::String> name,
+bool TRI_AddGlobalVariableVocbase(v8::Isolate* isolate, v8::Handle<v8::String> name,
                                   v8::Handle<v8::Value> value) {
   // all global variables are read-only
-  isolate->GetCurrentContext()->Global()->ForceSet(name, value, v8::ReadOnly);
+  return isolate->GetCurrentContext()
+      ->Global()
+      ->DefineOwnProperty(TRI_IGETC, name, value, v8::ReadOnly)
+      .FromMaybe(false);
 }

@@ -58,6 +58,7 @@ class RocksDBTransactionManager final : public TransactionManager {
 
   // unregister a transaction
   void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed) override {
+    TRI_ASSERT(_nrRunning > 0);
     --_nrRunning;
   }
 

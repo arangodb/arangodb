@@ -201,6 +201,8 @@ SET(ARANGOD_SOURCES
   Aql/ConditionFinder.cpp
   Aql/ConstFetcher.cpp
   Aql/ConstrainedSortExecutor.cpp
+  Aql/CountCollectExecutor.cpp
+  Aql/DistinctCollectExecutor.cpp
   Aql/DocumentProducingBlock.cpp
   Aql/DocumentProducingNode.cpp
   Aql/EngineInfoContainerCoordinator.cpp
@@ -223,7 +225,7 @@ SET(ARANGOD_SOURCES
   Aql/GraphNode.cpp
   Aql/Graphs.cpp
   Aql/IdExecutor.cpp
-  Aql/IndexBlock.cpp
+  Aql/IndexExecutor.cpp
   Aql/IndexNode.cpp
   Aql/InputAqlItemRow.cpp
   Aql/LimitExecutor.cpp
@@ -380,9 +382,8 @@ SET(ARANGOD_SOURCES
   Indexes/Index.cpp
   Indexes/IndexFactory.cpp
   Indexes/IndexIterator.cpp
-  Indexes/PersistentIndexAttributeMatcher.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
-  Indexes/SkiplistIndexAttributeMatcher.cpp
+  Indexes/SortedIndexAttributeMatcher.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
   Pregel/AggregatorHandler.cpp
   Pregel/AlgoRegistry.cpp
@@ -463,6 +464,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestStatusHandler.cpp
   RestHandler/RestTasksHandler.cpp
   RestHandler/RestTransactionHandler.cpp
+  RestHandler/RestTtlHandler.cpp
   RestHandler/RestUploadHandler.cpp
   RestHandler/RestUsersHandler.cpp
   RestHandler/RestVersionHandler.cpp
@@ -491,6 +493,7 @@ SET(ARANGOD_SOURCES
   RestServer/SystemDatabaseFeature.cpp
   RestServer/TransactionManagerFeature.cpp
   RestServer/TraverserEngineRegistryFeature.cpp
+  RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
@@ -542,6 +545,7 @@ SET(ARANGOD_SOURCES
   V8Server/v8-query.cpp
   V8Server/v8-replication.cpp
   V8Server/v8-statistics.cpp
+  V8Server/v8-ttl.cpp
   V8Server/v8-user-functions.cpp
   V8Server/v8-user-structures.cpp
   V8Server/v8-users.cpp
@@ -562,6 +566,7 @@ SET(ARANGOD_SOURCES
   VocBase/Methods/Indexes.cpp
   VocBase/Methods/Tasks.cpp
   VocBase/Methods/Transactions.cpp
+  VocBase/Methods/Ttl.cpp
   VocBase/Methods/Upgrade.cpp
   VocBase/Methods/UpgradeTasks.cpp
   VocBase/Methods/Version.cpp

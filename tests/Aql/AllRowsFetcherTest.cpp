@@ -37,10 +37,9 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-
 SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
   ExecutionState state;
-  AqlItemMatrix const *matrix = nullptr;
+  AqlItemMatrix const* matrix = nullptr;
 
   GIVEN("there are no blocks upstream") {
     VPackBuilder input;
@@ -60,13 +59,14 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
           REQUIRE(matrix->empty());
           REQUIRE(matrix->size() == 0);
 
-          AND_THEN("null should be returned") {
-            std::tie(state, matrix) = testee.fetchAllRows();
+          AND_THEN("the same matrix should be returned") {
+            AqlItemMatrix const* matrix2 = nullptr;
+            std::tie(state, matrix2) = testee.fetchAllRows();
             REQUIRE(state == ExecutionState::DONE);
-            REQUIRE(matrix == nullptr);
+            REQUIRE(matrix2 == matrix);
           }
         }
-      } // testee is destroyed here
+      }  // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
       REQUIRE(blockFetcherMock.allBlocksFetched());
@@ -92,14 +92,15 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
             REQUIRE(matrix->empty());
             REQUIRE(matrix->size() == 0);
 
-            AND_THEN("null should be returned") {
-              std::tie(state, matrix) = testee.fetchAllRows();
+            AND_THEN("the same matrix should be returned") {
+              AqlItemMatrix const* matrix2 = nullptr;
+              std::tie(state, matrix2) = testee.fetchAllRows();
               REQUIRE(state == ExecutionState::DONE);
-              REQUIRE(matrix == nullptr);
+              REQUIRE(matrix2 == matrix);
             }
           }
         }
-      } // testee is destroyed here
+      }  // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
       REQUIRE(blockFetcherMock.allBlocksFetched());
@@ -129,13 +130,14 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
           REQUIRE(matrix->size() == 1);
           REQUIRE(matrix->getRow(0).getValue(0).slice().getInt() == 42);
 
-          AND_THEN("null should be returned") {
-            std::tie(state, matrix) = testee.fetchAllRows();
+          AND_THEN("the same matrix should be returned") {
+            AqlItemMatrix const* matrix2 = nullptr;
+            std::tie(state, matrix2) = testee.fetchAllRows();
             REQUIRE(state == ExecutionState::DONE);
-            REQUIRE(matrix == nullptr);
+            REQUIRE(matrix2 == matrix);
           }
         }
-      } // testee is destroyed here
+      }  // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
       REQUIRE(blockFetcherMock.allBlocksFetched());
@@ -158,13 +160,14 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
           REQUIRE(matrix->size() == 1);
           REQUIRE(matrix->getRow(0).getValue(0).slice().getInt() == 42);
 
-          AND_THEN("null should be returned") {
-            std::tie(state, matrix) = testee.fetchAllRows();
+          AND_THEN("the same matrix should be returned") {
+            AqlItemMatrix const* matrix2 = nullptr;
+            std::tie(state, matrix2) = testee.fetchAllRows();
             REQUIRE(state == ExecutionState::DONE);
-            REQUIRE(matrix == nullptr);
+            REQUIRE(matrix2 == matrix);
           }
         }
-      } // testee is destroyed here
+      }  // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
       REQUIRE(blockFetcherMock.allBlocksFetched());
@@ -192,14 +195,15 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
             REQUIRE(matrix->getNrRegisters() == 1);
             REQUIRE(matrix->getRow(0).getValue(0).slice().getInt() == 42);
 
-            AND_THEN("null should be returned") {
-              std::tie(state, matrix) = testee.fetchAllRows();
+            AND_THEN("the same matrix should be returned") {
+              AqlItemMatrix const* matrix2 = nullptr;
+              std::tie(state, matrix2) = testee.fetchAllRows();
               REQUIRE(state == ExecutionState::DONE);
-              REQUIRE(matrix == nullptr);
+              REQUIRE(matrix2 == matrix);
             }
           }
         }
-      } // testee is destroyed here
+      }  // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
       REQUIRE(blockFetcherMock.allBlocksFetched());
@@ -228,14 +232,15 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
             REQUIRE(matrix->getNrRegisters() == 1);
             REQUIRE(matrix->getRow(0).getValue(0).slice().getInt() == 42);
 
-            AND_THEN("null should be returned") {
-              std::tie(state, matrix) = testee.fetchAllRows();
+            AND_THEN("the same matrix should be returned") {
+              AqlItemMatrix const* matrix2 = nullptr;
+              std::tie(state, matrix2) = testee.fetchAllRows();
               REQUIRE(state == ExecutionState::DONE);
-              REQUIRE(matrix == nullptr);
+              REQUIRE(matrix2 == matrix);
             }
           }
         }
-      } // testee is destroyed here
+      }  // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
       REQUIRE(blockFetcherMock.allBlocksFetched());
@@ -250,15 +255,15 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
     BlockFetcherMock<false> blockFetcherMock{monitor, 1};
 
     // three 1-column matrices with 3, 2 and 1 rows, respectively
-    std::unique_ptr<AqlItemBlock> block1 = buildBlock<1>(&monitor, {{{1}}, {{2}}, {{3}}}),
+    std::unique_ptr<AqlItemBlock> block1 =
+                                      buildBlock<1>(&monitor, {{{1}}, {{2}}, {{3}}}),
                                   block2 = buildBlock<1>(&monitor, {{{4}}, {{5}}}),
                                   block3 = buildBlock<1>(&monitor, {{{6}}});
 
-
     WHEN("the producer does not wait") {
       blockFetcherMock.shouldReturn(ExecutionState::HASMORE, std::move(block1))
-                      .andThenReturn(ExecutionState::HASMORE, std::move(block2))
-                      .andThenReturn(ExecutionState::DONE, std::move(block3));
+          .andThenReturn(ExecutionState::HASMORE, std::move(block2))
+          .andThenReturn(ExecutionState::DONE, std::move(block3));
 
       {
         AllRowsFetcher testee(blockFetcherMock);
@@ -272,19 +277,20 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
           REQUIRE(matrix->getNrRegisters() == 1);
           for (int64_t i = 0; i < 6; i++) {
             int64_t rowIdx = i;
-            int64_t rowValue = i+1;
+            int64_t rowValue = i + 1;
             auto row = matrix->getRow(rowIdx);
             REQUIRE(row.isInitialized());
             REQUIRE(row.getValue(0).slice().getInt() == rowValue);
           }
 
-          AND_THEN("null should be returned") {
-            std::tie(state, matrix) = testee.fetchAllRows();
+          AND_THEN("the same matrix should be returned") {
+            AqlItemMatrix const* matrix2 = nullptr;
+            std::tie(state, matrix2) = testee.fetchAllRows();
             REQUIRE(state == ExecutionState::DONE);
-            REQUIRE(matrix == nullptr);
+            REQUIRE(matrix2 == matrix);
           }
         }
-      } // testee is destroyed here
+      }  // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
       REQUIRE(blockFetcherMock.allBlocksFetched());
@@ -324,18 +330,19 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
             REQUIRE(matrix->getNrRegisters() == 1);
             for (int64_t i = 0; i < 6; i++) {
               int64_t rowIdx = i;
-              int64_t rowValue = i+1;
+              int64_t rowValue = i + 1;
               REQUIRE(matrix->getRow(rowIdx).getValue(0).slice().getInt() == rowValue);
             }
 
-            AND_THEN("null should be returned") {
-              std::tie(state, matrix) = testee.fetchAllRows();
+            AND_THEN("the same matrix should be returned") {
+              AqlItemMatrix const* matrix2 = nullptr;
+              std::tie(state, matrix2) = testee.fetchAllRows();
               REQUIRE(state == ExecutionState::DONE);
-              REQUIRE(matrix == nullptr);
+              REQUIRE(matrix2 == matrix);
             }
           }
         }
-      } // testee is destroyed here
+      }  // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
       REQUIRE(blockFetcherMock.allBlocksFetched());
@@ -344,17 +351,15 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
 
     WHEN("the producer waits and does not return DONE asap") {
       blockFetcherMock.shouldReturn(ExecutionState::WAITING, nullptr)
-                      .andThenReturn(ExecutionState::HASMORE, std::move(block1))
-                      .andThenReturn(ExecutionState::WAITING, nullptr)
-                      .andThenReturn(ExecutionState::HASMORE, std::move(block2))
-                      .andThenReturn(ExecutionState::WAITING, nullptr)
-                      .andThenReturn(ExecutionState::HASMORE, std::move(block3))
-                      .andThenReturn(ExecutionState::DONE, nullptr)
-      ;
+          .andThenReturn(ExecutionState::HASMORE, std::move(block1))
+          .andThenReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::HASMORE, std::move(block2))
+          .andThenReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::HASMORE, std::move(block3))
+          .andThenReturn(ExecutionState::DONE, nullptr);
 
       {
         AllRowsFetcher testee(blockFetcherMock);
-
 
         THEN("the fetcher should return WAITING three times") {
           // wait when fetching the 1st and 2nd block
@@ -378,18 +383,19 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
             REQUIRE(matrix->getNrRegisters() == 1);
             for (int64_t i = 0; i < 6; i++) {
               int64_t rowIdx = i;
-              int64_t rowValue = i+1;
+              int64_t rowValue = i + 1;
               REQUIRE(matrix->getRow(rowIdx).getValue(0).slice().getInt() == rowValue);
             }
 
-            AND_THEN("null should be returned") {
-              std::tie(state, matrix) = testee.fetchAllRows();
+            AND_THEN("the same matrix should be returned") {
+              AqlItemMatrix const* matrix2 = nullptr;
+              std::tie(state, matrix2) = testee.fetchAllRows();
               REQUIRE(state == ExecutionState::DONE);
-              REQUIRE(matrix == nullptr);
+              REQUIRE(matrix2 == matrix);
             }
           }
         }
-      } // testee is destroyed here
+      }  // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
       REQUIRE(blockFetcherMock.allBlocksFetched());

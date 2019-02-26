@@ -31,7 +31,6 @@
 #include "Basics/ReadUnlocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/WriteUnlocker.h"
@@ -72,6 +71,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
+
+#include <velocypack/StringRef.h>
 
 using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
@@ -2020,7 +2021,7 @@ Result MMFilesCollection::read(transaction::Methods* trx, VPackSlice const& key,
   return Result(TRI_ERROR_NO_ERROR);
 }
 
-Result MMFilesCollection::read(transaction::Methods* trx, StringRef const& key,
+Result MMFilesCollection::read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
                                ManagedDocumentResult& result, bool lock) {
   // copy string into a vpack string
   transaction::BuilderLeaser builder(trx);
@@ -2197,9 +2198,13 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods& trx,
   //  TRI_ASSERT(trx->isLocked(&_logicalCollection, AccessMode::Type::READ));
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(info.isObject());
-  std::shared_ptr<Index> idx = lookupIndex(info);
+  std::shared_ptr<Index> idx = PhysicalCollection::lookupIndex(info);
 
-  if (idx != nullptr) {  // We already have this index.
+  if (idx != nullptr) {  
+    // We already have this index.
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "there can only be one ttl index per collection");
+    }
     created = false;
     return idx;
   }

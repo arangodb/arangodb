@@ -42,13 +42,6 @@ class RocksDBHashIndex final : public RocksDBVPackIndex {
   char const* typeName() const override { return "rocksdb-hash"; }
 
   bool isSorted() const override { return true; }
-
-  /// @brief Test if this index matches the definition
-  /// different to the Index::matchesDefinition because the ordering can
-  /// be arbitrary
-  /// an index on ["a", "b"] is considered identical to an index on ["b", "a"]
-  /// this is to ensure compatibility with the MMFiles engine's hash index
-  bool matchesDefinition(VPackSlice const& info) const override;
 };
 
 }  // namespace arangodb

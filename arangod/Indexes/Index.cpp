@@ -25,10 +25,10 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
+#include "Basics/datetime.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HashSet.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -42,12 +42,15 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
+#include <date/date.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <iostream>
-#include <ostream>
 
 using namespace arangodb;
+using namespace std::chrono;
+using namespace date;
 
 namespace {
 
@@ -95,6 +98,19 @@ bool canBeNull(arangodb::aql::AstNode const* op, arangodb::aql::AstNode const* a
   TRI_ASSERT(op != nullptr);
   TRI_ASSERT(access != nullptr);
 
+  if (access->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS && 
+      access->getMemberUnchecked(0)->type == arangodb::aql::NODE_TYPE_REFERENCE) {
+    // a.b
+    // now check if the accessed attribute is _key, _rev or _id.
+    // all of these cannot be null
+    auto attributeName = access->getStringRef();
+    if (attributeName == StaticStrings::KeyString ||
+        attributeName == StaticStrings::IdString ||
+        attributeName == StaticStrings::RevString) {
+      return false;
+    }
+  }
+
   if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
       op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE ||
       op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
@@ -113,7 +129,7 @@ bool canBeNull(arangodb::aql::AstNode const* op, arangodb::aql::AstNode const* a
     // stringification may throw
   }
 
-  // for everything else we are unusure
+  // for everything else we are unsure
   return true;
 }
 
@@ -229,6 +245,9 @@ Index::IndexType Index::type(char const* type, size_t len) {
   if (::typeMatch(type, len, "skiplist")) {
     return TRI_IDX_TYPE_SKIPLIST_INDEX;
   }
+  if (::typeMatch(type, len, "ttl")) {
+    return TRI_IDX_TYPE_TTL_INDEX;
+  }
   if (::typeMatch(type, len, "persistent") ||
       ::typeMatch(type, len, "rocksdb")) {
     return TRI_IDX_TYPE_PERSISTENT_INDEX;
@@ -273,6 +292,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "hash";
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
       return "skiplist";
+    case TRI_IDX_TYPE_TTL_INDEX:
+      return "ttl";
     case TRI_IDX_TYPE_PERSISTENT_INDEX:
       return "persistent";
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
@@ -463,7 +484,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto typeSlice = info.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
-  StringRef typeStr(typeSlice);
+  arangodb::velocypack::StringRef typeStr(typeSlice);
   TRI_ASSERT(typeStr == oldtypeName());
 #endif
   auto value = info.get(arangodb::StaticStrings::IndexId);
@@ -475,7 +496,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
       return false;
     }
     // Short circuit. If id is correct the index is identical.
-    StringRef idRef(value);
+    arangodb::velocypack::StringRef idRef(value);
     return idRef == std::to_string(_iid);
   }
 
@@ -509,7 +530,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
       // Invalid field definition!
       return false;
     }
-    arangodb::StringRef in(f);
+    arangodb::velocypack::StringRef in(f);
     TRI_ParseAttributeString(in, translate, true);
     if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate, false)) {
       return false;
@@ -519,7 +540,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
 }
 
 /// @brief default implementation for selectivityEstimate
-double Index::selectivityEstimate(StringRef const&) const {
+double Index::selectivityEstimate(arangodb::velocypack::StringRef const&) const {
   if (_unique) {
     return 1.0;
   }
@@ -923,6 +944,34 @@ std::ostream& operator<<(std::ostream& stream, arangodb::Index const& index) {
   return stream;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+double Index::getTimestamp(arangodb::velocypack::Slice const& doc, std::string const& attributeName) const {
+  VPackSlice value = doc.get(attributeName);
+
+  if (value.isString()) {
+    // string value. we expect it to be YYYY-MM-DD etc.
+    tp_sys_clock_ms tp;
+    if (basics::parseDateTime(value.copyString(), tp)) {
+      return static_cast<double>(std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count());
+    } 
+    // invalid date format
+    // fall-through intentional
+  } else if (value.isNumber()) {
+    // numeric value. we take it as it is
+    return value.getNumericValue<double>();
+  }
+  
+  // attribute not found in document, or invalid type
+  return -1.0;
+}
+
+/// @brief return the name of the (sole) index attribute
+/// it is only allowed to call this method if the index contains a
+/// single attribute
+std::string const& Index::getAttribute() const {
+  TRI_ASSERT(_fields.size() == 1);
+  auto const& fields = _fields[0];
+  TRI_ASSERT(fields.size() == 1);
+  auto const& field = fields[0];
+  TRI_ASSERT(!field.shouldExpand);
+  return field.name;
+}

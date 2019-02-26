@@ -424,7 +424,7 @@ LocalDocumentId ClusterCollection::lookupKey(transaction::Methods* trx,
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result ClusterCollection::read(transaction::Methods* trx, arangodb::StringRef const& key,
+Result ClusterCollection::read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
                                ManagedDocumentResult& result, bool) {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }

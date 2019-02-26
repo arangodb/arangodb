@@ -12,6 +12,7 @@ There are special sections for
  - [Hash Indexes](Hash.md)
  - [Skiplists](Skiplist.md)
  - [Persistent Indexes](Persistent.md)
+ - [TTL Indexes](Ttl.md)
  - [Fulltext Indexes](Fulltext.md)
  - [Geo-spatial Indexes](Geo.md)
  - [Vertex-centric Indexes](VertexCentric.md)

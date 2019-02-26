@@ -292,7 +292,7 @@
   },
   "input-directory" : {
     "category" : "option",
-    "default" : "/oskar/work/ArangoDB/dump",
+    "default" : "/home/steemann/ArangoNoAsan/dump",
     "deprecatedIn" : null,
     "description" : "input directory",
     "dynamic" : false,
