@@ -141,10 +141,28 @@ bool FailedFollower::start() {
   // Planned servers vector
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  auto plannedPair = _snapshot.hasAsSlice(planPath);  // if missing, what?
+  auto plannedPair = _snapshot.hasAsSlice(planPath);
   Slice const& planned = plannedPair.first;
   if (!plannedPair.second) {
-    // not clear what servers should or should not get failover ... retry later
+    finish("", _shard, true,
+        "Plan entry for collection " + _collection + " gone");
+    return false;
+  }
+
+  // Now check if _server is still in this plan, note that it could have
+  // been removed by RemoveFollower already, in which case we simply stop:
+  bool found = false;
+  if (planned.isArray()) {
+    for (auto const& s : VPackArrayIterator(planned)) {
+      if (s.isString() && _from == s.copyString()) {
+        found = true;
+        break;
+      }
+    }
+  }
+  if (!found) {
+    finish("", _shard, true, "Server no longer found in Plan for collection " +
+        _collection + ", our job is done.");
     return false;
   }
 
