@@ -11,6 +11,14 @@ devel
     OPTIONS {} /* These options remain optional */
     RETURN v
   for more details refer to the documentation chapter.
+
+* fixed a display issues when editing a graph within the web ui
+
+* fixed some escaping issues within the web ui.
+
+* follow up to fix JWT authentication in arangosh (#7530):
+  also fix reconnect
+
 * now also syncing _jobs and _queues collections in active failover mode
 
 * upgraded lodash to 4.17.11 because of CVE-2018-16487
