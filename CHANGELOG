@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed overflow in windows NowNanos in RocksDB
+
 * add "PRUNE <condition>" to AQL Traversals. This allows to early abort searching of
   unnecessary branches within a traversal.
   PRUNE is only allowed in the Traversal statement and only between the graphdefinition
@@ -47,7 +49,6 @@ devel
     new semantics, following ChakraCore and SpiderMonkey (though JSC
     implements V8's previous semantics).
  
-
 * fixed JS AQL query objects with empty query strings not being recognized as AQL queries
 
 * report run-time openssl version (for dynamically linked executables)
