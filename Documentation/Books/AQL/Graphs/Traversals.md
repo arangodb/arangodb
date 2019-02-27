@@ -156,7 +156,7 @@ combined filters cannot.
 
 The following examples are based on the [traversal graph](../../Manual/Graphs/index.html#the-traversal-graph).
 
-### Pruning (since version 3.4.4)
+### Pruning (since version 3.4.5)
 
 Pruning is the easiest variant to formulate conditions to reduce the amount of data
 to be checked during a search. So it allows to improve query performance and reduces
