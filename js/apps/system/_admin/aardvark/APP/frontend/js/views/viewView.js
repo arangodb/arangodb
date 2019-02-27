@@ -323,11 +323,11 @@
 
       if (window.App.naviView) {
         $('#subNavigationBar .breadcrumb').html(
-          'View: ' + self.name
+          'View: ' + arangoHelper.escapeHtml(self.name)
         );
         window.setTimeout(function () {
           $('#subNavigationBar .breadcrumb').html(
-            'View: ' + self.name
+            'View: ' + arangoHelper.escapeHtml(self.name)
           );
           self.checkIfInProgress();
         }, 100);
