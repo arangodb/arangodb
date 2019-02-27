@@ -121,6 +121,7 @@ class ReadWriteSpinLock {
 
   void writeUnlock() { unlockWrite(); }
   void unlockWrite() {
+    TRI_ASSERT(isWriteLocked());
     _state.fetch_sub(WRITE_LOCK, std::memory_order_release);
   }
 
@@ -129,6 +130,16 @@ class ReadWriteSpinLock {
   }
   bool isWriteLocked() const {
     return _state.load(std::memory_order_relaxed) & WRITE_LOCK;
+  }
+  
+  void unlock() {
+    if (isWriteLocked()) {
+      // we were holding the write-lock
+      unlockWrite();
+    } else {
+      // we were holding a read-lock
+      unlockRead();
+    }
   }
 
  private:

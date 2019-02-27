@@ -44,6 +44,7 @@ class Slice;
 }  // namespace velocypack
 
 struct OperationOptions;
+class TransactionState;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a copy of all HTTP headers to forward
@@ -83,7 +84,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 /// @brief counts number of documents in a coordinator, by shard
 ////////////////////////////////////////////////////////////////////////////////
 
-int countOnCoordinator(transaction::Methods const& trx, std::string const& collname,
+int countOnCoordinator(transaction::Methods& trx, std::string const& collname,
                        std::vector<std::pair<std::string, uint64_t>>& result);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -257,7 +258,7 @@ class ClusterMethods {
       bool waitForSyncReplication, bool enforceReplicationFactor);
   
   /// @brief begin a transaction on all followers
-  static arangodb::Result beginTransactionOnLeaders(transaction::Methods& trx,
+  static arangodb::Result beginTransactionOnLeaders(TransactionState&,
                                                     std::vector<ServerID> const& leaders);
   
   /// @brief begin a transaction on all followers
@@ -272,9 +273,9 @@ class ClusterMethods {
   static arangodb::Result abortTransaction(transaction::Methods const& trx);
   
   /// @brief set the transaction ID header
-  static void transactionHeader(transaction::Methods const& trx,
-                                std::unordered_map<std::string, std::string>& headers,
-                                bool addBegin = false);
+  static void addTransactionHeader(transaction::Methods const& trx,
+                                   std::unordered_map<std::string, std::string>& headers,
+                                   ServerID const& server);
 
  private:
   ////////////////////////////////////////////////////////////////////////////////

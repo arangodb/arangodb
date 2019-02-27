@@ -21,6 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "MMFilesTransactionState.h"
+
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/RocksDBUtils.h"
@@ -31,7 +33,6 @@
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesTransactionCollection.h"
-#include "MMFilesTransactionState.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -73,11 +74,11 @@ rocksdb::Transaction* MMFilesTransactionState::rocksTransaction() {
 
 /// @brief start a transaction
 Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
-  LOG_TRX(this, _nestingLevel)
+  LOG_TRX(this, nestingLevel())
       << "beginning " << AccessMode::typeString(_type) << " transaction";
   Result result;
 
-  if (_nestingLevel == 0) {
+  if (nestingLevel() == 0) {
     TRI_ASSERT(_status == transaction::Status::CREATED);
 
     auto logfileManager = MMFilesLogfileManager::instance();
@@ -113,23 +114,23 @@ Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
 
-  result = useCollections(_nestingLevel);
+  result = useCollections(nestingLevel());
 
   if (result.ok()) {
     // all valid
-    if (_nestingLevel == 0) {
+    if (nestingLevel() == 0) {
       updateStatus(transaction::Status::RUNNING);
 
       // defer writing of the begin marker until necessary!
     }
   } else {
     // something is wrong
-    if (_nestingLevel == 0) {
+    if (nestingLevel() == 0) {
       updateStatus(transaction::Status::ABORTED);
     }
 
     // free what we have got so far
-    unuseCollections(_nestingLevel);
+    unuseCollections(nestingLevel());
   }
 
   return result;
@@ -137,12 +138,12 @@ Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
 
 /// @brief commit a transaction
 Result MMFilesTransactionState::commitTransaction(transaction::Methods* activeTrx) {
-  LOG_TRX(this, _nestingLevel)
+  LOG_TRX(this, nestingLevel())
       << "committing " << AccessMode::typeString(_type) << " transaction";
   TRI_ASSERT(_status == transaction::Status::RUNNING);
 
   Result result;
-  if (_nestingLevel == 0) {
+  if (nestingLevel() == 0) {
     if (_rocksTransaction != nullptr) {
       auto status = _rocksTransaction->Commit();
       result = rocksutils::convertStatus(status);
@@ -175,20 +176,20 @@ Result MMFilesTransactionState::commitTransaction(transaction::Methods* activeTr
     freeOperations(activeTrx);
   }
 
-  unuseCollections(_nestingLevel);
+  unuseCollections(nestingLevel());
 
   return result;
 }
 
 /// @brief abort and rollback a transaction
 Result MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx) {
-  LOG_TRX(this, _nestingLevel) << "aborting " << AccessMode::typeString(_type) << " transaction";
+  LOG_TRX(this, nestingLevel()) << "aborting " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(_status == transaction::Status::RUNNING);
 
   Result result;
 
-  if (_nestingLevel == 0) {
+  if (nestingLevel() == 0) {
     int res = writeAbortMarker();
     result.reset(res);
 
@@ -203,7 +204,7 @@ Result MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx
     freeOperations(activeTrx);
   }
 
-  unuseCollections(_nestingLevel);
+  unuseCollections(nestingLevel());
 
   return result;
 }

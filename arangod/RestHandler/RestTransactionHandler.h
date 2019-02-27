@@ -27,11 +27,11 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "Transaction/Status.h"
 
 namespace arangodb {
 
 class V8Context;
-class TransactionState;
 
 class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   V8Context* _v8Context;
@@ -54,7 +54,8 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   void executeBegin();
   void executeCommit();
   void executeAbort();
-  void generateTransactionResult(rest::ResponseCode code, TransactionState*);
+  void generateTransactionResult(rest::ResponseCode code, TRI_voc_tid_t tid,
+                                 transaction::Status status);
 
   /// start a legacy JS transaction
   void executeJSTransaction();

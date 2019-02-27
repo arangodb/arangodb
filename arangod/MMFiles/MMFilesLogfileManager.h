@@ -30,7 +30,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "MMFiles/MMFilesWalLogfile.h"
 #include "MMFiles/MMFilesWalSlots.h"
-#include "StorageEngine/TransactionManager.h"
+#include "Transaction/Manager.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {

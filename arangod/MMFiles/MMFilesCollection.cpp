@@ -2454,10 +2454,10 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector,
                                 TransactionState const* state, double timeout) {
   TRI_ASSERT(state != nullptr);
 
-  if (state->isLockedShard(_logicalCollection.name())) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
+//  if (state->isLockedShard(_logicalCollection.name())) {
+//    // do not lock by command
+//    return TRI_ERROR_NO_ERROR;
+//  }
 
   TRI_voc_tid_t tid = state->id();
 
@@ -2572,10 +2572,10 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector,
                                  TransactionState const* state, double timeout) {
   TRI_ASSERT(state != nullptr);
 
-  if (state->isLockedShard(_logicalCollection.name())) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
+//  if (state->isLockedShard(_logicalCollection.name())) {
+//    // do not lock by command
+//    return TRI_ERROR_NO_ERROR;
+//  }
 
   TRI_voc_tid_t tid = state->id();
 
@@ -2689,10 +2689,10 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector,
 int MMFilesCollection::unlockRead(bool useDeadlockDetector, TransactionState const* state) {
   TRI_ASSERT(state != nullptr);
 
-  if (state->isLockedShard(_logicalCollection.name())) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
+//  if (state->isLockedShard(_logicalCollection.name())) {
+//    // do not lock by command
+//    return TRI_ERROR_NO_ERROR;
+//  }
 
   TRI_voc_tid_t tid = state->id();
 
@@ -2715,10 +2715,10 @@ int MMFilesCollection::unlockRead(bool useDeadlockDetector, TransactionState con
 int MMFilesCollection::unlockWrite(bool useDeadlockDetector, TransactionState const* state) {
   TRI_ASSERT(state != nullptr);
 
-  if (state->isLockedShard(_logicalCollection.name())) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
+//  if (state->isLockedShard(_logicalCollection.name())) {
+//    // do not lock by command
+//    return TRI_ERROR_NO_ERROR;
+//  }
 
   TRI_voc_tid_t tid = state->id();
 

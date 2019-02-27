@@ -42,7 +42,7 @@
 #include "MMFilesCollectorThread.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/TransactionManagerFeature.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
@@ -836,7 +836,7 @@ int MMFilesCollectorThread::collect(MMFilesWalLogfile* logfile) {
   // transactions
   CollectorState state;
   state.failedTransactions =
-      TransactionManagerFeature::manager()->getFailedTransactions();
+      transaction::ManagerFeature::manager()->getFailedTransactions();
 
   // scan all markers in logfile, this will fill the state
   bool result = TRI_IterateDatafile(df, &ScanMarker, static_cast<void*>(&state));
@@ -962,7 +962,7 @@ int MMFilesCollectorThread::collect(MMFilesWalLogfile* logfile) {
 
   // remove all handled transactions from failedTransactions list
   if (!state.handledTransactions.empty()) {
-    TransactionManagerFeature::manager()->unregisterFailedTransactions(state.handledTransactions);
+    transaction::ManagerFeature::manager()->unregisterFailedTransactions(state.handledTransactions);
   }
 
   return TRI_ERROR_NO_ERROR;

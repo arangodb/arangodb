@@ -154,8 +154,8 @@ std::string const StaticStrings::RequestForwardedTo(
 std::string const StaticStrings::Queue("x-arango-queue");
 std::string const StaticStrings::ResponseCode("x-arango-response-code");
 std::string const StaticStrings::Server("server");
-std::string const StaticStrings::StartThread("x-arango-start-thread");
-std::string const StaticStrings::TransactionId("x-arango-trx");
+std::string const StaticStrings::TransactionBody("x-arango-trx-body");
+std::string const StaticStrings::TransactionId("x-arango-trx-id");
 
 std::string const StaticStrings::Unlimited = "unlimited";
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");

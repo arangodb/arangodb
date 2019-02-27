@@ -101,7 +101,7 @@ class RocksDBEngine final : public StorageEngine {
   bool supportsDfdb() const override { return false; }
   bool useRawDocumentPointers() override { return false; }
 
-  std::unique_ptr<TransactionManager> createTransactionManager() override;
+  std::unique_ptr<transaction::Manager> createTransactionManager() override;
   std::unique_ptr<transaction::ContextData> createTransactionContextData() override;
   std::unique_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TRI_voc_tid_t, transaction::Options const& options) override;

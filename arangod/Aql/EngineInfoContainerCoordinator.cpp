@@ -72,7 +72,7 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
 
   auto engine = query->engine();
 
-  query->trx()->setLockedShards(lockedShards);
+//  query->trx()->setLockedShards(lockedShards);
 
   auto res = engine->createBlocks(_nodes, restrictToShards, dbServerQueryIds);
   if (!res.ok()) {
@@ -157,7 +157,7 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
   Query* localQuery = query;
   try {
     bool first = true;
-    for (auto const& info : _engines) {
+    for (EngineInfo const& info : _engines) {
       if (!first) {
         // need a new query instance on the coordinator
         localQuery = query->clone(PART_DEPENDENT, false);

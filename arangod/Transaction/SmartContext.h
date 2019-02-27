@@ -24,49 +24,39 @@
 #define ARANGOD_TRANSACTION_GLOBAL_CONTEXT_H 1
 
 #include "Basics/Common.h"
-#include "Context.h"
+#include "Transaction/Context.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/AccessMode.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
 
 class TransactionState;
-
+  
 namespace transaction {
 
-/// transaction context that will manage the creation or acquisition of a
+#warning TODO change comment
+/// Transaction context that will manage the creation or acquisition of a
 /// TransactionState for transaction::Methods instances for cluster wide
 /// transactions. Cluster wide transactions essentially just mean that all
 /// operations will use a consistent transaction ID and on the same server the
 /// same TransactionState instance will be used. The class supports three
-/// different use-cases (1) Constructor with TID and Type::Default can be used
-/// to share a TransactionState between
-///     multiple transaction::Methods instances
+/// different use-cases
+/// (1) Constructor with TID and Type::Default can be used to share a
+///     TransactionState between multiple transaction::Methods instances
 /// (2) Constructor with TID and Type::Global will try to lease an already
-/// existing TransactionState
-///     from the TransactionManager. This supports global transaction with
-///     explicit begin / end requests
+///     existing TransactionState from the TransactionManager.
+///     This supports global transaction with explicit begin / end requests
 /// (3) Construcor with TransactionState* is used to manage a global transaction
-class SmartContext final : public Context {
+class SmartContext : public Context {
  public:
-  enum class Type {
-    Standalone = 0,  /// transaction with pre-defined ID
-    Global = 1,      /// global transaction with begin / end semantics
-    Internal = 2
-  };
 
-  /// @brief create the context
-  explicit SmartContext(TRI_vocbase_t& vocbase);
-
-  /// @brief create the context, with given TID
-  explicit SmartContext(TRI_vocbase_t& vocbase, TRI_voc_tid_t, Type ctxType);
-
-  /// @brief create the context, will use given TransactionState
-  explicit SmartContext(TRI_vocbase_t& vocbase, TransactionState*);
-
+  SmartContext(TRI_vocbase_t& vocbase, TRI_voc_tid_t globalId,
+               TransactionState* state);
+    
   /// @brief destroy the context
-  ~SmartContext() = default;
+  ~SmartContext();
 
   /// @brief order a custom type handler
   std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() override final;
@@ -74,27 +64,57 @@ class SmartContext final : public Context {
   /// @brief return the resolver
   CollectionNameResolver const& resolver() override final;
 
-  /// @brief get parent transaction (if any)
-  TransactionState* getParentTransaction() const override;
+  /// @brief whether or not the transaction is embeddable
+  bool isEmbeddable() const override {
+    return true;
+  }
+  
+  /// @brief locally persisted transaction ID
+  TRI_voc_tid_t generateId() const override;
+  
+ protected:
+  /// @brief ID of the transaction to use
+  TRI_voc_tid_t const _globalId;
+  arangodb::TransactionState* _state;
+};
+  
+struct ManagedContext final : public SmartContext {
+  
+  ManagedContext(TRI_voc_tid_t globalId, TransactionState* state,
+                 AccessMode::Type mode);
+  
+  ~ManagedContext();
+  
+  /// @brief get parent transaction (if any) increase nesting
+  TransactionState* leaseParentTransaction() override;
+
+  /// @brief register the transaction,
+  void registerTransaction(TransactionState*) override {
+    TRI_ASSERT(false);
+  }
+
+  /// @brief unregister the transaction
+  void unregisterTransaction() noexcept override;
+  
+private:
+  AccessMode::Type _mode;
+};
+
+/// Used for a standalone AQL query. Registers
+/// the TransactionState with the manager
+struct AQLStandaloneContext final : public SmartContext {
+  
+  AQLStandaloneContext(TRI_vocbase_t& vocbase, TRI_voc_tid_t globalId)
+    : SmartContext(vocbase, globalId, nullptr) {}
+
+  /// @brief get parent transaction (if any) increase nesting
+  TransactionState* leaseParentTransaction() override;
 
   /// @brief register the transaction,
   void registerTransaction(TransactionState*) override;
 
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;
-
-  /// @brief whether or not the transaction is embeddable
-  bool isEmbeddable() const override;
-
-  static std::shared_ptr<Context> Create(TRI_vocbase_t&);
-
- private:
-  /// @brief ID of the transaction to use
-  TRI_voc_tid_t const _tid;
-  /// @brief is this managing a global context
-  SmartContext::Type const _ctxType;
-  /// @brief managed TransactionState
-  TransactionState* _state;
 };
 
 }  // namespace transaction

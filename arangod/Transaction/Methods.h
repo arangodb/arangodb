@@ -50,7 +50,6 @@ namespace arangodb {
 
 namespace basics {
 struct AttributeName;
-class StringBuffer;
 }  // namespace basics
 
 namespace velocypack {
@@ -392,22 +391,23 @@ class Methods {
    *
    * @return True if locked by this transaction.
    */
-  bool isLockedShard(std::string const& shardName) const;
-
-  /**
-   * @brief Set that this shard is locked by this transaction
-   *        Used to define nolockheaders
-   *
-   * @param shardName shard the shard name
-   */
-  void setLockedShard(std::string const& shardName);
+//  bool isLockedShard(std::string const& shardName) const;
+//
+//  /**
+//   * @brief Set that this shard is locked by this transaction
+//   *        Used to define nolockheaders
+//   *
+//   * @param shardName shard the shard name
+//   */
+//  void setLockedShard(std::string const& shardName);
 
   /**
    * @brief Overwrite the entire list of locked shards.
    *
    * @param lockedShards The list of locked shards.
    */
-  TEST_VIRTUAL void setLockedShards(std::unordered_set<std::string> const& lockedShards);
+#warning remove
+  TEST_VIRTUAL void setLockedShards(std::unordered_set<std::string> const& lockedShards) {}
 
   arangodb::LogicalCollection* documentCollection(TRI_voc_cid_t) const;
 

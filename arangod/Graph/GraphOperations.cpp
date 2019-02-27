@@ -38,7 +38,7 @@
 #include "Graph/GraphManager.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Methods.h"
-#include "Transaction/SmartContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -50,7 +50,7 @@ using namespace arangodb::graph;
 using UserTransaction = transaction::Methods;
 
 std::shared_ptr<transaction::Context> GraphOperations::ctx() const {
-  return transaction::SmartContext::Create(_vocbase);
+  return transaction::StandaloneContext::Create(_vocbase);
 };
 
 void GraphOperations::checkForUsedEdgeCollections(const Graph& graph,

@@ -34,6 +34,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/Result.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Graph/BaseOptions.h"
@@ -994,9 +995,25 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds,
     cleanupEngines(cc, TRI_ERROR_INTERNAL, _query->vocbase().name(), queryIds);
   });
 
-  std::unordered_map<std::string, std::string> headers;
   // Build Lookup Infos
   VPackBuilder infoBuilder;
+  
+  // lazily begin transactions on leaders if necessary
+  transaction::Methods* trx = _query->trx();
+  
+  // snippets already know which shards to lock, there is no need for us to
+  // start a managed begin / end transaction for a single AQL query
+  if (trx->state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+    std::vector<std::string> servers;
+    for (auto const& it : dbServerMapping) {
+      servers.emplace_back(it.first);
+    }
+    // start transaction on all servers with snippets
+    Result res = ClusterMethods::beginTransactionOnLeaders(*trx->state(), servers);
+    if (res.fail()) {
+      return res;
+    }
+  }
 
   // we need to lock per server in a deterministic order to avoid deadlocks
   for (auto& it : dbServerMapping) {
@@ -1011,6 +1028,10 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds,
     // Now we send to DBServers.
     // We expect a body with {snippets: {id => engineId}, traverserEngines:
     // [engineId]}}
+    
+    // add the transaction ID header
+    std::unordered_map<std::string, std::string> headers;
+    ClusterMethods::addTransactionHeader(*trx, headers, /*server*/ it.first);
 
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
     auto res = cc->syncRequest(coordTransactionID, serverDest, RequestType::POST,

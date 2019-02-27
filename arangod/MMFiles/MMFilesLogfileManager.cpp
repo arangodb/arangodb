@@ -50,7 +50,7 @@
 #include "RestServer/FlushFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/TransactionManagerFeature.h"
+#include "Transaction/ManagerFeature.h"
 #include "StorageEngine/TransactionState.h"
 
 using namespace arangodb;
@@ -356,7 +356,7 @@ bool MMFilesLogfileManager::open() {
   for (auto const& it : _recoverState->failedTransactions) {
     failedTransactions.emplace(it.first);
   }
-  TransactionManagerFeature::manager()->registerFailedTransactions(failedTransactions);
+  transaction::ManagerFeature::manager()->registerFailedTransactions(failedTransactions);
   _droppedDatabases = _recoverState->droppedDatabases;
   _droppedCollections = _recoverState->droppedCollections;
 
@@ -598,7 +598,7 @@ int MMFilesLogfileManager::registerTransaction(TransactionState& state) {
 
   try {
     auto data = std::make_unique<MMFilesTransactionData>(lastCollectedId, lastSealedId);
-    TransactionManagerFeature::manager()->registerTransaction(state, std::move(data));
+    transaction::ManagerFeature::manager()->registerTransaction(state.id(), std::move(data));
     return TRI_ERROR_NO_ERROR;
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -1424,7 +1424,7 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
   };
 
   // iterate over all active transactions and find their minimum used logfile id
-  TransactionManagerFeature::manager()->iterateActiveTransactions(cb);
+  transaction::ManagerFeature::manager()->iterateActiveTransactions(cb);
 
   {
     READ_LOCKER(readLocker, _logfilesLock);
@@ -1487,7 +1487,7 @@ MMFilesWalLogfile* MMFilesLogfileManager::getRemovableLogfile() {
     }
   };
 
-  TransactionManagerFeature::manager()->iterateActiveTransactions(cb);
+  transaction::ManagerFeature::manager()->iterateActiveTransactions(cb);
 
   {
     uint32_t numberOfLogfiles = 0;
@@ -1690,7 +1690,7 @@ std::tuple<size_t, MMFilesWalLogfile::IdType, MMFilesWalLogfile::IdType> MMFiles
   };
 
   // iterate over all active transactions
-  TransactionManagerFeature::manager()->iterateActiveTransactions(cb);
+  transaction::ManagerFeature::manager()->iterateActiveTransactions(cb);
 
   return std::tuple<size_t, MMFilesWalLogfile::IdType, MMFilesWalLogfile::IdType>(
       count, lastCollectedId, lastSealedId);

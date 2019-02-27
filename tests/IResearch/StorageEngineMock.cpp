@@ -37,7 +37,7 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "RestServer/FlushFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/TransactionManager.h"
+#include "Transaction/Manager.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -1066,7 +1066,7 @@ std::unique_ptr<arangodb::transaction::ContextData> StorageEngineMock::createTra
   return std::unique_ptr<arangodb::transaction::ContextData>(new ContextDataMock());
 }
 
-std::unique_ptr<arangodb::TransactionManager> StorageEngineMock::createTransactionManager() {
+std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransactionManager() {
   TRI_ASSERT(false);
   return nullptr;
 }
@@ -1378,8 +1378,8 @@ int TransactionCollectionMock::updateUsage(arangodb::AccessMode::Type accessType
     _accessType = accessType;
   }
 
-  // if (nestingLevel < _nestingLevel) {
-  //   _nestingLevel = nestingLevel;
+  // if (nestingLevel < nestingLevel) {
+  //   nestingLevel = nestingLevel;
   // }
 
   return TRI_ERROR_NO_ERROR;
@@ -1445,9 +1445,9 @@ TransactionStateMock::TransactionStateMock(TRI_vocbase_t& vocbase, TRI_voc_tid_t
 arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::Methods* trx) {
   ++abortTransactionCount;
   updateStatus(arangodb::transaction::Status::ABORTED);
-  unuseCollections(_nestingLevel);
+  unuseCollections(nestingLevel());
   const_cast<TRI_voc_tid_t&>(_id) =
-      0;  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+      0;  // avoid use of transaction::ManagerFeature::manager()->unregisterTransaction(...)
 
   return arangodb::Result();
 }
@@ -1457,12 +1457,12 @@ arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::H
   ++beginTransactionCount;
   _hints = hints;
 
-  auto res = useCollections(_nestingLevel);
+  auto res = useCollections(nestingLevel());
 
   if (!res.ok()) {
     updateStatus(arangodb::transaction::Status::ABORTED);
     const_cast<TRI_voc_tid_t&>(_id) =
-        0;  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+        0;  // avoid use of transaction::ManagerFeature::manager()->unregisterTransaction(...)
 
     return res;
   }
@@ -1476,9 +1476,9 @@ arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::H
 arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
-  unuseCollections(_nestingLevel);
+  unuseCollections(nestingLevel());
   const_cast<TRI_voc_tid_t&>(_id) =
-      0;  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+      0;  // avoid use of transaction::ManagerFeature::manager()->unregisterTransaction(...)
 
   return arangodb::Result();
 }

@@ -21,39 +21,37 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SmartContext.h"
-#include "StorageEngine/TransactionManager.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h" 
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/ticks.h"
 
+#include "Logger/Logger.h"
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
-
-/// @brief create the context
-transaction::SmartContext::SmartContext(TRI_vocbase_t& vocbase)
-    : Context(vocbase),
-      _tid(TRI_NewTickServer()),
-      _ctxType(SmartContext::Type::Internal),
-      _state(nullptr) {}
-
-/// @brief create the context
-transaction::SmartContext::SmartContext(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
-                                        transaction::SmartContext::Type ctxType)
-    : Context(vocbase), _tid(tid), _ctxType(ctxType), _state(nullptr) {
-  TRI_ASSERT(_tid != 0);
+namespace transaction {
+  
+SmartContext::SmartContext(TRI_vocbase_t& vocbase,
+                           TRI_voc_tid_t globalId,
+                           TransactionState* state)
+  : Context(vocbase), _globalId(globalId), _state(state) {
+  TRI_ASSERT(_globalId != 0);
 }
-
-/// @brief create the context, will use given transaction
-transaction::SmartContext::SmartContext(TRI_vocbase_t& vocbase, TransactionState* state)
-    : Context(vocbase),
-      _tid(state->id()),
-      _ctxType(SmartContext::Type::Internal),
-      _state(state) {
-  TRI_ASSERT(_state != nullptr);
-  TRI_ASSERT(_state->isTopLevelTransaction());
+  
+SmartContext::~SmartContext() {
+  if (_state) {
+    if (_state->isTopLevelTransaction()) {
+      TRI_ASSERT(false); // probably should not happen
+      delete _state;
+    } else {
+      _state->decreaseNesting();
+    }
+  }
 }
-
+  
 /// @brief order a custom type handler for the collection
 std::shared_ptr<arangodb::velocypack::CustomTypeHandler> transaction::SmartContext::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
@@ -64,7 +62,6 @@ std::shared_ptr<arangodb::velocypack::CustomTypeHandler> transaction::SmartConte
   }
 
   TRI_ASSERT(_customTypeHandler != nullptr);
-
   return _customTypeHandler;
 }
 
@@ -73,32 +70,74 @@ CollectionNameResolver const& transaction::SmartContext::resolver() {
   if (_resolver == nullptr) {
     createResolver();
   }
-
   TRI_ASSERT(_resolver != nullptr);
-
   return *_resolver;
 }
 
-/// @brief get parent transaction (if any)
-TransactionState* transaction::SmartContext::getParentTransaction() const {
-  return _state;
+TRI_voc_tid_t transaction::SmartContext::generateId() const {
+  TRI_ASSERT(!transaction::Manager::isLegacyTransactionId(_globalId));
+  LOG_DEVEL << "Using mananged ID " << _globalId << " mod 4: " << (_globalId % 4);
+  return _globalId;
+}
+  
+//  ============= ManagedContext =============
+  
+ManagedContext::ManagedContext(TRI_voc_tid_t globalId,
+                               TransactionState* state,
+                               AccessMode::Type mode)
+  : SmartContext(state->vocbase(), globalId, state), _mode(mode) {}
+  
+ManagedContext::~ManagedContext() {
+  if (_state) {
+    transaction::Manager* mgr = transaction::ManagerFeature::manager();
+    TRI_ASSERT(mgr != nullptr);
+    mgr->returnManagedTrx(_globalId, _mode);
+  }
 }
 
-/// @brief register the transaction, so other Method instances can get it
-void transaction::SmartContext::registerTransaction(TransactionState* state) {
+/// @brief get parent transaction (if any) increase nesting
+TransactionState* ManagedContext::leaseParentTransaction() {
+  TRI_ASSERT(_state);
+  // single document transaction should never be leased out
+  TRI_ASSERT(!_state->hasHint(Hints::Hint::SINGLE_OPERATION));
+  if (_state) {
+    _state->increaseNesting();
+  }
+  return _state;
+}
+  
+void ManagedContext::unregisterTransaction() noexcept {
+  _state = nullptr; // commit is handled by transaction::Methods
+}
+
+// ============= AQLStandaloneContext =============
+  
+/// @brief get parent transaction (if any) increase nesting
+TransactionState* AQLStandaloneContext::leaseParentTransaction() {
+  if (_state) {
+    _state->increaseNesting();
+  }
+  return _state;
+}
+    
+/// @brief register the transaction,
+void AQLStandaloneContext::registerTransaction(TransactionState* state) {
   TRI_ASSERT(_state == nullptr);
   _state = state;
+  if (state) {
+    transaction::Manager* mgr = transaction::ManagerFeature::manager();
+    TRI_ASSERT(mgr != nullptr);
+    mgr->registerAQLTrx(state);
+  }
 }
 
 /// @brief unregister the transaction
-void transaction::SmartContext::unregisterTransaction() noexcept {
+void AQLStandaloneContext::unregisterTransaction() noexcept {
   _state = nullptr;
+  transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  TRI_ASSERT(mgr != nullptr);
+  mgr->unregisterAQLTrx(_globalId);
 }
 
-/// @brief whether or not the transaction is embeddable
-bool transaction::SmartContext::isEmbeddable() const { return true; }
-
-std::shared_ptr<transaction::Context> transaction::SmartContext::Create(TRI_vocbase_t& vocbase) {
-  return std::make_shared<transaction::SmartContext>(vocbase);
-}
+}  // namespace transaction
 }  // namespace arangodb

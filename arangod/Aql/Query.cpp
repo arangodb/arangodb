@@ -361,6 +361,7 @@ void Query::prepare(QueryRegistry* registry) {
       // create the transaction object, but do not start it yet
       _trx = AqlTransaction::create(createTransactionContext(), _collections.collections(),
                                     _queryOptions.transactionOptions, _part == PART_MAIN);
+      _trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL); // only used on toplevel
 
       VPackBuilder* builder = planCacheEntry->builder.get();
       VPackSlice slice = builder->slice();
@@ -370,10 +371,6 @@ void Query::prepare(QueryRegistry* registry) {
       enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
       int res = trx->addCollections(*_collections.collections());
-
-      if (!trx->transactionContextPtr()->getParentTransaction()) {
-        trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
-      }
 
       if (res == TRI_ERROR_NO_ERROR) {
         res = _trx->begin();
@@ -473,10 +470,7 @@ ExecutionPlan* Query::preparePlan() {
   TRI_DEFER(trx.release());
   // create the transaction object, but do not start it yet
   _trx = trx.get();
-
-  if (!trx->transactionContextPtr()->getParentTransaction()) {
-    trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
-  }
+  _trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL); // only used on toplevel
 
   // As soon as we start to instantiate the plan we have to clean it
   // up before killing the unique_ptr

@@ -755,7 +755,7 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
   // this will first check if the transaction is embedded in a parent
   // transaction. if not, it will create a transaction of its own
   // check in the context if we are running embedded
-  TransactionState* parent = _transactionContextPtr->getParentTransaction();
+  TransactionState* parent = _transactionContextPtr->leaseParentTransaction();
 
   if (parent != nullptr) {  // yes, we are embedded
     if (!_transactionContextPtr->isEmbeddable()) {
@@ -764,17 +764,16 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
     }
 
     _state = parent;
-    TRI_ASSERT(_state != nullptr);
-    _state->increaseNesting();
+    TRI_ASSERT(_state != nullptr && _state->isEmbeddedTransaction());
   } else {  // non-embedded
     // now start our own transaction
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    TRI_vocbase_t& vocbase = _transactionContextPtr->vocbase();
-
-    TRI_voc_tick_t tid = _transactionContextPtr->generateId();
-    _state = engine->createTransactionState(vocbase, tid, options).release();
+    
+    _state = engine->createTransactionState(_transactionContextPtr->vocbase(),
+                                            _transactionContextPtr->generateId(),
+                                            options).release();
     TRI_ASSERT(_state != nullptr && _state->isTopLevelTransaction());
-
+    
     // register the transaction in the context
     _transactionContextPtr->registerTransaction(_state);
   }
@@ -805,6 +804,10 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
 /// @brief destroy the transaction
 transaction::Methods::~Methods() {
   if (_state->isTopLevelTransaction()) {  // _nestingLevel == 0
+    // unregister transaction from context
+    _transactionContextPtr->unregisterTransaction();
+
+    bool wasRegistered = _state->status() != transaction::Status::CREATED;
     if (_state->status() == transaction::Status::RUNNING) {
       // auto abort a running transaction
       try {
@@ -818,9 +821,10 @@ transaction::Methods::~Methods() {
     // free the state associated with the transaction
     TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
     // store result in context
-    _transactionContextPtr->storeTransactionResult(_state->id(),
-                                                   _state->hasFailedOperations());
-    _transactionContextPtr->unregisterTransaction();
+    if (wasRegistered) {
+      _transactionContextPtr->storeTransactionResult(_state->id(),
+                                                     _state->hasFailedOperations());
+    }
 
     delete _state;
     _state = nullptr;
@@ -930,9 +934,14 @@ Result transaction::Methods::begin() {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid transaction state");
   }
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool a = _localHints.has(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
+  bool b = _localHints.has(transaction::Hints::Hint::GLOBAL_MANAGED);
+  TRI_ASSERT(!a && !b || a && !b || !a && b);
+#endif
 
   auto res = _state->beginTransaction(_localHints);
-
   if (res.fail()) {
     return res;
   }
@@ -960,8 +969,7 @@ Result transaction::Methods::commit() {
     }
   }
 
-  if (_state->isRunningInCluster() && _state->isTopLevelTransaction() &&
-      !_state->hasHint(Hints::Hint::SINGLE_OPERATION)) {
+  if (_state->isRunningInCluster() && _state->isTopLevelTransaction()) {
     // first commit transaction on subordinate servers
     Result res = ClusterMethods::commitTransaction(*this);
     if (res.fail()) {  // do not commit locally
@@ -989,15 +997,16 @@ Result transaction::Methods::abort() {
                   "transaction not running on abort");
   }
 
-  if (_state->isRunningInCluster() && _state->isTopLevelTransaction() &&
-      !_state->hasHint(Hints::Hint::SINGLE_OPERATION)) {
-    // first commit transaction on subordinate servers
-    Result res = ClusterMethods::abortTransaction(*this);
-    if (res.fail()) {  // abort locally anyway, GC can cleanup
-      LOG_TOPIC(WARN, Logger::TRANSACTIONS)
-          << "failed to abort on subordinates: " << res.errorMessage();
-    }
-  }
+//#warning do via applyStatusChangeCallbacks
+//  if (_state->isRunningInCluster() && _state->isTopLevelTransaction() &&
+//      !_state->hasHint(Hints::Hint::SINGLE_OPERATION)) {
+//    // first commit transaction on subordinate servers
+//    Result res = ClusterMethods::abortTransaction(*this);
+//    if (res.fail()) {  // abort locally anyway, GC can cleanup
+//      LOG_TOPIC(WARN, Logger::TRANSACTIONS)
+//          << "failed to abort on subordinates: " << res.errorMessage();
+//    }
+//  }
 
   auto res = _state->abortTransaction(this);
   if (res.fail()) {
@@ -3099,18 +3108,19 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
 Result transaction::Methods::addCollection(std::string const& name, AccessMode::Type type) {
   return addCollection(resolver()->getCollectionId(name), name, type);
 }
-
-bool transaction::Methods::isLockedShard(std::string const& shardName) const {
-  return _state->isLockedShard(shardName);
-}
-
-void transaction::Methods::setLockedShard(std::string const& shardName) {
-  _state->setLockedShard(shardName);
-}
-
-void transaction::Methods::setLockedShards(std::unordered_set<std::string> const& lockedShards) {
-  _state->setLockedShards(lockedShards);
-}
+//
+//#warning TODO remove
+//bool transaction::Methods::isLockedShard(std::string const& shardName) const {
+//  return false;//_state->isLockedShard(shardName);
+//}
+//
+//void transaction::Methods::setLockedShard(std::string const& shardName) {
+////  _state->setLockedShard(shardName);
+//}
+//
+//void transaction::Methods::setLockedShards(std::unordered_set<std::string> const& lockedShards) {
+////  _state->setLockedShards(lockedShards);
+//}
 
 /// @brief test if a collection is already locked
 bool transaction::Methods::isLocked(LogicalCollection* document, AccessMode::Type type) const {
@@ -3298,14 +3308,24 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
                                     VPackBuilder& resultBuilder) {
   TRI_ASSERT(followers != nullptr);
 
+  Result res;
   if (followers->empty()) {
-    return Result{};
+    return res;
+  }
+  
+  if (hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
+      (_state->isDBServer() && hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL))) {
+    auto const& followerInfo = collection.followers();
+    res = ClusterMethods::beginTransactionOnFollowers(*this, *followerInfo, *followers);
+    if (res.fail()) {
+      return res;
+    }
   }
 
   // nullptr only happens on controlled shutdown
   auto cc = arangodb::ClusterComm::instance();
   if (cc == nullptr) {
-    return Result{};
+    return res.reset(TRI_ERROR_SHUTTING_DOWN);
   };
 
   // path and requestType are different for insert/remove/modify.
@@ -3382,7 +3402,7 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
 
   if (count == 0) {
     // nothing to do
-    return Result{};
+    return res;
   }
 
   auto body = std::make_shared<std::string>();
@@ -3393,7 +3413,9 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
   requests.reserve(followers->size());
 
   for (auto const& f : *followers) {
-    requests.emplace_back("server:" + f, requestType, path, body);
+    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+    ClusterMethods::addTransactionHeader(*this, *headers, f);
+    requests.emplace_back("server:" + f, requestType, path, body, std::move(headers));
   }
 
   double const timeout = chooseTimeout(count, body->size() * followers->size());
@@ -3441,8 +3463,8 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
   }
 
   if (findRefusal(requests)) {
-    return Result{TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
+    return res.reset(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
   }
 
-  return Result{};
+  return res;
 }

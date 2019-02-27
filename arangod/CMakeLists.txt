@@ -494,8 +494,6 @@ SET(ARANGOD_SOURCES
   StorageEngine/EngineSelectorFeature.cpp
   StorageEngine/PhysicalCollection.cpp
   StorageEngine/TransactionCollection.cpp
-  StorageEngine/TransactionManager.cpp
-  StorageEngine/TransactionManagerFeature.cpp
   StorageEngine/TransactionState.cpp
   StorageEngine/WalAccess.cpp
   Transaction/Context.cpp
@@ -506,6 +504,8 @@ SET(ARANGOD_SOURCES
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp
+  Transaction/Manager.cpp
+  Transaction/ManagerFeature.cpp
   Transaction/V8Context.cpp
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp

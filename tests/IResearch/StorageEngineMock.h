@@ -35,9 +35,11 @@
 #include "VocBase/LocalDocumentId.h"
 
 namespace arangodb {
-
+namespace transaction {
+  class Manager;
+}
+  
 struct KeyLockInfo;
-class TransactionManager;
 class WalAccess;
 
 }  // namespace arangodb
@@ -193,7 +195,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
       arangodb::TransactionState& state, TRI_voc_cid_t cid,
       arangodb::AccessMode::Type, int nestingLevel) override;
   virtual std::unique_ptr<arangodb::transaction::ContextData> createTransactionContextData() override;
-  virtual std::unique_ptr<arangodb::TransactionManager> createTransactionManager() override;
+  virtual std::unique_ptr<arangodb::transaction::Manager> createTransactionManager() override;
   virtual std::unique_ptr<arangodb::TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TRI_voc_tid_t,
       arangodb::transaction::Options const& options) override;

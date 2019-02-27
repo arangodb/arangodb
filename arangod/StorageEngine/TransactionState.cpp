@@ -22,12 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TransactionState.h"
+
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
+#include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
 #include "Utils/ExecContext.h"
@@ -37,7 +39,8 @@
 using namespace arangodb;
 
 /// @brief transaction type
-TransactionState::TransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+TransactionState::TransactionState(TRI_vocbase_t& vocbase,
+                                   TRI_voc_tid_t tid,
                                    transaction::Options const& options)
     : _vocbase(vocbase),
       _id(tid),
@@ -47,8 +50,8 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
       _collections{_arena},  // assign arena to vector
       _serverRole(ServerState::instance()->getRole()),
       _hints(),
-      _nestingLevel(0),
-      _options(options) {}
+      _options(options),
+      _nestingLevel(0) {}
 
 /// @brief free a transaction container
 TransactionState::~TransactionState() {
@@ -292,20 +295,6 @@ void TransactionState::setType(AccessMode::Type type) {
   }
   // all right
   _type = type;
-}
-
-bool TransactionState::isLockedShard(std::string const& shard) const {
-  auto it = _lockedShards.find(shard);
-  return it != _lockedShards.end();
-}
-
-void TransactionState::setLockedShard(std::string const& shard) {
-  _lockedShards.emplace(shard);
-}
-
-void TransactionState::setLockedShards(std::unordered_set<std::string> const& lockedShards) {
-  // Explicitly copy!
-  _lockedShards = lockedShards;
 }
 
 bool TransactionState::isOnlyExclusiveTransaction() const {

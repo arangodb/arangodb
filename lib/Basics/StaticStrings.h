@@ -141,7 +141,7 @@ class StaticStrings {
   static std::string const RequestForwardedTo;
   static std::string const ResponseCode;
   static std::string const Server;
-  static std::string const StartThread;
+  static std::string const TransactionBody;
   static std::string const TransactionId;
   static std::string const Unlimited;
   static std::string const WwwAuthenticate;

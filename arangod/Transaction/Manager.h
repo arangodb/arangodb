@@ -21,45 +21,60 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_STORAGE_ENGINE_TRANSACTION_MANAGER_H
-#define ARANGOD_STORAGE_ENGINE_TRANSACTION_MANAGER_H 1
+#ifndef ARANGOD_TRANSACTION_MANAGER_H
+#define ARANGOD_TRANSACTION_MANAGER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/ReadWriteSpinLock.h"
+#include "Transaction/Status.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/AccessMode.h"
 
 #include <atomic>
 #include <vector>
 
 namespace arangodb {
-
 class TransactionState;
 // to be derived by storage engines
-struct TransactionData {
-  virtual ~TransactionData() = default;
-  TransactionState* _state = nullptr;
-  /// @brief expiry time
-  double _expires;
-};
+struct TransactionData {};
+  
+namespace transaction {
+class Context;
 
-class TransactionManager {
+class Manager final {
   static constexpr size_t numBuckets = 16;
   static constexpr double defaultTTL = 60.0;
 
  public:
-  TransactionManager() : _nrRunning(0) {}
-  virtual ~TransactionManager() {}
+  Manager(bool keepData)
+    : _keepTransactionData(keepData), _nrRunning(0) {}
 
  public:
   typedef std::function<void(TRI_voc_tid_t, TransactionData const*)> TrxCallback;
-  enum class Ownership : bool { Lease = true, Move = false };
 
  public:
-  static bool isChildTransactionId(TRI_voc_tid_t);
-  static bool isCoordinatorTransactionId(TRI_voc_tid_t);
-  static bool isFollowerTransactionId(TRI_voc_tid_t);
-  static bool isLeaderTransactionId(TRI_voc_tid_t);
-  static bool isLegacyTransactionId(TRI_voc_tid_t);
+
+  inline static bool isChildTransactionId(TRI_voc_tid_t tid) {
+    return isLeaderTransactionId(tid) || isFollowerTransactionId(tid);
+  }
+  
+  inline static bool isCoordinatorTransactionId(TRI_voc_tid_t tid) {
+    return (tid % 4) == 0;
+  }
+  
+  inline static bool isFollowerTransactionId(TRI_voc_tid_t tid) {
+    return (tid % 4) == 2;
+  }
+  
+  inline static bool isLeaderTransactionId(TRI_voc_tid_t tid) {
+    return (tid % 4) == 1;
+  }
+  
+  inline static bool isLegacyTransactionId(TRI_voc_tid_t tid) {
+    return (tid % 4) == 3;
+  }
 
  public:
   // register a list of failed transactions
@@ -72,7 +87,7 @@ class TransactionManager {
   std::unordered_set<TRI_voc_tid_t> getFailedTransactions() const;
 
   // register a transaction
-  void registerTransaction(TransactionState&, std::unique_ptr<TransactionData> data);
+  void registerTransaction(TRI_voc_tid_t, std::unique_ptr<TransactionData> data);
 
   // unregister a transaction
   void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed);
@@ -81,21 +96,54 @@ class TransactionManager {
   void iterateActiveTransactions(TrxCallback const&);
 
   uint64_t getActiveTransactionCount();
-
-  /// @brief lease the transaction, increases nesting
-  TransactionState* lookup(TRI_voc_tid_t, Ownership action) const;
+  
+ public:
 
   /// @brief collect forgotten transactions
   void garbageCollect();
-
- protected:
-  virtual bool keepTransactionData(TransactionState const&) const = 0;
-
+  
+  enum class Ownership : bool { Lease = true, Move = false };
+    
+  /// @brief register a AQL transaction
+  void registerAQLTrx(TransactionState*);
+  void unregisterAQLTrx(TRI_voc_tid_t tid) noexcept;
+    
+  /// @brief create managed transaction
+  Result createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+                          velocypack::Slice const trxOpts);
+  
+  /// @brief lease the transaction, increases nesting
+  std::shared_ptr<transaction::Context> leaseTrx(TRI_voc_tid_t, AccessMode::Type mode,
+                                                 Ownership action);
+  void returnManagedTrx(TRI_voc_tid_t, AccessMode::Type mode) noexcept;
+  
+  /// @brief get the meta transasction state
+  transaction::Status getManagedTrxStatus(TRI_voc_tid_t) const;
+  
  private:
   // hashes the transaction id into a bucket
   inline size_t getBucket(TRI_voc_tid_t id) const {
     return std::hash<TRI_voc_cid_t>()(id) % numBuckets;
   }
+    
+  enum class MetaType : uint8_t {
+    Managed = 1,  /// global single shard db transaction
+    StandaloneAQL = 2,  /// used for a standalone transaction (AQL standalone)
+  };
+  struct ManagedTrx {
+    ManagedTrx(MetaType t, TransactionState* st, double ex)
+      : type(t), state(st), expires(ex), rwlock() {}
+    ~ManagedTrx();
+    
+    MetaType type;
+    TransactionState* state;
+    double expires; /// expiration timespamp
+    mutable basics::ReadWriteSpinLock rwlock; /// usage lock
+  };
+  
+private:
+  
+  const bool _keepTransactionData;
 
   // a lock protecting ALL buckets in _transactions
   mutable basics::ReadWriteLock _allTransactionsLock;
@@ -109,11 +157,15 @@ class TransactionManager {
 
     // set of failed transactions
     std::unordered_set<TRI_voc_tid_t> _failedTransactions;
+    
+    // managed transactions, seperate lifetime from above
+    std::unordered_map<TRI_voc_tid_t, ManagedTrx> _managed;
   } _transactions[numBuckets];
 
   /// Nr of running transactions
   std::atomic<uint64_t> _nrRunning;
 };
+}  // namespace transaction
 }  // namespace arangodb
 
 #endif

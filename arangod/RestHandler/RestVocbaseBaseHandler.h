@@ -336,7 +336,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   ////////////////////////////////////////////////////////////////////////////////
 
   void extractStringParameter(std::string const& name, std::string& ret) const;
-
+  
   /**
    * @brief Helper to create a new Transaction for a single collection. The
    * helper method will consider no-lock headers send via http and will lock the
@@ -348,8 +348,11 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
    * @return A freshly created transaction for the given collection with proper
    * locking.
    */
-  std::unique_ptr<SingleCollectionTransaction> createTransaction(std::string const& collectionName,
+  std::unique_ptr<SingleCollectionTransaction> createTransaction(std::string const& cname,
                                                                  AccessMode::Type mode) const;
+  
+  /// @brief create proper transaction context, inclusing the proper IDs
+  std::shared_ptr<transaction::Context> createAQLTransactionContext() const;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -381,22 +384,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
     return RestBaseHandler::cancel();
   }
 
- private:
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief picks up X-Arango-Nolock headers and stores them in a tls variable
-  ////////////////////////////////////////////////////////////////////////////////
-  void pickupNoLockHeaders();
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief clears the tls variable that stores the X-Arango-Nolock headers
-  ////////////////////////////////////////////////////////////////////////////////
-  void clearNoLockHeaders() noexcept;
-
- private:
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief Container that holds the no-lock header set
-  ////////////////////////////////////////////////////////////////////////////////
-  std::unique_ptr<std::unordered_set<std::string>> _nolockHeaderSet;
 };
 
 }  // namespace arangodb

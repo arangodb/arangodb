@@ -161,17 +161,18 @@ exports.manage = function () {
   }
 
   if (global.ArangoServerState.getFoxxmasterQueueupdate()) {
-    if (isCluster) {
-      // Reset jobs before updating the queue delay. Don't continue on errors,
-      // but retry later.
-      resetDeadJobsOnFirstRun();
-      var foxxQueues = require('@arangodb/foxx/queues');
-      foxxQueues._updateQueueDelay();
-    } else {
+    if (!isCluster) {
       // On a Foxxmaster change FoxxmasterQueueupdate is set to true
       // we use this to signify a Leader change to this server
       foxxManager.healAll(true);
     }
+    // Reset jobs before updating the queue delay. Don't continue on errors,
+    // but retry later.
+     resetDeadJobsOnFirstRun();
+    if (isCluster) {
+      var foxxQueues = require('@arangodb/foxx/queues');
+      foxxQueues._updateQueueDelay();
+    } 
     // do not call again immediately
     global.ArangoServerState.setFoxxmasterQueueupdate(false);
   }

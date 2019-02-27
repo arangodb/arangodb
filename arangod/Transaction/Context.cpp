@@ -21,13 +21,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Context.h"
+
 #include "Basics/StringBuffer.h"
 #include "Cluster/ClusterInfo.h"
-#include "Context.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/TransactionManager.h"
-#include "StorageEngine/TransactionManagerFeature.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/ContextData.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -86,8 +87,8 @@ transaction::Context::Context(TRI_vocbase_t& vocbase)
 transaction::Context::~Context() {
   // unregister the transaction from the logfile manager
   if (_transaction.id > 0) {
-    TransactionManagerFeature::manager()->unregisterTransaction(_transaction.id,
-                                                                _transaction.hasFailedOperations);
+    transaction::ManagerFeature::manager()->unregisterTransaction(_transaction.id,
+                                                                  _transaction.hasFailedOperations);
   }
 
   // free all VPackBuilders we handed out
@@ -110,12 +111,19 @@ VPackCustomTypeHandler* transaction::Context::createCustomTypeHandler(
 
 /// @brief pin data for the collection
 void transaction::Context::pinData(LogicalCollection* collection) {
-  contextData()->pinData(collection);
+  transaction::ContextData* data = contextData();
+  if (data) {
+    data->pinData(collection);
+  }
 }
 
 /// @brief whether or not the data for the collection is pinned
 bool transaction::Context::isPinned(TRI_voc_cid_t cid) {
-  return contextData()->isPinned(cid);
+  transaction::ContextData* data = contextData();
+  if (data) {
+    return data->isPinned(cid);
+  }
+  return true; // storage engine does not need pinning
 }
 
 /// @brief temporarily lease a StringBuffer object
@@ -132,6 +140,23 @@ basics::StringBuffer* transaction::Context::leaseStringBuffer(size_t initialSize
 /// @brief return a temporary StringBuffer object
 void transaction::Context::returnStringBuffer(basics::StringBuffer* stringBuffer) {
   _stringBuffer.reset(stringBuffer);
+}
+
+
+/// @brief temporarily lease a std::string
+std::string* transaction::Context::leaseString() {
+  if (_stringBuffer == nullptr) {
+    _stdString.reset(new std::string());
+  } else {
+    _stdString->clear();
+  }
+  
+  return _stdString.release();
+}
+
+/// @brief return a temporary std::string object
+void transaction::Context::returnString(std::string* str) {
+  _stdString.reset(str);
 }
 
 /// @brief temporarily lease a Builder object
@@ -208,15 +233,17 @@ void transaction::Context::storeTransactionResult(TRI_voc_tid_t id,
 transaction::ContextData* transaction::Context::contextData() {
   if (_contextData == nullptr) {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
     _contextData = engine->createTransactionContextData();
   }
-
   return _contextData.get();
 }
 
 TRI_voc_tid_t transaction::Context::generateId() const {
-  return ServerState::instance()->isCoordinator()
-             ? TRI_NewServerSpecificTickMod4()       // coordinator
-             : TRI_NewServerSpecificTickMod4() + 3;  // legacy
+  auto role = ServerState::instance()->getRole();
+  if (ServerState::isCoordinator(role)) {
+    return TRI_NewServerSpecificTickMod4();
+  } else if (ServerState::isDBServer(role)) {
+    return TRI_NewServerSpecificTickMod4() + 3; // legacy
+  }
+  return TRI_NewTickServer();
 }

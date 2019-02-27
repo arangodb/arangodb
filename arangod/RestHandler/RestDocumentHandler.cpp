@@ -28,7 +28,7 @@
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "RestDocumentHandler.h"
-#include "StorageEngine/TransactionManager.h"
+#include "Transaction/Manager.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -85,8 +85,8 @@ uint32_t RestDocumentHandler::forwardingTarget() {
   std::string value = _request->header(StaticStrings::TransactionId, found);
   if (found) {
     uint64_t tid = basics::StringUtils::uint64(value);
-    if (!TransactionManager::isCoordinatorTransactionId(tid)) {
-      TRI_ASSERT(TransactionManager::isLegacyTransactionId(tid));
+    if (!transaction::Manager::isCoordinatorTransactionId(tid)) {
+      TRI_ASSERT(transaction::Manager::isLegacyTransactionId(tid));
       return 0;
     }
     uint32_t sourceServer = TRI_ExtractServerIdFromTick(tid);

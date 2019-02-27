@@ -169,12 +169,6 @@ int ClusterTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 
   TRI_ASSERT(_collection != nullptr);
 
-  std::string collName(_collection->name());
-  if (_transaction->isLockedShard(collName)) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
-
   TRI_ASSERT(!isLocked());
 
   TRI_ASSERT(_collection);
@@ -200,14 +194,7 @@ int ClusterTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
 
   TRI_ASSERT(_collection != nullptr);
 
-  std::string collName(_collection->name());
-  if (_transaction->isLockedShard(collName)) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
-
   TRI_ASSERT(isLocked());
-
   if (_nestingLevel < nestingLevel) {
     // only process our own collections
     return TRI_ERROR_NO_ERROR;

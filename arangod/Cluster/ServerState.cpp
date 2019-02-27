@@ -142,7 +142,7 @@ std::string ServerState::roleToString(ServerState::RoleEnum role) {
       return "UNDEFINED";
     case ROLE_SINGLE:
       return "SINGLE";
-    case ROLE_PRIMARY:
+    case ROLE_DBSERVER:
       return "PRIMARY";
     case ROLE_COORDINATOR:
       return "COORDINATOR";
@@ -160,7 +160,7 @@ std::string ServerState::roleToShortString(ServerState::RoleEnum role) {
       return "NONE";
     case ROLE_SINGLE:
       return "SNGL";
-    case ROLE_PRIMARY:
+    case ROLE_DBSERVER:
       return "PRMR";
     case ROLE_COORDINATOR:
       return "CRDN";
@@ -183,7 +183,7 @@ ServerState::RoleEnum ServerState::stringToRole(std::string const& value) {
     // note: DBSERVER is an alias for PRIMARY
     // internally and in all API values returned we will still use PRIMARY
     // for compatibility reasons
-    return ROLE_PRIMARY;
+    return ROLE_DBSERVER;
   } else if (value == "COORDINATOR") {
     return ROLE_COORDINATOR;
   } else if (value == "AGENT") {
@@ -395,7 +395,7 @@ std::string ServerState::roleToAgencyListKey(ServerState::RoleEnum role) {
 
 std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
   switch (role) {
-    case ROLE_PRIMARY:
+    case ROLE_DBSERVER:
       return "DBServer";
     case ROLE_COORDINATOR:
       return "Coordinator";
@@ -761,7 +761,7 @@ void ServerState::setState(StateEnum state) {
   }
 
   auto role = getRole();
-  if (role == ROLE_PRIMARY) {
+  if (role == ROLE_DBSERVER) {
     result = checkPrimaryState(state);
   } else if (role == ROLE_COORDINATOR) {
     result = checkCoordinatorState(state);

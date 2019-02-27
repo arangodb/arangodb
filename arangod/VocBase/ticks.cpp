@@ -86,11 +86,10 @@ TRI_voc_tick_t TRI_NewServerSpecificTickMod4() {
   static constexpr size_t LowerShift{2};
   static constexpr size_t UpperShift{40};
 
-  uint64_t lower = (TRI_NewTickServer() << LowerShift) & LowerMask;
-  uint64_t upper =
+  const uint64_t lower = (TRI_NewTickServer() << LowerShift) & LowerMask;
+  const uint64_t upper =
       (static_cast<uint64_t>(ServerState::instance()->getShortId()) << UpperShift) & UpperMask;
-  uint64_t tick = (upper | lower);
-  return static_cast<TRI_voc_tick_t>(tick);
+  return static_cast<TRI_voc_tick_t>(upper | lower);
 }
 
 /// @brief extracts the server id from a server-specific tick

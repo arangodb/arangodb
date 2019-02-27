@@ -691,9 +691,9 @@ bool Supervision::updateSnapshot() {
 // All checks, guarded by main thread
 bool Supervision::doChecks() {
   _lock.assertLockedByCurrentThread();
-  TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_PRIMARY) ==
+  TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_DBSERVER) ==
              "DBServers");
-  check(ServerState::roleToAgencyListKey(ServerState::ROLE_PRIMARY));
+  check(ServerState::roleToAgencyListKey(ServerState::ROLE_DBSERVER));
   TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR) ==
              "Coordinators");
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR));

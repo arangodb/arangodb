@@ -27,8 +27,8 @@
 #include "ClusterRestWalHandler.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/TransactionManager.h"
-#include "StorageEngine/TransactionManagerFeature.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Utils/ExecContext.h"
 
 #include <rocksdb/utilities/transaction_db.h>
@@ -152,7 +152,7 @@ void ClusterRestWalHandler::flush() {
 }
 
 void ClusterRestWalHandler::transactions() {
-  TransactionManager* mngr = TransactionManagerFeature::manager();
+  auto* mngr = transaction::ManagerFeature::manager();
   VPackBuilder builder;
   builder.openObject();
   builder.add("runningTransactions", VPackValue(mngr->getActiveTransactionCount()));

@@ -99,7 +99,7 @@
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
-#include "StorageEngine/TransactionManagerFeature.h"
+#include "Transaction/ManagerFeature.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
@@ -212,7 +212,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature(new StorageEngineFeature(server));
     server.addFeature(new SystemDatabaseFeature(server));
     server.addFeature(new TempFeature(server, name));
-    server.addFeature(new TransactionManagerFeature(server));
+    server.addFeature(new transaction::ManagerFeature(server));
     server.addFeature(new TraverserEngineRegistryFeature(server));
     server.addFeature(new UpgradeFeature(server, &ret, nonServerFeatures));
     server.addFeature(new V8DealerFeature(server));

@@ -48,11 +48,10 @@ class Hints {
     RECOVERY = 512,
     NO_DLD = 1024,       // disable deadlock detection, unsupported in RocksDB
     NO_INDEXING = 2048,  // use DisableIndexing for RocksDB
-    INTERMEDIATE_COMMITS = 4096,  // enable intermediate commits in rdb
-    ALLOW_RANGE_DELETE = 8192,    // enable range-delete in rdb
-    FROM_TOPLEVEL_AQL = 16384,    // transaction is started by an AQL query that
-                                  // is not in a sub-transaction
-    MANAGED = 32768,  // transaction with externally managed lifetime
+    INTERMEDIATE_COMMITS = 4096,  // enable intermediate commits in rocksdb
+    ALLOW_RANGE_DELETE = 8192,    // enable range-delete in rocksdb
+    FROM_TOPLEVEL_AQL = 16384,    // transaction is only runnning one AQL query
+    GLOBAL_MANAGED = 32768,  // transaction with externally managed lifetime
   };
 
   Hints() : _value(0) {}
