@@ -176,18 +176,43 @@ void ensureLink(arangodb::DatabaseFeature& db,
   json.close();
 
   bool created;
-  // re-insert link
-  if (!col->dropIndex(link->id()) || !col->createIndex(json.slice(), created) || !created) {
-    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "Failed to recreate the link '" << iid << "' to the collection '"
-        << cid << "' in the database '" << dbId;
-  }
-}
 
-void dropCollectionFromAllViews(arangodb::DatabaseFeature& db,
-                                TRI_voc_tick_t dbId, TRI_voc_cid_t collectionId) {
-  // NOOP since either the IResearchView has been dropped as well
-  //      or the IResearchView will validate and remove any stale links on start
+  // re-insert link
+  if (!col->dropIndex(link->id()) // index drop failure
+      || !col->createIndex(json.slice(), created) // index creation failure
+      || !created) { // index not created
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "Failed to recreate an arangosearch link '" << iid << "' to the collection '" << cid << "' in the database '" << dbId;
+
+    return;
+  }
+
+  // must explicitly write CreateIndex marker since
+  // RocksDBCollection::dropIndex(...) unconditionally writes DropIndex marker
+  // but RocksDBCollection::createIndex(...) only writes CreateIndex marker if
+  // the StorageEngine is not inRecovery()
+  // code below copied verbatim from RocksDBCollection::createIndex(...)
+  auto builder = col->toVelocyPackIgnore({"path", "statusString"}, true, true);
+  auto* engine = static_cast<arangodb::RocksDBEngine*>( // StrageEngine
+    arangodb::EngineSelectorFeature::ENGINE // arg
+  );
+  TRI_ASSERT(engine);
+
+  // TODO FIXME find a better way to retrieve an iResearch Link
+  // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
+  auto idx = std::dynamic_pointer_cast<arangodb::Index>(link);
+
+  arangodb::velocypack::Builder indexInfo;
+
+  idx->toVelocyPack( // index definition
+    indexInfo, arangodb::Index::makeFlags(arangodb::Index::Serialize::ObjectId) // args
+  );
+  engine->writeCreateCollectionMarker( // write marker
+    dbId, // vocbase id
+    cid, // collection id
+    builder.slice(), // RocksDB path
+    arangodb::RocksDBLogValue::IndexCreate(dbId, cid, indexInfo.slice()) // marker
+  );
 }
 
 }  // namespace
@@ -288,12 +313,6 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
   RocksDBLogType const type = RocksDBLogValue::type(blob);
 
   switch (type) {
-    case RocksDBLogType::CollectionDrop: {
-      // find database, iterate over all extant views and drop collection
-      TRI_voc_tick_t const dbId = RocksDBLogValue::databaseId(blob);
-      TRI_voc_cid_t const collectionId = RocksDBLogValue::collectionId(blob);
-      dropCollectionFromAllViews(*_dbFeature, dbId, collectionId);
-    } break;
     case RocksDBLogType::IndexCreate: {
       TRI_voc_tick_t const dbId = RocksDBLogValue::databaseId(blob);
       TRI_voc_cid_t const collectionId = RocksDBLogValue::collectionId(blob);
