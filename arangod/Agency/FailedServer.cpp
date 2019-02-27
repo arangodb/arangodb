@@ -131,17 +131,29 @@ bool FailedServer::start() {
           if (replicationFactorPair.second) {
             VPackSlice const replicationFactor = replicationFactorPair.first.slice();
 
-            if (!replicationFactor.isNumber()) {
-              continue;  // no point to try salvaging unreplicated data
-            }
+
+            LOG_DEVEL << "FailedServer generating jobs for "
+                  << collection.hasAsString("id").first;
 
             uint64_t number = 1;
-            try {
-              number = replicationFactor.getNumber<uint64_t>();
-            } catch(...) {
-            }
-            if (number == 1) {
-              continue;
+            bool isSatellite = false;
+
+            if (replicationFactor.isString() && replicationFactor.compareString("satellite") == 0) {
+              isSatellite = true; // do nothing - number = Job::availableServers(_snapshot).size();
+            } else if (replicationFactor.isNumber()) {
+              try {
+                number = replicationFactor.getNumber<uint64_t>();
+              } catch(...) {
+                LOG_TOPIC(ERR, Logger::SUPERVISION) << "Failed to read replicationFactor. job: "
+                  << _jobId << " " << collection.hasAsString("id").first;
+                continue ;
+              }
+
+              if (number == 1) {
+                continue ;
+              }
+            } else {
+              continue;  // no point to try salvaging unreplicated data
             }
 
             if (collection.has("distributeShardsLike")) {
@@ -161,10 +173,15 @@ bool FailedServer::start() {
                       _jobId, database.first, collptr.first, shard.first, _server)
                       .create(transactions);
                   } else {
-                    FailedFollower(
-                      _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                      _jobId, database.first, collptr.first, shard.first, _server)
-                      .create(transactions);
+                    if (!isSatellite) {
+                      FailedFollower(
+                        _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
+                        _jobId, database.first, collptr.first, shard.first, _server)
+                        .create(transactions);
+                    } else {
+                      LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Do intentionally nothing for failed follower of satellite collection. job: "
+                        << _jobId;
+                    }
                   }
                 }
                 pos++;

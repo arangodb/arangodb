@@ -388,34 +388,58 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           continue;
         }
 
-        decltype(servers) serversCopy(servers);  // a copy
+        auto replicationFactor = collection.hasAsString("replicationFacotr");
+        bool isSatellite = replicationFactor.second && replicationFactor.first == "satellite";
 
-        // Only destinations, which are not already holding this shard
-        for (auto const& dbserver : VPackArrayIterator(shard.second->slice())) {
-          serversCopy.erase(std::remove(serversCopy.begin(), serversCopy.end(),
-                                        dbserver.copyString()),
-                            serversCopy.end());
-        }
+
 
         bool isLeader = (found == 0);
 
-        // Among those a random destination:
-        std::string toServer;
-        if (serversCopy.empty()) {
-          LOG_TOPIC(DEBUG, Logger::SUPERVISION)
-              << "No servers remain as target for MoveShard";
-          return false;
+        if (isSatellite) {
+          if (isLeader) {
+
+            std::string toServer = Job::findNonblockedCommonHealthyInSyncFollower(
+              _snapshot, database.first, collptr.first, shard.first);
+
+            MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
+                    _jobId, database.first, collptr.first, shard.first, _server,
+                    toServer, isLeader, false)
+              .create(trx);
+
+          } else {
+            // Intentionally do nothing. RemoveServer will remove the failed follower
+            LOG_TOPIC(DEBUG, Logger::SUPERVISION) <<
+              "Do nothing for cleanout of follower of the satellite collection " << collection.hasAsString("id").first;
+            continue ;
+          }
+        } else {
+          decltype(servers) serversCopy(servers);  // a copy
+
+          // Only destinations, which are not already holding this shard
+          for (auto const& dbserver : VPackArrayIterator(shard.second->slice())) {
+            serversCopy.erase(std::remove(serversCopy.begin(), serversCopy.end(),
+                                          dbserver.copyString()),
+                              serversCopy.end());
+          }
+
+          // Among those a random destination:
+          std::string toServer;
+          if (serversCopy.empty()) {
+            LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+                << "No servers remain as target for MoveShard";
+            return false;
+          }
+
+          toServer = serversCopy.at(
+              arangodb::RandomGenerator::interval(static_cast<int64_t>(0),
+                                                  serversCopy.size() - 1));
+
+          // Schedule move into trx:
+          MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
+                    _jobId, database.first, collptr.first, shard.first, _server,
+                    toServer, isLeader, false)
+              .create(trx);
         }
-
-        toServer = serversCopy.at(
-            arangodb::RandomGenerator::interval(static_cast<int64_t>(0),
-                                                serversCopy.size() - 1));
-
-        // Schedule move into trx:
-        MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                  _jobId, database.first, collptr.first, shard.first, _server,
-                  toServer, isLeader, false)
-            .create(trx);
       }
     }
   }
