@@ -1125,8 +1125,7 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
 /// for their documents.
 ////////////////////////////////////////////////////////////////////////////////
 
-Result createDocumentOnCoordinator(transaction::Methods& trx,
-                                   std::string const& collname,
+Result createDocumentOnCoordinator(transaction::Methods& trx, std::string const& collname,
                                    arangodb::OperationOptions const& options,
                                    VPackSlice const& slice,
                                    arangodb::rest::ResponseCode& responseCode,
@@ -1526,8 +1525,7 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Result truncateCollectionOnCoordinator(transaction::Methods& trx,
-                                       std::string const& collname) {
+Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string const& collname) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
@@ -1599,9 +1597,8 @@ Result truncateCollectionOnCoordinator(transaction::Methods& trx,
 /// @brief get a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int getDocumentOnCoordinator(arangodb::transaction::Methods& trx,
-                             std::string const& collname, VPackSlice slice,
-                             OperationOptions const& options,
+int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string const& collname,
+                             VPackSlice slice, OperationOptions const& options,
                              arangodb::rest::ResponseCode& responseCode,
                              std::unordered_map<int, size_t>& errorCounter,
                              std::shared_ptr<VPackBuilder>& resultBody) {
@@ -2294,8 +2291,7 @@ int getFilteredEdgesOnCoordinator(arangodb::transaction::Methods const& trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 int modifyDocumentOnCoordinator(
-    transaction::Methods& trx, std::string const& collname,
-    VPackSlice const& slice,
+    transaction::Methods& trx, std::string const& collname, VPackSlice const& slice,
     arangodb::OperationOptions const& options, bool isPatch,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
     arangodb::rest::ResponseCode& responseCode, std::unordered_map<int, size_t>& errorCounter,
@@ -2405,7 +2401,7 @@ int modifyDocumentOnCoordinator(
   if (options.returnOld) {
     optsUrlPart += "&returnOld=true";
   }
-  
+
   if (canUseFastPath) {
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
@@ -2416,6 +2412,7 @@ int modifyDocumentOnCoordinator(
       auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
       addTransactionHeaderForShard(trx, *shards, /*shard*/it.first, *headers);
       
+
       if (!useMultiple) {
         TRI_ASSERT(it.second.size() == 1);
         body = std::make_shared<std::string>(slice.toJson());
