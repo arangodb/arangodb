@@ -185,12 +185,43 @@ void ensureLink(arangodb::DatabaseFeature& db,
   json.close();
 
   bool created;
+
   // re-insert link
-  if (!col->dropIndex(link->id()) || !col->createIndex(json.slice(), created) || !created) {
+  if (!col->dropIndex(link->id()) // index drop failure
+      || !col->createIndex(json.slice(), created) // index creation failure
+      || !created) { // index not created
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "Failed to recreate the link '" << iid << "' to the collection '"
-        << cid << "' in the database '" << dbId;
+      << "Failed to recreate an arangosearch link '" << iid << "' to the collection '" << cid << "' in the database '" << dbId;
+
+    return;
   }
+
+  // must explicitly write CreateIndex marker since
+  // RocksDBCollection::dropIndex(...) unconditionally writes DropIndex marker
+  // but RocksDBCollection::createIndex(...) only writes CreateIndex marker if
+  // the StorageEngine is not inRecovery()
+  // code below copied verbatim from RocksDBCollection::createIndex(...)
+  auto builder = col->toVelocyPackIgnore({"path", "statusString"}, true, true);
+  auto* engine = static_cast<arangodb::RocksDBEngine*>( // StrageEngine
+    arangodb::EngineSelectorFeature::ENGINE // arg
+  );
+  TRI_ASSERT(engine);
+
+  // TODO FIXME find a better way to retrieve an iResearch Link
+  // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
+  auto idx = std::dynamic_pointer_cast<arangodb::Index>(link);
+
+  arangodb::velocypack::Builder indexInfo;
+
+  idx->toVelocyPack( // index definition
+    indexInfo, arangodb::Index::makeFlags(arangodb::Index::Serialize::ObjectId) // args
+  );
+  engine->writeCreateCollectionMarker( // write marker
+    dbId, // vocbase id
+    cid, // collection id
+    builder.slice(), // RocksDB path
+    arangodb::RocksDBLogValue::IndexCreate(dbId, cid, indexInfo.slice()) // marker
+  );
 }
 
 void dropCollectionFromAllViews(arangodb::DatabaseFeature& db,
