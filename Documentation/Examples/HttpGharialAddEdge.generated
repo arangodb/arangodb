@@ -6,17 +6,17 @@
 }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> Accepted
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _XWq5jmy--D
+etag: _YOn1Gku--_
 x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span>, 
   <span class="hljs-string">"edge"</span> : { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/100284"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"100284"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5jmy--D"</span> 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/100926"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"100926"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YOn1Gku--_"</span> 
   } 
 }

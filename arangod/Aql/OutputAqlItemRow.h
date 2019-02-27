@@ -97,7 +97,6 @@ class OutputAqlItemRow {
   }
 
   void copyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing = false) {
-    TRI_ASSERT(sourceRow.isInitialized());
     // While violating the following asserted states would do no harm, the
     // implementation as planned should only copy a row after all values have
     // been set, and copyRow should only be called once.
@@ -112,6 +111,7 @@ class OutputAqlItemRow {
     // because it is passed through.
     if (_doNotCopyInputRow) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      TRI_ASSERT(sourceRow.isInitialized());
       TRI_ASSERT(sourceRow.internalBlockIs(blockShell()));
 #endif
       _inputRowCopied = true;

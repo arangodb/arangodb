@@ -95,7 +95,6 @@ SCENARIO("EnumerateCollectionExecutor",
     std::vector<std::string> const projections;
     transaction::Methods& trx = mockTrx.get();
     std::vector<size_t> const coveringIndexAttributePositions;
-    bool allowCoveringIndexOptimization = false;
     bool useRawPointers = false;
     bool random = false;
 
@@ -103,7 +102,6 @@ SCENARIO("EnumerateCollectionExecutor",
                                            regToClear, regToKeep, &engine, &abc,
                                            &outVariable, varUsedLater, projections,
                                            &trx, coveringIndexAttributePositions,
-                                           allowCoveringIndexOptimization,
                                            useRawPointers, random);
 
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);

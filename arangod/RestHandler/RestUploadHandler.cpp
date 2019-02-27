@@ -73,7 +73,7 @@ RestStatus RestUploadHandler::execute() {
     TRI_FreeString(relative);
   }
 
-  StringRef bodyStr = _request->rawPayload();
+  arangodb::velocypack::StringRef bodyStr = _request->rawPayload();
   char const* body = bodyStr.data();
   size_t bodySize = bodyStr.size();
 

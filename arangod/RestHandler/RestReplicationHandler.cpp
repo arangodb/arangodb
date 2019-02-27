@@ -107,7 +107,8 @@ static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force
 }
 
 static Result restoreDataParser(char const* ptr, char const* pos,
-                                std::string const& collectionName, std::string& key,
+                                std::string const& collectionName, int line,
+                                std::string& key,
                                 VPackBuilder& builder, VPackSlice& doc,
                                 TRI_replication_operation_e& type) {
   builder.clear();
@@ -115,16 +116,11 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   try {
     VPackParser parser(builder, builder.options);
     parser.parse(ptr, static_cast<size_t>(pos - ptr));
-  } catch (VPackException const& ex) {
-    // Could not parse the given string
-    return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  "received invalid JSON data for collection '" +
-                      collectionName + "': " + ex.what()};
   } catch (std::exception const& ex) {
     // Could not even build the string
     return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
                   "received invalid JSON data for collection '" +
-                      collectionName + "': " + ex.what()};
+                      collectionName + "' on line " + std::to_string(line) + ": " + ex.what()};
   } catch (...) {
     return Result{TRI_ERROR_INTERNAL};
   }
@@ -134,7 +130,7 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   if (!slice.isObject()) {
     return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
                   "received invalid JSON data for collection '" +
-                      collectionName + "': data is no object"};
+                      collectionName + "' on line " + std::to_string(line) + ": data is no object"};
   }
 
   type = REPLICATION_INVALID;
@@ -143,7 +139,7 @@ static Result restoreDataParser(char const* ptr, char const* pos,
     if (!pair.key.isString()) {
       return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
                     "received invalid JSON data for collection '" +
-                        collectionName + "': got a non-string key"};
+                        collectionName + "' on line " + std::to_string(line) + ": got a non-string key"};
     }
 
     if (pair.key.isEqualString(::typeString)) {
@@ -174,13 +170,13 @@ static Result restoreDataParser(char const* ptr, char const* pos,
 
   if (type == REPLICATION_MARKER_DOCUMENT && !doc.isObject()) {
     return Result{TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "got document marker without contents"};
+                  "got document marker without object contents for collection '" + collectionName + "' on line " + std::to_string(line) + ": " + doc.toJson()};
   }
 
   if (key.empty()) {
     return Result{TRI_ERROR_HTTP_BAD_PARAMETER,
                   "received invalid JSON data for collection '" +
-                      collectionName + "': empty key"};
+                      collectionName + "' on line " + std::to_string(line) + ": empty key"};
   }
 
   return Result{TRI_ERROR_NO_ERROR};
@@ -1209,6 +1205,7 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
   // entry.
 
   {
+    int line = 0;
     VPackArrayBuilder guard(&allMarkers);
     std::string key;
     while (ptr < end) {
@@ -1218,6 +1215,7 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
         pos = end;
       } else {
         *((char*)pos) = '\0';
+        ++line;
       }
 
       if (pos - ptr > 1) {
@@ -1226,7 +1224,7 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
         VPackSlice doc;
         TRI_replication_operation_e type = REPLICATION_INVALID;
 
-        Result res = restoreDataParser(ptr, pos, collectionName, key, builder, doc, type);
+        Result res = restoreDataParser(ptr, pos, collectionName, line, key, builder, doc, type);
         if (res.fail()) {
           return res;
         }
@@ -1292,8 +1290,8 @@ Result RestReplicationHandler::processRestoreUsersBatch(std::string const& colle
       // In the _users case we silently remove the _key value.
       bindVars->openObject();
       for (auto const& it : VPackObjectIterator(doc)) {
-        if (StringRef(it.key) != StaticStrings::KeyString &&
-            StringRef(it.key) != StaticStrings::IdString) {
+        if (arangodb::velocypack::StringRef(it.key) != StaticStrings::KeyString &&
+            arangodb::velocypack::StringRef(it.key) != StaticStrings::IdString) {
           bindVars->add(it.key);
           bindVars->add(it.value);
         }
@@ -1431,8 +1429,8 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
           // In the _users case we silently remove the _key value.
           builder.openObject();
           for (auto const& it : VPackObjectIterator(doc)) {
-            if (StringRef(it.key) != StaticStrings::KeyString &&
-                StringRef(it.key) != StaticStrings::IdString) {
+            if (arangodb::velocypack::StringRef(it.key) != StaticStrings::KeyString &&
+                arangodb::velocypack::StringRef(it.key) != StaticStrings::IdString) {
               builder.add(it.key);
               builder.add(it.value);
             }

@@ -26,13 +26,13 @@
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
-#include "Basics/StringRef.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -42,7 +42,7 @@ using namespace arangodb::graph;
 namespace {
 static bool isValidId(VPackSlice id) {
   TRI_ASSERT(id.isString());
-  StringRef tester(id);
+  arangodb::velocypack::StringRef tester(id);
   return tester.find('/') != std::string::npos;
 }
 }  // namespace
@@ -53,7 +53,7 @@ ShortestPathExecutorInfos::ShortestPathExecutorInfos(
     RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
     std::unordered_set<RegisterId> registersToKeep,
     std::unique_ptr<graph::ShortestPathFinder>&& finder,
-    std::unordered_map<OutputName, RegisterId>&& registerMapping,
+    std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
     InputVertex&& source, InputVertex&& target)
     : ExecutorInfos(inputRegisters, outputRegisters, nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),

@@ -25,13 +25,12 @@
 #define ARANGOD_GRAPH_SHORTEST_PATH_RESULT_H 1
 
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
 #include "Graph/EdgeDocumentToken.h"
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 
 class ManagedDocumentResult;
-class StringRef;
 
 namespace aql {
 struct AqlValue;
@@ -90,7 +89,7 @@ class ShortestPathResult {
 
   size_t length() { return _vertices.size(); };
 
-  void addVertex(arangodb::StringRef v);
+  void addVertex(arangodb::velocypack::StringRef v);
   void addEdge(arangodb::graph::EdgeDocumentToken e);
 
  private:
@@ -101,7 +100,7 @@ class ShortestPathResult {
   // path is _vertices[0] , _edges[0], _vertices[1] etc.
 
   /// @brief vertices
-  std::deque<arangodb::StringRef> _vertices;
+  std::deque<arangodb::velocypack::StringRef> _vertices;
 
   /// @brief edges
   std::deque<arangodb::graph::EdgeDocumentToken> _edges;

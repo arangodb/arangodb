@@ -279,7 +279,7 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config, PregelShard sourceShar
 
   ManagedDocumentResult mmdr;
   ShardID const& vertexShard = _config->globalShardIDs()[sourceShard];
-  Result res = trx->documentFastPathLocal(vertexShard, StringRef(_key), mmdr, true);
+  Result res = trx->documentFastPathLocal(vertexShard, arangodb::velocypack::StringRef(_key), mmdr, true);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }

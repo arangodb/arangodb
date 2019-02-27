@@ -363,7 +363,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       storeLastKeyValue(RocksDBKey::objectId(key), RocksDBValue::keyValue(value));
     } else if (column_family_id == RocksDBColumnFamily::primary()->GetID()) {
       // document key
-      StringRef ref = RocksDBKey::primaryKey(key);
+      arangodb::velocypack::StringRef ref = RocksDBKey::primaryKey(key);
       TRI_ASSERT(!ref.empty());
       // check if the key is numeric
       if (ref[0] >= '1' && ref[0] <= '9') {

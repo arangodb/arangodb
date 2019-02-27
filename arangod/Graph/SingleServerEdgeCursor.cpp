@@ -72,7 +72,7 @@ static bool CheckInaccesible(transaction::Methods* trx, VPackSlice const& edge) 
   // for skipInaccessibleCollections we need to check the edge
   // document, in that case nextWithExtra has no benefit
   TRI_ASSERT(edge.isString());
-  StringRef str(edge);
+  arangodb::velocypack::StringRef str(edge);
   size_t pos = str.find('/');
   TRI_ASSERT(pos != std::string::npos);
   return trx->isInaccessibleCollection(str.substr(0, pos).toString());

@@ -27,15 +27,14 @@
 #include "Basics/Result.h"
 #include "voc-types.h"
 
+#include <velocypack/StringRef.h>
+
 struct TRI_vocbase_t;  // forward declaration
 
 namespace arangodb {
 
 namespace velocypack {
-
 class Builder;    // forward declaration
-class StringRef;  // forward declaration
-
 }  // namespace velocypack
 
 ////////////////////////////////////////////////////////////////////////////////

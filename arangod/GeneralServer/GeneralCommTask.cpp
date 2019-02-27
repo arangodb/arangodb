@@ -25,6 +25,7 @@
 
 #include "GeneralCommTask.h"
 
+#include "Basics/compile-time-strlen.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Locking.h"
 #include "Basics/MutexLocker.h"
@@ -54,9 +55,17 @@ using namespace arangodb::rest;
 
 namespace {
 // some static URL path prefixes
-static std::string const AdminAardvark("/_admin/aardvark/");
-static std::string const ApiUser("/_api/user/");
-static std::string const Open("/_open/");
+std::string const AdminAardvark("/_admin/aardvark/");
+std::string const ApiUser("/_api/user/");
+std::string const Open("/_open/");
+
+inline bool startsWith(std::string const& path, char const* other) {
+  size_t const size = arangodb::compileTimeStrlen(other);
+
+  return (size <= path.size() &&
+          path.compare(0, size, other, size) == 0);
+}
+
 }  // namespace
 
 // -----------------------------------------------------------------------------
@@ -157,9 +166,9 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
       // In the bootstrap phase, we would like that coordinators answer the
       // following endpoints, but not yet others:
       if ((!ServerState::instance()->isCoordinator() &&
-           path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
-          (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
-           path.find("/_api/aql") == std::string::npos)) {
+           !::startsWith(path, "/_api/agency/agency-callbacks")) ||
+          (!::startsWith(path, "/_api/agency/agency-callbacks") &&
+           !::startsWith(path, "/_api/aql"))) {
         LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
             << "Maintenance mode: refused path: " << path;
         std::unique_ptr<GeneralResponse> res =
@@ -178,19 +187,20 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
     }
     // intentionally falls through
     case ServerState::Mode::TRYAGAIN: {
-      if (path.find("/_admin/shutdown") == std::string::npos &&
-          path.find("/_admin/cluster/health") == std::string::npos &&
-          path.find("/_admin/log") == std::string::npos &&
-          path.find("/_admin/server/role") == std::string::npos &&
-          path.find("/_admin/server/availability") == std::string::npos &&
-          path.find("/_admin/status") == std::string::npos &&
-          path.find("/_admin/statistics") == std::string::npos &&
-          path.find("/_api/agency/agency-callbacks") == std::string::npos &&
-          path.find("/_api/cluster/") == std::string::npos &&
-          path.find("/_api/replication") == std::string::npos &&
+      if (!::startsWith(path, "/_admin/shutdown") &&
+          !::startsWith(path, "/_admin/cluster/health") &&
+          !::startsWith(path, "/_admin/log") &&
+          !::startsWith(path, "/_admin/server/role") &&
+          !::startsWith(path, "/_admin/server/availability") &&
+          !::startsWith(path, "/_admin/status") &&
+          !::startsWith(path, "/_admin/statistics") &&
+          !::startsWith(path, "/_api/agency/agency-callbacks") &&
+          !::startsWith(path, "/_api/cluster/") &&
+          !::startsWith(path, "/_api/replication") &&
+          !::startsWith(path, "/_api/ttl/statistics") &&
           (mode == ServerState::Mode::TRYAGAIN ||
-           path.find("/_api/version") == std::string::npos) &&
-          path.find("/_api/wal") == std::string::npos) {
+           !::startsWith(path, "/_api/version")) &&
+          !::startsWith(path, "/_api/wal")) {
         LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
             << "Redirect/Try-again: refused path: " << path;
         std::unique_ptr<GeneralResponse> res =

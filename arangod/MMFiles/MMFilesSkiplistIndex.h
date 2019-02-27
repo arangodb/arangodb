@@ -229,7 +229,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
   bool intervalValid(void*, Node*, Node*) const;
 };
 
-class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
+class MMFilesSkiplistIndex : public MMFilesPathBasedIndex {
   struct KeyElementComparator {
     int operator()(void* userData, VPackSlice const* leftKey,
                    MMFilesSkiplistIndexElement const* rightElement) const;

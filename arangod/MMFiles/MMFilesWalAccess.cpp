@@ -24,7 +24,6 @@
 #include "MMFiles/MMFilesWalAccess.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCompactionLocker.h"
@@ -38,6 +37,7 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -254,7 +254,9 @@ struct MMFilesWalAccessContext : WalAccessContext {
         // will not find anything for a view
         LogicalCollection* collection = loadCollection(databaseId, datasourceId);
         if (collection != nullptr) {  // db may be already dropped
-          if (TRI_ExcludeCollectionReplication(collection->name(), _filter.includeSystem)) {
+          if (TRI_ExcludeCollectionReplication(collection->name(),
+                                               _filter.includeSystem,
+                                               _filter.includeFoxxQueues)) {
             return false;
           }
         }

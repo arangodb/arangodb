@@ -29,7 +29,6 @@
 #include "Aql/AstNode.h"
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
-#include "Basics/StringRef.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -39,12 +38,11 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <rocksdb/comparator.h>
+#include <rocksdb/iterator.h>
 #include <velocypack/Buffer.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/Slice.h>
-
-namespace rocksdb {
-class Iterator;
-}
 
 namespace arangodb {
 namespace aql {
@@ -87,7 +85,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
-  bool hasCovering() const override { return true; }
+  bool hasCovering() const override;
 
  private:
   arangodb::RocksDBVPackIndex const* _index;
@@ -123,10 +121,26 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
-  bool hasCovering() const override { return true; }
+  bool hasCovering() const override;
 
  private:
-  bool outOfRange() const;
+  inline bool outOfRange() const {
+    if (_reverse) {
+      return (_cmp->Compare(_iterator->key(), _rangeBound) < 0);
+    } else {
+      return (_cmp->Compare(_iterator->key(), _rangeBound) > 0);
+    }
+  }
+
+  inline bool advance() {
+    if (_reverse) {
+      _iterator->Prev();
+    } else {
+      _iterator->Next();
+    }
+
+    return _iterator->Valid() && !outOfRange();
+  }
 
   arangodb::RocksDBVPackIndex const* _index;
   rocksdb::Comparator const* _cmp;
@@ -152,7 +166,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
+  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
 
   RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
   void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) override;

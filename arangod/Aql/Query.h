@@ -49,7 +49,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 class CollectionNameResolver;
-class LogicalDataSource; // forward declaration
+class LogicalDataSource;  // forward declaration
 
 namespace transaction {
 class Context;
@@ -110,7 +110,7 @@ class Query {
   constexpr static uint64_t DontCache = 0;
 
   /// @brief whether or not the query is killed
-  bool killed() const;
+  inline bool killed() const { return _killed; }
 
   /// @brief set the query to killed
   void kill();
@@ -161,7 +161,7 @@ class Query {
     return _collections.add(name, accessType);
   }
 
-  inline Collection* addCollection(StringRef name, AccessMode::Type accessType) {
+  inline Collection* addCollection(arangodb::velocypack::StringRef name, AccessMode::Type accessType) {
     return _collections.add(name.toString(), accessType);
   }
 
@@ -366,8 +366,8 @@ class Query {
   std::unordered_map<std::string, std::unique_ptr<graph::Graph>> _graphs;
 
   /// @brief set of DataSources used in the query
-  ///        needed for the query cache, value LogicalDataSource::system()
-  std::unordered_set<std::shared_ptr<arangodb::LogicalDataSource>> _queryDataSources;
+  ///        needed for the query cache, stores datasource guid -> datasource name
+  std::unordered_map<std::string, std::string> _queryDataSources;
 
   /// @brief the actual query string
   QueryString _queryString;

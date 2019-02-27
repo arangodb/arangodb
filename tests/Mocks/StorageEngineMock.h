@@ -25,7 +25,6 @@
 #define ARANGODB_TESTS_MOCKS_STORAGE_ENGINE_MOCK_H 1
 
 #include "Basics/Result.h"
-#include "Basics/StringRef.h"
 #include "Indexes/IndexIterator.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -33,6 +32,8 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/ContextData.h"
 #include "VocBase/LocalDocumentId.h"
+
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 
@@ -83,7 +84,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
   virtual arangodb::Result persistProperties() override;
   virtual void prepareIndexes(arangodb::velocypack::Slice indexesSlice) override;
   virtual arangodb::Result read(arangodb::transaction::Methods*,
-                      arangodb::StringRef const& key,
+                      arangodb::velocypack::StringRef const& key,
                       arangodb::ManagedDocumentResult& result, bool) override;
   virtual arangodb::Result read(arangodb::transaction::Methods*, arangodb::velocypack::Slice const& key, arangodb::ManagedDocumentResult& result, bool) override;
   virtual bool readDocument(arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token, arangodb::ManagedDocumentResult& result) const override;

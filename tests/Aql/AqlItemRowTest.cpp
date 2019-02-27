@@ -42,12 +42,6 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-static void AssertEntry(InputAqlItemRow& in, RegisterId reg, VPackSlice value) {
-  AqlValue v = in.getValue(reg);
-  INFO("Expecting: " << value.toJson() << " got: " << v.slice().toJson());
-  REQUIRE(basics::VelocyPackHelper::compare(value, v.slice(), true) == 0);
-}
-
 static void AssertResultMatrix(AqlItemBlock* in, VPackSlice result,
                                std::unordered_set<RegisterId> const& regsToKeep,
                                bool assertNotInline = false) {

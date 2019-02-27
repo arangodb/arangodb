@@ -44,7 +44,8 @@ void TRI_GetTimeStampReplication(double timeStamp, char* dst, size_t maxLength) 
   strftime(dst, maxLength, "%Y-%m-%dT%H:%M:%SZ", &tb);
 }
 
-bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSystem) {
+bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSystem,
+                                      bool includeFoxxQueues) {
   if (name.empty()) {
     // should not happen...
     return true;
@@ -63,9 +64,10 @@ bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSyste
   if (TRI_IsPrefixString(name.c_str(), "_statistics") ||
       name == "_configuration" || name == "_frontend" ||
       name == "_cluster_kickstarter_plans" || name == "_routing" ||
-      name == "_fishbowl" || name == "_foxxlog" || name == "_jobs" ||
-      name == "_queues" || name == "_sessions") {
+      name == "_fishbowl" || name == "_foxxlog" || name == "_sessions") {
     // these system collections will always be excluded
+    return true;
+  } else if (!includeFoxxQueues && (name == "_jobs" || name == "_queues")) {
     return true;
   }
 

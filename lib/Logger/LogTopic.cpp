@@ -139,6 +139,7 @@ LogTopic Logger::SUPERVISION("supervision", LogLevel::INFO);
 LogTopic Logger::SYSCALL("syscall", LogLevel::INFO);
 LogTopic Logger::THREADS("threads", LogLevel::WARN);
 LogTopic Logger::TRANSACTIONS("trx", LogLevel::WARN);
+LogTopic Logger::TTL("ttl", LogLevel::WARN);
 LogTopic Logger::V8("v8", LogLevel::WARN);
 LogTopic Logger::VIEWS("views", LogLevel::FATAL);
 

@@ -22,23 +22,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchLinkHelper.h"
-#include "Basics/StaticStrings.h"
 #include "IResearchCommon.h"
 #include "IResearchFeature.h"
 #include "IResearchLink.h"
 #include "IResearchLinkMeta.h"
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
-#include "Logger/LogMacros.h"
+#include "VelocyPackHelper.h"
+#include "Basics/StaticStrings.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
-#include "VelocyPackHelper.h"
+#include "velocypack/Iterator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
-#include "velocypack/Iterator.h"
 
 namespace {
 
@@ -435,8 +435,10 @@ namespace iresearch {
   return emptySlice._slice;
 }
 
-/*static*/ bool IResearchLinkHelper::equal(arangodb::velocypack::Slice const& lhs,
-                                           arangodb::velocypack::Slice const& rhs) {
+/*static*/ bool IResearchLinkHelper::equal( // are link definitions equal
+    arangodb::velocypack::Slice const& lhs, // left hand side
+    arangodb::velocypack::Slice const& rhs // right hand side
+) {
   if (!lhs.isObject() || !rhs.isObject()) {
     return false;
   }
@@ -450,7 +452,7 @@ namespace iresearch {
     }
 
     auto ls = lhsViewSlice.copyString();
-    auto rs = lhsViewSlice.copyString();
+    auto rs = rhsViewSlice.copyString();
 
     if (ls.size() > rs.size()) {
       std::swap(ls, rs);
@@ -468,11 +470,15 @@ namespace iresearch {
   IResearchLinkMeta lhsMeta;
   IResearchLinkMeta rhsMeta;
 
-  return lhsMeta.init(lhs, errorField) && rhsMeta.init(rhs, errorField) && lhsMeta == rhsMeta;
+  return lhsMeta.init(lhs, errorField) // left side meta valid
+         && rhsMeta.init(rhs, errorField) // right side meta valid
+         && lhsMeta == rhsMeta; // left meta equal right meta
 }
 
-/*static*/ std::shared_ptr<IResearchLink> IResearchLinkHelper::find(LogicalCollection const& collection,
-                                                                    TRI_idx_iid_t id) {
+/*static*/ std::shared_ptr<IResearchLink> IResearchLinkHelper::find( // find link
+    LogicalCollection const& collection, // collection to search
+    TRI_idx_iid_t id // index id to find
+) {
   auto index = collection.lookupIndex(id);
 
   if (!index || arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {

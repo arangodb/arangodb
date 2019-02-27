@@ -47,7 +47,7 @@ AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable, b
   mustDestroy = false;
 
   auto const searchId = variable->id;
-  size_t i = -1;  // size_t is guraranteded to be unsigned so the overflow is ok
+  size_t i = -1;  // size_t is guaranteed to be unsigned so the overflow is ok
   for (auto const* var : _vars) {
     TRI_ASSERT(var != nullptr);
     ++i;
