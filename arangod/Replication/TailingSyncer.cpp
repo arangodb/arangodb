@@ -241,7 +241,8 @@ bool TailingSyncer::isExcludedCollection(std::string const& masterName) const {
     return true;
   }
 
-  if (TRI_ExcludeCollectionReplication(masterName, true)) {
+  if (TRI_ExcludeCollectionReplication(masterName, /*includeSystem*/true,
+                                       _state.applier._includeFoxxQueues)) {
     return true;
   }
 
@@ -1645,8 +1646,9 @@ void TailingSyncer::fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> shar
         (firstRegularTick > fetchTick ? "&firstRegular=" + StringUtils::itoa(firstRegularTick)
                                       : "") +
         "&serverId=" + _state.localServerIdString +
-        "&includeSystem=" + (_state.applier._includeSystem ? "true" : "false");
-
+        "&includeSystem=" + (_state.applier._includeSystem ? "true" : "false") +
+        "&includeFoxxQueues=" + (_state.applier._includeFoxxQueues ? "true" : "false");
+    
     // send request
     setProgress(std::string("fetching master log from tick ") + StringUtils::itoa(fetchTick) +
                 ", last scanned tick " + StringUtils::itoa(lastScannedTick) +

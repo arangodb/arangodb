@@ -131,7 +131,8 @@ class RocksDBReplicationContext {
       TRI_vocbase_t& vocbase, std::string const& cname);
 
   // returns inventory
-  Result getInventory(TRI_vocbase_t& vocbase, bool includeSystem, bool global,
+  Result getInventory(TRI_vocbase_t& vocbase, bool includeSystem,
+                      bool includeFoxxQueues, bool global,
                       velocypack::Builder&);
 
   // ========================= Dump API =============================

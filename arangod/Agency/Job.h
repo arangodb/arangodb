@@ -48,6 +48,7 @@ extern std::string const failedPrefix;
 extern std::string const finishedPrefix;
 extern std::string const toDoPrefix;
 extern std::string const cleanedPrefix;
+extern std::string const toBeCleanedPrefix;
 extern std::string const failedServersPrefix;
 extern std::string const planColPrefix;
 extern std::string const curColPrefix;
@@ -121,9 +122,10 @@ struct Job {
 
   /// @brief Get a random server, which is not blocked, in good condition and
   ///        excluding "exclude" vector
-  static std::string randomIdleGoodAvailableServer(Node const& snap,
+  static std::string randomIdleAvailableServer(Node const& snap,
                                                    std::vector<std::string> const& exclude);
-  static std::string randomIdleGoodAvailableServer(Node const& snap, VPackSlice const& exclude);
+  static size_t countGoodServersInList(Node const& snap, VPackSlice const& serverList);
+  static std::string randomIdleAvailableServer(Node const& snap, VPackSlice const& exclude);
 
   /// @brief Get servers from plan, which are not failed or cleaned out
   static std::vector<std::string> availableServers(const arangodb::consensus::Node&);
@@ -151,7 +153,7 @@ struct Job {
 
   static void doForAllShards(
       Node const& snapshot, std::string& database, std::vector<shard_t>& shards,
-      std::function<void(Slice plan, Slice current, std::string& planPath)> worker);
+      std::function<void(Slice plan, Slice current, std::string& planPath, std::string& curPath)> worker);
 
   // The following methods adds an operation to a transaction object or
   // a condition to a precondition object. In all cases, the builder trx
