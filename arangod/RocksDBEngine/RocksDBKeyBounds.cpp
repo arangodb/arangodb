@@ -194,7 +194,7 @@ uint64_t RocksDBKeyBounds::objectId() const {
 #endif
 }
 
-rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
+RocksDBWrapperCFHandle * RocksDBKeyBounds::columnFamily() const {
   switch (_type) {
     case RocksDBEntryType::Placeholder:
       return RocksDBColumnFamily::invalid();

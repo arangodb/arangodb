@@ -40,30 +40,29 @@ namespace arangodb {
 /// to be changed
 struct RocksDBColumnFamily {
   friend class RocksDBEngine;
+  friend class RocksDBWrapper;
 
   static constexpr size_t minNumberOfColumnFamilies = 7;
   static constexpr size_t numberOfColumnFamilies = 7;
 
-  static rocksdb::ColumnFamilyHandle* definitions() { return _definitions; }
+  static RocksDBWrapperCFHandle* definitions() { return _definitions; }
 
-  static rocksdb::ColumnFamilyHandle* documents() { return _documents; }
+  static RocksDBWrapperCFHandle* documents() { return _documents; }
 
-  static rocksdb::ColumnFamilyHandle* primary() { return _primary; }
+  static RocksDBWrapperCFHandle* primary() { return _primary; }
 
-  static rocksdb::ColumnFamilyHandle* edge() { return _edge; }
+  static RocksDBWrapperCFHandle* edge() { return _edge; }
 
   /// unique and non unique vpack indexes (skiplist, permanent indexes)
-  static rocksdb::ColumnFamilyHandle* vpack() { return _vpack; }
+  static RocksDBWrapperCFHandle* vpack() { return _vpack; }
 
-  static rocksdb::ColumnFamilyHandle* geo() { return _geo; }
+  static RocksDBWrapperCFHandle* geo() { return _geo; }
 
-  static rocksdb::ColumnFamilyHandle* fulltext() { return _fulltext; }
+  static RocksDBWrapperCFHandle* fulltext() { return _fulltext; }
 
-  static rocksdb::ColumnFamilyHandle* invalid() {
-    return rocksutils::defaultCF();
-  }
+  static RocksDBWrapperCFHandle* invalid() { return _invalid; }
 
-  static char const* columnFamilyName(rocksdb::ColumnFamilyHandle* cf) {
+  static char const* columnFamilyName(RocksDBWrapperCFHandle* cf) {
     if (cf == _definitions) {
       return "definitions";
     }
@@ -85,7 +84,7 @@ struct RocksDBColumnFamily {
     if (cf == _fulltext) {
       return "fulltext";
     }
-    if (cf == rocksutils::defaultCF()) {
+    if (cf == _invalid) {
       return "invalid";
     }
     TRI_ASSERT(false);
@@ -96,14 +95,15 @@ struct RocksDBColumnFamily {
   // static variables for all existing column families
   // note that these are initialized in RocksDBEngine.cpp
   // as there is no RocksDBColumnFamily.cpp
-  static rocksdb::ColumnFamilyHandle* _definitions;
-  static rocksdb::ColumnFamilyHandle* _documents;
-  static rocksdb::ColumnFamilyHandle* _primary;
-  static rocksdb::ColumnFamilyHandle* _edge;
-  static rocksdb::ColumnFamilyHandle* _vpack;
-  static rocksdb::ColumnFamilyHandle* _geo;
-  static rocksdb::ColumnFamilyHandle* _fulltext;
-  static std::vector<rocksdb::ColumnFamilyHandle*> _allHandles;
+  static RocksDBWrapperCFHandle* _definitions;
+  static RocksDBWrapperCFHandle* _documents;
+  static RocksDBWrapperCFHandle* _primary;
+  static RocksDBWrapperCFHandle* _edge;
+  static RocksDBWrapperCFHandle* _vpack;
+  static RocksDBWrapperCFHandle* _geo;
+  static RocksDBWrapperCFHandle* _fulltext;
+  static RocksDBWrapperCFHandle* _invalid;
+  static std::vector<RocksDBWrapperCFHandle*> _allHandles;
 };
 
 }  // namespace arangodb

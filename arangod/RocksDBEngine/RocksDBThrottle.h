@@ -41,6 +41,7 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
+#include "RocksDBEngine/RocksDBWrapper.h"
 
 // public rocksdb headers
 #include <rocksdb/db.h>
@@ -77,7 +78,7 @@ class RocksDBThrottle : public rocksdb::EventListener {
 
   void OnCompactionCompleted(rocksdb::DB* db, const rocksdb::CompactionJobInfo& ci) override;
 
-  void SetFamilies(std::vector<rocksdb::ColumnFamilyHandle*>& Families) {
+  void SetFamilies(std::vector<RocksDBWrapperCFHandle*>& Families) {
     _families = Families;
   }
 
@@ -141,7 +142,7 @@ class RocksDBThrottle : public rocksdb::EventListener {
   bool _firstThrottle;
 
   std::unique_ptr<WriteControllerToken> _delayToken;
-  std::vector<rocksdb::ColumnFamilyHandle*> _families;
+  std::vector<RocksDBWrapperCFHandle*> _families;
 
 };  // class RocksDBThrottle
 

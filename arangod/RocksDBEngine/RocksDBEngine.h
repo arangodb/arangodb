@@ -105,7 +105,7 @@ class RocksDBEngine final : public StorageEngine {
   void clearEventListeners();
   rocksdb::Status callRocksDBOpen(const rocksdb::TransactionDBOptions & txn_db_options,
                                   const std::vector<rocksdb::ColumnFamilyDescriptor>& column_families,
-                                  std::vector<rocksdb::ColumnFamilyHandle*>* handles);
+                                  std::vector<RocksDBWrapperCFHandle*>* handles);
 
   // minimum timeout for the synchronous replication
   double minimumSyncReplicationTimeout() const override { return 1.0; }

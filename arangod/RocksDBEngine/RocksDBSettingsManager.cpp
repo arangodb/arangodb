@@ -55,6 +55,8 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace {
+/// writeSettings assumes that RocksDBWrapperDBLock is held since definitions pointer is
+///   naked to "batch" parameter
 arangodb::Result writeSettings(rocksdb::WriteBatch& batch, VPackBuilder& b, uint64_t seqNumber) {
   using arangodb::EngineSelectorFeature;
   using arangodb::Logger;
@@ -81,7 +83,7 @@ arangodb::Result writeSettings(rocksdb::WriteBatch& batch, VPackBuilder& b, uint
   key.constructSettingsValue(RocksDBSettingsType::ServerTick);
   rocksdb::Slice value(slice.startAs<char>(), slice.byteSize());
 
-  rocksdb::Status s = batch.Put(RocksDBColumnFamily::definitions(), key.string(), value);
+  rocksdb::Status s = batch.Put(RocksDBColumnFamily::definitions()->unwrapCF(), key.string(), value);
   if (!s.ok()) {
     LOG_TOPIC(WARN, Logger::ENGINES) << "writing settings failed: " << s.ToString();
     return arangodb::rocksutils::convertStatus(s);
@@ -152,6 +154,8 @@ Result RocksDBSettingsManager::sync(bool force) {
   rocksdb::TransactionOptions opts;
   opts.lock_timeout = 50;  // do not wait for locking keys
 
+  // lock protects naked column family pointers in WriteBatch
+  RocksDBWrapperDBLock hotRestoreLock(_db);
   rocksdb::WriteOptions wo;
   rocksdb::WriteBatch batch;
   _tmpBuilder.clear();  // recycle our builder

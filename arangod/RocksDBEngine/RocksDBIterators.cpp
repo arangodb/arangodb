@@ -49,7 +49,7 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
       _cmp(RocksDBColumnFamily::documents()->GetComparator()) {
   // acquire rocksdb transaction
   auto* mthds = RocksDBTransactionState::toMethods(trx);
-  rocksdb::ColumnFamilyHandle* cf = RocksDBColumnFamily::documents();
+  RocksDBWrapperCFHandle* cf = RocksDBColumnFamily::documents();
 
   rocksdb::ReadOptions options = mthds->iteratorReadOptions();
   TRI_ASSERT(options.snapshot != nullptr);

@@ -191,6 +191,8 @@ void RocksDBCollectionMeta::adjustNumberDocuments(rocksdb::SequenceNumber seq,
 }
 
 /// @brief serialize the collection metadata
+///        Stores naked column family pointers within WritBatch.
+///        Caller must hold RocksDBWrapperDBLock object.
 Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
                                             LogicalCollection& coll, bool force,
                                             VPackBuilder& tmp,
@@ -207,7 +209,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
   }
 
   RocksDBKey key;
-  rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
+  rocksdb::ColumnFamilyHandle * const cf = RocksDBColumnFamily::definitions()->unwrapCF();
   RocksDBCollection* const rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
 
   // Step 1. store the document count
@@ -405,7 +407,7 @@ Result RocksDBCollectionMeta::deserializeMeta(RocksDBWrapper * db, LogicalCollec
 /// @brief remove collection metadata
 /*static*/ Result RocksDBCollectionMeta::deleteCollectionMeta(RocksDBWrapper * db,
                                                               uint64_t objectId) {
-  rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
+  RocksDBWrapperCFHandle* const cf = RocksDBColumnFamily::definitions();
   rocksdb::WriteOptions wo;
 
   // Step 1. delete the document count
@@ -430,7 +432,7 @@ Result RocksDBCollectionMeta::deserializeMeta(RocksDBWrapper * db, LogicalCollec
 
 /// @brief remove collection index estimate
 /*static*/ Result RocksDBCollectionMeta::deleteIndexEstimate(RocksDBWrapper * db, uint64_t objectId) {
-  rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
+  RocksDBWrapperCFHandle * const cf = RocksDBColumnFamily::definitions();
   rocksdb::WriteOptions wo;
 
   RocksDBKey key;

@@ -437,7 +437,7 @@ int64_t RocksDBThrottle::ComputeBacklog() {
   compaction_backlog = 0;
   imm_backlog = 0;
   if (_families.size()) {
-    imm_trigger = _internalRocksDB->GetOptions(_families[0]).max_write_buffer_number / 2;
+    imm_trigger = _internalRocksDB->GetOptions(_families[0]->unwrapCF()).max_write_buffer_number / 2;
   } else {
     imm_trigger = 3;
   }  // else
@@ -446,7 +446,7 @@ int64_t RocksDBThrottle::ComputeBacklog() {
   for (auto& cf : _families) {
     property_name = rocksdb::DB::Properties::kNumFilesAtLevelPrefix;
     property_name.append("0");
-    ret_flag = _internalRocksDB->GetProperty(cf, property_name, &ret_string);
+    ret_flag = _internalRocksDB->GetProperty(cf->unwrapCF(), property_name, &ret_string);
     if (ret_flag) {
       temp = std::stoi(ret_string);
     } else {
@@ -462,7 +462,7 @@ int64_t RocksDBThrottle::ComputeBacklog() {
     compaction_backlog += temp;
 
     property_name = rocksdb::DB::Properties::kNumImmutableMemTable;
-    ret_flag = _internalRocksDB->GetProperty(cf, property_name, &ret_string);
+    ret_flag = _internalRocksDB->GetProperty(cf->unwrapCF(), property_name, &ret_string);
 
     if (ret_flag) {
       temp = std::stoi(ret_string);

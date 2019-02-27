@@ -59,13 +59,13 @@ class RocksDBEngine;
 namespace rocksutils {
 
 RocksDBWrapper * globalRocksDB();
-rocksdb::ColumnFamilyHandle* defaultCF();
+RocksDBWrapperCFHandle* defaultCF();
 RocksDBEngine* globalRocksEngine();
-arangodb::Result globalRocksDBPut(rocksdb::ColumnFamilyHandle* cf,
+arangodb::Result globalRocksDBPut(RocksDBWrapperCFHandle* cf,
                                   rocksdb::Slice const& key, rocksdb::Slice const& value,
                                   rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
 
-arangodb::Result globalRocksDBRemove(rocksdb::ColumnFamilyHandle* cf,
+arangodb::Result globalRocksDBRemove(RocksDBWrapperCFHandle* cf,
                                      rocksdb::Slice const& key,
                                      rocksdb::WriteOptions const& = rocksdb::WriteOptions{});
 
@@ -75,7 +75,7 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t);
 std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> mapObjectToIndex(uint64_t);
 
 /// @brief count all keys in the given column family
-std::size_t countKeys(RocksDBWrapper *, rocksdb::ColumnFamilyHandle* cf);
+std::size_t countKeys(RocksDBWrapper *, RocksDBWrapperCFHandle* cf);
 
 /// @brief iterate over all keys in range and count them
 std::size_t countKeyRange(RocksDBWrapper *, RocksDBKeyBounds const&, bool prefix_same_as_start);

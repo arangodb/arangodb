@@ -51,7 +51,7 @@ uint64_t const arangodb::RocksDBIndex::ESTIMATOR_SIZE = 4096;
 
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,
                            std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
-                           bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
+                           bool unique, bool sparse, RocksDBWrapperCFHandle * cf,
                            uint64_t objectId, bool useCache)
     : Index(id, collection, attributes, unique, sparse),
       _objectId((objectId != 0) ? objectId : TRI_NewTickServer()),
@@ -72,7 +72,7 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,
 
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,
                            arangodb::velocypack::Slice const& info,
-                           rocksdb::ColumnFamilyHandle* cf, bool useCache)
+                           RocksDBWrapperCFHandle * cf, bool useCache)
     : Index(id, collection, info),
       _objectId(basics::VelocyPackHelper::stringUInt64(info.get("objectId"))),
       _cf(cf),

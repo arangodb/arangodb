@@ -524,6 +524,8 @@ Result RocksDBCollection::truncate(transaction::Methods* trx, OperationOptions& 
     TRI_ASSERT(engine->canUseRangeDeleteInWal());
     RocksDBWrapper * db = engine->db();
 
+    // block restore:  column family pointers unprotected below
+    RocksDBWrapperDBLock hotRestoreLock(db);
     TRI_IF_FAILURE("RocksDBCollection::truncate::forceSync") {
       engine->settingsManager()->sync(false);
     }
@@ -539,7 +541,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx, OperationOptions& 
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
     rocksdb::Status s =
-        batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
+      batch.DeleteRange(bounds.columnFamily()->unwrapCF(), bounds.start(), bounds.end());
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
@@ -550,7 +552,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx, OperationOptions& 
       for (std::shared_ptr<Index> const& idx : _indexes) {
         RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
         bounds = ridx->getBounds();
-        s = batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
+        s = batch.DeleteRange(bounds.columnFamily()->unwrapCF(), bounds.start(), bounds.end());
         if (!s.ok()) {
           return rocksutils::convertStatus(s);
         }
@@ -1713,7 +1715,7 @@ uint64_t RocksDBCollection::recalculateCounts() {
   ro.verify_checksums = false;
   ro.fill_cache = false;
 
-  rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
+  RocksDBWrapperCFHandle * cf = bounds.columnFamily();
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(ro, cf));
   std::size_t count = 0;
 

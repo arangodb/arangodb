@@ -30,6 +30,7 @@
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "RocksDBEngine/RocksDBWrapper.h"
 
 #include <rocksdb/status.h>
 
@@ -118,7 +119,7 @@ class RocksDBIndex : public Index {
                                 arangodb::velocypack::Slice const&,
                                 OperationMode mode) = 0;
 
-  rocksdb::ColumnFamilyHandle* columnFamily() const { return _cf; }
+  RocksDBWrapperCFHandle * columnFamily() const { return _cf; }
 
   rocksdb::Comparator const* comparator() const;
 
@@ -135,19 +136,19 @@ class RocksDBIndex : public Index {
  protected:
   RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,
                std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
-               bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
+               bool unique, bool sparse, RocksDBWrapperCFHandle* cf,
                uint64_t objectId, bool useCache);
 
   RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,
                arangodb::velocypack::Slice const& info,
-               rocksdb::ColumnFamilyHandle* cf, bool useCache);
+               RocksDBWrapperCFHandle* cf, bool useCache);
 
   inline bool useCache() const { return (_cacheEnabled && _cachePresent); }
   void blackListKey(char const* data, std::size_t len);
   void blackListKey(StringRef& ref) { blackListKey(ref.data(), ref.size()); };
 
   uint64_t _objectId;
-  rocksdb::ColumnFamilyHandle* _cf;
+  RocksDBWrapperCFHandle * _cf;
 
   mutable std::shared_ptr<cache::Cache> _cache;
   // we use this boolean for testing whether _cache is set.

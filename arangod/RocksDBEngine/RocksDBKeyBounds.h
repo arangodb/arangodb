@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/StringRef.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "RocksDBEngine/RocksDBWrapper.h"
 #include "VocBase/vocbase.h"
 
 #include <rocksdb/slice.h>
@@ -190,7 +191,7 @@ class RocksDBKeyBounds {
   /// with this helper function it is made sure that correct column family
   /// for bound is used.
   //////////////////////////////////////////////////////////////////////////////
-  rocksdb::ColumnFamilyHandle* columnFamily() const;
+  RocksDBWrapperCFHandle * columnFamily() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the object ID for these bounds

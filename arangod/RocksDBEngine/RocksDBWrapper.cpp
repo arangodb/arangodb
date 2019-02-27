@@ -22,6 +22,7 @@
 #include "RocksDBWrapper.h"
 
 #include "Basics/MutexLocker.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 
 namespace arangodb {
@@ -31,7 +32,7 @@ rocksdb::Status RocksDBWrapper::Open(const rocksdb::DBOptions& db_options,
                                      const rocksdb::TransactionDBOptions& txn_db_options,
                                      const std::string& dbname,
                                      const std::vector<rocksdb::ColumnFamilyDescriptor>& column_families,
-                                     std::vector<rocksdb::ColumnFamilyHandle*>* handles,
+                                     std::vector<RocksDBWrapperCFHandle*>* handles,
                                      RocksDBWrapper** dbptr) {
   rocksdb::Status ret_status;
   rocksdb::TransactionDB * trans_db;
@@ -75,7 +76,7 @@ RocksDBWrapper::RocksDBWrapper(const rocksdb::DBOptions& db_options,
                                                const rocksdb::TransactionDBOptions& txn_db_options,
                                                const std::string& dbname,
                                                const std::vector<rocksdb::ColumnFamilyDescriptor>& column_families,
-                               std::vector<rocksdb::ColumnFamilyHandle*>* handles, rocksdb::TransactionDB * trans)
+                               std::vector<RocksDBWrapperCFHandle*>* handles, rocksdb::TransactionDB * trans)
   : /*TransactionDB(trans),*/ _db_options(db_options), _txn_db_options(txn_db_options), _dbname(dbname),
     _column_families(column_families), _handlesPtr(handles), _db(trans) {
 
@@ -125,14 +126,24 @@ bool RocksDBWrapper::restartRocksDB(bool isRetry) {
 
 
 rocksdb::Iterator* RocksDBWrapper::NewIterator(const rocksdb::ReadOptions& opts,
-                                               rocksdb::ColumnFamilyHandle* column_family) {
+                                               RocksDBWrapperCFHandle * column_family) {
     READ_LOCKER(lock, _rwlock);
     rocksdb::ReadOptions local_options(opts);
     local_options.snapshot = rewriteSnapshot(opts.snapshot);
-    RocksDBWrapperIterator * wrapIt = new RocksDBWrapperIterator(_db->NewIterator(local_options, unwrapCF(column_family)), *this);
+    RocksDBWrapperIterator * wrapIt = new RocksDBWrapperIterator(_db->NewIterator(local_options, column_family->unwrapCF()), *this);
     return wrapIt;
 
 } // RocksDBWrapper::NewIterator
+
+
+/// private:  exists only to satify virtual class
+rocksdb::ColumnFamilyHandle * RocksDBWrapper::DefaultColumnFamily() const {
+    READ_LOCKER(lock, _rwlock);
+    return RocksDBColumnFamily::invalid()->unwrapCF(); // contains _db->DefaultColumnFamily already
+
+} // RocksDBWrapper::DefaultColumnFamily
+
+
 
 
 /// @brief Maintain a list of outstanding iterators so they can be disabled prior to restore
@@ -255,6 +266,7 @@ void RocksDBWrapper::deactivateAllSnapshots() {
 
 } // RockDBWrapper::deactivateAllSnapshots
 
+
 /// @brief rocksdb populates handlesPtr with its vector of handles, swap them out
 ///   for wrapped handles
   void RocksDBWrapper::buildCFWrappers(std::vector<rocksdb::ColumnFamilyHandle *> & newHandles) {
@@ -270,7 +282,11 @@ void RocksDBWrapper::deactivateAllSnapshots() {
     _handlesPtr->push_back(wrap);
   } // for
 
+  RocksDBColumnFamily::_invalid = new RocksDBWrapperCFHandle(this, _db->DefaultColumnFamily());
+  _cfWrappers.push_back(std::shared_ptr<RocksDBWrapperCFHandle>(RocksDBColumnFamily::_invalid));
+
 }  // RocksDBWrapper::buildCFWrappers
+
 
 /// @brief rocksdb populates handlesPtr with its vector of handles, swap them out
 ///   for wrapped handles
@@ -286,6 +302,8 @@ void RocksDBWrapper::deactivateAllSnapshots() {
     wrap->SetColumnFamilyHandle(newHandles[index]);
   } // for
 
+  RocksDBColumnFamily::_invalid->SetColumnFamilyHandle(_db->DefaultColumnFamily());
+
 }  // RocksDBWrapper::updateCFWrappers
 
 
@@ -295,10 +313,44 @@ rocksdb::ColumnFamilyHandle * RocksDBWrapper::unwrapCF(rocksdb::ColumnFamilyHand
   return ((RocksDBWrapperCFHandle *)wrapper)->GetColumnFamilyHandle();
 }
 
-rocksdb::ColumnFamilyHandle * RocksDBWrapper::unwrapCF(const rocksdb::ColumnFamilyHandle * wrapper) const {
+rocksdb::ColumnFamilyHandle * RocksDBWrapper::unwrapCF(const rocksdb::ColumnFamilyHandle * wrapper) {
 
   return ((RocksDBWrapperCFHandle *)wrapper)->GetColumnFamilyHandle();
 }
+
+
+  // Returns the name of the column family associated with the current handle.
+  const std::string& RocksDBWrapperCFHandle::GetName() const {
+    READ_LOCKER(lock, _db->rwlock());
+    return _cfHandle->GetName();
+  }
+
+  // Returns the ID of the column family associated with the current handle.
+  uint32_t RocksDBWrapperCFHandle::GetID() const {
+    READ_LOCKER(lock, _db->rwlock());
+    return _cfHandle->GetID();
+  }
+
+  // Fills "*desc" with the up-to-date descriptor of the column family
+  // associated with this handle. Since it fills "*desc" with the up-to-date
+  // information, this call might internally lock and release DB mutex to
+  // access the up-to-date CF options.  In addition, all the pointer-typed
+  // options cannot be referenced any longer than the original options exist.
+  //
+  // Note that this function is not supported in RocksDBLite.
+  rocksdb::Status RocksDBWrapperCFHandle::GetDescriptor(
+    rocksdb::ColumnFamilyDescriptor* desc) {
+    READ_LOCKER(lock, _db->rwlock());
+    return _cfHandle->GetDescriptor(desc);
+  }
+
+  // Returns the comparator of the column family associated with the
+  // current handle.
+  const rocksdb::Comparator* RocksDBWrapperCFHandle::GetComparator() const {
+    READ_LOCKER(lock, _db->rwlock());
+    return _cfHandle->GetComparator();
+  }
+
 
 
 }  // namespace arangodb

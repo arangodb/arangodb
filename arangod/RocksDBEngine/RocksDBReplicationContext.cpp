@@ -831,7 +831,7 @@ void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted) {
       bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
     }
     _upperLimit = bounds.end();
-    rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
+    RocksDBWrapperCFHandle* cf = bounds.columnFamily();
     _cmp = cf->GetComparator();
 
     TRI_ASSERT(_upperLimit.size() > 0);

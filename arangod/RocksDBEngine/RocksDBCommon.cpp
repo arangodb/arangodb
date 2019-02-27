@@ -52,10 +52,8 @@ RocksDBWrapper * globalRocksDB() {
   return rocks->db();
 }
 
-rocksdb::ColumnFamilyHandle* defaultCF() {
-  auto db = globalRocksDB();
-  TRI_ASSERT(db != nullptr);
-  return db->DefaultColumnFamily();
+RocksDBWrapperCFHandle* defaultCF() {
+  return RocksDBColumnFamily::invalid();  // contains rocksdb::DefaultColumnFamily()
 }
 
 RocksDBEngine* globalRocksEngine() {
@@ -64,7 +62,7 @@ RocksDBEngine* globalRocksEngine() {
   return static_cast<RocksDBEngine*>(engine);
 }
 
-arangodb::Result globalRocksDBPut(rocksdb::ColumnFamilyHandle* cf,
+arangodb::Result globalRocksDBPut(RocksDBWrapperCFHandle* cf,
                                   rocksdb::Slice const& key, rocksdb::Slice const& val,
                                   rocksdb::WriteOptions const& options) {
   TRI_ASSERT(cf != nullptr);
@@ -72,7 +70,7 @@ arangodb::Result globalRocksDBPut(rocksdb::ColumnFamilyHandle* cf,
   return convertStatus(status);
 }
 
-arangodb::Result globalRocksDBRemove(rocksdb::ColumnFamilyHandle* cf,
+arangodb::Result globalRocksDBRemove(RocksDBWrapperCFHandle* cf,
                                      rocksdb::Slice const& key,
                                      rocksdb::WriteOptions const& options) {
   TRI_ASSERT(cf != nullptr);
@@ -102,7 +100,7 @@ std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> mapObjectToIndex(uint64
 }
 
 /// @brief count all keys in the given column family
-std::size_t countKeys(RocksDBWrapper * db, rocksdb::ColumnFamilyHandle* cf) {
+std::size_t countKeys(RocksDBWrapper * db, RocksDBWrapperCFHandle* cf) {
   TRI_ASSERT(cf != nullptr);
 
   rocksdb::ReadOptions opts;
@@ -135,7 +133,7 @@ std::size_t countKeyRange(RocksDBWrapper * db, RocksDBKeyBounds const& bounds,
   readOptions.verify_checksums = false;
   readOptions.fill_cache = false;
 
-  rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
+  RocksDBWrapperCFHandle* cf = bounds.columnFamily();
   rocksdb::Comparator const* cmp = cf->GetComparator();
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(readOptions, cf));
   std::size_t count = 0;
@@ -154,7 +152,7 @@ Result removeLargeRange(RocksDBWrapper * db, RocksDBKeyBounds const& bounds,
                         bool prefixSameAsStart, bool useRangeDelete) {
   LOG_TOPIC(DEBUG, Logger::ENGINES) << "removing large range: " << bounds;
 
-  rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
+  RocksDBWrapperCFHandle* cf = bounds.columnFamily();
 //  rocksdb::DB* bDB = db->GetRootDB();
 //  TRI_ASSERT(bDB != nullptr);
 
@@ -199,6 +197,10 @@ Result removeLargeRange(RocksDBWrapper * db, RocksDBKeyBounds const& bounds,
     rocksdb::WriteOptions wo;
 
     rocksdb::Comparator const* cmp = cf->GetComparator();
+
+    // WriteBatch contains naked column family pointers, must protect
+    //  against a restore happening simultaneously.
+    RocksDBWrapperDBLock hotRestoreLock(db);
     rocksdb::WriteBatch batch;
 
     size_t total = 0;
@@ -208,7 +210,7 @@ Result removeLargeRange(RocksDBWrapper * db, RocksDBKeyBounds const& bounds,
       TRI_ASSERT(cmp->Compare(it->key(), upper) < 0);
       ++total;
       ++counter;
-      batch.Delete(cf, it->key());
+      batch.Delete(cf->unwrapCF(), it->key());
       if (counter >= 1000) {
         LOG_TOPIC(DEBUG, Logger::ENGINES) << "intermediate delete write";
         // Persist deletes all 1000 documents

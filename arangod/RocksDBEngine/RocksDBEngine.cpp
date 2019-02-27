@@ -110,14 +110,15 @@ std::string const RocksDBEngine::EngineName("rocksdb");
 std::string const RocksDBEngine::FeatureName("RocksDBEngine");
 
 // static variables for all existing column families
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_definitions(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_documents(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_primary(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_edge(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_vpack(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_geo(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_fulltext(nullptr);
-std::vector<rocksdb::ColumnFamilyHandle*> RocksDBColumnFamily::_allHandles;
+RocksDBWrapperCFHandle* RocksDBColumnFamily::_definitions(nullptr);
+RocksDBWrapperCFHandle* RocksDBColumnFamily::_documents(nullptr);
+RocksDBWrapperCFHandle* RocksDBColumnFamily::_primary(nullptr);
+RocksDBWrapperCFHandle* RocksDBColumnFamily::_edge(nullptr);
+RocksDBWrapperCFHandle* RocksDBColumnFamily::_vpack(nullptr);
+RocksDBWrapperCFHandle* RocksDBColumnFamily::_geo(nullptr);
+RocksDBWrapperCFHandle* RocksDBColumnFamily::_fulltext(nullptr);
+RocksDBWrapperCFHandle* RocksDBColumnFamily::_invalid(nullptr);
+std::vector<RocksDBWrapperCFHandle*> RocksDBColumnFamily::_allHandles;
 
 // minimum value for --rocksdb.sync-interval (in ms)
 // a value of 0 however means turning off the syncing altogether!
@@ -175,7 +176,7 @@ void RocksDBEngine::shutdownRocksDBInstance(bool deleteDB) noexcept {
   // turn off RocksDBThrottle, and release our pointers to it
   clearEventListeners();
 
-  for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamily::_allHandles) {
+  for (RocksDBWrapperCFHandle* h : RocksDBColumnFamily::_allHandles) {
     _db->DestroyColumnFamilyHandle(h);
   }
 
@@ -545,7 +546,7 @@ void RocksDBEngine::start() {
   // DO NOT FORGET TO DESTROY THE CFs ON CLOSE
   //  Update max_write_buffer_number above if you change number of families used
 
-  std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
+  std::vector<RocksDBWrapperCFHandle*> cfHandles;
   size_t const numberOfColumnFamilies = RocksDBColumnFamily::minNumberOfColumnFamilies;
   bool dbExisted = false;
   {
@@ -804,7 +805,7 @@ void RocksDBEngine::clearEventListeners() {
 
 rocksdb::Status RocksDBEngine::callRocksDBOpen(const rocksdb::TransactionDBOptions & txn_db_options,
                                                const std::vector<rocksdb::ColumnFamilyDescriptor>& column_families,
-                                               std::vector<rocksdb::ColumnFamilyHandle*>* handles) {
+                                               std::vector<RocksDBWrapperCFHandle*>* handles) {
   rocksdb::Status retStatus;
 
   // first time to open database
@@ -1125,10 +1126,11 @@ Result RocksDBEngine::writeDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& s
   auto value = RocksDBValue::Database(slice);
   rocksdb::WriteOptions wo;
 
+  RocksDBWrapperDBLock hotRestoreLock(_db);  // batch contains raw CF pointer, protect
   // Write marker + key into RocksDB inside one batch
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
-  batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
+  batch.Put(RocksDBColumnFamily::definitions()->unwrapCF(), key.string(), value.string());
   rocksdb::Status res = _db->Write(wo, &batch);
   return rocksutils::convertStatus(res);
 }
@@ -1144,10 +1146,11 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
 
   rocksdb::WriteOptions wo;
 
+  RocksDBWrapperDBLock hotRestoreLock(_db);  // batch contains raw CF pointer, protect
   // Write marker + key into RocksDB inside one batch
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
-  batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
+  batch.Put(RocksDBColumnFamily::definitions()->unwrapCF(), key.string(), value.string());
   rocksdb::Status res = _db->Write(wo, &batch);
 
   auto result = rocksutils::convertStatus(res);
@@ -1246,6 +1249,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
 
   TRI_ASSERT(collection.status() == TRI_VOC_COL_STATUS_DELETED);
 
+  RocksDBWrapperDBLock hotRestoreLock(_db);  // batch contains raw CF pointer, protect
   // Prepare collection remove batch
   rocksdb::WriteBatch batch;
   RocksDBLogValue logValue =
@@ -1255,7 +1259,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
 
   RocksDBKey key;
   key.constructCollection(vocbase.id(), collection.id());
-  batch.Delete(RocksDBColumnFamily::definitions(), key.string());
+  batch.Delete(RocksDBColumnFamily::definitions()->unwrapCF(), key.string());
 
   rocksdb::WriteOptions wo;
   rocksdb::Status s = _db->Write(wo, &batch);
@@ -1380,6 +1384,7 @@ Result RocksDBEngine::createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC(DEBUG, Logger::ENGINES) << "RocksDBEngine::createView";
 #endif
+  RocksDBWrapperDBLock hotRestoreLock(_db);  // batch contains raw CF pointer, protect
   rocksdb::WriteBatch batch;
   rocksdb::WriteOptions wo;
 
@@ -1397,7 +1402,7 @@ Result RocksDBEngine::createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
 
   // Write marker + key into RocksDB inside one batch
   batch.PutLogData(logValue.slice());
-  batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
+  batch.Put(RocksDBColumnFamily::definitions()->unwrapCF(), key.string(), value.string());
 
   auto res = _db->Write(wo, &batch);
 
@@ -1422,9 +1427,10 @@ arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t& vocbase, LogicalView& vi
   RocksDBKey key;
   key.constructView(vocbase.id(), view.id());
 
+  RocksDBWrapperDBLock hotRestoreLock(_db);  // batch contains raw CF pointer, protect
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
-  batch.Delete(RocksDBColumnFamily::definitions(), key.string());
+  batch.Delete(RocksDBColumnFamily::definitions()->unwrapCF(), key.string());
 
   rocksdb::WriteOptions wo;
   auto res = _db->Write(wo, &batch);
@@ -1465,6 +1471,7 @@ Result RocksDBEngine::changeView(TRI_vocbase_t& vocbase,
   RocksDBLogValue log = RocksDBLogValue::ViewChange(vocbase.id(), view.id());
   RocksDBValue const value = RocksDBValue::View(infoBuilder.slice());
 
+  RocksDBWrapperDBLock hotRestoreLock(_db);  // batch contains raw CF pointer, protect
   rocksdb::WriteBatch batch;
   rocksdb::WriteOptions wo;  // TODO: check which options would make sense
   rocksdb::Status s;
@@ -1477,7 +1484,7 @@ Result RocksDBEngine::changeView(TRI_vocbase_t& vocbase,
     return rocksutils::convertStatus(s);
   }
 
-  s = batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
+  s = batch.Put(RocksDBColumnFamily::definitions()->unwrapCF(), key.string(), value.string());
 
   if (!s.ok()) {
     LOG_TOPIC(TRACE, Logger::VIEWS)
@@ -1989,7 +1996,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   };
 
   // add column family properties
-  auto addCf = [&](std::string const& name, rocksdb::ColumnFamilyHandle* c) {
+  auto addCf = [&](std::string const& name, RocksDBWrapperCFHandle* c) {
     std::string v;
     builder.add(name, VPackValue(VPackValueType::Object));
     if (_db->GetProperty(c, rocksdb::DB::Properties::kCFStats, &v)) {
