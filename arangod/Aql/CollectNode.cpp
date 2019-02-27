@@ -130,17 +130,16 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       ExecutionNode const* previousNode = getFirstDependency();
       TRI_ASSERT(previousNode != nullptr);
 
-      RegisterId collectRegister = 0;
+      std::unordered_set<RegisterId> readableInputRegisters;
+      std::unordered_set<RegisterId> writeableOutputRegisters;
+
+      RegisterId collectRegister;
       if (_outVariable != nullptr) {
         auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
         TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
         collectRegister = (*it).second.registerId;
-      } else {
-        collectRegister = -1; // TODO
+        writeableOutputRegisters.insert((*it).second.registerId);
       }
-
-      std::unordered_set<RegisterId> readableInputRegisters;
-      std::unordered_set<RegisterId> writeableOutputRegisters;
 
       std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
       for (auto const& p : _groupVariables) {
@@ -159,17 +158,40 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
         readableInputRegisters.insert((*itIn).second.registerId);
       }
 
+      std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
+      for (auto const& p : _aggregateVariables) {
+        // We know that planRegisters() has been run, so
+        // getPlanNode()->_registerPlan is set up
+        auto itOut = getRegisterPlan()->varInfo.find(p.first->id);
+        TRI_ASSERT(itOut != getRegisterPlan()->varInfo.end());
+        TRI_ASSERT((*itOut).second.registerId < ExecutionNode::MaxRegisterId);
+
+        RegisterId reg;
+        if (Aggregator::requiresInput(p.second.second)) {
+          auto itIn = getRegisterPlan()->varInfo.find(p.second.first->id);
+          TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
+          TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
+          reg = (*itIn).second.registerId;
+          readableInputRegisters.insert((*itIn).second.registerId);
+        } else {
+          // no input variable required
+          reg = ExecutionNode::MaxRegisterId;
+        }
+        aggregateRegisters.emplace_back(std::make_pair((*itOut).second.registerId, reg));
+        writeableOutputRegisters.insert((*itOut).second.registerId);
+      }
+      TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
+
       transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
       HashedCollectExecutorInfos infos(
           getRegisterPlan()->nrRegs[previousNode->getDepth()],
-          getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-          calcRegsToKeep(), std::move(readableInputRegisters),
-          std::move(writeableOutputRegisters), std::move(groupRegisters),
-          collectRegister, _aggregateVariables, _groupVariables, trxPtr, _count);
+          getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
+          std::move(readableInputRegisters), std::move(writeableOutputRegisters),
+          std::move(groupRegisters), collectRegister, _aggregateVariables,
+          std::move(aggregateRegisters), _groupVariables, trxPtr, _count);
 
       return std::make_unique<ExecutionBlockImpl<HashedCollectExecutor>>(&engine, this,
                                                                          std::move(infos));
-      // return std::make_unique<HashedCollectBlock>(&engine, this);
     }
     case CollectOptions::CollectMethod::SORTED:
       return std::make_unique<SortedCollectBlock>(&engine, this);

@@ -57,6 +57,7 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
       std::unordered_set<RegisterId>&& writeableOutputRegisters,
       std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters, RegisterId collectRegister,
       std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
+      std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
       std::vector<std::pair<Variable const*, Variable const*>> groupVariables,
       transaction::Methods* trxPtr, bool count);
 
@@ -141,7 +142,6 @@ class HashedCollectExecutor {
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
-  bool updateCurrentGroup(InputAqlItemRow& input, OutputAqlItemRow& output);
 
  private:
   Infos const& infos() const noexcept { return _infos; };
@@ -156,9 +156,10 @@ class HashedCollectExecutor {
 
   /// @brief hashmap of all encountered groups
   std::unordered_map<std::vector<AqlValue>, std::unique_ptr<AggregateValuesType>, AqlValueGroupHash, AqlValueGroupEqual> _allGroups;
-  std::unordered_map<std::vector<AqlValue>, std::unique_ptr<AggregateValuesType>, AqlValueGroupHash, AqlValueGroupEqual>::iterator _currentGroup;
-  bool _done; // wrote last output row
-  bool _init; // done aggregating groups
+  std::unordered_map<std::vector<AqlValue>, std::unique_ptr<AggregateValuesType>,
+                     AqlValueGroupHash, AqlValueGroupEqual>::iterator _currentGroup;
+  bool _done;  // wrote last output row
+  bool _init;  // done aggregating groups
 };
 
 }  // namespace aql

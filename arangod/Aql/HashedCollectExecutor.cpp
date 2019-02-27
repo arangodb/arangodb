@@ -48,6 +48,7 @@ HashedCollectExecutorInfos::HashedCollectExecutorInfos(
     std::unordered_set<RegisterId>&& writeableOutputRegisters,
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters, RegisterId collectRegister,
     std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
+    std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
     std::vector<std::pair<Variable const*, Variable const*>> groupVariables,
     transaction::Methods* trxPtr, bool count)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
@@ -55,6 +56,7 @@ HashedCollectExecutorInfos::HashedCollectExecutorInfos(
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _aggregateVariables(aggregateVariables),
+      _aggregateRegisters(aggregateRegisters),
       _groupRegisters(groupRegisters),
       _collectRegister(collectRegister),
       _groupVariables(groupVariables),
@@ -70,10 +72,10 @@ HashedCollectExecutor::HashedCollectExecutor(Fetcher& fetcher, Infos& infos)
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _allGroups(1024,
                  AqlValueGroupHash(_infos.getTransaction(),
-                                   _infos.getGroupVariables().size()),  // TODO GROUP VARIABLES BROKEN
+                                   _infos.getGroupVariables().size()),
                  AqlValueGroupEqual(_infos.getTransaction())),
-                 _done(false),
-                 _init(false){};
+      _done(false),
+      _init(false){};
 
 HashedCollectExecutor::~HashedCollectExecutor() {
   // Generally, _allGroups should be empty when the block is destroyed - except
@@ -97,7 +99,7 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
   NoStats stats{};
 
   std::vector<AqlValue> groupValues;
-  groupValues.reserve(_infos.getGroupRegisters().size());  // TODO CHECK
+  groupValues.reserve(_infos.getGroupRegisters().size());
 
   std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*> aggregatorFactories;
   if (_infos.getAggregateVariables().empty()) {
@@ -125,7 +127,7 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
 
     // copy the group values before they get invalidated
     for (size_t i = 0; i < n; ++i) {
-      group.emplace_back(input.getValue(_infos.getGroupRegisters()[i].second));
+      group.emplace_back(input.stealValue(_infos.getGroupRegisters()[i].second));
     }
 
     auto aggregateValues = std::make_unique<AggregateValuesType>();
@@ -172,80 +174,49 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
     return {emplaceResult.first, true};
   };
 
-  auto buildResult = [this](InputAqlItemRow& input, OutputAqlItemRow& output) {
-    TRI_ASSERT(!_infos.getCount() || _infos.getCollectRegister() != ExecutionNode::MaxRegisterId);
-
-    // TODO CHECK -- size_t row = 0;
-    auto& keys = _currentGroup->first;
-    TRI_ASSERT(_currentGroup->second != nullptr);
-
-    TRI_ASSERT(keys.size() == _infos.getGroupRegisters().size());
-    size_t i = 0;
-    for (auto& key : keys) {
-      output.cloneValueInto(_infos.getGroupRegisters()[i++].first, input, key);
-      // const_cast<AqlValue*>(&key)->erase();  // to prevent double-freeing later
-    }
-
-    if (!_infos.getCount()) {
-      TRI_ASSERT(_currentGroup->second->size() ==
-                 _infos.getAggregatedRegisters().size());
-      size_t j = 0;
-      for (auto const& r : *(_currentGroup->second)) {
-        output.cloneValueInto(_infos.getAggregatedRegisters()[j++].first, input,
-                              r->stealValue());
-      }
-    } else {
-      // set group count in result register
-      TRI_ASSERT(!_currentGroup->second->empty());
-      output.cloneValueInto(_infos.getCollectRegister(), input,
-                            _currentGroup->second->back()->stealValue());
-    }
-
-    /* // TODO
-    if (row > 0) {
-      // re-use already copied AQLValues for remaining registers
-      result->copyValuesFromFirstRow(row, nrInRegs);
-    }
-
-    ++row;*/
-  };
-
-  // "adds" the current row to its group's aggregates.
-  auto reduceAggregates = [this](decltype(_allGroups)::iterator groupIt) {
-    AggregateValuesType* aggregateValues = groupIt->second.get();
-
-    if (_infos.getAggregateVariables().empty()) {
-      // no aggregate registers. simply increase the counter
-      if (_infos.getCount()) {
-        // TODO get rid of this special case if possible
-        TRI_ASSERT(!aggregateValues->empty());
-        aggregateValues->back()->reduce(AqlValue());
-      }
-    } else {
-      // apply the aggregators for the group
-      TRI_ASSERT(aggregateValues->size() == _infos.getAggregatedRegisters().size());
-      size_t j = 0;
-      for (auto const& r : _infos.getAggregatedRegisters()) {
-        if (r.second == ExecutionNode::MaxRegisterId) {
-          (*aggregateValues)[j]->reduce(EmptyValue);  // TODO difference to AqlValue() ?
-        } else {
-          (*aggregateValues)[j]->reduce(_input.getValue(r.second));
-          ++j;
-        }
-      }
-    }
-  };
+  if (_state == ExecutionState::DONE && _done) {
+    return {_state, stats};
+  }
 
   while (true) {
+    // if initialization is done
     if (_init) {
-      buildResult(_input, output);
-
       if (_currentGroup == _allGroups.end()) {
         _done = true;
         return {ExecutionState::DONE, stats};
       }
+
+      // build the result
+      TRI_ASSERT(!_infos.getCount() ||
+                 _infos.getCollectRegister() != ExecutionNode::MaxRegisterId);
+
+      auto& keys = _currentGroup->first;
+      TRI_ASSERT(_currentGroup->second != nullptr);
+
+      TRI_ASSERT(keys.size() == _infos.getGroupRegisters().size());
+      size_t i = 0;
+      for (auto& key : keys) {
+        output.cloneValueInto(_infos.getGroupRegisters()[i++].first, _input, key);
+        const_cast<AqlValue*>(&key)->erase();  // to prevent double-freeing later
+      }
+
+      if (!_infos.getCount()) {
+        TRI_ASSERT(_currentGroup->second->size() ==
+                   _infos.getAggregatedRegisters().size());
+        size_t j = 0;
+        for (auto const& r : *(_currentGroup->second)) {
+          output.cloneValueInto(_infos.getAggregatedRegisters()[j++].first,
+                                _input, r->stealValue());
+        }
+      } else {
+        // set group count in result register
+        TRI_ASSERT(!_currentGroup->second->empty());
+        output.cloneValueInto(_infos.getCollectRegister(), _input,
+                              _currentGroup->second->back()->stealValue());
+      }
       // incr the group iterator
       _currentGroup++;
+
       if (_currentGroup == _allGroups.end()) {
         return {ExecutionState::DONE, stats};
       }
@@ -254,7 +225,14 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
     }
 
     if (_state != ExecutionState::DONE) {
-      std::tie(_state, _input) = _fetcher.fetchRow();
+      InputAqlItemRow input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+      std::tie(_state, input) = _fetcher.fetchRow();
+
+      // needed to remember the last valid input aql item row
+      // NOTE: this might impact the performance
+      if (input.isInitialized()) {
+        _input = input;
+      }
     }
 
     if (_state == ExecutionState::WAITING) {
@@ -266,13 +244,36 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
       return {_state, stats};
     }
 
-    if (_input) {
+    if (_input.isInitialized()) {
       // NOLINTNEXTLINE(hicpp-use-auto,modernize-use-auto)
       decltype(_allGroups)::iterator currentGroupIt;
       bool newGroup;
       TRI_ASSERT(_input.isInitialized());
       std::tie(currentGroupIt, newGroup) = findOrEmplaceGroup(_input);
-      reduceAggregates(currentGroupIt);
+
+      // reduce the aggregates
+      AggregateValuesType* aggregateValues = currentGroupIt->second.get();
+
+      if (_infos.getAggregateVariables().empty()) {
+        // no aggregate registers. simply increase the counter
+        if (_infos.getCount()) {
+          // TODO get rid of this special case if possible
+          TRI_ASSERT(!aggregateValues->empty());
+          aggregateValues->back()->reduce(AqlValue());
+        }
+      } else {
+        // apply the aggregators for the group
+        TRI_ASSERT(aggregateValues->size() == _infos.getAggregatedRegisters().size());
+        size_t j = 0;
+        for (auto const& r : _infos.getAggregatedRegisters()) {
+          if (r.second == ExecutionNode::MaxRegisterId) {
+            (*aggregateValues)[j]->reduce(EmptyValue);
+          } else {
+            (*aggregateValues)[j]->reduce(_input.getValue(r.second));
+          }
+          ++j;
+        }
+      }
     }
 
     if (_state == ExecutionState::DONE) {
