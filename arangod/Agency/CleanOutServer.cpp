@@ -388,7 +388,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           continue;
         }
 
-        auto replicationFactor = collection.hasAsString("replicationFacotr");
+        auto replicationFactor = collection.hasAsString("replicationFactor");
         bool isSatellite = replicationFactor.second && replicationFactor.first == "satellite";
 
 
