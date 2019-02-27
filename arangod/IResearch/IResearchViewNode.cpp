@@ -268,11 +268,43 @@ bool hasDependecies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
   return false;
 }
 
+/// @returns true if a given node is located inside a loop or subquery
+bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node) {
+  auto* cur = &node;
+
+  while (true) {
+    auto const* dep = cur->getFirstDependency();
+
+    if (!dep) {
+      break;
+    }
+
+    switch (dep->getType()) {
+      case aql::ExecutionNode::ENUMERATE_COLLECTION:
+      case aql::ExecutionNode::INDEX:
+      case aql::ExecutionNode::TRAVERSAL:
+      case aql::ExecutionNode::ENUMERATE_LIST:
+      case aql::ExecutionNode::SHORTEST_PATH:
+      case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+        // we're in a loop
+        return true;
+      default:
+        break;
+    }
+
+    cur = dep;
+  }
+
+  TRI_ASSERT(cur);
+  return cur->getType() == aql::ExecutionNode::SINGLETON
+      && cur->id() != 1; // SIGNLETON nodes in subqueries have id != 1
+}
+
 /// negative value - value is dirty
 /// _volatilityMask & 1 == volatile filter
 /// _volatilityMask & 2 == volatile sort
 int evaluateVolatility(arangodb::iresearch::IResearchViewNode const& node) {
-  auto const inInnerLoop = node.isInInnerLoop();
+  auto const inDependentScope = isInInnerLoopOrSubquery(node);
   auto const& plan = *node.plan();
   auto const& outVariable = node.outVariable();
 
@@ -281,13 +313,13 @@ int evaluateVolatility(arangodb::iresearch::IResearchViewNode const& node) {
 
   // evaluate filter condition volatility
   auto& filterCondition = node.filterCondition();
-  if (!::filterConditionIsEmpty(&filterCondition) && inInnerLoop) {
+  if (!::filterConditionIsEmpty(&filterCondition) && inDependentScope) {
     irs::set_bit<0>(::hasDependecies(plan, filterCondition, outVariable, vars), mask);
   }
 
   // evaluate sort condition volatility
   auto& sortCondition = node.sortCondition();
-  if (!sortCondition.empty() && inInnerLoop) {
+  if (!sortCondition.empty() && inDependentScope) {
     vars.clear();
 
     for (auto const& sort : sortCondition) {

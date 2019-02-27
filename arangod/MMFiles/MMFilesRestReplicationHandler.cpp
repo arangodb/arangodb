@@ -543,6 +543,7 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
 
   // include system collections?
   bool includeSystem = _request->parsedValue("includeSystem", true);
+  bool includeFoxxQueues = _request->parsedValue("includeFoxxQueues", false);
 
   // produce inventory for all databases?
   bool global = _request->parsedValue("global", false);
@@ -553,15 +554,15 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
         "global inventory can only be created from within _system database");
     return;
   }
-
-  auto nameFilter = [includeSystem](LogicalCollection const* collection) {
-    std::string const cname = collection->name();
-    if (!includeSystem && !cname.empty() && cname[0] == '_') {
+  
+  auto nameFilter = [&](LogicalCollection const* collection) {
+    std::string const& cname = collection->name();
+    if (!includeSystem && TRI_vocbase_t::IsSystemName(cname)) {
       // exclude all system collections
       return false;
     }
 
-    if (TRI_ExcludeCollectionReplication(cname, includeSystem)) {
+    if (TRI_ExcludeCollectionReplication(cname, includeSystem, includeFoxxQueues)) {
       // collection is excluded from replication
       return false;
     }

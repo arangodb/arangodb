@@ -30,6 +30,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
 #include "Replication/common-defines.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -192,20 +193,21 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
 
 // returns inventory
 Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool includeSystem,
+                                               bool includeFoxxQueues,
                                                bool global, VPackBuilder& result) {
   {
     MUTEX_LOCKER(locker, _contextLock);
     lazyCreateSnapshot();
   }
 
-  auto nameFilter = [includeSystem](LogicalCollection const* collection) {
-    std::string const cname = collection->name();
-    if (!includeSystem && !cname.empty() && cname[0] == '_') {
+  auto nameFilter = [&](LogicalCollection const* collection) {
+    std::string const& cname = collection->name();
+    if (!includeSystem && TRI_vocbase_t::IsSystemName(cname)) {
       // exclude all system collections
       return false;
     }
 
-    if (TRI_ExcludeCollectionReplication(cname, includeSystem)) {
+    if (TRI_ExcludeCollectionReplication(cname, includeSystem, includeFoxxQueues)) {
       // collection is excluded from replication
       return false;
     }

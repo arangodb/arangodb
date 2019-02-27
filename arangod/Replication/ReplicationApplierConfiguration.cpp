@@ -63,7 +63,8 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration()
       _incremental(false),
       _verbose(false),
       _restrictType(RestrictType::None),
-      _restrictCollections() {}
+      _restrictCollections(),
+      _includeFoxxQueues(false) {}
 
 /// @brief reset the configuration to defaults
 void ReplicationApplierConfiguration::reset() {
@@ -95,6 +96,7 @@ void ReplicationApplierConfiguration::reset() {
   _verbose = false;
   _restrictType = RestrictType::None;
   _restrictCollections.clear();
+  _includeFoxxQueues = false;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _force32mode = false;
 #endif
