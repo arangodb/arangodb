@@ -40,7 +40,7 @@ class RemoteExecutor final {};
  * @brief See ExecutionBlockImpl.h for documentation.
  */
 template <>
-class ::arangodb::aql::ExecutionBlockImpl<RemoteExecutor> final : public ExecutionBlock {
+class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
  public:
   // TODO Even if it's not strictly necessary here, for consistency's sake the
   // non-standard arguments (server, ownName and queryId) should probably be
