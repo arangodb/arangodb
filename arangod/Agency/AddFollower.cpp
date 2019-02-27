@@ -147,7 +147,20 @@ bool AddFollower::start() {
   // First check that we still have too few followers for the current
   // `replicationFactor`:
   size_t desiredReplFactor = collection.hasAsUInt("replicationFactor").first;
-  size_t actualReplFactor = planned.length();
+  VPackBuilder onlyFollowers;
+  {
+    VPackArrayBuilder guard(&onlyFollowers);
+    bool first = true;
+    for (auto const& pp : VPackArrayIterator(planned)) {
+      if (!first) {
+        onlyFollowers.add(pp);
+      }
+      first = false;
+    }
+  }
+  size_t actualReplFactor
+      = 1 + Job::countGoodServersInList(_snapshot, onlyFollowers.slice());
+      // Leader plus good followers in plan
   if (actualReplFactor >= desiredReplFactor) {
     finish("", "", true, "job no longer necessary, have enough replicas");
     return true;
@@ -245,7 +258,7 @@ bool AddFollower::start() {
 
       // --- Plan changes
       doForAllShards(_snapshot, _database, shardsLikeMe,
-                     [&trx, &chosen](Slice plan, Slice current, std::string& planPath) {
+                     [&trx, &chosen](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
                        trx.add(VPackValue(planPath));
                        {
                          VPackArrayBuilder serverList(&trx);

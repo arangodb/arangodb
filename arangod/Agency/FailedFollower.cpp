@@ -86,7 +86,7 @@ bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
       << "Create failedFollower for " + _shard + " from " + _from;
 
   _created = system_clock::now();
- 
+
   if (envelope == nullptr) {
     _jb = std::make_shared<Builder>();
     _jb->openArray();
@@ -117,7 +117,7 @@ bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   }
 
   return true;
-  
+
 }
 
 bool FailedFollower::start() {
@@ -149,7 +149,7 @@ bool FailedFollower::start() {
   }
 
   // Get proper replacement
-  _to = randomIdleGoodAvailableServer(_snapshot, planned);
+  _to = randomIdleAvailableServer(_snapshot, planned);
   if (_to.empty()) {
     // retry later
     return false;
