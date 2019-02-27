@@ -61,26 +61,7 @@ std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {
 
 /// @brief save the current applier state
 Result GlobalTailingSyncer::saveApplierState() {
-  LOG_TOPIC(TRACE, Logger::REPLICATION)
-      << "saving replication applier state. last applied continuous tick: "
-      << applier()->_state._lastAppliedContinuousTick
-      << ", safe resume tick: " << applier()->_state._safeResumeTick;
-
-  try {
-    _applier->persistState(false);
-    return Result();
-  } catch (basics::Exception const& ex) {
-    LOG_TOPIC(WARN, Logger::REPLICATION)
-        << "unable to save replication applier state: " << ex.what();
-    return Result(ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    LOG_TOPIC(WARN, Logger::REPLICATION)
-        << "unable to save replication applier state: " << ex.what();
-    return Result(TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    return Result(TRI_ERROR_INTERNAL, "unknown exception");
-  }
-  return TRI_ERROR_INTERNAL;
+  return  _applier->persistStateResult(false);
 }
 
 bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {

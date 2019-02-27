@@ -135,6 +135,9 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // dig out vocbase from context and query from ID, handle errors
   bool findQuery(std::string const& idString, Query*& query);
 
+  // generate patched options with TTL extracted from request
+  std::pair<double, std::shared_ptr<VPackBuilder>> getPatchedOptionsWithTTL(VPackSlice const& optionsSlice) const;
+
   // our query registry
   QueryRegistry* _queryRegistry;
 

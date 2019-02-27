@@ -260,7 +260,7 @@ void QueryCacheDatabaseEntry::store(std::shared_ptr<QueryCacheResultEntry>&& ent
   try {
     for (auto const& it : e->_dataSources) {
       auto& ref = _entriesByDataSourceGuid[it.first];
-      ref.first = it.first[0] == '_';
+      ref.first = TRI_vocbase_t::IsSystemName(it.second);
       ref.second.emplace(hash);
     }
   } catch (...) {
@@ -613,7 +613,7 @@ void QueryCache::store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultE
     // check if we need to exclude the entry because it refers to system
     // collections
     for (auto const& it : e->_dataSources) {
-      if  (it.second[0] == '_') {
+      if (TRI_vocbase_t::IsSystemName(it.second)) {
         // refers to a system collection...
         return;
       }
