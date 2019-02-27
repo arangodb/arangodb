@@ -270,7 +270,7 @@ bool MoveShard::start() {
     TRI_ASSERT(srv.isString());
     if (srv.copyString() == _to) {
       if (!_isLeader) {
-        finish("", "", false, "toServer must not yet be planned for a following shard");
+        finish("", "", false, "toServer must not be planned for a following shard");
         return false;
       } else {
         _toServerIsFollower = true;
