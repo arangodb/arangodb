@@ -1,6 +1,6 @@
 <span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/edges/edges?vertex=vertices/1&amp;direction=<span class="hljs-keyword">in</span></span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
@@ -11,7 +11,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/6"</span>, 
       <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/2"</span>, 
       <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/1"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5smC--F"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YOn1PYy--H"</span>, 
       <span class="hljs-string">"$label"</span> : <span class="hljs-string">"v2 -&gt; v1"</span> 
     }, 
     { 
@@ -19,7 +19,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/7"</span>, 
       <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/4"</span>, 
       <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/1"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5smG--_"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YOn1PYy--J"</span>, 
       <span class="hljs-string">"$label"</span> : <span class="hljs-string">"v4 -&gt; v1"</span> 
     } 
   ], 

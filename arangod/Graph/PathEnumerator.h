@@ -48,7 +48,7 @@ struct TraverserOptions;
 
 struct EnumeratedPath {
   std::vector<graph::EdgeDocumentToken> edges;
-  std::vector<arangodb::StringRef> vertices;
+  std::vector<arangodb::velocypack::StringRef> vertices;
   EnumeratedPath() {}
 };
 
@@ -108,6 +108,11 @@ class DepthFirstEnumerator final : public PathEnumerator {
 
   std::stack<std::unique_ptr<graph::EdgeCursor>> _edgeCursors;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Flag if we need to prune the next path
+  //////////////////////////////////////////////////////////////////////////////
+  bool _pruneNext;
+
  public:
   DepthFirstEnumerator(Traverser* traverser, std::string const& startVertex,
                        TraverserOptions* opts);
@@ -120,16 +125,14 @@ class DepthFirstEnumerator final : public PathEnumerator {
 
   bool next() override;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Prunes the current path prefix, the next function should not return
-  ///        any path having this prefix anymore.
-  //////////////////////////////////////////////////////////////////////////////
-
   aql::AqlValue lastVertexToAqlValue() override;
 
   aql::AqlValue lastEdgeToAqlValue() override;
 
   aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder& result) override;
+
+ private:
+  bool shouldPrune();
 };
 }  // namespace traverser
 }  // namespace arangodb

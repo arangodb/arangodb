@@ -68,7 +68,7 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -130,7 +130,7 @@ static void JS_DropIndexVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& ar
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -161,7 +161,7 @@ static void JS_GetIndexesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -169,13 +169,13 @@ static void JS_GetIndexesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
 
   auto flags = Index::makeFlags(Index::Serialize::Estimates);
 
-  if (args.Length() > 0 && TRI_ObjectToBoolean(args[0])) {
+  if (args.Length() > 0 && TRI_ObjectToBoolean(isolate, args[0])) {
     flags = Index::makeFlags(Index::Serialize::Estimates, Index::Serialize::Figures);
   }
 
   bool withHidden = false;
   if (args.Length() > 1) {
-    withHidden = TRI_ObjectToBoolean(args[1]);
+    withHidden = TRI_ObjectToBoolean(isolate, args[1]);
   }
 
   VPackBuilder output;
@@ -215,7 +215,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   // optional, third parameter can override collection type
   if (args.Length() >= 3 && args[2]->IsString()) {
-    std::string typeString = TRI_ObjectToString(args[2]);
+    std::string typeString = TRI_ObjectToString(isolate, args[2]);
     if (typeString == "edge") {
       collectionType = TRI_COL_TYPE_EDGE;
     } else if (typeString == "document") {
@@ -226,7 +226,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   PREVENT_EMBEDDED_TRANSACTION();
 
   // extract the name
-  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
 
   VPackBuilder properties;
   VPackSlice propSlice = VPackSlice::emptyObjectSlice();
@@ -234,7 +234,9 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     if (!args[1]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
     }
-    int res = TRI_V8ToVPack(isolate, properties, args[1]->ToObject(), false);
+    int res =
+        TRI_V8ToVPack(isolate, properties,
+                      args[1]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()), false);
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -248,7 +250,8 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   bool enforceReplicationFactor = true;
 
   if (args.Length() >= 3 && args[args.Length() - 1]->IsObject()) {
-    v8::Handle<v8::Object> obj = args[args.Length() - 1]->ToObject();
+    v8::Handle<v8::Object> obj =
+        args[args.Length() - 1]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
     createWaitsForSyncReplication =
         TRI_GetOptionalBooleanProperty(isolate, obj, "waitForSyncReplication",
                                        createWaitsForSyncReplication);

@@ -157,9 +157,12 @@ RestStatus RestIndexHandler::createIndex() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
-  if (!suffixes.empty() || !parseSuccess) {
+  if (!parseSuccess) {
+    return RestStatus::DONE;
+  }
+  if (!suffixes.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting POST /" + _request->requestPath() +
+                  "expecting POST " + _request->requestPath() +
                       "?collection=<collection-name>");
     return RestStatus::DONE;
   }

@@ -116,7 +116,7 @@ class RocksDBCollection final : public PhysicalCollection {
   bool lookupRevision(transaction::Methods* trx, velocypack::Slice const& key,
                       TRI_voc_rid_t& revisionId) const;
 
-  Result read(transaction::Methods*, arangodb::StringRef const& key,
+  Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
               ManagedDocumentResult& result, bool) override;
 
   Result read(transaction::Methods* trx, arangodb::velocypack::Slice const& key,
@@ -124,7 +124,7 @@ class RocksDBCollection final : public PhysicalCollection {
     if (!key.isString()) {
       return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
     }
-    return this->read(trx, arangodb::StringRef(key), result, locked);
+    return this->read(trx, arangodb::velocypack::StringRef(key), result, locked);
   }
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,

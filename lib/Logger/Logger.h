@@ -160,6 +160,7 @@ class Logger {
   static LogTopic SYSCALL;
   static LogTopic THREADS;
   static LogTopic TRANSACTIONS;
+  static LogTopic TTL;
   static LogTopic V8;
   static LogTopic VIEWS;
 

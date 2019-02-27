@@ -278,6 +278,13 @@ class MMFilesFlushSubscription final
   }
 
   ~MMFilesFlushSubscription() {
+    if (!arangodb::MMFilesLogfileManager::instance(true)) { // true to avoid assertion failure
+      LOG_TOPIC(ERR, arangodb::Logger::FLUSH)
+        << "failed to remove MMFiles Logfile barrier from subscription due to missing LogFileManager";
+
+      return; // ignore (probably already deallocated)
+    }
+
     try {
       _wal.removeLogfileBarrier(_barrier);
     } catch (...) {
@@ -286,6 +293,11 @@ class MMFilesFlushSubscription final
   }
 
   arangodb::Result commit(arangodb::velocypack::Slice const& data) override {
+    // must be present for WAL write to succeed or '_wal' is a dangling instance
+    // guard against scenario: FlushFeature::stop() + MMFilesEngine::stop() and later commit()
+    // since subscription could survive after FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
+    TRI_ASSERT(arangodb::MMFilesLogfileManager::instance(true)); // true to avoid assertion failure
+
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
@@ -295,7 +307,7 @@ class MMFilesFlushSubscription final
 
     MMFilesFlushMarker marker(_databaseId, builder.slice());
     auto tick = _engine.currentTick(); // get before writing marker to ensure nothing between tick and marker
-    auto res = arangodb::Result(_wal.allocateAndWrite(marker, true).errorCode);
+    auto res = arangodb::Result(_wal.allocateAndWrite(marker, true).errorCode); // will check for allowWalWrites()
 
     if (res.ok()) {
       auto barrier = _wal.addLogfileBarrier( // barier starting from previous marker
@@ -431,6 +443,14 @@ class RocksDBFlushSubscription final
   }
 
   arangodb::Result commit(arangodb::velocypack::Slice const& data) override {
+    // must be present for WAL write to succeed or '_wal' is a dangling instance
+    // guard against scenario: FlushFeature::stop() + RocksDBEngine::stop() and later commit()
+    // since subscription could survive after FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
+    TRI_ASSERT( // precondition
+      arangodb::EngineSelectorFeature::ENGINE // ensure have engine
+      && static_cast<arangodb::RocksDBEngine*>(arangodb::EngineSelectorFeature::ENGINE)->db() // not stopped
+    );
+
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
@@ -584,6 +604,13 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
     );
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
+    if (!_isRunning.load()) {
+      LOG_TOPIC(ERR, Logger::FLUSH)
+        << "FlushFeature not running";
+
+      return nullptr;
+    }
+
     _flushSubscriptions.emplace(subscription);
 
     return subscription;
@@ -614,6 +641,13 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
       type, vocbase.id(), *rocksdbEngine, *rootDb
     );
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
+
+    if (!_isRunning.load()) {
+      LOG_TOPIC(ERR, Logger::FLUSH)
+        << "FlushFeature not running";
+
+      return nullptr;
+    }
 
     _flushSubscriptions.emplace(subscription);
 
@@ -764,6 +798,14 @@ void FlushFeature::stop() {
       WRITE_LOCKER(wlock, _threadLock);
       _isRunning.store(false);
       _flushThread.reset();
+    }
+
+    {
+      std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
+
+      // release any remaining flush subscriptions so that they may get deallocated ASAP
+      // subscriptions could survive after FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
+      _flushSubscriptions.clear();
     }
   }
 }
