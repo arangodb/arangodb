@@ -8,7 +8,7 @@ here.
 SmartGraphs
 -----------
 
-ArangoDB 3.1 adds a first major enterprise only feature called SmartGraphs.
+ArangoDB 3.1 adds a first major Enterprise Edition feature called SmartGraphs.
 SmartGraphs form an addition to the already existing graph features and allow to
 scale graphs beyond a single machine while keeping almost the same query performance.
 The SmartGraph feature is suggested for all graph database use cases that require
@@ -19,7 +19,7 @@ sharded and you want to keep all of them in the same environment.
 Or you simply use the cluster for high-availability.
 In all the above cases SmartGraphs will significantly increase the performance of
 graph operations.
-For more detailed information read [this manual section](../Graphs/SmartGraphs/index.html).
+For more detailed information read the [SmartGraphs section](../Graphs/SmartGraphs/index.html).
 
 Data format
 -----------

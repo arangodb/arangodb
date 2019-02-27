@@ -290,6 +290,7 @@
       * [Helm](Deployment/Kubernetes/Helm.md)
       * [Authentication](Deployment/Kubernetes/Authentication.md)
       * [Scaling](Deployment/Kubernetes/Scaling.md)
+      * [Draining Nodes](Deployment/Kubernetes/Drain.md)
       * [Upgrading](Deployment/Kubernetes/Upgrading.md)
       * [ArangoDB Configuration & Secrets](Deployment/Kubernetes/ConfigAndSecrets.md)
       * [Metrics](Deployment/Kubernetes/Metrics.md)

@@ -38,8 +38,6 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
     return QUERY_REGISTRY.load(std::memory_order_acquire);
   }
 
-  static constexpr double DefaultQueryTTL = 600.0;
-
   explicit QueryRegistryFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
