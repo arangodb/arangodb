@@ -129,12 +129,8 @@ bool FailedServer::start() {
           auto const& replicationFactorPair =
             collection.hasAsNode("replicationFactor");
           if (replicationFactorPair.second) {
+
             VPackSlice const replicationFactor = replicationFactorPair.first.slice();
-
-
-            LOG_DEVEL << "FailedServer generating jobs for "
-                  << collection.hasAsString("id").first;
-
             uint64_t number = 1;
             bool isSatellite = false;
 
