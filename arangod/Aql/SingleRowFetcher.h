@@ -107,7 +107,7 @@ class SingleRowFetcher {
     // The block before can put upstreamState to DONE.
     // So we cannot swap the blocks
     if (_upstreamState == ExecutionState::DONE) {
-      if (_currentBlock == nullptr) {
+      if (!indexIsValid()) {
         // There is nothing more from upstream
         return {_upstreamState, 0};
       }
