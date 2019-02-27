@@ -198,10 +198,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped);
 
   /**
-   * @brief Inner getSome() part, without the tracing calls. Needed for the
-   *        skipSome() stub that uses this.
+   * @brief Inner getSome() part, without the tracing calls.
    */
-
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeWithoutTrace(size_t atMost);
 
   /**

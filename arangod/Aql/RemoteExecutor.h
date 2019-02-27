@@ -23,15 +23,17 @@
 #ifndef ARANGOD_AQL_REMOTE_EXECUTOR_H
 #define ARANGOD_AQL_REMOTE_EXECUTOR_H
 
+#include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlockImpl.h"
+
+#include <lib/Rest/CommonDefines.h>
+#include <lib/SimpleHttpClient/SimpleHttpResult.h>
 
 namespace arangodb {
 namespace aql {
 
-// TODO Can the class definitions be moved into the .cpp file, with only forward
-// declarations left here, if we provide a wrapper around
-// std::make_unique<ExecutionBlockImpl<RemoteExecutor>>?
-
+// The RemoteBlock is actually implemented by specializing ExecutionBlockImpl,
+// so this class only exists to identify the specialization.
 class RemoteExecutor final {};
 
 /**
@@ -40,8 +42,12 @@ class RemoteExecutor final {};
 template <>
 class ::arangodb::aql::ExecutionBlockImpl<RemoteExecutor> final : public ExecutionBlock {
  public:
-  ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node,
-                     ExecutorInfos&& infos);
+  // TODO Even if it's not strictly necessary here, for consistency's sake the
+  // non-standard arguments (server, ownName and queryId) should probably be
+  // moved into some RemoteExecutorInfos class.
+  ExecutionBlockImpl(ExecutionEngine* engine, RemoteNode const* node,
+                     ExecutorInfos&& infos, std::string const& server,
+                     std::string const& ownName, std::string const& queryId);
 
   ~ExecutionBlockImpl() = default;
 
@@ -53,6 +59,17 @@ class ::arangodb::aql::ExecutionBlockImpl<RemoteExecutor> final : public Executi
 
   std::pair<ExecutionState, Result> shutdown(int) override;
 
+  /// @brief handleAsyncResult
+  bool handleAsyncResult(ClusterCommResult* result) override;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // only for asserts:
+ public:
+  std::string const& server() const { return _server; }
+  std::string const& ownName() const { return _ownName; }
+  std::string const& queryId() const { return _queryId; }
+#endif
+
  private:
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> traceGetSomeEnd(
       ExecutionState state, std::unique_ptr<AqlItemBlock> result);
@@ -61,15 +78,59 @@ class ::arangodb::aql::ExecutionBlockImpl<RemoteExecutor> final : public Executi
 
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeWithoutTrace(size_t atMost);
 
+  std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);
+
   ExecutorInfos const& infos() const { return _infos; }
 
   Query const& getQuery() const { return _query; }
 
+  /**
+   * @brief Handle communication errors in Async case.
+   *
+   * @param result The network response we got from cluster comm.
+   *
+   * @return A wrapped Result Object, that is either ok() or contains
+   *         the error information to be thrown in get/skip some.
+   */
+  arangodb::Result handleCommErrors(ClusterCommResult* result) const;
+
+  /// @brief internal method to send a request. Will register a callback to be
+  /// reactivated
+  arangodb::Result sendAsyncRequest(rest::RequestType type, std::string const& urlPart,
+                                    std::shared_ptr<std::string const> body);
+
+  std::shared_ptr<velocypack::Builder> stealResultBody();
+
  private:
+  /// @brief timeout
+  static double const defaultTimeOut;
+
   ExecutorInfos _infos;
 
   Query const& _query;
+
+  /// @brief our server, can be like "shard:S1000" or like "server:Claus"
+  std::string const _server;
+
+  /// @brief our own identity, in case of the coordinator this is empty,
+  /// in case of the DBservers, this is the shard ID as a string
+  std::string const _ownName;
+
+  /// @brief the ID of the query on the server as a string
+  std::string const _queryId;
+
+  /// @brief whether or not this block will forward initialize,
+  /// initializeCursor or shutDown requests
+  bool const _isResponsibleForInitializeCursor;
+
+  /// @brief the last unprocessed result. Make sure to reset it
+  ///        after it is processed.
+  std::shared_ptr<httpclient::SimpleHttpResult> _lastResponse;
+
+  /// @brief the last remote response Result object, may contain an error.
+  arangodb::Result _lastError;
 };
+
 }  // namespace aql
 }  // namespace arangodb
 
