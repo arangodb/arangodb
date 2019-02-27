@@ -90,7 +90,7 @@ class ExecutionEngine;
  *         xxxFetcher interface to get AqlItemRows from Upstream.
  */
 template <class Executor>
-class ExecutionBlockImpl : public ExecutionBlock {
+class ExecutionBlockImpl final : public ExecutionBlock {
   using Fetcher = typename Executor::Fetcher;
   using ExecutorStats = typename Executor::Stats;
   using Infos = typename Executor::Infos;
@@ -224,7 +224,6 @@ class ExecutionBlockImpl : public ExecutionBlock {
 
   Query const& getQuery() const { return _query; }
 
- protected:
   Executor& executor() { return _executor; }
 
  private:
