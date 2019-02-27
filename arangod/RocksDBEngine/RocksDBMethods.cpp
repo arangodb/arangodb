@@ -217,7 +217,7 @@ bool RocksDBTrxMethods::Exists(RocksDBWrapperCFHandle* cf, RocksDBKey const& key
   TRI_ASSERT(cf != nullptr);
   rocksdb::PinnableSlice val;  // do not care about value
   rocksdb::Status s = _state->_rocksTransaction->Get(_state->_rocksReadOptions,
-                                                     cf, key.string(), &val);
+                                                     cf->unwrapCF(), key.string(), &val);
   return !s.IsNotFound();
 }
 
@@ -227,7 +227,7 @@ arangodb::Result RocksDBTrxMethods::Get(RocksDBWrapperCFHandle* cf,
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
   TRI_ASSERT(ro.snapshot != nullptr);
-  rocksdb::Status s = _state->_rocksTransaction->Get(ro, cf, key, val);
+  rocksdb::Status s = _state->_rocksTransaction->Get(ro, cf->unwrapCF(), key, val);
   if (!s.ok()) {
     rv = rocksutils::convertStatus(s, rocksutils::StatusHint::document, "",
                                    "Get - in RocksDBTrxMethods");
@@ -239,21 +239,21 @@ arangodb::Result RocksDBTrxMethods::Put(RocksDBWrapperCFHandle* cf,
                                         RocksDBKey const& key, rocksdb::Slice const& val,
                                         rocksutils::StatusHint hint) {
   TRI_ASSERT(cf != nullptr);
-  rocksdb::Status s = _state->_rocksTransaction->Put(cf, key.string(), val);
+  rocksdb::Status s = _state->_rocksTransaction->Put(cf->unwrapCF(), key.string(), val);
   return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s, hint);
 }
 
 arangodb::Result RocksDBTrxMethods::Delete(RocksDBWrapperCFHandle* cf,
                                            RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
-  rocksdb::Status s = _state->_rocksTransaction->Delete(cf, key.string());
+  rocksdb::Status s = _state->_rocksTransaction->Delete(cf->unwrapCF(), key.string());
   return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s);
 }
 
 std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
     rocksdb::ReadOptions const& opts, RocksDBWrapperCFHandle* cf) {
   TRI_ASSERT(cf != nullptr);
-  return std::unique_ptr<rocksdb::Iterator>(_state->_rocksTransaction->GetIterator(opts, cf));
+  return std::unique_ptr<rocksdb::Iterator>(_state->_rocksTransaction->GetIterator(opts, cf->unwrapCF()));
 }
 
 void RocksDBTrxMethods::SetSavePoint() {
@@ -283,14 +283,14 @@ arangodb::Result RocksDBTrxUntrackedMethods::Put(RocksDBWrapperCFHandle* cf,
                                                  rocksdb::Slice const& val,
                                                  rocksutils::StatusHint hint) {
   TRI_ASSERT(cf != nullptr);
-  rocksdb::Status s = _state->_rocksTransaction->PutUntracked(cf, key.string(), val);
+  rocksdb::Status s = _state->_rocksTransaction->PutUntracked(cf->unwrapCF(), key.string(), val);
   return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s, hint);
 }
 
 arangodb::Result RocksDBTrxUntrackedMethods::Delete(RocksDBWrapperCFHandle* cf,
                                                     RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
-  rocksdb::Status s = _state->_rocksTransaction->DeleteUntracked(cf, key.string());
+  rocksdb::Status s = _state->_rocksTransaction->DeleteUntracked(cf->unwrapCF(), key.string());
   return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s);
 }
 
@@ -317,14 +317,14 @@ arangodb::Result RocksDBBatchedMethods::Put(RocksDBWrapperCFHandle* cf,
                                             RocksDBKey const& key, rocksdb::Slice const& val,
                                             rocksutils::StatusHint) {
   TRI_ASSERT(cf != nullptr);
-  _wb->Put(cf, key.string(), val);
+  _wb->Put(cf->unwrapCF(), key.string(), val);
   return arangodb::Result();
 }
 
 arangodb::Result RocksDBBatchedMethods::Delete(RocksDBWrapperCFHandle* cf,
                                                RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
-  _wb->Delete(cf, key.string());
+  _wb->Delete(cf->unwrapCF(), key.string());
   return arangodb::Result();
 }
 
@@ -348,7 +348,7 @@ bool RocksDBBatchedWithIndexMethods::Exists(RocksDBWrapperCFHandle* cf,
   rocksdb::ReadOptions ro;
   rocksdb::PinnableSlice val;  // do not care about value
   RocksDBWrapperDBLock dbLock(_db);
-  rocksdb::Status s = _wb->GetFromBatchAndDB(dbLock, ro, cf, key.string(), &val);
+  rocksdb::Status s = _wb->GetFromBatchAndDB(dbLock, ro, cf->unwrapCF(), key.string(), &val);
   return !s.IsNotFound();
 }
 
@@ -358,7 +358,7 @@ arangodb::Result RocksDBBatchedWithIndexMethods::Get(RocksDBWrapperCFHandle* cf,
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions ro;
   RocksDBWrapperDBLock dbLock(_db);
-  rocksdb::Status s = _wb->GetFromBatchAndDB(dbLock, ro, cf, key, val);
+  rocksdb::Status s = _wb->GetFromBatchAndDB(dbLock, ro, cf->unwrapCF(), key, val);
   return s.ok() ? arangodb::Result()
                 : rocksutils::convertStatus(
                       s, rocksutils::StatusHint::document, "",
@@ -370,14 +370,14 @@ arangodb::Result RocksDBBatchedWithIndexMethods::Put(RocksDBWrapperCFHandle* cf,
                                                      rocksdb::Slice const& val,
                                                      rocksutils::StatusHint) {
   TRI_ASSERT(cf != nullptr);
-  _wb->Put(cf, key.string(), val);
+  _wb->Put(cf->unwrapCF(), key.string(), val);
   return arangodb::Result();
 }
 
 arangodb::Result RocksDBBatchedWithIndexMethods::Delete(RocksDBWrapperCFHandle* cf,
                                                         RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
-  _wb->Delete(cf, key.string());
+  _wb->Delete(cf->unwrapCF(), key.string());
   return arangodb::Result();
 }
 

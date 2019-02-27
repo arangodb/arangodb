@@ -57,7 +57,7 @@ class RocksDBWrapperCFHandle;
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-class RocksDBWrapperCFHandle : public rocksdb::ColumnFamilyHandle {
+class RocksDBWrapperCFHandle : protected rocksdb::ColumnFamilyHandle {
  public:
   RocksDBWrapperCFHandle(RocksDBWrapper * dbWrap, rocksdb::ColumnFamilyHandle * handle)
     : _db(dbWrap), _cfHandle(handle) {};
@@ -99,6 +99,10 @@ class RocksDBWrapperCFHandle : public rocksdb::ColumnFamilyHandle {
   };
 
   rocksdb::ColumnFamilyHandle * unwrapCF() {return _cfHandle;};
+
+  // temporary ...
+  operator rocksdb::ColumnFamilyHandle *() {return _cfHandle;}
+
 
 protected:
   class RocksDBWrapper * _db;
