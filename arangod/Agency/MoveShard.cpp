@@ -265,11 +265,16 @@ bool MoveShard::start() {
 
   int found = -1;
   int count = 0;
+  _toServerIsFollower = false;
   for (auto const& srv : VPackArrayIterator(planned)) {
     TRI_ASSERT(srv.isString());
     if (srv.copyString() == _to) {
-      finish("", "", false, "toServer must not yet be planned for shard");
-      return false;
+      if (!_isLeader) {
+        finish("", "", false, "toServer must not yet be planned for a following shard");
+        return false;
+      } else {
+        _toServerIsFollower = true;
+      }
     }
     if (srv.copyString() == _from) {
       found = count;
@@ -347,10 +352,11 @@ bool MoveShard::start() {
                          if (_isLeader) {
                            TRI_ASSERT(plan[0].copyString() != _to);
                            pending.add(plan[0]);
-                           pending.add(VPackValue(_to));
+                           if (!_toServerIsFollower) {
+                             pending.add(VPackValue(_to));
+                           } 
                            for (size_t i = 1; i < plan.length(); ++i) {
                              pending.add(plan[i]);
-                             TRI_ASSERT(plan[i].copyString() != _to);
                            }
                          } else {
                            for (auto const& srv : VPackArrayIterator(plan)) {

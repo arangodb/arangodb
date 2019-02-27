@@ -146,7 +146,19 @@ bool AddFollower::start() {
 
   // First check that we still have too few followers for the current
   // `replicationFactor`:
-  size_t desiredReplFactor = collection.hasAsUInt("replicationFactor").first;
+  size_t desiredReplFactor = 1;
+  auto replFact = collection.hasAsUInt("replicationFactor");
+  if (replFact.second) {
+    desiredReplFactor = replFact.first;
+  } else {
+    auto replFact2 = collection.hasAsString("replicationFactor");
+    if (replFact2.second && replFact2.first == "satellite") {
+      // satellites => distribute to every server
+      auto available = Job::availableServers(_snapshot);
+      desiredReplFactor = available.size();
+    }
+  }
+
   VPackBuilder onlyFollowers;
   {
     VPackArrayBuilder guard(&onlyFollowers);

@@ -147,10 +147,8 @@ std::string Job::randomIdleAvailableServer(Node const& snap,
 
   // Prefer good servers over bad servers
   std::vector<std::string> good;
-  std::vector<std::string> bad;
 
-  // unfailed; - servers that have are just temporarily bad, should be considered
-  // as valid server.
+  // Only take good servers as valid server.
   try {
     for (auto const& srv : snap.hasAsChildren(healthPrefix).first) {
       // ignore excluded servers
@@ -165,31 +163,23 @@ std::string Job::randomIdleAvailableServer(Node const& snap,
       std::string const& status = (*srv.second).hasAsString("Status").first;
       if (status == "GOOD") {
         good.push_back(srv.first);
-      } else if (status == "BAD") {
-        bad.push_back(srv.first);
       }
     }
   } catch (...) {
   }
 
   if (good.empty()) {
-    if (bad.empty()) {
-      return ret;
-    }
-    good = std::move(bad);
+    return ret;
   }
 
   // Choose random server from rest
-  if (!good.empty()) {
-    if (good.size() == 1) {
-      ret = good[0];
-    } else {
-      uint16_t interval = static_cast<uint16_t>(good.size() - 1);
-      uint16_t random = RandomGenerator::interval(interval);
-      ret = good.at(random);
-    }
+  if (good.size() == 1) {
+    ret = good[0];
+    return ret;
   }
-
+  uint16_t interval = static_cast<uint16_t>(good.size() - 1);
+  uint16_t random = RandomGenerator::interval(interval);
+  ret = good.at(random);
   return ret;
 }
 

@@ -1,5 +1,8 @@
-V3.4.4 (2019-XX-XX)
+v3.4.4 (2019-XX-XX)
 -------------------
+
+* follow up to fix JWT authentication in arangosh (#7530):
+  also fix reconnect
 
 * fixed overflow in windows NowNanos in RocksDB
 
@@ -31,6 +34,8 @@ V3.4.4 (2019-XX-XX)
   as replacement servers
 
 * Maintenance fix: added precondition of unchanged Plan in phase2
+
+* Allow MoveShard from leader to a follower, thus swapping the two
 
 v3.4.3 (2019-02-19)
 -------------------
