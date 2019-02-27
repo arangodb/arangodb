@@ -52,7 +52,7 @@ InAndOutRowExpressionContext::InAndOutRowExpressionContext(
              _pathVarIdx == std::numeric_limits<std::size_t>::max());
 }
 
-void InAndOutRowExpressionContext::setInputRow(AqlItemBlock* inputBlock, size_t inputRow) {
+void InAndOutRowExpressionContext::setInputRow(AqlItemBlock const* inputBlock, size_t inputRow) {
   TRI_ASSERT(inputBlock != nullptr);
   TRI_ASSERT(inputBlock->size() > inputRow);
   _inputBlock = inputBlock;

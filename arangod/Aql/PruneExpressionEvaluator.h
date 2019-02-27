@@ -47,7 +47,7 @@ class PruneExpressionEvaluator {
   ~PruneExpressionEvaluator();
 
   bool evaluate();
-  void prepareContext(AqlItemBlock* inputBlock, size_t inputRow) {
+  void prepareContext(AqlItemBlock const* inputBlock, size_t inputRow) {
     _ctx.setInputRow(inputBlock, inputRow);
   }
 

@@ -47,7 +47,7 @@ class InAndOutRowExpressionContext final : public ExpressionContext {
   ~InAndOutRowExpressionContext() {}
 
   // NOTE: This block will not take responsibilty for the input block
-  void setInputRow(AqlItemBlock* inputBlock, size_t inputRow);
+  void setInputRow(AqlItemBlock const* inputBlock, size_t inputRow);
 
   size_t numRegisters() const override { return _regs.size(); }
 
@@ -84,7 +84,7 @@ class InAndOutRowExpressionContext final : public ExpressionContext {
   }
 
  private:
-  AqlItemBlock* _inputBlock;
+  AqlItemBlock const* _inputBlock;
   size_t _inputRow;
   std::vector<Variable const*> const _vars;
   std::vector<RegisterId> const _regs;

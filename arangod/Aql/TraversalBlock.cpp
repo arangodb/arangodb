@@ -27,6 +27,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Functions.h"
+#include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/Query.h"
 #include "Basics/StringRef.h"
 #include "Cluster/ClusterComm.h"
@@ -316,6 +317,11 @@ void TraversalBlock::initializeExpressions(AqlItemBlock const* items, size_t pos
   TRI_ASSERT(_inVars.size() == _inRegs.size());
   for (size_t i = 0; i < _inVars.size(); ++i) {
     _opts->setVariableValue(_inVars[i], items->getValueReference(pos, _inRegs[i]));
+  }
+  if (_opts->usesPrune()) {
+    auto* evaluator = _opts->getPruneEvaluator();
+    // Replace by inputRow
+    evaluator->prepareContext(items, pos);
   }
   // IF cluster => Transfer condition.
 }
