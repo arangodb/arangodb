@@ -205,7 +205,7 @@ void ensureLink(arangodb::DatabaseFeature& db,
   arangodb::velocypack::Builder indexInfo;
 
   idx->toVelocyPack( // index definition
-    indexInfo, arangodb::Index::makeFlags(arangodb::Index::Serialize::ObjectId) // args
+    indexInfo, arangodb::Index::makeFlags(arangodb::Index::Serialize::Internals) // args
   );
   engine->writeCreateCollectionMarker( // write marker
     dbId, // vocbase id
