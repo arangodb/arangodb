@@ -4,32 +4,63 @@ Data types
 AQL supports both primitive and compound data types. The following types are
 available:
 
-- Primitive types: Consisting of exactly one value
-  - null: An empty value, also: The absence of a value
-  - bool: Boolean truth value with possible values *false* and *true*
-  - number: Signed (real) number
-  - string: UTF-8 encoded text value
-- Compound types: Consisting of multiple values
-  - array: Sequence of values, referred to by their positions
-  - object / document: Sequence of values, referred to by their names
+- **Primitive types**: Consisting of exactly one value
+  - **null**: An empty value, also: the absence of a value
+  - **bool**: Boolean truth value with possible values *false* and *true*
+  - **number**: Signed (real) number
+  - **string**: UTF-8 encoded text value
+- **Compound types**: Consisting of multiple values
+  - **array** / **list**: Sequence of values, referred to by their positions
+  - **object** / **document**: Sequence of values, referred to by their names
 
 Primitive types
 ---------------
 
+### Null value
+
+A `null` value can be used to represent an empty or absent value.
+It is different from a numerical value of zero (`null != 0`) and other
+*falsy* values (`false`, zero-length string, empty array or object).
+It is also known as *nil* or *None* in other languages.
+
+The system may return `null` in the absence of value, for example
+if you call a [function](../Functions/README.md) with unsupported values
+as arguments or if you try to [access an attribute](DocumentData.md)
+which does not exist.
+
+### Boolean data type
+
+The Boolean data type has two possible values, `true` and `false`.
+They represent the two truth values in logic and mathematics.
+
 ### Numeric literals
 
-Numeric literals can be integers or real values. They can optionally be signed
-using the *+* or *-* symbols. The scientific notation is also supported.
+Numeric literals can be integers or real values (floating-point numbers).
+They can optionally be signed with the `+` or `-` symbols.
+A decimal point `.` is used as separator for the optional fractional part.
+The scientific notation (*E-notation*) is also supported.
 
 ```
-1
-42
--1
+  1
+ +1
+ 42
+ -1
 -42
-1.23
+  0.5
+  1.23
 -99.99
-0.1
--4.87e103
+ -4.87e103
+ -4.87E103
+```
+
+The following notations are invalid and will throw a syntax error:
+
+```
+  .5
+ 1.
+01.23
+00.23
+00
 ```
 
 All numeric values are treated as 64-bit double-precision values internally.
@@ -39,7 +70,7 @@ The internal format used is IEEE 754.
 
 String literals must be enclosed in single or double quotes. If the used quote
 character is to be used itself within the string literal, it must be escaped
-using the backslash symbol.  Backslash literals themselves also be escaped using
+using the backslash symbol. A literal backslash also needs to be escaped with
 a backslash.
 
 ```
@@ -51,13 +82,15 @@ a backslash.
 
 'yikes!'
 'don\'t know'
+'this is a "quoted" word'
 'this is a longer string.'
 'the path separator on Windows is \\'
 ```
 
 All string literals must be UTF-8 encoded. It is currently not possible to use
 arbitrary binary data if it is not UTF-8 encoded. A workaround to use binary
-data is to encode the data using base64 or other algorithms on the application
+data is to encode the data using [Base64](https://en.wikipedia.org/wiki/Base64)
+or other algorithms on the application
 side before storing, and decoding it on application side after retrieval.
 
 Compound types
@@ -74,9 +107,9 @@ The first supported compound type is the array type. Arrays are effectively
 sequences of (unnamed / anonymous) values. Individual array elements can be
 accessed by their positions. The order of elements in an array is important.
 
-An *array-declaration* starts with the *[* symbol and ends with the *]* symbol. An
-*array-declaration* contains zero or many *expression*s, separated from each
-other with the *,* symbol.
+An *array declaration* starts with a left square bracket `[` and ends with
+a right square bracket `]`. The declaration contains zero, one or more
+*expression*s, separated from each other with the comma `,` symbol.
 
 In the easiest case, an array is empty and thus looks like:
 
@@ -88,12 +121,13 @@ Array elements can be any legal *expression* values. Nesting of arrays is
 supported.
 
 ```json
+[ true ]
 [ 1, 2, 3 ]
-[ -99, "yikes!", [ true, [ "no"], [ ] ], 1 ]
+[ -99, "yikes!", [ false, ["no"], [] ], 1 ]
 [ [ "fox", "marshal" ] ]
 ```
 
-Individual array values can later be accessed by their positions using the *[]*
+Individual array values can later be accessed by their positions using the `[]`
 accessor. The position of the accessed element must be a numeric
 value. Positions start at 0. It is also possible to use negative index values
 to access array values starting from the end of the array. This is convenient if
@@ -120,37 +154,53 @@ The other supported compound type is the object (or document) type. Objects are 
 composition of zero to many attributes. Each attribute is a name/value pair.
 Object attributes can be accessed individually by their names.
 
-Object declarations start with the *{* symbol and end with the *}* symbol. An
-object contains zero to many attribute declarations, separated from each other
-with the *,* symbol.  In the simplest case, an object is empty. Its
-declaration would then be:
+Object declarations start with a left curly bracket `{` and end with a
+right curly bracket `}`. An object contains zero to many attribute declarations,
+separated from each other with the `,` symbol. In the simplest case, an object
+is empty. Its declaration would then be:
 
 ```json
 { }
 ```
 
+Each attribute in an object is a name/value pair. Name and value of an
+attribute are separated using the colon `:` symbol. The name is always a string,
+whereas the value can be of any type including sub-objects.
 
-Each attribute in an object is a name / value pair. Name and value of an
-attribute are separated using the *:* symbol.
-
-The attribute name is mandatory and must be specified as a quoted or unquoted
-string. If a keyword is used as an attribute name, the attribute name must be quoted:
+The attribute name is mandatory - there can't be anonymous values in an object.
+It can be specified as a quoted or unquoted string:
 
 ```js
-{ return : 1 }     /* won't work */
-{ "return" : 1 }   /* works ! */
-{ `return` : 1 }   /* works, too! */
+{ name: … }    // unquoted
+{ 'name': … }  // quoted (apostrophe / "single quote mark")
+{ "name": … }  // quoted (quotation mark / "double quote mark")
 ```
 
-Since ArangoDB 2.6, object attribute names can be computed using dynamic expressions, too.
-To disambiguate regular attribute names from attribute name expressions, computed
-attribute names must be enclosed in *[* and *]*:
+It must be quoted if it contains whitespace, escape sequences or characters
+other than ASCII letters (`a`-`z`, `A`-`Z`), digits (`0`-`9`),
+underscores (`_`) and dollar signs (`$`). The first character has to be a
+letter, underscore or dollar sign.
+
+If a [keyword](../Fundamentals/Syntax.md#keywords) is used as an attribute name
+then the attribute name must be quoted or escaped by ticks or backticks:
+
+```js
+{ return: … }    // error, return is a keyword!
+{ 'return': … }  // quoted
+{ "return": … }  // quoted
+{ `return`: … }  // escaped (backticks)
+{ ´return´: … }  // escaped (ticks)
+```
+
+Attribute names can be computed using dynamic expressions, too.
+To disambiguate regular attribute names from attribute name expressions,
+computed attribute names must be enclosed in square brackets `[ … ]`:
 
 ```js
 { [ CONCAT("test/", "bar") ] : "someValue" }
 ```
 
-Since ArangoDB 2.7, there is also shorthand notation for attributes which is handy for
+There is also shorthand notation for attributes which is handy for
 returning existing variables easily:
 
 ```js
@@ -164,27 +214,27 @@ The above is the shorthand equivalent for the generic form:
 ```js
 LET name = "Peter"
 LET age = 42
-RETURN { name : name, age : age }
+RETURN { name: name, age: age }
 ```
 
 Any valid expression can be used as an attribute value. That also means nested
 objects can be used as attribute values:
 
-```json
+```js
 { name : "Peter" }
 { "name" : "Vanessa", "age" : 15 }
 { "name" : "John", likes : [ "Swimming", "Skiing" ], "address" : { "street" : "Cucumber lane", "zip" : "94242" } }
 ```
 
 Individual object attributes can later be accessed by their names using the
-*.* accessor:
+dot `.` accessor:
 
 ```js
 u.address.city.name
 u.friends[0].name.first
 ```
 
-Attributes can also be accessed using the *[]* accessor:
+Attributes can also be accessed using the square bracket `[]` accessor:
 
 ```js
 u["address"]["city"]["name"]
@@ -199,5 +249,7 @@ LET attr2 = "name"
 u[attr1][0][attr2][ CONCAT("fir", "st") ]
 ```
 
-Note that if a non-existing attribute is accessed in one or the other way,
-the result will be *null*, without error or warning.
+{% hint 'info' %}
+If a non-existing attribute is accessed in one or the other way,
+the result will be `null`, without error or warning.
+{% endhint %}
