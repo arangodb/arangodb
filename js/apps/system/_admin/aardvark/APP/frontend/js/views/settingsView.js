@@ -96,10 +96,7 @@
       if (!this.readOnly) {
         this.model.destroy(
           {
-            error: function (error, data) {
-              if (error) {
-                console.log(error);
-              }
+            error: function (_, data) {
               arangoHelper.arangoError('Could not drop collection: ' + data.responseJSON.errorMessage);
             },
             success: function () {
