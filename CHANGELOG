@@ -1,6 +1,7 @@
 devel
 -----
 
+* fixed a display issues when editing a graph within the web ui
 
 * fixed some escaping issues within the web ui.
 
