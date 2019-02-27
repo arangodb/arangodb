@@ -89,8 +89,7 @@ class CalculationExecutor {
   struct Properties {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = true;
-    /* This could be set to true after some investigation/fixes */
-    static const bool inputSizeRestrictsOutputSize = false;
+    static const bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = CalculationExecutorInfos;
