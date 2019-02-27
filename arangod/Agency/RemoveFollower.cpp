@@ -291,32 +291,39 @@ bool RemoveFollower::start() {
         }
       }
       if (currentReplFactor > desiredReplFactor) {
-        // Finally choose servers that are in sync, but are no leader, skip
-        // those in ToBeCleanedServers:
+        // Finally choose servers that are in sync, but are no leader:
         for (auto const& it : reversedPlannedServers) {
           auto const pair = *overview.find(it);
           if (pair.second >= 0 &&
               static_cast<size_t>(pair.second) >= shardsLikeMe.size() &&
               pair.first != planned[0].copyString()) {
-            VPackSlice slice;
-            bool has;
-            std::tie(slice, has) = _snapshot.hasAsSlice(toBeCleanedPrefix);
-            bool isToBeCleaned = false;
-            if (has && slice.isArray()) {
-              for (auto const& srv : VPackArrayIterator(slice)) {
-                if (srv.copyString() == pair.first) {
-                  isToBeCleaned = true;
-                  break;
-                }
-              }
-            }
-            if (!isToBeCleaned) {
+            if (Job::isInServerList(_snapshot, toBeCleanedPrefix, pair.first, true) ||
+                Job::isInServerList(_snapshot, cleanedPrefix, pair.first, true)) {
+              // Prefer those cleaned or to be cleaned servers
               chosenToRemove.insert(pair.first);
               --currentReplFactor;
             }
           }
           if (currentReplFactor == desiredReplFactor) {
             break;
+          }
+        }
+        if (currentReplFactor > desiredReplFactor) {
+          // Now allow those which are perfectly good as well:
+          for (auto const& it : reversedPlannedServers) {
+            auto const pair = *overview.find(it);
+            if (pair.second >= 0 &&
+                static_cast<size_t>(pair.second) >= shardsLikeMe.size() &&
+                pair.first != planned[0].copyString()) {
+              if (!Job::isInServerList(_snapshot, toBeCleanedPrefix, pair.first, true) &&
+                  !Job::isInServerList(_snapshot, cleanedPrefix, pair.first, true)) {
+                chosenToRemove.insert(pair.first);
+                --currentReplFactor;
+              }
+            }
+            if (currentReplFactor == desiredReplFactor) {
+              break;
+            }
           }
         }
       }
