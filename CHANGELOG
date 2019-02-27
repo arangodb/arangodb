@@ -1,6 +1,9 @@
 devel
 -----
 
+
+* fixed some escaping issues within the web ui.
+
 * follow up to fix JWT authentication in arangosh (#7530):
   also fix reconnect
 
