@@ -203,14 +203,14 @@ size_t Job::countGoodServersInList(Node const& snap, VPackSlice const& serverLis
     // No array, strange, return 0
     return count;
   }
-  for (VPackSlice const serverName : VPackArrayIterator(serverList)) {
-    if (serverName.isString()) {
-      // serverName not a string? Then don't count
-      std::string serverStr = serverName.copyString();
-      auto health = snap.hasAsChildren(healthPrefix);
-      // Do we have a Health substructure?
-      if (health.second) {
-        Node::Children& healthData = health.first; // List of servers in Health
+  auto health = snap.hasAsChildren(healthPrefix);
+  // Do we have a Health substructure?
+  if (health.second) {
+    Node::Children& healthData = health.first; // List of servers in Health
+    for (VPackSlice const serverName : VPackArrayIterator(serverList)) {
+      if (serverName.isString()) {
+        // serverName not a string? Then don't count
+        std::string serverStr = serverName.copyString();
         // Now look up this server:
         auto it = healthData.find(serverStr);
         if (it != healthData.end()) {
@@ -220,6 +220,30 @@ size_t Job::countGoodServersInList(Node const& snap, VPackSlice const& serverLis
           if (healthNode->hasAsString("Status").first == "GOOD") {
             ++count;
           }
+        }
+      }
+    }
+  }
+  return count;
+}
+
+// The following counts in a given server list how many of the servers are
+// in Status "GOOD".
+size_t Job::countGoodServersInList(Node const& snap, std::vector<std::string> const& serverList) {
+  size_t count = 0;
+  auto health = snap.hasAsChildren(healthPrefix);
+  // Do we have a Health substructure?
+  if (health.second) {
+    Node::Children& healthData = health.first; // List of servers in Health
+    for (auto& serverStr : serverList) {
+      // Now look up this server:
+      auto it = healthData.find(serverStr);
+      if (it != healthData.end()) {
+        // Only check if found
+        std::shared_ptr<Node> healthNode = it->second;
+        // Check its status:
+        if (healthNode->hasAsString("Status").first == "GOOD") {
+          ++count;
         }
       }
     }

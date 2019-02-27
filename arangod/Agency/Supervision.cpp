@@ -1214,7 +1214,7 @@ void Supervision::enforceReplication() {
         if (replFact2.second && replFact2.first == "satellite") {
           // satellites => distribute to every server
           auto available = Job::availableServers(_snapshot);
-          replicationFactor = available.size();
+          replicationFactor = Job::countGoodServersInList(_snapshot, available);
         } else {
           LOG_TOPIC(DEBUG, Logger::SUPERVISION)
               << "no replicationFactor entry in " << col.toJson();
@@ -1274,11 +1274,12 @@ void Supervision::enforceReplication() {
               if (actualReplicationFactor < replicationFactor) {
                 AddFollower(_snapshot, _agent, std::to_string(_jobId++),
                             "supervision", db_.first, col_.first, shard_.first)
-                    .run();
-              } else if (apparentReplicationFactor > replicationFactor) {
+                    .create();
+              } else if (apparentReplicationFactor > replicationFactor &&
+                         actualReplicationFactor >= replicationFactor) {
                 RemoveFollower(_snapshot, _agent, std::to_string(_jobId++),
                                "supervision", db_.first, col_.first, shard_.first)
-                    .run();
+                    .create();
               }
             }
           }

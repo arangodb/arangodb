@@ -124,8 +124,9 @@ struct Job {
   ///        excluding "exclude" vector
   static std::string randomIdleAvailableServer(Node const& snap,
                                                    std::vector<std::string> const& exclude);
-  static size_t countGoodServersInList(Node const& snap, VPackSlice const& serverList);
   static std::string randomIdleAvailableServer(Node const& snap, VPackSlice const& exclude);
+  static size_t countGoodServersInList(Node const& snap, VPackSlice const& serverList);
+  static size_t countGoodServersInList(Node const& snap, std::vector<std::string> const& serverList);
 
   /// @brief Get servers from plan, which are not failed or cleaned out
   static std::vector<std::string> availableServers(const arangodb::consensus::Node&);

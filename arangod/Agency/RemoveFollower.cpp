@@ -158,7 +158,7 @@ bool RemoveFollower::start() {
     if (replFact2.second && replFact2.first == "satellite") {
       // satellites => distribute to every server
       auto available = Job::availableServers(_snapshot);
-      desiredReplFactor = available.size();
+      desiredReplFactor = Job::countGoodServersInList(_snapshot, available);
     }
   }
 
@@ -291,14 +291,29 @@ bool RemoveFollower::start() {
         }
       }
       if (currentReplFactor > desiredReplFactor) {
-        // Finally choose servers that are in sync, but are no leader:
+        // Finally choose servers that are in sync, but are no leader, skip
+        // those in ToBeCleanedServers:
         for (auto const& it : reversedPlannedServers) {
           auto const pair = *overview.find(it);
           if (pair.second >= 0 &&
               static_cast<size_t>(pair.second) >= shardsLikeMe.size() &&
               pair.first != planned[0].copyString()) {
-            chosenToRemove.insert(pair.first);
-            --currentReplFactor;
+            VPackSlice slice;
+            bool has;
+            std::tie(slice, has) = _snapshot.hasAsSlice(toBeCleanedPrefix);
+            bool isToBeCleaned = false;
+            if (has && slice.isArray()) {
+              for (auto const& srv : VPackArrayIterator(slice)) {
+                if (srv.copyString() == pair.first) {
+                  isToBeCleaned = true;
+                  break;
+                }
+              }
+            }
+            if (!isToBeCleaned) {
+              chosenToRemove.insert(pair.first);
+              --currentReplFactor;
+            }
           }
           if (currentReplFactor == desiredReplFactor) {
             break;

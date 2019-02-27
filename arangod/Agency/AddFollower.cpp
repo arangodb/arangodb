@@ -155,7 +155,7 @@ bool AddFollower::start() {
     if (replFact2.second && replFact2.first == "satellite") {
       // satellites => distribute to every server
       auto available = Job::availableServers(_snapshot);
-      desiredReplFactor = available.size();
+      desiredReplFactor = Job::countGoodServersInList(_snapshot, available);
     }
   }
 
