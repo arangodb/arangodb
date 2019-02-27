@@ -251,6 +251,36 @@ size_t Job::countGoodServersInList(Node const& snap, std::vector<std::string> co
   return count;
 }
 
+/// @brief Check if a server is cleaned or to be cleaned out:
+bool Job::isInServerList(Node const& snap, std::string const& prefix, std::string const& server, bool isArray) {
+  VPackSlice slice;
+  bool has;
+  bool found = false;
+  if (isArray) {
+    std::tie(slice, has) = snap.hasAsSlice(prefix);
+    if (has && slice.isArray()) {
+      for (auto const& srv : VPackArrayIterator(slice)) {
+        if (srv.copyString() == server) {
+          found = true;
+          break;
+        }
+      }
+    }
+  } else {  // an object
+    Node::Children children;
+    std::tie(children, has) = snap.hasAsChildren(prefix);
+    if (has) {
+      for (auto const& srv : children) {
+        if (srv.first == server) {
+          found = true;
+          break;
+        }
+      }
+    }
+  }
+  return found;
+}
+
 /// @brief Get servers from plan, which are not failed or (to be) cleaned out
 std::vector<std::string> Job::availableServers(Node const& snapshot) {
   std::vector<std::string> ret;
