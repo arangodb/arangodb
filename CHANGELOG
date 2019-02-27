@@ -1,3 +1,17 @@
+v3.4.5 (2019-XX-XX)
+-------------------
+
+* add "PRUNE <condition>" to AQL Traversals. This allows to early abort searching of
+  unnecessary branches within a traversal.
+  PRUNE is only allowed in the Traversal statement and only between the graphdefinition
+  and the options of the traversal.
+  e.g.:
+  FOR v, e, p IN 1..3 OUTBOUND @source GRAPH "myGraph"
+    PRUNE v.value == "bar"
+    OPTIONS {} /* These options remain optional */
+    RETURN v
+  for more details refer to the documentation chapter.
+
 v3.4.4 (2019-XX-XX)
 -------------------
 

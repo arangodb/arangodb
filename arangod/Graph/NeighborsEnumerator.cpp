@@ -23,6 +23,7 @@
 
 #include "NeighborsEnumerator.h"
 
+#include "Aql/PruneExpressionEvaluator.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/Traverser.h"
@@ -58,8 +59,7 @@ bool NeighborsEnumerator::next() {
         return false;
       }
 
-      _lastDepth.swap(_currentDepth);
-      _currentDepth.clear();
+      swapLastAndCurrentDepth();
       for (auto const& nextVertex : _lastDepth) {
         auto callback = [&](EdgeDocumentToken&& eid, VPackSlice other, size_t cursorId) {
           if (_opts->hasEdgeFilter(_searchDepth, cursorId)) {
@@ -90,8 +90,11 @@ bool NeighborsEnumerator::next() {
 
           if (_allFound.find(v) == _allFound.end()) {
             if (_traverser->vertexMatchesConditions(v, _searchDepth + 1)) {
-              _currentDepth.emplace(v);
               _allFound.emplace(v);
+              if (shouldPrune(v)) {
+                _toPrune.emplace(v);
+              }
+              _currentDepth.emplace(v);
             }
           } else {
             _opts->cache()->increaseFilterCounter();
@@ -131,4 +134,31 @@ arangodb::aql::AqlValue NeighborsEnumerator::pathToAqlValue(arangodb::velocypack
   // But the Block asks for it.
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+void NeighborsEnumerator::swapLastAndCurrentDepth() {
+  // Filter all in _toPrune
+  if (!_toPrune.empty()) {
+    for (auto const& it : _toPrune) {
+      _currentDepth.erase(it);
+    }
+    _toPrune.clear();
+  }
+  _lastDepth.swap(_currentDepth);
+  _currentDepth.clear();
+}
+
+bool NeighborsEnumerator::shouldPrune(arangodb::StringRef v) {
+  // Prune here
+  if (_opts->usesPrune()) {
+    auto* evaluator = _opts->getPruneEvaluator();
+    if (evaluator->needsVertex()) {
+      evaluator->injectVertex(_traverser->fetchVertexData(v).slice());
+    }
+    // We cannot support these two here
+    TRI_ASSERT(!evaluator->needsEdge());
+    TRI_ASSERT(!evaluator->needsPath());
+    return evaluator->evaluate();
+  }
+  return false;
 }
