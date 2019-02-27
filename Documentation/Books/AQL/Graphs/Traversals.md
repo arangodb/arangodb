@@ -49,7 +49,7 @@ FOR vertex[, edge[, path]]
 - `GRAPH` **graphName** (string): the name identifying the named graph.
   Its vertex and edge collections will be looked up. Note that the graph name
   is like a regular string, hence it must be enclosed by quote marks.
-- `PRUNE` **condition** (AQL condition, *optional*, (since version 3.4.4)):
+- `PRUNE` **condition** (AQL condition, *optional*, (since version 3.4.5)):
   A condition, like in a FILTER statement, which will be evaluated in every step
   of the traversal, as early as possible. The semantics of this condition is as follows:
     * If the condition evaluates to `true` this path will be considered as a result,
