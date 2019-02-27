@@ -83,7 +83,8 @@ class ReturnExecutor {
   struct Properties {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = passBlocksThrough;
-    static const bool inputSizeRestrictsOutputSize = true;
+    /* This could be set to true after some investigation/fixes */
+    static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = ReturnExecutorInfos;
