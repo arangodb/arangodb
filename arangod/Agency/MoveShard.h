@@ -61,6 +61,8 @@ struct MoveShard : public Job {
   std::string _to;
   bool _isLeader;
   bool _remainsFollower;
+  bool _toServerIsFollower;
+  
 };
 }  // namespace consensus
 }  // namespace arangodb

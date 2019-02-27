@@ -169,8 +169,9 @@ SECTION("the job should fail if toServer does not exist") {
   Verify(Method(mockAgent,write));
 }
 
-SECTION("the job should fail to start if toServer is already in plan") {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&, std::string const&)> createTestStructure = [&](VPackSlice const& s, std::string const& path) {
+SECTION("the job should fail to start if fromServer and toServer are planned followers") {
+  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&, std::string const&)> createTestStructure =
+    [&](VPackSlice const& s, std::string const& path) {
     std::unique_ptr<VPackBuilder> builder;
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
@@ -183,7 +184,7 @@ SECTION("the job should fail to start if toServer is already in plan") {
       }
 
       if (path == "/arango/Target/ToDo") {
-        builder->add(jobId, createJob(COLLECTION, SHARD_LEADER, SHARD_FOLLOWER1).slice());
+        builder->add(jobId, createJob(COLLECTION, SHARD_FOLLOWER1, SHARD_LEADER).slice());
       }
       builder->close();
     } else {
