@@ -309,9 +309,7 @@ bool BreadthFirstEnumerator::shouldPrune() {
       aql::AqlValue val = pathToIndexToAqlValue(*builder.get(), _schreierIndex);
       evaluator->injectPath(val.slice());
     }
-    if (evaluator->evaluate()) {
-      return true;
-    }
+    return evaluator->evaluate();
   }
   return false;
 }

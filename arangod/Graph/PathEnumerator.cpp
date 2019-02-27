@@ -230,9 +230,7 @@ bool DepthFirstEnumerator::shouldPrune() {
       aql::AqlValue val = pathToAqlValue(*builder.get());
       evaluator->injectPath(val.slice());
     }
-    if (evaluator->evaluate()) {
-      return true;
-    }
+    return evaluator->evaluate();
   }
   return false;
 }

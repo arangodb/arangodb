@@ -159,9 +159,7 @@ bool NeighborsEnumerator::shouldPrune(arangodb::velocypack::StringRef v) {
     // We cannot support these two here
     TRI_ASSERT(!evaluator->needsEdge());
     TRI_ASSERT(!evaluator->needsPath());
-    if (evaluator->evaluate()) {
-      return true;
-    }
+    return evaluator->evaluate();
   }
   return false;
 }
