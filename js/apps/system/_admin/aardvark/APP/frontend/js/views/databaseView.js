@@ -255,7 +255,7 @@
     },
 
     search: function () {
-      var currentSearchInputValue = $('#databaseSearchInput').val();
+      var currentSearchInputValue = arangoHelper.escapeHtml($('#databaseSearchInput').val());
       if ((this.lastSearchInputValue !== null && this.lastSearchInputValue !== currentSearchInputValue) || currentSearchInputValue === '') {
         var searchInput,
           searchString,

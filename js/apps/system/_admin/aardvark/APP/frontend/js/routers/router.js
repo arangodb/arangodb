@@ -393,29 +393,6 @@
       this.nodeView.render();
     },
 
-    nodeInfo: function (id, initialized) {
-      this.checkUser();
-      if (!initialized || this.isCluster === undefined) {
-        this.waitForInit(this.nodeInfo.bind(this), id);
-        return;
-      }
-      if (this.isCluster === false) {
-        this.routes[''] = 'dashboard';
-        this.navigate('#dashboard', {trigger: true});
-        return;
-      }
-
-      if (this.nodeInfoView) {
-        this.nodeInfoView.remove();
-      }
-      this.nodeInfoView = new window.NodeInfoView({
-        nodeId: id,
-        coordinators: this.coordinatorCollection,
-        dbServers: this.dbServers[0]
-      });
-      this.nodeInfoView.render();
-    },
-
     shards: function (initialized) {
       this.checkUser();
       if (!initialized || this.isCluster === undefined) {
@@ -532,10 +509,10 @@
       xhr.setRequestHeader('Authorization', 'Basic ' + btoa(token));
     },
 
-    logger: function (name, initialized) {
+    logger: function (initialized) {
       this.checkUser();
       if (!initialized) {
-        this.waitForInit(this.logger.bind(this), name);
+        this.waitForInit(this.logger.bind(this));
         return;
       }
       if (!this.loggerView) {
