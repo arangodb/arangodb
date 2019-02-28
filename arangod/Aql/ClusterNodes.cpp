@@ -185,8 +185,10 @@ std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
   std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
   std::unordered_set<RegisterId> regsToClear = getRegsToClear();
 
-  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear), std::move(regsToKeep));
-  return std::make_unique<ExecutionBlockImpl<ScatterExecutor>>(&engine, this, std::move(infos), _clients);
+  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
+                      std::move(regsToKeep));
+  return std::make_unique<ExecutionBlockImpl<ScatterExecutor>>(&engine, this,
+                                                               std::move(infos), _clients);
 }
 
 /// @brief toVelocyPack, for ScatterNode
@@ -277,8 +279,12 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
   std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
   std::unordered_set<RegisterId> regsToClear = getRegsToClear();
 
-  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear), std::move(regsToKeep));
-  return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(&engine, this, std::move(infos), clients(), collection());
+  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
+                      std::move(regsToKeep));
+  return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(&engine, this,
+                                                                  std::move(infos),
+                                                                  clients(),
+                                                                  collection());
 }
 
 /// @brief toVelocyPack, for DistributedNode

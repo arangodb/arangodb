@@ -32,18 +32,16 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(
-  ExecutionEngine *engine, DistributeNode const *node,
-  ExecutorInfos &&infos,
-  std::vector<std::string> const &shardIds,
-  Collection const* collection
-) : BlockWithClients(engine, node, shardIds),
-    _infos(std::move(infos)),
-    _query(*engine->getQuery()),
-    _collection(collection),
-    _index(0),
-    _regId(ExecutionNode::MaxRegisterId),
-    _alternativeRegId(ExecutionNode::MaxRegisterId),
-    _allowSpecifiedKeys(false) {
+    ExecutionEngine* engine, DistributeNode const* node, ExecutorInfos&& infos,
+    std::vector<std::string> const& shardIds, Collection const* collection)
+    : BlockWithClients(engine, node, shardIds),
+      _infos(std::move(infos)),
+      _query(*engine->getQuery()),
+      _collection(collection),
+      _index(0),
+      _regId(ExecutionNode::MaxRegisterId),
+      _alternativeRegId(ExecutionNode::MaxRegisterId),
+      _allowSpecifiedKeys(false) {
   // get the variable to inspect . . .
   VariableId varId = node->_variable->id;
 
@@ -65,27 +63,23 @@ ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(
 
   _usesDefaultSharding = collection->usesDefaultSharding();
   _allowSpecifiedKeys = node->_allowSpecifiedKeys;
-
 }
 
-
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<DistributeExecutor>::traceGetSomeEnd(
-  ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
+    ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
   ExecutionBlock::traceGetSomeEnd(result.get(), state);
   return {state, std::move(result)};
 }
 
-
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<DistributeExecutor>::traceSkipSomeEnd(
-  ExecutionState state, size_t skipped) {
+    ExecutionState state, size_t skipped) {
   ExecutionBlock::traceSkipSomeEnd(skipped, state);
   return {state, skipped};
 }
 
-
 /// @brief initializeCursor
-std::pair<ExecutionState, Result> ExecutionBlockImpl<DistributeExecutor>::initializeCursor(AqlItemBlock* items,
-                                                                                        size_t pos) {
+std::pair<ExecutionState, Result> ExecutionBlockImpl<DistributeExecutor>::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   // local clean up
   _distBuffer.clear();
   _distBuffer.reserve(_nrClients);
@@ -97,18 +91,16 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<DistributeExecutor>::initia
   return BlockWithClients::initializeCursor(items, pos);
 }
 
-
 /// @brief getSomeForShard
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<DistributeExecutor>::getSomeForShard(
-  size_t atMost, std::string const& shardId) {
+    size_t atMost, std::string const& shardId) {
   traceGetSomeBegin(atMost);
   auto result = getSomeForShardWithoutTrace(atMost, shardId);
   return traceGetSomeEnd(result.first, std::move(result.second));
 }
 
-
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<DistributeExecutor>::getSomeForShardWithoutTrace(
-  size_t atMost, std::string const& shardId) {
+    size_t atMost, std::string const& shardId) {
   // NOTE: We do not need to retain these, the getOrSkipSome is required to!
   size_t skipped = 0;
   std::unique_ptr<AqlItemBlock> result = nullptr;
@@ -122,19 +114,16 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Dist
   return {out.first, std::move(result)};
 }
 
-
 /// @brief skipSomeForShard
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<DistributeExecutor>::skipSomeForShard(
-  size_t atMost, std::string const &shardId) {
+    size_t atMost, std::string const& shardId) {
   traceSkipSomeBegin(atMost);
   auto result = skipSomeForShardWithoutTrace(atMost, shardId);
   return traceSkipSomeEnd(result.first, result.second);
-
 }
 
-
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<DistributeExecutor>::skipSomeForShardWithoutTrace(size_t atMost,
-                                                                                                    std::string const& shardId) {
+std::pair<ExecutionState, size_t> ExecutionBlockImpl<DistributeExecutor>::skipSomeForShardWithoutTrace(
+    size_t atMost, std::string const& shardId) {
   // NOTE: We do not need to retain these, the getOrSkipSome is required to!
   size_t skipped = 0;
   std::unique_ptr<AqlItemBlock> result = nullptr;
@@ -149,11 +138,10 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<DistributeExecutor>::skipSo
   return {out.first, skipped};
 }
 
-
 /// @brief getOrSkipSomeForShard
 std::pair<ExecutionState, arangodb::Result> ExecutionBlockImpl<DistributeExecutor>::getOrSkipSomeForShard(
-  size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
-  size_t& skipped, std::string const& shardId) {
+    size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
+    size_t& skipped, std::string const& shardId) {
   TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(atMost > 0);
 
@@ -218,12 +206,10 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlockImpl<DistributeExecuto
   return {getHasMoreStateForClientId(clientId), TRI_ERROR_NO_ERROR};
 }
 
-
 /// @brief hasMore: any more for any shard?
 bool ExecutionBlockImpl<DistributeExecutor>::hasMoreForShard(std::string const& shardId) const {
   return hasMoreForClientId(getClientId(shardId));
 }
-
 
 ExecutionState ExecutionBlockImpl<DistributeExecutor>::getHasMoreStateForClientId(size_t clientId) const {
   if (hasMoreForClientId(clientId)) {
@@ -231,7 +217,6 @@ ExecutionState ExecutionBlockImpl<DistributeExecutor>::getHasMoreStateForClientI
   }
   return ExecutionState::DONE;
 }
-
 
 bool ExecutionBlockImpl<DistributeExecutor>::hasMoreForClientId(size_t clientId) const {
   // We have more for a client ID if
@@ -245,13 +230,13 @@ bool ExecutionBlockImpl<DistributeExecutor>::hasMoreForClientId(size_t clientId)
   return _upstreamState == ExecutionState::HASMORE;
 }
 
-
 /// @brief getBlockForClient: try to get atMost pairs into
 /// _distBuffer.at(clientId), this means we have to look at every row in the
 /// incoming blocks until they run out or we find enough rows for clientId. We
 /// also keep track of blocks which should be sent to other clients than the
 /// current one.
-std::pair<ExecutionState, bool> ExecutionBlockImpl<DistributeExecutor>::getBlockForClient(size_t atMost, size_t clientId) {
+std::pair<ExecutionState, bool> ExecutionBlockImpl<DistributeExecutor>::getBlockForClient(
+    size_t atMost, size_t clientId) {
   if (_buffer.empty()) {
     _index = 0;  // position in _buffer
     _pos = 0;    // position in _buffer.at(_index)
@@ -295,8 +280,6 @@ std::pair<ExecutionState, bool> ExecutionBlockImpl<DistributeExecutor>::getBlock
 
   return {getHasMoreStateForClientId(clientId), true};
 }
-
-
 
 /// @brief sendToClient: for each row of the incoming AqlItemBlock use the
 /// attributes <shardKeys> of the Aql value <val> to determine to which shard
@@ -401,7 +384,6 @@ size_t ExecutionBlockImpl<DistributeExecutor>::sendToClient(AqlItemBlock* cur) {
 
   return getClientId(shardId);
 }
-
 
 /// @brief create a new document key
 std::string ExecutionBlockImpl<DistributeExecutor>::createKey(VPackSlice input) const {

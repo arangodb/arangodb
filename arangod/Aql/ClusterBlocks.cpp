@@ -244,7 +244,6 @@ size_t BlockWithClients::getClientId(std::string const& shardId) const {
   return ((*it).second);
 }
 
-
 // -----------------------------------------------------------------------------
 // -- SECTION --                                            UnsortingGatherBlock
 // -----------------------------------------------------------------------------
@@ -342,7 +341,7 @@ SortingGatherBlock::SortingGatherBlock(ExecutionEngine& engine, GatherNode const
       _strategy = std::make_unique<MinElementSorting>(_trx, _gatherBlockBuffer, _sortRegisters);
       break;
     case GatherNode::SortMode::Heap:
-    case GatherNode::SortMode::Default: // use heap by default
+    case GatherNode::SortMode::Default:  // use heap by default
       _strategy = std::make_unique<HeapSorting>(_trx, _gatherBlockBuffer, _sortRegisters);
       break;
     default:

@@ -45,9 +45,10 @@ class ReplaceNode;
 class RemoveNode;
 // TODO remove these forward declarations:
 class DistributeExecutor;
-template<class T> class ExecutionBlockImpl;
-template<> class ExecutionBlockImpl<DistributeExecutor>;
-
+template <class T>
+class ExecutionBlockImpl;
+template <>
+class ExecutionBlockImpl<DistributeExecutor>;
 
 struct Collection;
 

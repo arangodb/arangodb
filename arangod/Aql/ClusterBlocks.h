@@ -81,7 +81,8 @@ class BlockWithClients : public ExecutionBlock {
       size_t atMost, std::string const& shardId) = 0;
 
   /// @brief skipSomeForShard
-  virtual std::pair<ExecutionState, size_t> skipSomeForShard(size_t atMost, std::string const& shardId) = 0;
+  virtual std::pair<ExecutionState, size_t> skipSomeForShard(size_t atMost,
+                                                             std::string const& shardId) = 0;
 
  protected:
   /// @brief getClientId: get the number <clientId> (used internally)
@@ -98,7 +99,6 @@ class BlockWithClients : public ExecutionBlock {
  private:
   bool _wasShutdown;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class UnsortingGatherBlock

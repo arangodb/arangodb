@@ -25,13 +25,13 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-ExecutionBlockImpl<ScatterExecutor>::ExecutionBlockImpl(
-  ExecutionEngine *engine, ScatterNode const *node,
-  ExecutorInfos &&infos,
-  std::vector<std::string> const &shardIds
-) : BlockWithClients(engine, node, shardIds),
-    _infos(std::move(infos)),
-    _query(*engine->getQuery()) {
+ExecutionBlockImpl<ScatterExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
+                                                        ScatterNode const* node,
+                                                        ExecutorInfos&& infos,
+                                                        std::vector<std::string> const& shardIds)
+    : BlockWithClients(engine, node, shardIds),
+      _infos(std::move(infos)),
+      _query(*engine->getQuery()) {
   _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
     _shardIdMap.emplace(std::make_pair(shardIds[i], i));
@@ -39,20 +39,20 @@ ExecutionBlockImpl<ScatterExecutor>::ExecutionBlockImpl(
 }
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<ScatterExecutor>::traceGetSomeEnd(
-  ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
+    ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
   ExecutionBlock::traceGetSomeEnd(result.get(), state);
   return {state, std::move(result)};
 }
 
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::traceSkipSomeEnd(
-  ExecutionState state, size_t skipped) {
+    ExecutionState state, size_t skipped) {
   ExecutionBlock::traceSkipSomeEnd(skipped, state);
   return {state, skipped};
 }
 
 /// @brief initializeCursor
-std::pair<ExecutionState, Result> ExecutionBlockImpl<ScatterExecutor>::initializeCursor(AqlItemBlock* items,
-                                                                 size_t pos) {
+std::pair<ExecutionState, Result> ExecutionBlockImpl<ScatterExecutor>::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   // local clean up
   _posForClient.clear();
 
@@ -63,16 +63,15 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<ScatterExecutor>::initializ
   return BlockWithClients::initializeCursor(items, pos);
 }
 
-
 /// @brief getSomeForShard
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<ScatterExecutor>::getSomeForShard(
-  size_t atMost, std::string const& shardId) {
+    size_t atMost, std::string const& shardId) {
   traceGetSomeBegin(atMost);
   auto result = getSomeForShardWithoutTrace(atMost, shardId);
   return traceGetSomeEnd(result.first, std::move(result.second));
 }
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<ScatterExecutor>::getSomeForShardWithoutTrace(
-  size_t atMost, std::string const& shardId) {
+    size_t atMost, std::string const& shardId) {
   // NOTE: We do not need to retain these, the getOrSkipSome is required to!
   size_t skipped = 0;
   std::unique_ptr<AqlItemBlock> result = nullptr;
@@ -88,14 +87,13 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Scat
 
 /// @brief skipSomeForShard
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::skipSomeForShard(
-  size_t atMost, std::string const &shardId) {
+    size_t atMost, std::string const& shardId) {
   traceSkipSomeBegin(atMost);
   auto result = skipSomeForShardWithoutTrace(atMost, shardId);
   return traceSkipSomeEnd(result.first, result.second);
-
 }
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::skipSomeForShardWithoutTrace(size_t atMost,
-                                                                     std::string const& shardId) {
+std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::skipSomeForShardWithoutTrace(
+    size_t atMost, std::string const& shardId) {
   // NOTE: We do not need to retain these, the getOrSkipSome is required to!
   size_t skipped = 0;
   std::unique_ptr<AqlItemBlock> result = nullptr;
@@ -110,11 +108,10 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::skipSomeF
   return {out.first, skipped};
 }
 
-
 /// @brief getOrSkipSomeForShard
 std::pair<ExecutionState, arangodb::Result> ExecutionBlockImpl<ScatterExecutor>::getOrSkipSomeForShard(
-  size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
-  size_t& skipped, std::string const& shardId) {
+    size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
+    size_t& skipped, std::string const& shardId) {
   TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(atMost > 0);
 
@@ -179,7 +176,6 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlockImpl<ScatterExecutor>:
   return {getHasMoreStateForClientId(clientId), TRI_ERROR_NO_ERROR};
 }
 
-
 bool ExecutionBlockImpl<ScatterExecutor>::hasMoreForClientId(size_t clientId) const {
   TRI_ASSERT(_nrClients != 0);
 
@@ -193,7 +189,6 @@ bool ExecutionBlockImpl<ScatterExecutor>::hasMoreForClientId(size_t clientId) co
   }
   return _upstreamState == ExecutionState::HASMORE;
 }
-
 
 ExecutionState ExecutionBlockImpl<ScatterExecutor>::getHasMoreStateForClientId(size_t clientId) const {
   if (hasMoreForClientId(clientId)) {
