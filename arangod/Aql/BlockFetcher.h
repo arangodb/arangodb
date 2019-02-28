@@ -106,7 +106,12 @@ class BlockFetcher {
 
   ExecutionBlock& upstreamBlock() {
     TRI_ASSERT(_dependencies.size() == 1);
-    return *_dependencies[0];
+    return upstreamBlockForDependency(0);
+  }
+
+  ExecutionBlock& upstreamBlockForDependency(size_t index) {
+    TRI_ASSERT(_dependencies.size() > index);
+    return *_dependencies[index];
   }
 
  private:
