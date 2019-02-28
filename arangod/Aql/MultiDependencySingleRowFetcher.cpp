@@ -17,13 +17,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 /// @author Michael Hackstein
-/// @author Heiko Kernbach
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SingleRowFetcher.h"
+#include "MultiDependencySingleRowFetcher.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/BlockFetcher.h"
@@ -31,13 +28,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-template <bool passBlocksThrough>
-SingleRowFetcher<passBlocksThrough>::SingleRowFetcher(BlockFetcher<passBlocksThrough>& executionBlock)
+MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher(BlockFetcher<false>& executionBlock)
     : _blockFetcher(&executionBlock), _currentRow{CreateInvalidInputRowHint{}} {}
 
-template <bool passBlocksThrough>
-std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
-SingleRowFetcher<passBlocksThrough>::fetchBlock(size_t atMost) {
+std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> MultiDependencySingleRowFetcher::fetchBlock(size_t atMost) {
   atMost = (std::min)(atMost, ExecutionBlock::DefaultBatchSize());
 
   // There are still some blocks left that ask their parent even after they got
@@ -51,15 +45,9 @@ SingleRowFetcher<passBlocksThrough>::fetchBlock(size_t atMost) {
   return res;
 }
 
-template <bool passBlocksThrough>
-SingleRowFetcher<passBlocksThrough>::SingleRowFetcher()
+MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher()
     : _blockFetcher(nullptr), _currentRow{CreateInvalidInputRowHint{}} {}
 
-template <bool passBlocksThrough>
-std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
-SingleRowFetcher<passBlocksThrough>::fetchBlockForPassthrough(size_t atMost) {
-  return _blockFetcher->fetchBlockForPassthrough(atMost);
+RegisterId MultiDependencySingleRowFetcher::getNrInputRegisters() const {
+  return _blockFetcher->getNrInputRegisters();
 }
-
-template class ::arangodb::aql::SingleRowFetcher<false>;
-template class ::arangodb::aql::SingleRowFetcher<true>;
