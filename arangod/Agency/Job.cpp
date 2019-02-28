@@ -98,13 +98,15 @@ bool Job::finish(std::string const& server, std::string const& shard,
   }
 
   // Additional payload, which is to be executed in the finish transaction
-  Slice operations, preconditions;
+  Slice operations = Slice::emptyObjectSlice();
+  Slice preconditions  = Slice::emptyObjectSlice();
   
   if (payload != nullptr) {
     Slice slice = payload->slice();
     TRI_ASSERT(slice.isObject() || slice.isArray());
     if (slice.isObject()) {     // opers only
       operations = slice;
+      TRI_ASSERT(operations.isObject());
     } else {
       TRI_ASSERT(slice.length() < 3); // opers + precs only
       if (slice.length() > 0) {
@@ -147,7 +149,7 @@ bool Job::finish(std::string const& server, std::string const& shard,
 
     } // -- operations
 
-    { // preconditions --
+    if (preconditions != Slice::emptyObjectSlice()) { // preconditions --
       VPackObjectBuilder precguard(&finished);
       if (preconditions.length() > 0) {
         for (auto const& prec : VPackObjectIterator(preconditions)) {
@@ -156,7 +158,7 @@ bool Job::finish(std::string const& server, std::string const& shard,
       }      
     } // -- preconditions
 
-  } 
+  }
 
   write_ret_t res = singleWriteTransaction(_agent, finished);
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
