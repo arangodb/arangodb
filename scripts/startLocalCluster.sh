@@ -105,7 +105,8 @@ if [ -z "$JWT_SECRET" ];then
   AUTHENTICATION="--server.authentication false"
   AUTHORIZATION_HEADER=""
 else
-  AUTHENTICATION="--server.jwt-secret $JWT_SECRET"
+  echo $JWT_SECRET > cluster/secret.txt
+  AUTHENTICATION="--server.jwt-secret-keyfile cluster/secret.txt"
   AUTHORIZATION_HEADER="Authorization: bearer $(jwtgen -a HS256 -s $JWT_SECRET -c 'iss=arangodb' -c 'server_id=setup')"
 fi
 
