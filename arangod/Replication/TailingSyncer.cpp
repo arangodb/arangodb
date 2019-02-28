@@ -1320,6 +1320,8 @@ retry:
                   "caught unknown exception during initial replication");
       }
     }
+      
+    abortOngoingTransactions();
 
     _applier->stop(res);
     return res;
