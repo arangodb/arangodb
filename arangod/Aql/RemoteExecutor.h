@@ -49,7 +49,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
                      ExecutorInfos&& infos, std::string const& server,
                      std::string const& ownName, std::string const& queryId);
 
-  ~ExecutionBlockImpl() = default;
+  ~ExecutionBlockImpl() override = default;
 
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override;
 
@@ -57,7 +57,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-  std::pair<ExecutionState, Result> shutdown(int) override;
+  std::pair<ExecutionState, Result> shutdown(int errorCode) override;
 
   /// @brief handleAsyncResult
   bool handleAsyncResult(ClusterCommResult* result) override;

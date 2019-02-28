@@ -26,6 +26,7 @@
 #include "Aql/Ast.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/Collection.h"
+#include "Aql/DistributeExecutor.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/GraphNode.h"
@@ -33,6 +34,7 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
 #include "Aql/RemoteExecutor.h"
+#include "Aql/ScatterExecutor.h"
 #include "Transaction/Methods.h"
 
 #include <type_traits>
@@ -174,7 +176,17 @@ ScatterNode::ScatterNode(ExecutionPlan* plan, arangodb::velocypack::Slice const&
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<ScatterBlock>(&engine, this, _clients);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
+  RegisterId const nrInRegs = getRegisterPlan()->nrRegs[previousNode->getDepth()];
+
+  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
+  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+
+  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear), std::move(regsToKeep));
+  return std::make_unique<ExecutionBlockImpl<ScatterExecutor>>(&engine, this, std::move(infos), _clients);
 }
 
 /// @brief toVelocyPack, for ScatterNode
@@ -256,7 +268,17 @@ DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<DistributeBlock>(&engine, this, clients(), collection());
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
+  RegisterId const nrInRegs = getRegisterPlan()->nrRegs[previousNode->getDepth()];
+
+  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
+  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+
+  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear), std::move(regsToKeep));
+  return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(&engine, this, std::move(infos), clients(), collection());
 }
 
 /// @brief toVelocyPack, for DistributedNode
