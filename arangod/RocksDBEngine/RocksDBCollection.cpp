@@ -451,6 +451,10 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
         auto engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
         engine->removeIndexMapping(cindex->objectId());
 
+        if (engine->inRecovery()) {
+          return true; // skip writing WAL marker if inRecovery()
+        }
+
         auto builder =
             _logicalCollection.toVelocyPackIgnore({"path", "statusString"}, true, true);
 
