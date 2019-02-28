@@ -201,13 +201,15 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
   _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
   _databaseName = client->databaseName();
   _builder.endpoint(client->endpoint());
-  if (!client->username().empty()) {
-    _builder.user(client->username()).password(client->password());
-    _builder.authenticationType(fuerte::AuthenticationType::Basic);
-  } else if (!client->jwtSecret().empty()) {
+  // check jwtSecret first, as it is empty by default,
+  // but username defaults to "root" in most configurations
+  if (!client->jwtSecret().empty()) {
     _builder.jwtToken(
         fuerte::jwt::generateInternalToken(client->jwtSecret(), "arangosh"));
     _builder.authenticationType(fuerte::AuthenticationType::Jwt);
+  } else if (!client->username().empty()) {
+    _builder.user(client->username()).password(client->password());
+    _builder.authenticationType(fuerte::AuthenticationType::Basic);
   }
 
   auto oldConnection = std::move(_connection);

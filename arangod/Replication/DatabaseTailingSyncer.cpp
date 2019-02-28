@@ -47,12 +47,17 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
+
+namespace {
+arangodb::velocypack::StringRef const cuidRef("cuid");
+}
 
 DatabaseTailingSyncer::DatabaseTailingSyncer(TRI_vocbase_t& vocbase,
                                              ReplicationApplierConfiguration const& configuration,
@@ -257,7 +262,7 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
   // now check for a globally unique id attribute ("cuid")
   // if its present, then we will use our local cuid -> collection name
   // translation table
-  VPackSlice const name = slice.get("cuid");
+  VPackSlice const name = slice.get(::cuidRef);
   if (!name.isString()) {
     return false;
   }

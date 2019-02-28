@@ -181,6 +181,12 @@ arangodb::Result RocksDBReadOnlyMethods::Put(rocksdb::ColumnFamilyHandle* cf,
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }
 
+arangodb::Result RocksDBReadOnlyMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
+                                                      RocksDBKey const&, rocksdb::Slice const&,
+                                                      rocksutils::StatusHint) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
+}
+
 arangodb::Result RocksDBReadOnlyMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
                                                 RocksDBKey const& key) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
@@ -243,6 +249,14 @@ arangodb::Result RocksDBTrxMethods::Put(rocksdb::ColumnFamilyHandle* cf,
   return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s, hint);
 }
 
+arangodb::Result RocksDBTrxMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
+                                                 RocksDBKey const& key, rocksdb::Slice const& val,
+                                                 rocksutils::StatusHint hint) {
+  TRI_ASSERT(cf != nullptr);
+  rocksdb::Status s = _state->_rocksTransaction->PutUntracked(cf, key.string(), val);
+  return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s, hint);
+}
+
 arangodb::Result RocksDBTrxMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
                                            RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
@@ -287,6 +301,13 @@ arangodb::Result RocksDBTrxUntrackedMethods::Put(rocksdb::ColumnFamilyHandle* cf
   return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s, hint);
 }
 
+arangodb::Result RocksDBTrxUntrackedMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
+                                                          RocksDBKey const& key,
+                                                          rocksdb::Slice const& val,
+                                                          rocksutils::StatusHint hint) {
+  return Put(cf, key, val, hint);
+}
+
 arangodb::Result RocksDBTrxUntrackedMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
                                                     RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
@@ -319,6 +340,12 @@ arangodb::Result RocksDBBatchedMethods::Put(rocksdb::ColumnFamilyHandle* cf,
   TRI_ASSERT(cf != nullptr);
   _wb->Put(cf, key.string(), val);
   return arangodb::Result();
+}
+
+arangodb::Result RocksDBBatchedMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
+                                                     RocksDBKey const& key, rocksdb::Slice const& val,
+                                                     rocksutils::StatusHint hint) {
+  return Put(cf, key, val, hint);
 }
 
 arangodb::Result RocksDBBatchedMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
@@ -370,6 +397,13 @@ arangodb::Result RocksDBBatchedWithIndexMethods::Put(rocksdb::ColumnFamilyHandle
   TRI_ASSERT(cf != nullptr);
   _wb->Put(cf, key.string(), val);
   return arangodb::Result();
+}
+
+arangodb::Result RocksDBBatchedWithIndexMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
+                                                              RocksDBKey const& key,
+                                                              rocksdb::Slice const& val,
+                                                              rocksutils::StatusHint hint) {
+  return Put(cf, key, val, hint);
 }
 
 arangodb::Result RocksDBBatchedWithIndexMethods::Delete(rocksdb::ColumnFamilyHandle* cf,

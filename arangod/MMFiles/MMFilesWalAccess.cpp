@@ -253,7 +253,9 @@ struct MMFilesWalAccessContext : WalAccessContext {
         // will not find anything for a view
         LogicalCollection* collection = loadCollection(databaseId, datasourceId);
         if (collection != nullptr) {  // db may be already dropped
-          if (TRI_ExcludeCollectionReplication(collection->name(), _filter.includeSystem)) {
+          if (TRI_ExcludeCollectionReplication(collection->name(),
+                                               _filter.includeSystem,
+                                               _filter.includeFoxxQueues)) {
             return false;
           }
         }

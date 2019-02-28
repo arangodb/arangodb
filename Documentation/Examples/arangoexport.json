@@ -400,7 +400,7 @@
   },
   "output-directory" : {
     "category" : "option",
-    "default" : "/oskar/work/ArangoDB/export",
+    "default" : "/home/fceller/ArangoDB-3.4/export",
     "deprecatedIn" : null,
     "description" : "output directory",
     "dynamic" : false,

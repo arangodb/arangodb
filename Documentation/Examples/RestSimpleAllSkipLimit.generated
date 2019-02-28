@@ -9,15 +9,15 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105481"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/105481"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YDCrhIa---"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105491"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/105491"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YQtDmVa--B"</span>, 
       <span class="hljs-string">"Hello4"</span> : <span class="hljs-string">"World4"</span> 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105471"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/105471"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YDCrhIW--B"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105481"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/105481"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YQtDmVW--B"</span>, 
       <span class="hljs-string">"Hello1"</span> : <span class="hljs-string">"World1"</span> 
     } 
   ], 
@@ -32,7 +32,8 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00012803077697753906</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0001068115234375</span>, 
+      <span class="hljs-string">"peakMemoryUsage"</span> : <span class="hljs-number">2296</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 

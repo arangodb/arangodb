@@ -15,13 +15,13 @@ x-content-type-options: nosniff
     { 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103758"</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103758"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YDCrYpW--D"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YQtDd6O--D"</span>, 
       <span class="hljs-string">"hello2"</span> : <span class="hljs-string">"world1"</span> 
     }, 
     { 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103767"</span>, 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103767"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YDCrYpa--D"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YQtDd6S--D"</span>, 
       <span class="hljs-string">"hello5"</span> : <span class="hljs-string">"world1"</span> 
     } 
   ], 
@@ -36,7 +36,8 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00017023086547851562</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00009417533874511719</span>, 
+      <span class="hljs-string">"peakMemoryUsage"</span> : <span class="hljs-number">2120</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 
