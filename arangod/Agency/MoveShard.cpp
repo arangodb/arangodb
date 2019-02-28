@@ -763,14 +763,18 @@ arangodb::Result MoveShard::abort() {
     { VPackArrayBuilder b(todoPrec.get());
       { VPackObjectBuilder o(todoPrec.get()); } // nothing to declare
       { VPackObjectBuilder path(todoPrec.get()); // expect jobs still to be sitting in ToDo
-        VPackValue(toDoPrefix + _jobId);
-        {
+        todoPrec->add(VPackValue(toDoPrefix + _jobId));
+        { VPackObjectBuilder guard(todoPrec.get());
           todoPrec->add("oldEmpty", VPackValue(false));
-        }}
+        }
+      }
     }
   
-    finish("", "", true, "job aborted", todoPrec);
-    return result;
+    if (finish("", "", true, "job aborted", todoPrec)) {
+      return result;
+    }
+    _status = PENDING;
+    // If the above finish failed, then we must be in PENDING
   }
 
   // Can now only be PENDING
