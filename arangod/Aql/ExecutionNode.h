@@ -55,6 +55,7 @@
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/CostEstimate.h"
 #include "Aql/DocumentProducingNode.h"
+#include "Aql/ExecutorInfos.h"
 #include "Aql/Expression.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
@@ -542,6 +543,14 @@ class ExecutionNode {
   }
 
   std::unordered_set<RegisterId> calcRegsToKeep() const;
+
+  virtual ExecutorInfos createRegisterInfos(
+      std::shared_ptr<std::unordered_set<RegisterId>>&& readableInputRegisters,
+      std::shared_ptr<std::unordered_set<RegisterId>>&& writableOutputRegisters) const;
+
+  RegisterId getNrInputRegisters() const;
+
+  RegisterId getNrOutputRegisters() const;
 
  protected:
   /// @brief node id

@@ -1230,6 +1230,34 @@ std::unordered_set<RegisterId> ExecutionNode::calcRegsToKeep() const {
   return regsToKeep;
 };
 
+// This is the general case and will not work if e.g. there is no predecessor.
+ExecutorInfos ExecutionNode::createRegisterInfos(
+    std::shared_ptr<std::unordered_set<RegisterId>>&& readableInputRegisters,
+    std::shared_ptr<std::unordered_set<RegisterId>>&& writableOutputRegisters) const {
+  RegisterId const nrOutRegs = getNrOutputRegisters();
+  RegisterId const nrInRegs = getNrInputRegisters();
+
+  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
+  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+
+  return ExecutorInfos{std::move(readableInputRegisters),
+                       std::move(writableOutputRegisters),
+                       nrInRegs,
+                       nrOutRegs,
+                       std::move(regsToClear),
+                       std::move(regsToKeep)};
+}
+
+RegisterId ExecutionNode::getNrInputRegisters() const {
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  return previousNode->getNrOutputRegisters();
+}
+
+RegisterId ExecutionNode::getNrOutputRegisters() const {
+  return getRegisterPlan()->nrRegs[getDepth()];
+}
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {

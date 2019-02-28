@@ -30,6 +30,7 @@
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
+#include "Aql/types.h"
 #include "AqlHelper.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
@@ -38,6 +39,7 @@
 #include "IResearchView.h"
 #include "IResearchViewBlock.h"
 #include "IResearchViewCoordinator.h"
+#include "IResearchViewExecutor.h"
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 #include "velocypack/Iterator.h"
@@ -982,7 +984,17 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   if (_scorers.empty()) {
     // unordered case
-    return std::make_unique<IResearchViewUnorderedBlock>(reader, engine, *this);
+    // We should have exactly one output register here:
+    TRI_ASSERT(getNrInputRegisters() + 1 == getNrOutputRegisters());
+    aql::RegisterId const outputRegister = getNrInputRegisters();
+    std::shared_ptr<std::unordered_set<aql::RegisterId>> writableOutputRegisters =
+        aql::make_shared_unordered_set(outputRegister);
+    aql::ExecutorInfos infos =
+        createRegisterInfos({}, std::move(writableOutputRegisters));
+    aql::IResearchViewExecutorInfos executorInfos{std::move(infos),
+                                                  reader, outputRegister};
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false>>>(
+        &engine, this, std::move(executorInfos));
   }
 
   // generic case
