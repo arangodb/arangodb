@@ -115,7 +115,12 @@ class Index {
   inline TRI_idx_iid_t id() const { return _iid; }
 
   /// @brief return the index name
-  inline std::string const& name() const { return _name; }
+  inline std::string const& name() const {
+    if (_name == StaticStrings::IndexNameEdgeFrom || _name == StaticStrings::IndexNameEdgeTo) {
+      return StaticStrings::IndexNameEdge;
+    }
+    return _name;
+  }
 
   /// @brief return the index fields
   inline std::vector<std::vector<arangodb::basics::AttributeName>> const& fields() const {
@@ -371,7 +376,7 @@ class Index {
   /// it is only allowed to call this method if the index contains a
   /// single attribute
   std::string const& getAttribute() const;
- 
+
   /// @brief generate error result
   /// @param code the error key
   /// @param key the conflicting key
@@ -391,7 +396,8 @@ class Index {
   /// @brief extracts a timestamp value from a document
   /// returns a negative value if the document does not contain the specified
   /// attribute, or the attribute does not contain a valid timestamp or date string
-  double getTimestamp(arangodb::velocypack::Slice const& doc, std::string const& attributeName) const;
+  double getTimestamp(arangodb::velocypack::Slice const& doc,
+                      std::string const& attributeName) const;
 
   TRI_idx_iid_t const _iid;
   LogicalCollection& _collection;

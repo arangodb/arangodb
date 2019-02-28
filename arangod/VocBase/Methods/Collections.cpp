@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Collections.h"
 #include "Basics/Common.h"
+#include "Collections.h"
 
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"

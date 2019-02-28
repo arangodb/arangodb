@@ -190,6 +190,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   TRI_ASSERT(_physical != nullptr);
   // This has to be called AFTER _phyiscal and _logical are properly linked
   // together.
+
   prepareIndexes(info.get("indexes"));
 }
 

@@ -40,7 +40,9 @@ var db = require("@arangodb").db;
 function ensureIndexSuite() {
   'use strict';
   var cn = "UnitTestsCollectionIdx";
+  var ecn = "UnitTestsEdgeCollectionIdx";
   var collection = null;
+  var edgeCollection = null;
 
   return {
 
@@ -51,6 +53,7 @@ function ensureIndexSuite() {
     setUp : function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
+      edgeCollection = internal.db._createEdgeCollection(ecn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -61,10 +64,12 @@ function ensureIndexSuite() {
       // we need try...catch here because at least one test drops the collection itself!
       try {
         collection.drop();
+        edgeCollection.drop();
       }
       catch (err) {
       }
       collection = null;
+      edgeCollection = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,6 +110,76 @@ function ensureIndexSuite() {
       assertFalse(res.unique);
       assertEqual([ "b", "d" ], res.fields);
       assertEqual(collection.name() + "/" + id, res.id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: names
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureNamePrimary : function () {
+      var res = collection.getIndexes()[0];
+
+      assertEqual("primary", res.type);
+      assertEqual("primary", res.name);
+    },
+
+    testEnsureNameEdge : function () {
+      var res = edgeCollection.getIndexes()[0];
+
+      assertEqual("primary", res.type);
+      assertEqual("primary", res.name);
+
+      res = edgeCollection.getIndexes()[1];
+
+      assertEqual("edge", res.type);
+      assertEqual("edge", res.name);
+    },
+
+    testEnsureName1 : function () {
+      var name = "byValue";
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], name: name });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual(name, idx.name);
+
+      var res = collection.getIndexes()[collection.getIndexes().length - 1];
+
+      assertEqual("skiplist", res.type);
+      assertFalse(res.unique);
+      assertEqual([ "b", "d" ], res.fields);
+      assertEqual(name, idx.name);
+    },
+
+    testEnsureName2 : function () {
+      var name = "byValue";
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], name: name });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual(name, idx.name);
+
+      // expect duplicate name to fail and return old index with same name
+      idx = collection.ensureIndex({ type: "hash", fields: [ "a", "c" ], name: name });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual(name, idx.name);
+    },
+
+    testEnsureName3 : function () {
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ]});
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual("idx_", idx.name.substr(0,4));
+
+      var res = collection.getIndexes()[collection.getIndexes().length - 1];
+
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual("idx_", idx.name.substr(0,4));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -24,12 +24,12 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
-#include "Basics/datetime.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HashSet.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/datetime.h"
 #include "Cluster/ServerState.h"
 #include "Index.h"
 
@@ -385,6 +385,15 @@ TRI_idx_iid_t Index::generateId() { return TRI_NewTickServer(); }
 /// @brief index comparator, used by the coordinator to detect if two index
 /// contents are the same
 bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
+  {
+    // short-circuit: any two indices with the same name count as the same
+    if (arangodb::basics::VelocyPackHelper::compare(lhs.get(arangodb::StaticStrings::IndexName),
+                                                    rhs.get(arangodb::StaticStrings::IndexName),
+                                                    true) == 0) {
+      return true;
+    }
+  }
+
   auto lhsType = lhs.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(lhsType.isString());
 
@@ -947,22 +956,25 @@ std::ostream& operator<<(std::ostream& stream, arangodb::Index const& index) {
   return stream;
 }
 
-double Index::getTimestamp(arangodb::velocypack::Slice const& doc, std::string const& attributeName) const {
+double Index::getTimestamp(arangodb::velocypack::Slice const& doc,
+                           std::string const& attributeName) const {
   VPackSlice value = doc.get(attributeName);
 
   if (value.isString()) {
     // string value. we expect it to be YYYY-MM-DD etc.
     tp_sys_clock_ms tp;
     if (basics::parseDateTime(value.copyString(), tp)) {
-      return static_cast<double>(std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count());
-    } 
+      return static_cast<double>(
+          std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch())
+              .count());
+    }
     // invalid date format
     // fall-through intentional
   } else if (value.isNumber()) {
     // numeric value. we take it as it is
     return value.getNumericValue<double>();
   }
-  
+
   // attribute not found in document, or invalid type
   return -1.0;
 }

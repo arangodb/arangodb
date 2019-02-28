@@ -218,14 +218,16 @@ Result IndexFactory::enhanceIndexDefinition(velocypack::Slice const definition,
 
     if (nameSlice.isString() && (nameSlice.getStringLength() != 0)) {
       name = nameSlice.copyString();
-      // TODO validate name?
     } else {
-      // we should set the name for these explicitly elsewhere
-      TRI_ASSERT(Index::type(type.copyString()) != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
-      TRI_ASSERT(Index::type(type.copyString()) != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX);
-
-      // generate a name
-      name = "idx_" + std::to_string(TRI_HybridLogicalClock());
+      // we should set the name for special types explicitly elsewhere, but just in case...
+      if (Index::type(type.copyString()) == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        name = StaticStrings::IndexNamePrimary;
+      } else if (Index::type(type.copyString()) == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+        name = StaticStrings::IndexNameEdge;
+      } else {
+        // generate a name
+        name = "idx_" + std::to_string(TRI_HybridLogicalClock());
+      }
     }
 
     normalized.add(StaticStrings::IndexName, arangodb::velocypack::Value(name));

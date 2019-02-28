@@ -269,8 +269,10 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
   WRITE_LOCKER(guard, _indexesLock);
   TRI_ASSERT(_indexes.empty());
   for (std::shared_ptr<Index>& idx : indexes) {
+    TRI_ASSERT(idx != nullptr);
     auto const id = idx->id();
     for (auto const& it : _indexes) {
+      TRI_ASSERT(it != nullptr);
       if (it->id() == id) {  // index is there twice
         idx.reset();
         break;
@@ -289,8 +291,9 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
 
   if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
       (TRI_COL_TYPE_EDGE == _logicalCollection.type() &&
-       (_indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
-        _indexes[2]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX))) {
+       (_indexes.size() < 3 ||
+        (_indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
+         _indexes[2]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)))) {
     std::string msg =
         "got invalid indexes for collection '" + _logicalCollection.name() + "'";
     LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << msg;
