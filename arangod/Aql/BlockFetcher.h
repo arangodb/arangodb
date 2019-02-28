@@ -84,6 +84,14 @@ class BlockFetcher {
   TEST_VIRTUAL std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock(
       size_t atMost = ExecutionBlock::DefaultBatchSize());
 
+  // This fetches a block from the given dependency.
+  // NOTE: It is not allowed to be used in conjunction with prefetching
+  // of blocks and will work around the blockShellQueue
+  // This is only TEST_VIRTUAL, so we ignore this lint warning:
+  // NOLINTNEXTLINE google-default-arguments
+  TEST_VIRTUAL std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForDependency(
+      size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize());
+
   // TODO enable_if<allowBlockPassthrough>
   std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t atMost);
 
