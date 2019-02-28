@@ -1528,10 +1528,12 @@ SECTION("a moveshard job that just made it to ToDo can simply be aborted") {
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
-    REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+    REQUIRE(q->slice()[0].length() == 2); // we always simply override! no preconditions...
     auto writes = q->slice()[0][0];
     CHECK(writes.get("/arango/Target/ToDo/1").get("op").copyString() == "delete");
     CHECK(std::string(writes.get("/arango/Target/Finished/1").typeName()) == "object");
+    auto precond = q->slice()[0][1];
+    CHECK(precond.get("/arango/Target/ToDo/1").get("oldEmpty").isFalse());
 
     return fakeWriteResult;
   });

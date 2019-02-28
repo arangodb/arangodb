@@ -673,7 +673,7 @@ SECTION("a cleanout server job should abort after a long timeout") {
       REQUIRE(std::string(q->slice().typeName()) == "array" );
       REQUIRE(q->slice().length() == 1);
       REQUIRE(std::string(q->slice()[0].typeName()) == "array");
-      REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+      REQUIRE(q->slice()[0].length() == 2); // precondition that still in ToDo
       REQUIRE(std::string(q->slice()[0][0].typeName()) == "object");
 
       auto writes = q->slice()[0][0];
@@ -682,6 +682,8 @@ SECTION("a cleanout server job should abort after a long timeout") {
       CHECK(writes.get("/arango/Target/ToDo/1-0").get("op").copyString() == "delete");
       // a not yet started job will be moved to finished
       CHECK(std::string(writes.get("/arango/Target/Finished/1-0").typeName()) == "object");
+      auto preconds = q->slice()[0][1];
+      CHECK(preconds.get("/arango/Target/ToDo/1-0").get("oldEmpty").isFalse());
     } else {
       // finally cleanout should be failed
       checkFailed(JOB_STATUS::PENDING, q);
@@ -884,7 +886,7 @@ SECTION("when the cleanout server job is aborted all subjobs should be aborted t
       REQUIRE(std::string(q->slice().typeName()) == "array" );
       REQUIRE(q->slice().length() == 1);
       REQUIRE(std::string(q->slice()[0].typeName()) == "array");
-      REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+      REQUIRE(q->slice()[0].length() == 2); // precondition that still in ToDo
       REQUIRE(std::string(q->slice()[0][0].typeName()) == "object");
 
       auto writes = q->slice()[0][0];
@@ -893,6 +895,8 @@ SECTION("when the cleanout server job is aborted all subjobs should be aborted t
       CHECK(writes.get("/arango/Target/ToDo/1-0").get("op").copyString() == "delete");
       // a not yet started job will be moved to finished
       CHECK(std::string(writes.get("/arango/Target/Finished/1-0").typeName()) == "object");
+      auto preconds = q->slice()[0][1];
+      CHECK(preconds.get("/arango/Target/ToDo/1-0").get("oldEmpty").isFalse());
     } else {
       checkFailed(JOB_STATUS::PENDING, q);
     }
