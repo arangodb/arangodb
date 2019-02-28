@@ -122,7 +122,7 @@ bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
   }
 
   VPackValueLength len;
-  char const* str = value.getString(len);
+  char const* str = value.getStringUnchecked(len);
   arangodb::Index::IndexType const type = arangodb::Index::type(str, len);
   for (auto const& idx : indexes) {
     if (idx->type() == type) {
@@ -346,7 +346,7 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods* trx,
     return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   } else {
     VPackValueLength l;
-    char const* p = s.getString(l);
+    char const* p = s.getStringUnchecked(l);
 
     // validate and track the key just used
     auto res = _logicalCollection.keyGenerator()->validate(p, l, isRestore);
@@ -403,7 +403,7 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods* trx,
     if (s.isString()) {
       builder.add(StaticStrings::RevString, s);
       VPackValueLength l;
-      char const* p = s.getString(l);
+      char const* p = s.getStringUnchecked(l);
       revisionId = TRI_StringToRid(p, l, false);
       handled = true;
     }
@@ -492,7 +492,7 @@ Result PhysicalCollection::newObjectForReplace(transaction::Methods* trx,
     if (s.isString()) {
       builder.add(StaticStrings::RevString, s);
       VPackValueLength l;
-      char const* p = s.getString(l);
+      char const* p = s.getStringUnchecked(l);
       revisionId = TRI_StringToRid(p, l, false);
       handled = true;
     }
