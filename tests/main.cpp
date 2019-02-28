@@ -49,6 +49,11 @@ private:
 
 char const* ARGV0 = "";
 
+namespace arangodb {
+  // Only to please the linker, this is not used in the tests.
+  std::function<int()>* restartAction;
+}
+
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   int subargc = 0;
