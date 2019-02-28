@@ -796,9 +796,9 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
+  
+  bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
-  LocalDocumentId const documentId = LocalDocumentId::create();
-  auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
   Result res(newObjectForInsert(trx, slice, isEdgeCollection, *builder.get(),
                                 options.isRestore, revisionId));
@@ -825,9 +825,9 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     // check
     VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(newSlice);
     if (keySlice.isString()) {
-      LocalDocumentId const documentId =
+      LocalDocumentId const oldDocumentId =
           primaryIndex()->lookupKey(trx, arangodb::velocypack::StringRef(keySlice));
-      if (documentId.isSet()) {
+      if (oldDocumentId.isSet()) {
         if (options.indexOperationMode == Index::OperationMode::internal) {
           // need to return the key of the conflict document
           return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED,
@@ -837,6 +837,8 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       }
     }
   }
+  
+  LocalDocumentId const documentId = LocalDocumentId::create();
 
   RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
@@ -988,8 +990,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
                                   std::function<Result(void)> callbackDuringLock) {
   resultMarkerTick = 0;
 
-  LocalDocumentId const documentId = LocalDocumentId::create();
-  auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
+  bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
   // get the previous revision
   VPackSlice key = newSlice.get(StaticStrings::KeyString);
@@ -1024,6 +1025,8 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
       return res;
     }
   }
+  
+  LocalDocumentId const documentId = LocalDocumentId::create();
 
   // merge old and new values
   TRI_voc_rid_t revisionId;
