@@ -47,7 +47,6 @@
 
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
-#include <rocksdb/utilities/optimistic_transaction_db.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
