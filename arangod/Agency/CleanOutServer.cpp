@@ -523,12 +523,12 @@ arangodb::Result CleanOutServer::abort() {
   Node::Children const pends = _snapshot.hasAsChildren(pendingPrefix).first;
 
   for (auto const& subJob : todos) {
-    if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-") == 0) {
+    if (subJob.first.compare(0, _jobId.size() + 1, _jobId + "-") == 0) {
       JobContext(TODO, subJob.first, _snapshot, _agent).abort();
     }
   }
   for (auto const& subJob : pends) {
-    if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-") == 0) {
+    if (subJob.first.compare(0, _jobId.size() + 1, _jobId + "-") == 0) {
       JobContext(PENDING, subJob.first, _snapshot, _agent).abort();
     }
   }
