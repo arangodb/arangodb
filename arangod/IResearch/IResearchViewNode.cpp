@@ -984,8 +984,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   if (_scorers.empty()) {
     // unordered case
-    // We should have exactly one output register here:
-    TRI_ASSERT(getNrInputRegisters() + 1 == getNrOutputRegisters());
+    // We have exactly one output register here, namely the first register after
+    // the last input register.
     aql::RegisterId const outputRegister = getNrInputRegisters();
     std::shared_ptr<std::unordered_set<aql::RegisterId>> writableOutputRegisters =
         aql::make_shared_unordered_set(outputRegister);
