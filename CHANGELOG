@@ -1,6 +1,10 @@
 v3.4.4 (2019-XX-XX)
 -------------------
 
+* added option `--rocksdb.wal-archive-size-limit` for controlling the
+  maximum total size (in bytes) of archived WAL files. The default is 0
+  (meaning: unlimited).
+
 * follow up to fix JWT authentication in arangosh (#7530):
   also fix reconnect
 

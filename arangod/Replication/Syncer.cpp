@@ -142,10 +142,10 @@ arangodb::Result applyCollectionDumpMarkerInternal(
       bool useReplace = false;
       VPackSlice keySlice = arangodb::transaction::helpers::extractKeyFromDocument(slice);
 
-      // if we are about to process a single document marker (outside of a multi-document
-      // transaction), we first check if the target document exists. if yes, we don't
-      // try an insert (which would fail anyway) but carry on with a replace.
-      if (trx.isSingleOperationTransaction() && keySlice.isString()) {
+      // if we are about to process a single document marker we first check if the target 
+      // document exists. if yes, we don't try an insert (which would fail anyway) but carry 
+      // on with a replace.
+      if (keySlice.isString()) {
         arangodb::LocalDocumentId const oldDocumentId =
             coll->getPhysical()->lookupKey(&trx, keySlice);
         if (oldDocumentId.isSet()) {

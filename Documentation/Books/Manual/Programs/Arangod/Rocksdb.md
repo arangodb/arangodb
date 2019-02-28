@@ -224,6 +224,15 @@ By decreasing this option's value, the server will start the removal of obsolete
 WAL files earlier after server start. This is useful in testing environments that
 are space-restricted and do not require keeping much WAL file data at all.
 
+`--rocksdb.wal-archive-size-limit`
+
+Mmaximum total size (in bytes) of archived WAL files to keep on a leader.
+A value of `0` will not restrict the size of the archive, whereas any other
+value will restrict the size to about the specified value and trigge WAL
+archive file deletion once the threshold will be reached.
+
+The default value is `0` (i.e. unlimited).
+
 `--rocksdb.max-transaction-size`
 
 Transaction size limit (in bytes). Transactions store all keys and values in
