@@ -97,37 +97,66 @@ bool Job::finish(std::string const& server, std::string const& shard,
     LOG_TOPIC(WARN, Logger::AGENCY) << "Failed to obtain type of job " << _jobId;
   }
 
-  // Prepare pending entry, block toserver
-  {
-    VPackArrayBuilder guard(&finished);
-    VPackObjectBuilder guard2(&finished);
-
-    addPutJobIntoSomewhere(finished, success ? "Finished" : "Failed",
-                           pending.slice()[0], reason);
-
-    addRemoveJobFromSomewhere(finished, "ToDo", _jobId);
-    addRemoveJobFromSomewhere(finished, "Pending", _jobId);
-
-    // Additional payload, which is to be executed in the finish transaction
-    if (payload != nullptr) {
-      Slice slice = payload->slice();
-      TRI_ASSERT(slice.isObject());
+  // Additional payload, which is to be executed in the finish transaction
+  Slice operations, preconditions;
+  
+  if (payload != nullptr) {
+    Slice slice = payload->slice();
+    TRI_ASSERT(slice.isObject() || slice.isArray());
+    if (slice.isObject()) {     // opers only
+      operations = slice;
+    } else {
+      TRI_ASSERT(slice.length() < 3); // opers + precs only
       if (slice.length() > 0) {
-        for (auto const& oper : VPackObjectIterator(slice)) {
-          finished.add(oper.key.copyString(), oper.value);
+        operations = slice[0];
+        TRI_ASSERT(operations.isObject());
+        if (slice.length() > 1) {
+          preconditions = slice[1];
+          TRI_ASSERT(preconditions.isObject());
         }
       }
     }
+  }
 
-    // --- Remove blocks if specified:
-    if (started && !server.empty()) {
-      addReleaseServer(finished, server);
-    }
-    if (started && !shard.empty()) {
-      addReleaseShard(finished, shard);
-    }
+  // Prepare pending entry, block toserver
+  {
+    VPackArrayBuilder guard(&finished);
 
-  }  // close object and array
+    { // operations --
+      VPackObjectBuilder operguard(&finished);
+
+      addPutJobIntoSomewhere(finished, success ? "Finished" : "Failed",
+                             pending.slice()[0], reason);
+
+      addRemoveJobFromSomewhere(finished, "ToDo", _jobId);
+      addRemoveJobFromSomewhere(finished, "Pending", _jobId);
+
+      if (operations.length() > 0) {
+        for (auto const& oper : VPackObjectIterator(operations)) {
+          finished.add(oper.key.copyString(), oper.value);
+        }
+      }
+      
+      // --- Remove blocks if specified:
+      if (started && !server.empty()) {
+        addReleaseServer(finished, server);
+      }
+      if (started && !shard.empty()) {
+        addReleaseShard(finished, shard);
+      }
+
+    } // -- operations
+
+    { // preconditions --
+      VPackObjectBuilder precguard(&finished);
+      if (preconditions.length() > 0) {
+        for (auto const& prec : VPackObjectIterator(preconditions)) {
+          finished.add(prec.key.copyString(), prec.value);
+        }
+      }      
+    } // -- preconditions
+
+  } 
 
   write_ret_t res = singleWriteTransaction(_agent, finished);
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
