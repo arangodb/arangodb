@@ -753,18 +753,22 @@ arangodb::Result MoveShard::abort() {
   }
 
 
-  auto todoPrec = std::make_shared<Builder>();
-  { VPackArrayBuilder b(todoPrec.get());
-    { VPackObjectBuilder o(todoPrec.get()); } // nothing to declare
-    { VPackObjectBuilder path(todoPrec.get()); // expect jobs still to be sitting in ToDo
-      VPackValue(toDoPrefix + _jobId);
-      {
-        todoPrec->add("oldEmpty", VPackValue(false));
-      }}
-  }
-  
-  // Can now only be TODO or PENDING
+  // Can now only be TODO or PENDING. 
   if (_status == TODO) {
+
+    // Do NOT remove, just cause it seems obvious!
+    // We're working off a snapshot.
+    // Make sure ToDo is still actually to be done
+    auto todoPrec = std::make_shared<Builder>();
+    { VPackArrayBuilder b(todoPrec.get());
+      { VPackObjectBuilder o(todoPrec.get()); } // nothing to declare
+      { VPackObjectBuilder path(todoPrec.get()); // expect jobs still to be sitting in ToDo
+        VPackValue(toDoPrefix + _jobId);
+        {
+          todoPrec->add("oldEmpty", VPackValue(false));
+        }}
+    }
+  
     finish("", "", true, "job aborted", todoPrec);
     return result;
   }
