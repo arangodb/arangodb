@@ -72,6 +72,7 @@ void Thread::startThread(void* arg) {
   // make sure we drop our reference when we are finished!
   auto guard = scopeGuard([ptr]() {
     LOCAL_THREAD_NAME = nullptr;
+    ptr->_state.store(ThreadState::STOPPED);
     ptr->releaseRef();
   });
 
