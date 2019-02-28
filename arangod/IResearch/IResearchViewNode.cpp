@@ -991,8 +991,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         aql::make_shared_unordered_set(outputRegister);
     aql::ExecutorInfos infos =
         createRegisterInfos({}, std::move(writableOutputRegisters));
-    aql::IResearchViewExecutorInfos executorInfos{std::move(infos),
-                                                  reader, outputRegister};
+    // TODO Don't pass `this`, but only the necessary members.
+    aql::IResearchViewExecutorInfos executorInfos{std::move(infos), reader, outputRegister,
+                                                  *engine.getQuery(), *this};
     return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false>>>(
         &engine, this, std::move(executorInfos));
   }

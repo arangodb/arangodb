@@ -26,9 +26,10 @@
 #include "Aql/ExecutionStats.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
-
-// We cannot forward-declare nested classes, but we need IResearchView::Snapshot.
+#include "IResearch/ExpressionFilter.h"
+#include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchView.h"
+#include "VocBase/LocalDocumentId.h"
 
 namespace arangodb {
 namespace aql {
@@ -40,11 +41,22 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
  public:
   explicit IResearchViewExecutorInfos(ExecutorInfos&& infos,
                                       std::shared_ptr<iresearch::IResearchView::Snapshot const> reader,
-                                      RegisterId outputRegister);
+                                      RegisterId outputRegister, Query& query,
+                                      iresearch::IResearchViewNode const& node);
+
+  std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const;
+
+  Query& getQuery() const noexcept;
+
+  iresearch::IResearchViewNode const& getNode() const;
 
  private:
   RegisterId _outputRegister;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> _reader;
+  Query& _query;
+  // TODO Remove this member! Instead, pass all its members that are needed
+  // separately.
+  iresearch::IResearchViewNode const& _node;
 };
 
 class IResearchViewStats {
@@ -94,6 +106,25 @@ class IResearchViewExecutor {
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+
+ private:
+  Infos const& infos() const noexcept;
+
+ private:
+  Infos const& _infos;
+  Fetcher& _fetcher;
+
+  std::vector<LocalDocumentId> _keys;  // buffer for primary keys
+  irs::attribute_view _filterCtx;                // filter context
+  iresearch::ViewExpressionContext _ctx;
+  std::shared_ptr<iresearch::IResearchView::Snapshot const> _reader;
+  irs::filter::prepared::ptr _filter;
+  irs::order::prepared _order;
+  iresearch::ExpressionExecutionContext _execCtx;  // expression execution context
+  size_t _inflight;  // The number of documents inflight if we hit a WAITING state.
+  bool _hasMore;
+  bool _volatileSort;
+  bool _volatileFilter;
 };
 
 }  // namespace aql

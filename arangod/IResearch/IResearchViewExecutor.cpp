@@ -22,6 +22,7 @@
 
 #include "IResearchViewExecutor.h"
 
+#include "Aql/Query.h"
 #include "IResearch/IResearchView.h"
 
 using namespace arangodb;
@@ -30,19 +31,50 @@ using namespace arangodb::iresearch;
 
 IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     ExecutorInfos&& infos, std::shared_ptr<IResearchView::Snapshot const> reader,
-    RegisterId const outputRegister)
+    RegisterId const outputRegister, Query& query,
+    iresearch::IResearchViewNode const& node)
     : ExecutorInfos(std::move(infos)),
       _outputRegister(outputRegister),
-      _reader(std::move(reader)) {}
+      _reader(std::move(reader)),
+      _query(query),
+      _node(node) {}
+
+Query& IResearchViewExecutorInfos::getQuery() const noexcept {
+  return _query;
+}
+
+IResearchViewNode const& IResearchViewExecutorInfos::getNode() const {
+  return _node;
+}
+
+std::shared_ptr<const IResearchView::Snapshot> IResearchViewExecutorInfos::getReader() const {
+  return _reader;
+}
 
 template <bool ordered>
 IResearchViewExecutor<ordered>::IResearchViewExecutor(IResearchViewExecutor::Fetcher& fetcher,
-                                                      IResearchViewExecutor::Infos&) {}
+                                                      IResearchViewExecutor::Infos& infos)
+    : _infos(infos),
+      _fetcher(fetcher),
+      _filterCtx(1),  // arangodb::iresearch::ExpressionExecutionContext
+      _ctx(&infos.getQuery(), infos.getNode()),
+      _reader(infos.getReader()),
+      _filter(irs::filter::prepared::empty()),
+      _execCtx(*infos.getQuery().trx(), _ctx),
+      _inflight(0),
+      _hasMore(true),  // has more data initially
+      _volatileSort(true),
+      _volatileFilter(true) {}
 
 template <bool ordered>
 std::pair<ExecutionState, typename IResearchViewExecutor<ordered>::Stats>
 IResearchViewExecutor<ordered>::produceRow(OutputAqlItemRow& output) {
   return {ExecutionState::DONE, {}};
+}
+
+template <bool ordered>
+const IResearchViewExecutorInfos& IResearchViewExecutor<ordered>::infos() const noexcept {
+  return _infos;
 }
 
 template class ::arangodb::aql::IResearchViewExecutor<false>;
