@@ -46,6 +46,9 @@ NeighborsEnumerator::NeighborsEnumerator(Traverser* traverser, VPackSlice const&
 bool NeighborsEnumerator::next() {
   if (_isFirst) {
     _isFirst = false;
+    if (shouldPrune(*_iterator)) {
+      _toPrune.emplace(*_iterator);
+    }
     if (_opts->minDepth == 0) {
       return true;
     }
