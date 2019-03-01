@@ -64,7 +64,7 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
 
 AddFollower::~AddFollower() {}
 
-void AddFollower::run() { runHelper("", _shard); }
+void AddFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 
 bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC(INFO, Logger::SUPERVISION)
@@ -119,7 +119,7 @@ bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   return false;
 }
 
-bool AddFollower::start() {
+bool AddFollower::start(bool&) {
   // If anything throws here, the run() method catches it and finishes
   // the job.
 

@@ -58,9 +58,9 @@ FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
 
 FailedServer::~FailedServer() {}
 
-void FailedServer::run() { runHelper(_server, ""); }
+void FailedServer::run(bool& aborts) { runHelper(_server, "", aborts); }
 
-bool FailedServer::start() {
+bool FailedServer::start(bool& aborts) {
   using namespace std::chrono;
 
   // Fail job, if Health back to not FAILED
@@ -84,7 +84,9 @@ bool FailedServer::start() {
   if (jobId.second && !abortable(_snapshot, jobId.first)) {
     return false;
   } else if (jobId.second) {
+    aborts = true;
     JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+    return false;
   }
 
   // Todo entry

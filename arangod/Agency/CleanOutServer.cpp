@@ -58,7 +58,7 @@ CleanOutServer::CleanOutServer(Node const& snapshot, AgentInterface* agent,
 
 CleanOutServer::~CleanOutServer() {}
 
-void CleanOutServer::run() { runHelper(_server, ""); }
+void CleanOutServer::run(bool& aborts) { runHelper(_server, "", aborts); }
 
 JOB_STATUS CleanOutServer::status() {
   if (_status != PENDING) {
@@ -196,7 +196,7 @@ bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
   return false;
 }
 
-bool CleanOutServer::start() {
+bool CleanOutServer::start(bool& aborts) {
   // If anything throws here, the run() method catches it and finishes
   // the job.
 

@@ -93,7 +93,7 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
 
 MoveShard::~MoveShard() {}
 
-void MoveShard::run() { runHelper(_to, _shard); }
+void MoveShard::run(bool& aborts) { runHelper(_to, _shard, aborts); }
 
 bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
@@ -167,7 +167,7 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   return false;
 }
 
-bool MoveShard::start() {
+bool MoveShard::start(bool&) {
   // If anything throws here, the run() method catches it and finishes
   // the job.
 

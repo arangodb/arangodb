@@ -177,6 +177,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Gossip in
   bool activeAgency();
 
+  /// @brief Get the index at which the leader is
+  index_t index();
+
   /// @brief Start orderly shutdown of threads
   void beginShutdown() override final;
 
