@@ -125,7 +125,7 @@ function MovingShardsSuite ({useData}) {
       res = request(envelope);
     } catch (err) {
       console.error(
-        "Exception for POST /_admin/cluster/cleanOutServer:", err.stack);
+        "Exception for GET /_admin/cluster/cleanOutServer:", err.stack);
       return {cleanedServers:[]};
     }
     if (res.statusCode !== 200) {
@@ -150,7 +150,26 @@ function MovingShardsSuite ({useData}) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function displayAgencyInformation() {
-    // TODO
+    var coordEndpoint =
+        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+    var request = require("@arangodb/request");
+    var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    var url = endpointToURL(coordEndpoint);
+    
+    var res;
+    try {
+      var envelope = { method: "GET", url: url + "/_api/cluster/agency-dump" };
+      res = request(envelope);
+    } catch (err) {
+      console.error(
+        "Exception for GET /_api/cluster/agency-dump:", err.stack);
+      return;
+    }
+    if (res.statusCode !== 200) {
+      return;
+    }
+    var body = res.body;
+    console.error("Agency state after disaster:", body);
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -221,12 +240,15 @@ function MovingShardsSuite ({useData}) {
           }
         }
         if (!ok) {
+          displayAgencyInformation();
           return false;
         }
         
       }
       
     }
+    console.log("Test:");
+    displayAgencyInformation();
     return ok;
   }
 

@@ -26,6 +26,7 @@
 #include "Agency/Supervision.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Replication/ReplicationFeature.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
@@ -78,7 +79,7 @@ void RestClusterHandler::handleAgencyDump() {
     if (lvl < auth::Level::RW) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "you need admin rights to trigger shutdown");
-      return RestStatus::DONE;
+      return;
     }
   }
 
