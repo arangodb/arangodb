@@ -225,6 +225,8 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   c->projections(_projections);
   c->needsGatherNodeSort(_needsGatherNodeSort);
   c->initIndexCoversProjections();
+  c->distributeShardsLike = this->distributeShardsLike; 
+  c->shardAlias = this->shardAlias;
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }

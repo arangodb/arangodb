@@ -78,6 +78,9 @@ class CollectionAccessingNode {
    */
   std::string const& restrictedShard() const { return _restrictedTo; }
 
+  std::unordered_map<std::string, std::string> distributeShardsLike;
+  std::string shardAlias;
+
  protected:
   aql::Collection const* _collection;
 

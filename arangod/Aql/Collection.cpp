@@ -186,3 +186,7 @@ bool Collection::isSmart() const { return getCollection()->isSmart(); }
 
 /// @brief check if collection is a satellite collection
 bool Collection::isSatellite() const { return getCollection()->isSatellite(); }
+  
+/// @brief return the name of the smart join attribute (empty string
+/// if no smart join attribute is present)
+std::string const& Collection::smartJoinAttribute() const { return getCollection()->smartJoinAttribute(); }

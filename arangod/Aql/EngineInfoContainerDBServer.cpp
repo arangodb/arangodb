@@ -133,7 +133,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
       }
 
       // do not set '_type' of the engine here,
-      // bacause satellite collections may consists of
+      // because satellite collections may consist of
       // multiple "main nodes"
 
       break;
@@ -236,7 +236,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
       viewNode->shards() = shards;
     } else
 #endif
-        if (ExecutionNode::REMOTE == nodeType) {
+    if (ExecutionNode::REMOTE == nodeType) {
       auto rem = ExecutionNode::castTo<RemoteNode*>(clone);
       // update the remote node with the information about the query
       rem->server("server:" + arangodb::ServerState::instance()->getId());
@@ -262,7 +262,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
 
   plan.root(previous);
   plan.setVarUsageComputed();
-  // Always Verbose
+  // Always verbose
   const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
   plan.root()->toVelocyPack(infoBuilder, flags, /*keepTopLevelOpen*/ false);
 }
@@ -296,6 +296,16 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     ExecutionNode const* current = *enIt;
     auto clone = current->clone(&plan, false, false);
     auto const nodeType = clone->getType();
+
+    if (nodeType == ExecutionNode::INDEX || nodeType == ExecutionNode::ENUMERATE_COLLECTION) {
+      auto x = dynamic_cast<CollectionAccessingNode*>(clone);
+      if (!x->distributeShardsLike.empty()) {
+        auto it = x->distributeShardsLike.find(id);
+        if (it != x->distributeShardsLike.end()) {
+          x->shardAlias = (*it).second;
+        }
+      }
+    }
 
     // we need to count nodes by type ourselves, as we will set the
     // "varUsageComputed" flag below (which will handle the counting)

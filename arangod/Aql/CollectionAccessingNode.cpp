@@ -32,6 +32,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -46,7 +47,15 @@ CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
                                                  arangodb::velocypack::Slice slice)
     : _collection(plan->getAst()->query()->collections()->get(
           slice.get("collection").copyString())) {
-  TRI_ASSERT(_collection != nullptr);
+
+  VPackSlice s = slice.get("distributeShardsLike");
+  if (s.isObject()) {
+    for (auto const& it : VPackObjectIterator(s)) {
+      distributeShardsLike.emplace(it.key.copyString(), it.value.copyString());
+    }
+  }
+
+  TRI_ASSERT(_collection != nullptr || !distributeShardsLike.empty());
 
   if (_collection == nullptr) {
     std::string msg("collection '");
@@ -75,15 +84,27 @@ void CollectionAccessingNode::collection(aql::Collection const* collection) {
 
 void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("database", VPackValue(_collection->vocbase()->name()));
-  builder.add("collection", VPackValue(_collection->name()));
+  if (shardAlias.empty()) {
+    builder.add("collection", VPackValue(_collection->name()));
+  } else {
+    builder.add("collection", VPackValue(shardAlias));
+  }
   builder.add("satellite", VPackValue(_collection->isSatellite()));
-
+    
   if (ServerState::instance()->isCoordinator()) {
     builder.add(StaticStrings::NumberOfShards, VPackValue(_collection->numberOfShards()));
   }
 
   if (!_restrictedTo.empty()) {
     builder.add("restrictedTo", VPackValue(_restrictedTo));
+  }
+  
+  if (!distributeShardsLike.empty()) {
+    builder.add("distributeShardsLike", VPackValue(VPackValueType::Object));
+    for (auto const& it: distributeShardsLike) {
+      builder.add(it.first, VPackValue(it.second));
+    }
+    builder.close();
   }
 }
 

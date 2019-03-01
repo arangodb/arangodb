@@ -419,6 +419,49 @@ static int distributeBabyOnShards(
     shardID = shards->at(0);
     userSpecifiedKey = true;
   } else {
+
+    if (collinfo->hasSmartJoinAttribute()) {
+      // smartJoinAttribute is configured for the collection
+      // now validate the document attributes
+      VPackSlice s = value.get(collinfo->smartJoinAttribute());
+
+      if (!s.isString()) {
+        // smartJoinAttribute value is no string
+        return TRI_ERROR_NO_SMART_JOIN_ATTRIBUTE;
+      }
+  
+      // now check if the document's shardKey value has the smartJoinAttribute
+      // value as its prefix
+      std::vector<std::string> const& shardKeys = collinfo->shardKeys();
+      TRI_ASSERT(shardKeys.size() == 1);
+      auto const& sk = shardKeys.front();
+      TRI_ASSERT(!sk.empty());
+      TRI_ASSERT(sk.back() == ':');
+      VPackSlice k = value.get(arangodb::velocypack::StringRef(sk.data(), sk.size() - 1));
+      if (!k.isString()) {
+        // shardKey value is not a string...
+        return TRI_ERROR_NO_SMART_JOIN_ATTRIBUTE;
+      }
+
+      arangodb::velocypack::StringRef const keyRef(k);
+      // the extra byte is for the ':'
+      size_t const prefixLength = s.getStringLength();
+      if (keyRef.size() < prefixLength + 1) {
+        // shard key value is shorter than smartJoinAttribute value
+        return TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE;
+      }
+
+      if (!keyRef.substr(0, prefixLength).equals(s.stringRef())) {
+        // shard key value does not contain smartJoinAttribute value
+        // as a prefix
+        return TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE;
+      }
+
+      if (keyRef[prefixLength] != ':') {
+        return TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE;
+      }
+    }
+
     // Sort out the _key attribute:
     // The user is allowed to specify _key, provided that _key is the one
     // and only sharding attribute, because in this case we can delegate
@@ -713,8 +756,38 @@ bool shardKeysChanged(LogicalCollection const& collection, VPackSlice const& old
       return true;
     }
   }
-
+  
   return false;
+}
+
+bool smartJoinAttributeChanged(LogicalCollection const& collection, 
+                               VPackSlice const& oldValue,
+                               VPackSlice const& newValue, bool isPatch) {
+  if (!collection.hasSmartJoinAttribute()) {
+    return false;
+  }
+  if (!oldValue.isObject() || !newValue.isObject()) {
+    // expecting two objects. everything else is an error
+    return true;
+  }
+
+  std::string const& s = collection.smartJoinAttribute();
+    
+  VPackSlice n = newValue.get(s);
+  if (!n.isString()) {
+    if (isPatch && n.isNone()) {
+      // attribute not set in patch document. this means no update
+      return false;
+    }
+
+    // no string value... invalid!
+    return true;
+  }
+
+  VPackSlice o = oldValue.get(s);
+  TRI_ASSERT(o.isString());
+    
+  return (arangodb::basics::VelocyPackHelper::compare(n, o, false) != 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

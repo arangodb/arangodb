@@ -119,6 +119,10 @@ struct Collection {
   /// @brief check if collection is a satellite collection
   bool isSatellite() const;
 
+  /// @brief return the name of the smart join attribute (empty string
+  /// if no smart join attribute is present)
+  std::string const& smartJoinAttribute() const;
+
  private:
   arangodb::LogicalCollection* _collection;
 
