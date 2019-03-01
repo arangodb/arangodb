@@ -83,6 +83,7 @@ IResearchViewExecutor<ordered>::IResearchViewExecutor(IResearchViewExecutor::Fet
     : _infos(infos),
       _fetcher(fetcher),
       _inputRow(CreateInvalidInputRowHint{}),
+      _upstreamState(ExecutionState::HASMORE),
       _filterCtx(1),  // arangodb::iresearch::ExpressionExecutionContext
       _ctx(&infos.getQuery(), infos.getNode()),
       _reader(infos.getReader()),
@@ -96,25 +97,29 @@ IResearchViewExecutor<ordered>::IResearchViewExecutor(IResearchViewExecutor::Fet
 
   // add expression execution context
   _filterCtx.emplace(_execCtx);
+
 }
 
 template <bool ordered>
 std::pair<ExecutionState, typename IResearchViewExecutor<ordered>::Stats>
 IResearchViewExecutor<ordered>::produceRow(OutputAqlItemRow& output) {
   IResearchViewStats stats{};
-  ExecutionState state = ExecutionState::HASMORE;
 
   if (!_inputRow.isInitialized()) {
-    std::tie(state, _inputRow) = _fetcher.fetchRow();
-
-    if (state == ExecutionState::WAITING) {
-      return {state, stats};
+    if (_upstreamState == ExecutionState::DONE) {
+      // There will be no more rows, stop fetching.
+      return {ExecutionState::DONE, stats};
     }
 
-    // TODO save upstream state to avoid asking after DONE
+    std::tie(_upstreamState, _inputRow) = _fetcher.fetchRow();
+
+    if (_upstreamState == ExecutionState::WAITING) {
+      return {_upstreamState, stats};
+    }
 
     if (!_inputRow.isInitialized()) {
       return {ExecutionState::DONE, stats};
+    } else if (_upstreamState == ExecutionState::DONE) {
     }
 
     reset();
@@ -126,9 +131,13 @@ IResearchViewExecutor<ordered>::produceRow(OutputAqlItemRow& output) {
   std::tie(hasMore, documentsWritten) = next(ctx, 1);
   TRI_ASSERT(documentsWritten <= 1);
   TRI_ASSERT((documentsWritten == 1) == hasMore);
+  stats.incrScanned(documentsWritten);
 
   if (!hasMore) {
     _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+    // While I do find this elegant, C++ does not guarantee any tail
+    // recursion optimization. Thus, to avoid overhead and stack overflows:
+    // TODO Remove the recursive call in favour of a loop
     return produceRow(output);
   }
 
@@ -189,6 +198,7 @@ std::pair<bool, size_t> IResearchViewExecutor<ordered>::next(ReadContext &ctx, s
 
   size_t documentsWritten = 0;
 
+
   for (size_t count = _reader->size(); _readerOffset < count;) {
     if (!_itr && !resetIterator()) {
       continue;
@@ -229,6 +239,7 @@ std::pair<bool, size_t> IResearchViewExecutor<ordered>::next(ReadContext &ctx, s
     ++_readerOffset;
     _itr.reset();
   }
+
 
   // return 'true' if we've reached the requested limit,
   // but don't know exactly are there any more data

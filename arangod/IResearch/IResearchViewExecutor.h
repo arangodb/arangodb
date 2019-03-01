@@ -143,6 +143,8 @@ class IResearchViewExecutor {
 
   InputAqlItemRow _inputRow;
 
+  ExecutionState _upstreamState;
+
   // IResearchViewBlockBase members:
   std::vector<LocalDocumentId> _keys;  // buffer for primary keys
   irs::attribute_view _filterCtx;      // filter context
