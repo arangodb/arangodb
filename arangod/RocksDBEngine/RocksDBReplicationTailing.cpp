@@ -194,7 +194,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
           LogicalCollection* coll = loadCollection(cid);
           TRI_ASSERT(coll != nullptr);
           {
-            uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
+            uint64_t tick = _currentSequence; 
             VPackObjectBuilder marker(&_builder, true);
             marker->add("tick", VPackValue(std::to_string(tick)));
             marker->add("type", VPackValue(REPLICATION_COLLECTION_TRUNCATE));

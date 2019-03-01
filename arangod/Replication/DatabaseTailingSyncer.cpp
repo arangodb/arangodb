@@ -208,9 +208,9 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
               "number of historic logfiles on the master.");
     }
 
-    uint64_t processedMarkers = 0;
+    ApplyStats applyStats;
     uint64_t ignoreCount = 0;
-    Result r = applyLog(response.get(), fromTick, processedMarkers, ignoreCount);
+    Result r = applyLog(response.get(), fromTick, applyStats, ignoreCount);
     if (r.fail()) {
       until = fromTick;
       return r;

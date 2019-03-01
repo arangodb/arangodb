@@ -228,10 +228,29 @@ are space-restricted and do not require keeping much WAL file data at all.
 
 Mmaximum total size (in bytes) of archived WAL files to keep on a leader.
 A value of `0` will not restrict the size of the archive, whereas any other
-value will restrict the size to about the specified value and trigge WAL
+value will restrict the size to about the specified value and trigger WAL
 archive file deletion once the threshold will be reached.
 
 The default value is `0` (i.e. unlimited).
+
+When setting the value to a size bigger than 0, the RocksDB storage engine
+will force a removal of archived WAL files if the total size of the archive
+exceeds the configured size. The option can be used to get rid of archived
+WAL files in a disk size-constrained environment.
+
+Note that archived WAL files are normally deleted automatically after a 
+short while when there is no follower attached that may read from the archive.
+However, in case when there are followers attached that may read from the
+archive, WAL files normally remain in the archive until their contents have 
+been streamed to the followers. In case there are slow followers that cannot
+catch up this will cause a growth of the WAL files archive over time. 
+
+The option `--rocksdb.wal-archive-size-limit` can now be used to force a 
+deletion of WAL files from the archive even if there are followers attached
+that may want to read the archive. In case the option is set and a leader
+deletes files from the archive that followers want to read, this will abort
+the replication on the followers. Followers can however restart the replication
+doing a resync.
 
 `--rocksdb.max-transaction-size`
 

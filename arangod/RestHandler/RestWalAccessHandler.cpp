@@ -228,10 +228,7 @@ void RestWalAccessHandler::handleCommandLastTick(WalAccess const* wal) {
 }
 
 void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
-  bool useVst = false;
-  if (_request->transportType() == Endpoint::TransportType::VST) {
-    useVst = true;
-  }
+  bool const useVst = (_request->transportType() == Endpoint::TransportType::VST);
 
   WalAccess::Filter filter;
   if (!parseFilter(filter)) {
@@ -316,9 +313,12 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   // transfer ownership of the buffer contents
   _response->setContentType(rest::ContentType::DUMP);
 
+  TRI_ASSERT(result.latestTick() >= result.lastIncludedTick());
+  TRI_ASSERT(result.latestTick() >= result.lastScannedTick());
+
   // set headers
-  bool checkMore = result.lastIncludedTick() > 0 &&
-                   result.lastIncludedTick() < result.latestTick();
+  bool const checkMore = result.lastIncludedTick() > 0 &&
+                         result.lastIncludedTick() < result.latestTick();
   _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
                          checkMore ? "true" : "false");
   _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
