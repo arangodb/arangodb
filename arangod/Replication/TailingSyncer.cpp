@@ -191,6 +191,10 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick, VPackSlice const
       }
     }
   }
+  
+  if (tooOld) {
+    return true;
+  }
 
   if (tooOld) {
     return true;
