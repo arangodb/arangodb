@@ -73,8 +73,10 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
   virtual aql::AqlValue getVariableValue(aql::Variable const* variable, bool doCopy,
                                          bool& mustDestroy) const override;
 
+  // TODO remove _data
   aql::AqlItemBlock const* _data{};
   IResearchViewNode const* _node;
+  // TODO remove _pos
   size_t _pos{};
 };  // ViewExpressionContext
 

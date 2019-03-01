@@ -29,6 +29,7 @@
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchView.h"
+#include "Indexes/IndexIterator.h"
 #include "VocBase/LocalDocumentId.h"
 
 namespace arangodb {
@@ -43,6 +44,8 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
                                       std::shared_ptr<iresearch::IResearchView::Snapshot const> reader,
                                       RegisterId outputRegister, Query& query,
                                       iresearch::IResearchViewNode const& node);
+
+  RegisterId getOutputRegister() const;
 
   std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const;
 
@@ -108,14 +111,41 @@ class IResearchViewExecutor {
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
  private:
+  class ReadContext {
+   private:
+    static IndexIterator::DocumentCallback copyDocumentCallback(ReadContext& ctx);
+
+   public:
+    explicit ReadContext(aql::RegisterId curRegs, InputAqlItemRow& inputRow, OutputAqlItemRow& outputRow)
+        : curRegs(curRegs), inputRow(inputRow), outputRow(outputRow), callback(copyDocumentCallback(*this)) {}
+
+    aql::RegisterId const curRegs;
+    size_t pos{};
+    InputAqlItemRow& inputRow;
+    OutputAqlItemRow& outputRow;
+    IndexIterator::DocumentCallback const callback;
+  };  // ReadContext
+
+ private:
   Infos const& infos() const noexcept;
+
+  // Copied from IResearchViewUnorderedBlock.
+  // TODO Should be removed later, as it does not fit the pattern.
+  std::pair<bool, size_t> next(ReadContext &ctx, size_t limit);
+
+  bool resetIterator();
+
+  void reset();
 
  private:
   Infos const& _infos;
   Fetcher& _fetcher;
 
+  InputAqlItemRow _inputRow;
+
+  // IResearchViewBlockBase members:
   std::vector<LocalDocumentId> _keys;  // buffer for primary keys
-  irs::attribute_view _filterCtx;                // filter context
+  irs::attribute_view _filterCtx;      // filter context
   iresearch::ViewExpressionContext _ctx;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> _reader;
   irs::filter::prepared::ptr _filter;
@@ -125,6 +155,11 @@ class IResearchViewExecutor {
   bool _hasMore;
   bool _volatileSort;
   bool _volatileFilter;
+
+  // IResearchViewUnorderedBlock members:
+  irs::columnstore_reader::values_reader_f _pkReader;  // current primary key reader
+  irs::doc_iterator::ptr _itr;
+  size_t _readerOffset;
 };
 
 }  // namespace aql

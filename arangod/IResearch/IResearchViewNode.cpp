@@ -988,7 +988,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     // the last input register.
     aql::RegisterId const outputRegister = getNrInputRegisters();
     std::shared_ptr<std::unordered_set<aql::RegisterId>> writableOutputRegisters =
-        aql::make_shared_unordered_set(outputRegister);
+        aql::make_shared_unordered_set({outputRegister});
     aql::ExecutorInfos infos =
         createRegisterInfos({}, std::move(writableOutputRegisters));
     // TODO Don't pass `this`, but only the necessary members.
