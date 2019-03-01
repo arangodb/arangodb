@@ -110,6 +110,8 @@ accessed by their positions. The order of elements in an array is important.
 An *array declaration* starts with a left square bracket `[` and ends with
 a right square bracket `]`. The declaration contains zero, one or more
 *expression*s, separated from each other with the comma `,` symbol.
+Whitespace around elements is ignored in the declaration, thus line breaks,
+tab stops and blanks can be used for formatting.
 
 In the easiest case, an array is empty and thus looks like:
 
@@ -156,8 +158,10 @@ Object attributes can be accessed individually by their names.
 
 Object declarations start with a left curly bracket `{` and end with a
 right curly bracket `}`. An object contains zero to many attribute declarations,
-separated from each other with the `,` symbol. In the simplest case, an object
-is empty. Its declaration would then be:
+separated from each other with the `,` symbol. Whitespace around elements is ignored
+in the declaration, thus line breaks, tab stops and blanks can be used for formatting.
+
+In the simplest case, an object is empty. Its declaration would then be:
 
 ```json
 { }
