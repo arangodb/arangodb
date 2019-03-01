@@ -131,7 +131,7 @@ IResearchViewExecutor<ordered>::produceRow(OutputAqlItemRow& output) {
     return produceRow(output);
   }
 
-  return {ExecutionState::DONE, stats};
+  return {ExecutionState::HASMORE, stats};
 }
 
 template <bool ordered>
@@ -295,6 +295,12 @@ IndexIterator::DocumentCallback IResearchViewExecutor<ordered>::ReadContext::cop
 
 template<bool ordered>
 void IResearchViewExecutor<ordered>::reset() {
+// This is from IResearchViewUnorderedBlock::reset():
+  // reset iterator state
+  _itr.reset();
+  _readerOffset = 0;
+
+// The rest is from IResearchViewBlockBase::reset():
   auto& viewNode = infos().getNode();
   //auto& viewNode = *ExecutionNode::castTo<IResearchViewNode const*>(getPlanNode());
   auto* plan = const_cast<ExecutionPlan*>(viewNode.plan());
