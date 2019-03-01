@@ -178,7 +178,8 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection,
 Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection, VPackSlice const& slice)
     : _iid(iid),
       _collection(collection),
-      _name(slice.get(arangodb::StaticStrings::IndexName).copyString()),
+      _name(arangodb::basics::VelocyPackHelper::getStringValue(slice, arangodb::StaticStrings::IndexName,
+                                                               "")),
       _fields(::parseFields(slice.get(arangodb::StaticStrings::IndexFields),
                             Index::allowExpansion(Index::type(
                                 slice.get(arangodb::StaticStrings::IndexType).copyString())))),
@@ -189,6 +190,12 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection, VPackSl
                                                                   false)) {}
 
 Index::~Index() {}
+
+void Index::name(std::string const& newName) {
+  if (_name.empty()) {
+    _name = newName;
+  }
+}
 
 size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
   switch (node->type) {

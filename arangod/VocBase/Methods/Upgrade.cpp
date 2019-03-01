@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Upgrade.h"
 #include "Basics/Common.h"
+#include "Upgrade.h"
 
 #include "Agency/AgencyComm.h"
 #include "Basics/StringUtils.h"
@@ -213,6 +213,11 @@ void methods::Upgrade::registerTasks() {
   auto& _tasks = upgradeFeature->_tasks;
   TRI_ASSERT(_tasks.empty());
 
+  addTask("upgradeUnnamedIndexes", "upgrade legacy unnamed indexes",
+          /*system*/ Flags::DATABASE_ALL,
+          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL |
+              Flags::CLUSTER_DB_SERVER_LOCAL,
+          /*database*/ DATABASE_UPGRADE, &UpgradeTasks::upgradeGeoIndexes);
   addTask("upgradeGeoIndexes", "upgrade legacy geo indexes",
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,

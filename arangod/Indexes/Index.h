@@ -122,6 +122,9 @@ class Index {
     return _name;
   }
 
+  /// @brief set the name, if it is currently unset
+  void name(std::string const&);
+
   /// @brief return the index fields
   inline std::vector<std::vector<arangodb::basics::AttributeName>> const& fields() const {
     return _fields;
@@ -401,7 +404,7 @@ class Index {
 
   TRI_idx_iid_t const _iid;
   LogicalCollection& _collection;
-  std::string const _name;
+  std::string _name;
   std::vector<std::vector<arangodb::basics::AttributeName>> const _fields;
   bool const _useExpansion;
 
