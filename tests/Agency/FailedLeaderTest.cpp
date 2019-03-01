@@ -449,7 +449,7 @@ SECTION("the job must not be started if there if one of the linked shards (distr
   failedLeader.start(aborts);
 }
 
-SECTION("abort any moveShard job blocking the shard and start") {
+SECTION("abort any moveShard job blocking the shard and stay in ToDo") {
   Mock<AgentInterface> moveShardMockAgent;
 
   Builder moveShardBuilder;
@@ -520,13 +520,6 @@ SECTION("abort any moveShard job blocking the shard and start") {
     return fakeWriteResult;
   });
 
-  When(Method(mockAgent, transact)).Do([&](query_t const& q) -> trans_ret_t {
-    // check that the job is now pending
-    INFO("Transaction: " << q->slice().toJson());
-    auto writes = q->slice()[0][0];
-    REQUIRE(std::string(writes.get("/arango/Target/Pending/1").typeName()) == "object");
-    return fakeTransResult;
-  });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
   auto failedLeader = FailedLeader(
@@ -535,8 +528,7 @@ SECTION("abort any moveShard job blocking the shard and start") {
     JOB_STATUS::TODO,
     jobId
   );
-  failedLeader.start(aborts);
-  Verify(Method(mockAgent, transact));
+  REQUIRE_FALSE(failedLeader.start(aborts));
   Verify(Method(mockAgent, write));
 }
 

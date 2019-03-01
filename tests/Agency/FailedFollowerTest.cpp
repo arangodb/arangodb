@@ -482,13 +482,6 @@ SECTION("abort any moveShard job blocking the shard and start") {
     return fakeWriteResult;
   });
 
-  When(Method(mockAgent, transact)).Do([&](query_t const& q) -> trans_ret_t {
-    // check that the job is now pending
-    INFO("Transaction: " << q->slice().toJson());
-    auto writes = q->slice()[0][0];
-    REQUIRE(std::string(writes.get("/arango/Target/Finished/1").typeName()) == "object");
-    return fakeTransResult;
-  });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
   auto failedFollower = FailedFollower(
@@ -497,8 +490,7 @@ SECTION("abort any moveShard job blocking the shard and start") {
     JOB_STATUS::TODO,
     jobId
   );
-  REQUIRE(failedFollower.start(aborts));
-  Verify(Method(mockAgent, transact));
+  REQUIRE_FALSE(failedFollower.start(aborts));
   Verify(Method(mockAgent, write));
 }
 
