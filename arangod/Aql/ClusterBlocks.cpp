@@ -710,11 +710,11 @@ arangodb::Result RemoteBlock::handleCommErrors(ClusterCommResult* res) const {
 
     if (shardID.empty()) {
       errorMessage = std::string("Error message received from cluster node '") +
-        std::string(res->serverID) + std::string("': ");
+                     std::string(res->serverID) + std::string("': ");
     } else {
       errorMessage = std::string("Error message received from shard '") +
-        std::string(shardID) + std::string("' on cluster node '") +
-        std::string(res->serverID) + std::string("': ");
+                     std::string(shardID) + std::string("' on cluster node '") +
+                     std::string(res->serverID) + std::string("': ");
     }
 
     int errorNum = TRI_ERROR_INTERNAL;
@@ -1098,90 +1098,6 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
 }
 
 // -----------------------------------------------------------------------------
-// -- SECTION --                                            UnsortingGatherBlock
-// -----------------------------------------------------------------------------
-
-/// @brief initializeCursor
-std::pair<ExecutionState, arangodb::Result> UnsortingGatherBlock::initializeCursor(
-    AqlItemBlock* items, size_t pos) {
-  auto res = ExecutionBlock::initializeCursor(items, pos);
-
-  if (res.first == ExecutionState::WAITING || !res.second.ok()) {
-    return res;
-  }
-
-  _atDep = 0;
-  _done = _dependencies.empty();
-
-  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-}
-
-/// @brief getSome
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> UnsortingGatherBlock::getSome(size_t atMost) {
-  traceGetSomeBegin(atMost);
-
-  _done = _dependencies.empty();
-
-  if (_done) {
-    TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
-    traceGetSomeEnd(nullptr, ExecutionState::DONE);
-    return {ExecutionState::DONE, nullptr};
-  }
-
-  // the simple case ...
-  auto res = _dependencies[_atDep]->getSome(atMost);
-  if (res.first == ExecutionState::WAITING) {
-    traceGetSomeEnd(nullptr, ExecutionState::WAITING);
-    return res;
-  }
-
-  while (res.second == nullptr && _atDep < _dependencies.size() - 1) {
-    _atDep++;
-    res = _dependencies[_atDep]->getSome(atMost);
-    if (res.first == ExecutionState::WAITING) {
-      traceGetSomeEnd(nullptr, ExecutionState::WAITING);
-      return res;
-    }
-  }
-
-  _done = (nullptr == res.second);
-
-  traceGetSomeEnd(res.second.get(), getHasMoreState());
-  return {getHasMoreState(), std::move(res.second)};
-}
-
-/// @brief skipSome
-std::pair<ExecutionState, size_t> UnsortingGatherBlock::skipSome(size_t atMost) {
-  traceSkipSomeBegin(atMost);
-  if (_done) {
-    traceSkipSomeEnd(0, ExecutionState::DONE);
-    return {ExecutionState::DONE, 0};
-  }
-
-  // the simple case . . .
-  auto res = _dependencies[_atDep]->skipSome(atMost);
-  if (res.first == ExecutionState::WAITING) {
-    traceSkipSomeEnd(res.second, ExecutionState::WAITING);
-    return res;
-  }
-
-  while (res.second == 0 && _atDep < _dependencies.size() - 1) {
-    _atDep++;
-    res = _dependencies[_atDep]->skipSome(atMost);
-    if (res.first == ExecutionState::WAITING) {
-      traceSkipSomeEnd(res.second, ExecutionState::WAITING);
-      return res;
-    }
-  }
-
-  _done = (res.second == 0);
-
-  ExecutionState state = getHasMoreState();
-  traceSkipSomeEnd(res.second, state);
-  return {state, res.second};
-}
-
-// -----------------------------------------------------------------------------
 // -- SECTION --                                              SortingGatherBlock
 // -----------------------------------------------------------------------------
 
@@ -1194,7 +1110,7 @@ SortingGatherBlock::SortingGatherBlock(ExecutionEngine& engine, GatherNode const
       _strategy = std::make_unique<MinElementSorting>(_trx, _gatherBlockBuffer, _sortRegisters);
       break;
     case GatherNode::SortMode::Heap:
-    case GatherNode::SortMode::Default: // use heap by default
+    case GatherNode::SortMode::Default:  // use heap by default
       _strategy = std::make_unique<HeapSorting>(_trx, _gatherBlockBuffer, _sortRegisters);
       break;
     default:

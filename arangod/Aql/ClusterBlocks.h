@@ -275,32 +275,6 @@ class RemoteBlock final : public ExecutionBlock {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @class UnsortingGatherBlock
-/// @brief Execution block for gathers without order
-////////////////////////////////////////////////////////////////////////////////
-class UnsortingGatherBlock final : public ExecutionBlock {
- public:
-  UnsortingGatherBlock(ExecutionEngine& engine, GatherNode const& en)
-      : ExecutionBlock(&engine, &en) {
-    TRI_ASSERT(en.elements().empty());
-  }
-
-  /// @brief initializeCursor
-  std::pair<ExecutionState, arangodb::Result> initializeCursor(AqlItemBlock* items,
-                                                               size_t pos) override final;
-
-  /// @brief getSome
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
-
-  /// @brief skipSome
-  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
-
- private:
-  /// @brief _atDep: currently pulling blocks from _dependencies.at(_atDep),
-  size_t _atDep{};
-};  // UnsortingGatherBlock
-
-////////////////////////////////////////////////////////////////////////////////
 /// @struct SortingStrategy
 ////////////////////////////////////////////////////////////////////////////////
 struct SortingStrategy {
