@@ -18,6 +18,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Simon Grätzer
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestClusterHandler.h"
@@ -47,14 +48,44 @@ RestStatus RestClusterHandler::execute() {
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
-  if (!suffixes.empty() && suffixes[0] == "endpoints") {
-    handleCommandEndpoints();
+  if (!suffixes.empty()) {
+    if (suffixes[0] == "endpoints") {
+      handleCommandEndpoints();
+    } else if (suffixes[0] == "agency-dump") {
+      handleAgencyDump();
+    } else {
+      generateError(
+        Result(TRI_ERROR_FORBIDDEN, "expecting _api/cluster/[endpoints,agency-dump]"));
+    }
   } else {
     generateError(
-        Result(TRI_ERROR_FORBIDDEN, "expecting _api/cluster/endpoints"));
+      Result(TRI_ERROR_FORBIDDEN, "expecting _api/cluster/[endpoints,agency-dump]"));
   }
 
   return RestStatus::DONE;
+}
+
+void RestClusterHandler::handleAgencyDump() {
+
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  if (af->isActive() && !_request->user().empty()) {
+    auth::Level lvl = auth::Level::NONE;
+    if (af->userManager() != nullptr) {
+      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system", true);
+    } else {
+      lvl = auth::Level::RW;
+    }
+    if (lvl < auth::Level::RW) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin rights to trigger shutdown");
+      return RestStatus::DONE;
+    }
+  }
+
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  ClusterInfo::instance()->agencyDump(body);
+  generateResult(rest::ResponseCode::OK, body->slice());
+
 }
 
 /// @brief returns information about all coordinator endpoints

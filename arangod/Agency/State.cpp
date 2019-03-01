@@ -32,10 +32,6 @@
 #include <sstream>
 #include <thread>
 
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
-
 #include "Agency/Agent.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
@@ -1526,3 +1522,87 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   store.dumpToBuilder(*builder);
   return builder;
 }
+
+/// @brief load a compacted snapshot, returns true if successfull and false
+/// otherwise. In case of success store and index are modified. The store
+/// is reset to the state after log index `index` has been applied. Sets
+/// `index` to 0 if there is no compacted snapshot.
+uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
+
+  TRI_ASSERT(builder.isOpenObject());
+  
+  auto bindVars = std::make_shared<VPackBuilder>();
+  { VPackObjectBuilder b(bindVars.get()); }
+
+  static std::string const logstr(
+    "FOR l IN log FILTER l._key <= '%s' SORT l._key RETURN {'_key': l._key, "
+    "'timestamp': l.timestamp, 'clientId': l.clientId, 'request': l.request}");
+  static uint64_t const logsz(logstr.size()+19);
+  char buf[logsz];
+  std::snprintf (buf, logsz, logstr.c_str(), stringify(lastIndex).c_str());
+  std::string querystr = buf;
+
+  LOG_DEVEL << querystr;
+
+  TRI_ASSERT(nullptr != _vocbase);  // this check was previously in the Query constructor
+  arangodb::aql::Query logQuery(false, *_vocbase, aql::QueryString(querystr), bindVars,
+                             nullptr, arangodb::aql::PART_MAIN);
+
+  aql::QueryResult logQueryResult = logQuery.executeSync(_queryRegistry);
+
+  if (logQueryResult.code != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(logQueryResult.code, logQueryResult.details);
+  }
+
+  VPackSlice result = logQueryResult.result->slice();
+  std::string firstIndex;
+  uint64_t n = 0;
+  
+  builder.add(VPackValue("log"));
+  if (result.isArray()) {
+    try {
+      builder.add(result.resolveExternals());
+      n = result.length();
+      if (n > 0) {
+        firstIndex = result[0].get("_key").copyString();
+      }
+    } catch (...) {
+      VPackArrayBuilder a(&builder);
+    }
+  }
+
+  if (n > 0) {
+    static std::string const compstr(
+      "FOR c in compact FILTER c._key >= '%s' SORT c._key LIMIT 1 RETURN c");
+    static uint64_t const compsz(compstr.size()+19);
+    std::snprintf (buf, compsz, compstr.c_str(), firstIndex.c_str());
+    querystr = buf;
+
+    LOG_DEVEL << querystr;
+  
+    arangodb::aql::Query compQuery(false, *_vocbase, aql::QueryString(querystr),
+                               bindVars, nullptr, arangodb::aql::PART_MAIN);
+
+    aql::QueryResult compQueryResult = compQuery.executeSync(_queryRegistry);
+
+    if (compQueryResult.code != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(compQueryResult.code, compQueryResult.details);
+    }
+    
+    result = compQueryResult.result->slice();
+
+    if (result.isArray()) {
+      if (result.length() > 0) {
+        builder.add(VPackValue("compaction"));
+        try {
+          builder.add(result[0].resolveExternals());
+        } catch (...) {
+          VPackObjectBuilder a(&builder);
+        }
+      }
+    }
+  }
+  
+  return n;
+}
+
