@@ -59,10 +59,10 @@ SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
 
   GIVEN("there are no blocks upstream, single dependency") {
     VPackBuilder input;
-    BlockFetcherMock<false> blockFetcherMock{monitor, 0};
+    MultiBlockFetcherMock<false> blockFetcherMock{monitor, 0, 1};
 
     WHEN("the producer does not wait") {
-      blockFetcherMock.shouldReturn(ExecutionState::DONE, nullptr);
+      blockFetcherMock.getDependencyMock(0).shouldReturn(ExecutionState::DONE, nullptr);
 
       {
         MultiDependencySingleRowFetcher testee(blockFetcherMock);
@@ -80,7 +80,8 @@ SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
     }
 
     WHEN("the producer waits") {
-      blockFetcherMock.shouldReturn(ExecutionState::WAITING, nullptr)
+      blockFetcherMock.getDependencyMock(0)
+          .shouldReturn(ExecutionState::WAITING, nullptr)
           .andThenReturn(ExecutionState::DONE, nullptr);
 
       {
@@ -108,12 +109,13 @@ SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
   GIVEN("A single upstream block with a single row, single dependency") {
     VPackBuilder input;
     ResourceMonitor monitor;
-    BlockFetcherMock<false> blockFetcherMock{monitor, 1};
+    MultiBlockFetcherMock<false> blockFetcherMock{monitor, 1, 1};
 
     std::unique_ptr<AqlItemBlock> block = buildBlock<1>(&monitor, {{42}});
 
     WHEN("the producer returns DONE immediately") {
-      blockFetcherMock.shouldReturn(ExecutionState::DONE, std::move(block));
+      blockFetcherMock.getDependencyMock(0).shouldReturn(ExecutionState::DONE,
+                                                         std::move(block));
 
       {
         MultiDependencySingleRowFetcher testee(blockFetcherMock);
@@ -133,7 +135,8 @@ SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
     }
 
     WHEN("the producer returns HASMORE, then DONE with a nullptr") {
-      blockFetcherMock.shouldReturn(ExecutionState::HASMORE, std::move(block))
+      blockFetcherMock.getDependencyMock(0)
+          .shouldReturn(ExecutionState::HASMORE, std::move(block))
           .andThenReturn(ExecutionState::DONE, nullptr);
 
       {
@@ -160,7 +163,8 @@ SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
     }
 
     WHEN("the producer WAITs, then returns DONE") {
-      blockFetcherMock.shouldReturn(ExecutionState::WAITING, nullptr)
+      blockFetcherMock.getDependencyMock(0)
+          .shouldReturn(ExecutionState::WAITING, nullptr)
           .andThenReturn(ExecutionState::DONE, std::move(block));
 
       {
@@ -187,7 +191,8 @@ SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
     }
 
     WHEN("the producer WAITs, returns HASMORE, then DONE") {
-      blockFetcherMock.shouldReturn(ExecutionState::WAITING, nullptr)
+      blockFetcherMock.getDependencyMock(0)
+          .shouldReturn(ExecutionState::WAITING, nullptr)
           .andThenReturn(ExecutionState::HASMORE, std::move(block))
           .andThenReturn(ExecutionState::DONE, nullptr);
 
@@ -226,7 +231,7 @@ SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
 
   GIVEN("there are multiple blocks upstream, single dependency") {
     ResourceMonitor monitor;
-    BlockFetcherMock<false> blockFetcherMock{monitor, 1};
+    MultiBlockFetcherMock<false> blockFetcherMock{monitor, 1, 1};
 
     // three 1-column matrices with 3, 2 and 1 rows, respectively
     std::unique_ptr<AqlItemBlock> block1 =
@@ -235,7 +240,8 @@ SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
                                   block3 = buildBlock<1>(&monitor, {{{6}}});
 
     WHEN("the producer does not wait") {
-      blockFetcherMock.shouldReturn(ExecutionState::HASMORE, std::move(block1))
+      blockFetcherMock.getDependencyMock(0)
+          .shouldReturn(ExecutionState::HASMORE, std::move(block1))
           .andThenReturn(ExecutionState::HASMORE, std::move(block2))
           .andThenReturn(ExecutionState::DONE, std::move(block3));
 
@@ -266,7 +272,8 @@ SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
     }
 
     WHEN("the producer waits") {
-      blockFetcherMock.shouldReturn(ExecutionState::WAITING, nullptr)
+      blockFetcherMock.getDependencyMock(0)
+          .shouldReturn(ExecutionState::WAITING, nullptr)
           .andThenReturn(ExecutionState::HASMORE, std::move(block1))
           .andThenReturn(ExecutionState::WAITING, nullptr)
           .andThenReturn(ExecutionState::HASMORE, std::move(block2))
@@ -277,7 +284,7 @@ SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
         MultiDependencySingleRowFetcher testee(blockFetcherMock);
 
         THEN("the fetcher should return all rows and DONE with the last") {
-          size_t rowIdxAndValue;
+          int64_t rowIdxAndValue;
           for (rowIdxAndValue = 1; rowIdxAndValue <= 5; rowIdxAndValue++) {
             if (rowIdxAndValue == 1 || rowIdxAndValue == 4) {
               // wait at the beginning of the 1st and 2nd block
@@ -311,7 +318,8 @@ SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
     }
 
     WHEN("the producer waits and does not return DONE asap") {
-      blockFetcherMock.shouldReturn(ExecutionState::WAITING, nullptr)
+      blockFetcherMock.getDependencyMock(0)
+          .shouldReturn(ExecutionState::WAITING, nullptr)
           .andThenReturn(ExecutionState::HASMORE, std::move(block1))
           .andThenReturn(ExecutionState::WAITING, nullptr)
           .andThenReturn(ExecutionState::HASMORE, std::move(block2))
@@ -323,7 +331,7 @@ SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
         MultiDependencySingleRowFetcher testee(blockFetcherMock);
 
         THEN("the fetcher should return all rows and DONE with the last") {
-          for (size_t rowIdxAndValue = 1; rowIdxAndValue <= 6; rowIdxAndValue++) {
+          for (int64_t rowIdxAndValue = 1; rowIdxAndValue <= 6; rowIdxAndValue++) {
             if (rowIdxAndValue == 1 || rowIdxAndValue == 4 || rowIdxAndValue == 6) {
               // wait at the beginning of the 1st, 2nd and 3rd block
               std::tie(state, row) = testee.fetchRowForDependency(0);
@@ -345,6 +353,559 @@ SCENARIO("MultiDependencySingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
       // in the destructor
       REQUIRE(blockFetcherMock.allBlocksFetched());
       REQUIRE(blockFetcherMock.numFetchBlockCalls() == 7);
+    }
+  }
+
+  /*********************
+   *  Multi Dependencies
+   *********************/
+
+  GIVEN("there are no blocks upstream, multiple dependencies") {
+    VPackBuilder input;
+    size_t numDeps = 3;
+    MultiBlockFetcherMock<false> blockFetcherMock{monitor, 0, numDeps};
+
+    WHEN("the producers do not wait") {
+      for (size_t i = 0; i < numDeps; ++i) {
+        blockFetcherMock.getDependencyMock(i).shouldReturn(ExecutionState::DONE, nullptr);
+      }
+
+      {
+        MultiDependencySingleRowFetcher testee(blockFetcherMock);
+
+        THEN("the fetcher should return DONE with nullptr") {
+          for (size_t i = 0; i < numDeps; ++i) {
+            std::tie(state, row) = testee.fetchRowForDependency(i);
+            REQUIRE(state == ExecutionState::DONE);
+            REQUIRE(!row);
+          }
+        }
+      }  // testee is destroyed here
+      // testee must be destroyed before verify, because it may call returnBlock
+      // in the destructor
+      REQUIRE(blockFetcherMock.allBlocksFetched());
+      REQUIRE(blockFetcherMock.numFetchBlockCalls() == numDeps);
+    }
+
+    WHEN("the producer waits") {
+      for (size_t i = 0; i < numDeps; ++i) {
+        blockFetcherMock.getDependencyMock(i)
+            .shouldReturn(ExecutionState::WAITING, nullptr)
+            .andThenReturn(ExecutionState::DONE, nullptr);
+      }
+
+      {
+        MultiDependencySingleRowFetcher testee(blockFetcherMock);
+
+        THEN("the fetcher should first return WAIT with nullptr") {
+          for (size_t i = 0; i < numDeps; ++i) {
+            std::tie(state, row) = testee.fetchRowForDependency(i);
+            REQUIRE(state == ExecutionState::WAITING);
+            REQUIRE(!row);
+          }
+
+          AND_THEN("the fetcher should return DONE with nullptr") {
+            for (size_t i = 0; i < numDeps; ++i) {
+              std::tie(state, row) = testee.fetchRowForDependency(i);
+              REQUIRE(state == ExecutionState::DONE);
+              REQUIRE(!row);
+            }
+          }
+        }
+      }  // testee is destroyed here
+      // testee must be destroyed before verify, because it may call returnBlock
+      // in the destructor
+      REQUIRE(blockFetcherMock.allBlocksFetched());
+      REQUIRE(blockFetcherMock.numFetchBlockCalls() == 2 * numDeps);
+    }
+  }
+
+  GIVEN("A single upstream block with a single row, multi dependency") {
+    VPackBuilder input;
+    ResourceMonitor monitor;
+    size_t numDeps = 3;
+    MultiBlockFetcherMock<false> blockFetcherMock{monitor, 1, numDeps};
+
+    std::unique_ptr<AqlItemBlock> blockDep1 = buildBlock<1>(&monitor, {{42}});
+    std::unique_ptr<AqlItemBlock> blockDep2 = buildBlock<1>(&monitor, {{23}});
+    std::unique_ptr<AqlItemBlock> blockDep3 = buildBlock<1>(&monitor, {{1337}});
+
+    WHEN("the producer returns DONE immediately") {
+      blockFetcherMock.getDependencyMock(0).shouldReturn(ExecutionState::DONE,
+                                                         std::move(blockDep1));
+      blockFetcherMock.getDependencyMock(1).shouldReturn(ExecutionState::DONE,
+                                                         std::move(blockDep2));
+      blockFetcherMock.getDependencyMock(2).shouldReturn(ExecutionState::DONE,
+                                                         std::move(blockDep3));
+
+      {
+        MultiDependencySingleRowFetcher testee(blockFetcherMock);
+
+        THEN("the fetcher should return the row with DONE") {
+          for (size_t i = 0; i < numDeps; ++i) {
+            std::tie(state, row) = testee.fetchRowForDependency(i);
+            REQUIRE(state == ExecutionState::DONE);
+            REQUIRE(row);
+            REQUIRE(row.getNrRegisters() == 1);
+            if (i == 0) {
+              REQUIRE(row.getValue(0).slice().getInt() == 42);
+            } else if (i == 1) {
+              REQUIRE(row.getValue(0).slice().getInt() == 23);
+            } else {
+              REQUIRE(row.getValue(0).slice().getInt() == 1337);
+            }
+          }
+        }
+      }  // testee is destroyed here
+      // testee must be destroyed before verify, because it may call returnBlock
+      // in the destructor
+      REQUIRE(blockFetcherMock.allBlocksFetched());
+      REQUIRE(blockFetcherMock.numFetchBlockCalls() == numDeps);
+    }
+
+    WHEN("the producer returns HASMORE, then DONE with a nullptr") {
+      blockFetcherMock.getDependencyMock(0)
+          .shouldReturn(ExecutionState::HASMORE, std::move(blockDep1))
+          .andThenReturn(ExecutionState::DONE, nullptr);
+      blockFetcherMock.getDependencyMock(1)
+          .shouldReturn(ExecutionState::HASMORE, std::move(blockDep2))
+          .andThenReturn(ExecutionState::DONE, nullptr);
+      blockFetcherMock.getDependencyMock(2)
+          .shouldReturn(ExecutionState::HASMORE, std::move(blockDep3))
+          .andThenReturn(ExecutionState::DONE, nullptr);
+
+      {
+        MultiDependencySingleRowFetcher testee(blockFetcherMock);
+
+        THEN("the fetcher should return the row with HASMORE") {
+          for (size_t i = 0; i < numDeps; ++i) {
+            std::tie(state, row) = testee.fetchRowForDependency(i);
+            REQUIRE(state == ExecutionState::HASMORE);
+            REQUIRE(row);
+            REQUIRE(row.getNrRegisters() == 1);
+            if (i == 0) {
+              REQUIRE(row.getValue(0).slice().getInt() == 42);
+            } else if (i == 1) {
+              REQUIRE(row.getValue(0).slice().getInt() == 23);
+            } else {
+              REQUIRE(row.getValue(0).slice().getInt() == 1337);
+            }
+          }
+
+          AND_THEN("the fetcher shall return DONE") {
+            for (size_t i = 0; i < numDeps; ++i) {
+              std::tie(state, row) = testee.fetchRowForDependency(i);
+              REQUIRE(state == ExecutionState::DONE);
+              REQUIRE(!row);
+            }
+          }
+        }
+      }  // testee is destroyed here
+      // testee must be destroyed before verify, because it may call returnBlock
+      // in the destructor
+      REQUIRE(blockFetcherMock.allBlocksFetched());
+      REQUIRE(blockFetcherMock.numFetchBlockCalls() == 2 * numDeps);
+    }
+
+    WHEN("the producer WAITs, then returns DONE") {
+      blockFetcherMock.getDependencyMock(0)
+          .shouldReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::DONE, std::move(blockDep1));
+      blockFetcherMock.getDependencyMock(1)
+          .shouldReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::DONE, std::move(blockDep2));
+      blockFetcherMock.getDependencyMock(2)
+          .shouldReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::DONE, std::move(blockDep3));
+
+      {
+        MultiDependencySingleRowFetcher testee(blockFetcherMock);
+
+        THEN("the fetcher should first return WAIT with nullptr") {
+          for (size_t i = 0; i < numDeps; ++i) {
+            std::tie(state, row) = testee.fetchRowForDependency(i);
+            REQUIRE(state == ExecutionState::WAITING);
+            REQUIRE(!row);
+          }
+
+          AND_THEN("the fetcher should return the row with DONE") {
+            for (size_t i = 0; i < numDeps; ++i) {
+              std::tie(state, row) = testee.fetchRowForDependency(i);
+              REQUIRE(state == ExecutionState::DONE);
+              REQUIRE(row);
+              REQUIRE(row.getNrRegisters() == 1);
+              if (i == 0) {
+                REQUIRE(row.getValue(0).slice().getInt() == 42);
+              } else if (i == 1) {
+                REQUIRE(row.getValue(0).slice().getInt() == 23);
+              } else {
+                REQUIRE(row.getValue(0).slice().getInt() == 1337);
+              }
+            }
+          }
+        }
+      }  // testee is destroyed here
+      // testee must be destroyed before verify, because it may call returnBlock
+      // in the destructor
+      REQUIRE(blockFetcherMock.allBlocksFetched());
+      REQUIRE(blockFetcherMock.numFetchBlockCalls() == 2 * numDeps);
+    }
+
+    WHEN("the producer WAITs, returns HASMORE, then DONE") {
+      blockFetcherMock.getDependencyMock(0)
+          .shouldReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::HASMORE, std::move(blockDep1))
+          .andThenReturn(ExecutionState::DONE, nullptr);
+      blockFetcherMock.getDependencyMock(1)
+          .shouldReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::HASMORE, std::move(blockDep2))
+          .andThenReturn(ExecutionState::DONE, nullptr);
+      blockFetcherMock.getDependencyMock(2)
+          .shouldReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::HASMORE, std::move(blockDep3))
+          .andThenReturn(ExecutionState::DONE, nullptr);
+
+      {
+        MultiDependencySingleRowFetcher testee(blockFetcherMock);
+
+        THEN("the fetcher should first return WAIT with nullptr") {
+          for (size_t i = 0; i < numDeps; ++i) {
+            std::tie(state, row) = testee.fetchRowForDependency(i);
+            REQUIRE(state == ExecutionState::WAITING);
+            REQUIRE(!row);
+          }
+
+          AND_THEN("the fetcher should return the row with HASMORE") {
+            for (size_t i = 0; i < numDeps; ++i) {
+              std::tie(state, row) = testee.fetchRowForDependency(i);
+              REQUIRE(state == ExecutionState::HASMORE);
+              REQUIRE(row);
+              REQUIRE(row.getNrRegisters() == 1);
+              if (i == 0) {
+                REQUIRE(row.getValue(0).slice().getInt() == 42);
+              } else if (i == 1) {
+                REQUIRE(row.getValue(0).slice().getInt() == 23);
+              } else {
+                REQUIRE(row.getValue(0).slice().getInt() == 1337);
+              }
+            }
+
+            AND_THEN("the fetcher shall return DONE") {
+              for (size_t i = 0; i < numDeps; ++i) {
+                std::tie(state, row) = testee.fetchRowForDependency(i);
+                REQUIRE(state == ExecutionState::DONE);
+                REQUIRE(!row);
+              }
+            }
+          }
+        }
+      }  // testee is destroyed here
+      // testee must be destroyed before verify, because it may call returnBlock
+      // in the destructor
+      REQUIRE(blockFetcherMock.allBlocksFetched());
+      REQUIRE(blockFetcherMock.numFetchBlockCalls() == 3 * numDeps);
+    }
+  }
+
+  // TODO the following tests should be simplified, a simple output
+  // specification should be compared with the actual output.
+
+  GIVEN("there are multiple blocks upstream, multiple dependencies") {
+    ResourceMonitor monitor;
+    size_t numDeps = 3;
+    MultiBlockFetcherMock<false> blockFetcherMock{monitor, 1, numDeps};
+
+    // three 1-column matrices with 3, 2 and 1 rows, respectively
+    std::unique_ptr<AqlItemBlock> block1Dep1 =
+                                      buildBlock<1>(&monitor, {{{1}}, {{2}}, {{3}}}),
+                                  block2Dep1 = buildBlock<1>(&monitor, {{{4}}, {{5}}}),
+                                  block3Dep1 = buildBlock<1>(&monitor, {{{6}}});
+
+    // two 1-column matrices with 1 and 2 rows, respectively
+    std::unique_ptr<AqlItemBlock> block1Dep2 = buildBlock<1>(&monitor, {{{7}}}),
+                                  block2Dep2 = buildBlock<1>(&monitor, {{{8}}, {{9}}});
+
+    // single 1-column matrices with 2 rows
+    std::unique_ptr<AqlItemBlock> block1Dep3 =
+        buildBlock<1>(&monitor, {{{10}}, {{11}}});
+
+    WHEN("the producer does not wait") {
+      blockFetcherMock.getDependencyMock(0)
+          .shouldReturn(ExecutionState::HASMORE, std::move(block1Dep1))
+          .andThenReturn(ExecutionState::HASMORE, std::move(block2Dep1))
+          .andThenReturn(ExecutionState::DONE, std::move(block3Dep1));
+      blockFetcherMock.getDependencyMock(1)
+          .shouldReturn(ExecutionState::HASMORE, std::move(block1Dep2))
+          .andThenReturn(ExecutionState::DONE, std::move(block2Dep2));
+      blockFetcherMock.getDependencyMock(2).shouldReturn(ExecutionState::DONE,
+                                                         std::move(block1Dep3));
+
+      {
+        MultiDependencySingleRowFetcher testee(blockFetcherMock);
+
+        THEN(
+            "the fetcher should return all rows and DONE with the last for "
+            "dependency 0") {
+          int64_t rowIdxAndValue;
+          for (rowIdxAndValue = 1; rowIdxAndValue <= 5; rowIdxAndValue++) {
+            std::tie(state, row) = testee.fetchRowForDependency(0);
+            REQUIRE(state == ExecutionState::HASMORE);
+            REQUIRE(row);
+            REQUIRE(row.getNrRegisters() == 1);
+            REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+          }
+          rowIdxAndValue = 6;
+          std::tie(state, row) = testee.fetchRowForDependency(0);
+          REQUIRE(state == ExecutionState::DONE);
+          REQUIRE(row);
+          REQUIRE(row.getNrRegisters() == 1);
+          REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+
+          AND_THEN("for dependency 1") {
+            for (rowIdxAndValue = 7; rowIdxAndValue <= 8; rowIdxAndValue++) {
+              std::tie(state, row) = testee.fetchRowForDependency(1);
+              REQUIRE(state == ExecutionState::HASMORE);
+              REQUIRE(row);
+              REQUIRE(row.getNrRegisters() == 1);
+              REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+            }
+            rowIdxAndValue = 9;
+            std::tie(state, row) = testee.fetchRowForDependency(1);
+            REQUIRE(state == ExecutionState::DONE);
+            REQUIRE(row);
+            REQUIRE(row.getNrRegisters() == 1);
+            REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+
+            AND_THEN("for dependency 2") {
+              for (rowIdxAndValue = 10; rowIdxAndValue <= 10; rowIdxAndValue++) {
+                std::tie(state, row) = testee.fetchRowForDependency(2);
+                REQUIRE(state == ExecutionState::HASMORE);
+                REQUIRE(row);
+                REQUIRE(row.getNrRegisters() == 1);
+                REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+              }
+              rowIdxAndValue = 11;
+              std::tie(state, row) = testee.fetchRowForDependency(2);
+              REQUIRE(state == ExecutionState::DONE);
+              REQUIRE(row);
+              REQUIRE(row.getNrRegisters() == 1);
+              REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+            }
+          }
+        }
+      }  // testee is destroyed here
+      // testee must be destroyed before verify, because it may call returnBlock
+      // in the destructor
+      REQUIRE(blockFetcherMock.allBlocksFetched());
+      REQUIRE(blockFetcherMock.numFetchBlockCalls() == 3 + 2 + 1);
+    }
+
+    WHEN("the producer waits") {
+      blockFetcherMock.getDependencyMock(0)
+          .shouldReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::HASMORE, std::move(block1Dep1))
+          .andThenReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::HASMORE, std::move(block2Dep1))
+          .andThenReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::DONE, std::move(block3Dep1));
+      blockFetcherMock.getDependencyMock(1)
+          .shouldReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::HASMORE, std::move(block1Dep2))
+          .andThenReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::DONE, std::move(block2Dep2));
+      blockFetcherMock.getDependencyMock(2)
+          .shouldReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::DONE, std::move(block1Dep3));
+
+      {
+        MultiDependencySingleRowFetcher testee(blockFetcherMock);
+
+        THEN("the fetcher should return all rows and DONE with the last") {
+          int64_t rowIdxAndValue;
+          for (rowIdxAndValue = 1; rowIdxAndValue <= 5; rowIdxAndValue++) {
+            if (rowIdxAndValue == 1 || rowIdxAndValue == 4) {
+              // wait at the beginning of the 1st and 2nd block
+              std::tie(state, row) = testee.fetchRowForDependency(0);
+              REQUIRE(state == ExecutionState::WAITING);
+              REQUIRE(!row);
+            }
+            std::tie(state, row) = testee.fetchRowForDependency(0);
+            REQUIRE(state == ExecutionState::HASMORE);
+            REQUIRE(row);
+            REQUIRE(row.getNrRegisters() == 1);
+            REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+          }
+          rowIdxAndValue = 6;
+          // wait at the beginning of the 3rd block
+          std::tie(state, row) = testee.fetchRowForDependency(0);
+          REQUIRE(state == ExecutionState::WAITING);
+          REQUIRE(!row);
+          // last row and DONE
+          std::tie(state, row) = testee.fetchRowForDependency(0);
+          REQUIRE(state == ExecutionState::DONE);
+          REQUIRE(row);
+          REQUIRE(row.getNrRegisters() == 1);
+          REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+
+          AND_THEN("for dependency 1") {
+            for (rowIdxAndValue = 7; rowIdxAndValue <= 8; rowIdxAndValue++) {
+              if (rowIdxAndValue == 7 || rowIdxAndValue == 8) {
+                // wait at the beginning of the 1st and 2nd block
+                std::tie(state, row) = testee.fetchRowForDependency(1);
+                REQUIRE(state == ExecutionState::WAITING);
+                REQUIRE(!row);
+              }
+              std::tie(state, row) = testee.fetchRowForDependency(1);
+              REQUIRE(state == ExecutionState::HASMORE);
+              REQUIRE(row);
+              REQUIRE(row.getNrRegisters() == 1);
+              REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+            }
+            rowIdxAndValue = 9;
+            std::tie(state, row) = testee.fetchRowForDependency(1);
+            REQUIRE(state == ExecutionState::DONE);
+            REQUIRE(row);
+            REQUIRE(row.getNrRegisters() == 1);
+            REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+
+            AND_THEN("for dependency 2") {
+              for (rowIdxAndValue = 10; rowIdxAndValue <= 10; rowIdxAndValue++) {
+                if (rowIdxAndValue == 10) {
+                  // wait at the beginning of the 1st and 2nd block
+                  std::tie(state, row) = testee.fetchRowForDependency(2);
+                  REQUIRE(state == ExecutionState::WAITING);
+                  REQUIRE(!row);
+                }
+                std::tie(state, row) = testee.fetchRowForDependency(2);
+                REQUIRE(state == ExecutionState::HASMORE);
+                REQUIRE(row);
+                REQUIRE(row.getNrRegisters() == 1);
+                REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+              }
+              rowIdxAndValue = 11;
+              std::tie(state, row) = testee.fetchRowForDependency(2);
+              REQUIRE(state == ExecutionState::DONE);
+              REQUIRE(row);
+              REQUIRE(row.getNrRegisters() == 1);
+              REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+            }
+          }
+        }
+      }  // testee is destroyed here
+      // testee must be destroyed before verify, because it may call returnBlock
+      // in the destructor
+      REQUIRE(blockFetcherMock.allBlocksFetched());
+      REQUIRE(blockFetcherMock.numFetchBlockCalls() == 12);
+    }
+
+    WHEN("the producer waits and does not return DONE asap") {
+      blockFetcherMock.getDependencyMock(0)
+          .shouldReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::HASMORE, std::move(block1Dep1))
+          .andThenReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::HASMORE, std::move(block2Dep1))
+          .andThenReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::HASMORE, std::move(block3Dep1))
+          .andThenReturn(ExecutionState::DONE, nullptr);
+      blockFetcherMock.getDependencyMock(1)
+          .shouldReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::HASMORE, std::move(block1Dep2))
+          .andThenReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::HASMORE, std::move(block2Dep2))
+          .andThenReturn(ExecutionState::DONE, nullptr);
+      blockFetcherMock.getDependencyMock(2)
+          .shouldReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::HASMORE, std::move(block1Dep3))
+          .andThenReturn(ExecutionState::DONE, nullptr);
+
+      {
+        MultiDependencySingleRowFetcher testee(blockFetcherMock);
+
+        THEN("the fetcher should return all rows and DONE with the last") {
+          int64_t rowIdxAndValue;
+          for (rowIdxAndValue = 1; rowIdxAndValue <= 5; rowIdxAndValue++) {
+            if (rowIdxAndValue == 1 || rowIdxAndValue == 4) {
+              // wait at the beginning of the 1st and 2nd block
+              std::tie(state, row) = testee.fetchRowForDependency(0);
+              REQUIRE(state == ExecutionState::WAITING);
+              REQUIRE(!row);
+            }
+            std::tie(state, row) = testee.fetchRowForDependency(0);
+            REQUIRE(state == ExecutionState::HASMORE);
+            REQUIRE(row);
+            REQUIRE(row.getNrRegisters() == 1);
+            REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+          }
+          rowIdxAndValue = 6;
+          // wait at the beginning of the 3rd block
+          std::tie(state, row) = testee.fetchRowForDependency(0);
+          REQUIRE(state == ExecutionState::WAITING);
+          REQUIRE(!row);
+          // last row and DONE
+          std::tie(state, row) = testee.fetchRowForDependency(0);
+          REQUIRE(state == ExecutionState::HASMORE);
+          REQUIRE(row);
+          REQUIRE(row.getNrRegisters() == 1);
+          REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+          std::tie(state, row) = testee.fetchRowForDependency(0);
+          REQUIRE(state == ExecutionState::DONE);
+          REQUIRE(!row);
+
+          AND_THEN("for dependency 1") {
+            for (rowIdxAndValue = 7; rowIdxAndValue <= 8; rowIdxAndValue++) {
+              if (rowIdxAndValue == 7 || rowIdxAndValue == 8) {
+                // wait at the beginning of the 1st and 2nd block
+                std::tie(state, row) = testee.fetchRowForDependency(1);
+                REQUIRE(state == ExecutionState::WAITING);
+                REQUIRE(!row);
+              }
+              std::tie(state, row) = testee.fetchRowForDependency(1);
+              REQUIRE(state == ExecutionState::HASMORE);
+              REQUIRE(row);
+              REQUIRE(row.getNrRegisters() == 1);
+              REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+            }
+            rowIdxAndValue = 9;
+            std::tie(state, row) = testee.fetchRowForDependency(1);
+            REQUIRE(state == ExecutionState::HASMORE);
+            REQUIRE(row);
+            REQUIRE(row.getNrRegisters() == 1);
+            REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+            std::tie(state, row) = testee.fetchRowForDependency(1);
+            REQUIRE(state == ExecutionState::DONE);
+            REQUIRE(!row);
+
+            AND_THEN("for dependency 2") {
+              for (rowIdxAndValue = 10; rowIdxAndValue <= 10; rowIdxAndValue++) {
+                if (rowIdxAndValue == 10) {
+                  // wait at the beginning of the 1st and 2nd block
+                  std::tie(state, row) = testee.fetchRowForDependency(2);
+                  REQUIRE(state == ExecutionState::WAITING);
+                  REQUIRE(!row);
+                }
+                std::tie(state, row) = testee.fetchRowForDependency(2);
+                REQUIRE(state == ExecutionState::HASMORE);
+                REQUIRE(row);
+                REQUIRE(row.getNrRegisters() == 1);
+                REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+              }
+              rowIdxAndValue = 11;
+              std::tie(state, row) = testee.fetchRowForDependency(2);
+              REQUIRE(state == ExecutionState::HASMORE);
+              REQUIRE(row);
+              REQUIRE(row.getNrRegisters() == 1);
+              REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+              std::tie(state, row) = testee.fetchRowForDependency(2);
+              REQUIRE(state == ExecutionState::DONE);
+              REQUIRE(!row);
+            }
+          }
+        }
+      }  // testee is destroyed here
+      // testee must be destroyed before verify, because it may call returnBlock
+      // in the destructor
+      REQUIRE(blockFetcherMock.allBlocksFetched());
+      REQUIRE(blockFetcherMock.numFetchBlockCalls() == 15);
     }
   }
 }

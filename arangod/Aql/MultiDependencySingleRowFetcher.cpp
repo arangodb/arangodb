@@ -28,25 +28,36 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher(BlockFetcher<false>& executionBlock)
-    : _blockFetcher(&executionBlock), _currentRow{CreateInvalidInputRowHint{}} {}
+MultiDependencySingleRowFetcher::DependencyInfo::DependencyInfo()
+    : _upstreamState{ExecutionState::HASMORE}, _rowIndex{0}, _currentRow{CreateInvalidInputRowHint{}} {}
 
-std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> MultiDependencySingleRowFetcher::fetchBlock(size_t atMost) {
+MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher(BlockFetcher<false>& executionBlock)
+    : _blockFetcher(&executionBlock) {
+  TRI_ASSERT(_blockFetcher->numberDependencies() > 0);
+  _dependencyInfos.reserve(_blockFetcher->numberDependencies());
+  for (size_t i = 0; i < _blockFetcher->numberDependencies(); ++i) {
+    _dependencyInfos.emplace_back(DependencyInfo{});
+  }
+}
+
+std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> MultiDependencySingleRowFetcher::fetchBlockForDependency(
+    size_t dependency, size_t atMost) {
   atMost = (std::min)(atMost, ExecutionBlock::DefaultBatchSize());
+  TRI_ASSERT(dependency < _dependencyInfos.size());
 
   // There are still some blocks left that ask their parent even after they got
   // DONE the last time, and I don't currently have time to track them down.
   // Thus the following assert is commented out.
   // TRI_ASSERT(_upstreamState != ExecutionState::DONE);
-  auto res = _blockFetcher->fetchBlock(atMost);
-
-  _upstreamState = res.first;
+  auto res = _blockFetcher->fetchBlockForDependency(dependency, atMost);
+  auto& depInfo = _dependencyInfos[dependency];
+  depInfo._upstreamState = res.first;
 
   return res;
 }
 
 MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher()
-    : _blockFetcher(nullptr), _currentRow{CreateInvalidInputRowHint{}} {}
+    : _blockFetcher(nullptr) {}
 
 RegisterId MultiDependencySingleRowFetcher::getNrInputRegisters() const {
   return _blockFetcher->getNrInputRegisters();
