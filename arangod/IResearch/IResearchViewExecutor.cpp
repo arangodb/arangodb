@@ -37,8 +37,8 @@
 #include "VocBase/LogicalCollection.h"
 
 // TODO Eliminate access to the node and the plan!
-#include "IResearch/IResearchViewNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "IResearch/IResearchViewNode.h"
 
 #include <3rdParty/iresearch/core/search/boolean_filter.hpp>
 
@@ -50,8 +50,7 @@ typedef std::vector<arangodb::LocalDocumentId> pks_t;
 
 IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     ExecutorInfos&& infos, std::shared_ptr<IResearchView::Snapshot const> reader,
-    RegisterId const outputRegister, Query& query,
-    iresearch::IResearchViewNode const& node)
+    RegisterId const outputRegister, Query& query, iresearch::IResearchViewNode const& node)
     : ExecutorInfos(std::move(infos)),
       _outputRegister(outputRegister),
       _reader(std::move(reader)),
@@ -65,9 +64,7 @@ RegisterId IResearchViewExecutorInfos::getOutputRegister() const {
   return _outputRegister;
 };
 
-Query& IResearchViewExecutorInfos::getQuery() const noexcept {
-  return _query;
-}
+Query& IResearchViewExecutorInfos::getQuery() const noexcept { return _query; }
 
 IResearchViewNode const& IResearchViewExecutorInfos::getNode() const {
   return _node;
@@ -97,7 +94,6 @@ IResearchViewExecutor<ordered>::IResearchViewExecutor(IResearchViewExecutor::Fet
 
   // add expression execution context
   _filterCtx.emplace(_execCtx);
-
 }
 
 template <bool ordered>
@@ -127,22 +123,20 @@ IResearchViewExecutor<ordered>::produceRow(OutputAqlItemRow& output) {
   }
 
   ReadContext ctx(infos().numberOfInputRegisters(), _inputRow, output);
-  bool hasMore;
-  size_t documentsWritten;
-  std::tie(hasMore, documentsWritten) = next(ctx);
-  TRI_ASSERT(documentsWritten <= 1);
-  TRI_ASSERT((documentsWritten == 1) == hasMore);
-  stats.incrScanned(documentsWritten);
+  bool documentWritten = next(ctx);
 
-  if (!hasMore) {
+  if (documentWritten) {
+    stats.incrScanned();
+
+    return {ExecutionState::HASMORE, stats};
+  } else {
     _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+
     // While I do find this elegant, C++ does not guarantee any tail
     // recursion optimization. Thus, to avoid overhead and stack overflows:
     // TODO Remove the recursive call in favour of a loop
     return produceRow(output);
   }
-
-  return {ExecutionState::HASMORE, stats};
 }
 
 template <bool ordered>
@@ -150,9 +144,9 @@ const IResearchViewExecutorInfos& IResearchViewExecutor<ordered>::infos() const 
   return _infos;
 }
 
-inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection( // find collection
-  arangodb::transaction::Methods& trx, // transaction
-  TRI_voc_cid_t cid // collection identifier
+inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection(  // find collection
+    arangodb::transaction::Methods& trx,  // transaction
+    TRI_voc_cid_t cid                     // collection identifier
 ) {
   TRI_ASSERT(trx.state());
 
@@ -164,9 +158,9 @@ inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection( // find co
 
   if (!collection) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-    << "failed to find collection while reading document from arangosearch "
-       "view, cid '"
-    << cid << "'";
+        << "failed to find collection while reading document from arangosearch "
+           "view, cid '"
+        << cid << "'";
 
     return nullptr;  // not a valid collection reference
   }
@@ -174,31 +168,23 @@ inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection( // find co
   return collection->collection();
 }
 
-pks_t::iterator readPKs(irs::doc_iterator& it,
-                        irs::columnstore_reader::values_reader_f const& values,
-                        pks_t& keys, size_t limit) {
-  keys.clear();
-  keys.resize(limit);
+LocalDocumentId readPK(irs::doc_iterator& it,
+                       irs::columnstore_reader::values_reader_f const& values) {
+  LocalDocumentId documentId;
 
-  auto begin = keys.begin();
-  auto end = keys.end();
-
-  for (irs::bytes_ref key; begin != end && it.next();) {
-    if (values(it.value(), key) &&
-        arangodb::iresearch::DocumentPrimaryKey::read(*begin, key)) {
-      ++begin;
+  if (it.next()) {
+    irs::bytes_ref key;
+    if (values(it.value(), key)) {
+      arangodb::iresearch::DocumentPrimaryKey::read(documentId, key);
     }
   }
 
-  return begin;
+  return documentId;
 }
 
 template <bool ordered>
-std::pair<bool, size_t> IResearchViewExecutor<ordered>::next(ReadContext &ctx) {
+bool IResearchViewExecutor<ordered>::next(ReadContext& ctx) {
   TRI_ASSERT(_filter);
-
-  size_t documentsWritten = 0;
-
 
   for (size_t count = _reader->size(); _readerOffset < count;) {
     if (!_itr && !resetIterator()) {
@@ -211,46 +197,41 @@ std::pair<bool, size_t> IResearchViewExecutor<ordered>::next(ReadContext &ctx) {
     if (!collection) {
       // TODO shouldn't this be an exception?
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to find collection while reading document from "
-         "arangosearch view, cid '"
-      << cid << "'";
+          << "failed to find collection while reading document from "
+             "arangosearch view, cid '"
+          << cid << "'";
       continue;
     }
 
     TRI_ASSERT(_pkReader);
 
-    // read document PKs from iresearch
-    auto end = readPKs(*_itr, _pkReader, _keys, 1);
+    // try to read a document PK from iresearch
+    LocalDocumentId documentId = readPK(*_itr, _pkReader);
 
-    // read documents from underlying storage engine
-    for (auto begin = _keys.begin(); begin != end; ++begin) {
-      if (!collection->readDocumentWithCallback(infos().getQuery().trx(), *begin, ctx.callback)) {
-        continue;
-      }
-      ++documentsWritten;
-      // return 'true' since we've reached the requested limit,
-      // but don't know exactly are there any more data
-      return {true, documentsWritten};  // do not change iterator if already reached limit
+    // read document from underlying storage engine, if we got an id
+    if (documentId.isSet() &&
+        collection->readDocumentWithCallback(infos().getQuery().trx(),
+                                             documentId, ctx.callback)) {
+      // we read and wrote a document, return true. we don't know if there are more.
+      return true;  // do not change iterator if already reached limit
     }
 
     ++_readerOffset;
     _itr.reset();
   }
 
-  TRI_ASSERT(documentsWritten == 0);
-
   // no documents found, we're exhausted.
-  return {false, documentsWritten};
+  return false;
 }
 
 inline irs::columnstore_reader::values_reader_f pkColumn(irs::sub_reader const& segment) {
   auto const* reader =
-    segment.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
+      segment.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
 
   return reader ? reader->values() : irs::columnstore_reader::values_reader_f{};
 }
 
-template<bool ordered>
+template <bool ordered>
 bool IResearchViewExecutor<ordered>::resetIterator() {
   TRI_ASSERT(_filter);
   TRI_ASSERT(!_itr);
@@ -261,8 +242,8 @@ bool IResearchViewExecutor<ordered>::resetIterator() {
 
   if (!_pkReader) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-    << "encountered a sub-reader without a primary key column while "
-       "executing a query, ignoring";
+        << "encountered a sub-reader without a primary key column while "
+           "executing a query, ignoring";
     return false;
   }
 
@@ -271,65 +252,65 @@ bool IResearchViewExecutor<ordered>::resetIterator() {
   return true;
 }
 
-template<bool ordered>
+template <bool ordered>
 IndexIterator::DocumentCallback IResearchViewExecutor<ordered>::ReadContext::copyDocumentCallback(
-  IResearchViewExecutor<ordered>::ReadContext& ctx) {
+    IResearchViewExecutor<ordered>::ReadContext& ctx) {
   auto* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
 
   typedef std::function<IndexIterator::DocumentCallback(IResearchViewExecutor<ordered>::ReadContext&)> CallbackFactory;
 
   static CallbackFactory const callbackFactories[]{
-    [](ReadContext& ctx) {
-      // capture only one reference to potentially avoid heap allocation
-      return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
-        AqlValue a {AqlValueHintCopy(doc.begin())};
-        bool mustDestroy = true;
-        AqlValueGuard guard{a, mustDestroy};
-        ctx.outputRow.moveValueInto(ctx.curRegs, ctx.inputRow, guard);
-      };
-    },
+      [](ReadContext& ctx) {
+        // capture only one reference to potentially avoid heap allocation
+        return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
+          AqlValue a{AqlValueHintCopy(doc.begin())};
+          bool mustDestroy = true;
+          AqlValueGuard guard{a, mustDestroy};
+          ctx.outputRow.moveValueInto(ctx.curRegs, ctx.inputRow, guard);
+        };
+      },
 
-    [](ReadContext& ctx) {
-      // capture only one reference to potentially avoid heap allocation
-      return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
-        AqlValue a {AqlValueHintDocumentNoCopy(doc.begin())};
-        bool mustDestroy = true;
-        AqlValueGuard guard{a, mustDestroy};
-        ctx.outputRow.moveValueInto(ctx.curRegs, ctx.inputRow, guard);
-      };
-    }};
+      [](ReadContext& ctx) {
+        // capture only one reference to potentially avoid heap allocation
+        return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
+          AqlValue a{AqlValueHintDocumentNoCopy(doc.begin())};
+          bool mustDestroy = true;
+          AqlValueGuard guard{a, mustDestroy};
+          ctx.outputRow.moveValueInto(ctx.curRegs, ctx.inputRow, guard);
+        };
+      }};
 
   return callbackFactories[size_t(engine->useRawDocumentPointers())](ctx);
 }
 
-template<bool ordered>
+template <bool ordered>
 void IResearchViewExecutor<ordered>::reset() {
-// This is from IResearchViewUnorderedBlock::reset():
+  // This is from IResearchViewUnorderedBlock::reset():
   // reset iterator state
   _itr.reset();
   _readerOffset = 0;
 
-// The rest is from IResearchViewBlockBase::reset():
+  // The rest is from IResearchViewBlockBase::reset():
   _ctx._inputRow = _inputRow;
 
   auto& viewNode = infos().getNode();
-  //auto& viewNode = *ExecutionNode::castTo<IResearchViewNode const*>(getPlanNode());
+  // auto& viewNode = *ExecutionNode::castTo<IResearchViewNode const*>(getPlanNode());
   auto* plan = const_cast<ExecutionPlan*>(viewNode.plan());
 
-  arangodb::iresearch::QueryContext const queryCtx = {infos().getQuery().trx(), plan, plan->getAst(), &_ctx,
+  arangodb::iresearch::QueryContext const queryCtx = {infos().getQuery().trx(),
+                                                      plan, plan->getAst(), &_ctx,
                                                       &viewNode.outVariable()};
 
   if (_volatileFilter) {  // `_volatileSort` implies `_volatileFilter`
     irs::Or root;
 
     if (!arangodb::iresearch::FilterFactory::filter(&root, queryCtx,
-      viewNode.filterCondition())) {
+                                                    viewNode.filterCondition())) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "failed to build filter while querying arangosearch view, query '"
-        + viewNode.filterCondition().toVelocyPack(true)->toJson() + "'"
-      );
+          TRI_ERROR_BAD_PARAMETER,
+          "failed to build filter while querying arangosearch view, query '" +
+              viewNode.filterCondition().toVelocyPack(true)->toJson() + "'");
     }
 
     if (_volatileSort) {

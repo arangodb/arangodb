@@ -116,8 +116,12 @@ class IResearchViewExecutor {
     static IndexIterator::DocumentCallback copyDocumentCallback(ReadContext& ctx);
 
    public:
-    explicit ReadContext(aql::RegisterId curRegs, InputAqlItemRow& inputRow, OutputAqlItemRow& outputRow)
-        : curRegs(curRegs), inputRow(inputRow), outputRow(outputRow), callback(copyDocumentCallback(*this)) {}
+    explicit ReadContext(aql::RegisterId curRegs, InputAqlItemRow& inputRow,
+                         OutputAqlItemRow& outputRow)
+        : curRegs(curRegs),
+          inputRow(inputRow),
+          outputRow(outputRow),
+          callback(copyDocumentCallback(*this)) {}
 
     aql::RegisterId const curRegs;
     size_t pos{};
@@ -131,7 +135,7 @@ class IResearchViewExecutor {
 
   // Copied from IResearchViewUnorderedBlock.
   // TODO Should be removed later, or rewritten, as it does not fit the pattern.
-  std::pair<bool, size_t> next(ReadContext &ctx);
+  bool next(ReadContext& ctx);
 
   bool resetIterator();
 
@@ -146,8 +150,7 @@ class IResearchViewExecutor {
   ExecutionState _upstreamState;
 
   // IResearchViewBlockBase members:
-  std::vector<LocalDocumentId> _keys;  // buffer for primary keys
-  irs::attribute_view _filterCtx;      // filter context
+  irs::attribute_view _filterCtx;  // filter context
   iresearch::ViewExpressionContext _ctx;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> _reader;
   irs::filter::prepared::ptr _filter;
