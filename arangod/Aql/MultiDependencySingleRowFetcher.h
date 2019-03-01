@@ -113,6 +113,8 @@ class MultiDependencySingleRowFetcher {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
+  size_t numberDependencies() const { return _dependencyInfos.size(); }
+
   /**
    * @brief Fetch one new AqlItemRow from upstream.
    *        **Guarantee**: the pointer returned is valid only
@@ -139,7 +141,7 @@ class MultiDependencySingleRowFetcher {
   // NOLINTNEXTLINE google-default-arguments
   TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRowForDependency(
       size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize()) {
-    TRI_ASSERT(dependency < _dependencyInfos.size());
+    TRI_ASSERT(dependency < numberDependencies());
     auto& depInfo = _dependencyInfos[dependency];
     // Fetch a new block iff necessary
     if (!indexIsValid(depInfo)) {
