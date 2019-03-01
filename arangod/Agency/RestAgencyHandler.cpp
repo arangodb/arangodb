@@ -563,7 +563,7 @@ RestStatus RestAgencyHandler::handleState() {
 
   VPackBuilder body;
   { VPackObjectBuilder o(&body);
-    arangodb::consensus::index_t index = _agent->readDB(body); }
+    _agent->readDB(body); }
     
   generateResult(rest::ResponseCode::OK, body.slice());
   return RestStatus::DONE;
