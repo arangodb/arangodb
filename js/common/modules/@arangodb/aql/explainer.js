@@ -420,14 +420,14 @@ class PrintedTable {
   setHeader(index, value) {
     this.content[index].header = value;
     this.content[index].size = Math.max(this.content[index].size, value.length);
-    print(this.content[index].size, value);
   }
 
   addCell(index, value, valueLength) {
+    // Value might be empty
+    value = value || "";
     valueLength = valueLength || value.length;
     this.content[index].cells.push({ formatted: value, size: valueLength });
     this.content[index].size = Math.max(this.content[index].size, valueLength);
-    print(this.content[index].size, value);
   }
 
   alignNewEntry() {
@@ -1271,7 +1271,11 @@ function processQuery(query, explain, planIndex) {
       case 'SortNode':
         return keyword('SORT') + ' ' + node.elements.map(function (node) {
           return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
+<<<<<<< HEAD
         }).join(', ') + annotation(`   /* sorting strategy: ${node.strategy.split("-").join(" ")} */`);
+=======
+        }).join(', ');
+>>>>>>> 79fba18538... Fixed the Explainer output
       case 'LimitNode':
         return keyword('LIMIT') + ' ' + value(JSON.stringify(node.offset)) + ', ' + value(JSON.stringify(node.limit)) + (node.fullCount ? '  ' + annotation('/* fullCount */') : '');
       case 'ReturnNode':
