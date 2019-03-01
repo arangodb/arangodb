@@ -58,6 +58,8 @@ const std::string SHARD_FOLLOWER2 = "follower2";
 const std::string FREE_SERVER = "free";
 const std::string FREE_SERVER2 = "free2";
 
+bool aborts = false;
+
 typedef std::function<std::unique_ptr<Builder>(
   Slice const&, std::string const&)>TestStructureType;
 
@@ -234,7 +236,7 @@ SECTION("if we want to start and the collection went missing from plan (our trut
     JOB_STATUS::TODO,
     jobId
   );
-  failedFollower.start();
+  failedFollower.start(aborts);
 }
 
 SECTION("if we are supposed to fail a distributeShardsLike job we immediately fail because this should be done by a job running on the master shard") {
@@ -294,7 +296,7 @@ SECTION("if we are supposed to fail a distributeShardsLike job we immediately fa
     JOB_STATUS::TODO,
     jobId
   );
-  failedFollower.start();
+  failedFollower.start(aborts);
 }
 
 SECTION("if the follower is healthy again we fail the job") {
@@ -356,7 +358,7 @@ SECTION("if the follower is healthy again we fail the job") {
     JOB_STATUS::TODO,
     jobId
   );
-  REQUIRE_FALSE(failedFollower.start());
+  REQUIRE_FALSE(failedFollower.start(aborts));
   Verify(Method(mockAgent, transact));
   Verify(Method(mockAgent, write));
 }
@@ -406,7 +408,7 @@ SECTION("if there is no healthy free server when trying to start just wait") {
     JOB_STATUS::TODO,
     jobId
   );
-  REQUIRE_FALSE(failedFollower.start());
+  REQUIRE_FALSE(failedFollower.start(aborts));
 }
 
 SECTION("abort any moveShard job blocking the shard and start") {
@@ -495,7 +497,7 @@ SECTION("abort any moveShard job blocking the shard and start") {
     JOB_STATUS::TODO,
     jobId
   );
-  REQUIRE(failedFollower.start());
+  REQUIRE(failedFollower.start(aborts));
   Verify(Method(mockAgent, transact));
   Verify(Method(mockAgent, write));
 }
@@ -574,7 +576,7 @@ SECTION("a successfully started job should finish immediately and set everything
     JOB_STATUS::TODO,
     jobId
   );
-  failedFollower.start();
+  failedFollower.start(aborts);
   Verify(Method(mockAgent, transact));
 }
 
@@ -679,7 +681,7 @@ SECTION("the job should handle distributeShardsLike") {
     JOB_STATUS::TODO,
     jobId
   );
-  failedFollower.start();
+  failedFollower.start(aborts);
   Verify(Method(mockAgent, transact));
 }
 
@@ -746,7 +748,7 @@ SECTION("the job should timeout after a while") {
     JOB_STATUS::TODO,
     jobId
   );
-  failedFollower.start();
+  failedFollower.start(aborts);
   Verify(Method(mockAgent, write));
 }
 

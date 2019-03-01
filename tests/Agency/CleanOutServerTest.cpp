@@ -50,6 +50,8 @@ const std::string PREFIX = "arango";
 const std::string SERVER = "leader";
 const std::string JOBID = "1";
 
+bool aborts = false;
+
 typedef std::function<std::unique_ptr<Builder>(
   Slice const&, std::string const&)>TestStructureType;
 
@@ -220,7 +222,7 @@ SECTION("cleanout server should fail if the server does not exist") {
     JOB_STATUS::TODO,
     JOBID
   );
-  cleanOutServer.start();
+  cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
   Verify(Method(mockAgent, waitFor));
 }
@@ -262,7 +264,7 @@ SECTION("cleanout server should wait if the server is currently blocked") {
     JOB_STATUS::TODO,
     JOBID
   );
-  cleanOutServer.start();
+  cleanOutServer.start(aborts);
   REQUIRE(true);
 }
 
@@ -307,7 +309,7 @@ SECTION("cleanout server should wait if the server is not healthy right now") {
     JOB_STATUS::TODO,
     JOBID
   );
-  cleanOutServer.start();
+  cleanOutServer.start(aborts);
   REQUIRE(true);
 }
 
@@ -357,7 +359,7 @@ SECTION("cleanout server should fail if the server is already cleaned") {
     JOB_STATUS::TODO,
     JOBID
   );
-  cleanOutServer.start();
+  cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
   Verify(Method(mockAgent, waitFor));
 }
@@ -404,7 +406,7 @@ SECTION("cleanout server should fail if the server is failed") {
     JOB_STATUS::TODO,
     JOBID
   );
-  cleanOutServer.start();
+  cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
   Verify(Method(mockAgent, waitFor));
 }
@@ -453,7 +455,7 @@ SECTION("cleanout server should fail if the replicationFactor is too big for any
     JOB_STATUS::TODO,
     JOBID
   );
-  cleanOutServer.start();
+  cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
   Verify(Method(mockAgent, waitFor));
 }
@@ -503,7 +505,7 @@ SECTION("cleanout server should fail if the replicationFactor is too big for any
     JOB_STATUS::TODO,
     JOBID
   );
-  cleanOutServer.start();
+  cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
   Verify(Method(mockAgent, waitFor));
 }
@@ -553,7 +555,7 @@ SECTION("cleanout server should fail if the replicationFactor is too big for any
     JOB_STATUS::TODO,
     JOBID
   );
-  cleanOutServer.start();
+  cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
   Verify(Method(mockAgent, waitFor));
 }
@@ -622,7 +624,7 @@ SECTION("a cleanout server job should move into pending when everything is ok") 
     JOB_STATUS::TODO,
     JOBID
   );
-  cleanOutServer.start();
+  cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
   Verify(Method(mockAgent, waitFor));
 }
@@ -702,7 +704,7 @@ SECTION("a cleanout server job should abort after a long timeout") {
     JOB_STATUS::PENDING,
     JOBID
   );
-  cleanOutServer.run();
+  cleanOutServer.run(aborts);
   Verify(Method(mockAgent, write));
   Verify(Method(mockAgent, waitFor));
 }
@@ -743,7 +745,7 @@ SECTION("when there are still subjobs to be done it should wait") {
     JOB_STATUS::PENDING,
     JOBID
   );
-  cleanOutServer.run();
+  cleanOutServer.run(aborts);
   REQUIRE(true);
 };
 
@@ -802,7 +804,7 @@ SECTION("once all subjobs were successful then the job should be finished") {
     JOB_STATUS::PENDING,
     JOBID
   );
-  cleanOutServer.run();
+  cleanOutServer.run(aborts);
   REQUIRE(true);
 }
 
@@ -847,7 +849,7 @@ SECTION("if there was a failed subjob then the job should also fail") {
     JOB_STATUS::PENDING,
     JOBID
   );
-  cleanOutServer.run();
+  cleanOutServer.run(aborts);
   REQUIRE(true);
 }
 
