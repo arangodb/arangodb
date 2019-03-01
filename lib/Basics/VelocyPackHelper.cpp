@@ -42,6 +42,7 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
 
@@ -51,6 +52,9 @@ unsigned long long XXH64(const void* input, size_t length, unsigned long long se
 
 using namespace arangodb;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
+  
+static arangodb::velocypack::StringRef const idRef("id");
+static arangodb::velocypack::StringRef const cidRef("cid");
 
 static std::unique_ptr<VPackAttributeTranslator> Translator;
 static std::unique_ptr<VPackAttributeExcludeHandler> ExcludeHandler;
@@ -1063,10 +1067,10 @@ uint64_t VelocyPackHelper::extractIdValue(VPackSlice const& slice) {
   if (!slice.isObject()) {
     return 0;
   }
-  VPackSlice id = slice.get("id");
+  VPackSlice id = slice.get(::idRef);
   if (id.isNone()) {
     // pre-3.1 compatibility
-    id = slice.get("cid");
+    id = slice.get(::cidRef);
   }
 
   if (id.isString()) {

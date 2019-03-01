@@ -36,11 +36,11 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/OpenFilesTracker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Maskings/Maskings.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "Shell/ClientFeature.h"
@@ -223,6 +223,29 @@ bool isIgnoredHiddenEnterpriseCollection(arangodb::DumpFeature::Options const& o
   return false;
 }
 
+arangodb::Result dumpJsonObjects(arangodb::DumpFeature::JobData& jobData,
+                                 arangodb::ManagedDirectory::File& file,
+                                 arangodb::basics::StringBuffer const& body) {
+  arangodb::basics::StringBuffer masked(1, false);
+  arangodb::basics::StringBuffer const* result = &body;
+
+  if (jobData.maskings != nullptr) {
+    jobData.maskings->mask(jobData.name, body, masked);
+    result = &masked;
+  }
+
+  file.write(result->c_str(), result->length());
+
+  if (file.status().fail()) {
+    return {TRI_ERROR_CANNOT_WRITE_FILE, std::string("cannot write file '") + file.path() +
+                                             "': " + file.status().errorMessage()};
+  }
+
+  jobData.stats.totalWritten += static_cast<uint64_t>(result->length());
+
+  return {TRI_ERROR_NO_ERROR};
+}
+
 /// @brief dump the actual data from an individual collection
 arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
                                 arangodb::DumpFeature::JobData& jobData,
@@ -298,13 +321,10 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
 
     // now actually write retrieved data to dump file
     arangodb::basics::StringBuffer const& body = response->getBody();
-    file.write(body.c_str(), body.length());
-    if (file.status().fail()) {
-      return {TRI_ERROR_CANNOT_WRITE_FILE,
-              std::string("cannot write file '") + file.path() +
-                  "': " + file.status().errorMessage()};
-    } else {
-      jobData.stats.totalWritten += (uint64_t)body.length();
+    arangodb::Result result = dumpJsonObjects(jobData, file, body);
+
+    if (result.fail()) {
+      return result;
     }
 
     if (!checkMore || fromTick == 0) {
@@ -393,6 +413,21 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
 
   arangodb::Result result{TRI_ERROR_NO_ERROR};
 
+  bool dumpStructure = true;
+
+  if (dumpStructure && jobData.maskings != nullptr) {
+    dumpStructure = jobData.maskings->shouldDumpStructure(jobData.name);
+  }
+
+  if (!dumpStructure) {
+    if (jobData.options.progress) {
+      LOG_TOPIC(INFO, arangodb::Logger::DUMP)
+          << "# Dumping collection '" << jobData.name << "'...";
+    }
+
+    return result;
+  }
+
   // prep hex string of collection name
   std::string const hexString(arangodb::rest::SslInterface::sslMD5(jobData.name));
 
@@ -435,19 +470,28 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
     }
   }
 
-  if (result.ok() && jobData.options.dumpData) {
-    // save the actual data
-    auto file = jobData.directory.writableFile(jobData.name + "_" + hexString +
-                                                   ".data.json",
-                                               true);
-    if (!::fileOk(file.get())) {
-      return ::fileError(file.get(), true);
+  if (result.ok()) {
+    bool dumpData = jobData.options.dumpData;
+
+    if (dumpData && jobData.maskings != nullptr) {
+      dumpData = jobData.maskings->shouldDumpData(jobData.name);
     }
 
-    if (jobData.options.clusterMode) {
-      result = ::handleCollectionCluster(client, jobData, *file);
-    } else {
-      result = ::handleCollection(client, jobData, *file);
+    // always create the file so that arangorestore does not complain
+    auto file = jobData.directory.writableFile(jobData.name + "_" + hexString +
+                                                   ".data.json",
+                                                 true);
+      if (!::fileOk(file.get())) {
+        return ::fileError(file.get(), true);
+      }
+
+    if (dumpData) {
+      // save the actual data
+      if (jobData.options.clusterMode) {
+        result = ::handleCollectionCluster(client, jobData, *file);
+      } else {
+        result = ::handleCollection(client, jobData, *file);
+      }
     }
   }
 
@@ -467,10 +511,11 @@ void handleJobResult(std::unique_ptr<arangodb::DumpFeature::JobData>&& jobData,
 namespace arangodb {
 
 DumpFeature::JobData::JobData(ManagedDirectory& dir, DumpFeature& feat,
-                              Options const& opts, Stats& stat, VPackSlice const& info,
+                              Options const& opts, maskings::Maskings* maskings,
+                              Stats& stat, VPackSlice const& info,
                               uint64_t const batch, std::string const& c,
                               std::string const& n, std::string const& t)
-    : directory{dir}, feature{feat}, options{opts}, stats{stat}, collectionInfo{info}, batchId{batch}, cid{c}, name{n}, type{t} {}
+    : directory{dir}, feature{feat}, options{opts}, maskings{maskings}, stats{stat}, collectionInfo{info}, batchId{batch}, cid{c}, name{n}, type{t} {}
 
 DumpFeature::DumpFeature(application_features::ApplicationServer& server, int& exitCode)
     : ApplicationFeature(server, DumpFeature::featureName()),
@@ -543,6 +588,10 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
 
   options->addOption("--tick-end", "last tick to be included in data dump",
                      new UInt64Parameter(&_options.tickEnd));
+
+  options->addOption("--maskings", "file with maskings definition",
+                     new StringParameter(&_options.maskingsFile))
+                     .setIntroducedIn(30322).setIntroducedIn(30402);
 }
 
 void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -564,7 +613,7 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
   _options.maxChunkSize =
       boost::algorithm::clamp(_options.maxChunkSize, _options.initialChunkSize, ::MaxChunkSize);
 
-  if (_options.tickStart < _options.tickEnd) {
+  if (_options.tickEnd < _options.tickStart) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid values for --tick-start or --tick-end";
     FATAL_ERROR_EXIT();
@@ -697,8 +746,9 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client, std::string co
 
     // queue job to actually dump collection
     auto jobData =
-        std::make_unique<JobData>(*_directory, *this, _options, _stats, collection,
-                                  batchId, std::to_string(cid), name, collectionType);
+        std::make_unique<JobData>(*_directory, *this, _options, _maskings.get(),
+                                  _stats, collection, batchId,
+                                  std::to_string(cid), name, collectionType);
     _clientTaskQueue.queueJob(std::move(jobData));
   }
 
@@ -833,7 +883,8 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
     }
 
     // queue job to actually dump collection
-    auto jobData = std::make_unique<JobData>(*_directory, *this, _options, _stats, collection,
+    auto jobData = std::make_unique<JobData>(*_directory, *this, _options,
+                                             _maskings.get(), _stats, collection,
                                              0 /* batchId */, std::to_string(cid),
                                              name, "" /* collectionType */);
     _clientTaskQueue.queueJob(std::move(jobData));
@@ -936,8 +987,19 @@ void DumpFeature::reportError(Result const& error) {
   }
 }
 
-/// @brief main method to run dump
 void DumpFeature::start() {
+  if (!_options.maskingsFile.empty()) {
+    maskings::MaskingsResult m = maskings::Maskings::fromFile(_options.maskingsFile);
+
+    if (m.status != maskings::MaskingsResult::VALID) {
+      LOG_TOPIC(FATAL, Logger::CONFIG)
+          << m.message << " in maskings file '" << _options.maskingsFile << "'";
+      FATAL_ERROR_EXIT();
+    }
+
+    _maskings = std::move(m.maskings);
+  }
+
   _exitCode = EXIT_SUCCESS;
 
   // generate a fake client id that we sent to the server

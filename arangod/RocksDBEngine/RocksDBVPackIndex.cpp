@@ -651,9 +651,16 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx, RocksDBMetho
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      arangodb::Result r = mthds->Put(_cf, key, value.string(), rocksutils::index);
-      if (!r.ok()) {
-        res = r.errorNumber();
+      if (_unique) {
+        arangodb::Result r = mthds->Put(_cf, key, value.string(), rocksutils::index);
+        if (!r.ok()) {
+          res = r.errorNumber();
+        }
+      } else {
+        arangodb::Result r = mthds->PutUntracked(_cf, key, value.string(), rocksutils::index);
+        if (!r.ok()) {
+          res = r.errorNumber();
+        }
       }
     }
 

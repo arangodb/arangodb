@@ -91,7 +91,7 @@ function getClusterEndpoints() {
     auth: {
       bearer: jwtRoot,
     },
-    timeout: 120 
+    timeout: 300 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
@@ -109,7 +109,7 @@ function getLoggerState(endpoint) {
     auth: {
       bearer: jwtRoot,
     },
-    timeout: 120 
+    timeout: 300 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
@@ -124,7 +124,7 @@ function getApplierState(endpoint) {
     auth: {
       bearer: jwtRoot,
     },
-    timeout: 120 
+    timeout: 300 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
@@ -168,7 +168,7 @@ function checkData(server) {
     auth: {
       bearer: jwtRoot,
     },
-    timeout: 120 
+    timeout: 300 
   });
 
   assertTrue(res instanceof request.Response);
@@ -187,7 +187,7 @@ function readAgencyValue(path) {
       bearer: jwtSuperuser,
     },
     body: JSON.stringify([[path]]),
-    timeout: 120 
+    timeout: 300 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
@@ -259,7 +259,7 @@ function setReadOnly(endpoint, ro) {
     },
     body: {"mode" : str},
     json: true,
-    timeout: 120 
+    timeout: 300 
   });
   print(JSON.stringify(res));
 

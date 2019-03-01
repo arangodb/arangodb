@@ -30,6 +30,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
 #include "Replication/common-defines.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -154,22 +155,20 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
   bool isNumberDocsExclusive = false;
   auto* rcoll = static_cast<RocksDBCollection*>(logical->getPhysical());
   if (_snapshot == nullptr) {
-    // fetch number docs and snapshot under exclusive lock
-    // this should enable us to correct the count later
+    // only DBServers require a corrected document count
+    const double to = ServerState::instance()->isDBServer() ? 10.0 : 1.0;
     auto lockGuard = scopeGuard([rcoll] { rcoll->unlockWrite(); });
-    int res = rcoll->lockWrite(transaction::Options::defaultLockTimeout);
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (rcoll->lockWrite(to) == TRI_ERROR_NO_ERROR) {
+      // fetch number docs and snapshot under exclusive lock
+      // this should enable us to correct the count later
+      isNumberDocsExclusive = true;
+    } else {
       lockGuard.cancel();
-      return std::make_tuple(res, 0, 0);
     }
-
     numberDocuments = rcoll->numberDocuments();
-    isNumberDocsExclusive = true;
     lazyCreateSnapshot();
-    lockGuard.fire();  // release exclusive lock
   } else {             // fetch non-exclusive
     numberDocuments = rcoll->numberDocuments();
-    lazyCreateSnapshot();
   }
   TRI_ASSERT(_snapshot != nullptr);
 
@@ -194,20 +193,21 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
 
 // returns inventory
 Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool includeSystem,
+                                               bool includeFoxxQueues,
                                                bool global, VPackBuilder& result) {
   {
     MUTEX_LOCKER(locker, _contextLock);
     lazyCreateSnapshot();
   }
 
-  auto nameFilter = [includeSystem](LogicalCollection const* collection) {
-    std::string const cname = collection->name();
-    if (!includeSystem && !cname.empty() && cname[0] == '_') {
+  auto nameFilter = [&](LogicalCollection const* collection) {
+    std::string const& cname = collection->name();
+    if (!includeSystem && TRI_vocbase_t::IsSystemName(cname)) {
       // exclude all system collections
       return false;
     }
 
-    if (TRI_ExcludeCollectionReplication(cname, includeSystem)) {
+    if (TRI_ExcludeCollectionReplication(cname, includeSystem, includeFoxxQueues)) {
       // collection is excluded from replication
       return false;
     }

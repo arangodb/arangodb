@@ -87,30 +87,37 @@ bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
 
   _created = system_clock::now();
 
-  _jb = std::make_shared<Builder>();
-  {
-    VPackArrayBuilder transaction(_jb.get());
-    {
-      VPackObjectBuilder operations(_jb.get());
-      // Todo entry
-      _jb->add(VPackValue(toDoPrefix + _jobId));
-      {
-        VPackObjectBuilder todo(_jb.get());
-        _jb->add("creator", VPackValue(_creator));
-        _jb->add("type", VPackValue("failedFollower"));
-        _jb->add("database", VPackValue(_database));
-        _jb->add("collection", VPackValue(_collection));
-        _jb->add("shard", VPackValue(_shard));
-        _jb->add("fromServer", VPackValue(_from));
-        _jb->add("jobId", VPackValue(_jobId));
-        _jb->add("timeCreated", VPackValue(timepointToString(_created)));
-      }
-    }
+  if (envelope == nullptr) {
+    _jb = std::make_shared<Builder>();
+    _jb->openArray();
+    _jb->openObject();
+  } else {
+    _jb = envelope;
   }
 
-  write_ret_t res = singleWriteTransaction(_agent, *_jb);
+  // Todo entry
+  _jb->add(VPackValue(toDoPrefix + _jobId));
+  {
+    VPackObjectBuilder todo(_jb.get());
+    _jb->add("creator", VPackValue(_creator));
+    _jb->add("type", VPackValue("failedFollower"));
+    _jb->add("database", VPackValue(_database));
+    _jb->add("collection", VPackValue(_collection));
+    _jb->add("shard", VPackValue(_shard));
+    _jb->add("fromServer", VPackValue(_from));
+    _jb->add("jobId", VPackValue(_jobId));
+    _jb->add("timeCreated", VPackValue(timepointToString(_created)));
+  }
 
-  return (res.accepted && res.indices.size() == 1 && res.indices[0]);
+  if (envelope == nullptr) {
+    _jb->close(); // object
+    _jb->close(); // array
+    write_ret_t res = singleWriteTransaction(_agent, *_jb);
+    return (res.accepted && res.indices.size() == 1 && res.indices[0]);
+  }
+
+  return true;
+
 }
 
 bool FailedFollower::start() {
@@ -142,7 +149,7 @@ bool FailedFollower::start() {
   }
 
   // Get proper replacement
-  _to = randomIdleGoodAvailableServer(_snapshot, planned);
+  _to = randomIdleAvailableServer(_snapshot, planned);
   if (_to.empty()) {
     // retry later
     return false;

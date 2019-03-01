@@ -200,13 +200,13 @@ class Expression {
   }
 
   void clearVariable(Variable const* variable) { _variables.erase(variable); }
+  
+  /// @brief reset internal attributes after variables in the expression were changed
+  void invalidateAfterReplacements();
 
  private:
   /// @brief free the internal data structures
   void freeInternals() noexcept;
-
-  /// @brief reset internal attributes after variables in the expression were changed
-  void invalidateAfterReplacements();
 
   /// @brief find a value in an array
   bool findInArray(AqlValue const&, AqlValue const&, transaction::Methods*,

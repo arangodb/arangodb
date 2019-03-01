@@ -838,9 +838,8 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
       AstNode const* testNode = originalNode;
 
       if (originalNode->type == NODE_TYPE_FCALL &&
-          static_cast<Function const*>(originalNode->getData())->name ==
-              "NOOPT") {
-        // bypass NOOPT(...)
+          static_cast<Function const*>(originalNode->getData())->hasFlag(Function::Flags::NoEval)) {
+        // bypass NOOPT(...) for testing
         TRI_ASSERT(originalNode->numMembers() == 1);
         auto args = originalNode->getMember(0);
 
@@ -2187,9 +2186,12 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
     return;
   }
 
+  bool modified = false;
   auto p = plan.get();
 
-  auto visitor = [p](AstNode* node) {
+  auto visitor = [p, &modified](AstNode* node) {
+    AstNode* original = node;
+
     again:
       if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
         auto const* accessed = node->getMemberUnchecked(0);
@@ -2223,7 +2225,13 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
             if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
                 StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
               // found the attribute!
-              node = member->getMember(0);
+              AstNode* next = member->getMember(0);
+              if (!next->isDeterministic()) {
+                // do not descend into non-deterministic nodes
+                return node;
+              }
+              // descend further
+              node = next;
               // now try optimizing the simplified condition
               // time for a goto...!
               goto again;
@@ -2235,6 +2243,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
 
           // attribute not found
           if (!isDynamic) {
+            modified = true;
             return Ast::createNodeValueNull();
           }
         }
@@ -2290,7 +2299,13 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
             if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
                 StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
               // found the attribute!
-              node = member->getMember(0);
+              AstNode* next = member->getMember(0);
+              if (!next->isDeterministic()) {
+                // do not descend into non-deterministic nodes
+                return node;
+              }
+              // descend further
+              node = next;
               // now try optimizing the simplified condition
               // time for a goto...!
               goto again;
@@ -2302,6 +2317,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
 
           // attribute not found
           if (!isDynamic) {
+            modified = true;
             return Ast::createNodeValueNull();
           }
         } else if (accessed->type == NODE_TYPE_ARRAY) {
@@ -2315,6 +2331,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
                                                   valid);
             if (!valid) {
               // invalid index
+              modified = true;
               return Ast::createNodeValueNull();
             }
           } else {
@@ -2328,21 +2345,31 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
             position = n + position;
           }
           if (position >= 0 && position < n) {
-            node = accessed->getMember(static_cast<size_t>(position));
+            AstNode* next = accessed->getMember(static_cast<size_t>(position));
+            if (!next->isDeterministic()) {
+              // do not descend into non-deterministic nodes
+              return node;
+            }
+            // descend further
+            node = next;
             // now try optimizing the simplified condition
             // time for a goto...!
             goto again;
           }
 
           // index out of bounds
+          modified = true;
           return Ast::createNodeValueNull();
         }
       }
 
+      if (node != original) {
+        // we come out with a different, so we changed something...
+        modified = true;
+      }
       return node;
   };
 
-  bool modified = false;
   for (auto const& n : nodes) {
     auto nn = ExecutionNode::castTo<CalculationNode*>(n);
 
@@ -2358,6 +2385,9 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
       if (simplified != root) {
         nn->expression()->replaceNode(simplified);
         modified = true;
+      }
+      if (modified) {
+        nn->expression()->invalidateAfterReplacements();
       }
     }
   }
@@ -6921,7 +6951,9 @@ void arangodb::aql::geoIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> 
 
     // if info is valid we try to optimize ENUMERATE_COLLECTION
     if (info && info.collectionNodeToReplace == node) {
-      mod = mod || applyGeoOptimization(plan.get(), limit, info);
+      if (applyGeoOptimization(plan.get(), limit, info)) {
+        mod = true;
+      }
     }
   }
 

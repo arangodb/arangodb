@@ -91,6 +91,9 @@ class RocksDBMethods {
   virtual arangodb::Result Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const&,
                                rocksdb::Slice const&,
                                rocksutils::StatusHint hint = rocksutils::StatusHint::none) = 0;
+  virtual arangodb::Result PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const&,
+                                        rocksdb::Slice const&,
+                                        rocksutils::StatusHint hint = rocksutils::StatusHint::none) = 0;
 
   virtual arangodb::Result Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) = 0;
 
@@ -127,6 +130,9 @@ class RocksDBReadOnlyMethods final : public RocksDBMethods {
   arangodb::Result Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
                        rocksdb::Slice const& val,
                        rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
+  arangodb::Result PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+                                rocksdb::Slice const& val,
+                                rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
   arangodb::Result Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
 
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
@@ -157,6 +163,9 @@ class RocksDBTrxMethods : public RocksDBMethods {
   arangodb::Result Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
                        rocksdb::Slice const& val,
                        rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
+  arangodb::Result PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+                                rocksdb::Slice const& val,
+                                rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
   arangodb::Result Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
 
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
@@ -177,6 +186,9 @@ class RocksDBTrxUntrackedMethods final : public RocksDBTrxMethods {
   arangodb::Result Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
                        rocksdb::Slice const& val,
                        rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
+  arangodb::Result PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+                                rocksdb::Slice const& val,
+                                rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
   arangodb::Result Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
 };
 
@@ -191,6 +203,9 @@ class RocksDBBatchedMethods final : public RocksDBMethods {
   arangodb::Result Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
                        rocksdb::Slice const& val,
                        rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
+  arangodb::Result PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+                                rocksdb::Slice const& val,
+                                rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
   arangodb::Result Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
                                                  rocksdb::ColumnFamilyHandle*) override;
@@ -215,6 +230,9 @@ class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
   arangodb::Result Put(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
                        rocksdb::Slice const& val,
                        rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
+  arangodb::Result PutUntracked(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
+                                rocksdb::Slice const& val,
+                                rocksutils::StatusHint hint = rocksutils::StatusHint::none) override;
   arangodb::Result Delete(rocksdb::ColumnFamilyHandle*, RocksDBKey const& key) override;
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ReadOptions const&,
                                                  rocksdb::ColumnFamilyHandle*) override;

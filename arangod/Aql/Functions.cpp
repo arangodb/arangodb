@@ -964,7 +964,7 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(Query* query, tp_sys_clock_ms con
   year_month_day ymd{floor<days>(tp)};
   auto day_time = make_time(tp - sys_days(ymd));
   std::smatch duration_parts;
-  if (!basics::regex_isoDuration(duration, duration_parts)) {
+  if (!basics::regexIsoDuration(duration, duration_parts)) {
     if (isSubtract) {
       ::registerWarning(query, "DATE_SUBTRACT", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     } else {
@@ -1037,7 +1037,7 @@ bool parameterToTimePoint(Query* query, transaction::Methods* trx,
     tp = tp_sys_clock_ms(milliseconds(value.toInt64(trx)));
   } else {
     std::string const dateVal = value.slice().copyString();
-    if (!basics::parse_dateTime(dateVal, tp)) {
+    if (!basics::parseDateTime(dateVal, tp)) {
       ::registerWarning(query, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return false;
     }
@@ -2586,12 +2586,18 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query, transaction::Methods
       arangodb::velocypack::ValueLength length;
       char const* str = it.key.getString(length);
       matchPatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
-      if (!it.value.isString()) {
+      if (it.value.isNull()) {
+        // null replacement value => replace with an empty string
+        replacePatterns.push_back(UnicodeString("", int32_t(0)));
+      } else if (it.value.isString()) {
+        // string case
+        str = it.value.getStringUnchecked(length);
+        replacePatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
+      } else {
+        // non strings
         ::registerInvalidArgumentWarning(query, AFN);
         return AqlValue(AqlValueHintNull());
       }
-      str = it.value.getStringUnchecked(length);
-      replacePatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
     }
   } else {
     if (parameters.size() < 2) {
@@ -2605,13 +2611,14 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query, transaction::Methods
     VPackSlice slice = materializer.slice(search, false);
     if (search.isArray()) {
       for (auto const& it : VPackArrayIterator(slice)) {
-        if (!it.isString()) {
+        if (it.isString()) {
+          arangodb::velocypack::ValueLength length;
+          char const* str = it.getStringUnchecked(length);
+          matchPatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
+        } else {
           ::registerInvalidArgumentWarning(query, AFN);
           return AqlValue(AqlValueHintNull());
         }
-        arangodb::velocypack::ValueLength length;
-        char const* str = it.getStringUnchecked(length);
-        matchPatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
       }
     } else {
       if (!search.isString()) {
@@ -2628,13 +2635,17 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query, transaction::Methods
       VPackSlice rslice = materializer2.slice(replace, false);
       if (replace.isArray()) {
         for (auto const& it : VPackArrayIterator(rslice)) {
-          if (!it.isString()) {
+          if (it.isNull()) {
+            // null replacement value => replace with an empty string
+            replacePatterns.push_back(UnicodeString("", int32_t(0)));
+          } else if (it.isString()) {
+            arangodb::velocypack::ValueLength length;
+            char const* str = it.getString(length);
+            replacePatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
+          } else {
             ::registerInvalidArgumentWarning(query, AFN);
             return AqlValue(AqlValueHintNull());
           }
-          arangodb::velocypack::ValueLength length;
-          char const* str = it.getString(length);
-          replacePatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
         }
       } else if (replace.isString()) {
         // If we have a string as replacement,
@@ -3500,7 +3511,7 @@ AqlValue Functions::IsDatestring(arangodb::aql::Query*, transaction::Methods*,
 
   if (value.isString()) {
     tp_sys_clock_ms tp;  // unused
-    isValid = basics::parse_dateTime(value.slice().copyString(), tp);
+    isValid = basics::parseDateTime(value.slice().copyString(), tp);
   }
 
   return AqlValue(AqlValueHintBool(isValid));
