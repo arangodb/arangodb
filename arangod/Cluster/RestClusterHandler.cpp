@@ -67,6 +67,21 @@ RestStatus RestClusterHandler::execute() {
 
 void RestClusterHandler::handleAgencyDump() {
 
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  if (af->isActive() && !_request->user().empty()) {
+    auth::Level lvl = auth::Level::NONE;
+    if (af->userManager() != nullptr) {
+      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system", true);
+    } else {
+      lvl = auth::Level::RW;
+    }
+    if (lvl < auth::Level::RW) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin rights to trigger shutdown");
+      return RestStatus::DONE;
+    }
+  }
+
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
   ClusterInfo::instance()->agencyDump(body);
   generateResult(rest::ResponseCode::OK, body->slice());
