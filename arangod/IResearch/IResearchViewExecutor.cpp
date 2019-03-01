@@ -106,7 +106,6 @@ IResearchViewExecutor<ordered>::produceRow(OutputAqlItemRow& output) {
 
   if (!_inputRow.isInitialized()) {
     std::tie(state, _inputRow) = _fetcher.fetchRow();
-    reset();
 
     if (state == ExecutionState::WAITING) {
       return {state, stats};
@@ -117,6 +116,8 @@ IResearchViewExecutor<ordered>::produceRow(OutputAqlItemRow& output) {
     if (!_inputRow.isInitialized()) {
       return {ExecutionState::DONE, stats};
     }
+
+    reset();
   }
 
   ReadContext ctx(infos().numberOfInputRegisters(), _inputRow, output);
@@ -197,6 +198,7 @@ std::pair<bool, size_t> IResearchViewExecutor<ordered>::next(ReadContext &ctx, s
     auto collection = lookupCollection(*infos().getQuery().trx(), cid);
 
     if (!collection) {
+      // TODO shouldn't this be an exception?
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to find collection while reading document from "
          "arangosearch view, cid '"
@@ -301,6 +303,8 @@ void IResearchViewExecutor<ordered>::reset() {
   _readerOffset = 0;
 
 // The rest is from IResearchViewBlockBase::reset():
+  _ctx._inputRow = _inputRow;
+
   auto& viewNode = infos().getNode();
   //auto& viewNode = *ExecutionNode::castTo<IResearchViewNode const*>(getPlanNode());
   auto* plan = const_cast<ExecutionPlan*>(viewNode.plan());

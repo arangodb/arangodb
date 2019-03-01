@@ -1251,7 +1251,7 @@ ExecutorInfos ExecutionNode::createRegisterInfos(
 RegisterId ExecutionNode::getNrInputRegisters() const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  return previousNode->getNrOutputRegisters();
+  return getRegisterPlan()->nrRegs[previousNode->getDepth()];
 }
 
 RegisterId ExecutionNode::getNrOutputRegisters() const {

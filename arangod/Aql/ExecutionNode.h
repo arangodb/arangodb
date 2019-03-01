@@ -81,7 +81,6 @@ struct Collection;
 class Condition;
 class ExecutionBlock;
 class ExecutionEngine;
-class TraversalBlock;
 class ExecutionPlan;
 class RedundantCalculationsReplacer;
 
@@ -498,7 +497,7 @@ class ExecutionNode {
 
   /// @brief get RegisterPlan
   RegisterPlan const* getRegisterPlan() const {
-    TRI_ASSERT(_registerPlan.get() != nullptr);
+    TRI_ASSERT(_registerPlan != nullptr);
     return _registerPlan.get();
   }
 

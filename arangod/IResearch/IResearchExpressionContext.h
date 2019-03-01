@@ -24,6 +24,7 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT_H
 #define ARANGOD_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT_H 1
 
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/QueryExpressionContext.h"
 #include "Basics/Exceptions.h"
 
@@ -73,6 +74,7 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
   virtual aql::AqlValue getVariableValue(aql::Variable const* variable, bool doCopy,
                                          bool& mustDestroy) const override;
 
+  aql::InputAqlItemRow _inputRow{aql::CreateInvalidInputRowHint{}};
   // TODO remove _data
   aql::AqlItemBlock const* _data{};
   IResearchViewNode const* _node;

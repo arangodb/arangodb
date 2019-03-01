@@ -86,14 +86,24 @@ AqlValue ViewExpressionContext::getVariableValue(Variable const* var, bool doCop
                                   var->name.c_str());
   }
 
-  auto& value = _data->getValueReference(_pos, varInfo.registerId);
+  AqlValue const* value;
+
+  if (_data == nullptr && _inputRow.isInitialized()) {
+    // TODO the other cases shall be removed when everything is done
+    value = &_inputRow.getValue(varInfo.registerId);
+  } else if (_data != nullptr && !_inputRow.isInitialized()) {
+    // TODO old case, shall be removed lated
+    value = &_data->getValueReference(_pos, varInfo.registerId);
+  } else {
+    TRI_ASSERT(false);
+  }
 
   if (doCopy) {
     mustDestroy = true;
-    return value.clone();
+    return value->clone();
   }
 
-  return value;
+  return *value;
 }
 
 }  // namespace iresearch
