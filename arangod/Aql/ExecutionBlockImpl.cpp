@@ -49,6 +49,7 @@
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/TraversalExecutor.h"
+#include "Aql/UnsortingGatherExecutor.h"
 
 #include <type_traits>
 
@@ -406,3 +407,4 @@ template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<UnsortingGatherExecutor>;

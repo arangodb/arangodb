@@ -22,15 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterNodes.h"
+
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/ExecutorInfos.h"
 #include "Aql/GraphNode.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
+#include "Aql/UnsortingGatherExecutor.h"
 #include "Transaction/Methods.h"
 
 #include <type_traits>
@@ -49,8 +53,7 @@ bool toSortMode(arangodb::velocypack::StringRef const& str, GatherNode::SortMode
   static std::map<arangodb::velocypack::StringRef, GatherNode::SortMode> const NameToValue{
       {SortModeMinElement, GatherNode::SortMode::MinElement},
       {SortModeHeap, GatherNode::SortMode::Heap},
-      {SortModeUnset, GatherNode::SortMode::Default}
-  };
+      {SortModeUnset, GatherNode::SortMode::Default}};
 
   auto const it = NameToValue.find(str);
 
@@ -336,7 +339,14 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   if (_elements.empty()) {
-    return std::make_unique<UnsortingGatherBlock>(engine, *this);
+    ExecutionNode const* previousNode = getFirstDependency();
+    TRI_ASSERT(previousNode != nullptr);
+    ExecutorInfos infos(make_shared_unordered_set(), make_shared_unordered_set(),
+                        getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                        getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                        calcRegsToKeep());
+    return std::make_unique<ExecutionBlockImpl<UnsortingGatherExecutor>>(&engine, this,
+                                                                         std::move(infos));
   }
 
   return std::make_unique<SortingGatherBlock>(engine, *this);
