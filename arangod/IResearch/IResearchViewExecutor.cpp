@@ -186,7 +186,8 @@ template <bool ordered>
 bool IResearchViewExecutor<ordered>::next(ReadContext& ctx) {
   TRI_ASSERT(_filter);
 
-  for (size_t count = _reader->size(); _readerOffset < count;) {
+  size_t const count = _reader->size();
+  for (; _readerOffset < count; ++_readerOffset, _itr.reset()) {
     if (!_itr && !resetIterator()) {
       continue;
     }
@@ -215,9 +216,6 @@ bool IResearchViewExecutor<ordered>::next(ReadContext& ctx) {
       // we read and wrote a document, return true. we don't know if there are more.
       return true;  // do not change iterator if already reached limit
     }
-
-    ++_readerOffset;
-    _itr.reset();
   }
 
   // no documents found, we're exhausted.
