@@ -1098,14 +1098,12 @@ bool Supervision::handleJobs() {
   _lock.assertLockedByCurrentThread();
   // Do supervision
 
-  workJobs();
+  shrinkCluster();
+  enforceReplication();
+  cleanupLostCollections(_snapshot, _agent, std::to_string(_jobId++));
+  readyOrphanedIndexCreations();
 
-  if (!_haveAborts) {
-    shrinkCluster();
-    enforceReplication();
-    cleanupLostCollections(_snapshot, _agent, std::to_string(_jobId++));
-    readyOrphanedIndexCreations();
-  }
+  workJobs();
 
   return true;
 }
