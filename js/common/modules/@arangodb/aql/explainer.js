@@ -445,7 +445,6 @@ class PrintedTable {
     let line = ' ';
     let isFirst = true;
     for (let c of this.content) {
-      print(c.size, c.header.length);
       line += (isFirst ? '' : pad(3)) + header(c.header) + pad(1 + c.size - c.header.length);
       isFirst = false;
     }
@@ -1271,11 +1270,7 @@ function processQuery(query, explain, planIndex) {
       case 'SortNode':
         return keyword('SORT') + ' ' + node.elements.map(function (node) {
           return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-<<<<<<< HEAD
         }).join(', ') + annotation(`   /* sorting strategy: ${node.strategy.split("-").join(" ")} */`);
-=======
-        }).join(', ');
->>>>>>> 79fba18538... Fixed the Explainer output
       case 'LimitNode':
         return keyword('LIMIT') + ' ' + value(JSON.stringify(node.offset)) + ', ' + value(JSON.stringify(node.limit)) + (node.fullCount ? '  ' + annotation('/* fullCount */') : '');
       case 'ReturnNode':
