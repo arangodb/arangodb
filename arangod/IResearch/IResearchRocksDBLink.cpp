@@ -18,9 +18,8 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
+/// @author Vasiliy Nabatchikov 
 ////////////////////////////////////////////////////////////////////////////////
-
 #include "Basics/Common.h"  // required for RocksDBColumnFamily.h
 #include "IResearchLinkHelper.h"
 #include "IResearchView.h"
@@ -33,7 +32,105 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
+#include <rocksdb/env_encryption.h>
+
 #include "IResearchRocksDBLink.h"
+#include "utils/encryption.hpp"
+
+namespace {
+
+class RocksDBCipherStream final : public irs::encryption::stream {
+ public:
+  typedef std::unique_ptr<rocksdb::BlockAccessCipherStream> StreamPtr;
+
+  explicit RocksDBCipherStream(StreamPtr&& stream) noexcept
+    : _stream(std::move(stream)) {
+    TRI_ASSERT(_stream);
+  }
+
+  virtual size_t block_size() const override {
+    return _stream->BlockSize();
+  }
+
+  virtual bool decrypt(uint64_t offset, irs::byte_type* data, size_t size) override {
+    return _stream->Decrypt(offset, reinterpret_cast<char*>(data), size).ok();
+  }
+
+  virtual bool encrypt(uint64_t offset, irs::byte_type* data, size_t size) override {
+    return _stream->Encrypt(offset, reinterpret_cast<char*>(data), size).ok();
+  }
+
+ private:
+  StreamPtr _stream;
+}; // RocksDBCipherStream
+
+class RocksDBEncryptionProvider final : public irs::encryption {
+ public:
+  static std::shared_ptr<RocksDBEncryptionProvider> make(
+      rocksdb::EncryptionProvider& encryption,
+      rocksdb::Options const& options) {
+    return std::make_shared<RocksDBEncryptionProvider>(encryption, options);
+  }
+
+  explicit RocksDBEncryptionProvider(
+      rocksdb::EncryptionProvider& encryption,
+      rocksdb::Options const& options)
+    : _encryption(&encryption),
+      _options(options) {
+  }
+
+  virtual size_t header_length() override {
+    return _encryption->GetPrefixLength();
+  }
+
+  virtual bool create_header(
+      std::string const& filename,
+      irs::byte_type* header) override {
+    return _encryption->CreateNewPrefix(
+      filename, reinterpret_cast<char*>(header), header_length()
+    ).ok();
+  }
+
+  virtual encryption::stream::ptr create_stream(
+      std::string const& filename,
+      irs::byte_type* header) override {
+    rocksdb::Slice headerSlice(
+      reinterpret_cast<char const*>(header),
+      header_length()
+    );
+
+    std::unique_ptr<rocksdb::BlockAccessCipherStream> stream;
+    if (!_encryption->CreateCipherStream(filename, _options, headerSlice, &stream).ok()) {
+      return nullptr;
+    }
+
+    return std::make_unique<RocksDBCipherStream>(std::move(stream));
+  }
+
+ private:
+  rocksdb::EncryptionProvider* _encryption;
+  rocksdb::EnvOptions _options;
+}; // RocksDBEncryptionProvider
+
+std::function<void(irs::directory&)> const RocksDBLinkInitCallback = [](irs::directory& dir) {
+  TRI_ASSERT(arangodb::EngineSelectorFeature::isRocksDB());
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto* engine = dynamic_cast<arangodb::RocksDBEngine*>(arangodb::EngineSelectorFeature::ENGINE);
+#else
+  auto* engine = static_cast<arangodb::RocksDBEngine*>(arangodb::EngineSelectorFeature::ENGINE);
+#endif
+
+  auto* encryption = engine ? engine->encryptionProvider() : nullptr;
+
+  if (encryption) {
+    dir.attributes().emplace<RocksDBEncryptionProvider>(
+      *encryption, engine->rocksDBOptions()
+    );
+  }
+};
+
+}
 
 namespace arangodb {
 namespace iresearch {
@@ -51,11 +148,11 @@ struct IResearchRocksDBLink::IndexFactory : public arangodb::IndexTypeFactory {
                                        arangodb::LogicalCollection& collection,
                                        arangodb::velocypack::Slice const& definition,
                                        TRI_idx_iid_t id,
-                                       bool isClusterConstructor) const override {
+                                       bool /*isClusterConstructor*/) const override {
     try {
       auto link =
           std::shared_ptr<IResearchRocksDBLink>(new IResearchRocksDBLink(id, collection));
-      auto res = link->init(definition);
+      auto res = link->init(definition, RocksDBLinkInitCallback);
 
       if (!res.ok()) {
         return res;

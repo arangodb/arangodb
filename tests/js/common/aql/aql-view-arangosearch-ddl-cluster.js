@@ -811,8 +811,7 @@ function IResearchFeatureDDLTestSuite () {
 
       assertEqual(db._views().length, 0);
       assertEqual(db[viewName], undefined);
-    },
-
+    }
   };
 }
 

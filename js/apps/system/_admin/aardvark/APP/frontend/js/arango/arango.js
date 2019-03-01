@@ -129,7 +129,7 @@
           }
         });
       }
-      return shortName;
+      return arangoHelper.escapeHtml(shortName);
     },
 
     getDatabaseShortName: function (id) {

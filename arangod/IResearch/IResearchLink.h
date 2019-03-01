@@ -210,6 +210,8 @@ class IResearchLink {
   arangodb::Result unload(); // arangodb::Index override
 
  protected:
+  typedef std::function<void(irs::directory&)> InitCallback;
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief construct an uninitialized IResearch link, must call init(...)
   /// after
@@ -220,7 +222,10 @@ class IResearchLink {
   /// @brief initialize from the specified definition used in make(...)
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
-  arangodb::Result init(arangodb::velocypack::Slice const& definition);
+  arangodb::Result init(
+    arangodb::velocypack::Slice const& definition,
+    InitCallback const& initCallback = {}
+  );
 
  private:
 
@@ -279,7 +284,7 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result initDataStore();
+  arangodb::Result initDataStore(InitCallback const& initCallback);
 };  // IResearchLink
 
 }  // namespace iresearch

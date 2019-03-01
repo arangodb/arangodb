@@ -158,10 +158,10 @@
         || ((_MSC_FULL_VER >= 191326128) && (_MSC_FULL_VER <= 191326132)) \
         || ((_MSC_FULL_VER >= 191426430) && (_MSC_FULL_VER <= 191426433)) \
         || ((_MSC_FULL_VER >= 191526726) && (_MSC_FULL_VER <= 191526732)) \
-        || ((_MSC_FULL_VER >= 191627023) && (_MSC_FULL_VER <= 191627025)))
-  #define MSVC2017_345678_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
+        || ((_MSC_FULL_VER >= 191627023) && (_MSC_FULL_VER <= 191627027)))
+  #define MSVC2017_3456789_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
 #else
-  #define MSVC2017_345678_OPTIMIZED_WORKAROUND(...)
+  #define MSVC2017_3456789_OPTIMIZED_WORKAROUND(...)
 #endif
 
 // hook for MSVC-only code
@@ -214,7 +214,7 @@
 #endif
 
 // hool for Valgrind-only code
-#if !defined(IRESEARCH_VALGRIND)
+#if defined(IRESEARCH_VALGRIND)
   #define VALGRIND_ONLY(...) __VA_ARGS__
 #else
   #define VALGRIND_ONLY(...)

@@ -47,7 +47,7 @@ typedef std::shared_ptr<const format> format_ptr;
 
 NS_END
 
-MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<iresearch::format>;) // format_ptr
+MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<const irs::format>;) // format_ptr
 
 NS_ROOT
 
@@ -188,9 +188,11 @@ class IRESEARCH_API index_meta {
   }
 
   const index_segment_t& segment(size_t i) const NOEXCEPT {
+    assert(i < segments_.size());
     return segments_[i];
   }
   const index_segment_t& operator[](size_t i) const NOEXCEPT {
+    assert(i < segments_.size());
     return segments_[i];
   }
   const index_segments_t& segments() const NOEXCEPT {

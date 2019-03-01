@@ -1,6 +1,30 @@
 devel
 -----
 
+* fixed overflow in windows NowNanos in RocksDB
+
+* add "PRUNE <condition>" to AQL Traversals. This allows to early abort searching of
+  unnecessary branches within a traversal.
+  PRUNE is only allowed in the Traversal statement and only between the graphdefinition
+  and the options of the traversal.
+  e.g.:
+  FOR v, e, p IN 1..3 OUTBOUND @source GRAPH "myGraph"
+    PRUNE v.value == "bar"
+    OPTIONS {} /* These options remain optional */
+    RETURN v
+  for more details refer to the documentation chapter.
+
+* fixed a display issues when editing a graph within the web ui
+
+* fixed some escaping issues within the web ui.
+
+* follow up to fix JWT authentication in arangosh (#7530):
+  also fix reconnect
+
+* now also syncing _jobs and _queues collections in active failover mode
+
+* upgraded lodash to 4.17.11 because of CVE-2018-16487
+
 * `--query.registry-ttl` is now honored in single-server mode, and cursor TTLs
   are now honored on DBServers in cluster mode
   
@@ -25,7 +49,6 @@ devel
     new semantics, following ChakraCore and SpiderMonkey (though JSC
     implements V8's previous semantics).
  
-
 * fixed JS AQL query objects with empty query strings not being recognized as AQL queries
 
 * report run-time openssl version (for dynamically linked executables)

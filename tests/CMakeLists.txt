@@ -35,6 +35,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchIndex-test.cpp
     IResearch/IResearchLink-test.cpp
     IResearch/IResearchLinkCoordinator-test.cpp
+    IResearch/IResearchLinkHelper-test.cpp
     IResearch/IResearchLinkMeta-test.cpp
     IResearch/IResearchQuery-test.cpp
     IResearch/IResearchQueryAnd-test.cpp

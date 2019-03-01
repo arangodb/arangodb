@@ -109,6 +109,9 @@ class WalAccess {
 
     /// In case collection is == 0,
     bool includeSystem = false;
+    
+    /// export _queues and _jobs collection
+    bool includeFoxxQueues = false;
 
     /// only output markers from this database
     TRI_voc_tick_t vocbase = 0;
