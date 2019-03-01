@@ -3577,6 +3577,15 @@ arangodb::Result ClusterInfo::getShardServers(ShardID const& shardId,
   return arangodb::Result(TRI_ERROR_FAILED);
 }
 
+
+arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
+
+  AgencyCommResult dump = _agency.dump();
+  body->add(dump.slice());
+  return Result();
+
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

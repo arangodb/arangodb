@@ -39,6 +39,8 @@ v3.4.4 (2019-XX-XX)
 
 * Supervision fix: Satellite collections, various fixes
 
+* Add coordinator route for agency dump
+
 v3.4.3 (2019-02-19)
 -------------------
 
