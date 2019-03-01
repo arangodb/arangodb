@@ -23,13 +23,11 @@
 
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
-#include "formats/formats_10.hpp"
 #include "search/granular_range_filter.hpp"
-#include "store/memory_directory.hpp"
 
-NS_BEGIN(tests)
+NS_LOCAL
 
-class granular_float_field: public float_field {
+class granular_float_field: public tests::float_field {
  public:
   const irs::flags& features() const {
     static const irs::flags features{ irs::granularity_prefix::type() };
@@ -37,7 +35,7 @@ class granular_float_field: public float_field {
   }
 };
 
-class granular_double_field: public double_field {
+class granular_double_field: public tests::double_field {
  public:
   const irs::flags& features() const {
     static const irs::flags features{ irs::granularity_prefix::type() };
@@ -45,7 +43,7 @@ class granular_double_field: public double_field {
   }
 };
 
-class granular_int_field: public int_field {
+class granular_int_field: public tests::int_field {
  public:
   const irs::flags& features() const {
     static const irs::flags features{ irs::granularity_prefix::type() };
@@ -53,7 +51,7 @@ class granular_int_field: public int_field {
   }
 };
 
-class granular_long_field: public long_field {
+class granular_long_field: public tests::long_field {
  public:
   const irs::flags& features() const {
     static const irs::flags features{ irs::granularity_prefix::type() };
@@ -61,12 +59,12 @@ class granular_long_field: public long_field {
   }
 };
 
-class granular_range_filter_test_case: public filter_test_case_base {
+class granular_range_filter_test_case : public tests::filter_test_case_base {
  protected:
   static void by_range_json_field_factory(
     tests::document& doc,
     const std::string& name,
-    const json_doc_generator::json_value& data
+    const tests::json_doc_generator::json_value& data
   ) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
@@ -93,28 +91,28 @@ class granular_range_filter_test_case: public filter_test_case_base {
       const auto dValue = data.as_number<double_t>();
       {
         doc.insert(std::make_shared<granular_double_field>());
-        auto& field = (doc.indexed.end() - 1).as<double_field>();
+        auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
         field.name(iresearch::string_ref(name));
         field.value(dValue);
       }
 
       // 'value' can be interpreted as a float
       doc.insert(std::make_shared<granular_float_field>());
-      auto& field = (doc.indexed.end() - 1).as<float_field>();
+      auto& field = (doc.indexed.end() - 1).as<tests::float_field>();
       field.name(iresearch::string_ref(name));
       field.value(data.as_number<float_t>());
 
       const uint64_t lValue = uint64_t(std::ceil(dValue));
       {
         doc.insert(std::make_shared<granular_long_field>());
-        auto& field = (doc.indexed.end() - 1).as<long_field>();
+        auto& field = (doc.indexed.end() - 1).as<tests::long_field>();
         field.name(iresearch::string_ref(name));
         field.value(lValue);
       }
 
       {
         doc.insert(std::make_shared<granular_int_field>());
-        auto& field = (doc.indexed.end() - 1).as<int_field>();
+        auto& field = (doc.indexed.end() - 1).as<tests::int_field>();
         field.name(iresearch::string_ref(name));
         field.value(int32_t(lValue));
       }
@@ -1460,7 +1458,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
       size_t finish_count = 0;
-      auto& scorer = order.add<sort::custom_sort>(false);
+      auto& scorer = order.add<tests::sort::custom_sort>(false);
 
       scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
         ++collect_field_count;
@@ -1472,10 +1470,10 @@ class granular_range_filter_test_case: public filter_test_case_base {
         ++finish_count;
       };
       scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
-        return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer);
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
       };
       scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
-        return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer);
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
       };
       check_query(
         irs::by_granular_range()
@@ -1495,7 +1493,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
       costs_t costs{ docs.size() };
       irs::order order;
 
-      order.add<sort::frequency_sort>(false);
+      order.add<tests::sort::frequency_sort>(false);
       check_query(
         irs::by_granular_range()
           .field("value")
@@ -1511,7 +1509,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
       costs_t costs{ docs.size() };
       irs::order order;
 
-      order.add<sort::frequency_sort>(false);
+      order.add<tests::sort::frequency_sort>(false);
       check_query(
         irs::by_granular_range()
           .field("value")
@@ -1532,7 +1530,7 @@ class granular_range_filter_test_case: public filter_test_case_base {
       auto& max_term = max_stream.attributes().get<irs::term_attribute>();
 
       ASSERT_TRUE(max_stream.next());
-      order.add<sort::frequency_sort>(false);
+      order.add<tests::sort::frequency_sort>(false);
       check_query(
         irs::by_granular_range()
           .field("value")
@@ -1543,12 +1541,6 @@ class granular_range_filter_test_case: public filter_test_case_base {
     }
   }
 }; // granular_range_filter_test_case
-
-NS_END // tests
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                     by_granular_range base tests
-// ----------------------------------------------------------------------------
 
 TEST(by_granular_range_test, ctor) {
   irs::by_granular_range q;
@@ -1605,40 +1597,41 @@ TEST(by_granular_range_test, boost) {
   }
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                           memory_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
-
-class memory_granular_range_filter_test_case: public tests::granular_range_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    return new irs::memory_directory();
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-};
-
-TEST_F(memory_granular_range_filter_test_case, by_range) {
+TEST_P(granular_range_filter_test_case, by_range) {
   by_range_sequential_cost();
 }
 
-TEST_F(memory_granular_range_filter_test_case, by_range_granularity) {
+TEST_P(granular_range_filter_test_case, by_range_granularity) {
   by_range_granularity_level();
 }
 
-TEST_F(memory_granular_range_filter_test_case, by_range_granularity_boost) {
+TEST_P(granular_range_filter_test_case, by_range_granularity_boost) {
   by_range_granularity_boost();
 }
 
-TEST_F(memory_granular_range_filter_test_case, by_range_numeric) {
+TEST_P(granular_range_filter_test_case, by_range_numeric) {
   by_range_sequential_numeric();
 }
 
-TEST_F(memory_granular_range_filter_test_case, by_range_order) {
+TEST_P(granular_range_filter_test_case, by_range_order) {
   by_range_sequential_order();
 }
+
+INSTANTIATE_TEST_CASE_P(
+  granular_range_filter_test,
+  granular_range_filter_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_0")
+  ),
+  tests::to_string
+);
+
+NS_END
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

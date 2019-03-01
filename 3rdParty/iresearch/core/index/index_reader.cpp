@@ -34,12 +34,14 @@ NS_LOCAL
 
 struct empty_sub_reader final : irs::singleton<empty_sub_reader>, irs::sub_reader {
   virtual const irs::column_meta* column(const irs::string_ref& name) const override {
+    UNUSED(name);
     return nullptr;
   }
   virtual irs::column_iterator::ptr columns() const override {
     return irs::column_iterator::empty();
   }
   virtual const irs::columnstore_reader::column_reader* column_reader(irs::field_id field) const override {
+    UNUSED(field);
     return nullptr;
   }
   virtual uint64_t docs_count() const override {
@@ -49,6 +51,7 @@ struct empty_sub_reader final : irs::singleton<empty_sub_reader>, irs::sub_reade
     return irs::doc_iterator::empty();
   }
   virtual const irs::term_reader* field(const irs::string_ref& field) const override {
+    UNUSED(field);
     return nullptr;
   }
   virtual irs::field_iterator::ptr fields() const override {
@@ -68,12 +71,6 @@ NS_END // LOCAL
 NS_ROOT
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                       index_reader implementation
-// -----------------------------------------------------------------------------
-
-index_reader::~index_reader() { }
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                         sub_reader implementation
 // -----------------------------------------------------------------------------
 
@@ -88,3 +85,7 @@ const columnstore_reader::column_reader* sub_reader::column_reader(
 }
 
 NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

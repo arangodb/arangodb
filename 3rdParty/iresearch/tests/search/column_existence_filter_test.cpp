@@ -23,16 +23,12 @@
 
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
-#include "store/memory_directory.hpp"
-#include "formats/formats_10.hpp"
-#include "store/fs_directory.hpp"
 #include "search/column_existence_filter.hpp"
 #include "search/sort.hpp"
 
-NS_BEGIN(tests)
+NS_LOCAL
 
-class column_existence_filter_test_case
-    : public filter_test_case_base {
+class column_existence_filter_test_case : public tests::filter_test_case_base {
  protected:
   void simple_sequential_exact_match() {
     // add segment
@@ -495,7 +491,7 @@ class column_existence_filter_test_case
       size_t collector_collect_term_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
-      auto& sort = order.add<sort::custom_sort>(false);
+      auto& sort = order.add<tests::sort::custom_sort>(false);
 
       sort.collector_collect_field = [&collector_collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void {
         ++collector_collect_field_count;
@@ -576,7 +572,7 @@ class column_existence_filter_test_case
       size_t collector_collect_term_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
-      auto& sort = order.add<sort::custom_sort>(false);
+      auto& sort = order.add<tests::sort::custom_sort>(false);
 
       sort.collector_collect_field = [&collector_collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void {
         ++collector_collect_field_count;
@@ -658,7 +654,7 @@ class column_existence_filter_test_case
       size_t collector_collect_term_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
-      auto& sort = order.add<sort::custom_sort>(false);
+      auto& sort = order.add<tests::sort::custom_sort>(false);
 
       sort.collector_collect_field = [&collector_collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void {
         ++collector_collect_field_count;
@@ -728,7 +724,11 @@ class column_existence_filter_test_case
   }
 }; // column_existence_filter_test_case
 
-NS_END
+TEST_P(column_existence_filter_test_case, exact_prefix_match) {
+  simple_sequential_exact_match();
+  simple_sequential_prefix_match();
+  simple_sequential_order();
+}
 
 TEST(by_column_existence, ctor) {
   irs::by_column_existence filter;
@@ -777,52 +777,21 @@ TEST(by_column_existence, equal) {
   }
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                           memory_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
+INSTANTIATE_TEST_CASE_P(
+  column_existence_filter_test,
+  column_existence_filter_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_0")
+  ),
+  tests::to_string
+);
 
-class memory_column_existence_filter_test_case
-    : public tests::column_existence_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    return new irs::memory_directory();
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-};
-
-TEST_F(memory_column_existence_filter_test_case, exact_prefix_match) {
-  simple_sequential_exact_match();
-  simple_sequential_prefix_match();
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                               fs_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
-
-class fs_column_existence_test_case
-    : public tests::column_existence_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    auto dir = test_dir();
-
-    dir /= "index";
-
-    return new irs::fs_directory(dir.utf8());
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-};
-
-TEST_F(fs_column_existence_test_case, exact_prefix_match) {
-  simple_sequential_exact_match();
-  simple_sequential_prefix_match();
-  simple_sequential_order();
-}
+NS_END
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
