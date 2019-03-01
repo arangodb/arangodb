@@ -247,8 +247,6 @@ function MovingShardsSuite ({useData}) {
       }
       
     }
-    console.log("Test:");
-    displayAgencyInformation();
     return ok;
   }
 
