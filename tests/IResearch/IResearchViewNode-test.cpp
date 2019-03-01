@@ -226,8 +226,8 @@ TEST_CASE("IResearchViewNodeTest", "[iresearch][iresearch-view-node]") {
       CHECK(&outVariable == setHere[0]);
       CHECK(false == node.options().forceSync);
 
-      CHECK(0. == node.getCost().estimatedCost);    // no dependencies
-      CHECK(0 == node.getCost().estimatedNrItems);  // no dependencies
+      CHECK(2. == node.getCost().estimatedCost);    // dependency is a singleton
+      CHECK(1 == node.getCost().estimatedNrItems);  // dependency is a singleton
     }
 
     // with options
