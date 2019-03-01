@@ -260,7 +260,10 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
           AgencyWriteTransaction currentTransaction(operations, precondition);
           AgencyCommResult r = comm.sendTransactionWithFailover(currentTransaction);
           if (!r.successful()) {
-            LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Error reporting to agency";
+            LOG_TOPIC(INFO, Logger::MAINTENANCE)
+              << "Error reporting to agency: _statusCode: " << r.errorCode()
+              << " message: " << r.errorMessage()
+              << ". This can be ignored, since it will be retried automaticlly.";
           } else {
             LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
                 << "Invalidating current in ClusterInfo";
