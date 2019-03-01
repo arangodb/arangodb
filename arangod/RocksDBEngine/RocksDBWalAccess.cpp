@@ -129,8 +129,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     // rocksdb does not count LogData towards sequence-number
     RocksDBLogType type = RocksDBLogValue::type(blob);
 
-    // LOG_TOPIC(WARN, Logger::REPLICATION) << "[LOG] " << _currentSequence
-    // << " " << rocksDBLogTypeName(type);
+    // LOG_TOPIC(WARN, Logger::REPLICATION) << "[LOG] " << _currentSequence << " " << rocksDBLogTypeName(type);
     switch (type) {
       case RocksDBLogType::DatabaseCreate:
         resetTransientState();  // finish ongoing trx
@@ -202,7 +201,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
           LogicalCollection* coll = loadCollection(dbid, cid);
           TRI_ASSERT(vocbase != nullptr && coll != nullptr);
           {
-            uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
+            uint64_t tick = _currentSequence; 
             VPackObjectBuilder marker(&_builder, true);
             marker->add("tick", VPackValue(std::to_string(tick)));
             marker->add("type", VPackValue(REPLICATION_COLLECTION_TRUNCATE));
@@ -404,8 +403,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
   rocksdb::Status PutCF(uint32_t column_family_id, rocksdb::Slice const& key,
                         rocksdb::Slice const& value) override {
     incTick();
-    // LOG_TOPIC(WARN, Logger::ENGINES) << "[PUT] cf: " << column_family_id
-    // << ", key:" << key.ToString() << "  value: " << value.ToString();
+    // LOG_TOPIC(WARN, Logger::ENGINES) << "[PUT] cf: " << column_family_id << ", key:" << key.ToString() << "  value: " << value.ToString();
 
     if (column_family_id == _definitionsCF) {
       // LogData should have triggered a commit on ongoing transactions
@@ -552,6 +550,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
   // for Delete / SingleDelete
   void handleDeleteCF(uint32_t cfId, rocksdb::Slice const& key) {
     incTick();
+    // LOG_TOPIC(WARN, Logger::ENGINES) << "[DELETE] cf: " << column_family_id << ", key:" << key.ToString();
 
     if (cfId != _primaryCF) {
       return;  // ignore all document operations
@@ -617,6 +616,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
                                 const rocksdb::Slice& /*begin_key*/,
                                 const rocksdb::Slice& /*end_key*/) override {
     incTick();
+    // LOG_TOPIC(WARN, Logger::ENGINES) << "[DELETE-RANGE] cf: " << column_family_id;
     // drop and truncate may use this, but we do not print anything
     return rocksdb::Status();  // make WAL iterator happy
   }
@@ -633,6 +633,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
   }
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
+    // LOG_TOPIC(ERR, Logger::ENGINES) << "starting new batch with sequence: " << startSequence;
     TRI_ASSERT(!_stopOnNext);
     // starting new write batch
     _startSequence = startSequence;
@@ -803,6 +804,10 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
 
     iterator->Next();
   }
+
+  // update our latest sequence number again, because it may have been raised
+  // while scanning the WAL
+  latestTick = db->GetLatestSequenceNumber();
 
   WalAccessResult result(TRI_ERROR_NO_ERROR, firstTick <= filter.tickStart,
                          lastWrittenTick, lastScannedTick, latestTick);

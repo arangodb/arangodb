@@ -851,10 +851,18 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
 }
 
 /// @brief apply a single marker from the continuous log
-Result TailingSyncer::applyLogMarker(VPackSlice const& slice, TRI_voc_tick_t firstRegularTick,
-                                     TRI_voc_tick_t markerTick, TRI_replication_operation_e type) {
+Result TailingSyncer::applyLogMarker(VPackSlice const& slice, 
+                                     ApplyStats& applyStats,
+                                     TRI_voc_tick_t firstRegularTick,
+                                     TRI_voc_tick_t markerTick, 
+                                     TRI_replication_operation_e type) {
   // handle marker type
   if (type == REPLICATION_MARKER_DOCUMENT || type == REPLICATION_MARKER_REMOVE) {
+    if (type == REPLICATION_MARKER_DOCUMENT) {
+      ++applyStats.processedDocuments;
+    } else {
+      ++applyStats.processedRemovals;
+    }
     try {
       return processDocument(type, slice);
     } catch (basics::Exception const& ex) {
@@ -977,7 +985,7 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice, TRI_voc_tick_t fir
 
 /// @brief apply the data from the continuous log
 Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstRegularTick,
-                               uint64_t& processedMarkers, uint64_t& ignoreCount) {
+                               ApplyStats& applyStats, uint64_t& ignoreCount) {
   // reload users if they were modified
   _usersModified = false;
   auto reloader = [this]() {
@@ -1016,7 +1024,7 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
 
     TRI_ASSERT(q <= end);
 
-    processedMarkers++;
+    applyStats.processedMarkers++;
 
     builder->clear();
     try {
@@ -1053,7 +1061,7 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
     bool skipped = skipMarker(firstRegularTick, slice, markerTick, markerType);
 
     if (!skipped) {
-      Result res = applyLogMarker(slice, firstRegularTick, markerTick, markerType);
+      Result res = applyLogMarker(slice, applyStats, firstRegularTick, markerTick, markerType);
 
       if (res.fail()) {
         // apply error
@@ -1136,6 +1144,9 @@ Result TailingSyncer::runInternal() {
   uint64_t shortTermFailsInRow = 0;
 
 retry:
+  // just to be sure we are starting/restarting from a clean state
+  abortOngoingTransactions();
+
   double const start = TRI_microtime();
 
   Result res;
@@ -1145,6 +1156,7 @@ retry:
   {
     WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
     _applier->_state._failedConnects = 0;
+    _applier->_state.setStartTime(); 
   }
 
   while (true) {
@@ -1712,18 +1724,22 @@ void TailingSyncer::fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> shar
     std::string body = builder.slice().toJson();
 
     std::unique_ptr<httpclient::SimpleHttpResult> response;
+    double time = TRI_microtime();
+
     _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
       response.reset(client->request(rest::RequestType::PUT, url, body.c_str(),
                                      body.size()));
     });
 
+    time = TRI_microtime() - time;
+
     if (replutils::hasFailed(response.get())) {
       // failure
       sharedStatus->gotResponse(
-          replutils::buildHttpError(response.get(), url, _state.connection));
+          replutils::buildHttpError(response.get(), url, _state.connection), time);
     } else {
       // success!
-      sharedStatus->gotResponse(std::move(response));
+      sharedStatus->gotResponse(std::move(response), time);
     }
   } catch (basics::Exception const& ex) {
     sharedStatus->gotResponse(Result(ex.code(), ex.what()));
@@ -1794,7 +1810,8 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
     
   TRI_voc_tick_t lastIncludedTick =
       getUIntHeader(response, StaticStrings::ReplicationHeaderLastIncluded);
-  TRI_voc_tick_t tick = getUIntHeader(response, StaticStrings::ReplicationHeaderLastTick);
+  TRI_voc_tick_t const tick = getUIntHeader(response, StaticStrings::ReplicationHeaderLastTick);
+  TRI_ASSERT(tick >= lastIncludedTick);
   
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "applyLog. fetchTick: " << fetchTick << ", checkMore: " << checkMore << ", fromIncluded: " << fromIncluded << ", lastScannedTick: " << lastScannedTick << ", lastIncludedTick: " << lastIncludedTick << ", tick: " << tick;
 
@@ -1838,11 +1855,16 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
     _applier->_state._lastAvailableContinuousTick = tick;
 
     lastAppliedTick = _applier->_state._lastAppliedContinuousTick;
+
+    TRI_ASSERT(_applier->_state._lastAvailableContinuousTick >= _applier->_state._lastAppliedContinuousTick);
+
+    _applier->_state._totalFetchTime += sharedStatus->time();
+    _applier->_state._totalFetchInstances++;
   }
 
   if (!fromIncluded && fetchTick > 0 &&
       (!_state.master.simulate32Client() || originalFetchTick != tick)) {
-    const std::string msg =
+    std::string const msg =
         std::string("required follow tick value '") + StringUtils::itoa(fetchTick) +
         "' is not present (anymore?) on master at " + _state.master.endpoint +
         ". Last tick available on master is '" + StringUtils::itoa(tick) +
@@ -1869,27 +1891,35 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
     });
   }
 
-  uint64_t processedMarkers = 0;
-  Result r = applyLog(response.get(), firstRegularTick, processedMarkers, ignoreCount);
+  ApplyStats applyStats;
+  double time = TRI_microtime();
+  Result r = applyLog(response.get(), firstRegularTick, applyStats, ignoreCount);
+  time = TRI_microtime() - time;
 
   if (r.fail()) {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "applyLog failed with error: " << r.errorMessage();
   } else {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "applyLog successful, lastAppliedTick: " << lastAppliedTick << ", firstRegularTick: " << firstRegularTick << ", processedMarkers: " << processedMarkers;
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "applyLog successful, lastAppliedTick: " << lastAppliedTick << ", firstRegularTick: " << firstRegularTick << ", processedMarkers: " << applyStats.processedMarkers;
   }
 
   // cppcheck-suppress *
-  if (processedMarkers > 0) {
+  if (applyStats.processedMarkers > 0) {
     worked = true;
 
     WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
-    _applier->_state._totalEvents += processedMarkers;
+    _applier->_state._totalApplyTime += time;
+    _applier->_state._totalApplyInstances++;
+    _applier->_state._totalEvents += applyStats.processedMarkers;
+    _applier->_state._totalDocuments += applyStats.processedDocuments;
+    _applier->_state._totalRemovals += applyStats.processedRemovals;
 
     if (_applier->_state._lastAppliedContinuousTick != lastAppliedTick) {
       _hasWrittenState = true;
       saveApplierState();
     }
+    
+    TRI_ASSERT(_applier->_state._lastAvailableContinuousTick >= _applier->_state._lastAppliedContinuousTick);
   } else if (bumpTick) {
     WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
@@ -1909,6 +1939,8 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
       _hasWrittenState = true;
       saveApplierState();
     }
+    
+    TRI_ASSERT(_applier->_state._lastAvailableContinuousTick >= _applier->_state._lastAppliedContinuousTick);
   }
 
   if (!_hasWrittenState && _useTick) {
@@ -1925,6 +1957,8 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
     }
 
     saveApplierState();
+    
+    TRI_ASSERT(_applier->_state._lastAvailableContinuousTick >= _applier->_state._lastAppliedContinuousTick);
   }
 
   if (r.fail()) {

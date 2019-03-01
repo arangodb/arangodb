@@ -46,6 +46,12 @@ namespace velocypack {
 class Slice;
 }
 
+struct ApplyStats {
+  uint64_t processedMarkers = 0;
+  uint64_t processedDocuments = 0;
+  uint64_t processedRemovals = 0;
+};
+
 class TailingSyncer : public Syncer {
  public:
   TailingSyncer(ReplicationApplier* applier, ReplicationApplierConfiguration const&,
@@ -106,12 +112,13 @@ class TailingSyncer : public Syncer {
 
   /// @brief apply a single marker from the continuous log
   Result applyLogMarker(arangodb::velocypack::Slice const& slice,
+                        ApplyStats& applyStats,
                         TRI_voc_tick_t firstRegularTick, TRI_voc_tick_t markerTick,
                         TRI_replication_operation_e type);
 
   /// @brief apply the data from the continuous log
   Result applyLog(httpclient::SimpleHttpResult*, TRI_voc_tick_t firstRegularTick,
-                  uint64_t& processedMarkers, uint64_t& ignoreCount);
+                  ApplyStats& applyStats, uint64_t& ignoreCount);
 
   /// @brief get local replication applier state
   void getLocalState();

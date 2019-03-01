@@ -135,6 +135,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _intermediateCommitCount(transaction::Options::defaultIntermediateCommitCount),
       _pruneWaitTime(10.0),
       _pruneWaitTimeInitial(180.0),
+      _maxWalArchiveSizeLimit(0),
       _releasedTick(0),
 #ifdef _WIN32
       // background syncing is not supported on Windows
@@ -250,6 +251,11 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--rocksdb.debug-logging",
                      "true to enable rocksdb debug logging",
                      new BooleanParameter(&_debugLogging),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+  
+  options->addOption("--rocksdb.wal-archive-size-limit",
+                     "maximum total size (in bytes) of archived WAL files (0 = unlimited)",
+                     new UInt64Parameter(&_maxWalArchiveSizeLimit),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
 #ifdef USE_ENTERPRISE
@@ -1595,9 +1601,9 @@ std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const& RocksDBEngine::recove
 }
 
 void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
-  WRITE_LOCKER(lock, _walFileLock);
   rocksdb::VectorLogPtr files;
 
+  WRITE_LOCKER(lock, _walFileLock);
   TRI_voc_tick_t minTickToKeep = std::min(_releasedTick, minTickExternal);
 
   auto status = _db->GetSortedWalFiles(files);
@@ -1606,13 +1612,16 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     return;
   }
 
+  uint64_t totalRemainingFileSize = 0;
   size_t lastLess = files.size();
   for (size_t current = 0; current < files.size(); current++) {
     auto f = files[current].get();
     if (f->StartSequence() < minTickToKeep) {
       lastLess = current;
-    } else {
-      break;
+    } else if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
+      if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
+        totalRemainingFileSize += f->SizeFileBytes();
+      }
     }
   }
 
@@ -1624,8 +1633,31 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
         if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
           LOG_TOPIC(DEBUG, Logger::ENGINES)
               << "RocksDB WAL file '" << f->PathName() << "' with start sequence "
-              << f->StartSequence() << " added to prunable list";
+              << f->StartSequence() << " added to prunable list because it is not needed anymore";
           _prunableWalFiles.emplace(f->PathName(), TRI_microtime() + _pruneWaitTime);
+        }
+      }
+    }
+  }
+
+  if (_maxWalArchiveSizeLimit > 0 &&
+      totalRemainingFileSize > _maxWalArchiveSizeLimit) {
+    // we got more archived files than "allowed" from the outside
+    for (size_t current = lastLess; current < files.size(); current++) {
+      auto const& f = files[current].get();
+      if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
+        if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
+          LOG_TOPIC(DEBUG, Logger::ENGINES)
+              << "RocksDB WAL file '" << f->PathName() << "' with start sequence "
+              << f->StartSequence() << " added to prunable list because of overflowing archive";
+          _prunableWalFiles.emplace(f->PathName(), TRI_microtime() + _pruneWaitTime);
+          TRI_ASSERT(totalRemainingFileSize >= f->SizeFileBytes());
+          totalRemainingFileSize -= f->SizeFileBytes();
+        
+          if (totalRemainingFileSize <= _maxWalArchiveSizeLimit) {
+            // got enough files to remove
+            break;
+          }
         }
       }
     }

@@ -376,6 +376,9 @@ class RocksDBEngine final : public StorageEngine {
   // deletion kicks in
   double _pruneWaitTimeInitial;
 
+  /// @brief maximum total size (in bytes) of archived WAL files
+  uint64_t _maxWalArchiveSizeLimit;
+
   // do not release walfiles containing writes later than this
   TRI_voc_tick_t _releasedTick;
 

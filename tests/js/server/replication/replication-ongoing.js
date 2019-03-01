@@ -165,6 +165,101 @@ function BaseTestConfig () {
   'use strict';
 
   return {
+    
+    testStatsInsert: function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+        },
+
+        function (state) {
+          db._create(cn);
+          for (let i = 0; i < 1000; ++i) {
+            db._collection(cn).insert({ _key: "test" + i });
+          }
+          internal.wal.flush(true, true);
+        },
+
+        function (state) {
+          return true;
+        },
+
+        function (state) {
+          let s = replication.applier.state().state;
+          assertTrue(s.totalDocuments >= 1000);
+          assertTrue(s.totalFetchTime > 0);
+          assertTrue(s.totalApplyTime > 0);
+          assertTrue(s.averageApplyTime > 0);
+        }
+      );
+    },
+    
+    testStatsInsertUpdate: function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+          db._create(cn);
+          for (let i = 0; i < 1000; ++i) {
+            db._collection(cn).insert({ _key: "test" + i });
+          }
+          internal.wal.flush(true, true);
+        },
+
+        function (state) {
+          for (let i = 0; i < 1000; ++i) {
+            db._collection(cn).update("test" + i, { value: i });
+          }
+          internal.wal.flush(true, true);
+        },
+
+        function (state) {
+          return true;
+        },
+
+        function (state) {
+          let s = replication.applier.state().state;
+          assertTrue(s.totalDocuments >= 1000);
+          assertTrue(s.totalFetchTime > 0);
+          assertTrue(s.totalApplyTime > 0);
+          assertTrue(s.averageApplyTime > 0);
+        }
+      );
+    },
+    
+    testStatsRemove: function () {
+      connectToMaster();
+
+      compare(
+        function (state) {
+        },
+
+        function (state) {
+          db._create(cn);
+          for (let i = 0; i < 1000; ++i) {
+            db._collection(cn).insert({ _key: "test" + i });
+          }
+          for (let i = 0; i < 1000; ++i) {
+            db._collection(cn).remove("test" + i);
+          }
+          internal.wal.flush(true, true);
+        },
+
+        function (state) {
+          return true;
+        },
+
+        function (state) {
+          let s = replication.applier.state().state;
+          assertTrue(s.totalDocuments >= 1000);
+          assertTrue(s.totalRemovals >= 1000);
+          assertTrue(s.totalFetchTime > 0);
+          assertTrue(s.totalApplyTime > 0);
+          assertTrue(s.averageApplyTime > 0);
+        }
+      );
+    },
 
     testIncludeCollection: function () {
       connectToMaster();
