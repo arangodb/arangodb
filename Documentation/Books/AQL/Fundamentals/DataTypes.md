@@ -1,17 +1,18 @@
 Data types
 ==========
 
-AQL supports both primitive and compound data types. The following types are
+AQL supports both *primitive* data types consisting of exactly one value and
+*compound* data types comprised of multiple values. The following types are
 available:
 
-- **Primitive types**: Consisting of exactly one value
-  - **null**: An empty value, also: the absence of a value
-  - **bool**: Boolean truth value with possible values *false* and *true*
-  - **number**: Signed (real) number
-  - **string**: UTF-8 encoded text value
-- **Compound types**: Consisting of multiple values
-  - **array** / **list**: Sequence of values, referred to by their positions
-  - **object** / **document**: Sequence of values, referred to by their names
+| Data type   | Description |
+|------------:|-------------|
+| **null**    | An empty value, also: the absence of a value
+| **boolean** | Boolean truth value with possible values *false* and *true*
+| **number**  | Signed (real) number
+| **string**  | UTF-8 encoded text value
+| **array** / list | Sequence of values, referred to by their positions
+| **object** / document | Sequence of values, referred to by their names
 
 Primitive types
 ---------------
@@ -98,8 +99,10 @@ Compound types
 
 AQL supports two compound types:
 
-- arrays: A composition of unnamed values, each accessible by their positions
-- objects / documents: A composition of named values, each accessible by their names
+- **array**: A composition of unnamed values, each accessible
+  by their positions. Sometimes called *list*.
+- **object**: A composition of named values, each accessible
+  by their names. A *document* is an object at the top level.
 
 ### Arrays / Lists
 
@@ -154,7 +157,8 @@ u.friends[-2]
 
 The other supported compound type is the object (or document) type. Objects are a
 composition of zero to many attributes. Each attribute is a name/value pair.
-Object attributes can be accessed individually by their names.
+Object attributes can be accessed individually by their names. This data type is
+also known as dictionary, map, associative array and other names.
 
 Object declarations start with a left curly bracket `{` and end with a
 right curly bracket `}`. An object contains zero to many attribute declarations,
