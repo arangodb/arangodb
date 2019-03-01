@@ -58,7 +58,7 @@ public:
 }; // class TestHandler
 
 
-TEST_CASE("MaintenanceRestHandler", "[cluster][maintenance][devel]") {
+TEST_CASE("MaintenanceRestHandler", "[cluster][maintenance]") {
 
   SECTION("Parse REST PUT") {
     VPackBuilder body;

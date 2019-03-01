@@ -441,6 +441,7 @@ ERROR_CANNOT_DROP_SMART_COLLECTION,4002,"cannot drop this smart collection","Thi
 ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE,4003,"in smart vertex collections _key must be prefixed with the value of the smart graph attribute","In a smart vertex collection _key must be prefixed with the value of the smart graph attribute."
 ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE,4004,"attribute cannot be used as smart graph attribute","The given smartGraph attribute is illegal and connot be used for sharding. All system attributes are forbidden."
 ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH,4005,"smart graph attribute mismatch","The smart graph attribute of the given collection does not match the smart graph attribute of the graph."
+ERROR_REMOTE_REPOSITORY_CONFIG_BAD,4006,"remote hotback repository configuration error","The configuration given for upload or download operation to/from remote hotback repositories is wrong."
 
 ################################################################################
 ## Cluster repair errors

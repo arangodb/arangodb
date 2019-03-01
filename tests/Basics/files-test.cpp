@@ -48,7 +48,7 @@ struct CFilesSetup {
   CFilesSetup () : _directory(true) {
     long systemError;
     std::string errorMessage;
-    
+
     if (!Initialized) {
       Initialized = true;
       arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
@@ -95,6 +95,19 @@ struct CFilesSetup {
   StringBuffer _directory;
 };
 
+
+struct ByteCountFunctor {
+
+  size_t _byteCount;
+
+  ByteCountFunctor() : _byteCount(0) {};
+
+  bool operator() (const char * data, size_t size) {
+    _byteCount+=size;
+    return true;
+  };
+};// struct ByteCountFunctor
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
@@ -109,7 +122,7 @@ TEST_CASE("CFilesTest", "[files]") {
 SECTION("tst_copyfile") {
   std::ostringstream out;
   out << s._directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter;
-  
+
   std::string source = out.str();
   out << "-dest";
   std::string dest = out.str();
@@ -127,7 +140,7 @@ SECTION("tst_copyfile") {
   FileUtils::remove(source);
   FileUtils::spit(source, std::string("foobar"), false);
   CHECK(false == TRI_CopyFile(source, dest, error));
-  
+
   FileUtils::remove(source);
   FileUtils::remove(dest);
   FileUtils::spit(source, std::string("foobar"), false);
@@ -139,7 +152,7 @@ SECTION("tst_copyfile") {
   for (size_t i = 0; i < 10; ++i) {
     value += value;
   }
- 
+
   FileUtils::remove(source);
   FileUtils::remove(dest);
   FileUtils::spit(source, value, false);
@@ -177,7 +190,7 @@ SECTION("tst_createdirectory") {
 SECTION("tst_createdirectoryrecursive") {
   std::ostringstream out;
   out << s._directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
-  
+
   std::string filename1 = out.str();
   out << TRI_DIR_SEPARATOR_CHAR << "abc";
   std::string filename2 = out.str();
@@ -201,7 +214,7 @@ SECTION("tst_createdirectoryrecursive") {
 SECTION("tst_removedirectorydeterministic") {
   std::ostringstream out;
   out << s._directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
-  
+
   std::string filename1 = out.str();
   out << TRI_DIR_SEPARATOR_CHAR << "abc";
   std::string filename2 = out.str();
@@ -253,7 +266,7 @@ SECTION("tst_filesize_empty") {
 
 SECTION("tst_filesize_exists") {
   const char* buffer = "the quick brown fox";
-  
+
   StringBuffer* filename = s.writeFile(buffer);
   CHECK((int) strlen(buffer) == (int) TRI_SizeFile(filename->c_str()));
 
@@ -286,35 +299,35 @@ SECTION("tst_absolute_paths") {
   path = TRI_GetAbsolutePath("the-fox.lol", "\\tmp");
   CHECK(std::string("\\tmp\\the-fox.lol") == path);
   TRI_Free(path);
-  
+
   path = TRI_GetAbsolutePath("the-fox.lol", "\\tmp\\the-fox");
   CHECK(std::string("\\tmp\\the-fox\\the-fox.lol") == path);
   TRI_Free(path);
-  
+
   path = TRI_GetAbsolutePath("file", "\\");
   CHECK(std::string("\\file") == path);
   TRI_Free(path);
-  
+
   path = TRI_GetAbsolutePath(".\\file", "\\");
   CHECK(std::string("\\.\\file") == path);
   TRI_Free(path);
-  
+
   path = TRI_GetAbsolutePath("\\file", "\\tmp");
   CHECK(std::string("\\tmp\\file") == path);
   TRI_Free(path);
-  
+
   path = TRI_GetAbsolutePath("\\file\\to\\file", "\\tmp");
   CHECK(std::string("\\tmp\\file\\to\\file") == path);
   TRI_Free(path);
-  
+
   path = TRI_GetAbsolutePath("file\\to\\file", "\\tmp");
   CHECK(std::string("\\tmp\\file\\to\\file") == path);
   TRI_Free(path);
-  
+
   path = TRI_GetAbsolutePath("c:\\file\\to\\file", "abc");
   CHECK(std::string("c:\\file\\to\\file") == path);
   TRI_Free(path);
-  
+
   path = TRI_GetAbsolutePath("c:\\file\\to\\file", "\\tmp");
   CHECK(std::string("c:\\file\\to\\file") == path);
   TRI_Free(path);
@@ -328,31 +341,31 @@ SECTION("tst_absolute_paths") {
   path = TRI_GetAbsolutePath("the-fox.lol", "/tmp");
   CHECK(std::string("/tmp/the-fox.lol") == path);
   TRI_Free(path);
-  
+
   path = TRI_GetAbsolutePath("the-fox.lol", "/tmp/the-fox");
   CHECK(std::string("/tmp/the-fox/the-fox.lol") == path);
   TRI_Free(path);
-  
+
   path = TRI_GetAbsolutePath("file", "/");
   CHECK(std::string("/file") == path);
   TRI_Free(path);
-  
+
   path = TRI_GetAbsolutePath("./file", "/");
   CHECK(std::string("/./file") == path);
   TRI_Free(path);
-  
+
   path = TRI_GetAbsolutePath("/file", "/tmp");
   CHECK(std::string("/file") == path);
   TRI_Free(path);
-  
+
   path = TRI_GetAbsolutePath("/file/to/file", "/tmp");
   CHECK(std::string("/file/to/file") == path);
   TRI_Free(path);
-  
+
   path = TRI_GetAbsolutePath("file/to/file", "/tmp");
   CHECK(std::string("/tmp/file/to/file") == path);
   TRI_Free(path);
-  
+
   path = TRI_GetAbsolutePath("c:file/to/file", "/tmp");
   CHECK(std::string("c:file/to/file") == path);
   TRI_Free(path);
@@ -377,7 +390,7 @@ SECTION("tst_normalize") {
 #else
   CHECK(std::string("\\foo\\bar\\baz") == path);
 #endif
-  
+
   path = "/foo/bar\\baz";
   FileUtils::normalizePath(path);
 #ifdef _WIN32
@@ -385,7 +398,7 @@ SECTION("tst_normalize") {
 #else
   CHECK(std::string("/foo/bar\\baz") == path);
 #endif
-  
+
   path = "/foo/bar/\\baz";
   FileUtils::normalizePath(path);
 #ifdef _WIN32
@@ -393,7 +406,7 @@ SECTION("tst_normalize") {
 #else
   CHECK(std::string("/foo/bar/\\baz") == path);
 #endif
-  
+
   path = "//foo\\/bar/\\baz";
   FileUtils::normalizePath(path);
 #ifdef _WIN32
@@ -401,7 +414,7 @@ SECTION("tst_normalize") {
 #else
   CHECK(std::string("//foo\\/bar/\\baz") == path);
 #endif
-  
+
   path = "\\\\foo\\/bar/\\baz";
   FileUtils::normalizePath(path);
 #ifdef _WIN32
@@ -409,6 +422,34 @@ SECTION("tst_normalize") {
 #else
   CHECK(std::string("\\\\foo\\/bar/\\baz") == path);
 #endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process data in a file via a functor
+////////////////////////////////////////////////////////////////////////////////
+SECTION("tst_processFile") {
+  const char* buffer = "the quick brown fox";
+  bool good;
+
+  StringBuffer* filename = s.writeFile(buffer);
+
+  ByteCountFunctor bcf;
+  auto reader = std::ref(bcf);
+  good = TRI_ProcessFile(filename->c_str(), reader);
+
+  CHECK(true == good);
+  CHECK((int) strlen(buffer) == (int) bcf._byteCount);
+
+  TRI_SHA256Functor sha;
+  auto shaReader = std::ref(sha);
+
+  good = TRI_ProcessFile(filename->c_str(), shaReader);
+
+  CHECK(true == good);
+  CHECK(sha.final().compare("9ecb36561341d18eb65484e833efea61edc74b84cf5e6ae1b81c63533e25fc8f")==0);
+
+  TRI_UnlinkFile(filename->c_str());
+  delete filename;
 }
 
 }

@@ -157,7 +157,7 @@ public:
 // Unit Tests start here
 //
 //
-TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
+TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance]") {
 
   std::chrono::system_clock::time_point baseTime(std::chrono::system_clock::now());
   std::chrono::system_clock::time_point noTime;
@@ -390,7 +390,7 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
   }
 } // MaintenanceFeatureUnthreaded
 
-TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
+TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance]") {
 
   SECTION("Populate action queue and validate") {
     std::vector<Expected> pre_thread, post_thread;
@@ -592,7 +592,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     std::shared_ptr<arangodb::options::ProgramOptions> po =
       std::make_shared<arangodb::options::ProgramOptions>(
         "test", std::string(), std::string(), "path");
-    
+
     arangodb::application_features::ApplicationServer as(po, nullptr);
     TestMaintenanceFeature * tf = new TestMaintenanceFeature(as);
     as.addFeature(tf);
@@ -632,7 +632,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     th.join();
   }
 
-  
+
   SECTION("Action delete") {
     std::vector<Expected> pre_thread, post_thread;
 
@@ -686,6 +686,6 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     th.join();
   }
 
-  
+
 
  } // MaintenanceFeatureThreaded
