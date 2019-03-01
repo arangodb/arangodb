@@ -52,7 +52,9 @@ ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
       _queryId(queryId),
       _isResponsibleForInitializeCursor(node->isResponsibleForInitializeCursor()),
       _lastResponse(nullptr),
-      _lastError(TRI_ERROR_NO_ERROR) {
+      _lastError(TRI_ERROR_NO_ERROR),
+      _lastTicketId(0),
+      _hasTriggeredShutdown(false) {
   TRI_ASSERT(!queryId.empty());
   TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() && ownName.empty()) ||
              (!arangodb::ServerState::instance()->isCoordinator() && !ownName.empty()));
@@ -258,7 +260,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
 
   auto res = sendAsyncRequest(rest::RequestType::PUT,
                               "/_api/aql/initializeCursor/", bodyString);
-
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -268,6 +269,20 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
 
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(int errorCode) {
+  if (!_hasTriggeredShutdown) {
+    if (_lastTicketId != 0) {
+      auto cc = ClusterComm::instance();
+      if (cc == nullptr) {
+        // nullptr only happens on controlled shutdown
+        return {ExecutionState::DONE, TRI_ERROR_SHUTTING_DOWN};
+      }
+      cc->drop(0, _lastTicketId, "");
+    }
+    _lastTicketId = 0;
+    _lastError.reset(TRI_ERROR_NO_ERROR);
+    _lastResponse.reset();
+    _hasTriggeredShutdown = true;
+  }
   /* We need to handle this here in ASYNC case
     if (isShutdown && errorNum == TRI_ERROR_QUERY_NOT_FOUND) {
       // this error may happen on shutdown and is thus tolerated
@@ -331,11 +346,9 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
   auto bodyString = std::make_shared<std::string const>(bodyBuilder.slice().toJson());
 
   auto res = sendAsyncRequest(rest::RequestType::PUT, "/_api/aql/shutdown/", bodyString);
-
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-
   return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
 }
 
@@ -365,18 +378,22 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
       std::make_shared<WakeupQueryCallback>(this, _engine->getQuery());
 
   // TODO Returns OperationID do we need it in any way?
-  cc->asyncRequest(coordTransactionId, _server, type, url, std::move(body),
-                   headers, callback, defaultTimeOut, true);
+  _lastTicketId =
+      cc->asyncRequest(coordTransactionId, _server, type, url, std::move(body),
+                       headers, callback, defaultTimeOut, true);
 
   return {TRI_ERROR_NO_ERROR};
 }
 
 bool ExecutionBlockImpl<RemoteExecutor>::handleAsyncResult(ClusterCommResult* result) {
-  // TODO Handle exceptions thrown while we are in this code
-  // Query will not be woken up again.
-  _lastError = handleCommErrors(result);
-  if (_lastError.ok()) {
-    _lastResponse = result->result;
+  if (_lastTicketId == result->operationID) {
+    // TODO Handle exceptions thrown while we are in this code
+    // Query will not be woken up again.
+    _lastError = handleCommErrors(result);
+    if (_lastError.ok()) {
+      _lastResponse = result->result;
+    }
+    _lastTicketId = 0;
   }
   return true;
 }

@@ -25,6 +25,7 @@
 
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Cluster/ClusterComm.h"
 
 #include <lib/Rest/CommonDefines.h>
 #include <lib/SimpleHttpClient/SimpleHttpResult.h>
@@ -129,6 +130,10 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   /// @brief the last remote response Result object, may contain an error.
   arangodb::Result _lastError;
+
+  OperationID _lastTicketId;
+
+  bool _hasTriggeredShutdown;
 };
 
 }  // namespace aql
