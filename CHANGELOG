@@ -6,7 +6,7 @@ v3.4.3 (2019-xx-xx)
 * added `--environment.delete` to allow to hide environment variables from
   sub-processes or V8
 
-* hide senstive program options like ldap password from V8
+* hide sensitive program options like ldap password from V8
 
 v3.4.2 (2019-01-15)
 -------------------
