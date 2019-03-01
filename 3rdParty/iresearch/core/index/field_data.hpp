@@ -63,8 +63,6 @@ class IRESEARCH_API field_data : util::noncopyable {
     int_block_pool::inserter* int_writer
   );
 
-  ~field_data();
-
   doc_id_t doc() const { return last_doc_; }
 
   // returns number of terms in a field within a document

@@ -55,7 +55,7 @@ const irs::string_ref IRESEARCH_CHECKPOINT_SUFFIX(".checkpoint");
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the storage format used with IResearch writers
 ////////////////////////////////////////////////////////////////////////////////
-const irs::string_ref IRESEARCH_STORE_FORMAT("1_0");
+const irs::string_ref IRESEARCH_STORE_FORMAT("1_1");
 
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
@@ -703,7 +703,9 @@ bool IResearchLink::hasSelectivityEstimate() const {
 
 TRI_idx_iid_t IResearchLink::id() const noexcept { return _id; }
 
-arangodb::Result IResearchLink::init(arangodb::velocypack::Slice const& definition) {
+arangodb::Result IResearchLink::init(
+    arangodb::velocypack::Slice const& definition,
+    InitCallback const& initCallback /* = { }*/ ) {
   // disassociate from view if it has not been done yet
   if (!unload().ok()) {
     return arangodb::Result(TRI_ERROR_INTERNAL, "failed to unload link");
@@ -781,7 +783,7 @@ arangodb::Result IResearchLink::init(arangodb::velocypack::Slice const& definiti
                            _collection.isAStub();  // cluster-wide link
 
     if (!clusterWideLink) {
-      auto res = initDataStore();  // prepare data-store which can then update options
+      auto res = initDataStore(initCallback);  // prepare data-store which can then update options
                                    // via the IResearchView::link(...) call
 
       if (!res.ok()) {
@@ -854,8 +856,8 @@ arangodb::Result IResearchLink::init(arangodb::velocypack::Slice const& definiti
       }
     }
   } else if (arangodb::ServerState::instance()->isSingleServer()) {  // single-server link
-    auto res = initDataStore();  // prepare data-store which can then update options
-                                 // via the IResearchView::link(...) call
+    auto res = initDataStore(initCallback);  // prepare data-store which can then update options
+                                             // via the IResearchView::link(...) call
 
     if (!res.ok()) {
       return res;
@@ -901,7 +903,7 @@ arangodb::Result IResearchLink::init(arangodb::velocypack::Slice const& definiti
   return arangodb::Result();
 }
 
-arangodb::Result IResearchLink::initDataStore() {
+arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback) {
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
 
   if (_asyncFeature) {
@@ -956,6 +958,10 @@ arangodb::Result IResearchLink::initDataStore() {
       TRI_ERROR_INTERNAL,
       std::string("failed to instantiate data store directory with path '") + _dataStore._path.utf8() + "' while initializing link '" + std::to_string(_id) + "'"
     );
+  }
+
+  if (initCallback) {
+    initCallback(*_dataStore._directory);
   }
 
   _dataStore._recovery = RecoveryState::AFTER_CHECKPOINT; // new empty data store
