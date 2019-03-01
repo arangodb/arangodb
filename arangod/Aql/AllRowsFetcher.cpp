@@ -69,7 +69,7 @@ ExecutionState AllRowsFetcher::fetchUntilDone() {
   return state;
 }
 
-std::pair<ExecutionState, size_t> AllRowsFetcher::preFetchNumberOfRows() {
+std::pair<ExecutionState, size_t> AllRowsFetcher::preFetchNumberOfRows(size_t) {
   if (_upstreamState == ExecutionState::DONE) {
     TRI_ASSERT(_aqlItemMatrix != nullptr);
     return {ExecutionState::DONE, _aqlItemMatrix->size()};
