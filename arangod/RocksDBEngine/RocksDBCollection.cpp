@@ -492,6 +492,7 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
       ++i;
     }
   }
+
   if (!toRemove) {  // index not found
     // We tried to remove an index that does not exist
     events::DropIndex("", std::to_string(iid), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
@@ -504,22 +505,34 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
   TRI_ASSERT(cindex != nullptr);
 
   Result res = cindex->drop();
-  if (res.ok()) {
-    events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
 
-    // trigger compaction before deleting the object
-    cindex->compact();
-
-    auto builder =
-        _logicalCollection.toVelocyPackIgnore({"path", "statusString"}, true, true);
-
-    // log this event in the WAL and in the collection meta-data
-    auto engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-    res = engine->writeCreateCollectionMarker(
-        _logicalCollection.vocbase().id(), _logicalCollection.id(), builder.slice(),
-        RocksDBLogValue::IndexDrop(_logicalCollection.vocbase().id(),
-                                   _logicalCollection.id(), iid));
+  if (!res.ok()) {
+    return false;
   }
+
+  events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
+
+  cindex->compact(); // trigger compaction before deleting the object
+
+  auto* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+
+  if (!engine || engine->inRecovery()) {
+    return true; // skip writing WAL marker if inRecovery()
+  }
+
+  auto builder = // RocksDB path
+    _logicalCollection.toVelocyPackIgnore({"path", "statusString"}, true, true);
+
+  // log this event in the WAL and in the collection meta-data
+  res = engine->writeCreateCollectionMarker( // write marker
+    _logicalCollection.vocbase().id(), // vocbase id
+    _logicalCollection.id(), // collection id
+    builder.slice(), // RocksDB path
+    RocksDBLogValue::IndexDrop( // marker
+      _logicalCollection.vocbase().id(), _logicalCollection.id(), iid // args
+    )
+  );
+
   return res.ok();
 }
 

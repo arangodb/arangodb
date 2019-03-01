@@ -149,11 +149,13 @@ class IRESEARCH_API index_writer:
     const segment_context_ptr& ctx() const NOEXCEPT { return ctx_; }
 
    private:
+    IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
     friend struct flush_context; // for flush_context::emplace(...)
     segment_context_ptr ctx_{nullptr};
     flush_context* flush_ctx_{nullptr}; // nullptr will not match any flush_context
     size_t pending_segment_context_offset_; // segment offset in flush_ctx_->pending_segment_contexts_
     std::atomic<size_t>* segments_active_; // reference to index_writer::segments_active_
+    IRESEARCH_API_PRIVATE_VARIABLES_END
   };
 
  public:
