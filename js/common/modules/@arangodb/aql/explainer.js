@@ -445,7 +445,6 @@ class PrintedTable {
     let line = ' ';
     let isFirst = true;
     for (let c of this.content) {
-      print(c.size, c.header.length);
       line += (isFirst ? '' : pad(3)) + header(c.header) + pad(1 + c.size - c.header.length);
       isFirst = false;
     }
