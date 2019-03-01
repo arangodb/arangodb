@@ -249,6 +249,18 @@ bool Agent::isCommitted(index_t index) {
   }
 }
 
+index_t Agent::index() {
+
+  if (challengeLeadership()) {
+    resign();
+    return 0;
+  }
+
+  MUTEX_LOCKER(tiLocker, _tiLock);
+  return _confirmed[id()];
+
+}
+
 //  AgentCallback reports id of follower and its highest processed index
 void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
   auto startTime = steady_clock::now();

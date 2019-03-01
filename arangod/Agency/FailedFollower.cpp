@@ -78,7 +78,7 @@ FailedFollower::FailedFollower(Node const& snapshot, AgentInterface* agent,
 
 FailedFollower::~FailedFollower() {}
 
-void FailedFollower::run() { runHelper("", _shard); }
+void FailedFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 
 bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   using namespace std::chrono;
@@ -120,7 +120,7 @@ bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
 
 }
 
-bool FailedFollower::start() {
+bool FailedFollower::start(bool& aborts) {
   using namespace std::chrono;
 
   std::vector<std::string> existing =
@@ -272,9 +272,10 @@ bool FailedFollower::start() {
     if (jobId.second && !abortable(_snapshot, jobId.first)) {
       return false;
     } else if (jobId.second) {
+      return false;
       JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
     }
-  }  // if
+  } 
 
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "FailedFollower start transaction: " << job.toJson();

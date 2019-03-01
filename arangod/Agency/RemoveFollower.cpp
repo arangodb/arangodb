@@ -65,7 +65,7 @@ RemoveFollower::RemoveFollower(Node const& snapshot, AgentInterface* agent,
 
 RemoveFollower::~RemoveFollower() {}
 
-void RemoveFollower::run() { runHelper("", _shard); }
+void RemoveFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 
 bool RemoveFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
@@ -122,7 +122,7 @@ bool RemoveFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   return false;
 }
 
-bool RemoveFollower::start() {
+bool RemoveFollower::start(bool&) {
   // If anything throws here, the run() method catches it and finishes
   // the job.
 

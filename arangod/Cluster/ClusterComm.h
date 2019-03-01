@@ -637,46 +637,29 @@ class ClusterComm {
   static OperationID getOperationID();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief send queue with lock and index
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::list<ClusterCommOperation*> toSend;
-  std::map<OperationID, std::list<ClusterCommOperation*>::iterator> toSendByOpID;
-  arangodb::basics::ConditionVariable somethingToSend;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief received queue with lock and index
   //////////////////////////////////////////////////////////////////////////////
 
   struct AsyncResponse {
     double timestamp;
     std::shared_ptr<ClusterCommResult> result;
+    std::shared_ptr<communicator::Communicator> communicator;
   };
 
-  typedef std::unordered_map<communicator::Ticket, AsyncResponse>::iterator ResponseIterator;
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Map of requests that are in flight or not yet read.
+  ///        The communicator will write into the response whenever
+  ///        communication is resolved. Needs to be modified under the
+  ///        somethingReceived lock.
+  //////////////////////////////////////////////////////////////////////////////
   std::unordered_map<communicator::Ticket, AsyncResponse> responses;
+  typedef decltype(ClusterComm::responses)::iterator ResponseIterator;
 
-  // Receiving answers:
-  std::list<ClusterCommOperation*> received;
-  std::map<OperationID, std::list<ClusterCommOperation*>::iterator> receivedByOpID;
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief condition variable to protect the responses map
+  //////////////////////////////////////////////////////////////////////////////
+
   arangodb::basics::ConditionVariable somethingReceived;
-
-  // Note: If you really have to lock both `somethingToSend`
-  // and `somethingReceived` at the same time (usually you should
-  // not have to!), then: first lock `somethingToReceive`, then
-  // lock `somethingtoSend` in this order!
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief iterator type which is frequently used
-  //////////////////////////////////////////////////////////////////////////////
-
-  typedef std::list<ClusterCommOperation*>::iterator QueueIterator;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief iterator type which is frequently used
-  //////////////////////////////////////////////////////////////////////////////
-
-  typedef std::map<OperationID, QueueIterator>::iterator IndexIterator;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal function to match an operation:
@@ -685,18 +668,6 @@ class ClusterComm {
   bool match(ClientTransactionID const& clientTransactionID,
              CoordTransactionID const coordTransactionID,
              ShardID const& shardID, ClusterCommResult* res);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief move an operation from the send to the receive queue
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool moveFromSendToReceived(OperationID operationID);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief cleanup all queues
-  //////////////////////////////////////////////////////////////////////////////
-
-  void cleanupAllQueues();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief activeServerTickets for a list of servers

@@ -21,16 +21,18 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IResearchFeature.h"
+#include "IResearchLinkHelper.h"
+
 #include "Basics/Common.h"  // required for RocksDBColumnFamily.h
-#include "IResearch/IResearchFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
-#include "IResearchLinkHelper.h"
 #include "IResearchRocksDBLink.h"
 
 NS_BEGIN(arangodb)
@@ -113,13 +115,22 @@ void IResearchRocksDBLink::toVelocyPack(arangodb::velocypack::Builder& builder,
 }
 
 void IResearchRocksDBLink::writeRocksWalMarker() {
-  RocksDBLogValue logValue =
-      RocksDBLogValue::IResearchLinkDrop(Index::_collection.vocbase().id(),
-                                         Index::_collection.id(),
-                                         view() ? view()->id() : 0,  // 0 == invalid TRI_voc_cid_t according to transaction::Methods
-                                         Index::_iid);
+  auto* engine = arangodb::EngineSelectorFeature::ENGINE;
+
+  if (engine && engine->inRecovery()) {
+    return; // skip writing marker if in recovery
+  }
+
+  auto logValue = arangodb::RocksDBLogValue::IResearchLinkDrop(
+    arangodb::Index::_collection.vocbase().id(),
+    arangodb::Index::_collection.id(),
+    view() ? view()->id() : 0, // 0 == invalid TRI_voc_cid_t according to transaction::Methods
+    arangodb::Index::_iid
+  );
+
   rocksdb::WriteBatch batch;
   rocksdb::WriteOptions wo;  // TODO: check which options would make sense
+
   auto db = rocksutils::globalRocksDB();
 
   batch.PutLogData(logValue.slice());
@@ -131,9 +142,9 @@ void IResearchRocksDBLink::writeRocksWalMarker() {
   }
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+NS_END // iresearch
+NS_END // arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
