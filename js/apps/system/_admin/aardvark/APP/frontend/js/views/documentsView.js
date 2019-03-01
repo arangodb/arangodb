@@ -121,7 +121,7 @@
       $('#docPureTable').html(
         '<div class="infoBox errorBox">' +
         '<h4>Error</h4>' +
-        '<p>Collection not found. Requested name was: "' + name + '".</p>' +
+        '<p>Collection not found. Requested name was: "' + arangoHelper.escapeHtml(name) + '".</p>' +
         '</div>'
       );
       $('#subNavigationBar .breadcrumb').html();
@@ -982,6 +982,7 @@
       this.collectionName = window.location.hash.split('/')[1];
 
       $(this.el).html(this.template.render({}));
+
       if (this.type === 2) {
         this.type = 'document';
       } else if (this.type === 3) {
@@ -1062,9 +1063,9 @@
 
       if (window.App.naviView && $('#subNavigationBar .breadcrumb').html() !== undefined) {
         $('#subNavigationBar .breadcrumb').html(
-          'Collection: ' + this.collectionName
+          'Collection: ' + arangoHelper.escapeHtml(this.collectionName)
         );
-        window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Content');
+        arangoHelper.buildCollectionSubNav(this.collectionName, 'Content');
       } else {
         window.setTimeout(function () {
           self.breadcrumb();
