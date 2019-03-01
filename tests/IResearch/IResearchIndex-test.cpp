@@ -252,10 +252,10 @@ SECTION("test_analyzer") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    CHECK((trx.begin().ok()));
-    CHECK((trx.insert(collection0->name(), doc0->slice(), arangodb::OperationOptions()).ok()));
-    CHECK((trx.insert(collection1->name(), doc1->slice(), arangodb::OperationOptions()).ok()));
-    CHECK((trx.commit().ok()));
+    CHECK(trx.begin().ok());
+    CHECK(trx.insert(collection0->name(), doc0->slice(), arangodb::OperationOptions()).ok());
+    CHECK(trx.insert(collection1->name(), doc1->slice(), arangodb::OperationOptions()).ok());
+    CHECK(trx.commit().ok());
   }
 
   // link collections with view
@@ -271,7 +271,7 @@ SECTION("test_analyzer") {
       } } \
     } }");
 
-    CHECK((viewImpl->properties(updateJson->slice(), false).ok()));
+    CHECK(viewImpl->properties(updateJson->slice(), false).ok());
   }
 
   // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
@@ -290,11 +290,11 @@ SECTION("test_analyzer") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
@@ -313,11 +313,11 @@ SECTION("test_analyzer") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
     // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
@@ -336,11 +336,11 @@ SECTION("test_analyzer") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection0 (2 analyzers used)
@@ -358,11 +358,11 @@ SECTION("test_analyzer") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection0 (2 analyzers used)
@@ -380,11 +380,11 @@ SECTION("test_analyzer") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -402,11 +402,11 @@ SECTION("test_analyzer") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -424,11 +424,11 @@ SECTION("test_analyzer") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -446,11 +446,11 @@ SECTION("test_analyzer") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -468,11 +468,11 @@ SECTION("test_analyzer") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 }
 
@@ -502,7 +502,7 @@ SECTION("test_async_index") {
       } } \
     } }");
 
-    CHECK((viewImpl->properties(updateJson->slice(), false).ok()));
+    CHECK(viewImpl->properties(updateJson->slice(), false).ok());
   }
 
   // `catch` doesn't support cuncurrent checks
@@ -615,11 +615,11 @@ SECTION("test_async_index") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
@@ -643,11 +643,11 @@ SECTION("test_async_index") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
@@ -671,11 +671,11 @@ SECTION("test_async_index") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection0 (2 analyzers used)
@@ -698,11 +698,11 @@ SECTION("test_async_index") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection0 (2 analyzers used)
@@ -725,11 +725,11 @@ SECTION("test_async_index") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection0 (2 analyzers used)
@@ -752,11 +752,11 @@ SECTION("test_async_index") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -776,11 +776,11 @@ SECTION("test_async_index") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -800,11 +800,11 @@ SECTION("test_async_index") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection1 (1 analyzer used)
@@ -824,11 +824,11 @@ SECTION("test_async_index") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 }
 
@@ -858,10 +858,10 @@ SECTION("test_fields") {
       EMPTY,
       arangodb::transaction::Options()
     );
-    CHECK((trx.begin().ok()));
-    CHECK((trx.insert(collection0->name(), doc0->slice(), arangodb::OperationOptions()).ok()));
-    CHECK((trx.insert(collection1->name(), doc1->slice(), arangodb::OperationOptions()).ok()));
-    CHECK((trx.commit().ok()));
+    CHECK(trx.begin().ok());
+    CHECK(trx.insert(collection0->name(), doc0->slice(), arangodb::OperationOptions()).ok());
+    CHECK(trx.insert(collection1->name(), doc1->slice(), arangodb::OperationOptions()).ok());
+    CHECK(trx.commit().ok());
   }
 
   // link collections with view
@@ -876,7 +876,7 @@ SECTION("test_fields") {
       } } \
     } }");
 
-    CHECK((viewImpl->properties(updateJson->slice(), false).ok()));
+    CHECK(viewImpl->properties(updateJson->slice(), false).ok());
   }
 
   // docs match from both collections
@@ -895,11 +895,11 @@ SECTION("test_fields") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 
   // docs match from collection0
@@ -917,11 +917,11 @@ SECTION("test_fields") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       auto key = resolved.get("seq");
-      CHECK((i < expected.size()));
-      CHECK((expected[i++] == key.getNumber<size_t>()));
+      CHECK(i < expected.size());
+      CHECK(expected[i++] == key.getNumber<size_t>());
     }
 
-    CHECK((i == expected.size()));
+    CHECK(i == expected.size());
   }
 }
 
