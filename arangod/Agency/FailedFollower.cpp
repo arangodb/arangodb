@@ -272,8 +272,8 @@ bool FailedFollower::start(bool& aborts) {
     if (jobId.second && !abortable(_snapshot, jobId.first)) {
       return false;
     } else if (jobId.second) {
-      return false;
       JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+      return false;
     }
   } 
 
