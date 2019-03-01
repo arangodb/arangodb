@@ -1630,8 +1630,14 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // TODO extend this for named graphs, use the Graph class
     TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>]");
   }
+
+  pregel::PregelFeature* feature = pregel::PregelFeature::instance();
+  if (feature == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
+  }
+  
   uint64_t executionNum = TRI_ObjectToUInt64(args[0], true);
-  auto c = pregel::PregelFeature::instance()->conductor(executionNum);
+  auto c = feature->conductor(executionNum);
   if (!c) {
     TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
   }
@@ -1651,13 +1657,20 @@ static void JS_PregelCancel(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // TODO extend this for named graphs, use the Graph class
     TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>)");
   }
+
+  
+  pregel::PregelFeature* feature = pregel::PregelFeature::instance();
+  if (feature == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
+  }
+  
   uint64_t executionNum = TRI_ObjectToUInt64(args[0], true);
-  auto c = pregel::PregelFeature::instance()->conductor(executionNum);
+  auto c = feature->conductor(executionNum);
   if (!c) {
     TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
   }
   c->cancel();
-  pregel::PregelFeature::instance()->cleanupConductor(executionNum);
+  feature->cleanupConductor(executionNum);
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -1675,13 +1688,13 @@ static void JS_PregelAQLResult(v8::FunctionCallbackInfo<v8::Value> const& args) 
   }
 
   pregel::PregelFeature* feature = pregel::PregelFeature::instance();
-  if (!feature) {
+  if (feature == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
   }
 
   uint64_t executionNum = TRI_ObjectToUInt64(args[0], true);
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
-    auto c = pregel::PregelFeature::instance()->conductor(executionNum);
+    auto c = feature->conductor(executionNum);
     if (!c) {
       TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
     }
