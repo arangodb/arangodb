@@ -68,6 +68,7 @@ class SortExecutorInfos : public ExecutorInfos {
 
   std::size_t _limit;
   AqlItemBlockManager& _manager;
+
  private:
   arangodb::transaction::Methods* _trx;
   std::vector<SortRegister> _sortRegisters;
@@ -82,6 +83,7 @@ class SortExecutor {
   struct Properties {
     static const bool preservesOrder = false;
     static const bool allowsBlockPassthrough = false;
+    static const bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = AllRowsFetcher;
   using Infos = SortExecutorInfos;
