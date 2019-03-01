@@ -130,8 +130,8 @@ class IResearchViewExecutor {
   Infos const& infos() const noexcept;
 
   // Copied from IResearchViewUnorderedBlock.
-  // TODO Should be removed later, as it does not fit the pattern.
-  std::pair<bool, size_t> next(ReadContext &ctx, size_t limit);
+  // TODO Should be removed later, or rewritten, as it does not fit the pattern.
+  std::pair<bool, size_t> next(ReadContext &ctx);
 
   bool resetIterator();
 

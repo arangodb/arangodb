@@ -122,13 +122,14 @@ IResearchViewExecutor<ordered>::produceRow(OutputAqlItemRow& output) {
     } else if (_upstreamState == ExecutionState::DONE) {
     }
 
+    // reset must be called exactly after we've got a new and valid input row.
     reset();
   }
 
   ReadContext ctx(infos().numberOfInputRegisters(), _inputRow, output);
   bool hasMore;
   size_t documentsWritten;
-  std::tie(hasMore, documentsWritten) = next(ctx, 1);
+  std::tie(hasMore, documentsWritten) = next(ctx);
   TRI_ASSERT(documentsWritten <= 1);
   TRI_ASSERT((documentsWritten == 1) == hasMore);
   stats.incrScanned(documentsWritten);
@@ -193,7 +194,7 @@ pks_t::iterator readPKs(irs::doc_iterator& it,
 }
 
 template <bool ordered>
-std::pair<bool, size_t> IResearchViewExecutor<ordered>::next(ReadContext &ctx, size_t limit) {
+std::pair<bool, size_t> IResearchViewExecutor<ordered>::next(ReadContext &ctx) {
   TRI_ASSERT(_filter);
 
   size_t documentsWritten = 0;
@@ -219,7 +220,7 @@ std::pair<bool, size_t> IResearchViewExecutor<ordered>::next(ReadContext &ctx, s
     TRI_ASSERT(_pkReader);
 
     // read document PKs from iresearch
-    auto end = readPKs(*_itr, _pkReader, _keys, limit);
+    auto end = readPKs(*_itr, _pkReader, _keys, 1);
 
     // read documents from underlying storage engine
     for (auto begin = _keys.begin(); begin != end; ++begin) {
@@ -227,10 +228,6 @@ std::pair<bool, size_t> IResearchViewExecutor<ordered>::next(ReadContext &ctx, s
         continue;
       }
       ++documentsWritten;
-      --limit;
-    }
-
-    if (!limit) {
       // return 'true' since we've reached the requested limit,
       // but don't know exactly are there any more data
       return {true, documentsWritten};  // do not change iterator if already reached limit
@@ -240,10 +237,10 @@ std::pair<bool, size_t> IResearchViewExecutor<ordered>::next(ReadContext &ctx, s
     _itr.reset();
   }
 
+  TRI_ASSERT(documentsWritten == 0);
 
-  // return 'true' if we've reached the requested limit,
-  // but don't know exactly are there any more data
-  return {limit == 0, documentsWritten};
+  // no documents found, we're exhausted.
+  return {false, documentsWritten};
 }
 
 inline irs::columnstore_reader::values_reader_f pkColumn(irs::sub_reader const& segment) {
