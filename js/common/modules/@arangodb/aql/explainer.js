@@ -246,14 +246,14 @@ function printStats(stats) {
   var maxETen = String('Exec Time [s]').length;
   stats.executionTime = stats.executionTime.toFixed(5);
   stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
-                           header('Scan Index') + '   ' + header('Filtered') + '   ' + header('Exec Time [s]'));
+    header('Scan Index') + '   ' + header('Filtered') + '   ' + header('Exec Time [s]'));
 
   stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' +
-  pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + '   ' +
-  pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + '   ' +
-  pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + '   ' +
-  pad(1 + maxFLen - String(stats.filtered).length) + value(stats.filtered) + '   ' +
-  pad(1 + maxETen - String(stats.executionTime).length) + value(stats.executionTime));
+    pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + '   ' +
+    pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + '   ' +
+    pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + '   ' +
+    pad(1 + maxFLen - String(stats.filtered).length) + value(stats.filtered) + '   ' +
+    pad(1 + maxETen - String(stats.executionTime).length) + value(stats.executionTime));
   stringBuilder.appendLine();
 }
 
@@ -420,14 +420,14 @@ class PrintedTable {
   setHeader(index, value) {
     this.content[index].header = value;
     this.content[index].size = Math.max(this.content[index].size, value.length);
-    print(this.content[index].size, value);
   }
 
   addCell(index, value, valueLength) {
+    // Value might be empty
+    value = value || "";
     valueLength = valueLength || value.length;
     this.content[index].cells.push({ formatted: value, size: valueLength });
     this.content[index].size = Math.max(this.content[index].size, valueLength);
-    print(this.content[index].size, value);
   }
 
   alignNewEntry() {
@@ -1259,8 +1259,8 @@ function processQuery(query, explain, planIndex) {
         return collect;
       case 'SortNode':
         return keyword('SORT') + ' ' + node.elements.map(function (node) {
-            return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-          }).join(', ');
+          return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
+        }).join(', ');
       case 'LimitNode':
         return keyword('LIMIT') + ' ' + value(JSON.stringify(node.offset)) + ', ' + value(JSON.stringify(node.limit)) + (node.fullCount ? '  ' + annotation('/* fullCount */') : '');
       case 'ReturnNode':
@@ -1865,7 +1865,7 @@ function inspectDump(filename, outfile) {
   print();
 
   print("/* explain result */");
-  print(data.fancy.trim().split(/\n/).map(function(line) { return "// " + line; }).join("\n"));
+  print(data.fancy.trim().split(/\n/).map(function (line) { return "// " + line; }).join("\n"));
   print();
 
   print("/* explain command */");
