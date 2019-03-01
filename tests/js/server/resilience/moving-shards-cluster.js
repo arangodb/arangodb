@@ -145,6 +145,13 @@ function MovingShardsSuite ({useData}) {
     return body;
   }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief display agency information in case of a bad outcome
+////////////////////////////////////////////////////////////////////////////////
+
+  function displayAgencyInformation() {
+    // TODO
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test whether or not a server is clean
@@ -181,6 +188,7 @@ function MovingShardsSuite ({useData}) {
         console.info(
           "Failed: Server " + id + " was not cleaned out. List of cleaned servers: ["
             + obj.cleanedServers + "]");
+        displayAgencyInformation();
       }
       
     } else {
