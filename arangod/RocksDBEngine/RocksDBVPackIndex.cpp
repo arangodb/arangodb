@@ -607,7 +607,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
     }
   }
 
-  IndexingDisabler guard(mthds, !_unique && trx.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+  IndexingDisabler guard(mthds, !_unique && trx.state()->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
 
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
@@ -759,7 +759,7 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
     }
   }
 
-  IndexingDisabler guard(mthds, !_unique && trx.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+  IndexingDisabler guard(mthds, !_unique && trx.state()->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
 
   size_t const count = elements.size();
 

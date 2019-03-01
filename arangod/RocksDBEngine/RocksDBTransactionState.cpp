@@ -83,17 +83,11 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
              !AccessMode::isWriteOrExclusive(_type));
 
   if (nestingLevel() == 0) {
-    // set hints
-    _hints = hints;
+    _hints = hints;  // set hints before useCollections
   }
 
   Result result = useCollections(nestingLevel());
-  if (result.ok()) {
-    // all valid
-    if (nestingLevel() == 0) {
-      updateStatus(transaction::Status::RUNNING);
-    }
-  } else {
+  if (result.fail()) {
     // something is wrong
     if (nestingLevel() == 0) {
       updateStatus(transaction::Status::ABORTED);
@@ -105,9 +99,10 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     return result;
   }
 
-  if (nestingLevel() == 0) {
+  if (nestingLevel() == 0) { // result is valid
     // register with manager
     transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr);
+    updateStatus(transaction::Status::RUNNING);
 
     TRI_ASSERT(_rocksTransaction == nullptr);
     TRI_ASSERT(_cacheTx == nullptr);

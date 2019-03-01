@@ -55,28 +55,6 @@ class Manager final {
   typedef std::function<void(TRI_voc_tid_t, TransactionData const*)> TrxCallback;
 
  public:
-
-  inline static bool isChildTransactionId(TRI_voc_tid_t tid) {
-    return isLeaderTransactionId(tid) || isFollowerTransactionId(tid);
-  }
-  
-  inline static bool isCoordinatorTransactionId(TRI_voc_tid_t tid) {
-    return (tid % 4) == 0;
-  }
-  
-  inline static bool isFollowerTransactionId(TRI_voc_tid_t tid) {
-    return (tid % 4) == 2;
-  }
-  
-  inline static bool isLeaderTransactionId(TRI_voc_tid_t tid) {
-    return (tid % 4) == 1;
-  }
-  
-  inline static bool isLegacyTransactionId(TRI_voc_tid_t tid) {
-    return (tid % 4) == 3;
-  }
-
- public:
   // register a list of failed transactions
   void registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions);
 

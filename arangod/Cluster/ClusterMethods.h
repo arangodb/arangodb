@@ -267,10 +267,10 @@ class ClusterMethods {
                                                       std::vector<ServerID> const& followers);
   
   /// @brief commit a transaction on a subordinate
-  static arangodb::Result commitTransaction(transaction::Methods const& trx);
+  static arangodb::Result commitTransaction(transaction::Methods& trx);
   
   /// @brief commit a transaction on a subordinate
-  static arangodb::Result abortTransaction(transaction::Methods const& trx);
+  static arangodb::Result abortTransaction(transaction::Methods& trx);
   
   /// @brief set the transaction ID header
   static void addTransactionHeader(transaction::Methods const& trx,

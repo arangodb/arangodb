@@ -115,12 +115,7 @@ Result ClusterTransactionState::commitTransaction(transaction::Methods* activeTr
 
   arangodb::Result res;
   if (nestingLevel() == 0) {
-    res = ClusterMethods::commitTransaction(*activeTrx);
-    if (res.ok()) {
-      updateStatus(transaction::Status::COMMITTED);
-    } else {
-      abortTransaction(activeTrx);  // deletes trx
-    }
+    updateStatus(transaction::Status::COMMITTED);
   }
 
   unuseCollections(nestingLevel());
@@ -133,7 +128,6 @@ Result ClusterTransactionState::abortTransaction(transaction::Methods* activeTrx
   TRI_ASSERT(_status == transaction::Status::RUNNING);
   Result res;
   if (nestingLevel() == 0) {
-    res = ClusterMethods::abortTransaction(*activeTrx);
     updateStatus(transaction::Status::ABORTED);
   }
 

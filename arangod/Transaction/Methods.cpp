@@ -997,16 +997,15 @@ Result transaction::Methods::abort() {
                   "transaction not running on abort");
   }
 
-//#warning do via applyStatusChangeCallbacks
-//  if (_state->isRunningInCluster() && _state->isTopLevelTransaction() &&
-//      !_state->hasHint(Hints::Hint::SINGLE_OPERATION)) {
-//    // first commit transaction on subordinate servers
-//    Result res = ClusterMethods::abortTransaction(*this);
-//    if (res.fail()) {  // abort locally anyway, GC can cleanup
-//      LOG_TOPIC(WARN, Logger::TRANSACTIONS)
-//          << "failed to abort on subordinates: " << res.errorMessage();
-//    }
-//  }
+  if (_state->isRunningInCluster() && _state->isTopLevelTransaction()) {
+    // first commit transaction on subordinate servers
+    Result res = ClusterMethods::abortTransaction(*this);
+    if (res.fail()) {  // do not commit locally
+      LOG_TOPIC(WARN, Logger::TRANSACTIONS)
+      << "failed to abort on subordinates: " << res.errorMessage();
+      return res;
+    }
+  }
 
   auto res = _state->abortTransaction(this);
   if (res.fail()) {
@@ -2589,6 +2588,16 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
   // Now see whether or not we have to do synchronous replication:
   if (replicationType == ReplicationType::LEADER) {
     TRI_ASSERT(followers != nullptr);
+    
+    TRI_ASSERT(!_state->hasHint(Hints::Hint::FROM_TOPLEVEL_AQL)); // truncate from AQL ?!!
+    // begin Transasction on followers
+    if (_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+      auto const& followerInfo = collection->followers();
+      res = ClusterMethods::beginTransactionOnFollowers(*this, *followerInfo, *followers);
+      if (res.fail()) {
+        return OperationResult(res);
+      }
+    }
 
     // Now replicate the good operations on all followers:
     auto cc = arangodb::ClusterComm::instance();
@@ -2606,7 +2615,9 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
       requests.reserve(followers->size());
 
       for (auto const& f : *followers) {
-        requests.emplace_back("server:" + f, arangodb::rest::RequestType::PUT, path, body);
+        auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+        ClusterMethods::addTransactionHeader(*this, *headers, f);
+        requests.emplace_back("server:" + f, arangodb::rest::RequestType::PUT, path, body, std::move(headers));
       }
 
       size_t nrDone = 0;
@@ -3313,8 +3324,8 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
     return res;
   }
   
-  if (hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
-      (_state->isDBServer() && hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL))) {
+  if (_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
+      (_state->isDBServer() && _state->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL))) {
     auto const& followerInfo = collection.followers();
     res = ClusterMethods::beginTransactionOnFollowers(*this, *followerInfo, *followers);
     if (res.fail()) {

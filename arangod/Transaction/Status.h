@@ -58,6 +58,8 @@ static inline char const* statusString(Status status) {
   TRI_ASSERT(false);
   return "unknown";
 }
+  
+Status statusFromString(char const* str, size_t len);
 
 }  // namespace transaction
 }  // namespace arangodb

@@ -21,6 +21,9 @@
 #include "Enterprise/Transaction/IgnoreNoAccessMethods.h"
 #endif
 
+#warning remove
+#include "StorageEngine/TransactionState.h"
+
 namespace arangodb {
 
 Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
@@ -319,9 +322,12 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   // start actual transaction
   auto trx = std::make_unique<transaction::Methods>(ctx, readCollections, writeCollections,
                                                     exclusiveCollections, trxOptions);
-
+  trx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  
   rv = trx->begin();
 
+  LOG_DEVEL << "Starting JS transaction " << trx->state()->id();
+  
   if (rv.fail()) {
     return rv;
   }

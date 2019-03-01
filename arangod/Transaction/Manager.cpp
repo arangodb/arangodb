@@ -154,15 +154,23 @@ uint64_t Manager::getActiveTransactionCount() {
 }
 
 Manager::ManagedTrx::~ManagedTrx() {
-  if (type == MetaType::StandaloneAQL || state->isEmbeddedTransaction()) {
+  if (type == MetaType::StandaloneAQL ||
+      state == nullptr ||
+      state->isEmbeddedTransaction()) {
+    return;
+  }
+  if (!state->isRunning()) {
+    delete state;
     return;
   }
   transaction::Options opts;
   auto ctx = std::make_shared<transaction::ManagedContext>(2, state, AccessMode::Type::NONE);
   MGMethods trx(ctx, opts); // own state now
   trx.begin();
+  TRI_ASSERT(state->nestingLevel() == 1);
+  state->decreaseNesting();
   TRI_ASSERT(state->isTopLevelTransaction());
-  trx.abort(); //
+  trx.abort();
 }
   
 using namespace arangodb;
@@ -392,6 +400,7 @@ std::shared_ptr<transaction::Context> Manager::leaseTrx(TRI_voc_tid_t tid, Acces
       
       if (mtrx.rwlock.tryWriteLock()) {
         state = mtrx.state;
+        mtrx.state = nullptr;
         buck._managed.erase(it);
         break;
       }

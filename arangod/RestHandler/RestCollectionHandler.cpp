@@ -379,16 +379,14 @@ void RestCollectionHandler::handleCommandPut() {
       opts.isSynchronousReplicationFrom =
           _request->value("isSynchronousReplication");
 
-      auto ctx = transaction::StandaloneContext::Create(_vocbase);
-      SingleCollectionTransaction trx(ctx, *coll, AccessMode::Type::EXCLUSIVE);
-      trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-      trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
-      res = trx.begin();
+      auto trx = createTransaction(coll->name(), AccessMode::Type::EXCLUSIVE);
+      trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+      trx->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
+      res = trx->begin();
 
       if (res.ok()) {
-        auto result = trx.truncate(coll->name(), opts);
-
-        res = trx.finish(result.result);
+        auto result = trx->truncate(coll->name(), opts);
+        res = trx->finish(result.result);
       }
 
       if (res.ok()) {

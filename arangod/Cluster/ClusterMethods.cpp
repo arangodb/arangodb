@@ -206,7 +206,6 @@ Result beginTransactionOnCoordinator(TransactionState& state,
     // now we got the shard leader
     std::string const& leader = it->second[0];
     if (!state.knowsServer(leader)) {
-      LOG_DEVEL << "Begin transaction " << state.id() << " on " << leader;
       leaders.emplace_back(leader);
     }
   }
@@ -1176,7 +1175,7 @@ Result createDocumentOnCoordinator(transaction::Methods& trx, std::string const&
   }
 
   // lazily begin transactions on leaders
-  if (trx.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+  if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     Result res = beginTransactionOnCoordinator(*trx.state(), collinfo, shardMap);
     if (res.fail()) {
       return res.errorNumber();
@@ -1379,7 +1378,7 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
     // We sorted the shards correctly.
 
     // lazily begin transactions on leaders
-    if (trx.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+    if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
       Result res = beginTransactionOnCoordinator(*trx.state(), collinfo, shardMap);
       if (res.fail()) {
         return res.errorNumber();
@@ -1547,7 +1546,7 @@ Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string co
   std::shared_ptr<ShardMap> shards = collinfo->shardIds();
 
   // lazily begin transactions on leaders
-  if (trx.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+  if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     std::vector<ServerID> leaders;
     for (auto const& shardServers : *shards) {
       leaders.emplace_back(shardServers.second[0]);
@@ -1653,7 +1652,7 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string co
   }
 
   // lazily begin transactions on leaders
-  if (trx.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+  if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     Result res = beginTransactionOnCoordinator(*trx.state(), collinfo, shardMap);
     if (res.fail()) {
       return res.errorNumber();
@@ -2364,7 +2363,7 @@ int modifyDocumentOnCoordinator(
   }
   
   // lazily begin transactions on leaders
-  if (trx.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+  if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     Result res = beginTransactionOnCoordinator(*trx.state(), collinfo, shardMap);
     if (res.fail()) {
       return res.errorNumber();
@@ -2688,9 +2687,9 @@ ClusterCommRequest beginTransactionRequest(transaction::Methods const* trx,
                                            TransactionState& state,
                                            ServerID const& server) {
   TRI_voc_tid_t tid = state.id() + 1;
-  LOG_DEVEL << "TRX ID " << tid << " mod 4 : " << (tid % 4);
+  LOG_DEVEL << "begin TRX ID " << tid << " mod 4 : " << (tid % 4);
   
-  TRI_ASSERT(tid % 4 != 3);
+  TRI_ASSERT(!transaction::isLegacyTransactionId(tid));
   
   VPackBuilder builder;
   buildTransactionBody(state, server, builder);
@@ -2705,44 +2704,50 @@ ClusterCommRequest beginTransactionRequest(transaction::Methods const* trx,
                             std::move(headers));
 }
 
-Result checkTransactionBeginResults(TransactionState const& state,
-                                    std::vector<ClusterCommRequest> const& requests) {
-  for (auto& req : requests) {
-    ClusterCommResult const& res = req.result;
-    
-    int commError = ::handleGeneralCommErrors(&res);
-    if (commError != TRI_ERROR_NO_ERROR) {
-      // oh-oh cluster is in a bad state
-      return commError;
-    }
-    
-    if (res.status == CL_COMM_RECEIVED) {
-      VPackSlice answer = res.answer->payload();
-      if (res.answer_code == rest::ResponseCode::CREATED && answer.isObject()) {
-        VPackSlice idSlice =
-        res.answer->payload().get(std::vector<std::string>{"result", "id"});
-        if (idSlice.isString() &&
-            StringUtils::uint64(idSlice.copyString()) == state.id() + 1) {
-          continue;  // success
-        }
-      } else if (answer.isObject()) {
-        return Result(VelocyPackHelper::readNumericValue(answer, StaticStrings::ErrorNum,
-                                                         TRI_ERROR_TRANSACTION_INTERNAL),
-                      VelocyPackHelper::getStringValue(answer, StaticStrings::ErrorMessage,
-                                                       ""));
-      }
-      return TRI_ERROR_TRANSACTION_INTERNAL;  // unspecified error
-    }
-    LOG_TOPIC(DEBUG, Logger::TRANSACTIONS)
-    << " failed to begin transaction on " << res.endpoint;
-  }
+Result checkTransactionResult(TransactionState const& state,
+                              transaction::Status desiredStatus,
+                              ClusterCommRequest const& request) {
+  Result result;
   
-  return TRI_ERROR_NO_ERROR;
-}
+  ClusterCommResult const& res = request.result;
+  
+  int commError = ::handleGeneralCommErrors(&res);
+  if (commError != TRI_ERROR_NO_ERROR) {
+    // oh-oh cluster is in a bad state
+    return result.reset(commError);
+  }
+  TRI_ASSERT(res.status == CL_COMM_RECEIVED);
+  
+  VPackSlice answer = res.answer->payload();
+  if ((res.answer_code == rest::ResponseCode::OK ||
+       res.answer_code == rest::ResponseCode::CREATED) && answer.isObject()) {
+    
+    VPackSlice idSlice = answer.get(std::vector<std::string>{"result", "id"});
+    VPackSlice statusSlice = answer.get(std::vector<std::string>{"result", "status"});
 
-Result commitAbortTransaction(transaction::Methods const& trx, transaction::Status status) {
+    if (!idSlice.isString() || !statusSlice.isString()) {
+      return result.reset(TRI_ERROR_TRANSACTION_INTERNAL, "transaction has wrong format");
+    }
+    TRI_voc_tid_t tid = StringUtils::uint64(idSlice.copyString());
+    VPackValueLength len = 0;
+    const char* str = statusSlice.getStringUnchecked(len);
+    if (tid == state.id() + 1 &&
+        transaction::statusFromString(str, len) == desiredStatus) {
+      return result;  // success
+    }
+  } else if (answer.isObject()) {
+    return result.reset(VelocyPackHelper::readNumericValue(answer, StaticStrings::ErrorNum,
+                                                     TRI_ERROR_TRANSACTION_INTERNAL),
+                  VelocyPackHelper::getStringValue(answer, StaticStrings::ErrorMessage, ""));
+  }
+  LOG_TOPIC(DEBUG, Logger::TRANSACTIONS) << " failed to begin transaction on " << res.endpoint;
+
+  return result.reset(TRI_ERROR_TRANSACTION_INTERNAL);  // unspecified error
+}
+  
+Result commitAbortTransaction(transaction::Methods& trx, transaction::Status status) {
   Result res;
-  arangodb::TransactionState const& state = *trx.state();
+  arangodb::TransactionState& state = *trx.state();
   TRI_ASSERT(state.isRunning());
   
   if (state.servers().empty()) {
@@ -2750,15 +2755,15 @@ Result commitAbortTransaction(transaction::Methods const& trx, transaction::Stat
   }
   
   // only commit managed transactions, and AQL leader transactions (on DBServers)
-  if (!state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
-      !state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL) ||
-      !(state.isDBServer() && state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL))) {
+  if ((!state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) &&
+       !state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) ||
+      (state.isCoordinator() && state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL))) {
     return res;
   }
-  TRI_ASSERT(!state.isDBServer() || state.id() % 4 < 2);
+  TRI_ASSERT(!state.isDBServer() || !transaction::isFollowerTransactionId(state.id()));
   
   TRI_voc_tid_t tid = trx.state()->id();
-  LOG_DEVEL << transaction::statusString(trx.status()) << " TRX ID " << tid << " mod 4 : " << (tid % 4);
+  LOG_DEVEL << transaction::statusString(status) << " TRX ID " << tid << " mod 4 : " << (tid % 4);
 
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
@@ -2793,33 +2798,41 @@ Result commitAbortTransaction(transaction::Methods const& trx, transaction::Stat
   size_t nrDone = 0;
   cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
   
-  ClusterCommResult const& result = requests[0].result;
-  int commError = ::handleGeneralCommErrors(&result);
-  if (commError != TRI_ERROR_NO_ERROR) {
-    // oh-oh cluster is in a bad state
-    return commError;
-  }
-  
-  if (result.status == CL_COMM_RECEIVED) {
-    VPackSlice answer = result.answer->payload();
-    if (result.answer_code == rest::ResponseCode::OK && answer.isObject()) {
-      VPackSlice idSlice = answer.get(std::vector<std::string>{"result", "id"});
-      if (idSlice.isString() &&
-          basics::StringUtils::uint64(idSlice.copyString()) == state.id() + 1) {
-        return TRI_ERROR_NO_ERROR;  // success
+  if (state.isCoordinator()) {
+    TRI_ASSERT(transaction::isCoordinatorTransactionId(state.id()));
+    
+    for (size_t i = 0; i < requests.size(); ++i) {
+      Result res = ::checkTransactionResult(state, status, requests[i]);
+      if (res.fail()) {
+        return res;
       }
-    } else if (result.answer_code == rest::ResponseCode::NOT_FOUND) {
-      return Result(TRI_ERROR_TRANSACTION_NOT_FOUND);
-    } else if (answer.isObject()) {
-      return Result(VelocyPackHelper::readNumericValue(answer, StaticStrings::ErrorNum,
-                                                       TRI_ERROR_TRANSACTION_INTERNAL),
-                    VelocyPackHelper::getStringValue(answer, StaticStrings::ErrorMessage,
-                                                     ""));
     }
+    
+    return res;
+  } else {
+    TRI_ASSERT(state.isDBServer());
+    TRI_ASSERT(transaction::isLeaderTransactionId(state.id()));
+    
+    // Drop all followers that were not successful:
+    for (size_t i = 0; i < requests.size(); ++i) {
+      Result res = ::checkTransactionResult(state, status, requests[i]);
+      if (res.fail()) {  // remove follower from all collections
+        ServerID server = requests[i].result.serverID;
+        state.allCollections([&server](TransactionCollection& tc) {
+          auto cc = tc.collection();
+          if (cc) {
+            cc->followers()->remove(server);
+          }
+          return true;
+        });
+        
+        LOG_DEVEL << "dropping follower because it did not start trx " << state.id()
+        << ", error: '" << res.errorMessage() << "'";
+      }
+    }
+    
+    return res; // alwas succeed even if some followers did not
   }
-  
-  return Result(TRI_ERROR_TRANSACTION_INTERNAL,
-                "could not begin/abort transaction");
 }
 }  // namespace
   
@@ -2828,8 +2841,9 @@ arangodb::Result ClusterMethods::beginTransactionOnLeaders(TransactionState& sta
                                                            std::vector<ServerID> const& leaders) {
   TRI_ASSERT(state.isCoordinator());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
+  Result res;
   if (leaders.empty()) {
-    return Result();
+    return res;
   }
 
   std::vector<ClusterCommRequest> requests;
@@ -2838,24 +2852,32 @@ arangodb::Result ClusterMethods::beginTransactionOnLeaders(TransactionState& sta
       continue;  // already send a begin transaction there
     }
     state.addServer(leader);
+    
     LOG_DEVEL << "Begin transaction " << state.id() << " on " << leader;
     requests.emplace_back(::beginTransactionRequest(nullptr, state, leader));
   }
 
   if (requests.empty()) {
-    return TRI_ERROR_NO_ERROR;
+    return res;
   }
 
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
-    return TRI_ERROR_SHUTTING_DOWN;
+    return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
 
   // Perform the requests
   size_t nrDone = 0;
   cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
-  return ::checkTransactionBeginResults(state, requests);
+  
+  for (size_t i = 0; i < requests.size(); ++i) {
+    res = ::checkTransactionResult(state, transaction::Status::RUNNING, requests[i]);
+    if (res.fail()) {  // remove follower from all collections
+      return res;
+    }
+  }
+  return res;  // all good
 }
 
 /// @brief begin a transaction on all followers
@@ -2865,6 +2887,7 @@ Result ClusterMethods::beginTransactionOnFollowers(transaction::Methods& trx,
   TransactionState& state = *trx.state();
   TRI_ASSERT(state.isDBServer());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
+  TRI_ASSERT(transaction::isLeaderTransactionId(state.id()));
 
   // prepare the requests:
   std::vector<ClusterCommRequest> requests;
@@ -2894,37 +2917,25 @@ Result ClusterMethods::beginTransactionOnFollowers(transaction::Methods& trx,
   if (nrGood < followers.size()) {
     // Otherwise we drop all followers that were not successful:
     for (size_t i = 0; i < followers.size(); ++i) {
-      if (!requests[i].done) {
+      Result res = ::checkTransactionResult(state, transaction::Status::RUNNING, requests[i]);
+      if (res.fail()) {
+        LOG_DEVEL << "dropping follower because it did not start trx " << state.id()
+                  << ", error: '" << res.errorMessage() << "'";
         info.remove(followers[i]);
-        continue;
       }
-
-      ClusterCommResult const& res = requests[i].result;
-      if (handleGeneralCommErrors(&res) != TRI_ERROR_NO_ERROR ||
-          res.answer_code != rest::ResponseCode::CREATED) {
-        info.remove(followers[i]);
-        continue;
-      }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      TRI_ASSERT(res.answer->payload().isObject());
-      VPackSlice idSlice =
-          res.answer->payload().get(std::vector<std::string>{"result", "id"});
-      TRI_ASSERT(idSlice.isString());
-      TRI_ASSERT(StringUtils::uint64(idSlice.copyString()) != state.id() + 1);
-#endif
     }
   }
-  return nrGood > 0 ? TRI_ERROR_NO_ERROR : TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+  // FIXME dropping followers is not
+  return TRI_ERROR_NO_ERROR; //nrGood > 0 ? TRI_ERROR_NO_ERROR : TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
 }
 
 /// @brief commit a transaction on a subordinate
-Result ClusterMethods::commitTransaction(transaction::Methods const& trx) {
+Result ClusterMethods::commitTransaction(transaction::Methods& trx) {
   return commitAbortTransaction(trx, transaction::Status::COMMITTED);
 }
 
 /// @brief commit a transaction on a subordinate
-Result ClusterMethods::abortTransaction(transaction::Methods const& trx) {
+Result ClusterMethods::abortTransaction(transaction::Methods& trx) {
   return commitAbortTransaction(trx, transaction::Status::ABORTED);
 }
 
@@ -2945,20 +2956,22 @@ void ClusterMethods::addTransactionHeader(transaction::Methods const& trx,
   std::string value = std::to_string(tidPlus);
   const bool addBegin = !state.knowsServer(server);
   if (addBegin) {
-    if (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-      value.append(" begin");
+    TRI_ASSERT(state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+    value.append(" begin aql");
+//    if (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+//      value.append(" begin");
 //      VPackBuilder builder;
 //      ::buildTransactionBody(state, server, builder);
 //      headers.emplace(StaticStrings::TransactionBody, builder.toJson());
-    } else { // This is a single AQL query
-      TRI_ASSERT(state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
-      if (state.isCoordinator()) {
-        value.append(" begin aql"); // Leader TRX is a standalone aql query
-      } else {
-        value.append(" begin");
-      }
-    }
-    // FIXME: only add server on a successful response
+//    } else { // This is a single AQL query
+//      TRI_ASSERT(state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+//      if (state.isCoordinator()) {
+//        value.append(" begin aql"); // Leader TRX is a standalone aql query
+//      } else {
+//        value.append(" begin");
+//      }
+//    }
+    // FIXME: only add server on a successful response ?
     state.addServer(server);  // remember server
   }
   headers.emplace(arangodb::StaticStrings::TransactionId, std::move(value));

@@ -47,7 +47,7 @@ class Builder;
 namespace transaction {
 class Context;
 class Methods;
-
+  
 namespace helpers {
 /// @brief extract the _key attribute from a slice
 StringRef extractKeyPart(VPackSlice);
@@ -147,6 +147,26 @@ class BuilderLeaser {
   arangodb::velocypack::Builder* _builder;
 };
 
+inline bool isCoordinatorTransactionId(TRI_voc_tid_t tid) {
+  return (tid % 4) == 0;
+}
+
+inline bool isFollowerTransactionId(TRI_voc_tid_t tid) {
+  return (tid % 4) == 2;
+}
+
+inline bool isLeaderTransactionId(TRI_voc_tid_t tid) {
+  return (tid % 4) == 1;
+}
+  
+inline bool isChildTransactionId(TRI_voc_tid_t tid) {
+  return isLeaderTransactionId(tid) || isFollowerTransactionId(tid);
+}
+
+inline bool isLegacyTransactionId(TRI_voc_tid_t tid) {
+  return (tid % 4) == 3;
+}
+  
 }  // namespace transaction
 }  // namespace arangodb
 

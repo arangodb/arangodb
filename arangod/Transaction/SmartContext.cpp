@@ -21,8 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SmartContext.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
-#include "Transaction/ManagerFeature.h" 
+#include "Transaction/ManagerFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/ticks.h"
@@ -75,7 +76,7 @@ CollectionNameResolver const& transaction::SmartContext::resolver() {
 }
 
 TRI_voc_tid_t transaction::SmartContext::generateId() const {
-  TRI_ASSERT(!transaction::Manager::isLegacyTransactionId(_globalId));
+  TRI_ASSERT(!transaction::isLegacyTransactionId(_globalId));
   LOG_DEVEL << "Using mananged ID " << _globalId << " mod 4: " << (_globalId % 4);
   return _globalId;
 }

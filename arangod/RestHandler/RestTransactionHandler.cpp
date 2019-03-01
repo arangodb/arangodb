@@ -33,6 +33,7 @@
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/Status.h"
@@ -134,13 +135,13 @@ void RestTransactionHandler::executeBegin() {
       return;
     }
     tid = basics::StringUtils::uint64(value);
-    if (tid == 0 || !transaction::Manager::isChildTransactionId(tid)) {
+    if (tid == 0 || !transaction::isChildTransactionId(tid)) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                     "invalid transaction ID");
       return;
     }
     TRI_ASSERT(tid != 0);
-    TRI_ASSERT(!transaction::Manager::isLegacyTransactionId(tid));
+    TRI_ASSERT(!transaction::isLegacyTransactionId(tid));
   } else {
     if (!(ServerState::isCoordinator(role) || ServerState::isSingleServer(role))) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
@@ -252,7 +253,7 @@ void RestTransactionHandler::generateTransactionResult(rest::ResponseCode code,
   VPackBuilder b;
   b.openObject();
   b.add("id", VPackValue(std::to_string(tid)));
-  b.add("state", VPackValue(transaction::statusString(status)));
+  b.add("status", VPackValue(transaction::statusString(status)));
 //  if (state->status() == transaction::Status::RUNNING) {
 //    b.add("options", VPackValue(VPackValueType::Object));
 //    state->options().toVelocyPack(b);

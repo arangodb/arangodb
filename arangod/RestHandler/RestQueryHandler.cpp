@@ -33,8 +33,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
-#include "Transaction/Manager.h"
+#include "Transaction/Helpers.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -361,8 +360,8 @@ uint32_t RestQueryHandler::forwardingTarget() {
   std::string value = _request->header(StaticStrings::TransactionId, found);
   if (found) {
     uint64_t tid = basics::StringUtils::uint64(value);
-    if (!transaction::Manager::isCoordinatorTransactionId(tid)) {
-      TRI_ASSERT(transaction::Manager::isLegacyTransactionId(tid));
+    if (!transaction::isCoordinatorTransactionId(tid)) {
+      TRI_ASSERT(transaction::isLegacyTransactionId(tid));
       return 0;
     }
     uint32_t sourceServer = TRI_ExtractServerIdFromTick(tid);

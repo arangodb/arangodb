@@ -33,6 +33,7 @@
 #include "Meta/conversion.h"
 #include "Rest/CommonDefines.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/SmartContext.h"
@@ -546,7 +547,7 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
     try {
       tid = std::stoull(value, &pos, 10);
     } catch (...) {}
-    if (tid == 0 || !transaction::Manager::isLegacyTransactionId(tid)) {
+    if (tid == 0 || transaction::isLegacyTransactionId(tid)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid transaction ID");
     }
     
@@ -554,7 +555,10 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
     TRI_ASSERT(mgr != nullptr);
     
     if (pos > 0 && pos < value.size()) {
-      if (value.compare(pos, std::string::npos, " begin") == 0) {
+      if (value.compare(pos, std::string::npos, " begin aql") == 0) {
+        auto ctx = std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
+        return std::make_unique<SingleCollectionTransaction>(ctx, name, type);
+      } else if (value.compare(pos, std::string::npos, " begin") == 0) {
         value = _request->header(StaticStrings::TransactionBody, found);
         if (found) {
           auto trxOpts = VPackParser::fromJson(value);
@@ -570,7 +574,8 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
     
     auto ctx = mgr->leaseTrx(tid, AccessMode::Type::WRITE, transaction::Manager::Ownership::Lease);
     if (!ctx) {
-       THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NOT_FOUND);
+      LOG_DEVEL << "1. Transaction " << tid << " not found";
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NOT_FOUND);
     }
     
     return std::make_unique<SingleCollectionTransaction>(ctx, name, type);
@@ -591,7 +596,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createAQLTransacti
     try {
       tid = std::stoull(value, &pos, 10);
     } catch (...) {}
-    if (tid == 0 || !transaction::Manager::isLeaderTransactionId(tid)) {
+    if (tid == 0 || !transaction::isLeaderTransactionId(tid)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid transaction ID");
     }
     
@@ -601,22 +606,24 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createAQLTransacti
     if (pos > 0 && pos < value.size()) {
       if (value.compare(pos, std::string::npos, " begin aql") == 0) {
         return std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
-      } else if (value.compare(pos, std::string::npos, " begin") == 0) {
-        value = _request->header(StaticStrings::TransactionBody, found);
-        if (found) {
-          auto trxOpts = VPackParser::fromJson(value);
-          Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());;
-          if (!res.fail()) {
-            THROW_ARANGO_EXCEPTION(res);
-          }
-        } else {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "missing transaction config");
-        }
       }
+//      else if (value.compare(pos, std::string::npos, " begin") == 0) {
+//        value = _request->header(StaticStrings::TransactionBody, found);
+//        if (found) {
+//          auto trxOpts = VPackParser::fromJson(value);
+//          Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());;
+//          if (!res.fail()) {
+//            THROW_ARANGO_EXCEPTION(res);
+//          }
+//        } else {
+//          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "missing transaction config");
+//        }
+//      }
     }
     
     auto ctx = mgr->leaseTrx(tid, AccessMode::Type::WRITE, transaction::Manager::Ownership::Lease);
     if (!ctx) {
+      LOG_DEVEL << "2. Transaction " << tid << " not found";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NOT_FOUND);
     }
     return ctx;
