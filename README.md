@@ -17,9 +17,13 @@ To get started, try one of our 10 minutes [tutorials](https://www.arangodb.com/t
 in your favorite programming language or try one of our [ArangoDB Cookbook recipes](https://docs.arangodb.com/cookbook).
 
 For the impatient: 
-- Start the ArangoDB container using `docker run -e ARANGO_ROOT_PASSWORD=test123 -p 8529:8529 -d arangodb/arangodb` and point your browser to `http://127.0.0.1:8529/`.
-- Alternatively, [download](https://www.arangodb.com/download) and install
-ArangoDB. Start the server `arangod` and point your browser to `http://127.0.0.1:8529/`.
+- Start the ArangoDB container using:
+  ```bash
+  docker run -e ARANGO_ROOT_PASSWORD=test123 -p 8529:8529 -d arangodb/arangodb
+  ```
+- Alternatively, [download](https://www.arangodb.com/download) and install ArangoDB.
+  Start the server `arangod`.
+- Point your browser to `http://127.0.0.1:8529/`
 
 Key Features in ArangoDB
 ------------------------
