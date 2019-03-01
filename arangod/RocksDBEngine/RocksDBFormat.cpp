@@ -25,49 +25,49 @@
 #include "Logger/Logger.h"
 
 namespace {
-  // little endian
-  inline uint16_t uint16FromPersistentLE(char const* p) {
-    return arangodb::rocksutils::uintFromPersistentLittleEndian<uint16_t>(p);
-  }
-  inline uint32_t uint32FromPersistentLE(char const* p) {
-    return arangodb::rocksutils::uintFromPersistentLittleEndian<uint32_t>(p);
-  }
-  inline uint64_t uint64FromPersistentLE(char const* p) {
-    return arangodb::rocksutils::uintFromPersistentLittleEndian<uint64_t>(p);
-  }
-  inline void uint16ToPersistentLE(std::string& p, uint16_t value) {
-    arangodb::rocksutils::uintToPersistentLittleEndian<uint16_t>(p, value);
-  }
-  inline void uint32ToPersistentLE(std::string& p, uint32_t value) {
-    arangodb::rocksutils::uintToPersistentLittleEndian<uint32_t>(p, value);
-  }
-  inline void uint64ToPersistentLE(std::string& p, uint64_t value) {
-    arangodb::rocksutils::uintToPersistentLittleEndian<uint64_t>(p, value);
-  }
-  // Big endian
-  inline uint16_t uint16FromPersistentBE(char const* p) {
-    return arangodb::rocksutils::uintFromPersistentBigEndian<uint16_t>(p);
-  }
-  inline uint32_t uint32FromPersistentBE(char const* p) {
-    return arangodb::rocksutils::uintFromPersistentBigEndian<uint32_t>(p);
-  }
-  inline uint64_t uint64FromPersistentBE(char const* p) {
-    return arangodb::rocksutils::uintFromPersistentBigEndian<uint64_t>(p);
-  }
-  inline void uint16ToPersistentBE(std::string& p, uint16_t value) {
-    arangodb::rocksutils::uintToPersistentBigEndian<uint16_t>(p, value);
-  }
-  inline void uint32ToPersistentBE(std::string& p, uint32_t value) {
-    arangodb::rocksutils::uintToPersistentBigEndian<uint32_t>(p, value);
-  }
-  inline void uint64ToPersistentBE(std::string& p, uint64_t value) {
-    arangodb::rocksutils::uintToPersistentBigEndian<uint64_t>(p, value);
-  }
+// little endian
+inline uint16_t uint16FromPersistentLE(char const* p) {
+  return arangodb::rocksutils::uintFromPersistentLittleEndian<uint16_t>(p);
 }
+inline uint32_t uint32FromPersistentLE(char const* p) {
+  return arangodb::rocksutils::uintFromPersistentLittleEndian<uint32_t>(p);
+}
+inline uint64_t uint64FromPersistentLE(char const* p) {
+  return arangodb::rocksutils::uintFromPersistentLittleEndian<uint64_t>(p);
+}
+inline void uint16ToPersistentLE(std::string& p, uint16_t value) {
+  arangodb::rocksutils::uintToPersistentLittleEndian<uint16_t>(p, value);
+}
+inline void uint32ToPersistentLE(std::string& p, uint32_t value) {
+  arangodb::rocksutils::uintToPersistentLittleEndian<uint32_t>(p, value);
+}
+inline void uint64ToPersistentLE(std::string& p, uint64_t value) {
+  arangodb::rocksutils::uintToPersistentLittleEndian<uint64_t>(p, value);
+}
+// Big endian
+inline uint16_t uint16FromPersistentBE(char const* p) {
+  return arangodb::rocksutils::uintFromPersistentBigEndian<uint16_t>(p);
+}
+inline uint32_t uint32FromPersistentBE(char const* p) {
+  return arangodb::rocksutils::uintFromPersistentBigEndian<uint32_t>(p);
+}
+inline uint64_t uint64FromPersistentBE(char const* p) {
+  return arangodb::rocksutils::uintFromPersistentBigEndian<uint64_t>(p);
+}
+inline void uint16ToPersistentBE(std::string& p, uint16_t value) {
+  arangodb::rocksutils::uintToPersistentBigEndian<uint16_t>(p, value);
+}
+inline void uint32ToPersistentBE(std::string& p, uint32_t value) {
+  arangodb::rocksutils::uintToPersistentBigEndian<uint32_t>(p, value);
+}
+inline void uint64ToPersistentBE(std::string& p, uint64_t value) {
+  arangodb::rocksutils::uintToPersistentBigEndian<uint64_t>(p, value);
+}
+}  // namespace
 
 namespace arangodb {
 namespace rocksutils {
-  
+
 uint16_t (*uint16FromPersistent)(char const* p) = nullptr;
 uint32_t (*uint32FromPersistent)(char const* p) = nullptr;
 uint64_t (*uint64FromPersistent)(char const* p) = nullptr;
@@ -75,10 +75,10 @@ uint64_t (*uint64FromPersistent)(char const* p) = nullptr;
 void (*uint16ToPersistent)(std::string& p, uint16_t value) = nullptr;
 void (*uint32ToPersistent)(std::string& p, uint32_t value) = nullptr;
 void (*uint64ToPersistent)(std::string& p, uint64_t value) = nullptr;
-  
+
 void setRocksDBKeyFormatEndianess(RocksDBEndianness e) {
   if (e == RocksDBEndianness::Little) {
-    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "using little-endian keys";
+    LOG_TOPIC(DEBUG, Logger::ENGINES) << "using little-endian keys";
     uint16FromPersistent = &uint16FromPersistentLE;
     uint32FromPersistent = &uint32FromPersistentLE;
     uint64FromPersistent = &uint64FromPersistentLE;
@@ -87,7 +87,7 @@ void setRocksDBKeyFormatEndianess(RocksDBEndianness e) {
     uint64ToPersistent = &uint64ToPersistentLE;
     return;
   } else if (e == RocksDBEndianness::Big) {
-    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "using big-endian keys";
+    LOG_TOPIC(DEBUG, Logger::ENGINES) << "using big-endian keys";
     uint16FromPersistent = &uint16FromPersistentBE;
     uint32FromPersistent = &uint32FromPersistentBE;
     uint64FromPersistent = &uint64FromPersistentBE;
@@ -96,7 +96,7 @@ void setRocksDBKeyFormatEndianess(RocksDBEndianness e) {
     uint64ToPersistent = &uint64ToPersistentBE;
     return;
   }
-  LOG_TOPIC(FATAL, Logger::ROCKSDB) << "Invalid key endianess";
+  LOG_TOPIC(FATAL, Logger::ENGINES) << "Invalid key endianess";
   FATAL_ERROR_EXIT();
 }
 

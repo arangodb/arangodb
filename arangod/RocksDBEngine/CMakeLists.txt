@@ -40,7 +40,9 @@ endif()
 # add sources for rocksdb engine
 set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBBackgroundThread.cpp
+  RocksDBEngine/RocksDBBuilderIndex.cpp
   RocksDBEngine/RocksDBCollection.cpp
+  RocksDBEngine/RocksDBCollectionMeta.cpp
   RocksDBEngine/RocksDBCommon.cpp
   RocksDBEngine/RocksDBComparator.cpp
   RocksDBEngine/RocksDBEdgeIndex.cpp
@@ -48,7 +50,6 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBFormat.cpp
   RocksDBEngine/RocksDBFulltextIndex.cpp
   RocksDBEngine/RocksDBGeoIndex.cpp
-  RocksDBEngine/RocksDBHashIndex.cpp
   RocksDBEngine/RocksDBIncrementalSync.cpp
   RocksDBEngine/RocksDBIndex.cpp
   RocksDBEngine/RocksDBIndexFactory.cpp
@@ -64,6 +65,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBReplicationContext.cpp
   RocksDBEngine/RocksDBReplicationManager.cpp
   RocksDBEngine/RocksDBReplicationTailing.cpp
+  RocksDBEngine/RocksDBRestCollectionHandler.cpp
   RocksDBEngine/RocksDBRestExportHandler.cpp
   RocksDBEngine/RocksDBRestHandlers.cpp
   RocksDBEngine/RocksDBRestReplicationHandler.cpp
@@ -73,6 +75,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBTransactionCollection.cpp
   RocksDBEngine/RocksDBTransactionState.cpp
   RocksDBEngine/RocksDBThrottle.cpp
+  RocksDBEngine/RocksDBTtlIndex.cpp
   RocksDBEngine/RocksDBTypes.cpp
   RocksDBEngine/RocksDBUpgrade.cpp
   RocksDBEngine/RocksDBV8Functions.cpp

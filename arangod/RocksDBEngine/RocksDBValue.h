@@ -26,13 +26,13 @@
 #define ARANGO_ROCKSDB_ROCKSDB_VALUE_H 1
 
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/LocalDocumentId.h"
 
 #include <rocksdb/slice.h>
 #include <s2/s2point.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
@@ -48,7 +48,7 @@ class RocksDBValue {
   static RocksDBValue Database(VPackSlice const& data);
   static RocksDBValue Collection(VPackSlice const& data);
   static RocksDBValue PrimaryIndexValue(LocalDocumentId const& docId, TRI_voc_rid_t revision);
-  static RocksDBValue EdgeIndexValue(arangodb::StringRef const& vertexId);
+  static RocksDBValue EdgeIndexValue(arangodb::velocypack::StringRef const& vertexId);
   static RocksDBValue VPackIndexValue();
   static RocksDBValue UniqueVPackIndexValue(LocalDocumentId const& docId);
   static RocksDBValue View(VPackSlice const& data);
@@ -77,8 +77,8 @@ class RocksDBValue {
   ///
   /// May be called only on PrimaryIndexValue values. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  static TRI_voc_rid_t revisionId(RocksDBValue const&); // throwing
-  static TRI_voc_rid_t revisionId(rocksdb::Slice const&); // throwing
+  static TRI_voc_rid_t revisionId(RocksDBValue const&);    // throwing
+  static TRI_voc_rid_t revisionId(rocksdb::Slice const&);  // throwing
   static bool revisionId(rocksdb::Slice const&, TRI_voc_rid_t& id);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -86,7 +86,7 @@ class RocksDBValue {
   ///
   /// May be called only on EdgeIndexValue values. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  static StringRef vertexId(rocksdb::Slice const&);
+  static arangodb::velocypack::StringRef vertexId(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the VelocyPack data from a value
@@ -100,12 +100,8 @@ class RocksDBValue {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the numeric value from the key field of a VPackSlice
-  ///
-  /// May be called only on values of the following types: KeyGeneratorValue.
   //////////////////////////////////////////////////////////////////////////////
-  static uint64_t keyValue(RocksDBValue const&);
   static uint64_t keyValue(rocksdb::Slice const&);
-  static uint64_t keyValue(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Centroid of shape or point on the sphere surface in degrees
@@ -117,7 +113,7 @@ class RocksDBValue {
   /// @brief Returns a reference to the underlying string buffer.
   //////////////////////////////////////////////////////////////////////////////
   std::string const& string() const { return _buffer; }  // to be used with put
-  std::string* buffer() { return &_buffer; }       // to be used with get
+  std::string* buffer() { return &_buffer; }             // to be used with get
   VPackSlice slice() const {
     return VPackSlice(reinterpret_cast<uint8_t const*>(_buffer.data()));
   }  // return a slice
@@ -142,13 +138,13 @@ class RocksDBValue {
   explicit RocksDBValue(RocksDBEntryType type);
   RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, TRI_voc_rid_t revision);
   RocksDBValue(RocksDBEntryType type, VPackSlice const& data);
-  RocksDBValue(RocksDBEntryType type, arangodb::StringRef const& data);
+  RocksDBValue(RocksDBEntryType type, arangodb::velocypack::StringRef const& data);
   explicit RocksDBValue(S2Point const&);
 
  private:
   static RocksDBEntryType type(char const* data, size_t size);
   static LocalDocumentId documentId(char const* data, uint64_t size);
-  static StringRef vertexId(char const* data, size_t size);
+  static arangodb::velocypack::StringRef vertexId(char const* data, size_t size);
   static VPackSlice data(char const* data, size_t size);
   static uint64_t keyValue(char const* data, size_t size);
 

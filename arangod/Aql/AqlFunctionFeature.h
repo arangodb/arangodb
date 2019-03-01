@@ -57,6 +57,8 @@ class AqlFunctionFeature final : public application_features::ApplicationFeature
   void toVelocyPack(arangodb::velocypack::Builder&);
   Function const* byName(std::string const& name);
 
+  bool exists(std::string const& name) const;
+
  private:
   // Internal functions
   void addTypeCheckFunctions();
@@ -75,7 +77,7 @@ class AqlFunctionFeature final : public application_features::ApplicationFeature
   std::unordered_map<std::string, Function const> _functionNames;
 };
 
-} // namespace aql
-} // namespace arangodb
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

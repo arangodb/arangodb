@@ -33,7 +33,7 @@ class CollectionNameResolver;
 namespace graph {
 struct BaseOptions;
 class ClusterTraverserCache;
-}
+}  // namespace graph
 
 namespace traverser {
 
@@ -42,19 +42,15 @@ class Traverser;
 class ClusterEdgeCursor : public graph::EdgeCursor {
  public:
   // Traverser Variant
-  ClusterEdgeCursor(StringRef vid, uint64_t, graph::BaseOptions*);
+  ClusterEdgeCursor(arangodb::velocypack::StringRef vid, uint64_t, graph::BaseOptions*);
   // ShortestPath Variant
-  ClusterEdgeCursor(StringRef vid, bool isBackward, graph::BaseOptions*);
+  ClusterEdgeCursor(arangodb::velocypack::StringRef vid, bool isBackward, graph::BaseOptions*);
 
   ~ClusterEdgeCursor() {}
 
-  bool next(std::function<void(graph::EdgeDocumentToken&&,
-                               arangodb::velocypack::Slice, size_t)>
-                callback) override;
+  bool next(std::function<void(graph::EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)> callback) override;
 
-  void readAll(std::function<void(graph::EdgeDocumentToken&&,
-                                  arangodb::velocypack::Slice, size_t)>
-                   callback) override;
+  void readAll(std::function<void(graph::EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)> callback) override;
 
  private:
   std::vector<arangodb::velocypack::Slice> _edgeList;
@@ -64,7 +60,7 @@ class ClusterEdgeCursor : public graph::EdgeCursor {
   arangodb::graph::BaseOptions* _opts;
   arangodb::graph::ClusterTraverserCache* _cache;
 };
-}
-}
+}  // namespace traverser
+}  // namespace arangodb
 
 #endif

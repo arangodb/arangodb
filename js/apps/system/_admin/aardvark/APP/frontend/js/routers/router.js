@@ -269,18 +269,19 @@
 
         this.arangoCollectionsStore = new window.ArangoCollections();
         this.arangoDocumentStore = new window.ArangoDocument();
+        this.arangoViewsStore = new window.ArangoViews();
 
         // Cluster
         this.coordinatorCollection = new window.ClusterCoordinators();
+
+        window.spotlightView = new window.SpotlightView({
+          collection: this.arangoCollectionsStore
+        });
 
         arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
         this.arangoCollectionsStore.fetch({
           cache: false
-        });
-
-        window.spotlightView = new window.SpotlightView({
-          collection: this.arangoCollectionsStore
         });
 
         this.footerView = new window.FooterView({
@@ -391,29 +392,6 @@
         dbServers: this.dbServers
       });
       this.nodeView.render();
-    },
-
-    nodeInfo: function (id, initialized) {
-      this.checkUser();
-      if (!initialized || this.isCluster === undefined) {
-        this.waitForInit(this.nodeInfo.bind(this), id);
-        return;
-      }
-      if (this.isCluster === false) {
-        this.routes[''] = 'dashboard';
-        this.navigate('#dashboard', {trigger: true});
-        return;
-      }
-
-      if (this.nodeInfoView) {
-        this.nodeInfoView.remove();
-      }
-      this.nodeInfoView = new window.NodeInfoView({
-        nodeId: id,
-        coordinators: this.coordinatorCollection,
-        dbServers: this.dbServers[0]
-      });
-      this.nodeInfoView.render();
     },
 
     shards: function (initialized) {
@@ -532,10 +510,10 @@
       xhr.setRequestHeader('Authorization', 'Basic ' + btoa(token));
     },
 
-    logger: function (name, initialized) {
+    logger: function (initialized) {
       this.checkUser();
       if (!initialized) {
-        this.waitForInit(this.logger.bind(this), name);
+        this.waitForInit(this.logger.bind(this));
         return;
       }
       if (!this.loggerView) {
@@ -659,6 +637,9 @@
       this.arangoCollectionsStore.fetch({
         cache: false,
         success: function () {
+          if (self.indicesView) {
+            self.indicesView.remove();
+          }
           self.indicesView = new window.IndicesView({
             collectionName: colname,
             collection: self.arangoCollectionsStore.findWhere({
@@ -962,7 +943,7 @@
             collection: new window.GraphCollection(),
             collectionCollection: this.arangoCollectionsStore
           }
-      );
+        );
       this.graphManagementView.render();
     },
 
@@ -979,7 +960,7 @@
               collection: new window.GraphCollection(),
               collectionCollection: this.arangoCollectionsStore
             }
-        );
+          );
         this.graphManagementView.render(name, true);
       } else {
         this.graphManagementView.loadGraphViewer(name);
@@ -1177,6 +1158,7 @@
     },
 
     view: function (name, initialized) {
+      var self = this;
       this.checkUser();
       if (!initialized) {
         this.waitForInit(this.view.bind(this), name);
@@ -1186,10 +1168,15 @@
         this.viewView.remove();
       }
 
-      this.viewView = new window.ViewView({
-        name: name
+      this.arangoViewsStore.fetch({
+        success: function () {
+          self.viewView = new window.ViewView({
+            model: self.arangoViewsStore.get(name),
+            name: name
+          });
+          self.viewView.render();
+        }
       });
-      this.viewView.render();
     },
 
     views: function (initialized) {
@@ -1202,7 +1189,9 @@
         this.viewsView.remove();
       }
 
-      this.viewsView = new window.ViewsView({});
+      this.viewsView = new window.ViewsView({
+        collection: this.arangoViewsStore
+      });
       this.viewsView.render();
     },
 

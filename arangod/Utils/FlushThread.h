@@ -44,7 +44,7 @@ class FlushThread final : public Thread {
 
   /// @brief wake up the flush thread
   void wakeup();
-  
+
  private:
   void run() override;
 
@@ -56,6 +56,6 @@ class FlushThread final : public Thread {
   uint64_t const _flushInterval;
 };
 
-}
+}  // namespace arangodb
 
 #endif

@@ -26,6 +26,7 @@
 
 #include "shared.hpp"
 #include "string.hpp"
+#include "utils/math_utils.hpp"
 
 // -------------------------------------------------------------------
 // @brief data buffers used internally and not exported via public API
@@ -106,14 +107,15 @@ class basic_allocator<char, std::allocator<char>>:
 // basic_const_str
 // -------------------------------------------------------------------
 
-inline size_t oversize(size_t chunk_size, size_t size, size_t min_size) {
+inline size_t oversize(
+    size_t chunk_size, size_t size, size_t min_size
+) NOEXCEPT {
   assert(chunk_size);
   assert(min_size > size);
 
-  const float_t delta = static_cast<float_t>(min_size - size);
-  const uint32_t m = static_cast<uint32_t>(std::ceil(delta / chunk_size));
+  typedef math::math_traits<size_t> math_traits;
 
-  return size + m * chunk_size;
+  return size + math_traits::div_ceil(min_size-size, chunk_size)*chunk_size;
 }
 
 // -------------------------------------------------------------------

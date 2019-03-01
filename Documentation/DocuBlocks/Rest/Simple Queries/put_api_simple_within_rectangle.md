@@ -4,6 +4,13 @@
 
 @RESTHEADER{PUT /_api/simple/within-rectangle, Within rectangle query}
 
+@HINTS
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4.0 on.
+They are superseded by AQL queries.
+{% endhint %}
+
 @RESTBODYPARAM{collection,string,required,string}
 The name of the collection to query.
 
@@ -39,7 +46,7 @@ the collection. This index also defines which attribute holds the
 coordinates for the document.  If you have more than one geo-spatial index,
 you can use the *geo* field to select a particular index.
 
-Returns a cursor containing the result, see [Http Cursor](../AqlQueryCursor/README.md) for details.
+Returns a cursor containing the result, see [HTTP Cursor](../AqlQueryCursor/README.md) for details.
 
 @RESTRETURNCODES
 

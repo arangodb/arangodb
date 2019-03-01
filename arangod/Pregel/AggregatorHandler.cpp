@@ -49,18 +49,17 @@ IAggregator* AggregatorHandler::getAggregator(AggregatorID const& name) {
   std::unique_ptr<IAggregator> agg(_algorithm->aggregator(name));
   if (agg) {
     WRITE_LOCKER(guard, _lock);
-    if (_values.find(name) == _values.end()) {
-      _values.emplace(name, agg.get());
+    auto result = _values.insert({name, agg.get()});
+    if (result.second) {
       return agg.release();
     }
-    return _values[name];
+    return result.first->second;
   } else {
     return nullptr;
   }
 }
 
-void AggregatorHandler::aggregate(AggregatorID const& name,
-                                  const void* valuePtr) {
+void AggregatorHandler::aggregate(AggregatorID const& name, const void* valuePtr) {
   IAggregator* agg = getAggregator(name);
   if (agg) {
     agg->aggregate(valuePtr);
@@ -114,8 +113,7 @@ void AggregatorHandler::resetValues() {
   }
 }
 
-bool AggregatorHandler::serializeValues(VPackBuilder& b,
-                                        bool onlyConverging) const {
+bool AggregatorHandler::serializeValues(VPackBuilder& b, bool onlyConverging) const {
   READ_LOCKER(guard, _lock);
   bool hasValues = false;
   b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));

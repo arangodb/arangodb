@@ -250,7 +250,7 @@ function ahuacatlRemoveSuite () {
 /// @brief test remove
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingle : function () {
+    testRemoveSingle : function () {
       var expected = { writesExecuted: 1, writesIgnored: 0 };
       var query = "REMOVE 'test0' IN @@cn";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
@@ -266,7 +266,7 @@ function ahuacatlRemoveSuite () {
 /// @brief test remove
 ////////////////////////////////////////////////////////////////////////////////
 
-    testTwoCollectionsJoin1 : function () {
+    testRemoveTwoCollectionsJoin1 : function () {
       var expected = { writesExecuted: 50, writesIgnored: 0 };
       var query = "FOR d IN @@cn1 FILTER d.value1 < 50 REMOVE { _key: d._key } IN @@cn2";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn1": cn1, "@cn2": cn2 }, this);
@@ -283,7 +283,7 @@ function ahuacatlRemoveSuite () {
 /// @brief test remove
 ////////////////////////////////////////////////////////////////////////////////
 
-    testTwoCollectionsJoin2 : function () {
+    testRemoveTwoCollectionsJoin2 : function () {
       var expected = { writesExecuted: 48, writesIgnored: 0 };
       var query = "FOR d IN @@cn1 FILTER d.value1 >= 2 && d.value1 < 50 REMOVE { _key: d._key } IN @@cn2";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn1": cn1, "@cn2": cn2 }, this);
@@ -300,7 +300,7 @@ function ahuacatlRemoveSuite () {
 /// @brief test remove
 ////////////////////////////////////////////////////////////////////////////////
 
-    testTwoCollectionsIgnoreErrors1 : function () {
+    testRemoveTwoCollectionsIgnoreErrors1 : function () {
       var expected = { writesExecuted: 50, writesIgnored: 50 };
       var query = "FOR d IN @@cn1 REMOVE { _key: d._key } IN @@cn2 OPTIONS { ignoreErrors: true }";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn1": cn1, "@cn2": cn2 }, this);
@@ -317,7 +317,7 @@ function ahuacatlRemoveSuite () {
 /// @brief test remove
 ////////////////////////////////////////////////////////////////////////////////
 
-    testTwoCollectionsIgnoreErrors2 : function () {
+    testRemoveTwoCollectionsIgnoreErrors2 : function () {
       var expected = { writesExecuted: 0, writesIgnored: 100 };
       var query = "FOR d IN @@cn1 REMOVE { _key: CONCAT('foo', d._key) } IN @@cn2 OPTIONS { ignoreErrors: true }";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn1": cn1, "@cn2": cn2 }, this);
@@ -559,7 +559,7 @@ function ahuacatlInsertSuite () {
 /// @brief test insert
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingle : function () {
+    testSingleInsert : function () {
       var expected = { writesExecuted: 1, writesIgnored: 0 };
       var query = "INSERT { value: 'foobar', _key: 'test' } IN @@cn";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
@@ -767,7 +767,7 @@ function ahuacatlUpdateSuite () {
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingle : function () {
+    testSingleUpdate : function () {
       var expected = { writesExecuted: 1, writesIgnored: 0 };
       var query = "UPDATE { value: 'foobar', _key: 'test17' } IN @@cn";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 });

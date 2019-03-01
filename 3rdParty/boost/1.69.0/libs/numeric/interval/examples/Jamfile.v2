@@ -1,0 +1,20 @@
+#  Boost.Interval Library example Jamfile
+#
+#  Copyright (c) 2018 James E. King III
+#
+#  Distributed under the Boost Software License, Version 1.0. (See accompany-
+#  ing file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import testing ;
+
+{
+  test-suite interval-examples
+    : [ compile filter.cpp         : <build>yes <toolset>msvc-10.0:<build>no ]  # ambiguous sin()
+      [ compile findroot_demo.cpp  ]
+      [ compile horner.cpp         ]
+      [ compile io.cpp             ]
+      [ compile newton-raphson.cpp ]
+      [ compile rational.cpp       ]
+    # [ compile transc.cpp         ] requires gmp3, mpfr 
+    ;
+}

@@ -33,15 +33,13 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
-using namespace arangodb::rest;
 
-GlobalTailingSyncer::GlobalTailingSyncer(
-    ReplicationApplierConfiguration const& configuration,
-    TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
+GlobalTailingSyncer::GlobalTailingSyncer(ReplicationApplierConfiguration const& configuration,
+                                         TRI_voc_tick_t initialTick,
+                                         bool useTick, TRI_voc_tick_t barrierId)
     : TailingSyncer(ReplicationFeature::INSTANCE->globalReplicationApplier(),
                     configuration, initialTick, useTick, barrierId),
       _queriedTranslations(false) {
-
   _ignoreDatabaseMarkers = false;
   _state.databaseName = TRI_VOC_SYSTEM_DATABASE;
 }
@@ -53,7 +51,8 @@ std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {
 
   if (_state.master.majorVersion < 3 ||
       (_state.master.majorVersion == 3 && _state.master.minorVersion <= 2)) {
-    std::string err = "You need >= 3.3 to perform the replication of an entire server";
+    std::string err =
+        "You need >= 3.3 to perform the replication of an entire server";
     LOG_TOPIC(ERR, Logger::REPLICATION) << err;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, err);
   }
@@ -62,26 +61,7 @@ std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {
 
 /// @brief save the current applier state
 Result GlobalTailingSyncer::saveApplierState() {
-  LOG_TOPIC(TRACE, Logger::REPLICATION)
-  << "saving replication applier state. last applied continuous tick: "
-  << applier()->_state._lastAppliedContinuousTick
-  << ", safe resume tick: " << applier()->_state._safeResumeTick;
-
-  try {
-    _applier->persistState(false);
-    return Result();
-  } catch (basics::Exception const& ex) {
-    LOG_TOPIC(WARN, Logger::REPLICATION)
-    << "unable to save replication applier state: " << ex.what();
-    return Result(ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    LOG_TOPIC(WARN, Logger::REPLICATION)
-    << "unable to save replication applier state: " << ex.what();
-    return Result(TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    return Result(TRI_ERROR_INTERNAL, "unknown exception");
-  }
-  return TRI_ERROR_INTERNAL;
+  return  _applier->persistStateResult(false);
 }
 
 bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
@@ -106,11 +86,14 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
     try {
       GlobalInitialSyncer init(_state.applier);
       VPackBuilder inventoryResponse;
-      Result res = init.inventory(inventoryResponse);
+      Result res = init.getInventory(inventoryResponse);
       _queriedTranslations = true;
 
       if (res.fail()) {
-        LOG_TOPIC(ERR, Logger::REPLICATION) << "got error while fetching master inventory for collection name translations: " << res.errorMessage();
+        LOG_TOPIC(ERR, Logger::REPLICATION)
+            << "got error while fetching master inventory for collection name "
+               "translations: "
+            << res.errorMessage();
         return false;
       }
 
@@ -142,12 +125,14 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
           if (c.hasKey("name") && c.hasKey("globallyUniqueId")) {
             // we'll store everything for all databases in a global hash table,
             // as we expect the globally unique ids to be unique...
-            _translations[c.get("globallyUniqueId").copyString()] = c.get("name").copyString();
+            _translations[c.get("globallyUniqueId").copyString()] =
+                c.get("name").copyString();
           }
         }
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "got error while fetching inventory: " << ex.what();
+      LOG_TOPIC(ERR, Logger::REPLICATION)
+          << "got error while fetching inventory: " << ex.what();
       return false;
     }
   }

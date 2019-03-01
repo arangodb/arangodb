@@ -27,11 +27,12 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <iterator>
 #include <vector>
+#include "Basics/Common.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 
 namespace arangodb {
@@ -44,7 +45,7 @@ struct VstInputMessage {
   VstInputMessage(VstInputMessage const& other) = delete;
 
   // just move
-  VstInputMessage(VstInputMessage&& other) 
+  VstInputMessage(VstInputMessage&& other)
       : _id(other._id), _buffer(std::move(other._buffer)) {}
 
   void set(uint64_t id, VPackBuffer<uint8_t>&& buff) {
@@ -58,22 +59,21 @@ struct VstInputMessage {
       return VPackSlice(_buffer.data());
     }
     return velocypack::Slice::emptyArraySlice();
-    
   };
   /// message payload, not validated
-  arangodb::StringRef payload() const {
+  arangodb::velocypack::StringRef payload() const {
     size_t len = velocypack::Slice(_buffer.data()).byteSize();
     if (_buffer.size() > len) {
-      return arangodb::StringRef(reinterpret_cast<const char*>(_buffer.data() + len),
+      return arangodb::velocypack::StringRef(reinterpret_cast<const char*>(_buffer.data() + len),
                                  _buffer.size() - len);
     }
-    return arangodb::StringRef();
+    return arangodb::velocypack::StringRef();
   }
   size_t payloadSize() const {
     size_t len = velocypack::Slice(_buffer.data()).byteSize();
     return _buffer.size() - len;
   }
-  
+
  private:
   uint64_t _id;  // id zero signals invalid state
   velocypack::Buffer<uint8_t> _buffer;
@@ -83,13 +83,10 @@ struct VPackMessageNoOwnBuffer {
   // cppcheck-suppress *
   VPackMessageNoOwnBuffer(velocypack::Slice head, std::vector<velocypack::Slice>&& payloads,
                           uint64_t id, bool generateBody = true)
-      : _header(head),
-        _payloads(std::move(payloads)),
-        _id(id),
-        _generateBody(generateBody) {}
+      : _header(head), _payloads(std::move(payloads)), _id(id), _generateBody(generateBody) {}
 
-  VPackMessageNoOwnBuffer(velocypack::Slice head, velocypack::Slice payload, uint64_t id,
-                          bool generateBody = true)
+  VPackMessageNoOwnBuffer(velocypack::Slice head, velocypack::Slice payload,
+                          uint64_t id, bool generateBody = true)
       : _header(head), _payloads(), _id(id), _generateBody(generateBody) {
     _payloads.push_back(payload);
   }
@@ -108,6 +105,6 @@ struct VPackMessageNoOwnBuffer {
   uint64_t _id;
   bool _generateBody;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 #endif

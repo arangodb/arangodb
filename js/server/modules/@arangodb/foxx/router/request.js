@@ -23,8 +23,10 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const parseUrl = require('url').parse;
-const formatUrl = require('url').format;
-const joinPath = require('path').posix.join;
+const {
+  posix: {join: joinPath},
+  resolve: resolvePath
+} = require('path');
 const typeIs = require('type-is').is;
 const accepts = require('accepts');
 const parseRange = require('range-parser');
@@ -71,7 +73,7 @@ module.exports =
       this.baseUrl = joinPath('/_db', encodeURIComponent(this._raw.database));
       this.path = this._url.pathname;
       this.pathParams = {};
-      this.queryParams = querystring.decode(this._url.query);
+      this.queryParams = querystring.parse(this._url.query);
       this.body = getRawBodyBuffer(req);
       this.rawBody = this.body;
 
@@ -235,25 +237,28 @@ module.exports =
     }
 
     makeAbsolute (path, query) {
-      const opts = {
-        protocol: this.protocol,
-        hostname: this.hostname,
-        port: (this.secure ? this.port !== 443 : this.port !== 80) && this.port,
-        pathname: joinPath(
-          '/_db',
-          encodeURIComponent(this._raw.database),
-          this.context.mount,
-          path
-        )
-      };
+      const pathname = joinPath(
+        '/_db',
+        encodeURIComponent(this._raw.database),
+        this.context.mount,
+        path
+      );
+      let search = "";
       if (query) {
-        if (typeof query === 'string') {
-          opts.search = query;
+        if (typeof query === "string") {
+          search = query.charAt(0) === "?" ? query : `?${query}`;
         } else {
-          opts.query = query;
+          search = `?${querystring.stringify(query)}`;
         }
       }
-      return formatUrl(opts);
+      if (this._raw.portType === "unix") {
+        const rawSocketPath = this._raw.server.endpoint.slice("unix://".length);
+        const socketPath = resolvePath(rawSocketPath);
+        return `${this.protocol}://unix:${socketPath}:${pathname}${search}`;
+      }
+      const port = (this.secure ? this.port !== 443 : this.port !== 80) && this.port;
+      const host = port ? `${this.hostname}:${this.port}` : this.hostname;
+      return `${this.protocol}://${host}${pathname}${search}`;
     }
 };
 

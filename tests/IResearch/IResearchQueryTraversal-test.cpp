@@ -24,7 +24,7 @@
 #include "catch.hpp"
 #include "common.h"
 
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"
@@ -69,7 +69,7 @@
 
 extern const char* ARGV0; // defined in main.cpp
 
-NS_LOCAL
+namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -90,6 +90,7 @@ struct IResearchQueryTraversalSetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
     // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::ERR); // suppress WARNING {aql} Suboptimal AqlItemMatrix index lookup:
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress WARNING DefaultCustomTypeHandler called
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
@@ -145,6 +146,7 @@ struct IResearchQueryTraversalSetup {
     arangodb::AqlFeature(server).stop(); // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
@@ -163,7 +165,7 @@ struct IResearchQueryTraversalSetup {
   }
 }; // IResearchQuerySetup
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -253,18 +255,17 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
     auto collection = vocbase.createCollection(createJson->slice());
     REQUIRE((nullptr != collection));
 
+    auto createIndexJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"edge\" }");
+    bool created = false;
+    auto index = collection->createIndex(createIndexJson->slice(), created);
+    CHECK(index);
+    CHECK(created);
+    
     arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       *collection,
-      arangodb::AccessMode::Type::WRITE
-    );
+      arangodb::AccessMode::Type::WRITE);
     CHECK((trx.begin().ok()));
-
-    auto createIndexJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"edge\" }");
-    bool created = false;
-    auto index = collection->createIndex(&trx, createIndexJson->slice(), created);
-    CHECK(index);
-    CHECK(created);
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs {
       arangodb::velocypack::Parser::fromJson("{ \"_from\": \"testCollection0/0\", \"_to\": \"testCollection0/1\" }"),
@@ -303,11 +304,93 @@ TEST_CASE("IResearchQueryTestTraversal", "[iresearch][iresearch-query]") {
         "\"testCollection1\": { \"includeAllFields\": true }"
       "}}"
     );
-    CHECK((impl->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((impl->properties(updateJson->slice(), true).ok()));
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((2 == cids.size()));
-    impl->sync();
+    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").code)); // commit
+  }
+
+  // create view on edge collection
+  {
+    auto createJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testViewEdge\", \"type\": \"arangosearch\" }"
+    );
+    auto logicalView = vocbase.createView(createJson->slice());
+    REQUIRE((false == !logicalView));
+
+    view = logicalView.get();
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
+    REQUIRE((false == !impl));
+
+    auto updateJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"links\": {"
+        "\"edges\": { \"includeAllFields\": true }"
+      "}}"
+    );
+    CHECK((impl->properties(updateJson->slice(), true).ok()));
+    std::set<TRI_voc_cid_t> cids;
+    impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
+    CHECK((1 == cids.size()));
+    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testViewEdge SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").code)); // commit
+  }
+
+  // check system attribute _from
+  {
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      insertedDocs.back().slice()
+    };
+
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testViewEdge SEARCH d._from == 'testCollection0/6' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(slice);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    auto expectedDoc = expectedDocs.begin();
+    for (; resultIt.valid(); resultIt.next()) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      ++expectedDoc;
+    }
+    CHECK(!resultIt.valid());
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // check system attribute _to
+  {
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      insertedDocs.back().slice()
+    };
+
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testViewEdge SEARCH d._to == 'testCollection0/0' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(slice);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    auto expectedDoc = expectedDocs.begin();
+    for (; resultIt.valid(); resultIt.next()) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      ++expectedDoc;
+    }
+    CHECK(!resultIt.valid());
+    CHECK(expectedDoc == expectedDocs.end());
   }
 
   // shortest path traversal

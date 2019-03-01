@@ -29,6 +29,7 @@
 #include "fakeit.hpp"
 
 #include "Aql/AqlValue.h"
+#include "Aql/ExpressionContext.h"
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
 #include "Basics/SmallVector.h"
@@ -50,8 +51,8 @@ namespace geo_constructors_aql {
 
 namespace geo_point {
 SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
-  fakeit::Mock<Query> queryMock;
-  Query& query = queryMock.get();
+  fakeit::Mock<ExpressionContext> expressionContextMock;
+  ExpressionContext& expressionContext = expressionContextMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
   transaction::Methods& trx = trxMock.get();
@@ -69,7 +70,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       foo.close();
       params.emplace_back(foo.slice().at(0));
       params.emplace_back(foo.slice().at(1));
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.isObject());
       CHECK(res.slice().get("coordinates").isArray());
       CHECK(res.slice().get("coordinates").length() == 2);
@@ -92,7 +93,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       foo.close();
       params.emplace_back(foo.slice().at(0));
       params.emplace_back(foo.slice().at(1));
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.isObject());
       CHECK(res.slice().get("coordinates").isArray());
       CHECK(res.slice().get("coordinates").length() == 2);
@@ -115,7 +116,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       foo.close();
       params.emplace_back(foo.slice().at(0));
       params.emplace_back(foo.slice().at(1));
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.isObject());
       CHECK(res.slice().get("coordinates").isArray());
       CHECK(res.slice().get("coordinates").length() == 2);
@@ -138,7 +139,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       foo.close();
       params.emplace_back(foo.slice().at(0));
       params.emplace_back(foo.slice().at(1));
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.isObject());
       CHECK(res.slice().get("coordinates").isArray());
       CHECK(res.slice().get("coordinates").length() == 2);
@@ -161,7 +162,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       foo.close();
       params.emplace_back(foo.slice().at(0));
       params.emplace_back(foo.slice().at(1));
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.isObject());
       CHECK(res.slice().get("coordinates").isArray());
       CHECK(res.slice().get("coordinates").length() == 2);
@@ -184,7 +185,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       foo.close();
       params.emplace_back(foo.slice().at(0));
       params.emplace_back(foo.slice().at(1));
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.isObject());
       CHECK(res.slice().get("coordinates").isArray());
       CHECK(res.slice().get("coordinates").length() == 2);
@@ -207,7 +208,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       foo.close();
       params.emplace_back(foo.slice().at(0));
       params.emplace_back(foo.slice().at(1));
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.isObject());
       CHECK(res.slice().get("coordinates").isArray());
       CHECK(res.slice().get("coordinates").length() == 2);
@@ -227,7 +228,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
   WHEN("Checking wrong combinations of parameters") {
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{arena};
-    fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
       REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     });
 
@@ -241,7 +242,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
 
       params.emplace_back(foo.slice().get("boolean"));
       params.emplace_back(foo.slice().get("coords").at(0));
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -251,7 +252,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
     }
 
     WHEN("checking null") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -263,7 +264,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       params.emplace_back(json);
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -273,7 +274,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
     }
 
     WHEN("checking string") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -285,7 +286,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       params.emplace_back(json);
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -304,7 +305,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
 
       params.emplace_back(foo.slice().get("coords").at(0));
       params.emplace_back(foo.slice().get("boolean"));
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -323,7 +324,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
 
       params.emplace_back(foo.slice().get("boolean"));
       params.emplace_back(foo.slice().get("coords").at(0));
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -342,7 +343,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
 
       params.emplace_back(foo.slice().get("coords").at(0));
       params.emplace_back(foo.slice().get("boolean"));
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -362,7 +363,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
 
       params.emplace_back(foo.slice().get("array"));
       params.emplace_back(foo.slice().get("coords").at(0));
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -382,7 +383,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
 
       params.emplace_back(foo.slice().get("coords").at(0));
       params.emplace_back(foo.slice().get("array"));
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -405,7 +406,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
 
       params.emplace_back(b.slice().get("object"));
       params.emplace_back(b.slice().get("coords").at(0));
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -428,7 +429,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
 
       params.emplace_back(b.slice().get("coords").at(0));
       params.emplace_back(b.slice().get("object"));
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -453,7 +454,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
 
       params.emplace_back(b.slice().get("object"));
       params.emplace_back(b.slice().get("coords"));
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -478,7 +479,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
 
       params.emplace_back(b.slice().get("coords"));
       params.emplace_back(b.slice().get("object"));
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -496,7 +497,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
 
       params.emplace_back(foo.slice().get("boolone"));
       params.emplace_back(foo.slice().get("booltwo"));
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -522,7 +523,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
 
       params.emplace_back(b.slice().get("arrone"));
       params.emplace_back(b.slice().get("arrtwo"));
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -546,7 +547,7 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
 
       params.emplace_back(b.slice().get("coords"));
       params.emplace_back(b.slice().get("object"));
-      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -563,8 +564,8 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
 namespace geo_multipoint {
 SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
 
-  fakeit::Mock<Query> queryMock;
-  Query& query = queryMock.get();
+  fakeit::Mock<ExpressionContext> expressionContextMock;
+  ExpressionContext& expressionContext = expressionContextMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
   transaction::Methods& trx = trxMock.get();
@@ -581,7 +582,7 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoMultiPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
       CHECK(res.isObject());
       CHECK(res.slice().get("coordinates").isArray());
       CHECK(res.slice().get("coordinates").length() == 2);
@@ -608,7 +609,7 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoMultiPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
       CHECK(res.isObject());
       CHECK(res.slice().get("coordinates").isArray());
       CHECK(res.slice().get("coordinates").length() == 10);
@@ -627,7 +628,7 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
     SmallVector<AqlValue> params{arena};
 
     WHEN("checking array with 1 position") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -638,7 +639,7 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoMultiPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -648,7 +649,7 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
     }
 
     WHEN("checking array with positions and invalid bool") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -659,7 +660,7 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoMultiPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -669,7 +670,7 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
     }
 
     WHEN("checking array with positions and invalid bool") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -680,7 +681,7 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoMultiPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -690,7 +691,7 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
     }
 
     WHEN("checking array with 0 position - nested") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -701,7 +702,7 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoMultiPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -711,7 +712,7 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
     }
 
     WHEN("checking array with 0 position") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -722,7 +723,7 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoMultiPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -732,7 +733,7 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
     }
 
     WHEN("checking bool") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
       });
 
@@ -743,7 +744,7 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoMultiPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -753,7 +754,7 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
     }
 
     WHEN("checking number") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
       });
 
@@ -764,7 +765,7 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoMultiPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       // Free input parameters
       for (auto& it : params) {
@@ -778,7 +779,7 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
     }
 
     WHEN("checking object") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
       });
 
@@ -789,7 +790,7 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoMultiPoint(&query, &trx, params);
+      AqlValue res = Functions::GeoMultiPoint(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       // Free input parameters
       for (auto& it : params) {
@@ -810,8 +811,8 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
 namespace geo_polygon {
 SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
 
-  fakeit::Mock<Query> queryMock;
-  Query& query = queryMock.get();
+  fakeit::Mock<ExpressionContext> expressionContextMock;
+  ExpressionContext& expressionContext = expressionContextMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
   transaction::Methods& trx = trxMock.get();
@@ -828,7 +829,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
       CHECK(res.isObject());
       CHECK(res.slice().get("coordinates").isArray());
       CHECK(res.slice().get("coordinates").at(0).length() == 3);
@@ -858,7 +859,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
       CHECK(res.isObject());
       CHECK(res.slice().get("coordinates").isArray());
       CHECK(res.slice().get("coordinates").at(0).isArray());
@@ -881,7 +882,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
       CHECK(res.isObject());
       CHECK(res.slice().get("coordinates").isArray());
       CHECK(res.slice().get("coordinates").at(0).isArray());
@@ -916,7 +917,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       params.emplace_back(json);
 
       // TODO check also at 1 position
-      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
       CHECK(res.isObject());
       CHECK(res.slice().get("coordinates").isArray());
       CHECK(res.slice().get("coordinates").at(0).isArray());
@@ -947,7 +948,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
     SmallVector<AqlValue> params{arena};
 
     WHEN("checking polygon with 1 positive positions") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -958,7 +959,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -968,7 +969,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
     }
 
     WHEN("checking polygon with 1 negative positions") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -979,7 +980,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -989,7 +990,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
     }
 
     WHEN("checking polygon with 2 positive tupel") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -1000,7 +1001,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1009,8 +1010,8 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       }
     }
 
-    WHEN("checking polygon with 2 negative tupel") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+    WHEN("checking polygon with 2 negative tuples") {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -1021,7 +1022,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1031,7 +1032,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
     }
 
     WHEN("checking polygon with empty input") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
       });
 
@@ -1043,7 +1044,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1053,7 +1054,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
     }
 
     WHEN("checking polygon with boolean") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -1065,7 +1066,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1075,7 +1076,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
     }
 
     WHEN("checking polygon with booleans") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -1086,7 +1087,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1096,7 +1097,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
     }
 
     WHEN("checking polygon with nested booleans") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -1107,7 +1108,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1117,7 +1118,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
     }
 
     WHEN("checking object with single boolean") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
       });
 
@@ -1128,7 +1129,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1138,7 +1139,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
     }
 
     WHEN("checking object with single number") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
       });
 
@@ -1149,7 +1150,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1159,7 +1160,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
     }
 
     WHEN("checking object with string") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
       });
 
@@ -1170,7 +1171,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1180,7 +1181,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
     }
 
     WHEN("checking object with null") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
       });
 
@@ -1191,7 +1192,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1201,7 +1202,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
     }
 
     WHEN("checking object with some data") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
       });
 
@@ -1212,7 +1213,7 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      AqlValue res = Functions::GeoPolygon(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1228,8 +1229,8 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
 namespace geo_linestring {
 SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
 
-  fakeit::Mock<Query> queryMock;
-  Query& query = queryMock.get();
+  fakeit::Mock<ExpressionContext> expressionContextMock;
+  ExpressionContext& expressionContext = expressionContextMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
   transaction::Methods& trx = trxMock.get();
@@ -1246,7 +1247,7 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoLinestring(&query, &trx, params);
+      AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
       CHECK(res.isObject());
       CHECK(res.slice().get("coordinates").isArray());
       CHECK(res.slice().get("coordinates").length() == 2);
@@ -1273,7 +1274,7 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoLinestring(&query, &trx, params);
+      AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
       CHECK(res.isObject());
       CHECK(res.slice().get("coordinates").isArray());
       CHECK(res.slice().get("coordinates").length() == 10);
@@ -1292,7 +1293,7 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
     SmallVector<AqlValue> params{arena};
 
     WHEN("checking array with 1 position") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -1303,7 +1304,7 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoLinestring(&query, &trx, params);
+      AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1313,7 +1314,7 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
     }
 
     WHEN("checking array with positions and invalid bool") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -1324,7 +1325,7 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoLinestring(&query, &trx, params);
+      AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1334,7 +1335,7 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
     }
 
     WHEN("checking array with positions and invalid bool") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -1345,7 +1346,7 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoLinestring(&query, &trx, params);
+      AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1355,7 +1356,7 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
     }
 
     WHEN("checking empty nested array") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -1366,7 +1367,7 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoLinestring(&query, &trx, params);
+      AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1376,7 +1377,7 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
     }
 
     WHEN("checking empty array") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -1387,7 +1388,7 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoLinestring(&query, &trx, params);
+      AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1397,7 +1398,7 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
     }
 
     WHEN("checking bool") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
       });
 
@@ -1408,7 +1409,7 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoLinestring(&query, &trx, params);
+      AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1418,7 +1419,7 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
     }
 
     WHEN("checking number") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
       });
 
@@ -1429,7 +1430,7 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoLinestring(&query, &trx, params);
+      AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1439,7 +1440,7 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
     }
 
     WHEN("checking object") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
       });
 
@@ -1450,7 +1451,7 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoLinestring(&query, &trx, params);
+      AqlValue res = Functions::GeoLinestring(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1465,8 +1466,8 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
 namespace geo_multilinestring {
 SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
 
-  fakeit::Mock<Query> queryMock;
-  Query& query = queryMock.get();
+  fakeit::Mock<ExpressionContext> expressionContextMock;
+  ExpressionContext& expressionContext = expressionContextMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
   transaction::Methods& trx = trxMock.get();
@@ -1483,7 +1484,7 @@ SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoMultiLinestring(&query, &trx, params);
+      AqlValue res = Functions::GeoMultiLinestring(&expressionContext, &trx, params);
       CHECK(res.isObject());
       CHECK(res.slice().get("coordinates").isArray());
       CHECK(res.slice().get("coordinates").length() == 2);
@@ -1516,7 +1517,7 @@ SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoMultiLinestring(&query, &trx, params);
+      AqlValue res = Functions::GeoMultiLinestring(&expressionContext, &trx, params);
       CHECK(res.isObject());
       CHECK(res.slice().get("coordinates").isArray());
       CHECK(res.slice().get("coordinates").length() == 2);
@@ -1547,7 +1548,7 @@ SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
     SmallVector<AqlValue> params{arena};
 
     WHEN("checking object") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
       });
 
@@ -1558,7 +1559,7 @@ SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoMultiLinestring(&query, &trx, params);
+      AqlValue res = Functions::GeoMultiLinestring(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1568,7 +1569,7 @@ SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
     }
 
     WHEN("checking polygon with 0 position - nested") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -1579,7 +1580,7 @@ SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoMultiLinestring(&query, &trx, params);
+      AqlValue res = Functions::GeoMultiLinestring(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1588,8 +1589,8 @@ SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
       }
     }
 
-    WHEN("checking polygon with 0 position") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+    WHEN("checking polygon with 0 positions") {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -1600,7 +1601,7 @@ SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoMultiLinestring(&query, &trx, params);
+      AqlValue res = Functions::GeoMultiLinestring(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1610,7 +1611,7 @@ SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
     }
 
     WHEN("checking bool") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
       });
 
@@ -1621,7 +1622,7 @@ SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoMultiLinestring(&query, &trx, params);
+      AqlValue res = Functions::GeoMultiLinestring(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters
@@ -1631,7 +1632,7 @@ SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
     }
 
     WHEN("checking number") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
       });
 
@@ -1642,7 +1643,7 @@ SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
       VPackSlice json = builder->slice();
       params.emplace_back(json);
 
-      AqlValue res = Functions::GeoMultiLinestring(&query, &trx, params);
+      AqlValue res = Functions::GeoMultiLinestring(&expressionContext, &trx, params);
       CHECK(res.slice().isNull());
       res.destroy();
       // Free input parameters

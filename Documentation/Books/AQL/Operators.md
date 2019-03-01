@@ -4,7 +4,8 @@ Operators
 AQL supports a number of operators that can be used in expressions.  There are
 comparison, logical, arithmetic, and the ternary operator.
 
-#### Comparison operators
+Comparison operators
+--------------------
 
 Comparison (or relational) operators compare two operands. They can be used with
 any input data types, and will return a boolean result value.
@@ -29,7 +30,7 @@ otherwise.
 
 The comparison operators accept any data types for the first and second operands. 
 However, *IN* and *NOT IN* will only return a meaningful result if their right-hand 
-operand is a string, and *LIKE* will only execute if both operands are string values.
+operand is an array, and *LIKE* will only execute if both operands are string values.
 The comparison operators will not perform any implicit type casts if the compared 
 operands have different or non-sensible types.
 
@@ -75,7 +76,8 @@ be strings, and their right-hand operands to be strings containing valid regular
 expressions as specified in the documentation for the AQL function
 [REGEX_TEST()](Functions/String.md#regextest).
 
-#### Array comparison operators
+Array comparison operators
+--------------------------
 
 The comparison operators also exist as *array variant*. In the array
 variant, the operator is prefixed with one of the keywords *ALL*, *ANY*
@@ -109,7 +111,8 @@ Examples:
 
 Note that these operators are not optimized yet. Indexes will not be utilized.
 
-#### Logical operators
+Logical operators
+-----------------
 
 The following logical operators are supported in AQL:
 
@@ -179,7 +182,8 @@ null && true                               // null
 true && 23                                 // 23
 ```
    
-#### Arithmetic operators
+Arithmetic operators
+--------------------
 
 Arithmetic operators perform an arithmetic operation on two numeric
 operands. The result of an arithmetic operation is again a numeric value.
@@ -257,7 +261,8 @@ null + 1                // 1
 1 / 0                   // 0
 ```
 
-#### Ternary operator
+Ternary operator
+----------------
 
 AQL also supports a ternary operator that can be used for conditional
 evaluation. The ternary operator expects a boolean condition as its first
@@ -281,7 +286,8 @@ u.value ? : 'value is null, 0 or not present'
 ```
 
 
-#### Range operator
+Range operator
+--------------
 
 AQL supports expressing simple numeric ranges with the *..* operator.
 This operator can be used to easily iterate over a sequence of numeric
@@ -309,13 +315,15 @@ values first.
 
 There is also a [RANGE() function](Functions/Numeric.md#range).
 
-#### Array operators
+Array operators
+---------------
 
 AQL provides array operators <i>[\*]</i> for
 [array variable expansion](Advanced/ArrayOperators.md#array-expansion) and
 <i>[\*\*]</i> for [array contraction](Advanced/ArrayOperators.md#array-contraction).
 
-#### Operator precedence
+Operator precedence
+-------------------
 
 The operator precedence in AQL is similar as in other familiar languages (lowest precedence first):
 

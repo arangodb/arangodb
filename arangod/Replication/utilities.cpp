@@ -48,10 +48,9 @@ struct TRI_vocbase_t;
 
 namespace {
 /// @brief handle the state response of the master
-arangodb::Result handleMasterStateResponse(
-    arangodb::replutils::Connection& connection,
-    arangodb::replutils::MasterInfo& master,
-    arangodb::velocypack::Slice const& slice) {
+arangodb::Result handleMasterStateResponse(arangodb::replutils::Connection& connection,
+                                           arangodb::replutils::MasterInfo& master,
+                                           arangodb::velocypack::Slice const& slice) {
   using arangodb::Result;
   using arangodb::velocypack::Slice;
 
@@ -60,17 +59,15 @@ arangodb::Result handleMasterStateResponse(
   // process "state" section
   Slice const state = slice.get("state");
   if (!state.isObject()) {
-    return Result(
-        TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-        std::string("state section is missing in response") + endpointString);
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  std::string("state section is missing in response") + endpointString);
   }
 
   // state."lastLogTick"
-  Slice const tick = state.get("lastLogTick");
+  Slice tick = state.get("lastLogTick");
   if (!tick.isString()) {
-    return Result(
-        TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-        std::string("lastLogTick is missing in response") + endpointString);
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  std::string("lastLogTick is missing in response") + endpointString);
   }
 
   TRI_voc_tick_t const lastLogTick =
@@ -80,43 +77,45 @@ arangodb::Result handleMasterStateResponse(
                   std::string("lastLogTick is 0 in response") + endpointString);
   }
 
+  // state."lastUncommittedLogTick"
+  TRI_voc_tick_t lastUncommittedLogTick = lastLogTick;
+  tick = state.get("lastUncommittedLogTick");
+  if (tick.isString()) {
+    lastUncommittedLogTick = arangodb::basics::VelocyPackHelper::stringUInt64(tick);
+  }
+
   // state."running"
-  bool running = arangodb::basics::VelocyPackHelper::getBooleanValue(
-      state, "running", false);
+  bool running =
+      arangodb::basics::VelocyPackHelper::getBooleanValue(state, "running", false);
 
   // process "server" section
   Slice const server = slice.get("server");
   if (!server.isObject()) {
-    return Result(
-        TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-        std::string("server section is missing in response") + endpointString);
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  std::string("server section is missing in response") + endpointString);
   }
 
   // server."version"
   Slice const version = server.get("version");
   if (!version.isString()) {
-    return Result(
-        TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-        std::string("server version is missing in response") + endpointString);
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  std::string("server version is missing in response") + endpointString);
   }
 
   // server."serverId"
   Slice const serverId = server.get("serverId");
   if (!serverId.isString()) {
-    return Result(
-        TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-        std::string("server id is missing in response") + endpointString);
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  std::string("server id is missing in response") + endpointString);
   }
 
   // validate all values we got
   std::string const masterIdString(serverId.copyString());
-  TRI_server_id_t const masterId =
-      arangodb::basics::StringUtils::uint64(masterIdString);
+  TRI_server_id_t const masterId = arangodb::basics::StringUtils::uint64(masterIdString);
   if (masterId == 0) {
     // invalid master id
-    return Result(
-        TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-        std::string("invalid server id in response") + endpointString);
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  std::string("invalid server id in response") + endpointString);
   }
 
   if (masterIdString == connection.localServerId()) {
@@ -126,7 +125,7 @@ arangodb::Result handleMasterStateResponse(
                       connection.localServerId() + ")" + endpointString +
                       " as the local applier server's id");
   }
-  
+
   // server."engine"
   std::string engineString = "unknown";
   Slice const engine = server.get("engine");
@@ -134,7 +133,6 @@ arangodb::Result handleMasterStateResponse(
     // the attribute "engine" is optional, as it was introduced later
     engineString = engine.copyString();
   }
-
 
   std::string const versionString(version.copyString());
   auto v = arangodb::rest::Version::parseVersionString(versionString);
@@ -152,14 +150,15 @@ arangodb::Result handleMasterStateResponse(
   master.minorVersion = minor;
   master.serverId = masterId;
   master.lastLogTick = lastLogTick;
+  master.lastUncommittedLogTick = lastUncommittedLogTick;
   master.active = running;
   master.engine = engineString;
 
   LOG_TOPIC(INFO, arangodb::Logger::REPLICATION)
-      << "connected to master at " << master.endpoint << ", id "
-      << master.serverId << ", version " << master.majorVersion << "."
-      << master.minorVersion << ", last log tick " << master.lastLogTick << ", engine " 
-      << master.engine;
+      << "connected to master at " << master.endpoint << ", id " << master.serverId
+      << ", version " << master.majorVersion << "." << master.minorVersion
+      << ", last log tick " << master.lastLogTick << ", last uncommitted log tick "
+      << master.lastUncommittedLogTick << ", engine " << master.engine;
 
   return Result();
 }
@@ -170,8 +169,7 @@ namespace replutils {
 
 std::string const ReplicationUrl = "/_api/replication";
 
-Connection::Connection(Syncer* syncer,
-                       ReplicationApplierConfiguration const& applierConfig)
+Connection::Connection(Syncer* syncer, ReplicationApplierConfiguration const& applierConfig)
     : _endpointString{applierConfig._endpoint},
       _localServerId{basics::StringUtils::itoa(ServerIdFeature::getId())} {
   std::unique_ptr<httpclient::GeneralClientConnection> connection;
@@ -179,8 +177,8 @@ Connection::Connection(Syncer* syncer,
   if (endpoint != nullptr) {
     connection.reset(httpclient::GeneralClientConnection::factory(
         endpoint, applierConfig._requestTimeout, applierConfig._connectTimeout,
-        (size_t)applierConfig._maxConnectRetries,
-        (uint32_t)applierConfig._sslProtocol));
+        static_cast<size_t>(applierConfig._maxConnectRetries),
+        static_cast<uint32_t>(applierConfig._sslProtocol)));
   }
 
   if (connection != nullptr) {
@@ -193,8 +191,7 @@ Connection::Connection(Syncer* syncer,
           std::string(" in database '") + databaseName + std::string("'");
     }
 
-    httpclient::SimpleHttpClientParams params(applierConfig._requestTimeout,
-                                              false);
+    httpclient::SimpleHttpClientParams params(applierConfig._requestTimeout, false);
     params.setMaxRetries(2);
     params.setRetryWaitTime(2 * 1000 * 1000);  // 2s
     params.setRetryMessage(retryMsg);
@@ -206,38 +203,35 @@ Connection::Connection(Syncer* syncer,
     } else {
       params.setJwt(applierConfig._jwt);
     }
+    params.setMaxPacketSize(applierConfig._maxPacketSize);
     params.setLocationRewriter(syncer, &(syncer->rewriteLocation));
-    client.reset(new httpclient::SimpleHttpClient(connection, params));
-//    client->checkForGlobalAbort(true);
+    _client.reset(new httpclient::SimpleHttpClient(connection, params));
   }
 }
 
-bool Connection::valid() const { return (client != nullptr); }
+bool Connection::valid() const { return (_client != nullptr); }
 
 std::string const& Connection::endpoint() const { return _endpointString; }
 
 std::string const& Connection::localServerId() const { return _localServerId; }
 
 void Connection::setAborted(bool value) {
-  MUTEX_LOCKER(locker, _mutex);
-
-  if (client) {
-    client->setAborted(value);
+  if (_client) {
+    _client->setAborted(value);
   }
 }
 
 bool Connection::isAborted() const {
-  MUTEX_LOCKER(locker, _mutex);
-  if (client) {
-    return client->isAborted();
+  if (_client) {
+    return _client->isAborted();
   }
   return true;
 }
 
-ProgressInfo::ProgressInfo(Setter s) : _mutex{}, _setter{s} {}
+ProgressInfo::ProgressInfo(Setter s) : _setter{s} {}
 
 void ProgressInfo::set(std::string const& msg) {
-  MUTEX_LOCKER(locker, _mutex);
+  std::lock_guard<std::mutex> guard(_mutex);
   _setter(msg);
 }
 
@@ -254,9 +248,12 @@ Result BarrierInfo::create(Connection& connection, TRI_voc_tick_t minTick) {
   std::string body = builder.slice().toJson();
 
   // send request
-  std::unique_ptr<httpclient::SimpleHttpResult> response(
-      connection.client->retryRequest(rest::RequestType::POST, url, body.data(),
-                                      body.size()));
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  connection.lease([&](httpclient::SimpleHttpClient* client) {
+    response.reset(client->retryRequest(rest::RequestType::POST, url,
+                                        body.data(), body.size()));
+  });
+
   if (hasFailed(response.get())) {
     return buildHttpError(response.get(), url, connection);
   }
@@ -308,9 +305,11 @@ Result BarrierInfo::extend(Connection& connection, TRI_voc_tick_t tick) {
   std::string const body = builder.slice().toJson();
 
   // send request
-  std::unique_ptr<httpclient::SimpleHttpResult> response(
-      connection.client->request(rest::RequestType::PUT, url, body.data(),
-                                 body.size()));
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  connection.lease([&](httpclient::SimpleHttpClient* client) {
+    response.reset(client->request(rest::RequestType::PUT, url, body.data(), body.size()));
+  });
+
   if (response == nullptr || !response->isComplete()) {
     return Result(TRI_ERROR_REPLICATION_NO_RESPONSE);
   }
@@ -323,11 +322,41 @@ Result BarrierInfo::extend(Connection& connection, TRI_voc_tick_t tick) {
 
   return Result();
 }
-  
+
+/// @brief send a "remove barrier" command
+Result BarrierInfo::remove(Connection& connection) noexcept {
+  using basics::StringUtils::itoa;
+  if (id == 0) {
+    return Result();
+  }
+
+  try {
+    std::string const url = replutils::ReplicationUrl + "/barrier/" + itoa(id);
+
+    // send request
+    std::unique_ptr<httpclient::SimpleHttpResult> response;
+    connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(client->retryRequest(rest::RequestType::DELETE_REQ, url, nullptr, 0));
+    });
+
+    if (replutils::hasFailed(response.get())) {
+      return replutils::buildHttpError(response.get(), url, connection);
+    }
+    id = 0;
+    updateTime = 0;
+  } catch (...) {
+    return Result(TRI_ERROR_INTERNAL);
+  }
+  return Result();
+}
+
 constexpr double BatchInfo::DefaultTimeout;
 
+/// @brief send a "start batch" command
+/// @param patchCount try to patch count of this collection
+///        only effective with the incremental sync (optional)
 Result BatchInfo::start(replutils::Connection& connection,
-                        replutils::ProgressInfo& progress) {
+                        replutils::ProgressInfo& progress, std::string const& patchCount) {
   // TODO make sure all callers verify not child syncer
   if (!connection.valid()) {
     return {TRI_ERROR_INTERNAL};
@@ -335,16 +364,27 @@ Result BatchInfo::start(replutils::Connection& connection,
 
   double const now = TRI_microtime();
   id = 0;
+
+  // SimpleHttpClient automatically add database prefix
   std::string const url =
       ReplicationUrl + "/batch" + "?serverId=" + connection.localServerId();
-  std::string const body = "{\"ttl\":" + basics::StringUtils::itoa(ttl) + "}";
+  VPackBuilder b;
+  {
+    VPackObjectBuilder guard(&b, true);
+    guard->add("ttl", VPackValue(ttl));
+    if (!patchCount.empty()) {
+      guard->add("patchCount", VPackValue(patchCount));
+    }
+  }
+  std::string const body = b.toJson();
 
-  // send request
   progress.set("sending batch start command to url " + url);
-
-  std::unique_ptr<httpclient::SimpleHttpResult> response(
-      connection.client->retryRequest(rest::RequestType::POST, url,
-                                      body.c_str(), body.size()));
+  // send request
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  connection.lease([&](httpclient::SimpleHttpClient* client) {
+    response.reset(client->retryRequest(rest::RequestType::POST, url,
+                                        body.c_str(), body.size()));
+  });
 
   if (hasFailed(response.get())) {
     return buildHttpError(response.get(), url, connection);
@@ -377,8 +417,7 @@ Result BatchInfo::start(replutils::Connection& connection,
 }
 
 /// @brief send an "extend batch" command
-Result BatchInfo::extend(replutils::Connection& connection,
-                         replutils::ProgressInfo& progress) {
+Result BatchInfo::extend(replutils::Connection& connection, replutils::ProgressInfo& progress) {
   if (id == 0) {
     return Result();
   } else if (!connection.valid()) {
@@ -393,17 +432,19 @@ Result BatchInfo::extend(replutils::Connection& connection,
     return Result();
   }
 
-  std::string const url = ReplicationUrl + "/batch/" +
-                          basics::StringUtils::itoa(id) +
+  std::string const url = ReplicationUrl + "/batch/" + basics::StringUtils::itoa(id) +
                           "?serverId=" + connection.localServerId();
   std::string const body = "{\"ttl\":" + basics::StringUtils::itoa(ttl) + "}";
-
-  // send request
   progress.set("sending batch extend command to url " + url);
 
-  std::unique_ptr<httpclient::SimpleHttpResult> response(
-      connection.client->request(rest::RequestType::PUT, url, body.c_str(),
-                                 body.size()));
+  // send request
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  connection.lease([&](httpclient::SimpleHttpClient* client) {
+    if (id == 0) {
+      return;
+    }
+    response.reset(client->request(rest::RequestType::PUT, url, body.c_str(), body.size()));
+  });
 
   if (hasFailed(response.get())) {
     return buildHttpError(response.get(), url, connection);
@@ -415,8 +456,7 @@ Result BatchInfo::extend(replutils::Connection& connection,
 }
 
 /// @brief send a "finish batch" command
-Result BatchInfo::finish(replutils::Connection& connection,
-                         replutils::ProgressInfo& progress) {
+Result BatchInfo::finish(replutils::Connection& connection, replutils::ProgressInfo& progress) {
   if (id == 0) {
     return Result();
   } else if (!connection.valid()) {
@@ -424,15 +464,15 @@ Result BatchInfo::finish(replutils::Connection& connection,
   }
 
   try {
-    std::string const url = ReplicationUrl + "/batch/" +
-                            basics::StringUtils::itoa(id) +
+    std::string const url = ReplicationUrl + "/batch/" + basics::StringUtils::itoa(id) +
                             "?serverId=" + connection.localServerId();
+    progress.set("sending batch finish command to url " + url);
 
     // send request
-    progress.set("sending batch finish command to url " + url);
-    std::unique_ptr<httpclient::SimpleHttpResult> response(
-        connection.client->retryRequest(rest::RequestType::DELETE_REQ, url,
-                                        nullptr, 0));
+    std::unique_ptr<httpclient::SimpleHttpResult> response;
+    connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(client->retryRequest(rest::RequestType::DELETE_REQ, url, nullptr, 0));
+    });
 
     if (hasFailed(response.get())) {
       return buildHttpError(response.get(), url, connection);
@@ -453,8 +493,7 @@ MasterInfo::MasterInfo(ReplicationApplierConfiguration const& applierConfig) {
 }
 
 /// @brief get master state
-Result MasterInfo::getState(replutils::Connection& connection,
-                            bool isChildSyncer) {
+Result MasterInfo::getState(replutils::Connection& connection, bool isChildSyncer) {
   if (isChildSyncer) {
     TRI_ASSERT(endpoint.empty());
     TRI_ASSERT(serverId != 0);
@@ -465,20 +504,22 @@ Result MasterInfo::getState(replutils::Connection& connection,
   std::string const url =
       ReplicationUrl + "/logger-state?serverId=" + connection.localServerId();
 
-  // store old settings
-  size_t maxRetries = connection.client->params().getMaxRetries();
-  uint64_t retryWaitTime = connection.client->params().getRetryWaitTime();
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  connection.lease([&](httpclient::SimpleHttpClient* client) {
+    // store old settings
+    size_t maxRetries = client->params().getMaxRetries();
+    uint64_t retryWaitTime = client->params().getRetryWaitTime();
 
-  // apply settings that prevent endless waiting here
-  connection.client->params().setMaxRetries(1);
-  connection.client->params().setRetryWaitTime(500 * 1000);  // 0.5s
+    // apply settings that prevent endless waiting here
+    client->params().setMaxRetries(1);
+    client->params().setRetryWaitTime(500 * 1000);  // 0.5s
 
-  std::unique_ptr<httpclient::SimpleHttpResult> response(
-      connection.client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
+    response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
 
-  // restore old settings
-  connection.client->params().setMaxRetries(maxRetries);
-  connection.client->params().setRetryWaitTime(retryWaitTime);
+    // restore old settings
+    client->params().setMaxRetries(maxRetries);
+    client->params().setRetryWaitTime(retryWaitTime);
+  });
 
   if (hasFailed(response.get())) {
     return buildHttpError(response.get(), url, connection);
@@ -519,8 +560,7 @@ std::unordered_map<std::string, std::string> createHeaders() {
 }
 
 bool hasFailed(httpclient::SimpleHttpResult* response) {
-  return (response == nullptr || !response->isComplete() ||
-          response->wasHttpError());
+  return (response == nullptr || !response->isComplete() || response->wasHttpError());
 }
 
 Result buildHttpError(httpclient::SimpleHttpResult* response,
@@ -528,10 +568,13 @@ Result buildHttpError(httpclient::SimpleHttpResult* response,
   TRI_ASSERT(hasFailed(response));
 
   if (response == nullptr || !response->isComplete()) {
+    std::string errorMsg;
+    connection.lease([&errorMsg](httpclient::SimpleHttpClient* client) {
+      errorMsg = client->getErrorMessage();
+    });
     return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
                   std::string("could not connect to master at ") +
-                      connection.endpoint() + " for URL " + url + ": " +
-                      connection.client->getErrorMessage());
+                      connection.endpoint() + " for URL " + url + ": " + errorMsg);
   }
 
   TRI_ASSERT(response->wasHttpError());

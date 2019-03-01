@@ -38,8 +38,7 @@ struct OptimizerRule;
 /// set the level of the appended plan to the largest level of rule
 /// that ought to be considered as done to indicate which rule is to be
 /// applied next.
-typedef std::function<void(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*)>
-    RuleFunction;
+typedef std::function<void(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*)> RuleFunction;
 
 /// @brief type of an optimizer rule
 struct OptimizerRule {
@@ -55,13 +54,13 @@ struct OptimizerRule {
     // ========================================================
     replaceNearWithinFulltext,
 
-    // remove legacy geo functions
-    removeLegacyGeoFunctions_pass1,
-
     inlineSubqueriesRule,
 
     // split and-combined filters into multiple smaller filters
     splitFiltersRule,
+
+    /// simplify some conditions in CalculationNodes
+    simplifyConditionsRule,
 
     // move calculations up the dependency chain (to pull them out of
     // inner loops etc.)
@@ -84,7 +83,7 @@ struct OptimizerRule {
 
     // remove calculations that are never necessary
     removeUnnecessaryCalculationsRule,
-    
+
     // determine the "right" type of CollectNode and
     // add a sort node for each COLLECT (may be removed later)
     specializeCollectRule,
@@ -165,27 +164,33 @@ struct OptimizerRule {
     // merge filters into graph traversals
     optimizeTraversalsRule,
     // remove redundant filters statements
-    removeFiltersCoveredByTraversal_pass6,
-
-    // remove calculations that are redundant
-    // needs to run after filter removal
-    removeUnnecessaryCalculationsRule2,
+    removeFiltersCoveredByTraversal,
 
 #ifdef USE_IRESEARCH
     // move filters and sort conditions into views and remove them
     handleArangoSearchViewsRule,
 #endif
 
+    // remove calculations that are redundant
+    // needs to run after filter removal
+    removeUnnecessaryCalculationsRule2,
+
     // remove now obsolete path variables
-    removeTraversalPathVariable_pass6,
+    removeTraversalPathVariable,
     prepareTraversalsRule,
 
     // when we have single document operations, fill in special cluster
     // handling.
-    substituteSingleDocumentOperations_pass6,
+    substituteSingleDocumentOperations,
+
+    // make sort node aware of subsequent limit statements for internal optimizations
+    applySortLimitRule,
 
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule,
+
+    /// Pass 9: fuse filter conditions
+    fuseFiltersRule,
 
     /// Pass 9: patch update statements
     patchUpdateStatementsRule,
@@ -255,17 +260,16 @@ struct OptimizerRule {
   OptimizerRule() = delete;
 
   OptimizerRule(std::string const& name, RuleFunction const& func, RuleLevel level,
-        bool canCreateAdditionalPlans, bool canBeDisabled, bool isHidden)
+                bool canCreateAdditionalPlans, bool canBeDisabled, bool isHidden)
       : name(name),
         func(func),
         level(level),
         canCreateAdditionalPlans(canCreateAdditionalPlans),
         canBeDisabled(canBeDisabled),
         isHidden(isHidden) {}
-
 };
 
-} // namespace aql
-} // namespace arangodb
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

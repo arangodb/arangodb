@@ -31,15 +31,15 @@ namespace arangodb {
 namespace aql {
 class ExecutionPlan;
 class Query;
-}
+}  // namespace aql
 
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 namespace graph {
 
-struct ShortestPathOptions final : public BaseOptions {
+struct ShortestPathOptions : public BaseOptions {
  public:
   std::string start;
   std::string direction;
@@ -53,12 +53,10 @@ struct ShortestPathOptions final : public BaseOptions {
 
   explicit ShortestPathOptions(aql::Query* query);
 
-  ShortestPathOptions(aql::Query* query,
-                      arangodb::velocypack::Slice const& info);
+  ShortestPathOptions(aql::Query* query, arangodb::velocypack::Slice const& info);
 
   // @brief DBServer-constructor used by TraverserEngines
-  ShortestPathOptions(aql::Query* query,
-                      arangodb::velocypack::Slice info,
+  ShortestPathOptions(aql::Query* query, arangodb::velocypack::Slice info,
                       arangodb::velocypack::Slice collections);
   ~ShortestPathOptions();
 
@@ -88,21 +86,20 @@ struct ShortestPathOptions final : public BaseOptions {
   // Creates a complete Object containing all EngineInfo
   // in the given builder.
   void addReverseLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
-                            std::string const& attributeName,
-                            aql::AstNode* condition);
+                            std::string const& attributeName, aql::AstNode* condition);
 
   // Compute the weight of the given edge
   double weightEdge(arangodb::velocypack::Slice const);
 
-  EdgeCursor* nextCursor(ManagedDocumentResult*, StringRef vid);
+  EdgeCursor* nextCursor(ManagedDocumentResult*, arangodb::velocypack::StringRef vid);
 
-  EdgeCursor* nextReverseCursor(ManagedDocumentResult*, StringRef vid);
+  EdgeCursor* nextReverseCursor(ManagedDocumentResult*, arangodb::velocypack::StringRef vid);
 
-  void fetchVerticesCoordinator(std::deque<StringRef> const& vertexIds);
+  void fetchVerticesCoordinator(std::deque<arangodb::velocypack::StringRef> const& vertexIds);
 
  private:
-  EdgeCursor* nextCursorCoordinator(StringRef vid);
-  EdgeCursor* nextReverseCursorCoordinator(StringRef vid);
+  EdgeCursor* nextCursorCoordinator(arangodb::velocypack::StringRef vid);
+  EdgeCursor* nextReverseCursorCoordinator(arangodb::velocypack::StringRef vid);
 
  private:
   /// @brief Lookup info to find all reverse edges.

@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "catch.hpp"
-#include "../IResearch/StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -107,10 +107,11 @@ SECTION("test_category") {
       LogicalViewImpl(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
         : LogicalView(vocbase, definition, 0) {
       }
-      virtual arangodb::Result drop() override { return arangodb::Result(); }
+      virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder&, bool, bool) const override { return arangodb::Result(); }
+      virtual arangodb::Result dropImpl() override { return arangodb::Result(); }
       virtual void open() override {}
-      virtual arangodb::Result rename(std::string&& newName, bool doSync) override { return arangodb::Result(); }
-      virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& properties, bool partialUpdate, bool doSync) override { return arangodb::Result(); }
+      virtual arangodb::Result renameImpl(std::string const&) override { return arangodb::Result(); }
+      virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties, bool partialUpdate) override { return arangodb::Result(); }
       virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
     };
 
@@ -141,10 +142,11 @@ SECTION("test_construct") {
       LogicalViewImpl(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
         : LogicalView(vocbase, definition, 0) {
       }
-      virtual arangodb::Result drop() override { return arangodb::Result(); }
+      virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder&, bool, bool) const override { return arangodb::Result(); }
+      virtual arangodb::Result dropImpl() override { return arangodb::Result(); }
       virtual void open() override {}
-      virtual arangodb::Result rename(std::string&& newName, bool doSync) override { return arangodb::Result(); }
-      virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& properties, bool partialUpdate, bool doSync) override { return arangodb::Result(); }
+      virtual arangodb::Result renameImpl(std::string const&) override { return arangodb::Result(); }
+      virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties, bool partialUpdate) override { return arangodb::Result(); }
       virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
     };
 
@@ -177,10 +179,11 @@ SECTION("test_defaults") {
       LogicalViewImpl(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
         : LogicalView(vocbase, definition, 0) {
       }
-      virtual arangodb::Result drop() override { return arangodb::Result(); }
+      virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder&, bool, bool) const override { return arangodb::Result(); }
+      virtual arangodb::Result dropImpl() override { return arangodb::Result(); }
       virtual void open() override {}
-      virtual arangodb::Result rename(std::string&& newName, bool doSync) override { return arangodb::Result(); }
-      virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& properties, bool partialUpdate, bool doSync) override { return arangodb::Result(); }
+      virtual arangodb::Result renameImpl(std::string const&) override { return arangodb::Result(); }
+      virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties, bool partialUpdate) override { return arangodb::Result(); }
       virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
     };
 

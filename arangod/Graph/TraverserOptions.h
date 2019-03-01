@@ -26,10 +26,11 @@
 
 #include "Aql/FixedVarExpressionContext.h"
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
 #include "Graph/BaseOptions.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
+
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 class ManagedDocumentResult;
@@ -37,19 +38,21 @@ class ManagedDocumentResult;
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
 struct AstNode;
 class Expression;
+class PruneExpressionEvaluator;
 class Query;
 class TraversalNode;
-}
+struct Variable;
+}  // namespace aql
 
 namespace graph {
 class EdgeUniquenessChecker;
 class TraverserCache;
-}
+}  // namespace graph
 
 namespace traverser {
 
@@ -62,7 +65,6 @@ struct TraverserOptions : public graph::BaseOptions {
   enum UniquenessLevel { NONE, PATH, GLOBAL };
 
  protected:
-
   std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
 
   std::unordered_map<uint64_t, aql::Expression*> _vertexExpressions;
@@ -70,6 +72,10 @@ struct TraverserOptions : public graph::BaseOptions {
   aql::Expression* _baseVertexExpression;
 
   arangodb::traverser::ClusterTraverser* _traverser;
+
+  /// @brief The condition given in PRUNE (might be empty)
+  ///        The Node keeps responsibility
+  std::unique_ptr<aql::PruneExpressionEvaluator> _pruneExpression;
 
  public:
   uint64_t minDepth;
@@ -113,22 +119,34 @@ struct TraverserOptions : public graph::BaseOptions {
   bool vertexHasFilter(uint64_t) const;
 
   bool hasEdgeFilter(int64_t, size_t) const;
-  
-  bool evaluateEdgeExpression(arangodb::velocypack::Slice, StringRef vertexId,
+
+  bool evaluateEdgeExpression(arangodb::velocypack::Slice,
+                              arangodb::velocypack::StringRef vertexId,
                               uint64_t, size_t) const;
 
   bool evaluateVertexExpression(arangodb::velocypack::Slice, uint64_t) const;
 
-  graph::EdgeCursor* nextCursor(ManagedDocumentResult*, StringRef vid, uint64_t);
+  graph::EdgeCursor* nextCursor(ManagedDocumentResult*,
+                                arangodb::velocypack::StringRef vid, uint64_t);
 
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
 
   double estimateCost(size_t& nrItems) const override;
 
- private:
+  void activatePrune(std::vector<aql::Variable const*> const&& vars,
+                     std::vector<aql::RegisterId> const&& regs, size_t vertexVarIdx,
+                     size_t edgeVarIdx, size_t pathVarIdx, aql::Expression* expr);
 
-  graph::EdgeCursor* nextCursorCoordinator(StringRef vid, uint64_t);
+  bool usesPrune() const { return _pruneExpression != nullptr; }
+
+  aql::PruneExpressionEvaluator* getPruneEvaluator() {
+    TRI_ASSERT(usesPrune());
+    return _pruneExpression.get();
+  }
+
+ private:
+  graph::EdgeCursor* nextCursorCoordinator(arangodb::velocypack::StringRef vid, uint64_t);
 };
-}
-}
+}  // namespace traverser
+}  // namespace arangodb
 #endif

@@ -11,3 +11,10 @@ If you want to import data in formats like JSON or CSV, see
 _Arangorestore_ can restore selected collections or all collections of a backup,
 optionally including _system_ collections. One can restore the structure, i.e.
 the collections with their configuration with or without data.
+Views can also be dumped or restored (either all of them or selectively).
+
+{% hint 'tip' %}
+In order to speed up the _arangorestore_ performance in a Cluster environment,
+the [Fast Cluster Restore](FastClusterRestore.md)
+procedure is recommended.
+{% endhint %}

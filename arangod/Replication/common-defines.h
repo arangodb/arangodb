@@ -32,9 +32,9 @@ namespace arangodb {
 typedef enum {
   REPLICATION_INVALID = 0,
 
-  //REPLICATION_STOP = 1000,   // not used in ArangoDB 2.2 and higher
-  //REPLICATION_START = 1001,  // not used in ArangoDB 2.2 and higher
-  
+  // REPLICATION_STOP = 1000,   // not used in ArangoDB 2.2 and higher
+  // REPLICATION_START = 1001,  // not used in ArangoDB 2.2 and higher
+
   REPLICATION_DATABASE_CREATE = 1100,
   REPLICATION_DATABASE_DROP = 1101,
 
@@ -46,7 +46,7 @@ typedef enum {
 
   REPLICATION_INDEX_CREATE = 2100,
   REPLICATION_INDEX_DROP = 2101,
-  
+
   REPLICATION_VIEW_CREATE = 2110,
   REPLICATION_VIEW_DROP = 2111,
   REPLICATION_VIEW_CHANGE = 2112,
@@ -69,8 +69,10 @@ void TRI_GetTimeStampReplication(char*, size_t);
 void TRI_GetTimeStampReplication(double, char*, size_t);
 
 /// @brief determine whether a collection should be included in replication
-bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSystem);
+bool TRI_ExcludeCollectionReplication(std::string const& name,
+                                      bool includeSystem,
+                                      bool includeFoxxQueues);
 
-}
+}  // namespace arangodb
 
 #endif

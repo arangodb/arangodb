@@ -25,7 +25,8 @@
 #define ARANGODB_BASICS_STRING_HEAP_H 1
 
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
+
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 
@@ -39,7 +40,7 @@ class StringHeap {
   ~StringHeap();
 
   /// @brief register a string
-  StringRef registerString(char const* ptr, size_t length);
+  arangodb::velocypack::StringRef registerString(char const* ptr, size_t length);
 
  private:
   /// @brief allocate a new block of memory
@@ -58,6 +59,6 @@ class StringHeap {
   /// @brief end of current block
   char* _end;
 };
-}
+}  // namespace arangodb
 
 #endif

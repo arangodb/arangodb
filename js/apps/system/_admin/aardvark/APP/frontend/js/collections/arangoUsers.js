@@ -177,11 +177,11 @@ window.ArangoUsers = Backbone.Collection.extend({
           self.activeUser = data.user;
           callback(false, data.user);
         }
-    ).error(
-      function () {
-        callback(true, null);
-      }
-    );
+      ).error(
+        function () {
+          callback(true, null);
+        }
+      );
   }
 
 });

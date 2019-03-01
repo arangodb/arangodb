@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, L, setTimeout, sessionStorage, ace, Storage, window, _, console, btoa */
+/* global Backbone, $, L, setTimeout, sessionStorage, ace, Storage, window, _, btoa */
 /* global frontendConfig, _, arangoHelper, numeral, templateEngine, Joi */
 
 (function () {
@@ -310,16 +310,24 @@
       $(e.currentTarget).addClass('selected');
 
       var name = this.getQueryNameFromTable(e);
-      this.queryPreview.setValue(this.getCustomQueryValueByName(name), 1);
+
+      try {
+        this.queryPreview.setValue(this.getCustomQueryValueByName(name), 1);
+      } catch (e) {
+        this.queryPreview.setValue('Invalid query name', 1);
+        arangoHelper.arangoError('Query', 'Invalid query name');
+        throw (e);
+      }
+
       this.deselect(this.queryPreview);
     },
 
     getQueryNameFromTable: function (e) {
       var name;
       if ($(e.currentTarget).is('tr')) {
-        name = $(e.currentTarget).children().first().text();
+        name = arangoHelper.escapeHtml($(e.currentTarget).children().first().text());
       } else if ($(e.currentTarget).is('span')) {
-        name = $(e.currentTarget).parent().parent().prev().text();
+        name = arangoHelper.escapeHtml($(e.currentTarget).parent().parent().prev().text());
       }
       return name;
     },
@@ -374,8 +382,13 @@
       this.state.lastQuery.query = this.aqlEditor.getValue();
       this.state.lastQuery.bindParam = this.bindParamTableObj;
 
-      this.aqlEditor.setValue(this.getCustomQueryValueByName(name), 1);
-      this.fillBindParamTable(this.getCustomQueryParameterByName(name));
+      try {
+        this.aqlEditor.setValue(this.getCustomQueryValueByName(name), 1);
+        this.fillBindParamTable(this.getCustomQueryParameterByName(name));
+      } catch (e) {
+        arangoHelper.arangoError('Query', 'Invalid query name');
+        throw (e);
+      }
       this.updateBindParams();
 
       this.currentQuery = this.collection.findWhere({name: name});
@@ -396,28 +409,26 @@
         this.breadcrumb(name);
       }
 
-      $('#lastQuery').hide().fadeIn(500)
-        .on('click', function () {
-          $('#updateCurrentQuery').hide();
-          self.aqlEditor.setValue(self.state.lastQuery.query, 1);
-          self.fillBindParamTable(self.state.lastQuery.bindParam);
-          self.updateBindParams();
+      $('#lastQuery').hide().fadeIn(500).on('click', function () {
+        $('#updateCurrentQuery').hide();
+        self.aqlEditor.setValue(self.state.lastQuery.query, 1);
+        self.fillBindParamTable(self.state.lastQuery.bindParam);
+        self.updateBindParams();
 
-          self.collection.each(function (model) {
-            model = model.toJSON();
+        self.collection.each(function (model) {
+          model = model.toJSON();
 
-            if (model.value === self.state.lastQuery.query) {
-              self.breadcrumb(model.name);
-            } else {
-              self.breadcrumb();
-            }
-          });
+          if (model.value === self.state.lastQuery.query) {
+            self.breadcrumb(model.name);
+          } else {
+            self.breadcrumb();
+          }
+        });
 
-          $('#lastQuery').fadeOut(500, function () {
-            $(this).remove();
-          });
-        }
-      );
+        $('#lastQuery').fadeOut(500, function () {
+          $(this).remove();
+        });
+      });
     },
 
     deleteAQL: function (name) {
@@ -1156,6 +1167,8 @@
       _.each(foundBindParams, function (word) {
         if (self.bindParamTableObj[word]) {
           newObject[word] = self.bindParamTableObj[word];
+        } else if (self.bindParamTableObj[word] === null) {
+          newObject[word] = null;
         } else {
           newObject[word] = '';
         }
@@ -1570,7 +1583,7 @@
     },
 
     checkSaveName: function () {
-      var saveName = $('#new-query-name').val();
+      var saveName = arangoHelper.escapeHtml($('#new-query-name').val());
       if (saveName === 'Insert Query') {
         $('#new-query-name').val('');
         return;
@@ -1600,7 +1613,7 @@
       // update queries first, before writing
       this.refreshAQL();
 
-      var saveName = $('#new-query-name').val();
+      var saveName = arangoHelper.escapeHtml($('#new-query-name').val());
       var bindVars = this.bindParamTableObj;
 
       if ($('#new-query-name').hasClass('invalid-input')) {
@@ -1613,13 +1626,12 @@
       }
 
       var content = this.aqlEditor.getValue();
-        // check for already existing entry
+      // check for already existing entry
       var quit = false;
       _.each(this.customQueries, function (v) {
         if (v.name === saveName) {
           v.value = content;
           quit = true;
-          return;
         }
       });
 
@@ -1888,7 +1900,13 @@
       var self = this;
       var result;
 
-      if (window.location.hash === '#queries') {
+      var activeSubView = 'query';
+      try {
+        activeSubView = window.App.naviView.activeSubMenu.route;
+      } catch (ignore) {
+      }
+
+      if (window.location.hash === '#queries' && activeSubView === 'query') {
         var outputEditor = ace.edit('outputEditor' + counter);
 
         var maxHeight = $('.centralRow').height() - 250;
@@ -2002,7 +2020,7 @@
               if (position === data.result.length) {
                 if (markers.length > 0) {
                   try {
-                    var show = new L.featureGroup(markers);
+                    var show = new L.FeatureGroup(markers);
                     self.maps[counter].fitBounds(show.getBounds());
                   } catch (ignore) {
                   }
@@ -2336,7 +2354,7 @@
               if (error.code === 409) {
                 return;
               }
-              if (error.code !== 400 && error.code !== 404 && error.code !== 500 && error.code !== 403) {
+              if (error.code !== 400 && error.code !== 404 && error.code !== 500 && error.code !== 403 && error.code !== 501) {
                 arangoHelper.arangoNotification('Query', 'Successfully aborted.');
               }
             }
@@ -2360,9 +2378,9 @@
 
           // var outputPosition = $(element + ' .fa-caret-down').first().offset();
           queryProfile
-          .css('position', 'absolute')
-          .css('left', 215)
-          .css('top', 55);
+            .css('position', 'absolute')
+            .css('left', 215)
+            .css('top', 55);
 
           // $("#el").offset().top - $(document).scrollTop()
           var profileWidth = 590;
@@ -2396,7 +2414,7 @@
           queryProfile.append(
             '<i class="fa fa-close closeProfile"></i>' +
             '<span class="profileHeader">Profiling information</span>' +
-            '<div class="pure-g pure-table pure-table-body"></div>' +
+            '<div class="pure-g pure-table pure-table-body" style="width: auto;"></div>' +
             '<div class="prof-progress"></div>' +
             '<div class="prof-progress-label"></div>' +
             '<div class="clear"></div>'
@@ -2498,8 +2516,17 @@
 
       // check if result could be displayed as graph
       // case a) result has keys named vertices and edges
-      if (result[0]) {
-        if (result[0].vertices && result[0].edges) {
+
+      var index = 0;
+      for (var i = 0; i < result.length; i++) {
+        if (result[i]) {
+          index = i;
+          break;
+        }
+      }
+
+      if (result[index]) {
+        if (result[index].vertices && result[index].edges) {
           var hitsa = 0;
           var totala = 0;
 
@@ -2742,7 +2769,7 @@
       var headers = {}; // quick lookup cache
       var pos = 0;
       _.each(data.original, function (obj) {
-        if (first === true) {
+        if (first === true && obj) {
           tableDescription.titles = Object.keys(obj);
           tableDescription.titles.forEach(function (t) {
             headers[String(t)] = pos++;

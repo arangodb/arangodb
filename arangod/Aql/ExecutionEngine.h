@@ -46,13 +46,11 @@ class ExecutionEngine {
 
  public:
   // @brief create an execution engine from a plan
-  static ExecutionEngine* instantiateFromPlan(QueryRegistry*, Query*,
-                                              ExecutionPlan*, bool);
+  static ExecutionEngine* instantiateFromPlan(QueryRegistry*, Query*, ExecutionPlan*, bool);
 
-  TEST_VIRTUAL Result createBlocks(
-      std::vector<ExecutionNode*> const& nodes,
-      std::unordered_set<std::string> const& restrictToShards,
-      MapRemoteToSnippet const& queryIds);
+  TEST_VIRTUAL Result createBlocks(std::vector<ExecutionNode*> const& nodes,
+                                   std::unordered_set<std::string> const& restrictToShards,
+                                   MapRemoteToSnippet const& queryIds);
 
   /// @brief get the root block
   TEST_VIRTUAL ExecutionBlock* root() const {
@@ -71,11 +69,13 @@ class ExecutionEngine {
 
   /// @brief initializeCursor, could be called multiple times
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos);
-  
-  /// @brief shutdown, will be called exactly once for the whole query, blocking variant
+
+  /// @brief shutdown, will be called exactly once for the whole query, blocking
+  /// variant
   Result shutdownSync(int errorCode) noexcept;
 
-  /// @brief shutdown, will be called exactly once for the whole query, may return waiting
+  /// @brief shutdown, will be called exactly once for the whole query, may
+  /// return waiting
   std::pair<ExecutionState, Result> shutdown(int errorCode);
 
   /// @brief getSome
@@ -102,15 +102,18 @@ class ExecutionEngine {
   /// @brief get the register the final result of the query is stored in
   RegisterId resultRegister() const { return _resultRegister; }
 
+  /// @brief accessor to the memory recyler for AqlItemBlocks
+  TEST_VIRTUAL AqlItemBlockManager& itemBlockManager() { return _itemBlockManager; }
+
  public:
   /// @brief execution statistics for the query
   /// note that the statistics are modification by execution blocks
   ExecutionStats _stats;
 
+ private:
   /// @brief memory recycler for AqlItemBlocks
   AqlItemBlockManager _itemBlockManager;
 
- private:
   /// @brief all blocks registered, used for memory management
   std::vector<ExecutionBlock*> _blocks;
 
@@ -128,8 +131,9 @@ class ExecutionEngine {
 
   /// @brief whether or not shutdown() was executed
   bool _wasShutdown;
+
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

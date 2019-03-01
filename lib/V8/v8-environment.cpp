@@ -34,18 +34,21 @@ extern char** environ;
 #endif
 #endif
 
-static void EnvGetter(v8::Local<v8::String> property,
+static void EnvGetter(v8::Local<v8::Name> property,
                       const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
+  if (property->IsSymbol()) {
+    return args.GetReturnValue().SetUndefined();
+  }
 #ifndef _WIN32
-  v8::String::Utf8Value const key(property);
+  v8::String::Utf8Value const key(isolate, property);
   char const* val = getenv(*key);
   if (val) {
     TRI_V8_RETURN_STRING(val);
   }
 #else  // _WIN32
-  v8::String::Value key(property);
+  v8::String::Value key(isolate, property);
   WCHAR buffer[32767];  // The maximum size allowed for environment variables.
   DWORD result = GetEnvironmentVariableW(reinterpret_cast<const WCHAR*>(*key),
                                          buffer, sizeof(buffer));
@@ -54,8 +57,7 @@ static void EnvGetter(v8::Local<v8::String> property,
   // If result >= sizeof buffer the buffer was too small. That should never
   // happen. If result == 0 and result != ERROR_SUCCESS the variable was not
   // not found.
-  if ((result > 0 || GetLastError() == ERROR_SUCCESS) &&
-      result < sizeof(buffer)) {
+  if ((result > 0 || GetLastError() == ERROR_SUCCESS) && result < sizeof(buffer)) {
     uint16_t const* two_byte_buffer = reinterpret_cast<uint16_t const*>(buffer);
     TRI_V8_RETURN(TRI_V8_STRING_UTF16(isolate, two_byte_buffer, result));
   }
@@ -64,18 +66,17 @@ static void EnvGetter(v8::Local<v8::String> property,
   TRI_V8_RETURN(args.Data().As<v8::Object>()->Get(property));
 }
 
-static void EnvSetter(v8::Local<v8::String> property,
-                      v8::Local<v8::Value> value,
+static void EnvSetter(v8::Local<v8::Name> property, v8::Local<v8::Value> value,
                       const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 #ifndef _WIN32
-  v8::String::Utf8Value key(property);
-  v8::String::Utf8Value val(value);
+  v8::String::Utf8Value key(isolate, property);
+  v8::String::Utf8Value val(isolate, value);
   setenv(*key, *val, 1);
 #else  // _WIN32
-  v8::String::Value key(property);
-  v8::String::Value val(value);
+  v8::String::Value key(isolate, property);
+  v8::String::Value val(isolate, value);
   WCHAR* key_ptr = reinterpret_cast<WCHAR*>(*key);
   // Environment variables that start with '=' are read-only.
   if (key_ptr[0] != L'=') {
@@ -86,29 +87,27 @@ static void EnvSetter(v8::Local<v8::String> property,
   TRI_V8_RETURN(value);
 }
 
-static void EnvQuery(v8::Local<v8::String> property,
+static void EnvQuery(v8::Local<v8::Name> property,
                      const v8::PropertyCallbackInfo<v8::Integer>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   int32_t rc = -1;  // Not found unless proven otherwise.
 #ifndef _WIN32
-  v8::String::Utf8Value key(property);
+  v8::String::Utf8Value key(isolate, property);
   if (getenv(*key)) {
     rc = 0;
   }
 #else  // _WIN32
-  v8::String::Value key(property);
+  v8::String::Value key(isolate, property);
   WCHAR* key_ptr = reinterpret_cast<WCHAR*>(*key);
   SetLastError(ERROR_SUCCESS);
 
-  if (GetEnvironmentVariableW(key_ptr, nullptr, 0) > 0 ||
-      GetLastError() == ERROR_SUCCESS) {
+  if (GetEnvironmentVariableW(key_ptr, nullptr, 0) > 0 || GetLastError() == ERROR_SUCCESS) {
     rc = 0;
     if (key_ptr[0] == L'=') {
       // Environment variables that start with '=' are hidden and read-only.
       rc = static_cast<int32_t>(v8::ReadOnly) |
-           static_cast<int32_t>(v8::DontDelete) |
-           static_cast<int32_t>(v8::DontEnum);
+           static_cast<int32_t>(v8::DontDelete) | static_cast<int32_t>(v8::DontEnum);
     }
   }
 #endif
@@ -117,25 +116,24 @@ static void EnvQuery(v8::Local<v8::String> property,
   }
 }
 
-static void EnvDeleter(v8::Local<v8::String> property,
+static void EnvDeleter(v8::Local<v8::Name> property,
                        const v8::PropertyCallbackInfo<v8::Boolean>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 #ifndef _WIN32
-  v8::String::Utf8Value key(property);
+  v8::String::Utf8Value key(isolate, property);
   bool rc = getenv(*key) != nullptr;
   if (rc) {
     unsetenv(*key);
   }
 #else
   bool rc = true;
-  v8::String::Value key(property);
+  v8::String::Value key(isolate, property);
   WCHAR* key_ptr = reinterpret_cast<WCHAR*>(*key);
   if (key_ptr[0] == L'=' || !SetEnvironmentVariableW(key_ptr, nullptr)) {
     // Deletion failed. Return true if the key wasn't there in the first place,
     // false if it is still there.
-    rc = GetEnvironmentVariableW(key_ptr, nullptr, 0) == 0 &&
-         GetLastError() != ERROR_SUCCESS;
+    rc = GetEnvironmentVariableW(key_ptr, nullptr, 0) == 0 && GetLastError() != ERROR_SUCCESS;
   }
 #endif
   if (rc) {
@@ -210,8 +208,10 @@ void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   rt = ft->InstanceTemplate();
   // rt->SetInternalFieldCount(3);
 
-  rt->SetNamedPropertyHandler(EnvGetter, EnvSetter, EnvQuery, EnvDeleter,
-                              EnvEnumerator, v8::Object::New(isolate));
+  rt->SetHandler(v8::NamedPropertyHandlerConfiguration(EnvGetter, EnvSetter, EnvQuery,
+                                                       EnvDeleter, EnvEnumerator,
+                                                       v8::Object::New(isolate)));
+
   v8g->EnvTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "ENV"),
                                ft->GetFunction());

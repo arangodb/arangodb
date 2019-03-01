@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "filter.hpp"
+#include "utils/singleton.hpp"
 
 NS_LOCAL
 
@@ -29,7 +30,9 @@ NS_LOCAL
 /// @class emtpy_query
 /// @brief represent a query returns empty result set 
 //////////////////////////////////////////////////////////////////////////////
-class empty_query final : public irs::filter::prepared {
+struct empty_query final
+    : public irs::filter::prepared,
+      public irs::singleton<empty_query> {
  public:
   virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader&,
@@ -51,24 +54,23 @@ filter::filter(const type_id& type) NOEXCEPT
   : boost_(boost::no_boost()), type_(&type) {
 }
 
-filter::~filter() {}
-
 filter::prepared::ptr filter::prepared::empty() {
-  return filter::prepared::make<empty_query>();
+  // aliasing ctor
+  return filter::prepared::ptr(
+    filter::prepared::ptr(), &empty_query::instance()
+  );
 }
 
-filter::prepared::prepared(attribute_store&& attrs)
+filter::prepared::prepared(attribute_store&& attrs) NOEXCEPT
   : attrs_(std::move(attrs)) {
 }
-
-filter::prepared::~prepared() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             empty
 // -----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(irs::empty);
-DEFINE_FACTORY_DEFAULT(irs::empty);
+DEFINE_FILTER_TYPE(irs::empty)
+DEFINE_FACTORY_DEFAULT(irs::empty)
 
 empty::empty(): filter(empty::type()) {
 }
@@ -79,8 +81,10 @@ filter::prepared::ptr empty::prepare(
     boost_t,
     const attribute_view&
 ) const {
-  static filter::prepared::ptr instance = std::make_shared<empty_query>();
-  return instance;
+  // aliasing ctor
+  return filter::prepared::ptr(
+    filter::prepared::ptr(), &empty_query::instance()
+  );
 }
 
 NS_END // ROOT

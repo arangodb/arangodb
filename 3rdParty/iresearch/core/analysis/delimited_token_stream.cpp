@@ -131,9 +131,9 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 /// @brief args is a delimiter to use for tokenization
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
-  PTR_NAMED(irs::analysis::delimited_token_stream, ptr, args);
-
-  return ptr;
+  return irs::memory::make_shared<irs::analysis::delimited_token_stream>(
+    args
+  );
 }
 
 REGISTER_ANALYZER_JSON(irs::analysis::delimited_token_stream, make_json);
@@ -144,11 +144,13 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
-DEFINE_ANALYZER_TYPE_NAMED(delimited_token_stream, "delimited");
+DEFINE_ANALYZER_TYPE_NAMED(delimited_token_stream, "delimited")
 
 delimited_token_stream::delimited_token_stream(const string_ref& delimiter)
   : analyzer(delimited_token_stream::type()),
+    attrs_(4), // increment + offset + payload + term
     delim_(ref_cast<byte_type>(delimiter)) {
+  attrs_.emplace(inc_);
   attrs_.emplace(offset_);
   attrs_.emplace(payload_);
   attrs_.emplace(term_);

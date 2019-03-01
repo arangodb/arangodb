@@ -9,42 +9,88 @@
     el: '#content',
 
     initialize: function (options) {
+      var self = this;
       this.collectionName = options.collectionName;
       this.model = this.collection;
+
+      // rerender
+      self.interval = window.setInterval(function () {
+        if (window.location.hash.indexOf('cIndices/' + self.collectionName) !== -1 && window.VISIBLE) {
+          if ($('#collectionEditIndexTable').is(':visible') && !$('#indexDeleteModal').is(':visible')) {
+            self.rerender();
+          }
+        }
+      }, self.refreshRate);
     },
+
+    interval: null,
+    refreshRate: 10000,
 
     template: templateEngine.createTemplate('indicesView.ejs'),
 
     events: {
     },
 
+    remove: function () {
+      if (this.interval) {
+        window.clearInterval(this.interval);
+      }
+      this.$el.empty().off(); /* off to unbind the events */
+      this.stopListening();
+      this.unbind();
+      delete this.el;
+      return this;
+    },
+
     render: function () {
       var self = this;
 
-      $.ajax({
-        type: 'GET',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_api/engine'),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          $(self.el).html(self.template.render({
-            model: self.model,
-            supported: data.supports.indexes
-          }));
-
-          self.breadcrumb();
-          window.arangoHelper.buildCollectionSubNav(self.collectionName, 'Indexes');
-
-          self.getIndex();
-
-          // check permissions and adjust views
-          arangoHelper.checkCollectionPermissions(self.collectionName, self.changeViewToReadOnly);
-        },
-        error: function () {
-          arangoHelper.arangoNotification('Index', 'Could not fetch index information.');
+      var continueFunction = function (data) {
+        /* filter out index aliases */
+        var aliases = data.supports.aliases;
+        if (!aliases) {
+          aliases = {};
+        } else {
+          aliases = aliases.indexes;
         }
-      });
+        $(self.el).html(self.template.render({
+          model: self.model,
+          supported: data.supports.indexes.filter(function (type) {
+            return !aliases.hasOwnProperty(type);
+          })
+        }));
+
+        self.breadcrumb();
+        window.arangoHelper.buildCollectionSubNav(self.collectionName, 'Indexes');
+
+        self.getIndex();
+
+        // check permissions and adjust views
+        arangoHelper.checkCollectionPermissions(self.collectionName, self.changeViewToReadOnly);
+      };
+
+      if (!this.engineData) {
+        $.ajax({
+          type: 'GET',
+          cache: false,
+          url: arangoHelper.databaseUrl('/_api/engine'),
+          contentType: 'application/json',
+          processData: false,
+          success: function (data) {
+            self.engineData = data;
+            continueFunction(data);
+          },
+          error: function () {
+            arangoHelper.arangoNotification('Index', 'Could not fetch index information.');
+          }
+        });
+      } else {
+        continueFunction(this.engineData);
+      }
+    },
+
+    rerender: function () {
+      this.getIndex(true);
     },
 
     changeViewToReadOnly: function () {
@@ -61,12 +107,12 @@
       );
     },
 
-    getIndex: function () {
+    getIndex: function (rerender) {
       var callback = function (error, data, id) {
         if (error) {
           window.arangoHelper.arangoError('Index', data.errorMessage);
         } else {
-          this.renderIndex(data, id);
+          this.renderIndex(data, id, rerender);
         }
       }.bind(this);
 
@@ -82,8 +128,19 @@
       var unique;
       var sparse;
       var deduplicate;
+      var background;
 
       switch (indexType) {
+        case 'Ttl':
+          fields = $('#newTtlFields').val();
+          var expireAfter = parseInt($('#newTtlExpireAfter').val(), 10) || 0;
+          postParameter = {
+            type: 'ttl',
+            fields: self.stringToArray(fields),
+            expireAfter: expireAfter
+          };
+          background = self.checkboxToValue('#newTtlBackground');
+          break;
         case 'Geo':
           // HANDLE ARRAY building
           fields = $('#newGeoFields').val();
@@ -91,7 +148,8 @@
           postParameter = {
             type: 'geo',
             fields: self.stringToArray(fields),
-            geoJson: geoJson
+            geoJson: geoJson,
+            inBackground: background
           };
           break;
         case 'Persistent':
@@ -99,12 +157,14 @@
           unique = self.checkboxToValue('#newPersistentUnique');
           sparse = self.checkboxToValue('#newPersistentSparse');
           deduplicate = self.checkboxToValue('#newPersistentDeduplicate');
+          background = self.checkboxToValue('#newPersistentBackground');
           postParameter = {
             type: 'persistent',
             fields: self.stringToArray(fields),
             unique: unique,
             sparse: sparse,
-            deduplicate: deduplicate
+            deduplicate: deduplicate,
+            inBackground: background
           };
           break;
         case 'Hash':
@@ -112,21 +172,25 @@
           unique = self.checkboxToValue('#newHashUnique');
           sparse = self.checkboxToValue('#newHashSparse');
           deduplicate = self.checkboxToValue('#newHashDeduplicate');
+          background = self.checkboxToValue('#newHashBackground');
           postParameter = {
             type: 'hash',
             fields: self.stringToArray(fields),
             unique: unique,
             sparse: sparse,
-            deduplicate: deduplicate
+            deduplicate: deduplicate,
+            inBackground: background
           };
           break;
         case 'Fulltext':
           fields = $('#newFulltextFields').val();
           var minLength = parseInt($('#newFulltextMinLength').val(), 10) || 0;
+          background = self.checkboxToValue('#newFulltextBackground');
           postParameter = {
             type: 'fulltext',
             fields: self.stringToArray(fields),
-            minLength: minLength
+            minLength: minLength,
+            inBackground: background
           };
           break;
         case 'Skiplist':
@@ -134,12 +198,14 @@
           unique = self.checkboxToValue('#newSkiplistUnique');
           sparse = self.checkboxToValue('#newSkiplistSparse');
           deduplicate = self.checkboxToValue('#newSkiplistDeduplicate');
+          background = self.checkboxToValue('#newSkiplistBackground');
           postParameter = {
             type: 'skiplist',
             fields: self.stringToArray(fields),
             unique: unique,
             sparse: sparse,
-            deduplicate: deduplicate
+            deduplicate: deduplicate,
+            inBackground: background
           };
           break;
       }
@@ -148,10 +214,12 @@
         if (error) {
           if (msg) {
             var message = JSON.parse(msg.responseText);
-            arangoHelper.arangoError('Document error', message.errorMessage);
+            arangoHelper.arangoError('Index error', message.errorMessage);
           } else {
-            arangoHelper.arangoError('Document error', 'Could not create index.');
+            arangoHelper.arangoError('Index error', 'Could not create index.');
           }
+        } else {
+          arangoHelper.arangoNotification('Index', 'Creation in progress. This may take a while.');
         }
         // toggle back
         self.toggleNewIndexView();
@@ -217,9 +285,11 @@
     prepDeleteIndex: function (e) {
       var self = this;
       this.lastTarget = e;
-
       this.lastId = $(this.lastTarget.currentTarget).parent().parent().first().children().first().text();
-      // window.modalView.hide()
+
+      if ($('#indexDeleteModal').length) {
+        return;
+      }
 
       // delete modal
       $('#content #modal-dialog .modal-footer').after(
@@ -270,7 +340,7 @@
         '<i class="fa fa-circle-o-notch fa-spin"></i>'
       );
     },
-    renderIndex: function (data, id) {
+    renderIndex: function (data, id, rerender) {
       this.index = data;
 
       // get pending jobs
@@ -323,6 +393,10 @@
         var fieldString = '';
         var actionString = '';
 
+        if (rerender) {
+          $('#collectionEditIndexTable tbody').empty();
+        }
+
         _.each(this.index.indexes, function (v) {
           if (v.type === 'primary' || v.type === 'edge') {
             actionString = '<span class="icon_arangodb_locked" ' +
@@ -340,9 +414,9 @@
           var position = v.id.indexOf('/');
           var indexId = v.id.substr(position + 1, v.id.length);
           var selectivity = (
-          v.hasOwnProperty('selectivityEstimate')
-            ? (v.selectivityEstimate * 100).toFixed(2) + '%'
-            : 'n/a'
+            v.hasOwnProperty('selectivityEstimate')
+              ? (v.selectivityEstimate * 100).toFixed(2) + '%'
+              : 'n/a'
           );
           var sparse = (v.hasOwnProperty('sparse') ? v.sparse : 'n/a');
           var deduplicate = (v.hasOwnProperty('deduplicate') ? v.deduplicate : 'n/a');

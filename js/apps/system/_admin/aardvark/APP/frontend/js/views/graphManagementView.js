@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, require, Joi, frontendConfig */
+/* global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, Joi, frontendConfig */
 
 (function () {
   'use strict';
@@ -72,8 +72,10 @@
 
     redirectToGraphViewer: function (e) {
       var name = $(e.currentTarget).attr('id');
-      name = name.substr(0, name.length - 5);
-      window.location.hash = window.location.hash.substr(0, window.location.hash.length - 1) + '/' + encodeURIComponent(name);
+      if (name) {
+        name = name.substr(0, name.length - 5);
+        window.App.navigate('graph/' + encodeURIComponent(name), {trigger: true});
+      }
     },
 
     loadGraphViewer: function (graphName, refetch) {
@@ -184,12 +186,24 @@
       $('#' + clicked).click();
     },
 
+    checkVisibility: function () {
+      if ($('#graphManagementDropdown').is(':visible')) {
+        this.dropdownVisible = true;
+      } else {
+        this.dropdownVisible = false;
+      }
+      arangoHelper.setCheckboxStatus('#graphManagementDropdown');
+    },
+
     toggleGraphDropdown: function () {
+      var self = this;
       // apply sorting to checkboxes
       $('#graphSortDesc').attr('checked', this.collection.sortOptions.desc);
 
       $('#graphManagementToggle').toggleClass('activated');
-      $('#graphManagementDropdown2').slideToggle(200);
+      $('#graphManagementDropdown2').slideToggle(200, function () {
+        self.checkVisibility();
+      });
     },
 
     sorting: function () {
@@ -199,12 +213,7 @@
         this.collection.setSortingDesc(false);
       }
 
-      if ($('#graphManagementDropdown').is(':visible')) {
-        this.dropdownVisible = true;
-      } else {
-        this.dropdownVisible = false;
-      }
-
+      this.checkVisibility();
       this.render();
     },
 
@@ -818,98 +827,98 @@
         );
       }
 
+      if (frontendConfig.isEnterprise === true && frontendConfig.isCluster && !graph) {
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'new-numberOfShards',
+            'Shards*',
+            '',
+            'Number of shards the smart graph is using.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                msg: 'Must be a number.'
+              }
+            ]
+          )
+        );
+
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'new-replicationFactor',
+            'Replication factor',
+            '',
+            'Numeric value. Must be at least 1. Total number of copies of the data in the cluster.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                msg: 'Must be a number.'
+              }
+            ]
+          )
+        );
+
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'new-smartGraphAttribute',
+            'Smart Graph Attribute*',
+            '',
+            'The attribute name that is used to smartly shard the vertices of a graph. \n' +
+            'Every vertex in this Graph has to have this attribute. \n' +
+            'Cannot be modified later.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional(),
+                msg: 'Must be a string.'
+              }
+            ]
+          )
+        );
+      }
+
+      if (frontendConfig.isCluster && !graph) {
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'general-numberOfShards',
+            'Shards',
+            '',
+            'Number of shards the graph is using.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                msg: 'Must be a number.'
+              }
+            ]
+          )
+        );
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'general-replicationFactor',
+            'Replication factor',
+            '',
+            'Numeric value. Must be at least 1. Total number of copies of the data in the cluster.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                msg: 'Must be a number.'
+              }
+            ]
+          )
+        );
+      }
+
       edgeDefinitions.forEach(
         function (edgeDefinition) {
-          if (frontendConfig.isEnterprise === true && frontendConfig.isCluster) {
-            tableContent.push(
-              window.modalView.createTextEntry(
-                'new-numberOfShards',
-                'Shards*',
-                '',
-                'Number of shards the smart graph is using.',
-                '',
-                false,
-                [
-                  {
-                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                    msg: 'Must be a number.'
-                  }
-                ]
-              )
-            );
-
-            tableContent.push(
-              window.modalView.createTextEntry(
-                'new-replicationFactor',
-                'Replication factor',
-                '',
-                'Numeric value. Must be at least 1. Total number of copies of the data in the cluster.',
-                '',
-                false,
-                [
-                  {
-                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                    msg: 'Must be a number.'
-                  }
-                ]
-              )
-            );
-
-            tableContent.push(
-              window.modalView.createTextEntry(
-                'new-smartGraphAttribute',
-                'Smart Graph Attribute*',
-                '',
-                'The attribute name that is used to smartly shard the vertices of a graph. \n' +
-                'Every vertex in this Graph has to have this attribute. \n' +
-                'Cannot be modified later.',
-                '',
-                false,
-                [
-                  {
-                    rule: Joi.string().allow('').optional(),
-                    msg: 'Must be a string.'
-                  }
-                ]
-              )
-            );
-          }
-
-          if (frontendConfig.isCluster && !graph) {
-            tableContent.push(
-              window.modalView.createTextEntry(
-                'general-numberOfShards',
-                'Shards',
-                '',
-                'Number of shards the graph is using.',
-                '',
-                false,
-                [
-                  {
-                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                    msg: 'Must be a number.'
-                  }
-                ]
-              )
-            );
-            tableContent.push(
-              window.modalView.createTextEntry(
-                'general-replicationFactor',
-                'Replication factor',
-                '',
-                'Numeric value. Must be at least 1. Total number of copies of the data in the cluster.',
-                '',
-                false,
-                [
-                  {
-                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                    msg: 'Must be a number.'
-                  }
-                ]
-              )
-            );
-          }
-
           if (self.counter === 0) {
             if (edgeDefinition.collection) {
               self.removedECollList.push(edgeDefinition.collection);

@@ -41,7 +41,7 @@ namespace aql {
 class QueryRegistry;
 }
 namespace basics {
-template<typename T>
+template <typename T>
 class ReadLocker;
 }
 
@@ -76,12 +76,12 @@ class UserManager {
   void setGlobalVersion(uint64_t version) {
     _globalVersion.store(version, std::memory_order_release);
   }
-  
+
   /// @brief reload user cache and token caches
   void triggerLocalReload() {
     _globalVersion.fetch_add(1, std::memory_order_release);
   }
-  
+
   /// @brief used for caching
   uint64_t globalVersion() {
     return _globalVersion.load(std::memory_order_acquire);
@@ -96,9 +96,8 @@ class UserManager {
 
   velocypack::Builder allUsers();
   /// Add user from arangodb, do not use for LDAP  users
-  Result storeUser(bool replace, std::string const& user,
-                   std::string const& pass, bool active,
-                   velocypack::Slice extras);
+  Result storeUser(bool replace, std::string const& user, std::string const& pass,
+                   bool active, velocypack::Slice extras);
 
   /// Enumerate list of all users
   Result enumerateUsers(std::function<bool(auth::User&)>&&);
@@ -107,6 +106,8 @@ class UserManager {
   /// Access user without modifying it
   Result accessUser(std::string const& user, ConstUserCallback&&);
 
+  /// @brief does this user exists in the db
+  bool userExists(std::string const& user);
   /// Serialize user into legacy format for REST API
   velocypack::Builder serializeUser(std::string const& user);
   Result removeUser(std::string const& user);
@@ -116,49 +117,45 @@ class UserManager {
   bool checkPassword(std::string const& username, std::string const& password);
 
   /// Convenience method to refresh user rights
+  /// returns true if the user was actually refreshed and the caller may
+  /// need to update its own caches
 #ifdef USE_ENTERPRISE
-  void refreshUser(std::string const& username);
+  bool refreshUser(std::string const& username);
 #else
-  inline void refreshUser(std::string const& username) {}
+  inline bool refreshUser(std::string const& username) { return false; }
 #endif
 
   auth::Level databaseAuthLevel(std::string const& username,
-                                std::string const& dbname,
-                                bool configured = false);
-  auth::Level collectionAuthLevel(std::string const& username,
-                                  std::string const& dbname,
-                                  std::string const& coll,
-                                  bool configured = false);
+                                std::string const& dbname, bool configured = false);
+  auth::Level collectionAuthLevel(std::string const& username, std::string const& dbname,
+                                  std::string const& coll, bool configured = false);
 
   /// Overwrite internally cached permissions, only use
   /// for testing purposes
   void setAuthInfo(auth::UserMap const& userEntryMap);
-  
+
 #ifdef USE_ENTERPRISE
-  
+
   /// @brief apply roles to all users in cache
   void applyRolesToAllUsers();
   /// @brief apply roles to user, must lock _userCacheLock
   void applyRoles(auth::User&) const;
-  
+
   /// @brief Check authorization with external system
   /// @param userCached is the user cached locally
   /// @param a read guard which may need to be released
   bool checkPasswordExt(std::string const& username,
-                        std::string const& password,
-                        bool userCached,
+                        std::string const& password, bool userCached,
                         basics::ReadLocker<basics::ReadWriteLock>& readGuard);
 #endif
 
  private:
-  
   /// @brief load users and permissions from local database
   void loadFromDB();
   /// @brief store or replace user object
   Result storeUserInternal(auth::User const& user, bool replace);
 
  private:
-  
   /// Protected the sync process from db, always lock
   /// before locking _userCacheLock
   Mutex _loadFromDBLock;
@@ -179,7 +176,7 @@ class UserManager {
   std::unique_ptr<arangodb::auth::Handler> _authHandler;
 #endif
 };
-}  // auth
-}  // arangodb
+}  // namespace auth
+}  // namespace arangodb
 
 #endif

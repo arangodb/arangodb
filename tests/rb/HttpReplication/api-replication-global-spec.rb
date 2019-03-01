@@ -224,7 +224,7 @@ describe ArangoDB do
 ## wal access
 ################################################################################
 
-    context "dealing with the wal access" do
+    context "dealing with wal access api" do
 
       api = "/_api/wal"
       prefix = "api-wal"
@@ -233,7 +233,7 @@ describe ArangoDB do
 ## state
 ################################################################################
 
-      it "checks the state" do
+      it "check the state" do
         # fetch state
         cmd = "/_api/replication/logger-state"
         doc = ArangoDB.log_get("api-replication-logger-state", cmd, :body => "")
@@ -382,6 +382,7 @@ describe ArangoDB do
             c.should have_key("version")
             c["type"].should eq(2)
             c["cid"].should eq(cid)
+            c["cid"].should be_kind_of(String)
             c["globallyUniqueId"].should eq(cuid)            
             c["deleted"].should eq(false)
             c["name"].should eq("UnitTestsReplication")
@@ -463,6 +464,7 @@ describe ArangoDB do
               c.should have_key("version")
               c["type"].should eq(2)
               c["cid"].should eq(cid)
+              c["cid"].should be_kind_of(String)
               c["globallyUniqueId"].should eq(cuid)              
               c["deleted"].should eq(false)
               c["name"].should eq("UnitTestsReplication")
@@ -658,7 +660,7 @@ describe ArangoDB do
         doc.code.should eq(200)
       end
       
-      it "validates chunkSize restriction" do
+      it "validates chunkSize restrictions" do
         ArangoDB.drop_collection("UnitTestsReplication")
 
         sleep 1
@@ -668,26 +670,44 @@ describe ArangoDB do
         doc.code.should eq(200)
         fromTick = doc.parsed_response["tick"]
         originalTick = fromTick
+        lastScanned = fromTick
 
         # create collection
         cid = ArangoDB.create_collection("UnitTestsReplication")
         cuid = ArangoDB.properties_collection(cid)["globallyUniqueId"]        
 
         # create documents
-        (1..1500).each do |value| 
+        (1..250).each do |value| 
           cmd = "/_api/document?collection=UnitTestsReplication"
           body = "{ \"value\" : \"thisIsALongerStringBecauseWeWantToTestTheChunkSizeLimitsLaterOnAndItGetsEvenLongerWithTimeForRealNow\" }"
           doc = ArangoDB.log_post("#{prefix}-follow-chunksize", cmd, :body => body)
           doc.code.should eq(201)
         end
 
+        # create one big transaction
+        docsBody = "["
+        (1..749).each do |value| 
+          docsBody << "{ \"value\" : \"%d\" }," % [value]
+        end
+        docsBody << "{ \"value\" : \"500\" }]"
+        cmd = "/_api/document?collection=UnitTestsReplication"
+        doc = ArangoDB.log_post("#{prefix}-follow-chunksize", cmd, :body => docsBody)
+        doc.code.should eq(201)
+
+        # create more documents
+        (1..500).each do |value| 
+          cmd = "/_api/document?collection=UnitTestsReplication"
+          body = "{ \"value\" : \"thisIsALongerStringBecauseWeWantToTestTheChunkSizeLimitsLaterOnAndItGetsEvenLongerWithTimeForRealNow\" }"
+          doc = ArangoDB.log_post("#{prefix}-follow-chunksize", cmd, :body => body)
+          doc.code.should eq(201)
+        end
 
         sleep 1
         
-        tickTypes = { 2000 => 0, 2001 => 0, 2300 => 0 }
+        tickTypes = { 2000 => 0, 2001 => 0, 2200 => 0, 2201 => 0, 2300 => 0 }
 
         while 1
-          cmd = api + "/tail?global=true&from=" + fromTick + "&chunkSize=16384"
+          cmd = api + "/tail?global=true&from=" + fromTick + "&lastScanned=" + lastScanned + "&chunkSize=16384"
           doc = ArangoDB.log_get("#{prefix}-follow-chunksize", cmd, :body => "", :format => :plain)
           [200, 204].should include(doc.code)
             
@@ -695,16 +715,19 @@ describe ArangoDB do
 
           doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
           doc.headers["x-arango-replication-lastincluded"].should_not eq("0")
+          doc.headers["x-arango-replication-lastscanned"].should match(/^\d+$/)
+          doc.headers["x-arango-replication-lastscanned"].should_not eq("0")
           if fromTick == originalTick
             # first batch
             doc.headers["x-arango-replication-checkmore"].should eq("true")
           end
           doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
-
           # we need to allow for some overhead here, as the chunkSize restriction is not honored precisely
-          doc.headers["content-length"].to_i.should be < (16 + 8) * 1024
+          doc.headers["content-length"].to_i.should be < (16 + 9) * 1024
 
-          body = doc.response.body
+          # update lastScanned for next request
+          lastScanned = doc.headers["x-arango-replication-lastscanned"]
+          body = doc.response.body 
 
           i = 0
           while 1
@@ -719,13 +742,23 @@ describe ArangoDB do
             marker.should have_key("tick")
             fromTick = marker["tick"]
 
-            if marker["type"] >= 2000 and marker["cuid"] == cuid
-              # create collection
+            if marker["type"] == 2200
+              marker.should have_key("tid")
+              marker.should have_key("db")
+              tickTypes[2200] = tickTypes[2200] + 1
+
+            elsif marker["type"] == 2201
+              marker.should have_key("tid")
+              tickTypes[2201] = tickTypes[2201] + 1
+
+            elsif marker["type"] >= 2000 and marker["cuid"] == cuid
+              # collection markings
               marker.should have_key("type")
               marker.should have_key("cuid")
 
               if marker["type"] == 2300
                 marker.should have_key("data")
+                marker.should have_key("tid")
               end
 
               cc = tickTypes[marker["type"]]
@@ -739,13 +772,15 @@ describe ArangoDB do
 
         tickTypes[2000].should eq(1) # collection create
         tickTypes[2001].should eq(0) # collection drop
+        tickTypes[2200].should be >= 1 # begin transaction
+        tickTypes[2201].should be >= 1 # commit transaction
         tickTypes[2300].should eq(1500) # document inserts
 
         
         # now try again with a single chunk  
-        tickTypes = { 2000 => 0, 2001 => 0, 2300 => 0 }
+        tickTypes = { 2000 => 0, 2001 => 0, 2200 => 0, 2201 => 0, 2300 => 0 }
 
-        cmd = api + "/tail?global=true&from=" + originalTick + "&chunkSize=1048576"
+        cmd = api + "/tail?global=true&from=" + originalTick + "&lastScanned=" + originalTick + "&chunkSize=1048576"
         doc = ArangoDB.log_get("#{prefix}-follow-chunksize", cmd, :body => "", :format => :plain)
         doc.code.should eq(200)
 
@@ -769,13 +804,23 @@ describe ArangoDB do
 
           marker.should have_key("tick")
 
-          if marker["type"] >= 2000 and marker["cuid"] == cuid
+          if marker["type"] == 2200
+            marker.should have_key("tid")
+            marker.should have_key("db")
+            tickTypes[2200] = tickTypes[2200] + 1
+
+          elsif marker["type"] == 2201
+            marker.should have_key("tid")
+            tickTypes[2201] = tickTypes[2201] + 1
+
+          elsif marker["type"] >= 2000 and marker["cuid"] == cuid
             # create collection
             marker.should have_key("type")
             marker.should have_key("cuid")
 
             if marker["type"] == 2300
               marker.should have_key("data")
+              marker.should have_key("tid")
             end
 
             cc = tickTypes[marker["type"]]
@@ -788,6 +833,8 @@ describe ArangoDB do
 
         tickTypes[2000].should eq(1) # collection create
         tickTypes[2001].should eq(0) # collection drop
+        tickTypes[2200].should be >= 1 # begin transaction
+        tickTypes[2201].should be >= 1 # commit transaction
         tickTypes[2300].should eq(1500) # document inserts
 
         # drop collection
@@ -900,6 +947,7 @@ describe ArangoDB do
         parameters["type"].should be_kind_of(Integer)
         parameters["type"].should eq(2)
         parameters["cid"].should eq(cid)
+        parameters["cid"].should be_kind_of(String)
         parameters["deleted"].should eq(false)
         parameters["name"].should eq("UnitTestsReplication")
         parameters["waitForSync"].should eq(false)
@@ -919,6 +967,7 @@ describe ArangoDB do
         parameters["type"].should be_kind_of(Integer)
         parameters["type"].should eq(3)
         parameters["cid"].should eq(cid2)
+        parameters["cid"].should be_kind_of(String)
         parameters["deleted"].should eq(false)
         parameters["name"].should eq("UnitTestsReplication2")
         parameters["waitForSync"].should eq(true)
@@ -985,6 +1034,7 @@ describe ArangoDB do
         parameters["type"].should be_kind_of(Integer)
         parameters["type"].should eq(2)
         parameters["cid"].should eq(cid)
+        parameters["cid"].should be_kind_of(String)
         parameters["deleted"].should eq(false)
         parameters["name"].should eq("UnitTestsReplication")
         parameters["waitForSync"].should eq(false)
@@ -1017,6 +1067,7 @@ describe ArangoDB do
         parameters["type"].should be_kind_of(Integer)
         parameters["type"].should eq(2)
         parameters["cid"].should eq(cid2)
+        parameters["cid"].should be_kind_of(String)
         parameters["deleted"].should eq(false)
         parameters["name"].should eq("UnitTestsReplication2")
         parameters["waitForSync"].should eq(false)

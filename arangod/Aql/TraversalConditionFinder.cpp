@@ -34,7 +34,7 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 using EN = arangodb::aql::ExecutionNode;
 
-static AstNodeType BuildSingleComparatorType (AstNode const* condition) {
+static AstNodeType BuildSingleComparatorType(AstNode const* condition) {
   TRI_ASSERT(condition->numMembers() == 3);
   AstNodeType type = NODE_TYPE_ROOT;
 
@@ -64,7 +64,8 @@ static AstNodeType BuildSingleComparatorType (AstNode const* condition) {
       type = NODE_TYPE_OPERATOR_BINARY_NIN;
       break;
     default:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unsupported operator type");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unsupported operator type");
   }
   auto quantifier = condition->getMemberUnchecked(2);
   TRI_ASSERT(quantifier->type == NODE_TYPE_QUANTIFIER);
@@ -73,7 +74,8 @@ static AstNodeType BuildSingleComparatorType (AstNode const* condition) {
   if (val == Quantifier::NONE) {
     auto it = Ast::NegatedOperators.find(type);
     if (it == Ast::NegatedOperators.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unsupported operator type");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unsupported operator type");
     }
     type = it->second;
   }
@@ -132,18 +134,14 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
 
       if (lhs->isAttributeAccessForVariable(pathVar, true)) {
         // p.xxx  op  whatever
-        if (rhs->type != NODE_TYPE_VALUE &&
-            rhs->type != NODE_TYPE_ARRAY &&
-            rhs->type != NODE_TYPE_OBJECT &&
-            rhs->type != NODE_TYPE_REFERENCE) {
+        if (rhs->type != NODE_TYPE_VALUE && rhs->type != NODE_TYPE_ARRAY &&
+            rhs->type != NODE_TYPE_OBJECT && rhs->type != NODE_TYPE_REFERENCE) {
           return false;
         }
       } else if (rhs->isAttributeAccessForVariable(pathVar, true)) {
         // whatever  op  p.xxx
-        if (lhs->type != NODE_TYPE_VALUE &&
-            lhs->type != NODE_TYPE_ARRAY &&
-            lhs->type != NODE_TYPE_OBJECT &&
-            lhs->type != NODE_TYPE_REFERENCE) {
+        if (lhs->type != NODE_TYPE_VALUE && lhs->type != NODE_TYPE_ARRAY &&
+            lhs->type != NODE_TYPE_OBJECT && lhs->type != NODE_TYPE_REFERENCE) {
           return false;
         }
       }
@@ -209,17 +207,16 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
       return false;
     default:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Traversal optimizer encountered node: " << node->getTypeString();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "Traversal optimizer encountered node: " << node->getTypeString();
 #endif
       return false;
   }
 }
 
-static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
-                                            size_t testIndex, TraversalNode* tn,
-                                            Variable const* pathVar,
-                                            bool& conditionIsImpossible,
-                                            size_t& swappedIndex,
+static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent, size_t testIndex,
+                                            TraversalNode* tn, Variable const* pathVar,
+                                            bool& conditionIsImpossible, size_t& swappedIndex,
                                             int64_t& indexedAccessDepth) {
   AstNode* node = parent->getMemberUnchecked(testIndex);
   if (!IsSupportedNode(pathVar, node)) {
@@ -232,7 +229,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
   //   A) var.vertices[n] (.*)
   //   B) var.edges[n] (.*)
   //   C) var.vertices[*] (.*) (ALL|NONE) (.*)
-  //   D) var.vertices[*] (.*) (ALL|NONE) (.*)
+  //   D) var.edges[*] (.*) (ALL|NONE) (.*)
 
   auto unusedWalker = [](AstNode const* n) {};
   bool isEdge = false;
@@ -286,8 +283,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
         switch (node->type) {
           case NODE_TYPE_VALUE: {
             // we have var.edges[<this-here>]
-            if (node->value.type != VALUE_TYPE_INT ||
-                node->value.value._int < 0) {
+            if (node->value.type != VALUE_TYPE_INT || node->value.value._int < 0) {
               // Only positive indexed access allowed
               notSupported = true;
               return node;
@@ -302,7 +298,8 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
           default:
             // Other types cannot be optimized
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-            LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Failed type: " << node->getTypeString();
+            LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+                << "Failed type: " << node->getTypeString();
             node->dump(0);
 #endif
             notSupported = true;
@@ -329,13 +326,24 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
           TRI_ASSERT(node->numMembers() == 2);
           AstNode* indexVal = node->getMemberUnchecked(1);
           if (indexVal->isIntValue()) {
-            indexedAccessDepth = indexVal->getIntValue() + (isEdge?1:0);
-          } else { // should cause the caller to not remove a filter
+            indexedAccessDepth = indexVal->getIntValue() + (isEdge ? 1 : 0);
+          } else {  // should cause the caller to not remove a filter
             indexedAccessDepth = INT64_MAX;
           }
           return node;
         }
         if (node->type == NODE_TYPE_EXPANSION) {
+          // Check that the expansion [*] contains no inline expression;
+          // members 2, 3 and 4 correspond to FILTER, LIMIT and RETURN,
+          // respectively.
+          TRI_ASSERT(node->numMembers() == 5);
+          if (node->getMemberUnchecked(2)->type != NODE_TYPE_NOP ||
+              node->getMemberUnchecked(3)->type != NODE_TYPE_NOP ||
+              node->getMemberUnchecked(4)->type != NODE_TYPE_NOP) {
+            notSupported = true;
+            return node;
+          }
+
           // We continue in this pattern, all good
           patternStep++;
           parentOfReplace = node;
@@ -386,8 +394,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
         // Just fall through
         break;
     }
-    if (node->type == NODE_TYPE_REFERENCE ||
-        node->type == NODE_TYPE_VARIABLE) {
+    if (node->type == NODE_TYPE_REFERENCE || node->type == NODE_TYPE_VARIABLE) {
       // we are on the bottom of the tree. Check if it is our pathVar
       auto variable = static_cast<Variable*>(node->getData());
       if (pathVar == variable) {
@@ -455,15 +462,14 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
   TRI_ASSERT(parentOfReplace != nullptr);
   if (depth == UINT64_MAX) {
     // Global Case
-    auto replaceNode = BuildExpansionReplacement(
-        ast, parentOfReplace->getMemberUnchecked(replaceIdx), tempNode);
+    auto replaceNode =
+        BuildExpansionReplacement(ast, parentOfReplace->getMemberUnchecked(replaceIdx), tempNode);
     parentOfReplace->changeMember(replaceIdx, replaceNode);
     // NOTE: We have to reload the NODE here, because we may have replaced
     // it entirely
     tn->registerGlobalCondition(isEdge, parent->getMemberUnchecked(testIndex));
   } else {
-    conditionIsImpossible =
-        !tn->isInRange(depth, isEdge);
+    conditionIsImpossible = !tn->isInRange(depth, isEdge);
     if (conditionIsImpossible) {
       return false;
     }
@@ -478,8 +484,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
   return true;
 }
 
-TraversalConditionFinder::TraversalConditionFinder(ExecutionPlan* plan,
-                                                   bool* planAltered)
+TraversalConditionFinder::TraversalConditionFinder(ExecutionPlan* plan, bool* planAltered)
     : _plan(plan),
       _condition(std::make_unique<Condition>(plan->getAst())),
       _planAltered(planAltered) {}
@@ -536,10 +541,8 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     }
 
     case EN::FILTER: {
-      std::vector<Variable const*> invars = en->getVariablesUsedHere();
-      TRI_ASSERT(invars.size() == 1);
       // register which variable is used in a FILTER
-      _filterVariables.emplace(invars[0]->id);
+      _filterVariables.emplace(ExecutionNode::castTo<FilterNode const*>(en)->inVariable()->id);
       break;
     }
 
@@ -597,7 +600,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
       // edit in-place; TODO: replace node instead
       TEMPORARILY_UNLOCK_NODE(andNode);
-      std::unordered_set<Variable const*> varsUsedByCondition;
+      arangodb::HashSet<Variable const*> varsUsedByCondition;
 
       auto originalFilterConditions = std::make_unique<Condition>(_plan->getAst());
       for (size_t i = andNode->numMembers(); i > 0; --i) {
@@ -643,10 +646,8 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         size_t swappedIndex = 0;
         // If we get here we can optimize this condition
         if (!checkPathVariableAccessFeasible(_plan->getAst(), andNode, i - 1,
-                                             node, pathVar,
-                                             conditionIsImpossible,
-                                             swappedIndex,
-                                             indexedAccessDepth)) {
+                                             node, pathVar, conditionIsImpossible,
+                                             swappedIndex, indexedAccessDepth)) {
           andNode->removeMemberUnchecked(i - 1);
           if (conditionIsImpossible) {
             // If we get here we cannot fulfill the condition
@@ -667,12 +668,13 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
             // then indexedAccessDepth would be INT64_MAX
             originalFilterConditions->andCombine(cloned);
 
-            if ((int64_t)options->minDepth < indexedAccessDepth && !isTrueOnNull(cloned, pathVar)) {
+            if ((int64_t)options->minDepth < indexedAccessDepth &&
+                !isTrueOnNull(cloned, pathVar)) {
               // do not return paths shorter than the deepest path access
               // Unless the condition evaluates to true on `null`.
               options->minDepth = indexedAccessDepth;
             }
-          } // otherwise do not remove the filter statement
+          }  // otherwise do not remove the filter statement
         }
       }
 
@@ -691,7 +693,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         // Check if it only contains an empty n-ary-and within the n-ary-or
         auto node = _condition->root();
         TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_OR);
-        switch(node->numMembers()) {
+        switch (node->numMembers()) {
           case 0:
             isEmpty = true;
             break;
@@ -708,7 +710,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       }
 
       if (!isEmpty) {
-        //node->setCondition(_condition.release());
+        // node->setCondition(_condition.release());
         originalFilterConditions->normalize();
         node->setCondition(originalFilterConditions.release());
         // We restart here with an empty condition.
@@ -734,7 +736,7 @@ bool TraversalConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
 }
 
 bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathVar) const {
-  std::unordered_set<Variable const*> vars;
+  arangodb::HashSet<Variable const*> vars;
   Ast::getReferencedVariables(node, vars);
   if (vars.size() > 1) {
     // More then one variable.
@@ -755,7 +757,7 @@ bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathV
   auto trx = _plan->getAst()->query()->trx();
   TRI_ASSERT(trx != nullptr);
 
-  FixedVarExpressionContext ctxt;
+  FixedVarExpressionContext ctxt(_plan->getAst()->query());
   ctxt.setVariableValue(pathVar, {});
   AqlValue res = tmpExp.execute(trx, &ctxt, mustDestroy);
   TRI_ASSERT(res.isBoolean());

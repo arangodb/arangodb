@@ -496,22 +496,6 @@ function queryAgencyJob(id) {
   return {error: true, errorMsg: "Did not find job.", id, job: null};
 }
 
-function getLocalInfo () {
-  var db = require('internal').db;
-  var ret = { result: {}};
-  db._collections().forEach(
-    function(col) {          
-      if (col.name().charAt(0) !== '_') {
-        ret.result[col.name()] = col.properties();
-        ret.result[col.name()].indexes = [];
-        col.getIndexes().forEach(function(i) {
-          ret.result[col.name()].indexes.push(i);
-        });
-      }
-    });
-  return ret;
-}
-
 exports.coordinatorId = coordinatorId;
 exports.isCluster = isCluster;
 exports.isCoordinator = isCoordinator;
@@ -528,4 +512,3 @@ exports.supervisionState = supervisionState;
 exports.waitForSyncRepl = waitForSyncRepl;
 exports.endpoints = endpoints;
 exports.queryAgencyJob = queryAgencyJob;
-exports.getLocalInfo = getLocalInfo;

@@ -26,28 +26,42 @@ set(IResearchTests_INCLUDE_DIR
   ""
 )
 
+# set required standard version
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if (USE_SIMDCOMP)
+  set(IReSearch_tests_optimized_sources
+    ./store/store_utils_optimized_tests.cpp
+  )
+endif()
+
 set(IReSearch_tests_sources
   ./analysis/analyzer_test.cpp
   ./analysis/delimited_token_stream_tests.cpp
+  ./analysis/ngram_token_stream_test.cpp
+  ./analysis/text_token_stemming_stream_tests.cpp
+  ./analysis/token_masking_stream_tests.cpp
   ./analysis/token_stream_tests.cpp
   ./formats/formats_tests.cpp
+  ./formats/formats_test_case_base.cpp
   ./formats/skip_list_test.cpp
   ./store/directory_test_case.cpp
   ./store/directory_cleaner_tests.cpp
-  ./store/fs_directory_tests.cpp
-  ./store/mmap_directory_tests.cpp
-  ./store/memory_directory_tests.cpp
   ./store/memory_index_output_tests.cpp
   ./store/store_utils_tests.cpp
   ./index/doc_generator.cpp
   ./index/assert_format.cpp
   ./index/index_meta_tests.cpp
+  ./index/index_profile_tests.cpp
   ./index/index_tests.cpp
+  ./index/index_death_tests.cpp
   ./index/transaction_store_tests.cpp
   ./index/field_meta_test.cpp
   ./index/merge_writer_tests.cpp
   ./index/postings_tests.cpp
   ./index/segment_writer_tests.cpp
+  ./index/consolidation_policy_tests.cpp
   ./search/empty_filter_tests.cpp
   ./search/granular_range_filter_tests.cpp
   ./search/index_reader_test.cpp
@@ -72,6 +86,7 @@ set(IReSearch_tests_sources
   ./utils/async_utils_tests.cpp
   ./utils/bitvector_tests.cpp
   ./utils/container_utils_tests.cpp
+  ./utils/crc_test.cpp
   ./utils/file_utils_tests.cpp
   ./utils/map_utils_tests.cpp
   ./utils/object_pool_tests.cpp
@@ -81,6 +96,7 @@ set(IReSearch_tests_sources
   ./utils/bit_packing_tests.cpp
   ./utils/bit_utils_tests.cpp
   ./utils/block_pool_test.cpp
+  ./utils/encryption_test.cpp
   ./utils/locale_utils_tests.cpp
   ./utils/ref_counter_tests.cpp
   ./utils/memory_tests.cpp
@@ -91,11 +107,12 @@ set(IReSearch_tests_sources
   ./utils/std_test.cpp
   ./utils/type_utils_tests.cpp
   ./utils/utf8_path_tests.cpp
+  ./utils/fst_string_weight_test.cpp
+  ./tests_param.cpp
   ./tests_main.cpp
 )
 
 set(IReSearch_tests_headers
-  ./store/directory_test_case.hpp
   ./index/assert_format.hpp
   ./index/doc_generator.hpp
   ./index/index_tests.hpp
@@ -112,6 +129,10 @@ set(IReSearch_tests_headers
 if (MSVC)
   # disable "checked iterators" feature
   add_definitions(-D_SCL_SECURE_NO_WARNINGS) 
+
+  # when compiling or linking against GTEST on MSVC2017 the following
+  # definition is required: /D _SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING
+  add_definitions(-D_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING)
 endif()
 
 add_custom_target(${IResearchTests_TARGET_NAME}
@@ -130,6 +151,7 @@ add_executable(${IResearchTests_TARGET_NAME}-static
   ${IReSearch_tests_sources} ${IReSearch_tests_headers}
   ./analysis/text_analyzer_tests.cpp
   ./formats/formats_10_tests.cpp
+  ./formats/formats_11_tests.cpp
   ./iql/parser_test.cpp
 )
 
@@ -137,7 +159,10 @@ add_sanitizers(${IResearchTests_TARGET_NAME}-static)
 
 add_dependencies(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-delimited-shared
+  ${IResearch_TARGET_NAME}-analyzer-ngram-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
+  ${IResearch_TARGET_NAME}-analyzer-text-stemming-shared
+  ${IResearch_TARGET_NAME}-analyzer-token-masking-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${IResearch_TARGET_NAME}-scorer-tfidf-shared
   ${IResearch_TARGET_NAME}-scorer-bm25-shared
@@ -145,7 +170,10 @@ add_dependencies(${IResearchTests_TARGET_NAME}-shared
 
 add_dependencies(${IResearchTests_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-delimited-static
+  ${IResearch_TARGET_NAME}-analyzer-ngram-static
   ${IResearch_TARGET_NAME}-analyzer-text-static
+  ${IResearch_TARGET_NAME}-analyzer-text-stemming-static
+  ${IResearch_TARGET_NAME}-analyzer-token-masking-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
@@ -185,7 +213,10 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${GCOV_LIBRARY}
   ${IResearch_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-delimited-shared
+  ${IResearch_TARGET_NAME}-analyzer-ngram-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
+  ${IResearch_TARGET_NAME}-analyzer-text-stemming-shared
+  ${IResearch_TARGET_NAME}-analyzer-token-masking-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
@@ -193,21 +224,9 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
 
 target_link_libraries(${IResearchTests_TARGET_NAME}-static
   ${GCOV_LIBRARY}
-  ${IResearch_TARGET_NAME}-static
+  ${IResearch_TARGET_NAME}-static-allinone
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
-)
-
-target_compile_features(${IResearchTests_TARGET_NAME}-shared
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
-target_compile_features(${IResearchTests_TARGET_NAME}-static
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
 )
 
 # setup CRT
@@ -228,6 +247,7 @@ include_directories(${IResearchTests_TARGET_NAME}-shared
   ${ICU_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
+  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 include_directories(${IResearchTests_TARGET_NAME}-static
@@ -239,6 +259,7 @@ include_directories(${IResearchTests_TARGET_NAME}-static
   ${Boost_INCLUDE_DIRS}
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-cmdline,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-rapidjson,INTERFACE_INCLUDE_DIRECTORIES>
+  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 ################################################################################

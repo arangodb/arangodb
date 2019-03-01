@@ -23,25 +23,25 @@
 
 #include "AttributeNameParser.h"
 #include "Basics/Exceptions.h"
-#include "Basics/StringRef.h"
 #include "Logger/Logger.h"
+
+#include <velocypack/StringRef.h>
 
 using AttributeName = arangodb::basics::AttributeName;
 
-arangodb::basics::AttributeName::AttributeName(arangodb::StringRef const& name)
+arangodb::basics::AttributeName::AttributeName(arangodb::velocypack::StringRef const& name)
     : AttributeName(name, false) {}
 
-arangodb::basics::AttributeName::AttributeName(arangodb::StringRef const& name,
-                                               bool expand)
+arangodb::basics::AttributeName::AttributeName(arangodb::velocypack::StringRef const& name, bool expand)
     : name(name.toString()), shouldExpand(expand) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two attribute name vectors
 ////////////////////////////////////////////////////////////////////////////////
 
-bool arangodb::basics::AttributeName::isIdentical(
-    std::vector<AttributeName> const& lhs,
-    std::vector<AttributeName> const& rhs, bool ignoreExpansionInLast) {
+bool arangodb::basics::AttributeName::isIdentical(std::vector<AttributeName> const& lhs,
+                                                  std::vector<AttributeName> const& rhs,
+                                                  bool ignoreExpansionInLast) {
   if (lhs.size() != rhs.size()) {
     return false;
   }
@@ -68,9 +68,8 @@ bool arangodb::basics::AttributeName::isIdentical(
 /// matches
 ////////////////////////////////////////////////////////////////////////////////
 
-bool arangodb::basics::AttributeName::namesMatch(
-    std::vector<AttributeName> const& lhs,
-    std::vector<AttributeName> const& rhs) {
+bool arangodb::basics::AttributeName::namesMatch(std::vector<AttributeName> const& lhs,
+                                                 std::vector<AttributeName> const& rhs) {
   if (lhs.size() != rhs.size()) {
     return false;
   }
@@ -89,15 +88,13 @@ bool arangodb::basics::AttributeName::namesMatch(
 
 bool arangodb::basics::AttributeName::isIdentical(
     std::vector<std::vector<AttributeName>> const& lhs,
-    std::vector<std::vector<AttributeName>> const& rhs,
-    bool ignoreExpansionInLast) {
+    std::vector<std::vector<AttributeName>> const& rhs, bool ignoreExpansionInLast) {
   if (lhs.size() != rhs.size()) {
     return false;
   }
 
   for (size_t i = 0; i < lhs.size(); ++i) {
-    if (!isIdentical(lhs[i], rhs[i],
-                     ignoreExpansionInLast && (i == lhs.size() - 1))) {
+    if (!isIdentical(lhs[i], rhs[i], ignoreExpansionInLast && (i == lhs.size() - 1))) {
       return false;
     }
   }
@@ -105,15 +102,15 @@ bool arangodb::basics::AttributeName::isIdentical(
   return true;
 }
 
-void arangodb::basics::TRI_ParseAttributeString(
-    std::string const& input, std::vector<AttributeName>& result,
-    bool allowExpansion) {
-  TRI_ParseAttributeString(arangodb::StringRef(input), result, allowExpansion);
+void arangodb::basics::TRI_ParseAttributeString(std::string const& input,
+                                                std::vector<AttributeName>& result,
+                                                bool allowExpansion) {
+  TRI_ParseAttributeString(arangodb::velocypack::StringRef(input), result, allowExpansion);
 }
 
-void arangodb::basics::TRI_ParseAttributeString(
-    arangodb::StringRef const& input, std::vector<AttributeName>& result,
-    bool allowExpansion) {
+void arangodb::basics::TRI_ParseAttributeString(arangodb::velocypack::StringRef const& input,
+                                                std::vector<AttributeName>& result,
+                                                bool allowExpansion) {
   bool foundExpansion = false;
   size_t parsedUntil = 0;
   size_t const length = input.length();
@@ -129,9 +126,8 @@ void arangodb::basics::TRI_ParseAttributeString(
       // We only allow attr[*] and attr[*].attr2 as valid patterns
       if (length - pos < 3 || input[pos + 1] != '*' || input[pos + 2] != ']' ||
           (length - pos > 3 && input[pos + 3] != '.')) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
-            "can only use [*] for indexes");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+                                       "can only use [*] for indexes");
       }
       if (foundExpansion) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -154,9 +150,8 @@ void arangodb::basics::TRI_ParseAttributeString(
   }
 }
 
-void arangodb::basics::TRI_AttributeNamesToString(
-    std::vector<AttributeName> const& input, std::string& result,
-    bool excludeExpansion) {
+void arangodb::basics::TRI_AttributeNamesToString(std::vector<AttributeName> const& input,
+                                                  std::string& result, bool excludeExpansion) {
   TRI_ASSERT(result.empty());
 
   bool isFirst = true;
@@ -172,9 +167,9 @@ void arangodb::basics::TRI_AttributeNamesToString(
   }
 }
 
-void arangodb::basics::TRI_AttributeNamesJoinNested(
-    std::vector<AttributeName> const& input, std::vector<std::string>& result,
-    bool onlyFirst) {
+void arangodb::basics::TRI_AttributeNamesJoinNested(std::vector<AttributeName> const& input,
+                                                    std::vector<std::string>& result,
+                                                    bool onlyFirst) {
   TRI_ASSERT(result.empty());
   std::string tmp;
   bool isFirst = true;
@@ -198,8 +193,7 @@ void arangodb::basics::TRI_AttributeNamesJoinNested(
   result.emplace_back(tmp);
 }
 
-bool arangodb::basics::TRI_AttributeNamesHaveExpansion(
-    std::vector<AttributeName> const& input) {
+bool arangodb::basics::TRI_AttributeNamesHaveExpansion(std::vector<AttributeName> const& input) {
   for (auto& it : input) {
     if (it.shouldExpand) {
       return true;
@@ -212,8 +206,7 @@ bool arangodb::basics::TRI_AttributeNamesHaveExpansion(
 /// @brief append the attribute name to an output stream
 ////////////////////////////////////////////////////////////////////////////////
 
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::basics::AttributeName const& name) {
+std::ostream& operator<<(std::ostream& stream, arangodb::basics::AttributeName const& name) {
   stream << name.name;
   if (name.shouldExpand) {
     stream << "[*]";
@@ -225,9 +218,8 @@ std::ostream& operator<<(std::ostream& stream,
 /// @brief append the attribute names to an output stream
 ////////////////////////////////////////////////////////////////////////////////
 
-std::ostream& operator<<(
-    std::ostream& stream,
-    std::vector<arangodb::basics::AttributeName> const& attributes) {
+std::ostream& operator<<(std::ostream& stream,
+                         std::vector<arangodb::basics::AttributeName> const& attributes) {
   size_t const n = attributes.size();
   for (size_t i = 0; i < n; ++i) {
     if (i > 0) {

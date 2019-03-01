@@ -37,7 +37,7 @@ NS_ROOT
 
 class same_position_iterator final : public conjunction {
  public:
-  typedef std::vector<position::cref> positions_t;
+  typedef std::vector<position::ref> positions_t;
 
   same_position_iterator(
       conjunction::doc_iterators_t&& itrs,
@@ -83,7 +83,7 @@ class same_position_iterator final : public conjunction {
     auto target = type_limits<type_t::pos_t>::min();
 
     for (auto begin = pos_.begin(), end = pos_.end(); begin != end;) {
-      const position& pos = *begin;
+      position& pos = *begin;
 
       if (target != pos.seek(target)) {
         target = pos.value();
@@ -110,7 +110,7 @@ class same_position_query final : public filter::prepared {
   typedef states_cache<terms_states_t> states_t;
   typedef std::vector<attribute_store> stats_t;
 
-  DECLARE_SPTR(same_position_query);
+  DECLARE_SHARED_PTR(same_position_query);
 
   explicit same_position_query(states_t&& states, stats_t&& stats)
     : states_(std::move(states)), stats_(std::move(stats)) {
@@ -157,7 +157,7 @@ class same_position_query final : public filter::prepared {
         // positions not found
         return doc_iterator::empty();
       }
-      positions.emplace_back(std::cref(*pos));
+      positions.emplace_back(std::ref(*pos));
 
       // add base iterator
       itrs.emplace_back(doc_iterator::make<basic_doc_iterator>(
@@ -182,8 +182,8 @@ class same_position_query final : public filter::prepared {
   stats_t stats_;
 }; // same_position_query
 
-DEFINE_FILTER_TYPE(by_same_position);
-DEFINE_FACTORY_DEFAULT(by_same_position);
+DEFINE_FILTER_TYPE(by_same_position)
+DEFINE_FACTORY_DEFAULT(by_same_position)
 
 /* static */ const flags& by_same_position::features() {
   static flags features{ frequency::type(), position::type() };
@@ -255,11 +255,11 @@ filter::prepared::ptr by_same_position::prepare(
   term_states.reserve(terms_.size());
 
   // prepare phrase stats (collector for each term)
-  std::vector<order::prepared::stats> term_stats;
+  std::vector<order::prepared::collectors> term_stats;
   term_stats.reserve(terms_.size());
 
   for(auto size = terms_.size(); size; --size) {
-    term_stats.emplace_back(ord.prepare_stats());
+    term_stats.emplace_back(ord.prepare_collectors(1)); // 1 term per attribute_store because a range is treated as a disjunction
   }
 
   for (const auto& segment : index) {
@@ -279,6 +279,8 @@ filter::prepared::ptr by_same_position::prepare(
         continue;
       }
 
+      term_itr->collect(segment, *field); // collect field statistics once per segment
+
       // find terms
       seek_term_iterator::ptr term = field->iterator();
       // get term metadata
@@ -295,10 +297,11 @@ filter::prepared::ptr by_same_position::prepare(
       }
 
       term->read(); // read term attributes
-      term_itr->collect(segment, *field, term->attributes()); // collect statistics
-
+      term_itr->collect(segment, *field, 0, term->attributes()); // collect statistics, 0 because only 1 term
       term_states.emplace_back();
+
       auto& state = term_states.back();
+
       state.cookie = term->cookie();
       state.estimation = meta ? meta->docs_count : cost::MAX;
       state.reader = field;
@@ -328,7 +331,7 @@ filter::prepared::ptr by_same_position::prepare(
     ++term_itr;
   }
 
-  auto q = memory::make_unique<same_position_query>(
+  auto q = memory::make_shared<same_position_query>(
     std::move(query_states),
     std::move(stats)
   );
@@ -336,7 +339,7 @@ filter::prepared::ptr by_same_position::prepare(
   // apply boost
   irs::boost::apply(q->attributes(), this->boost() * boost);
 
-  return IMPLICIT_MOVE_WORKAROUND(q);
+  return q;
 }
 
 NS_END // ROOT

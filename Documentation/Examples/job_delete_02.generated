@@ -1,24 +1,24 @@
 <span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'x-arango-async: store'</span> --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/version</span>
 
-HTTP/1.1 undefined
+HTTP/1.1 Accepted
 content-type: text/plain; charset=utf-8
-x-arango-async-id: 131181
+x-arango-async-id: 132273
 x-content-type-options: nosniff
 
 <span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_admin/time</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"time"</span> : <span class="hljs-number">1535639294.876545</span>, 
+  <span class="hljs-string">"time"</span> : <span class="hljs-number">1550658808.1522949</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X DELETE --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/job/expired?stamp=1535639294.876545</span>
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X DELETE --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/job/expired?stamp=1550658808.1522949</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
@@ -27,7 +27,7 @@ x-content-type-options: nosniff
 }
 <span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/job/pending</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 

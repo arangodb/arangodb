@@ -242,7 +242,7 @@ function ahuacatlClusterJoinNonKeySuite () {
 /// @brief test subquery
 ////////////////////////////////////////////////////////////////////////////////
 
-    testNestedLoopsDifferentCollectionsNonKey : function () {
+    testNestedLoopsDifferentCollectionsNonKeyJNKS : function () {
       var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value", { "@cn1": cn1, "@cn2": cn2 });
       actual.json.sort(sorter);
       assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 ], actual.json);
@@ -252,7 +252,7 @@ function ahuacatlClusterJoinNonKeySuite () {
 /// @brief test subquery
 ////////////////////////////////////////////////////////////////////////////////
 
-    testNestedLoopsDifferentCollectionsNonKeyFilter : function () {
+    testNestedLoopsDifferentCollectionsNonKeyFilterJNKS : function () {
       var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value", { "@cn1": cn1, "@cn2": cn2 });
       actual.json.sort(sorter);
       assertEqual([ 1, 2, 4 ], actual.json);
@@ -262,7 +262,7 @@ function ahuacatlClusterJoinNonKeySuite () {
 /// @brief test subquery
 ////////////////////////////////////////////////////////////////////////////////
 
-    testNestedLoopsSameCollectionNonShardKey : function () {
+    testNestedLoopsSameCollectionNonShardKeyJNKS : function () {
       var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value", { "@cn1": cn1, "@cn2": cn1 }); // same collection
       actual.json.sort(sorter);
       assertEqual([ 1, 2, 4 ], actual.json);
@@ -272,7 +272,7 @@ function ahuacatlClusterJoinNonKeySuite () {
 /// @brief test subquery
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSubqueryDifferentCollectionsNonKey : function () {
+    testSubqueryDifferentCollectionsNonKeyJNKS : function () {
       var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET match = (FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value) RETURN match", { "@cn1": cn1, "@cn2": cn2 });
       actual.json.sort(sorter2);
       assertEqual([ [ 1 ], [ 2 ], [ 4 ] ], actual.json);
@@ -282,7 +282,7 @@ function ahuacatlClusterJoinNonKeySuite () {
 /// @brief test subquery
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSubquerySameCollectionNonKey : function () {
+    testSubquerySameCollectionNonKeyJNKS : function () {
       var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET match = (FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value) RETURN match", { "@cn1": cn1, "@cn2": cn1 }); // same collection
       actual.json.sort(sorter2);
       assertEqual([ [ 1 ], [ 2 ], [ 4 ] ], actual.json);

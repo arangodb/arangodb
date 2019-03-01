@@ -28,7 +28,6 @@
 #include "utils/type_limits.hpp"
 #include "utils/singleton.hpp"
 
-NS_ROOT
 NS_LOCAL
 
 irs::cost empty_cost() NOEXCEPT {
@@ -38,10 +37,10 @@ irs::cost empty_cost() NOEXCEPT {
 }
 
 irs::attribute_view empty_doc_iterator_attributes() {
-  static irs::cost cost = empty_cost();
+  static irs::cost COST = empty_cost();
 
   irs::attribute_view attrs(1); // cost
-  attrs.emplace(cost);
+  attrs.emplace(COST);
 
   return attrs;
 }
@@ -50,35 +49,45 @@ irs::attribute_view empty_doc_iterator_attributes() {
 /// @class empty_doc_iterator
 /// @brief represents an iterator with no documents 
 //////////////////////////////////////////////////////////////////////////////
-struct empty_doc_iterator : doc_iterator {
-  virtual doc_id_t value() const override { return type_limits<type_t::doc_id_t>::eof(); }
-  virtual bool next() override { return false; }
-  virtual doc_id_t seek(doc_id_t) override { return type_limits<type_t::doc_id_t>::eof(); }
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
-    static irs::attribute_view empty = empty_doc_iterator_attributes();
-    return empty;
+struct empty_doc_iterator final : irs::doc_iterator {
+  virtual irs::doc_id_t value() const override {
+    return irs::type_limits<irs::type_t::doc_id_t>::eof();
   }
-};
+  virtual bool next() override { return false; }
+  virtual irs::doc_id_t seek(irs::doc_id_t) override {
+    return irs::type_limits<irs::type_t::doc_id_t>::eof();
+  }
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+    static const irs::attribute_view INSTANCE = empty_doc_iterator_attributes();
+    return INSTANCE;
+  }
+}; // empty_doc_iterator
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class empty_term_iterator
 /// @brief represents an iterator without terms
 //////////////////////////////////////////////////////////////////////////////
-struct empty_term_iterator : term_iterator {
-  virtual const bytes_ref& value() const override { return bytes_ref::NIL; }
-  virtual doc_iterator::ptr postings(const flags&) const override {
-    return doc_iterator::empty();
+struct empty_term_iterator final : irs::term_iterator {
+  virtual const irs::bytes_ref& value() const override {
+    return irs::bytes_ref::NIL;
+  }
+  virtual irs::doc_iterator::ptr postings(const irs::flags&) const override {
+    return irs::doc_iterator::empty();
   }
   virtual void read() override { }
   virtual bool next() override { return false; }
   virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     return irs::attribute_view::empty_instance();
   }
-};
+}; // empty_term_iterator
 
-struct empty_term_reader : singleton<empty_term_reader>, term_reader {
+//////////////////////////////////////////////////////////////////////////////
+/// @class empty_term_reader
+/// @brief represents a reader with no terms
+//////////////////////////////////////////////////////////////////////////////
+struct empty_term_reader final : irs::singleton<empty_term_reader>, irs::term_reader {
   virtual iresearch::seek_term_iterator::ptr iterator() const override { return nullptr; }
-  virtual const iresearch::field_meta& meta() const override { 
+  virtual const iresearch::field_meta& meta() const override {
     return irs::field_meta::EMPTY;
   }
 
@@ -93,55 +102,65 @@ struct empty_term_reader : singleton<empty_term_reader>, term_reader {
   virtual uint64_t docs_count() const override { return 0; }
 
   // less significant term
-  virtual const iresearch::bytes_ref& (min)() const override { 
-    return iresearch::bytes_ref::NIL; 
+  virtual const iresearch::bytes_ref& (min)() const override {
+    return iresearch::bytes_ref::NIL;
   }
 
   // most significant term
-  virtual const iresearch::bytes_ref& (max)() const override { 
-    return iresearch::bytes_ref::NIL; 
+  virtual const iresearch::bytes_ref& (max)() const override {
+    return iresearch::bytes_ref::NIL;
   }
 }; // empty_term_reader
 
-struct empty_field_iterator : field_iterator {
-  virtual const term_reader& value() const override {
+//////////////////////////////////////////////////////////////////////////////
+/// @class empty_field_iterator
+/// @brief represents a reader with no fields
+//////////////////////////////////////////////////////////////////////////////
+struct empty_field_iterator final : irs::field_iterator {
+  virtual const irs::term_reader& value() const override {
     return empty_term_reader::instance();
   }
 
-  virtual bool seek(const string_ref&) override {
+  virtual bool seek(const irs::string_ref&) override {
     return false;
   }
 
   virtual bool next() override {
     return false;
   }
-};
+}; // empty_field_iterator
 
-struct empty_column_iterator : column_iterator {
-  virtual const column_meta& value() const override {
-    static column_meta empty;
-    return empty;
+//////////////////////////////////////////////////////////////////////////////
+/// @class empty_column_iterator
+/// @brief represents a reader with no columns
+//////////////////////////////////////////////////////////////////////////////
+struct empty_column_iterator final : irs::column_iterator {
+  virtual const irs::column_meta& value() const override {
+    static const irs::column_meta EMPTY;
+    return EMPTY;
   }
 
-  virtual bool seek(const string_ref&) override {
+  virtual bool seek(const irs::string_ref&) override {
     return false;
   }
 
   virtual bool next() override {
     return false;
   }
-};
+}; // empty_column_iterator
  
 NS_END // LOCAL
+
+NS_ROOT
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                              basic_term_iterator
 // ----------------------------------------------------------------------------
 
 term_iterator::ptr term_iterator::empty() {
-  static empty_term_iterator instance;
+  static empty_term_iterator INSTANCE;
 
-  return memory::make_managed<irs::term_iterator, false>(&instance);
+  return memory::make_managed<irs::term_iterator, false>(&INSTANCE);
 }
 
 // ----------------------------------------------------------------------------
@@ -149,9 +168,13 @@ term_iterator::ptr term_iterator::empty() {
 // ----------------------------------------------------------------------------
 
 doc_iterator::ptr doc_iterator::empty() {
-  static doc_iterator::ptr instance = std::make_shared<empty_doc_iterator>();
+  static empty_doc_iterator INSTANCE;
 
-  return instance;
+  // aliasing constructor
+  return std::shared_ptr<doc_iterator>(
+    std::shared_ptr<doc_iterator>(),
+    &INSTANCE
+  );
 }
 
 // ----------------------------------------------------------------------------
@@ -159,9 +182,9 @@ doc_iterator::ptr doc_iterator::empty() {
 // ----------------------------------------------------------------------------
 
 field_iterator::ptr field_iterator::empty() {
-  static empty_field_iterator instance;
+  static empty_field_iterator INSTANCE;
 
-  return memory::make_managed<irs::field_iterator, false>(&instance);
+  return memory::make_managed<irs::field_iterator, false>(&INSTANCE);
 }
 
 // ----------------------------------------------------------------------------
@@ -169,9 +192,9 @@ field_iterator::ptr field_iterator::empty() {
 // ----------------------------------------------------------------------------
 
 column_iterator::ptr column_iterator::empty() {
-  static empty_column_iterator instance;
+  static empty_column_iterator INSTANCE;
 
-  return memory::make_managed<irs::column_iterator, false>(&instance);
+  return memory::make_managed<irs::column_iterator, false>(&INSTANCE);
 }
 
 NS_END // ROOT 

@@ -130,7 +130,6 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_REPLICATION_APPLIER_STOPPED, "replication stopped");
   REG_ERROR(ERROR_REPLICATION_NO_START_TICK, "no start tick");
   REG_ERROR(ERROR_REPLICATION_START_TICK_NOT_PRESENT, "start tick not present");
-  REG_ERROR(ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT, "the checksum format is wrong");
   REG_ERROR(ERROR_REPLICATION_WRONG_CHECKSUM, "wrong checksum");
   REG_ERROR(ERROR_REPLICATION_SHARD_NONEMPTY, "shard not empty");
   REG_ERROR(ERROR_CLUSTER_NO_AGENCY, "could not connect to agency");
@@ -182,6 +181,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CLUSTER_NOT_LEADER, "not a leader");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN, "could not create view in plan");
   REG_ERROR(ERROR_CLUSTER_VIEW_ID_EXISTS, "view ID already exists");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION, "could not drop collection in plan");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
@@ -192,7 +192,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_VARIABLE_REDECLARED, "variable '%s' is assigned multiple times");
   REG_ERROR(ERROR_QUERY_VARIABLE_NAME_UNKNOWN, "unknown variable '%s'");
   REG_ERROR(ERROR_QUERY_COLLECTION_LOCK_FAILED, "unable to read-lock collection %s");
-  REG_ERROR(ERROR_QUERY_TOO_MANY_COLLECTIONS, "too many collections");
+  REG_ERROR(ERROR_QUERY_TOO_MANY_COLLECTIONS, "too many collections/shards");
   REG_ERROR(ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED, "document attribute '%s' is assigned multiple times");
   REG_ERROR(ERROR_QUERY_FUNCTION_NAME_UNKNOWN, "usage of unknown function '%s()'");
   REG_ERROR(ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "invalid number of arguments for function '%s()', expected number of arguments: minimum: %d, maximum: %d");
@@ -269,7 +269,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS, "edge collection already used in edge def");
   REG_ERROR(ERROR_GRAPH_CREATE_MISSING_NAME, "missing graph name");
   REG_ERROR(ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION, "malformed edge definition");
-  REG_ERROR(ERROR_GRAPH_NOT_FOUND, "graph not found");
+  REG_ERROR(ERROR_GRAPH_NOT_FOUND, "graph '%s' not found");
   REG_ERROR(ERROR_GRAPH_DUPLICATE, "graph already exists");
   REG_ERROR(ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST, "vertex collection does not exist or is not part of the graph");
   REG_ERROR(ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX, "not a vertex collection");
@@ -297,6 +297,12 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
   REG_ERROR(COMMUNICATOR_REQUEST_ABORTED, "Request aborted");
   REG_ERROR(COMMUNICATOR_DISABLED, "Communication was disabled");
+  REG_ERROR(ERROR_INTERNAL_AQL, "General internal AQL error");
+  REG_ERROR(ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS, "An AQL block wrote too few output registers");
+  REG_ERROR(ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS, "An AQL block wrote too many output registers");
+  REG_ERROR(ERROR_WROTE_OUTPUT_REGISTER_TWICE, "An AQL block wrote an output register twice");
+  REG_ERROR(ERROR_WROTE_IN_WRONG_REGISTER, "An AQL block wrote in a register that is not its output");
+  REG_ERROR(ERROR_INPUT_REGISTERS_NOT_COPIED, "An AQL block did not copy its input registers");
   REG_ERROR(ERROR_MALFORMED_MANIFEST_FILE, "failed to parse manifest file");
   REG_ERROR(ERROR_INVALID_SERVICE_MANIFEST, "manifest file is invalid");
   REG_ERROR(ERROR_SERVICE_FILES_MISSING, "service files missing");

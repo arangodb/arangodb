@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodbjs.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangojs.git / docs/Drivers/ -->
 # Manipulating indexes
 
 These functions implement the
@@ -12,17 +12,20 @@ Creates an arbitrary index on the collection.
 
 **Arguments**
 
-* **details**: `Object`
+- **details**: `Object`
 
-  For information on the possible properties of the _details_ object, see
-  [the HTTP API for manipulating indexes](../../../..//HTTP/Indexes/WorkingWith.html).
+  For information on the possible properties of the _details_ object, see the
+  [HTTP API for manipulating indexes](../../../..//HTTP/Indexes/WorkingWith.html).
 
 **Examples**
 
 ```js
 const db = new Database();
-const collection = db.collection('some-collection');
-const index = await collection.createIndex({type: 'hash', fields: ['a', 'a.b']});
+const collection = db.collection("some-collection");
+const index = await collection.createIndex({
+  type: "hash",
+  fields: ["a", "a.b"]
+});
 // the index has been created with the handle `index.id`
 ```
 
@@ -34,34 +37,34 @@ Creates a hash index on the collection.
 
 **Arguments**
 
-* **fields**: `Array<string>`
+- **fields**: `Array<string>`
 
   An array of names of document fields on which to create the index. If the
   value is a string, it will be wrapped in an array automatically.
 
-* **opts**: `Object` (optional)
+- **opts**: `Object` (optional)
 
   Additional options for this index. If the value is a boolean, it will be
   interpreted as _opts.unique_.
 
-For more information on hash indexes, see
-[the HTTP API for hash indexes](../../../..//HTTP/Indexes/Hash.html).
+For more information on hash indexes, see the
+[HTTP API for hash indexes](../../../..//HTTP/Indexes/Hash.html).
 
 **Examples**
 
 ```js
 const db = new Database();
-const collection = db.collection('some-collection');
+const collection = db.collection("some-collection");
 
-const index = await collection.createHashIndex('favorite-color');
+const index = await collection.createHashIndex("favorite-color");
 // the index has been created with the handle `index.id`
-assert.deepEqual(index.fields, ['favorite-color']);
+assert.deepEqual(index.fields, ["favorite-color"]);
 
 // -- or --
 
-const index = await collection.createHashIndex(['favorite-color']);
+const index = await collection.createHashIndex(["favorite-color"]);
 // the index has been created with the handle `index.id`
-assert.deepEqual(index.fields, ['favorite-color']);
+assert.deepEqual(index.fields, ["favorite-color"]);
 ```
 
 ## collection.createSkipList
@@ -72,34 +75,34 @@ Creates a skiplist index on the collection.
 
 **Arguments**
 
-* **fields**: `Array<string>`
+- **fields**: `Array<string>`
 
   An array of names of document fields on which to create the index. If the
   value is a string, it will be wrapped in an array automatically.
 
-* **opts**: `Object` (optional)
+- **opts**: `Object` (optional)
 
   Additional options for this index. If the value is a boolean, it will be
   interpreted as _opts.unique_.
 
-For more information on skiplist indexes, see
-[the HTTP API for skiplist indexes](../../../..//HTTP/Indexes/Skiplist.html).
+For more information on skiplist indexes, see the
+[HTTP API for skiplist indexes](../../../..//HTTP/Indexes/Skiplist.html).
 
 **Examples**
 
 ```js
 const db = new Database();
-const collection = db.collection('some-collection');
+const collection = db.collection("some-collection");
 
-const index = await collection.createSkipList('favorite-color')
+const index = await collection.createSkipList("favorite-color");
 // the index has been created with the handle `index.id`
-assert.deepEqual(index.fields, ['favorite-color']);
+assert.deepEqual(index.fields, ["favorite-color"]);
 
 // -- or --
 
-const index = await collection.createSkipList(['favorite-color'])
+const index = await collection.createSkipList(["favorite-color"]);
 // the index has been created with the handle `index.id`
-assert.deepEqual(index.fields, ['favorite-color']);
+assert.deepEqual(index.fields, ["favorite-color"]);
 ```
 
 ## collection.createGeoIndex
@@ -110,34 +113,34 @@ Creates a geo-spatial index on the collection.
 
 **Arguments**
 
-* **fields**: `Array<string>`
+- **fields**: `Array<string>`
 
   An array of names of document fields on which to create the index. Currently,
   geo indexes must cover exactly one field. If the value is a string, it will be
   wrapped in an array automatically.
 
-* **opts**: `Object` (optional)
+- **opts**: `Object` (optional)
 
   An object containing additional properties of the index.
 
-For more information on the properties of the _opts_ object see
-[the HTTP API for manipulating geo indexes](../../../..//HTTP/Indexes/Geo.html).
+For more information on the properties of the _opts_ object see the
+[HTTP API for manipulating geo indexes](../../../..//HTTP/Indexes/Geo.html).
 
 **Examples**
 
 ```js
 const db = new Database();
-const collection = db.collection('some-collection');
+const collection = db.collection("some-collection");
 
-const index = await collection.createGeoIndex(['latitude', 'longitude']);
+const index = await collection.createGeoIndex(["latitude", "longitude"]);
 // the index has been created with the handle `index.id`
-assert.deepEqual(index.fields, ['longitude', 'latitude']);
+assert.deepEqual(index.fields, ["longitude", "latitude"]);
 
 // -- or --
 
-const index = await collection.createGeoIndex('location', {geoJson: true});
+const index = await collection.createGeoIndex("location", { geoJson: true });
 // the index has been created with the handle `index.id`
-assert.deepEqual(index.fields, ['location']);
+assert.deepEqual(index.fields, ["location"]);
 ```
 
 ## collection.createFulltextIndex
@@ -148,13 +151,13 @@ Creates a fulltext index on the collection.
 
 **Arguments**
 
-* **fields**: `Array<string>`
+- **fields**: `Array<string>`
 
   An array of names of document fields on which to create the index. Currently,
   fulltext indexes must cover exactly one field. If the value is a string, it
   will be wrapped in an array automatically.
 
-* **minLength** (optional):
+- **minLength** (optional):
 
   Minimum character length of words to index. Uses a server-specific default
   value if not specified.
@@ -166,17 +169,17 @@ For more information on fulltext indexes, see
 
 ```js
 const db = new Database();
-const collection = db.collection('some-collection');
+const collection = db.collection("some-collection");
 
-const index = await collection.createFulltextIndex('description');
+const index = await collection.createFulltextIndex("description");
 // the index has been created with the handle `index.id`
-assert.deepEqual(index.fields, ['description']);
+assert.deepEqual(index.fields, ["description"]);
 
 // -- or --
 
-const index = await collection.createFulltextIndex(['description']);
+const index = await collection.createFulltextIndex(["description"]);
 // the index has been created with the handle `index.id`
-assert.deepEqual(index.fields, ['description']);
+assert.deepEqual(index.fields, ["description"]);
 ```
 
 ## collection.createPersistentIndex
@@ -190,11 +193,11 @@ being that it will always be orders of magnitude slower than in-memory indexes.
 
 **Arguments**
 
-* **fields**: `Array<string>`
+- **fields**: `Array<string>`
 
   An array of names of document fields on which to create the index.
 
-* **opts**: `Object` (optional)
+- **opts**: `Object` (optional)
 
   An object containing additional properties of the index.
 
@@ -205,11 +208,11 @@ For more information on the properties of the _opts_ object see
 
 ```js
 const db = new Database();
-const collection = db.collection('some-collection');
+const collection = db.collection("some-collection");
 
-const index = await collection.createPersistentIndex(['name', 'email']);
+const index = await collection.createPersistentIndex(["name", "email"]);
 // the index has been created with the handle `index.id`
-assert.deepEqual(index.fields, ['name', 'email']);
+assert.deepEqual(index.fields, ["name", "email"]);
 ```
 
 ## collection.index
@@ -220,7 +223,7 @@ Fetches information about the index with the given _indexHandle_ and returns it.
 
 **Arguments**
 
-* **indexHandle**: `string`
+- **indexHandle**: `string`
 
   The handle of the index to look up. This can either be a fully-qualified
   identifier or the collection-specific key of the index. If the value is an
@@ -230,15 +233,15 @@ Fetches information about the index with the given _indexHandle_ and returns it.
 
 ```js
 const db = new Database();
-const collection = db.collection('some-collection');
-const index = await collection.createFulltextIndex('description');
+const collection = db.collection("some-collection");
+const index = await collection.createFulltextIndex("description");
 const result = await collection.index(index.id);
 assert.equal(result.id, index.id);
 // result contains the properties of the index
 
 // -- or --
 
-const result = await collection.index(index.id.split('/')[1]);
+const result = await collection.index(index.id.split("/")[1]);
 assert.equal(result.id, index.id);
 // result contains the properties of the index
 ```
@@ -253,8 +256,8 @@ Fetches a list of all indexes on this collection.
 
 ```js
 const db = new Database();
-const collection = db.collection('some-collection');
-await collection.createFulltextIndex('description')
+const collection = db.collection("some-collection");
+await collection.createFulltextIndex("description");
 const indexes = await collection.indexes();
 assert.equal(indexes.length, 1);
 // indexes contains information about the index
@@ -268,7 +271,7 @@ Deletes the index with the given _indexHandle_ from the collection.
 
 **Arguments**
 
-* **indexHandle**: `string`
+- **indexHandle**: `string`
 
   The handle of the index to delete. This can either be a fully-qualified
   identifier or the collection-specific key of the index. If the value is an
@@ -278,14 +281,14 @@ Deletes the index with the given _indexHandle_ from the collection.
 
 ```js
 const db = new Database();
-const collection = db.collection('some-collection');
-const index = await collection.createFulltextIndex('description');
+const collection = db.collection("some-collection");
+const index = await collection.createFulltextIndex("description");
 await collection.dropIndex(index.id);
 // the index has been removed from the collection
 
 // -- or --
 
-await collection.dropIndex(index.id.split('/')[1]);
+await collection.dropIndex(index.id.split("/")[1]);
 // the index has been removed from the collection
 ```
 
@@ -295,41 +298,43 @@ await collection.dropIndex(index.id.split('/')[1]);
 
 Creates a cap constraint index on the collection.
 
-**Note**: This method is not available when using the driver with ArangoDB 3.0
-and higher as cap constraints are no longer supported.
+{% hint 'warning' %}
+This method is not available when targeting ArangoDB 3.0 or later,
+see [Compatibility](../../GettingStarted/README.md#compatibility).
+{% endhint %}
 
 **Arguments**
 
-* **size**: `Object`
+- **size**: `Object`
 
   An object with any of the following properties:
 
-  * **size**: `number` (optional)
+  - **size**: `number` (optional)
 
     The maximum number of documents in the collection.
 
-  * **byteSize**: `number` (optional)
+  - **byteSize**: `number` (optional)
 
     The maximum size of active document data in the collection (in bytes).
 
 If _size_ is a number, it will be interpreted as _size.size_.
 
-For more information on the properties of the _size_ object see
-[the HTTP API for creating cap constraints](https://docs.arangodb.com/2.8/HttpIndexes/Cap.html).
+For more information on the properties of the _size_ object see the
+[HTTP API for creating cap constraints](https://docs.arangodb.com/2.8/HttpIndexes/Cap.html).
 
 **Examples**
 
 ```js
 const db = new Database();
-const collection = db.collection('some-collection');
+const collection = db.collection("some-collection");
 
-const index = await collection.createCapConstraint(20)
+const index = await collection.createCapConstraint(20);
 // the index has been created with the handle `index.id`
 assert.equal(index.size, 20);
 
 // -- or --
 
-const index = await collection.createCapConstraint({size: 20})
+const index = await collection.createCapConstraint({ size: 20 });
 // the index has been created with the handle `index.id`
 assert.equal(index.size, 20);
 ```

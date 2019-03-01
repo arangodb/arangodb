@@ -24,10 +24,10 @@
 #ifndef ARANGODB_VOCBASE_PATHENUMERATOR_H
 #define ARANGODB_VOCBASE_PATHENUMERATOR_H 1
 
-#include "Basics/Common.h"
-#include "Graph/EdgeDocumentToken.h"
 #include <velocypack/Slice.h>
 #include <stack>
+#include "Basics/Common.h"
+#include "Graph/EdgeDocumentToken.h"
 
 namespace arangodb {
 namespace aql {
@@ -48,21 +48,19 @@ struct TraverserOptions;
 
 struct EnumeratedPath {
   std::vector<graph::EdgeDocumentToken> edges;
-  std::vector<arangodb::StringRef> vertices;
+  std::vector<arangodb::velocypack::StringRef> vertices;
   EnumeratedPath() {}
 };
 
 class PathEnumerator {
-
  protected:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief This is the class that knows the details on how to
   ///        load the data and how to return data in the expected format
   ///        NOTE: This class does not known the traverser.
   //////////////////////////////////////////////////////////////////////////////
 
-   traverser::Traverser* _traverser;
+  traverser::Traverser* _traverser;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Indicates if we issue next() the first time.
@@ -75,7 +73,7 @@ class PathEnumerator {
   /// @brief Options used in the traversal
   //////////////////////////////////////////////////////////////////////////////
 
-  TraverserOptions* _opts; 
+  TraverserOptions* _opts;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief List of the last path is used to
@@ -110,9 +108,13 @@ class DepthFirstEnumerator final : public PathEnumerator {
 
   std::stack<std::unique_ptr<graph::EdgeCursor>> _edgeCursors;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Flag if we need to prune the next path
+  //////////////////////////////////////////////////////////////////////////////
+  bool _pruneNext;
+
  public:
-  DepthFirstEnumerator(Traverser* traverser,
-                       std::string const& startVertex,
+  DepthFirstEnumerator(Traverser* traverser, std::string const& startVertex,
                        TraverserOptions* opts);
 
   ~DepthFirstEnumerator();
@@ -123,19 +125,16 @@ class DepthFirstEnumerator final : public PathEnumerator {
 
   bool next() override;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Prunes the current path prefix, the next function should not return
-  ///        any path having this prefix anymore.
-  //////////////////////////////////////////////////////////////////////////////
-
   aql::AqlValue lastVertexToAqlValue() override;
 
   aql::AqlValue lastEdgeToAqlValue() override;
 
   aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder& result) override;
 
+ private:
+  bool shouldPrune();
 };
-} // namespace traverser
-} // namespace arangodb
+}  // namespace traverser
+}  // namespace arangodb
 
 #endif

@@ -33,20 +33,19 @@ class RocksDBIndexFactory final : public IndexFactory {
   RocksDBIndexFactory();
   ~RocksDBIndexFactory() = default;
 
-  /// create initial system indexes
-  void fillSystemIndexes(
-    arangodb::LogicalCollection& col,
-    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes
-  ) const override;
+  /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" => "hash")
+  /// used to display storage engine capabilities
+  std::unordered_map<std::string, std::string> indexAliases() const override;
+
+  /// @brief create initial system indexes
+  void fillSystemIndexes(arangodb::LogicalCollection& col,
+                         std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const override;
 
   /// @brief create indexes from a list of index definitions
-  void prepareIndexes(
-    LogicalCollection& col,
-    arangodb::velocypack::Slice const& indexesSlice,
-    std::vector<std::shared_ptr<arangodb::Index>>& indexes
-  ) const override;
+  void prepareIndexes(LogicalCollection& col, arangodb::velocypack::Slice const& indexesSlice,
+                      std::vector<std::shared_ptr<arangodb::Index>>& indexes) const override;
 };
 
-}
+}  // namespace arangodb
 
 #endif

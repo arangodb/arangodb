@@ -24,6 +24,8 @@
 #ifndef IRESEARCH_FORMAT_BURST_TRIE_H
 #define IRESEARCH_FORMAT_BURST_TRIE_H
 
+#include <list>
+
 #include "formats.hpp"
 #include "formats_10_attributes.hpp"
 #include "index/field_meta.hpp"
@@ -32,6 +34,7 @@
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 #include "utils/buffers.hpp"
+#include "utils/encryption.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/memory.hpp"
 
@@ -52,9 +55,6 @@
 #endif
 
 #include "utils/noncopyable.hpp"
-
-#include <list>
-#include <type_traits>
 
 NS_ROOT
 NS_BEGIN(burst_trie)
@@ -138,16 +138,11 @@ typedef volatile_ref<byte_type> volatile_byte_ref;
 ///////////////////////////////////////////////////////////////////////////////
 struct block_t : private util::noncopyable {
   struct prefixed_output final : irs::byte_weight_output {
-//    explicit prefixed_output(const irs::bytes_ref& prefix) NOEXCEPT
-//     : prefix(prefix.c_str(), prefix.size()) {
-//    }
     explicit prefixed_output(volatile_byte_ref&& prefix) NOEXCEPT
      : prefix(std::move(prefix)) {
     }
 
     volatile_byte_ref prefix;
-//    irs::bytes_ref prefix;
-//    irs::bstring prefix; // TODO: find a way to avoid copy
   }; // prefixed_output
 
   static const int16_t INVALID_LABEL = -1;
@@ -231,14 +226,14 @@ class entry : private util::noncopyable {
 ///////////////////////////////////////////////////////////////////////////////
 /// @class term_reader
 ///////////////////////////////////////////////////////////////////////////////
-class term_reader : public iresearch::term_reader,
+class term_reader : public irs::term_reader,
                     private util::noncopyable {
  public:
   term_reader() = default;
   term_reader(term_reader&& rhs) NOEXCEPT;
   virtual ~term_reader();
 
-  bool prepare(
+  void prepare(
     std::istream& in,
     const feature_map_t& features,
     field_reader& owner
@@ -278,10 +273,11 @@ NS_END // detail
 ///////////////////////////////////////////////////////////////////////////////
 /// @class field_writer
 ///////////////////////////////////////////////////////////////////////////////
-class field_writer final : public iresearch::field_writer {
+class field_writer final : public irs::field_writer {
  public:
   static const int32_t FORMAT_MIN = 0;
-  static const int32_t FORMAT_MAX = FORMAT_MIN;
+  static const int32_t FORMAT_MAX = 1;
+
   static const uint32_t DEFAULT_MIN_BLOCK_SIZE = 25;
   static const uint32_t DEFAULT_MAX_BLOCK_SIZE = 48;
 
@@ -290,18 +286,23 @@ class field_writer final : public iresearch::field_writer {
   static const string_ref FORMAT_TERMS_INDEX;
   static const string_ref TERMS_INDEX_EXT;
 
-  field_writer(iresearch::postings_writer::ptr&& pw,
-               bool volatile_state,
-               uint32_t min_block_size = DEFAULT_MIN_BLOCK_SIZE,
-               uint32_t max_block_size = DEFAULT_MAX_BLOCK_SIZE);
+  field_writer(
+    irs::postings_writer::ptr&& pw,
+    bool volatile_state,
+    int32_t version = FORMAT_MAX,
+    uint32_t min_block_size = DEFAULT_MIN_BLOCK_SIZE,
+    uint32_t max_block_size = DEFAULT_MAX_BLOCK_SIZE
+  );
 
-  virtual void prepare( const iresearch::flush_state& state ) override;
+  virtual void prepare(const irs::flush_state& state) override;
+
   virtual void end() override;
+
   virtual void write( 
     const std::string& name,
-    iresearch::field_id norm,
-    const iresearch::flags& features,
-    iresearch::term_iterator& terms 
+    irs::field_id norm,
+    const irs::flags& features,
+    irs::term_iterator& terms
   ) override;
 
  private:
@@ -310,68 +311,79 @@ class field_writer final : public iresearch::field_writer {
   static void merge_blocks(std::list< detail::entry >& blocks);
 
   void write_segment_features(data_output& out, const flags& features);
+
   void write_field_features(data_output& out, const flags& features) const;
 
-  void begin_field(const iresearch::flags& field);
+  void begin_field(const irs::flags& field);
+
   void end_field(
     const std::string& name,
-    iresearch::field_id norm,
-    const iresearch::flags& features, 
+    irs::field_id norm,
+    const irs::flags& features,
     uint64_t total_doc_freq, 
     uint64_t total_term_freq, 
     size_t doc_count
   );
 
-  void write_term_entry( const detail::entry& e, size_t prefix, bool leaf );
-  void write_block_entry( const detail::entry& e, size_t prefix, uint64_t block_start );
-  /* prefix - prefix length ( in last_term )
-  * begin - index of the first entry in the block
-  * end - index of the last entry in the block
-  * meta - block metadata
-  * label - block lead label ( if present ) */
-  void write_block( std::list< detail::entry >& blocks,
-                    size_t prefix, size_t begin,
-                    size_t end, byte_type meta,
-                    int16_t label );
-  /* prefix - prefix length ( in last_term
-  * count - number of entries to write into block */
-  void write_blocks( size_t prefix, size_t count );
-  void push( const iresearch::bytes_ref& term );
+  void write_term_entry(const detail::entry& e, size_t prefix, bool leaf);
+
+  void write_block_entry(const detail::entry& e, size_t prefix, uint64_t block_start);
+
+  // prefix - prefix length (in last_term)
+  // begin - index of the first entry in the block
+  // end - index of the last entry in the block
+  // meta - block metadata
+  // label - block lead label (if present)
+  void write_block(
+    std::list<detail::entry>& blocks,
+    size_t prefix, size_t begin,
+    size_t end, byte_type meta,
+    int16_t label
+  );
+
+  // prefix - prefix length ( in last_term
+  // count - number of entries to write into block
+  void write_blocks(size_t prefix, size_t count);
+
+  void push(const irs::bytes_ref& term);
 
   std::unordered_map<const attribute::type_id*, size_t> feature_map_;
-  irs::memory_output suffix; /* term suffix column */
-  irs::memory_output stats; /* term stats column */
-  irs::index_output::ptr terms_out; /* output stream for terms */
-  irs::index_output::ptr index_out; /* output stream for indexes*/
-  irs::postings_writer::ptr pw; /* postings writer */
-  std::vector< detail::entry > stack;
+  memory_output suffix_; // term suffix column
+  memory_output stats_; // term stats column
+  encryption::stream::ptr terms_out_cipher_;
+  index_output::ptr terms_out_; // output stream for terms
+  encryption::stream::ptr index_out_cipher_;
+  index_output::ptr index_out_; // output stream for indexes
+  postings_writer::ptr pw_; // postings writer
+  std::vector<detail::entry> stack_;
   std::unique_ptr<detail::fst_buffer> fst_buf_; // pimpl buffer used for building FST for fields
-  detail::volatile_byte_ref last_term; // last pushed term
-  std::vector<size_t> prefixes;
-  std::pair<bool, detail::volatile_byte_ref> min_term; // current min term in a block
-  detail::volatile_byte_ref max_term; // current max term in a block
-  uint64_t term_count;    /* count of terms */
-  size_t fields_count{};
-  uint32_t min_block_size;
-  uint32_t max_block_size;
+  detail::volatile_byte_ref last_term_; // last pushed term
+  std::vector<size_t> prefixes_;
+  std::pair<bool, detail::volatile_byte_ref> min_term_; // current min term in a block
+  detail::volatile_byte_ref max_term_; // current max term in a block
+  uint64_t term_count_; // count of terms
+  size_t fields_count_{};
+  const int32_t version_;
+  const uint32_t min_block_size_;
+  const uint32_t max_block_size_;
   const bool volatile_state_;
 }; // field_writer
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class field_reader
 ///////////////////////////////////////////////////////////////////////////////
-class field_reader final : public iresearch::field_reader {
+class field_reader final : public irs::field_reader {
  public:
-  explicit field_reader(iresearch::postings_reader::ptr&& pr);
+  explicit field_reader(irs::postings_reader::ptr&& pr);
 
-  virtual bool prepare(
+  virtual void prepare(
     const directory& dir,
     const segment_meta& meta,
     const document_mask& mask
   ) override;
 
-  virtual const iresearch::term_reader* field(const string_ref& field) const override;
-  virtual iresearch::field_iterator::ptr iterator() const override;
+  virtual const irs::term_reader* field(const string_ref& field) const override;
+  virtual irs::field_iterator::ptr iterator() const override;
   virtual size_t size() const override;
 
  private:
@@ -380,8 +392,9 @@ class field_reader final : public iresearch::field_reader {
   std::vector<detail::term_reader> fields_;
   std::unordered_map<hashed_string_ref, term_reader*> name_to_field_;
   std::vector<const detail::term_reader*> fields_mask_;
-  iresearch::postings_reader::ptr pr_;
-  iresearch::index_input::ptr terms_in_;
+  irs::postings_reader::ptr pr_;
+  encryption::stream::ptr terms_in_cipher_;
+  index_input::ptr terms_in_;
 }; // field_reader
 
 NS_END // burst_trie

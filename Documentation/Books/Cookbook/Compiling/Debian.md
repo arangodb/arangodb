@@ -93,7 +93,7 @@ installed libraries. If you installed the compiler in a non standard location, y
 
     cmake -DCMAKE_C_COMPILER=/opt/bin/gcc -DCMAKE_CXX_COMPILER=/opt/bin/g++ ..
 
-If you compile on MacOS, you should add the following options to the cmake command:
+If you compile on macOS, you should add the following options to the cmake command:
 
     cmake .. -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DCMAKE_OSX_DEPLOYMENT_TARGET=10.11
 

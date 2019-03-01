@@ -29,76 +29,70 @@
 #include "IResearchLinkMeta.h"
 #include "VelocyPackHelper.h"
 
+#include "VocBase/LocalDocumentId.h"
 #include "search/filter.hpp"
+#include "store/data_output.hpp"
 
-NS_BEGIN(iresearch)
+namespace iresearch {
 
-class boolean_filter; // forward declaration
-struct data_output; // forward declaration
-class token_stream; // forward declaration
+class boolean_filter;  // forward declaration
+struct data_output;    // forward declaration
+class token_stream;    // forward declaration
 
-NS_END // iresearch
+}  // namespace iresearch
 
-NS_BEGIN(arangodb)
-NS_BEGIN(aql)
+namespace arangodb {
+namespace aql {
 
-struct AstNode; // forward declaration
-class SortCondition; // forward declaration
+struct AstNode;       // forward declaration
+class SortCondition;  // forward declaration
 
-NS_END // aql
-NS_END // arangodb
+}  // namespace aql
+}  // namespace arangodb
 
-NS_BEGIN(arangodb)
-NS_BEGIN(transaction)
+namespace arangodb {
+namespace transaction {
 
-class Methods; // forward declaration
+class Methods;  // forward declaration
 
-NS_END // transaction
-NS_END // arangodb
+}  // namespace transaction
+}  // namespace arangodb
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
-
-// FIXME move constants to proper place
+namespace arangodb {
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the delimiter used to separate jSON nesting levels when generating
+/// @brief the delimiter used to separate jSON nesting levels when
+/// generating
 ///        flat iResearch field names
 ////////////////////////////////////////////////////////////////////////////////
-char const NESTING_LEVEL_DELIMITER = '.';
+constexpr char const NESTING_LEVEL_DELIMITER = '.';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the prefix used to denote start of jSON list offset when generating
 ///        flat iResearch field names
 ////////////////////////////////////////////////////////////////////////////////
-char const NESTING_LIST_OFFSET_PREFIX = '[';
+constexpr char const NESTING_LIST_OFFSET_PREFIX = '[';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the suffix used to denote end of jSON list offset when generating
 ///        flat iResearch field names
 ////////////////////////////////////////////////////////////////////////////////
-char const NESTING_LIST_OFFSET_SUFFIX = ']';
+constexpr char const NESTING_LIST_OFFSET_SUFFIX = ']';
 
-struct IResearchViewMeta; // forward declaration
+struct IResearchViewMeta;  // forward declaration
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief indexed/stored document field adapter for IResearch
 ////////////////////////////////////////////////////////////////////////////////
 struct Field {
-  struct init_stream_t{}; // initialize stream
-
-  static void setCidValue(Field& field, TRI_voc_cid_t& cid);
-  static void setCidValue(Field& field, TRI_voc_cid_t& cid, init_stream_t);
-  static void setRidValue(Field& field, TRI_voc_rid_t& rid);
-  static void setRidValue(Field& field, TRI_voc_rid_t& rid, init_stream_t);
+  static void setPkValue(Field& field, LocalDocumentId::BaseType const& pk);
 
   Field() = default;
   Field(Field&& rhs);
   Field& operator=(Field&& rhs);
 
-  irs::string_ref const& name() const noexcept {
-    return _name;
-  }
+  irs::string_ref const& name() const noexcept { return _name; }
 
   irs::flags const& features() const {
     TRI_ASSERT(_features);
@@ -110,15 +104,20 @@ struct Field {
     return *_analyzer;
   }
 
-  bool write(irs::data_output&) const noexcept {
+  bool write(irs::data_output& out) const noexcept {
+    if (!_value.null()) {
+      out.write_bytes(_value.c_str(), _value.size());
+    }
+
     return true;
   }
 
-  irs::flags const* _features{ &irs::flags::empty_instance() };
+  irs::flags const* _features{&irs::flags::empty_instance()};
   std::shared_ptr<irs::token_stream> _analyzer;
   irs::string_ref _name;
+  irs::bytes_ref _value;
   ValueStorage _storeValues;
-}; // Field
+};  // Field
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allows to iterate over the provided VPack accoring the specified
@@ -126,14 +125,9 @@ struct Field {
 ////////////////////////////////////////////////////////////////////////////////
 class FieldIterator : public std::iterator<std::forward_iterator_tag, Field const> {
  public:
-  static FieldIterator const END; // unified end for all field iterators
+  explicit FieldIterator(arangodb::transaction::Methods& trx);
 
-  explicit FieldIterator();
-  FieldIterator(arangodb::velocypack::Slice const& doc, IResearchLinkMeta const& linkMeta);
-
-  Field const& operator*() const noexcept {
-    return _value;
-  }
+  Field const& operator*() const noexcept { return _value; }
 
   FieldIterator& operator++() {
     next();
@@ -144,11 +138,10 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   // deep copy of all buffers and analyzers which is quite
   // expensive and useless
 
-  bool valid() const noexcept {
-    return !_stack.empty();
-  }
+  bool valid() const noexcept { return !_stack.empty(); }
 
   bool operator==(FieldIterator const& rhs) const noexcept {
+    TRI_ASSERT(_trx == rhs._trx);  // compatibility
     return _stack == rhs._stack;
   }
 
@@ -156,59 +149,42 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
     return !(*this == rhs);
   }
 
-  void reset(
-    arangodb::velocypack::Slice const& doc,
-    IResearchLinkMeta const& linkMeta
-  );
+  void reset(arangodb::velocypack::Slice const& doc, IResearchLinkMeta const& linkMeta);
 
  private:
   typedef IResearchAnalyzerFeature::AnalyzerPool::ptr const* AnalyzerIterator;
 
-  typedef bool(*Filter)(
-    std::string& buffer,
-    IResearchLinkMeta const*& rootMeta,
-    IteratorValue const& value
-  );
+  typedef bool (*Filter)(std::string& buffer, IResearchLinkMeta const*& rootMeta,
+                         IteratorValue const& value);
 
   struct Level {
-    Level(
-        arangodb::velocypack::Slice slice,
-        size_t nameLength,
-        IResearchLinkMeta const& meta,
-        Filter filter
-    ) : it(slice),
-        nameLength(nameLength),
-        meta(&meta),
-        filter(filter) {
-    }
+    Level(arangodb::velocypack::Slice slice, size_t nameLength,
+          IResearchLinkMeta const& meta, Filter filter)
+        : it(slice), nameLength(nameLength), meta(&meta), filter(filter) {}
 
-    bool operator==(Level const& rhs) const noexcept {
-      return it == rhs.it;
-    }
+    bool operator==(Level const& rhs) const noexcept { return it == rhs.it; }
 
-    bool operator !=(Level const& rhs) const noexcept {
-      return !(*this == rhs);
-    }
+    bool operator!=(Level const& rhs) const noexcept { return !(*this == rhs); }
 
     Iterator it;
-    size_t nameLength; // length of the name at the current level
-    IResearchLinkMeta const* meta; // metadata
+    size_t nameLength;              // length of the name at the current level
+    IResearchLinkMeta const* meta;  // metadata
     Filter filter;
-  }; // Level
+  };  // Level
 
   Level& top() noexcept {
     TRI_ASSERT(!_stack.empty());
     return _stack.back();
   }
 
-  IteratorValue const& topValue() noexcept {
-    return top().it.value();
-  }
+  IteratorValue const& topValue() noexcept { return top().it.value(); }
 
   std::string& nameBuffer() noexcept {
-    TRI_ASSERT(_name);
-    return *_name;
+    TRI_ASSERT(_nameBuffer);
+    return *_nameBuffer;
   }
+
+  std::string& valueBuffer();
 
   // disallow copy and assign
   FieldIterator(FieldIterator const&) = delete;
@@ -216,9 +192,14 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
 
   void next();
   bool pushAndSetValue(arangodb::velocypack::Slice slice, IResearchLinkMeta const*& topMeta);
-  bool setRegularAttribute(IResearchLinkMeta const& context);
+  bool setAttributeValue(IResearchLinkMeta const& context);
+  bool setStringValue(VPackSlice const value,
+                      IResearchAnalyzerFeature::AnalyzerPool::ptr const pool);
+  void setNullValue(VPackSlice const value);
+  void setNumericValue(VPackSlice const value);
+  void setBoolValue(VPackSlice const value);
 
-  void resetAnalyzers(IResearchLinkMeta const& context) {
+  void resetAnalyzers(IResearchLinkMeta const& context) noexcept {
     auto const& analyzers = context._analyzers;
 
     _begin = analyzers.data();
@@ -228,64 +209,36 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   AnalyzerIterator _begin{};
   AnalyzerIterator _end{};
   std::vector<Level> _stack;
-  std::shared_ptr<std::string> _name; // buffer for field name
-  Field _value; // iterator's value
-}; // FieldIterator
+  std::shared_ptr<std::string> _nameBuffer;  // buffer for field name
+  std::shared_ptr<std::string> _valueBuffer;  // need temporary buffer for custom types in VelocyPack
+  arangodb::transaction::Methods* _trx;
+  Field _value;  // iterator's value
+};               // FieldIterator
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief represents stored primary key of the ArangoDB document
 ////////////////////////////////////////////////////////////////////////////////
-class DocumentPrimaryKey {
- public:
-  static irs::string_ref const& PK(); // stored primary key column
-  static irs::string_ref const& CID(); // stored collection id column
-  static irs::string_ref const& RID(); // stored revision id column
+struct DocumentPrimaryKey {
+  static irs::string_ref const& PK() noexcept;  // stored primary key column
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief decodes the specified value in a proper way into 'buf'
-  /// @return success
+  /// @brief encodes a specified PK value
+  /// @returns encoded value
   ////////////////////////////////////////////////////////////////////////////////
-  static bool decode(uint64_t& buf, const irs::bytes_ref& value);
+  static LocalDocumentId::BaseType encode(LocalDocumentId value) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief encodes the specified value in a proper way
-  /// @return retuns corresponding encoded representation
-  /// @note the provided value may be modified
+  /// @brief reads and decodes PK from a specified buffer
+  /// @returns 'true' on success, 'false' otherwise
+  /// @note PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >=
+  /// alignof(uint64_t)
   ////////////////////////////////////////////////////////////////////////////////
-  static irs::bytes_ref encode(uint64_t& value);
+  static bool read(LocalDocumentId& value, irs::bytes_ref const& in) noexcept;
 
-  DocumentPrimaryKey() = default;
-  DocumentPrimaryKey(TRI_voc_cid_t cid, TRI_voc_rid_t rid) noexcept;
+  DocumentPrimaryKey() = delete;
+};  // DocumentPrimaryKey
 
-  irs::string_ref const& name() const noexcept { return PK(); }
-  bool read(irs::bytes_ref const& in) noexcept;
-  bool write(irs::data_output& out) const;
+}  // namespace iresearch
+}  // namespace arangodb
 
-  TRI_voc_cid_t cid() const noexcept { return _keys[0]; }
-  void cid(TRI_voc_cid_t cid) noexcept { _keys[0] = cid; }
-
-  TRI_voc_rid_t rid() const noexcept { return _keys[1]; }
-  void rid(TRI_voc_rid_t rid) noexcept { _keys[1] = rid; }
-
- private:
-  // FIXME: define storage format (LE or BE)
-  uint64_t _keys[2]{}; // TRI_voc_cid_t + TRI_voc_rid_t
-}; // DocumentPrimaryKey
-
-bool appendKnownCollections(
-  std::unordered_set<TRI_voc_cid_t>& set, const irs::index_reader& reader
-);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief go through the reader and call the callback with each TRI_voc_cid_t
-///        value found, the same TRI_voc_cid_t may repeat multiple times
-/// @return success (if the visitor returns false then also consider as failure)
-////////////////////////////////////////////////////////////////////////////////
-bool visitReaderCollections(
-  irs::index_reader const& reader,
-  std::function<bool(TRI_voc_cid_t cid)> const& visitor
-);
-
-NS_END // iresearch
-NS_END // arangodb
 #endif

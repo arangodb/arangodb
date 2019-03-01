@@ -50,7 +50,6 @@ class ConsoleFeature final : public application_features::ApplicationFeature {
 
  private:
 #ifdef _WIN32
-  uint16_t _codePage;
   bool _cygwinShell;
 #endif
   bool _quiet;
@@ -112,6 +111,6 @@ class ConsoleFeature final : public application_features::ApplicationFeature {
   double const _startTime;
 };
 
-}
+}  // namespace arangodb
 
 #endif

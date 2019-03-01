@@ -81,17 +81,18 @@ struct phrase_state {
 class phrase_query : public filter::prepared {
  public:
   typedef states_cache<phrase_state> states_t;
-  typedef std::pair<
-    attribute_store, // term level statistic
-    position::value_t // expected term position
-  > term_stats_t;
-  typedef std::vector<term_stats_t> phrase_stats_t;
+  typedef std::vector<position::value_t> positions_t;
 
-  DECLARE_SPTR(phrase_query);
+  DECLARE_SHARED_PTR(phrase_query);
 
-  phrase_query(states_t&& states, phrase_stats_t&& stats)
-    : states_(std::move(states)),
-      stats_(std::move(stats)) {
+  phrase_query(
+      states_t&& states,
+      positions_t&& positions,
+      attribute_store&& stats
+  ) NOEXCEPT
+    : prepared(std::move(stats)),
+      states_(std::move(states)),
+      positions_(std::move(positions)) {
   }
 
   using filter::prepared::execute;
@@ -102,6 +103,7 @@ class phrase_query : public filter::prepared {
       const attribute_view& /*ctx*/) const override {
     // get phrase state for the specified reader
     auto phrase_state = states_.find(rdr);
+
     if (!phrase_state) {
       // invalid state 
       return doc_iterator::empty();
@@ -110,7 +112,7 @@ class phrase_query : public filter::prepared {
     // get features required for query & order
     auto features = ord.features() | by_phrase::required();
 
-    phrase_iterator::doc_iterators_t itrs;
+    conjunction::doc_iterators_t itrs;
     itrs.reserve(phrase_state->terms.size());
 
     phrase_iterator::positions_t positions;
@@ -118,7 +120,8 @@ class phrase_query : public filter::prepared {
 
     // find term using cached state
     auto terms = phrase_state->reader->iterator();
-    auto term_stats = stats_.begin();
+    auto position = positions_.begin();
+
     for (auto& term_state : phrase_state->terms) {
       // use bytes_ref::blank here since we do not need just to "jump"
       // to cached state, and we are not interested in term value itself */
@@ -126,38 +129,35 @@ class phrase_query : public filter::prepared {
         return doc_iterator::empty();
       }
 
-      // get postings
-      auto docs = terms->postings(features);
+      auto docs = terms->postings(features); // postings
+      auto& pos = docs->attributes().get<irs::position>(); // needed postings attributes
 
-      // get needed postings attributes
-      auto& pos = docs->attributes().get<position>();
       if (!pos) {
         // positions not found
         return doc_iterator::empty();
       }
-      positions.emplace_back(std::cref(*pos), term_stats->second);
+
+      positions.emplace_back(std::ref(*pos), *position);
 
       // add base iterator
-      itrs.emplace_back(doc_iterator::make<basic_doc_iterator>(
-        rdr,
-        *phrase_state->reader,
-        term_stats->first, 
-        std::move(docs), 
-        ord, 
-        term_state.second
-      ));
+      itrs.emplace_back(std::move(docs));
 
-      ++term_stats;
+      ++position;
     }
 
-    return make_conjunction<phrase_iterator>(
-      std::move(itrs), ord, std::move(positions)
+    return std::make_shared<phrase_iterator>(
+      std::move(itrs),
+      std::move(positions),
+      rdr,
+      *phrase_state->reader,
+      attributes(),
+      ord
     );
   }
 
  private:
   states_t states_;
-  phrase_stats_t stats_;
+  positions_t positions_;
 }; // phrase_query
 
 // -----------------------------------------------------------------------------
@@ -169,8 +169,8 @@ class phrase_query : public filter::prepared {
   return req;
 }
 
-DEFINE_FILTER_TYPE(by_phrase);
-DEFINE_FACTORY_DEFAULT(by_phrase);
+DEFINE_FILTER_TYPE(by_phrase)
+DEFINE_FACTORY_DEFAULT(by_phrase)
 
 by_phrase::by_phrase(): filter(by_phrase::type()) {
 }
@@ -216,12 +216,7 @@ filter::prepared::ptr by_phrase::prepare(
   phrase_terms.reserve(phrase_.size());
 
   // prepare phrase stats (collector for each term)
-  std::vector<order::prepared::stats> term_stats;
-  term_stats.reserve(phrase_.size());
-
-  for(auto size = phrase_.size(); size; --size) {
-    term_stats.emplace_back(ord.prepare_stats());
-  }
+  auto collectors = ord.prepare_collectors(phrase_.size());
 
   // iterate over the segments
   const string_ref field = fld_;
@@ -229,6 +224,7 @@ filter::prepared::ptr by_phrase::prepare(
   for (const auto& sr : rdr) {
     // get term dictionary for field
     const term_reader* tr = sr.field(field);
+
     if (!tr) {
       continue;
     }
@@ -238,11 +234,13 @@ filter::prepared::ptr by_phrase::prepare(
       continue;
     }
 
+    collectors.collect(sr, *tr); // collect field statistics once per segment
+
     // find terms
     seek_term_iterator::ptr term = tr->iterator();
     // get term metadata
     auto& meta = term->attributes().get<term_meta>();
-    auto term_itr = term_stats.begin();
+    size_t term_itr = 0;
 
     for(auto& word: phrase_) {
       auto next_stats = irs::make_finally([&term_itr]()->void{ ++term_itr; });
@@ -258,7 +256,7 @@ filter::prepared::ptr by_phrase::prepare(
       }
 
       term->read(); // read term attributes
-      term_itr->collect(sr, *tr, term->attributes()); // collect statistics
+      collectors.collect(sr, *tr, term_itr, term->attributes()); // collect statistics
 
       // estimate phrase & term
       const cost::cost_t term_estimation = meta ? meta->docs_count : cost::MAX;
@@ -282,27 +280,25 @@ filter::prepared::ptr by_phrase::prepare(
   size_t base_offset = first_pos();
 
   // finish stats
-  phrase_query::phrase_stats_t stats(phrase_.size());
-  auto stat_itr = stats.begin();
-  auto term_itr = term_stats.begin();
-  assert(term_stats.size() == phrase_.size()); // initialized above
+  attribute_store attrs; // aggregated phrase stats
+  phrase_query::positions_t positions(phrase_.size());
+  auto pos_itr = positions.begin();
 
   for(auto& term: phrase_) {
-    term_itr->finish(stat_itr->first, rdr);
-    stat_itr->second = position::value_t(term.first - base_offset);
-    ++stat_itr;
-    ++term_itr;
+    *pos_itr = position::value_t(term.first - base_offset);
+    ++pos_itr;
   }
 
-  auto q = memory::make_unique<phrase_query>(
-    std::move(phrase_states),
-    std::move(stats)
-  );
+  collectors.finish(attrs, rdr);
 
   // apply boost
-  irs::boost::apply(q->attributes(), this->boost() * boost);
+  irs::boost::apply(attrs, this->boost() * boost);
 
-  return IMPLICIT_MOVE_WORKAROUND(q);
+  return memory::make_shared<phrase_query>(
+    std::move(phrase_states),
+    std::move(positions),
+    std::move(attrs)
+  );
 }
 
 NS_END // ROOT

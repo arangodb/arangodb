@@ -41,8 +41,7 @@ term_query::ptr term_query::make(
     const bytes_ref& term) {
   term_query::states_t states(index.size());
   attribute_store attrs;
-
-  auto stats = ord.prepare_stats();
+  auto collectors = ord.prepare_collectors(1);
 
   // iterate over the segments
   for (const auto& segment : index) {
@@ -52,6 +51,8 @@ term_query::ptr term_query::make(
     if (!reader) {
       continue;
     }
+
+    collectors.collect(segment, *reader); // collect field statistics once per segment
 
     // find term
     auto terms = reader->iterator();
@@ -78,15 +79,15 @@ term_query::ptr term_query::make(
       state.estimation = meta->docs_count;
     }
 
-    stats.collect(segment, *reader, terms->attributes()); // collect statistics
+    collectors.collect(segment, *reader, 0, terms->attributes()); // collect statistics, 0 because only 1 term
   }
 
-  stats.finish(attrs, index);
+  collectors.finish(attrs, index);
 
   // apply boost
   irs::boost::apply(attrs, boost);
 
-  return std::make_shared<term_query>(
+  return memory::make_shared<term_query>(
     std::move(states), std::move(attrs)
   );
 }

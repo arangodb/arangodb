@@ -70,15 +70,6 @@ function DatabaseSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test _path function
-////////////////////////////////////////////////////////////////////////////////
-
-    testPath : function () {
-      assertTrue(typeof internal.db._path() === "string");
-      assertTrue(internal.db._path() !== "");
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test _isSystem function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -330,6 +321,9 @@ function DatabaseSuite () {
       assertFalse(user.active);
       assertEqual("f", user.extra.gender);
 
+      assertEqual("rw", userManager.permission("admin")["UnitTestsDatabase0"]);
+      assertEqual("rw", userManager.permission("foo")["UnitTestsDatabase0"]);
+
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
     },
 
@@ -357,6 +351,8 @@ function DatabaseSuite () {
       assertEqual("admin", user.user);
       assertTrue(user.active);
       assertEqual("m", user.extra.gender);
+      
+      assertEqual("rw", userManager.permission("admin")["UnitTestsDatabase0"]);
 
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
     },

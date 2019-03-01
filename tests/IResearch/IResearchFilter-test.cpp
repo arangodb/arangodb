@@ -24,12 +24,13 @@
 #include "catch.hpp"
 #include "common.h"
 #include "ExpressionContextMock.h"
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
-#include "Aql/Ast.h"
-#include "Aql/Query.h"
-#include "Aql/ExecutionPlan.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/Ast.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/ExpressionContext.h"
+#include "Aql/Query.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -67,7 +68,7 @@
 #include "search/boolean_filter.hpp"
 #include "search/phrase_filter.hpp"
 
-NS_LOCAL
+namespace {
 
 struct TestAttribute: public irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();
@@ -125,7 +126,7 @@ class TestAnalyzer: public irs::analysis::analyzer {
 DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestCharAnalyzer");
 REGISTER_ANALYZER_JSON(TestAnalyzer, TestAnalyzer::make);
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -190,7 +191,7 @@ struct IResearchFilterSetup {
         // fake non-deterministic
         arangodb::aql::Function::Flags::CanRunOnDBServer
       ),
-      [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
+      [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
     }});
@@ -205,7 +206,7 @@ struct IResearchFilterSetup {
         arangodb::aql::Function::Flags::Cacheable,
         arangodb::aql::Function::Flags::CanRunOnDBServer
       ),
-      [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
+      [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
     }});

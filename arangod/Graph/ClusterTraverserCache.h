@@ -26,10 +26,9 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Graph/TraverserCache.h"
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
-
-class StringRef;
 
 namespace aql {
 struct AqlValue;
@@ -42,19 +41,17 @@ class Methods;
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace graph {
 
 class ClusterTraverserCache : public TraverserCache {
  public:
-  ClusterTraverserCache(
-      aql::Query* query,
-      std::unordered_map<ServerID, traverser::TraverserEngineID> const*
-          engines);
+  ClusterTraverserCache(aql::Query* query,
+                        std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines);
 
   ~ClusterTraverserCache() {}
-  
+
   /// @brief will convert the EdgeDocumentToken to a slice
   arangodb::velocypack::Slice lookupToken(EdgeDocumentToken const& token) override;
 
@@ -64,12 +61,11 @@ class ClusterTraverserCache : public TraverserCache {
   //////////////////////////////////////////////////////////////////////////////
   void insertEdgeIntoResult(graph::EdgeDocumentToken const& idToken,
                             arangodb::velocypack::Builder& builder) override;
-  
+
   /// Lookup document in cache and add it into the builder
-  void insertVertexIntoResult(StringRef idString,
-                              velocypack::Builder& builder) override;
+  void insertVertexIntoResult(arangodb::velocypack::StringRef idString, velocypack::Builder& builder) override;
   /// Lookup document in cache and transform it to an AqlValue
-  aql::AqlValue fetchVertexAqlResult(StringRef idString) override;
+  aql::AqlValue fetchVertexAqlResult(arangodb::velocypack::StringRef idString) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
@@ -83,7 +79,7 @@ class ClusterTraverserCache : public TraverserCache {
   }
 
   /// Map of already fetched vertices and edges (raw _id attribute)
-  std::unordered_map<StringRef, arangodb::velocypack::Slice>& cache() {
+  std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>& cache() {
     return _cache;
   }
 
@@ -91,18 +87,13 @@ class ClusterTraverserCache : public TraverserCache {
     return _datalake;
   }
 
-  size_t& insertedDocuments() {
-    return _insertedDocuments;
-  }
+  size_t& insertedDocuments() { return _insertedDocuments; }
 
-  size_t& filteredDocuments() {
-    return _filteredDocuments;
-  }
-  
+  size_t& filteredDocuments() { return _filteredDocuments; }
+
  private:
-
   /// @brief link by _id into our data dump
-  std::unordered_map<StringRef, arangodb::velocypack::Slice> _cache;
+  std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice> _cache;
   /// @brief dump for our edge and vertex documents
   std::vector<std::shared_ptr<arangodb::velocypack::Builder>> _datalake;
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;

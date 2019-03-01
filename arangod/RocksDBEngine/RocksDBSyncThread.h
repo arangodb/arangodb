@@ -52,7 +52,7 @@ class RocksDBSyncThread final : public Thread {
   /// this is the preferred method to call when trying to avoid redundant
   /// syncs by foreground work and the background sync thread
   Result syncWal();
-  
+
   /// @brief unconditionally syncs the RocksDB WAL, static variant
   static Result sync(rocksdb::DB* db);
 
@@ -71,7 +71,7 @@ class RocksDBSyncThread final : public Thread {
   /// @brief the last definitely synced RocksDB WAL sequence number
   rocksdb::SequenceNumber _lastSequenceNumber;
 
-  /// @brief protected _lastSyncTime and _lastSequenceNumber
+  /// @brief protects _lastSyncTime and _lastSequenceNumber
   arangodb::basics::ConditionVariable _condition;
 };
 }  // namespace arangodb

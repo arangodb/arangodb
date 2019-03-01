@@ -55,9 +55,6 @@ class term_iterator;
 class doc_iterator;
 NS_END
 
-/* TODO: since actual string data stores in global ids
- * it looks like we should not to create additional copy
- * of field name. It is implicity interned by global ids */
 class IRESEARCH_API field_data : util::noncopyable {
  public:
   field_data(
@@ -65,8 +62,6 @@ class IRESEARCH_API field_data : util::noncopyable {
     byte_block_pool::inserter* byte_writer,
     int_block_pool::inserter* int_writer
   );
-
-  ~field_data();
 
   doc_id_t doc() const { return last_doc_; }
 
@@ -126,6 +121,23 @@ class IRESEARCH_API fields_data: util::noncopyable {
   fields_data();
 
   field_data& get(const hashed_string_ref& name);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return approximate amount of memory actively in-use by this instance
+  //////////////////////////////////////////////////////////////////////////////
+  size_t memory_active() const NOEXCEPT {
+    return byte_writer_.pool_offset()
+      + int_writer_.pool_offset() * sizeof(int_block_pool::value_type)
+      + fields_.size() * sizeof(fields_map::value_type);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return approximate amount of memory reserved by this instance
+  //////////////////////////////////////////////////////////////////////////////
+  size_t memory_reserved() const NOEXCEPT {
+    return sizeof(fields_data) + byte_pool_.size() + int_pool_.size();
+  }
+
   size_t size() const { return fields_.size(); }
   fields_data& operator+=(const flags& features) {
     features_ |= features;
@@ -133,7 +145,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
   }
   const flags& features() { return features_; }
   void flush(field_writer& fw, flush_state& state);
-  void reset();
+  void reset() NOEXCEPT;
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

@@ -42,58 +42,58 @@ std::string const config_t::activeStr = "active";
 std::string const config_t::supervisionStr = "supervision";
 std::string const config_t::waitForSyncStr = "wait for sync";
 std::string const config_t::supervisionFrequencyStr = "supervision frequency";
-std::string const config_t::supervisionGracePeriodStr = "supervision grace period";
+std::string const config_t::supervisionGracePeriodStr =
+    "supervision grace period";
 std::string const config_t::compactionStepSizeStr = "compaction step size";
 std::string const config_t::compactionKeepSizeStr = "compaction keep size";
 std::string const config_t::defaultEndpointStr = "tcp://localhost:8529";
 std::string const config_t::versionStr = "version";
 std::string const config_t::startupStr = "startup";
 
-
 config_t::config_t()
-  : _agencySize(0),
-    _poolSize(0),
-    _minPing(0.0),
-    _maxPing(0.0),
-    _timeoutMult(1),
-    _endpoint(defaultEndpointStr),
-    _supervision(false),
-    _supervisionTouched(false),
-    _waitForSync(true),
-    _supervisionFrequency(5.0),
-    _compactionStepSize(1000),
-    _compactionKeepSize(50000),
-    _supervisionGracePeriod(15.0),
-    _cmdLineTimings(false),
-    _version(0),
-    _startup("origin"),
-    _maxAppendSize(250),
-    _lock() {}
+    : _agencySize(0),
+      _poolSize(0),
+      _minPing(0.0),
+      _maxPing(0.0),
+      _timeoutMult(1),
+      _endpoint(defaultEndpointStr),
+      _supervision(false),
+      _supervisionTouched(false),
+      _waitForSync(true),
+      _supervisionFrequency(5.0),
+      _compactionStepSize(1000),
+      _compactionKeepSize(50000),
+      _supervisionGracePeriod(15.0),
+      _cmdLineTimings(false),
+      _version(0),
+      _startup("origin"),
+      _maxAppendSize(250),
+      _lock() {}
 
-config_t::config_t(
-  std::string const& rid, size_t as, size_t ps, double minp, double maxp,
-  std::string const& e, std::vector<std::string> const& g, bool s, bool st,
-  bool w, double f, uint64_t c, uint64_t k, double p, bool t, size_t a)
-  : _recoveryId(rid),
-    _agencySize(as),
-    _poolSize(ps),
-    _minPing(minp),
-    _maxPing(maxp),
-    _timeoutMult(1),
-    _endpoint(e),
-    _gossipPeers(g),
-    _supervision(s),
-    _supervisionTouched(st),
-    _waitForSync(w),
-    _supervisionFrequency(f),
-    _compactionStepSize(c),
-    _compactionKeepSize(k),
-    _supervisionGracePeriod(p),
-    _cmdLineTimings(t),
-    _version(0),
-    _startup("origin"),
-    _maxAppendSize(a),
-    _lock() {}
+config_t::config_t(std::string const& rid, size_t as, size_t ps, double minp,
+                   double maxp, std::string const& e,
+                   std::vector<std::string> const& g, bool s, bool st, bool w,
+                   double f, uint64_t c, uint64_t k, double p, bool t, size_t a)
+    : _recoveryId(rid),
+      _agencySize(as),
+      _poolSize(ps),
+      _minPing(minp),
+      _maxPing(maxp),
+      _timeoutMult(1),
+      _endpoint(e),
+      _gossipPeers(g.begin(), g.end()),
+      _supervision(s),
+      _supervisionTouched(st),
+      _waitForSync(w),
+      _supervisionFrequency(f),
+      _compactionStepSize(c),
+      _compactionKeepSize(k),
+      _supervisionGracePeriod(p),
+      _cmdLineTimings(t),
+      _version(0),
+      _startup("origin"),
+      _maxAppendSize(a),
+      _lock() {}
 
 config_t::config_t(config_t const& other) {
   // will call operator=, which will ensure proper locking
@@ -187,7 +187,7 @@ int64_t config_t::timeoutMult() const {
 
 void config_t::pingTimes(double minPing, double maxPing) {
   WRITE_LOCKER(writeLocker, _lock);
-  if (_minPing != minPing || _maxPing != maxPing ) {
+  if (_minPing != minPing || _maxPing != maxPing) {
     _minPing = minPing;
     _maxPing = maxPing;
     ++_version;
@@ -271,44 +271,46 @@ bool config_t::activePushBack(std::string const& id) {
   return false;
 }
 
-std::vector<std::string> config_t::gossipPeers() const {
-  READ_LOCKER(readLocker, _lock);
+std::unordered_set<std::string> config_t::gossipPeers() const {
+  READ_LOCKER(lock, _lock);
   return _gossipPeers;
 }
 
-void config_t::eraseFromGossipPeers(std::string const& endpoint) {
-  WRITE_LOCKER(readLocker, _lock);
-  if (std::find(_gossipPeers.begin(), _gossipPeers.end(), endpoint) !=
-      _gossipPeers.end()) {
-    _gossipPeers.erase(
-      std::remove(_gossipPeers.begin(), _gossipPeers.end(), endpoint),
-      _gossipPeers.end());
-    ++_version;
-  }
+size_t config_t::eraseGossipPeer(std::string const& endpoint) {
+  WRITE_LOCKER(lock, _lock);
+  auto ret = _gossipPeers.erase(endpoint);
+  ++_version;
+  return ret;
 }
 
-bool config_t::upsertPool(
-  VPackSlice const& otherPool, std::string const& otherId) {
-  WRITE_LOCKER(readLocker, _lock);
+bool config_t::addGossipPeer(std::string const& endpoint) {
+  WRITE_LOCKER(lock, _lock);
+  ++_version;
+  return _gossipPeers.emplace(endpoint).second;
+}
+
+config_t::upsert_t config_t::upsertPool(VPackSlice const& otherPool,
+                                        std::string const& otherId) {
+  WRITE_LOCKER(lock, _lock);
   for (auto const& entry : VPackObjectIterator(otherPool)) {
     auto const id = entry.key.copyString();
     auto const endpoint = entry.value.copyString();
     if (_pool.find(id) == _pool.end()) {
-      LOG_TOPIC(INFO, Logger::AGENCY)
-        << "Adding " << id << "(" << endpoint << ") to agent pool";
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Adding " << id << "(" << endpoint << ") to agent pool";
       _pool[id] = endpoint;
       ++_version;
+      return CHANGED;
     } else {
-      if (_pool.at(id) != endpoint) {   
-        if (id != otherId) {          /// discrepancy!
-          return false;
-        } else {                      /// we trust the other guy on his own endpoint
+      if (_pool.at(id) != endpoint) {
+        if (id != otherId) {  /// discrepancy!
+          return WRONG;
+        } else {  /// we trust the other guy on his own endpoint
           _pool.at(id) = endpoint;
         }
       }
     }
   }
-  return true;
+  return UNCHANGED;
 }
 
 size_t config_t::maxAppendSize() const {
@@ -377,7 +379,6 @@ query_t config_t::poolToBuilder() const {
   return ret;
 }
 
-
 bool config_t::updateEndpoint(std::string const& id, std::string const& ep) {
   WRITE_LOCKER(readLocker, _lock);
   if (_pool[id] != ep) {
@@ -387,7 +388,6 @@ bool config_t::updateEndpoint(std::string const& id, std::string const& ep) {
   }
   return false;
 }
-
 
 void config_t::update(query_t const& message) {
   VPackSlice slice = message->slice();
@@ -411,69 +411,72 @@ void config_t::update(query_t const& message) {
   WRITE_LOCKER(writeLocker, _lock);
   if (pool != _pool) {
     _pool = pool;
-    changed=true;
+    changed = true;
   }
   if (active != _active) {
     _active = active;
-    changed=true;
+    changed = true;
   }
   if (minPing != _minPing) {
     _minPing = minPing;
-    changed=true;
+    changed = true;
   }
   if (maxPing != _maxPing) {
     _maxPing = maxPing;
-    changed=true;
+    changed = true;
   }
   if (timeoutMult != _timeoutMult) {
     _timeoutMult = timeoutMult;
-    changed=true;
+    changed = true;
   }
   if (changed) {
     ++_version;
   }
 }
 
+void config_t::toBuilder(VPackBuilder& builder) const {
+  READ_LOCKER(readLocker, _lock);
+  {
+    builder.add(VPackValue(poolStr));
+    {
+      VPackObjectBuilder bb(&builder);
+      for (auto const& i : _pool) {
+        builder.add(i.first, VPackValue(i.second));
+      }
+    }
+
+    builder.add(VPackValue(activeStr));
+    {
+      VPackArrayBuilder bb(&builder);
+      for (auto const& i : _active) {
+        builder.add(VPackValue(i));
+      }
+    }
+
+    builder.add(idStr, VPackValue(_id));
+    builder.add(agencySizeStr, VPackValue(_agencySize));
+    builder.add(poolSizeStr, VPackValue(_poolSize));
+    builder.add(endpointStr, VPackValue(_endpoint));
+    builder.add(minPingStr, VPackValue(_minPing));
+    builder.add(maxPingStr, VPackValue(_maxPing));
+    builder.add(timeoutMultStr, VPackValue(_timeoutMult));
+    builder.add(supervisionStr, VPackValue(_supervision));
+    builder.add(supervisionFrequencyStr, VPackValue(_supervisionFrequency));
+    builder.add(compactionStepSizeStr, VPackValue(_compactionStepSize));
+    builder.add(compactionKeepSizeStr, VPackValue(_compactionKeepSize));
+    builder.add(supervisionGracePeriodStr, VPackValue(_supervisionGracePeriod));
+    builder.add(versionStr, VPackValue(_version));
+    builder.add(startupStr, VPackValue(_startup));
+  }
+}
+
 /// @brief vpack representation
 query_t config_t::toBuilder() const {
-
   query_t ret = std::make_shared<arangodb::velocypack::Builder>();
   {
-    VPackObjectBuilder b(ret.get());
-    READ_LOCKER(readLocker, _lock);
-
-    ret->add(VPackValue(poolStr));
-    {
-      VPackObjectBuilder bb(ret.get());
-      for (auto const& i : _pool) {
-        ret->add(i.first, VPackValue(i.second));
-      }
-    }
-
-    ret->add(VPackValue(activeStr));
-    {
-      VPackArrayBuilder bb(ret.get());
-      for (auto const& i : _active) {
-        ret->add(VPackValue(i));
-      }
-    }
-
-    ret->add(idStr, VPackValue(_id));
-    ret->add(agencySizeStr, VPackValue(_agencySize));
-    ret->add(poolSizeStr, VPackValue(_poolSize));
-    ret->add(endpointStr, VPackValue(_endpoint));
-    ret->add(minPingStr, VPackValue(_minPing));
-    ret->add(maxPingStr, VPackValue(_maxPing));
-    ret->add(timeoutMultStr, VPackValue(_timeoutMult));
-    ret->add(supervisionStr, VPackValue(_supervision));
-    ret->add(supervisionFrequencyStr, VPackValue(_supervisionFrequency));
-    ret->add(compactionStepSizeStr, VPackValue(_compactionStepSize));
-    ret->add(compactionKeepSizeStr, VPackValue(_compactionKeepSize));
-    ret->add(supervisionGracePeriodStr, VPackValue(_supervisionGracePeriod));
-    ret->add(versionStr, VPackValue(_version));
-    ret->add(startupStr, VPackValue(_startup));
+    VPackObjectBuilder a(ret.get());
+    toBuilder(*ret);
   }
-
   return ret;
 }
 
@@ -496,9 +499,23 @@ std::string config_t::startup() const {
   return _startup;
 }
 
+/// @brief findIdInPool
+bool config_t::matchPeer(std::string const& id, std::string const& endpoint) const {
+  READ_LOCKER(readLocker, _lock);
+  auto const& it = _pool.find(id);
+  return (it == _pool.end()) ? false : it->second == endpoint;
+}
+
+/// @brief findIdInPool
+bool config_t::findInPool(std::string const& id) const {
+  READ_LOCKER(readLocker, _lock);
+  return _pool.find(id) != _pool.end();
+}
+
 /// @brief merge from persisted configuration
 bool config_t::merge(VPackSlice const& conf) {
-  WRITE_LOCKER(writeLocker, _lock); // All must happen under the lock or else ...
+  WRITE_LOCKER(writeLocker,
+               _lock);  // All must happen under the lock or else ...
 
   // FIXME: All these "command line beats persistence" are wrong, since
   // the given default values never happen. Only fixed _supervision with
@@ -667,4 +684,48 @@ bool config_t::merge(VPackSlice const& conf) {
   LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
   ++_version;
   return true;
+}
+
+void config_t::updateConfiguration(VPackSlice const& other) {
+  WRITE_LOCKER(writeLocker, _lock);
+
+  auto pool = other.get(poolStr);
+  TRI_ASSERT(pool.isObject());
+  _pool.clear();
+  for (auto const p : VPackObjectIterator(pool)) {
+    _pool[p.key.copyString()] = p.value.copyString();
+  }
+  _poolSize = _pool.size();
+
+  auto active = other.get(activeStr);
+  TRI_ASSERT(active.isArray());
+  _active.clear();
+  for (auto const id : VPackArrayIterator(active)) {
+    _active.push_back(id.copyString());
+  }
+  _agencySize = _pool.size();
+
+  if (other.hasKey(minPingStr)) {
+    _minPing = other.get(minPingStr).getNumber<double>();
+  }
+  if (other.hasKey(maxPingStr)) {
+    _maxPing = other.get(maxPingStr).getNumber<double>();
+  }
+  if (other.hasKey(supervisionStr)) {
+    _supervision = other.get(supervisionStr).getBoolean();
+  }
+  if (other.hasKey(supervisionFrequencyStr)) {
+    _supervisionFrequency = other.get(supervisionFrequencyStr).getNumber<double>();
+  }
+  if (other.hasKey(supervisionGracePeriodStr)) {
+    _supervisionGracePeriod = other.get(supervisionGracePeriodStr).getNumber<double>();
+  }
+  if (other.hasKey(compactionStepSizeStr)) {
+    _compactionStepSize = other.get(compactionStepSizeStr).getNumber<uint64_t>();
+  }
+  if (other.hasKey(compactionKeepSizeStr)) {
+    _compactionKeepSize = other.get(compactionKeepSizeStr).getNumber<uint64_t>();
+  }
+
+  ++_version;
 }

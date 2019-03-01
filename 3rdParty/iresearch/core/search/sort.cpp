@@ -32,8 +32,8 @@ NS_ROOT
 // --SECTION--                                                       Attributes
 // ----------------------------------------------------------------------------
 
-DEFINE_ATTRIBUTE_TYPE(iresearch::boost);
-DEFINE_FACTORY_DEFAULT(boost);
+DEFINE_ATTRIBUTE_TYPE(iresearch::boost)
+DEFINE_FACTORY_DEFAULT(boost)
 
 boost::boost()
   : basic_stored_attribute<boost::boost_t>(boost_t(boost::no_boost())) {
@@ -45,16 +45,8 @@ boost::boost()
 
 sort::sort(const type_id& type) : type_(&type) { }
 
-sort::~sort() { }
-
-sort::collector::~collector() { }
-
-sort::scorer::~scorer() { }
-
 sort::prepared::prepared(attribute_view&& attrs): attrs_(std::move(attrs)) {
 }
-
-sort::prepared::~prepared() { }
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                            order 
@@ -149,63 +141,150 @@ order::prepared order::prepare() const {
   return pord;
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                            stats 
-// ----------------------------------------------------------------------------
-order::prepared::stats::stats(collectors_t&& colls)
-  : colls_(std::move(colls)) {
-}
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        collectors
+// -----------------------------------------------------------------------------
 
-order::prepared::stats::stats(stats&& rhs) NOEXCEPT
-  : colls_(std::move(rhs.colls_)) {
-}
+order::prepared::collectors::collectors(
+    const prepared_order_t& buckets,
+    size_t terms_count
+): buckets_(buckets) {
+  field_collectors_.reserve(buckets_.size());
+  term_collectors_.reserve(buckets_.size() * terms_count);
 
-order::prepared::stats& order::prepared::stats::operator=(
-  stats&& rhs
-) NOEXCEPT {
-  if (this != &rhs) {
-    colls_ = std::move(rhs.colls_);
+  // add field collectors from each bucket
+  for (auto& entry: buckets_) {
+    field_collectors_.emplace_back(
+      entry.bucket ? entry.bucket->prepare_field_collector() : nullptr
+    );
   }
 
-  return *this;
+  // add term collectors from each bucket
+  // layout order [t0.b0, t0.b1, ... t0.bN, t1.b0, t1.b1 ... tM.BN]
+  for (size_t i = 0; i < terms_count; ++i) {
+    for (auto& entry: buckets_) {
+      term_collectors_.emplace_back(
+        entry.bucket ? entry.bucket->prepare_term_collector() : nullptr
+      );
+    }
+  }
 }
 
-void order::prepared::stats::collect(
-    const sub_reader& segment,
-    const term_reader& field,
-    const attribute_view& term_attrs
+order::prepared::collectors::collectors(collectors&& other) NOEXCEPT
+  : buckets_(other.buckets_),
+    field_collectors_(std::move(other.field_collectors_)),
+    term_collectors_(std::move(other.term_collectors_)) {
+}
+
+void order::prepared::collectors::collect(
+  const sub_reader& segment,
+  const term_reader& field
 ) const {
-  for (auto& collector : colls_) {
-    collector->collect(segment, field, term_attrs);
+  for (auto& entry: field_collectors_) {
+    if (entry) { // may be null if prepare_field_collector() returned nullptr
+      entry->collect(segment, field);
+    }
   }
 }
 
-void order::prepared::stats::finish(
-    attribute_store& filter_attrs,
-    const index_reader& index
+void order::prepared::collectors::collect(
+  const sub_reader& segment,
+  const term_reader& field,
+  size_t term_offset,
+  const attribute_view& term_attrs
 ) const {
-  for (auto& collector : colls_) {
-    collector->finish(filter_attrs, index);
+  for (size_t i = 0, count = buckets_.size(); i < count; ++i) {
+    assert(i * buckets_.size() + term_offset < term_collectors_.size()); // enforced by allocation in the constructor
+    auto& entry = term_collectors_[term_offset * buckets_.size() + i];
+
+    if (entry) { // may be null if prepare_term_collector() returned nullptr
+      entry->collect(segment, field, term_attrs);
+    }
   }
+}
+
+void order::prepared::collectors::finish(
+  attribute_store& filter_attrs,
+  const index_reader& index
+) const {
+  // special case where term statistics collection is not applicable
+  // e.g. by_column_existence filter
+  if (term_collectors_.empty()) {
+    assert(field_collectors_.size() == buckets_.size()); // enforced by allocation in the constructor
+
+    for (size_t i = 0, count = field_collectors_.size(); i < count; ++i) {
+      auto& bucket = buckets_[i].bucket;
+
+      if (bucket) {
+        bucket->collect(filter_attrs, index, field_collectors_[i].get(), nullptr);
+      }
+    }
+  } else {
+    auto bucket_count = buckets_.size();
+    assert(term_collectors_.size() % bucket_count == 0); // enforced by allocation in the constructor
+
+    for (size_t i = 0, count = term_collectors_.size(); i < count; ++i) {
+      auto bucket_offset = i % bucket_count;
+      auto& bucket = buckets_[bucket_offset].bucket;
+
+      if (bucket) {
+        assert(i % bucket_count < field_collectors_.size()); // enforced by allocation in the constructor
+        bucket->collect(
+          filter_attrs,
+          index,
+          field_collectors_[bucket_offset].get(),
+          term_collectors_[i].get()
+        );
+      }
+    }
+  }
+}
+
+size_t order::prepared::collectors::push_back() {
+  auto term_offset = term_collectors_.size() / buckets_.size();
+
+  term_collectors_.reserve(term_collectors_.size() + buckets_.size());
+
+  for (auto& entry: buckets_) {
+    term_collectors_.emplace_back(
+      entry.bucket ? entry.bucket->prepare_term_collector() : nullptr
+    );
+  }
+
+  return term_offset;
 }
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                          scorers
 // ----------------------------------------------------------------------------
 
-order::prepared::scorers::scorers(scorers_t&& scorers)
-  : scorers_(std::move(scorers)) {
+order::prepared::scorers::scorers(
+    const prepared_order_t& buckets,
+    const sub_reader& segment,
+    const term_reader& field,
+    const attribute_store& stats,
+    const attribute_view& doc
+) {
+  scorers_.reserve(buckets.size());
+
+  for (auto& entry: buckets) {
+    if (entry.bucket) {
+      scorers_.emplace_back(
+        entry.bucket->prepare_scorer(segment, field, stats, doc)
+      );
+    }
+  }
 }
 
-order::prepared::scorers::scorers(order::prepared::scorers&& rhs) NOEXCEPT
-  : scorers_(std::move(rhs.scorers_)) {
+order::prepared::scorers::scorers(order::prepared::scorers&& other) NOEXCEPT
+  : scorers_(std::move(other.scorers_)) {
 }
 
 order::prepared::scorers& order::prepared::scorers::operator=(
-  order::prepared::scorers&& rhs
+  order::prepared::scorers&& other
 ) NOEXCEPT {
-  if (this != &rhs) {
-    scorers_ = std::move(rhs.scorers_);
+  if (this != &other) {
+    scorers_ = std::move(other.scorers_);
   }
 
   return *this;
@@ -217,8 +296,11 @@ void order::prepared::scorers::score(
   size_t i = 0;
   std::for_each(
     scorers_.begin(), scorers_.end(),
-    [&ord, &scr, &i] (const sort::scorer::ptr& scorer) {
-      if (scorer) scorer->score(scr);
+    [&ord, &scr, &i](const sort::scorer::ptr& scorer)->void {
+      if (scorer) {
+        scorer->score(scr);
+      }
+
       const sort::prepared& bucket = *ord[i++].bucket;
       scr += bucket.size();
   });
@@ -226,18 +308,21 @@ void order::prepared::scorers::score(
 
 order::prepared::prepared() : size_(0) { }
 
-order::prepared::stats 
-order::prepared::prepare_stats() const {
-  /* initialize collectors */
-  stats::collectors_t colls;
-  colls.reserve(size());
-  for_each([&colls](const prepared_sort& ps) {
-    sort::collector::ptr collector = ps.bucket->prepare_collector();
-    if (collector) {
-      colls.emplace_back(std::move(collector));
+order::prepared::collectors order::prepared::prepare_collectors(
+    size_t terms_count /*= 0*/
+) const {
+  return collectors(order_, terms_count);
+}
+
+void order::prepared::prepare_collectors(
+    attribute_store& filter_attrs,
+    const index_reader& index
+) const {
+  for (auto& entry: order_) {
+    if (entry.bucket) {
+      entry.bucket->collect(filter_attrs, index, nullptr, nullptr);
     }
-  });
-  return prepared::stats(std::move(colls));
+  }
 }
 
 void order::prepared::prepare_score(byte_type* score) const {
@@ -253,13 +338,7 @@ order::prepared::prepare_scorers(
     const attribute_store& stats,
     const attribute_view& doc
 ) const {
-  scorers::scorers_t scrs;
-  scrs.reserve(size());
-  for_each([&segment, &field, &stats, &doc, &scrs] (const order::prepared::prepared_sort& ps) {
-    const sort::prepared& bucket = *ps.bucket;
-    scrs.emplace_back(bucket.prepare_scorer(segment, field, stats, doc));
-  });
-  return prepared::scorers(std::move(scrs));
+  return scorers(order_, segment, field, stats, doc);
 }
 
 bool order::prepared::less(const byte_type* lhs, const byte_type* rhs) const {

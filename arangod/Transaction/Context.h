@@ -41,7 +41,7 @@ class StringBuffer;
 namespace velocypack {
 class Builder;
 struct CustomTypeHandler;
-}
+}  // namespace velocypack
 
 class CollectionNameResolver;
 class LogicalCollection;
@@ -58,19 +58,16 @@ class Context {
   Context& operator=(Context const&) = delete;
 
  protected:
-
   /// @brief create the context
   explicit Context(TRI_vocbase_t& vocbase);
 
  public:
-
   /// @brief destroy the context
   virtual ~Context();
 
   /// @brief factory to create a custom type handler, not managed
   static arangodb::velocypack::CustomTypeHandler* createCustomTypeHandler(
-           TRI_vocbase_t*,
-           arangodb::CollectionNameResolver const*);
+      TRI_vocbase_t&, arangodb::CollectionNameResolver const&);
 
   /// @brief return the vocbase
   TRI_vocbase_t& vocbase() const { return _vocbase; }
@@ -94,18 +91,17 @@ class Context {
   void returnBuilder(arangodb::velocypack::Builder*);
 
   /// @brief get velocypack options with a custom type handler
-  arangodb::velocypack::Options* getVPackOptions();
+  TEST_VIRTUAL arangodb::velocypack::Options* getVPackOptions();
 
   /// @brief get velocypack options for dumping
   arangodb::velocypack::Options* getVPackOptionsForDump();
 
   /// @brief unregister the transaction
   /// this will save the transaction's id and status locally
-  void storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations) noexcept;
+  void storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations, bool wasRegistered) noexcept;
 
   /// @brief get a custom type handler
-  virtual std::shared_ptr<arangodb::velocypack::CustomTypeHandler>
-  orderCustomTypeHandler() = 0;
+  virtual std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() = 0;
 
   /// @brief get parent transaction (if any)
   virtual TransactionState* getParentTransaction() const = 0;
@@ -122,7 +118,6 @@ class Context {
   virtual void unregisterTransaction() noexcept = 0;
 
  protected:
-
   /// @brief create a resolver
   CollectionNameResolver const* createResolver();
 
@@ -143,14 +138,15 @@ class Context {
   std::unique_ptr<transaction::ContextData> _contextData;
 
   struct {
-    TRI_voc_tid_t id; 
+    TRI_voc_tid_t id;
     bool hasFailedOperations;
+    bool wasRegistered;
   } _transaction;
 
   bool _ownsResolver;
 };
 
-}
-}
+}  // namespace transaction
+}  // namespace arangodb
 
 #endif

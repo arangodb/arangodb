@@ -32,27 +32,30 @@
 namespace arangodb {
 namespace auth {
 
-class HandlerResult : public arangodb::Result {
+class HandlerResult {
  public:
   explicit HandlerResult(arangodb::auth::Source const& source)
       : HandlerResult(TRI_ERROR_FAILED, source) {}
 
   HandlerResult(int errorNumber, arangodb::auth::Source const& source)
-      : Result(errorNumber), _authSource(source) {}
+      : _result(errorNumber), _authSource(source) {}
 
-  HandlerResult(std::set<std::string> const& roles,
-                auth::Source const& source)
-      : Result(TRI_ERROR_NO_ERROR),
-        _authSource(source),
-        _roles(roles) {}
+  HandlerResult(std::set<std::string> const& roles, auth::Source const& source)
+      : _result(TRI_ERROR_NO_ERROR), _authSource(source), _roles(roles) {}
 
  public:
   arangodb::auth::Source source() const { return _authSource; }
 
-
   std::set<std::string> roles() const { return _roles; }
 
+  // forwarded methods
+  bool ok() const { return _result.ok(); }
+  bool fail() const { return _result.fail(); }
+  int errorNumber() const { return _result.errorNumber(); }
+  std::string errorMessage() const { return _result.errorMessage(); }
+
  protected:
+  Result _result;
   arangodb::auth::Source _authSource;
   std::set<std::string> _roles;
 };
@@ -71,7 +74,7 @@ class Handler {
   virtual ~Handler() {}
 };
 
-}  // auth
-}  // arangodb
+}  // namespace auth
+}  // namespace arangodb
 
 #endif

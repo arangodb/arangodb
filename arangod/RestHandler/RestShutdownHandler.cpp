@@ -28,15 +28,17 @@
 
 #include "Agency/AgencyComm.h"
 #include "Cluster/ClusterFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::rest;
 
-RestShutdownHandler::RestShutdownHandler(GeneralRequest* request,
-                                         GeneralResponse* response)
+RestShutdownHandler::RestShutdownHandler(GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,27 +46,35 @@ RestShutdownHandler::RestShutdownHandler(GeneralRequest* request,
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestShutdownHandler::execute() {
-  if (ExecContext::CURRENT != nullptr &&
-      !ExecContext::CURRENT->isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "you need admin rights to trigger shutdown");
-    return RestStatus::DONE;
-  }
   if (_request->requestType() != rest::RequestType::DELETE_REQ) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
     return RestStatus::DONE;
   }
-  
+
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  if (af->isActive() && !_request->user().empty()) {
+    auth::Level lvl = auth::Level::NONE;
+    if (af->userManager() != nullptr) {
+      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system",
+                                                 /*configured*/ true);
+    } else {
+      lvl = auth::Level::RW;
+    }
+    if (lvl < auth::Level::RW) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin rights to trigger shutdown");
+      return RestStatus::DONE;
+    }
+  }
+
   bool removeFromCluster;
-  std::string const& remove =
-      _request->value("remove_from_cluster", removeFromCluster);
+  std::string const& remove = _request->value("remove_from_cluster", removeFromCluster);
   removeFromCluster = removeFromCluster && remove == "1";
 
   bool shutdownClusterFound;
   std::string const& shutdownCluster =
       _request->value("shutdown_cluster", shutdownClusterFound);
-  if (shutdownClusterFound && shutdownCluster == "1" &&
-    AgencyCommManager::isEnabled()) {
+  if (shutdownClusterFound && shutdownCluster == "1" && AgencyCommManager::isEnabled()) {
     AgencyComm agency;
     VPackBuilder builder;
     builder.add(VPackValue(true));
@@ -81,8 +91,6 @@ RestStatus RestShutdownHandler::execute() {
     clusterFeature->setUnregisterOnShutdown(true);
   }
 
-  ApplicationServer::server->beginShutdown();
-  
   try {
     VPackBuilder result;
     result.add(VPackValue("OK"));
@@ -90,6 +98,16 @@ RestStatus RestShutdownHandler::execute() {
   } catch (...) {
     // Ignore the error
   }
+  auto self = shared_from_this();
+  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  // don't block the response for workers waiting on this callback
+  // this should allow workers to go into the IDLE state
+  scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self] {
+    // Give the server 2 seconds to send the reply:
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    // Go down:
+    ApplicationServer::server->beginShutdown();
+  });
 
   return RestStatus::DONE;
 }

@@ -41,16 +41,14 @@
   auto objname = arangodb::scopeGuard(func);
 
 #define TRI_DEFER_FUNC(func) \
-  TRI_DEFER_FUNC_INTERNAL(   \
-      func, SCOPE_GUARD_TOKEN_PASTE(autoScopeGuardObj, __LINE__))
+  TRI_DEFER_FUNC_INTERNAL(func, SCOPE_GUARD_TOKEN_PASTE(autoScopeGuardObj, __LINE__))
 
 // helper macros for creating a capture-all ScopeGuard
 #define TRI_DEFER_BLOCK_INTERNAL(func, objname) \
   auto objname = arangodb::scopeGuard([&] { func; });
 
 #define TRI_DEFER_BLOCK(func) \
-  TRI_DEFER_BLOCK_INTERNAL(   \
-      func, SCOPE_GUARD_TOKEN_PASTE(autoScopeGuardObj, __LINE__))
+  TRI_DEFER_BLOCK_INTERNAL(func, SCOPE_GUARD_TOKEN_PASTE(autoScopeGuardObj, __LINE__))
 
 // TRI_DEFER currently just maps to TRI_DEFER_BLOCK
 // we will fix this later
@@ -68,10 +66,9 @@ class ScopeGuard {
   ScopeGuard(ScopeGuard const&) = delete;
   ScopeGuard& operator=(ScopeGuard const&) = delete;
 
-  ScopeGuard(T&& func) noexcept : _func(std::move(func)), _active(true) {}
+  ScopeGuard(T&& func) noexcept : _func(std::forward<T>(func)), _active(true) {}
 
-  ScopeGuard(ScopeGuard&& other) noexcept(
-      std::is_nothrow_move_constructible<T>::value)
+  ScopeGuard(ScopeGuard&& other) noexcept(std::is_nothrow_move_constructible<T>::value)
       : _func(std::move_if_noexcept(other._func)), _active(other._active) {
     other.cancel();
   }
@@ -118,7 +115,7 @@ class ScopeGuard {
 
 template <class T>
 ScopeGuard<T> scopeGuard(T&& f) {
-  return ScopeGuard<T>(std::move(f));
+  return ScopeGuard<T>(std::forward<T>(f));
 }
 
 }  // namespace arangodb

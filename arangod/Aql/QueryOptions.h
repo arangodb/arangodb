@@ -31,10 +31,10 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
-  
+
 enum ProfileLevel : uint32_t {
   /// no profiling information
   PROFILE_LEVEL_NONE = 0,
@@ -50,19 +50,23 @@ enum ProfileLevel : uint32_t {
 
 struct QueryOptions {
   QueryOptions();
+  TEST_VIRTUAL ~QueryOptions() = default;
 
   void fromVelocyPack(arangodb::velocypack::Slice const&);
   void toVelocyPack(arangodb::velocypack::Builder&, bool disableOptimizerRules) const;
+  TEST_VIRTUAL ProfileLevel getProfileLevel() { return profile; };
 
   size_t memoryLimit;
   size_t maxNumberOfPlans;
   size_t maxWarningCount;
   int64_t literalSizeThreshold;
   double satelliteSyncWait;
+  double ttl;
   /// Level 0 nothing, Level 1 profile, Level 2,3 log tracing info
   ProfileLevel profile;
   bool allPlans;
   bool verbosePlans;
+  bool stream;
   bool silent;
   bool failOnWarning;
   bool cache;
@@ -80,7 +84,7 @@ struct QueryOptions {
   transaction::Options transactionOptions;
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/spring-data.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/spring-data.git / docs/Drivers/ -->
 # Query methods
 
 Queries using [ArangoDB Query Language (AQL)](https://docs.arangodb.com/current/AQL/index.html) can be supplied with the `@Query` annotation on methods.

@@ -22,12 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8Executor.h"
-#include "Aql/AstNode.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/AstNode.h"
 #include "Aql/Functions.h"
 #include "Aql/Variable.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringBuffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -37,11 +37,11 @@ using namespace arangodb::aql;
 
 /// @brief checks if a V8 exception has occurred and throws an appropriate C++
 /// exception from it if so
-void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
-                               v8::Handle<v8::Value>& result,
+void V8Executor::HandleV8Error(v8::TryCatch& tryCatch, v8::Handle<v8::Value>& result,
                                arangodb::basics::StringBuffer* const buffer,
                                bool duringCompile) {
   ISOLATE;
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
   bool failed = false;
 
@@ -60,24 +60,24 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
     if (tryCatch.Exception()->IsObject()) {
       // cast the exception to an object
 
-      v8::Handle<v8::Array> objValue =
-          v8::Handle<v8::Array>::Cast(tryCatch.Exception());
-      v8::Handle<v8::String> errorNum = TRI_V8_ASCII_STRING(isolate, "errorNum");
-      v8::Handle<v8::String> errorMessage = TRI_V8_ASCII_STRING(isolate, "errorMessage");
+      v8::Handle<v8::Array> objValue = v8::Handle<v8::Array>::Cast(tryCatch.Exception());
+      v8::Handle<v8::String> errorNum =
+          TRI_V8_ASCII_STRING(isolate, "errorNum");
+      v8::Handle<v8::String> errorMessage =
+          TRI_V8_ASCII_STRING(isolate, "errorMessage");
 
-      TRI_Utf8ValueNFC stacktrace(tryCatch.StackTrace());
+      TRI_Utf8ValueNFC stacktrace(isolate, tryCatch.StackTrace(TRI_IGETC).FromMaybe(v8::Local<v8::Value>()));
 
-      if (objValue->HasOwnProperty(errorNum) &&
-          objValue->HasOwnProperty(errorMessage)) {
+      if (TRI_HasProperty(context, isolate, objValue, errorNum) &&
+          TRI_HasProperty(context, isolate, objValue, errorMessage)) {
         v8::Handle<v8::Value> errorNumValue = objValue->Get(errorNum);
         v8::Handle<v8::Value> errorMessageValue = objValue->Get(errorMessage);
 
         // found something that looks like an ArangoError
         if ((errorNumValue->IsNumber() || errorNumValue->IsNumberObject()) &&
-            (errorMessageValue->IsString() ||
-             errorMessageValue->IsStringObject())) {
-          int errorCode = static_cast<int>(TRI_ObjectToInt64(errorNumValue));
-          std::string errorMessage(TRI_ObjectToString(errorMessageValue));
+            (errorMessageValue->IsString() || errorMessageValue->IsStringObject())) {
+          int errorCode = static_cast<int>(TRI_ObjectToInt64(isolate, errorNumValue));
+          std::string errorMessage(TRI_ObjectToString(isolate, errorMessageValue));
 
           if (*stacktrace && stacktrace.length() > 0) {
             errorMessage += "\nstacktrace of offending AQL function: ";
@@ -89,11 +89,12 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
       }
 
       // exception is no ArangoError
-      std::string details(TRI_ObjectToString(tryCatch.Exception()));
+      std::string details(TRI_ObjectToString(isolate, tryCatch.Exception()));
 
       if (buffer) {
-        //std::string script(buffer->c_str(), buffer->length());
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << details << " " << Logger::CHARS(buffer->c_str(), buffer->length());
+        // std::string script(buffer->c_str(), buffer->length());
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+            << details << " " << Logger::CHARS(buffer->c_str(), buffer->length());
         details += "\nSee log for more details";
       }
       if (*stacktrace && stacktrace.length() > 0) {
@@ -117,8 +118,9 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
       msg += " (during compilation)";
     }
     if (buffer) {
-      //std::string script(buffer->c_str(), buffer->length());
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg << " " << Logger::CHARS(buffer->c_str(), buffer->length());
+      // std::string script(buffer->c_str(), buffer->length());
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << msg << " " << Logger::CHARS(buffer->c_str(), buffer->length());
       msg += " See log for details";
     }
     // we can't figure out what kind of error occurred and throw a generic error

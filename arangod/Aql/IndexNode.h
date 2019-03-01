@@ -24,17 +24,17 @@
 #ifndef ARANGOD_AQL_INDEX_NODE_H
 #define ARANGOD_AQL_INDEX_NODE_H 1
 
-#include "Basics/Common.h"
 #include "Aql/Ast.h"
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/types.h"
 #include "Aql/Variable.h"
+#include "Aql/types.h"
+#include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
+#include "Transaction/Methods.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-#include "Transaction/Methods.h"
 
 #include <velocypack/Slice.h>
 
@@ -47,14 +47,23 @@ class ExecutionBlock;
 class ExecutionEngine;
 class ExecutionPlan;
 
+/// @brief struct to hold the member-indexes in the _condition node
+struct NonConstExpression {
+  std::unique_ptr<Expression> expression;
+  std::vector<size_t> const indexPath;
+
+  NonConstExpression(std::unique_ptr<Expression> exp, std::vector<size_t>&& idxPath)
+      : expression(std::move(exp)), indexPath(std::move(idxPath)) {}
+};
+
 /// @brief class IndexNode
 class IndexNode : public ExecutionNode, public DocumentProducingNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
   friend class IndexBlock;
 
  public:
-  IndexNode(ExecutionPlan* plan, size_t id,
-            aql::Collection const* collection, Variable const* outVariable,
+  IndexNode(ExecutionPlan* plan, size_t id, aql::Collection const* collection,
+            Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
             std::unique_ptr<Condition> condition, IndexIteratorOptions const&);
 
@@ -82,14 +91,12 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   void needsGatherNodeSort(bool value) { _needsGatherNodeSort = value; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-  ) const override;
+      ExecutionEngine& engine,
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -100,22 +107,30 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
     return std::vector<Variable const*>{_outVariable};
   }
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final;
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(
-      std::unordered_set<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
   /// @brief getIndexes, hand out the indexes used
-  std::vector<transaction::Methods::IndexHandle> const& getIndexes() const { return _indexes; }
+  std::vector<transaction::Methods::IndexHandle> const& getIndexes() const {
+    return _indexes;
+  }
 
   /// @brief called to build up the matching positions of the index values for
   /// the projection attributes (if any)
   void initIndexCoversProjections();
+
+ private:
+  void initializeOnce(bool hasV8Expression,
+                      std::vector<Variable const*>& inVars,
+                      std::vector<RegisterId>& inRegs,
+                      std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions,
+                      transaction::Methods* trxPtr) const;
+
+  /// @brief adds a UNIQUE() to a dynamic IN condition
+  arangodb::aql::AstNode* makeUnique(arangodb::aql::AstNode*, transaction::Methods* trx) const;
 
  private:
   /// @brief the index
@@ -131,7 +146,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   IndexIteratorOptions _options;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

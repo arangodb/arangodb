@@ -35,11 +35,7 @@ void Exception::SetVerbose(bool verbose) { WithBackTrace = verbose; }
 
 /// @brief constructor, without format string
 Exception::Exception(int code, char const* file, int line)
-    : _errorMessage(TRI_errno_string(code)),
-      _file(file),
-      _line(line),
-      _code(code) {
-
+    : _errorMessage(TRI_errno_string(code)), _file(file), _line(line), _code(code) {
   appendLocation();
 }
 
@@ -48,50 +44,43 @@ Exception::Exception(arangodb::Result const& result, char const* file, int line)
       _file(file),
       _line(line),
       _code(result.errorNumber()) {
-
   appendLocation();
 }
 
 Exception::Exception(arangodb::Result&& result, char const* file, int line)
-    : _errorMessage(std::move(result).errorMessage()), //cast to rvalueref so the error stirng gets moved out
+    : _errorMessage(std::move(result).errorMessage()),  // cast to rvalueref so the error
+                                                        // string gets moved out
       _file(file),
       _line(line),
       _code(result.errorNumber()) {
-
   appendLocation();
 }
 
 /// @brief constructor, for creating an exception with an already created
 /// error message (normally based on error templates containing %s, %d etc.)
-Exception::Exception(int code, std::string const& errorMessage,
-                     char const* file, int line)
+Exception::Exception(int code, std::string const& errorMessage, char const* file, int line)
     : _errorMessage(errorMessage), _file(file), _line(line), _code(code) {
-
   appendLocation();
 }
 
 /// @brief constructor, for creating an exception with an already created
 /// error message (normally based on error templates containing %s, %d etc.)
-Exception::Exception(int code, std::string&& errorMessage,
-                     char const* file, int line)
+Exception::Exception(int code, std::string&& errorMessage, char const* file, int line)
     : _errorMessage(std::move(errorMessage)), _file(file), _line(line), _code(code) {
-
   appendLocation();
 }
 
 /// @brief constructor, for creating an exception with an already created
 /// error message (normally based on error templates containing %s, %d etc.)
-Exception::Exception(int code, char const* errorMessage, char const* file,
-                     int line)
+Exception::Exception(int code, char const* errorMessage, char const* file, int line)
     : _errorMessage(errorMessage), _file(file), _line(line), _code(code) {
-
   appendLocation();
 }
 
 Exception::~Exception() {}
 
 /// @brief returns the error message
-std::string Exception::message() const { return _errorMessage; }
+std::string const& Exception::message() const noexcept { return _errorMessage; }
 
 /// @brief returns the error code
 int Exception::code() const noexcept { return _code; }
@@ -103,12 +92,15 @@ void Exception::addToMessage(std::string const& more) { _errorMessage += more; }
 char const* Exception::what() const noexcept { return _errorMessage.c_str(); }
 
 /// @brief append original error location to message
-void Exception::appendLocation () noexcept {
+void Exception::appendLocation() noexcept {
   try {
     if (_code == TRI_ERROR_INTERNAL) {
-      _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + "). Please report this error to arangodb.com";
+      _errorMessage += std::string(" (exception location: ") + _file + ":" +
+                       std::to_string(_line) +
+                       "). Please report this error to arangodb.com";
     } else if (_code == TRI_ERROR_OUT_OF_MEMORY) {
-      _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + ")";
+      _errorMessage += std::string(" (exception location: ") + _file + ":" +
+                       std::to_string(_line) + ")";
     }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -121,7 +113,7 @@ void Exception::appendLocation () noexcept {
 #endif
 #endif
   } catch (...) {
-    // this function is called from the constructor, so it should
+    // this function is called from the exception constructor, so it should
     // not itself throw another exception
   }
 }
@@ -139,11 +131,16 @@ std::string Exception::FillExceptionString(int code, ...) {
   char buffer[1024];
   va_list ap;
   va_start(ap, code);
-  vsnprintf(buffer, sizeof(buffer) - 1, format, ap);
+  int length = vsnprintf(buffer, sizeof(buffer) - 1, format, ap);
   va_end(ap);
   buffer[sizeof(buffer) - 1] = '\0';  // Windows
 
-  return std::string(buffer);
+  if (length < 0) {
+    // error in vsnprintf
+    return std::string(format);
+  }
+
+  return std::string(buffer, size_t(length));
 }
 
 /// @brief construct an error message from a template string
@@ -160,34 +157,14 @@ std::string Exception::FillFormatExceptionString(char const* format, ...) {
   char buffer[1024];
   va_list ap;
   va_start(ap, format);
-  vsnprintf(buffer, sizeof(buffer) - 1, format, ap);
+  int length = vsnprintf(buffer, sizeof(buffer) - 1, format, ap);
   va_end(ap);
   buffer[sizeof(buffer) - 1] = '\0';  // Windows
 
-  return std::string(buffer);
-}
-
-Result basics::catchToResult(std::function<Result()> fn, int defaultError) {
-  // TODO check whether there are other specific exceptions we should catch
-  Result result{TRI_ERROR_NO_ERROR};
-  try {
-    result = fn();
-  } catch (arangodb::basics::Exception const& e) {
-    result.reset(e.code(), e.message());
-  } catch (std::bad_alloc const&) {
-    result.reset(TRI_ERROR_OUT_OF_MEMORY);
-  } catch (std::exception const& e) {
-    result.reset(defaultError, e.what());
-  } catch (...) {
-    result.reset(defaultError);
+  if (length < 0) {
+    // error in vsnprintf
+    return std::string(format);
   }
-  return result;
-}
 
-Result basics::catchVoidToResult(std::function<void()> fn, int defaultError) {
-  std::function<Result()> wrapped = [&fn]() -> Result {
-    fn();
-    return Result{TRI_ERROR_NO_ERROR};
-  };
-  return catchToResult(wrapped, defaultError);
+  return std::string(buffer, size_t(length));
 }

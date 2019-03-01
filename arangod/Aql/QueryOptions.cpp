@@ -21,9 +21,10 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "QueryOptions.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryRegistry.h"
+#include "QueryOptions.h"
 #include "RestServer/QueryRegistryFeature.h"
 
 #include <velocypack/Builder.h>
@@ -32,16 +33,18 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
-  
-QueryOptions::QueryOptions() :
-      memoryLimit(0),
+
+QueryOptions::QueryOptions()
+    : memoryLimit(0),
       maxNumberOfPlans(0),
       maxWarningCount(10),
       literalSizeThreshold(-1),
       satelliteSyncWait(60.0),
+      ttl(0),
       profile(PROFILE_LEVEL_NONE),
       allPlans(false),
       verbosePlans(false),
+      stream(false),
       silent(false),
       failOnWarning(false),
       cache(false),
@@ -49,9 +52,10 @@ QueryOptions::QueryOptions() :
       count(false),
       verboseErrors(false),
       inspectSimplePlans(true) {
-
   // now set some default values from server configuration options
-  QueryRegistryFeature* q = application_features::ApplicationServer::getFeature<QueryRegistryFeature>("QueryRegistry");
+  QueryRegistryFeature* q =
+      application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
+          "QueryRegistry");
   TRI_ASSERT(q != nullptr);
 
   // use global memory limit value
@@ -59,6 +63,9 @@ QueryOptions::QueryOptions() :
   if (globalLimit > 0) {
     memoryLimit = globalLimit;
   }
+
+  // get global default ttl
+  ttl = q->registry()->defaultTTL();
 
   // use global "failOnWarning" value
   failOnWarning = q->failOnWarning();
@@ -70,82 +77,96 @@ QueryOptions::QueryOptions() :
   maxNumberOfPlans = q->maxQueryPlans();
   TRI_ASSERT(maxNumberOfPlans > 0);
 }
-  
+
 void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   if (!slice.isObject()) {
     return;
   }
- 
+
   VPackSlice value;
- 
-  // numeric options 
-  value = slice.get("memoryLimit"); 
+
+  // numeric options
+  value = slice.get("memoryLimit");
   if (value.isNumber()) {
     size_t v = value.getNumber<size_t>();
     if (v > 0) {
       memoryLimit = v;
     }
   }
-  value = slice.get("maxNumberOfPlans"); 
+  value = slice.get("maxNumberOfPlans");
   if (value.isNumber()) {
     maxNumberOfPlans = value.getNumber<size_t>();
     if (maxNumberOfPlans == 0) {
       maxNumberOfPlans = 1;
     }
   }
-  value = slice.get("maxWarningCount"); 
+  value = slice.get("maxWarningCount");
   if (value.isNumber()) {
     maxWarningCount = value.getNumber<size_t>();
   }
-  value = slice.get("literalSizeThreshold"); 
+  value = slice.get("literalSizeThreshold");
   if (value.isNumber()) {
     int64_t v = value.getNumber<int64_t>();
     if (v > 0) {
       literalSizeThreshold = v;
     }
   }
-  value = slice.get("satelliteSyncWait"); 
+  value = slice.get("satelliteSyncWait");
   if (value.isNumber()) {
     satelliteSyncWait = value.getNumber<double>();
   }
 
-  // boolean options 
+  value = slice.get("ttl");
+  if (value.isNumber()) {
+    ttl = value.getNumber<double>();
+  }
+
+  // boolean options
   value = slice.get("profile");
   if (value.isBool()) {
     profile = value.getBool() ? PROFILE_LEVEL_BASIC : PROFILE_LEVEL_NONE;
   } else if (value.isNumber()) {
     profile = static_cast<ProfileLevel>(value.getNumber<uint32_t>());
   }
-  
+
+  value = slice.get("stream");
+  if (value.isBool()) {
+    stream = value.getBool();
+  }
+
   value = slice.get("allPlans");
   if (value.isBool()) {
     allPlans = value.getBool();
-  } 
+  }
   value = slice.get("verbosePlans");
   if (value.isBool()) {
     verbosePlans = value.getBool();
-  } 
+  }
+  value = slice.get("stream");
+  if (value.isBool()) {
+    stream = value.getBool();
+  }
   value = slice.get("silent");
   if (value.isBool()) {
     silent = value.getBool();
-  } 
+  }
   value = slice.get("failOnWarning");
   if (value.isBool()) {
     failOnWarning = value.getBool();
-  } 
+  }
   value = slice.get("cache");
   if (value.isBool()) {
     cache = value.getBool();
-  } 
-  value = slice.get("fullCount"); 
+  }
+  value = slice.get("fullCount");
   if (value.isBool()) {
     fullCount = value.getBool();
   }
-  value = slice.get("count"); 
+  value = slice.get("count");
   if (value.isBool()) {
     count = value.getBool();
   }
-  value = slice.get("verboseErrors"); 
+  value = slice.get("verboseErrors");
   if (value.isBool()) {
     verboseErrors = value.getBool();
   }
@@ -176,7 +197,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
       it.next();
     }
   }
-  
+
 #ifdef USE_ENTERPRISE
   value = slice.get("inaccessibleCollections");
   if (value.isArray()) {
@@ -203,16 +224,18 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   builder.add("maxWarningCount", VPackValue(maxWarningCount));
   builder.add("literalSizeThreshold", VPackValue(literalSizeThreshold));
   builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
+  builder.add("ttl", VPackValue(ttl));
   builder.add("profile", VPackValue(static_cast<uint32_t>(profile)));
   builder.add("allPlans", VPackValue(allPlans));
   builder.add("verbosePlans", VPackValue(verbosePlans));
+  builder.add("stream", VPackValue(stream));
   builder.add("silent", VPackValue(silent));
   builder.add("failOnWarning", VPackValue(failOnWarning));
   builder.add("cache", VPackValue(cache));
   builder.add("fullCount", VPackValue(fullCount));
   builder.add("count", VPackValue(count));
   builder.add("verboseErrors", VPackValue(verboseErrors));
-  
+
   builder.add("optimizer", VPackValue(VPackValueType::Object));
   builder.add("inspectSimplePlans", VPackValue(inspectSimplePlans));
   if (!optimizerRules.empty() || disableOptimizerRules) {
@@ -225,28 +248,28 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
         builder.add(VPackValue(it));
       }
     }
-    builder.close(); // optimizer.rules
+    builder.close();  // optimizer.rules
   }
-  builder.close(); // optimizer
+  builder.close();  // optimizer
 
   if (!shardIds.empty()) {
     builder.add("shardIds", VPackValue(VPackValueType::Array));
     for (auto const& it : shardIds) {
       builder.add(VPackValue(it));
     }
-    builder.close(); // shardIds
+    builder.close();  // shardIds
   }
-  
+
 #ifdef USE_ENTERPRISE
   if (!inaccessibleCollections.empty()) {
     builder.add("inaccessibleCollections", VPackValue(VPackValueType::Array));
     for (auto const& it : inaccessibleCollections) {
       builder.add(VPackValue(it));
     }
-    builder.close(); // inaccessibleCollections
+    builder.close();  // inaccessibleCollections
   }
 #endif
-  
+
   // also handle transaction options
   transactionOptions.toVelocyPack(builder);
 

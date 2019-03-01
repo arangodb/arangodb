@@ -58,5 +58,5 @@ BasicFeaturePhase::BasicFeaturePhase(ApplicationServer& server, bool isClient)
   }
 }
 
-} // application_features
-} // arangodb
+}  // namespace application_features
+}  // namespace arangodb

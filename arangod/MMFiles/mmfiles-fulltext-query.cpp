@@ -22,8 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "mmfiles-fulltext-query.h"
-#include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/tri-strings.h"
+#include "Indexes/Index.h"
 #include "MMFiles/mmfiles-fulltext-index.h"
 
 /// @brief normalize a word for a fulltext search query
@@ -43,8 +44,7 @@ static TRI_fulltext_query_operation_e ParseOperation(char c) {
 static char* NormalizeWord(char const* word, size_t wordLength) {
   // normalize string
   size_t outLength;
-  char* copy = TRI_normalize_utf8_to_NFC(word, wordLength,
-                                         &outLength);
+  char* copy = TRI_normalize_utf8_to_NFC(word, wordLength, &outLength);
 
   if (copy == nullptr) {
     return nullptr;
@@ -52,19 +52,18 @@ static char* NormalizeWord(char const* word, size_t wordLength) {
 
   // lower case string
   int32_t outLength2;
-  char* copy2 = TRI_tolower_utf8(copy, (int32_t)outLength,
-                                 &outLength2);
+  char* copy2 = TRI_tolower_utf8(copy, (int32_t)outLength, &outLength2);
   TRI_Free(copy);
 
   if (copy2 == nullptr) {
     return nullptr;
   }
 
-  char* prefixEnd = TRI_PrefixUtf8String(copy2, TRI_FULLTEXT_MAX_WORD_LENGTH);
+  char* prefixEnd = TRI_PrefixUtf8String(copy2, arangodb::FulltextIndexLimits::maxWordLength);
   ptrdiff_t prefixLength = prefixEnd - copy2;
 
-  char* copy3 = static_cast<char*>(TRI_Allocate(
-      sizeof(char) * ((size_t)prefixLength + 1)));
+  char* copy3 =
+      static_cast<char*>(TRI_Allocate(sizeof(char) * ((size_t)prefixLength + 1)));
 
   if (copy3 == nullptr) {
     TRI_Free(copy2);
@@ -79,18 +78,16 @@ static char* NormalizeWord(char const* word, size_t wordLength) {
 }
 
 /// @brief create a fulltext query
-TRI_fulltext_query_t* TRI_CreateQueryMMFilesFulltextIndex(size_t numWords,
-                                                   size_t maxResults) {
-  TRI_fulltext_query_t* query = static_cast<TRI_fulltext_query_t*>(
-      TRI_Allocate(sizeof(TRI_fulltext_query_t)));
+TRI_fulltext_query_t* TRI_CreateQueryMMFilesFulltextIndex(size_t numWords, size_t maxResults) {
+  TRI_fulltext_query_t* query =
+      static_cast<TRI_fulltext_query_t*>(TRI_Allocate(sizeof(TRI_fulltext_query_t)));
 
   if (query == nullptr) {
     return nullptr;
   }
 
   // fill word vector with NULLs
-  query->_words = static_cast<char**>(
-      TRI_Allocate(sizeof(char*) * numWords));
+  query->_words = static_cast<char**>(TRI_Allocate(sizeof(char*) * numWords));
 
   if (query->_words == nullptr) {
     TRI_Free(query);
@@ -100,7 +97,7 @@ TRI_fulltext_query_t* TRI_CreateQueryMMFilesFulltextIndex(size_t numWords,
   memset(query->_words, 0, sizeof(char*) * numWords);
 
   query->_matches = static_cast<TRI_fulltext_query_match_e*>(
-      TRI_Allocate(                   sizeof(TRI_fulltext_query_match_e) * numWords));
+      TRI_Allocate(sizeof(TRI_fulltext_query_match_e) * numWords));
 
   if (query->_matches == nullptr) {
     TRI_Free(query->_words);
@@ -109,7 +106,7 @@ TRI_fulltext_query_t* TRI_CreateQueryMMFilesFulltextIndex(size_t numWords,
   }
 
   query->_operations = static_cast<TRI_fulltext_query_operation_e*>(
-      TRI_Allocate(                   sizeof(TRI_fulltext_query_operation_e) * numWords));
+      TRI_Allocate(sizeof(TRI_fulltext_query_operation_e) * numWords));
 
   if (query->_operations == nullptr) {
     TRI_Free(query->_matches);
@@ -143,8 +140,7 @@ void TRI_FreeQueryMMFilesFulltextIndex(TRI_fulltext_query_t* query) {
 
 /// @brief create a fulltext query from a query string
 int TRI_ParseQueryMMFilesFulltextIndex(TRI_fulltext_query_t* query,
-                                char const* queryString,
-                                bool* isSubstringQuery) {
+                                       char const* queryString, bool* isSubstringQuery) {
   char* ptr;
   size_t i;
 
@@ -220,14 +216,14 @@ int TRI_ParseQueryMMFilesFulltextIndex(TRI_fulltext_query_t* query,
     TRI_ASSERT(end >= start);
 
     if (!TRI_SetQueryMMFilesFulltextIndex(query, (size_t)i, start,
-                                   (size_t)(end - start), match, operation)) {
+                                          (size_t)(end - start), match, operation)) {
       // normalization failed
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
     ++i;
 
-    if (i >= TRI_FULLTEXT_SEARCH_MAX_WORDS) {
+    if (i >= arangodb::FulltextIndexLimits::maxSearchWords) {
       break;
     }
   }
@@ -243,9 +239,9 @@ int TRI_ParseQueryMMFilesFulltextIndex(TRI_fulltext_query_t* query,
 /// @brief set a search word & option for a query
 /// the query will take ownership of the search word
 bool TRI_SetQueryMMFilesFulltextIndex(TRI_fulltext_query_t* query, size_t position,
-                               char const* word, size_t wordLength,
-                               TRI_fulltext_query_match_e match,
-                               TRI_fulltext_query_operation_e operation) {
+                                      char const* word, size_t wordLength,
+                                      TRI_fulltext_query_match_e match,
+                                      TRI_fulltext_query_operation_e operation) {
   char* normalized;
 
   if (position >= query->_numWords) {

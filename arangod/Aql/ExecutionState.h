@@ -23,6 +23,8 @@
 #ifndef ARANGOD_AQL_EXECUTION_STATE_H
 #define ARANGOD_AQL_EXECUTION_STATE_H 1
 
+#include <ostream>
+
 namespace arangodb {
 namespace aql {
 
@@ -55,6 +57,6 @@ inline std::ostream& operator<<(std::ostream& ostream, ExecutionState state) {
   return ostream;
 }
 
-} // aql
-} // arangodb
+}  // namespace aql
+}  // namespace arangodb
 #endif

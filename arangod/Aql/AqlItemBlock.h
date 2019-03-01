@@ -24,11 +24,11 @@
 #ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_H
 #define ARANGOD_AQL_AQL_ITEM_BLOCK_H 1
 
-#include "Basics/Common.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Range.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
 
 #include <utility>
 
@@ -69,8 +69,8 @@ class AqlItemBlock {
   AqlItemBlock(ResourceMonitor*, arangodb::velocypack::Slice const);
 
   /// @brief destroy the block
-  ~AqlItemBlock() { 
-    destroy(); 
+  ~AqlItemBlock() {
+    destroy();
     decreaseMemoryUsage(sizeof(AqlValue) * _nrItems * _nrRegs);
   }
 
@@ -80,55 +80,54 @@ class AqlItemBlock {
   inline void increaseMemoryUsage(size_t value) {
     _resourceMonitor->increaseMemoryUsage(value);
   }
-  
+
   inline void decreaseMemoryUsage(size_t value) noexcept {
     _resourceMonitor->decreaseMemoryUsage(value);
   }
 
  public:
   /// @brief getValue, get the value of a register
-  AqlValue getValue(size_t index, RegisterId varNr) const {
-    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
+  inline AqlValue getValue(size_t index, RegisterId varNr) const {
+    TRI_ASSERT(index < _nrItems);
+    TRI_ASSERT(varNr < _nrRegs);
     return _data[index * _nrRegs + varNr];
   }
 
   /// @brief getValue, get the value of a register by reference
   inline AqlValue const& getValueReference(size_t index, RegisterId varNr) const {
-    TRI_ASSERT(_data.size() > index * _nrRegs + varNr);
+    TRI_ASSERT(index < _nrItems);
+    TRI_ASSERT(varNr < _nrRegs);
     return _data[index * _nrRegs + varNr];
   }
 
   /// @brief setValue, set the current value of a register
-  void setValue(size_t index, RegisterId varNr, AqlValue const& value) {
-    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
+  inline void setValue(size_t index, RegisterId varNr, AqlValue const& value) {
+    TRI_ASSERT(index < _nrItems);
+    TRI_ASSERT(varNr < _nrRegs);
     TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
-
-    size_t mem = 0;
 
     // First update the reference count, if this fails, the value is empty
     if (value.requiresDestruction()) {
       if (++_valueCount[value] == 1) {
-        mem = value.memoryUsage();
+        size_t mem = value.memoryUsage();
         increaseMemoryUsage(mem);
       }
     }
 
-    try {
-      _data[index * _nrRegs + varNr] = value;
-    } catch (...) {
-      decreaseMemoryUsage(mem);
-      throw;
-    }
+    _data[index * _nrRegs + varNr] = value;
   }
 
   /// @brief emplaceValue, set the current value of a register, constructing
   /// it in place
   template <typename... Args>
-  void emplaceValue(size_t index, RegisterId varNr, Args&&... args) {
-    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
-    TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
+  //std::enable_if_t<!(std::is_same<AqlValue,std::decay_t<Args>>::value || ...), void>
+  void
+  emplaceValue(size_t index, RegisterId varNr, Args&&... args) {
+    TRI_ASSERT(index < _nrItems);
+    TRI_ASSERT(varNr < _nrRegs);
 
-    void* p = &_data[index * _nrRegs + varNr];
+    AqlValue* p = &_data[index * _nrRegs + varNr];
+    TRI_ASSERT(p->isEmpty());
     // construct the AqlValue in place
     AqlValue* value;
     try {
@@ -149,7 +148,8 @@ class AqlItemBlock {
     } catch (...) {
       // invoke dtor
       value->~AqlValue();
-
+      // TODO - instead of disabling it completly we could you use
+      // a constexpr if() with c++17
       _data[index * _nrRegs + varNr].destroy();
       throw;
     }
@@ -168,12 +168,9 @@ class AqlItemBlock {
       if (it != _valueCount.end()) {
         if (--(it->second) == 0) {
           decreaseMemoryUsage(element.memoryUsage());
-          try {
-            _valueCount.erase(it);
-            element.destroy();
-            return;  // no need for an extra element.erase() in this case
-          } catch (...) {
-          }
+          _valueCount.erase(it);
+          element.destroy();
+          return;  // no need for an extra element.erase() in this case
         }
       }
     }
@@ -203,10 +200,12 @@ class AqlItemBlock {
     element.erase();
   }
 
-  /// @brief eraseValue, erase the current value of all values, not freeing them.
-  /// this is used if the value is stolen and later released from elsewhere
+  /// @brief eraseValue, erase the current value of all values, not freeing
+  /// them. this is used if the value is stolen and later released from
+  /// elsewhere
   void eraseAll() {
-    for (auto& it : _data) {
+    for (size_t i = 0; i < numEntries(); i++) {
+      auto &it = _data[i];
       if (!it.isEmpty()) {
         it.erase();
       }
@@ -227,11 +226,12 @@ class AqlItemBlock {
       // nothing to do
       return;
     }
-    TRI_ASSERT(_data.size() > currentRow * _nrRegs + curRegs);
+    TRI_ASSERT(currentRow < _nrItems);
+    TRI_ASSERT(curRegs <= _nrRegs);
 
     copyValuesFromRow(currentRow, curRegs, 0);
   }
-  
+
   void copyValuesFromRow(size_t currentRow, RegisterId curRegs, size_t fromRow) {
     TRI_ASSERT(currentRow != fromRow);
 
@@ -245,7 +245,24 @@ class AqlItemBlock {
       }
     }
   }
-  
+
+  void copyValuesFromRow(size_t currentRow,
+                         std::unordered_set<RegisterId> const& regs,
+                         size_t fromRow) {
+    TRI_ASSERT(currentRow != fromRow);
+
+    for (auto const reg : regs) {
+      TRI_ASSERT(reg < getNrRegs());
+      if (getValueReference(currentRow, reg).isEmpty()) {
+        // First update the reference count, if this fails, the value is empty
+        if (getValueReference(fromRow, reg).requiresDestruction()) {
+          ++_valueCount[getValueReference(fromRow, reg)];
+        }
+        _data[currentRow * _nrRegs + reg] = getValueReference(fromRow, reg);
+      }
+    }
+  }
+
   /// @brief valueCount
   /// this is used if the value is stolen and later released from elsewhere
   uint32_t valueCount(AqlValue const& v) const {
@@ -270,12 +287,21 @@ class AqlItemBlock {
   }
 
   /// @brief getter for _nrRegs
-  inline RegisterId getNrRegs() const { return _nrRegs; }
+  inline RegisterId getNrRegs() const noexcept { return _nrRegs; }
 
   /// @brief getter for _nrItems
-  inline size_t size() const { return _nrItems; }
-  
-  inline size_t capacity() const { return _data.size(); }
+  inline size_t size() const noexcept { return _nrItems; }
+
+
+  /// @brief Number of entries in the matrix. If this changes, the memory usage
+  /// must be / in- or decreased appropriately as well.
+  /// All entries _data[i] for numEntries() <= i < _data.size() always have to
+  /// be erased, i.e. empty / none!
+  inline size_t numEntries() const {
+    return _nrRegs * _nrItems;
+  }
+
+  inline size_t capacity() const { return _data.capacity(); }
 
   /// @brief shrink the block to the specified number of rows
   /// the superfluous rows are cleaned
@@ -283,7 +309,7 @@ class AqlItemBlock {
 
   /// @brief rescales the block to the specified dimensions
   /// note that the block should be empty before rescaling to prevent
-  /// losses of still managed AqlValues 
+  /// losses of still managed AqlValues
   void rescale(size_t nrItems, RegisterId nrRegs);
 
   /// @brief clears out some columns (registers), this deletes the values if
@@ -295,12 +321,12 @@ class AqlItemBlock {
 
   /// @brief create an AqlItemBlock with a single row, with copies of the
   /// specified registers from the current block
-  AqlItemBlock* slice(size_t row, std::unordered_set<RegisterId> const&) const;
+  AqlItemBlock* slice(size_t row, std::unordered_set<RegisterId> const& registers,
+                      size_t newNrRegs) const;
 
   /// @brief slice/clone chosen rows for a subset, this does a deep copy
   /// of all entries
-  AqlItemBlock* slice(std::vector<size_t> const& chosen, size_t from,
-                      size_t to) const;
+  AqlItemBlock* slice(std::vector<size_t> const& chosen, size_t from, size_t to) const;
 
   /// @brief steal for a subset, this does not copy the entries, rather,
   /// it remembers which it has taken. This is stored in the
@@ -308,7 +334,7 @@ class AqlItemBlock {
   /// after this operation, because it is unclear, when the values
   /// to which our AqlValues point will vanish.
   AqlItemBlock* steal(std::vector<size_t> const& chosen, size_t from, size_t to);
-  
+
   /// @brief concatenate multiple blocks from a collector
   static AqlItemBlock* concatenate(ResourceMonitor*, BlockCollector* collector);
 
@@ -319,8 +345,7 @@ class AqlItemBlock {
 
   /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
-  void toVelocyPack(transaction::Methods* trx,
-                    arangodb::velocypack::Builder&) const;
+  void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
 
  private:
   /// @brief _data, the actual data as a single vector of dimensions _nrItems
@@ -345,7 +370,7 @@ class AqlItemBlock {
   ResourceMonitor* _resourceMonitor;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

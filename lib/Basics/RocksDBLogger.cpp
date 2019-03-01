@@ -22,14 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBLogger.h"
-#include "Basics/StringRef.h"
 #include "Logger/Logger.h"
+
+#include <velocypack/StringRef.h>
 
 using namespace arangodb;
 
-RocksDBLogger::RocksDBLogger(rocksdb::InfoLogLevel level) : rocksdb::Logger(level), _enabled(true) {}
+RocksDBLogger::RocksDBLogger(rocksdb::InfoLogLevel level)
+    : rocksdb::Logger(level), _enabled(true) {}
 RocksDBLogger::~RocksDBLogger() {}
-  
+
 void RocksDBLogger::Logv(const rocksdb::InfoLogLevel logLevel, char const* format, va_list ap) {
   if (logLevel < GetInfoLogLevel()) {
     return;
@@ -37,15 +39,17 @@ void RocksDBLogger::Logv(const rocksdb::InfoLogLevel logLevel, char const* forma
   if (!_enabled) {
     return;
   }
-  
-  static constexpr size_t prefixSize = 9; // strlen("rocksdb: ");
+
+  static constexpr size_t prefixSize = 9;  // strlen("rocksdb: ");
   // truncate all log messages after this length
   char buffer[4096];
-  memcpy(&buffer[0], "rocksdb: \0", strlen("rocksdb: \0")); // add trailing \0 byte already for safety
+  memcpy(&buffer[0], "rocksdb: \0",
+         strlen("rocksdb: \0"));  // add trailing \0 byte already for safety
 
   va_list backup;
   va_copy(backup, ap);
-  int length = vsnprintf(&buffer[0] + prefixSize, sizeof(buffer) - prefixSize - 1, format, backup);
+  int length = vsnprintf(&buffer[0] + prefixSize,
+                         sizeof(buffer) - prefixSize - 1, format, backup);
   va_end(backup);
   buffer[sizeof(buffer) - 1] = '\0';  // Windows
 
@@ -67,20 +71,20 @@ void RocksDBLogger::Logv(const rocksdb::InfoLogLevel logLevel, char const* forma
 
   switch (logLevel) {
     case rocksdb::InfoLogLevel::DEBUG_LEVEL:
-      LOG_TOPIC(DEBUG, arangodb::Logger::ROCKSDB) << StringRef(buffer, l);
+      LOG_TOPIC(DEBUG, arangodb::Logger::ROCKSDB) << arangodb::velocypack::StringRef(buffer, l);
       break;
     case rocksdb::InfoLogLevel::INFO_LEVEL:
-      LOG_TOPIC(INFO, arangodb::Logger::ROCKSDB) << StringRef(buffer, l);
+      LOG_TOPIC(INFO, arangodb::Logger::ROCKSDB) << arangodb::velocypack::StringRef(buffer, l);
       break;
     case rocksdb::InfoLogLevel::WARN_LEVEL:
-      LOG_TOPIC(WARN, arangodb::Logger::ROCKSDB) << StringRef(buffer, l);
+      LOG_TOPIC(WARN, arangodb::Logger::ROCKSDB) << arangodb::velocypack::StringRef(buffer, l);
       break;
     case rocksdb::InfoLogLevel::ERROR_LEVEL:
     case rocksdb::InfoLogLevel::FATAL_LEVEL:
-      LOG_TOPIC(ERR, arangodb::Logger::ROCKSDB) << StringRef(buffer, l);
+      LOG_TOPIC(ERR, arangodb::Logger::ROCKSDB) << arangodb::velocypack::StringRef(buffer, l);
       break;
-    default: { 
-      // ignore other levels 
+    default: {
+      // ignore other levels
     }
   }
 }

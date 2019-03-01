@@ -21,11 +21,11 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "v8-vocbaseprivate.h"
-#include "Basics/conversions.h"
 #include "Basics/StaticStrings.h"
-#include "VocBase/KeyGenerator.h"
+#include "Basics/conversions.h"
 #include "V8/v8-conv.h"
+#include "VocBase/KeyGenerator.h"
+#include "v8-vocbaseprivate.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -47,7 +47,7 @@ TRI_vocbase_t& GetContextVocBase(v8::Isolate* isolate) {
 /// @brief checks if argument is a document identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ParseDocumentHandle(v8::Handle<v8::Value> const arg,
+static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const arg,
                                 std::string& collectionName,
                                 std::unique_ptr<char[]>& key) {
   TRI_ASSERT(collectionName.empty());
@@ -58,7 +58,7 @@ static bool ParseDocumentHandle(v8::Handle<v8::Value> const arg,
 
   // the handle must always be an ASCII string. These is no need to normalize it
   // first
-  v8::String::Utf8Value str(arg);
+  v8::String::Utf8Value str(isolate, arg);
 
   if (*str == nullptr) {
     return false;
@@ -96,10 +96,8 @@ static bool ParseDocumentHandle(v8::Handle<v8::Value> const arg,
 /// will remain open afterwards!
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ExtractDocumentHandle(v8::Isolate* isolate,
-                           v8::Handle<v8::Value> const val,
-                           std::string& collectionName,
-                           VPackBuilder& builder,
+bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val,
+                           std::string& collectionName, VPackBuilder& builder,
                            bool includeRev) {
   // reset the collection identifier and the revision
   TRI_ASSERT(collectionName.empty());
@@ -108,7 +106,7 @@ bool ExtractDocumentHandle(v8::Isolate* isolate,
 
   // extract the document identifier and revision from a string
   if (val->IsString()) {
-    bool res = ParseDocumentHandle(val, collectionName, key);
+    bool res = ParseDocumentHandle(isolate, val, collectionName, key);
     if (res) {
       if (key.get() == nullptr) {
         return false;
@@ -123,19 +121,20 @@ bool ExtractDocumentHandle(v8::Isolate* isolate,
   if (val->IsObject()) {
     TRI_GET_GLOBALS();
 
-    v8::Handle<v8::Object> obj = val->ToObject();
+    v8::Handle<v8::Object> obj =
+        val->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
     TRI_GET_GLOBAL_STRING(_IdKey);
     TRI_GET_GLOBAL_STRING(_KeyKey);
     if (obj->HasRealNamedProperty(_IdKey)) {
       v8::Handle<v8::Value> didVal = obj->Get(_IdKey);
 
-      if (!ParseDocumentHandle(didVal, collectionName, key)) {
+      if (!ParseDocumentHandle(isolate, didVal, collectionName, key)) {
         return false;
       }
     } else if (obj->HasRealNamedProperty(_KeyKey)) {
       v8::Handle<v8::Value> didVal = obj->Get(_KeyKey);
 
-      if (!ParseDocumentHandle(didVal, collectionName, key)) {
+      if (!ParseDocumentHandle(isolate, didVal, collectionName, key)) {
         return false;
       }
     } else {
@@ -146,8 +145,7 @@ bool ExtractDocumentHandle(v8::Isolate* isolate,
       return false;
     }
     // If we get here we have a valid key
-    builder.add(StaticStrings::KeyString,
-                VPackValue(reinterpret_cast<char*>(key.get())));
+    builder.add(StaticStrings::KeyString, VPackValue(reinterpret_cast<char*>(key.get())));
 
     if (!includeRev) {
       return true;
@@ -161,7 +159,7 @@ bool ExtractDocumentHandle(v8::Isolate* isolate,
     if (!revObj->IsString()) {
       return true;
     }
-    v8::String::Utf8Value str(revObj);
+    v8::String::Utf8Value str(isolate, revObj);
     bool isOld;
     uint64_t rid = TRI_StringToRid(*str, str.length(), isOld, false);
 

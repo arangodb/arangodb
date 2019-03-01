@@ -47,6 +47,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -54,10 +55,14 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
-DatabaseTailingSyncer::DatabaseTailingSyncer(
-    TRI_vocbase_t& vocbase,
-    ReplicationApplierConfiguration const& configuration,
-    TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
+namespace {
+arangodb::velocypack::StringRef const cuidRef("cuid");
+}
+
+DatabaseTailingSyncer::DatabaseTailingSyncer(TRI_vocbase_t& vocbase,
+                                             ReplicationApplierConfiguration const& configuration,
+                                             TRI_voc_tick_t initialTick,
+                                             bool useTick, TRI_voc_tick_t barrierId)
     : TailingSyncer(vocbase.replicationApplier(), configuration, initialTick,
                     useTick, barrierId),
       _vocbase(&vocbase),
@@ -73,36 +78,21 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(
 
 /// @brief save the current applier state
 Result DatabaseTailingSyncer::saveApplierState() {
-  LOG_TOPIC(TRACE, Logger::REPLICATION)
-      << "saving replication applier state. last applied continuous tick: "
-      << applier()->_state._lastAppliedContinuousTick
-      << ", safe resume tick: " << applier()->_state._safeResumeTick;
-
-  try {
-    _applier->persistState(false);
-    return Result();
-  } catch (basics::Exception const& ex) {
-    std::string errorMsg =
-        std::string("unable to save replication applier state: ") + ex.what();
-    LOG_TOPIC(WARN, Logger::REPLICATION) << errorMsg;
-    THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), errorMsg);
-  } catch (std::exception const& ex) {
-    std::string errorMsg =
-        std::string("unable to save replication applier state: ") + ex.what();
-    LOG_TOPIC(WARN, Logger::REPLICATION) << errorMsg;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "caught unknown exception while saving applier state");
+  auto rv = _applier->persistStateResult(false);
+  if (rv.fail()){
+    THROW_ARANGO_EXCEPTION(rv);
   }
-  return TRI_ERROR_INTERNAL;
+  return rv;
 }
 
 /// @brief finalize the synchronization of a collection by tailing the WAL
 /// and filtering on the collection name until no more data is available
-Result DatabaseTailingSyncer::syncCollectionFinalize(
-    std::string const& collectionName) {
+Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& collectionName,
+                                                            double timeout, bool hard,
+                                                            TRI_voc_tick_t& until,
+                                                            bool& didTimeout) {
+  didTimeout = false;
+
   setAborted(false);
   // fetch master state just once
   Result r = _state.master.getState(_state.connection, _state.isChildSyncer);
@@ -116,47 +106,64 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
   _ignoreRenameCreateDrop = true;
 
   TRI_voc_tick_t fromTick = _initialTick;
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
-      << "starting syncCollectionFinalize:" << collectionName << ", fromTick "
-      << fromTick;
+  TRI_voc_tick_t lastScannedTick = fromTick;
+
+  if (hard) {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "starting syncCollectionFinalize: " << collectionName
+                                          << ", fromTick " << fromTick;
+  } else {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "starting syncCollectionCatchup: " << collectionName
+                                          << ", fromTick " << fromTick;
+  }
+
+  auto clock = std::chrono::steady_clock();
+  auto startTime = clock.now();
 
   while (true) {
     if (application_features::ApplicationServer::isStopping()) {
       return Result(TRI_ERROR_SHUTTING_DOWN);
     }
 
-    std::string const url =
-        tailingBaseUrl("tail") +
-        "chunkSize=" + StringUtils::itoa(_state.applier._chunkSize) +
-        "&from=" + StringUtils::itoa(fromTick) +
-        "&serverId=" + _state.localServerIdString +
-        "&collection=" + StringUtils::urlEncode(collectionName);
-    
+    std::string const url = tailingBaseUrl("tail") +
+                            "chunkSize=" + StringUtils::itoa(_state.applier._chunkSize) +
+                            "&from=" + StringUtils::itoa(fromTick) +
+                            "&lastScanned=" + StringUtils::itoa(lastScannedTick) +
+                            "&serverId=" + _state.localServerIdString +
+                            "&collection=" + StringUtils::urlEncode(collectionName);
+
     // send request
-    std::unique_ptr<SimpleHttpResult> response(
-        _state.connection.client->request(rest::RequestType::GET, url, nullptr,
-                                          0));
+    std::unique_ptr<httpclient::SimpleHttpResult> response;
+    _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(client->request(rest::RequestType::GET, url, nullptr, 0));
+    });
 
     if (replutils::hasFailed(response.get())) {
+      until = fromTick;
       return replutils::buildHttpError(response.get(), url, _state.connection);
     }
 
     if (response->getHttpReturnCode() == 204) {
       // HTTP 204 No content: this means we are done
+      until = fromTick;
       return Result();
     }
 
     bool found;
-    std::string header = response->getHeaderField(
-        StaticStrings::ReplicationHeaderCheckMore, found);
+    std::string header =
+        response->getHeaderField(StaticStrings::ReplicationHeaderCheckMore, found);
     bool checkMore = false;
     if (found) {
       checkMore = StringUtils::boolean(header);
     }
 
-    header = response->getHeaderField(
-        StaticStrings::ReplicationHeaderLastIncluded, found);
+    header = response->getHeaderField(StaticStrings::ReplicationHeaderLastScanned, found);
+    if (found) {
+      lastScannedTick = StringUtils::uint64(header);
+    }
+
+    header = response->getHeaderField(StaticStrings::ReplicationHeaderLastIncluded, found);
     if (!found) {
+      until = fromTick;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     std::string("got invalid response from master at ") +
                         _state.master.endpoint + ": required header " +
@@ -167,34 +174,34 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
 
     // was the specified from value included the result?
     bool fromIncluded = false;
-    header = response->getHeaderField(
-        StaticStrings::ReplicationHeaderFromPresent, found);
+    header = response->getHeaderField(StaticStrings::ReplicationHeaderFromPresent, found);
     if (found) {
       fromIncluded = StringUtils::boolean(header);
     }
-    if (!fromIncluded && fromTick > 0) {  // && _requireFromPresent
+    if (!fromIncluded && fromTick > 0) {
+      until = fromTick;
       return Result(
           TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,
-          std::string("required follow tick value '") +
-              StringUtils::itoa(lastIncludedTick) +
-              "' is not present (anymore?) on master at " +
-              _state.master.endpoint + ". Last tick available on master is '" +
-              StringUtils::itoa(lastIncludedTick) +
+          std::string("required follow tick value '") + StringUtils::itoa(lastIncludedTick) +
+              "' is not present (anymore?) on master at " + _state.master.endpoint +
+              ". Last tick available on master is '" + StringUtils::itoa(lastIncludedTick) +
               "'. It may be required to do a full resync and increase the "
               "number of historic logfiles on the master.");
     }
 
     uint64_t processedMarkers = 0;
     uint64_t ignoreCount = 0;
-    Result r =
-        applyLog(response.get(), fromTick, processedMarkers, ignoreCount);
+    Result r = applyLog(response.get(), fromTick, processedMarkers, ignoreCount);
     if (r.fail()) {
+      until = fromTick;
       return r;
     }
 
     // update the tick from which we will fetch in the next round
     if (lastIncludedTick > fromTick) {
       fromTick = lastIncludedTick;
+    } else if (lastIncludedTick == 0 && lastScannedTick > 0 && lastScannedTick > fromTick) {
+      fromTick = lastScannedTick - 1;
     } else if (checkMore) {
       // we got the same tick again, this indicates we're at the end
       checkMore = false;
@@ -202,12 +209,32 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
                                            << "this indicates we're at the end";
     }
 
+    // If this is non-hard, we employ some heuristics to stop early:
+    if (!hard) {
+      if (clock.now() - startTime > std::chrono::duration<double>(timeout) &&
+          _ongoingTransactions.empty()) {
+        checkMore = false;
+        didTimeout = true;
+      } else {
+        TRI_voc_tick_t lastTick = 0;
+        header = response->getHeaderField(StaticStrings::ReplicationHeaderLastTick, found);
+        if (found) {
+          lastTick = StringUtils::uint64(header);
+          if (_ongoingTransactions.empty() && lastTick > lastIncludedTick &&  // just to make sure!
+              lastTick - lastIncludedTick < 1000) {
+            checkMore = false;
+          }
+        }
+      }
+    }
+
     if (!checkMore) {
       // done!
+      until = fromTick;
       return Result();
     }
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
-        << "Fetching more data fromTick " << fromTick;
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Fetching more data, fromTick: " << fromTick
+                                          << ", lastScannedTick: " << lastScannedTick;
   }
 }
 
@@ -216,7 +243,7 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
   // now check for a globally unique id attribute ("cuid")
   // if its present, then we will use our local cuid -> collection name
   // translation table
-  VPackSlice const name = slice.get("cuid");
+  VPackSlice const name = slice.get(::cuidRef);
   if (!name.isString()) {
     return false;
   }
@@ -227,17 +254,20 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
     return false;
   }
 
-  if (_queriedTranslations) {
+  if (!_queriedTranslations) {
     // no translations yet... query master inventory to find names of all
     // collections
     try {
       VPackBuilder inventoryResponse;
 
       auto init = std::make_shared<DatabaseInitialSyncer>(*_vocbase, _state.applier);
-      Result res = init->inventory(inventoryResponse);
+      Result res = init->getInventory(inventoryResponse);
       _queriedTranslations = true;
       if (res.fail()) {
-        LOG_TOPIC(ERR, Logger::REPLICATION) << "got error while fetching master inventory for collection name translations: " << res.errorMessage();
+        LOG_TOPIC(ERR, Logger::REPLICATION)
+            << "got error while fetching master inventory for collection name "
+               "translations: "
+            << res.errorMessage();
         return false;
       }
       VPackSlice invSlice = inventoryResponse.slice();
@@ -255,11 +285,13 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
         }
         VPackSlice c = it.get("parameters");
         if (c.hasKey("name") && c.hasKey("globallyUniqueId")) {
-          _translations[c.get("globallyUniqueId").copyString()] = c.get("name").copyString();
+          _translations[c.get("globallyUniqueId").copyString()] =
+              c.get("name").copyString();
         }
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "got error while fetching inventory: " << ex.what();
+      LOG_TOPIC(ERR, Logger::REPLICATION)
+          << "got error while fetching inventory: " << ex.what();
       return false;
     }
   }

@@ -305,7 +305,7 @@ function dumpTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test view restoring
     ////////////////////////////////////////////////////////////////////////////////
-    
+
     testView : function () {
       try {
         db._createView("check", "arangosearch", {});
@@ -326,7 +326,12 @@ function dumpTestSuite () {
       assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("fields"));
       assertTrue(props.links.UnitTestsDumpViewCollection.includeAllFields);
 
-      var res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 RETURN doc").toArray();
+      assertEqual(props.consolidationIntervalMsec, 0);
+      assertEqual(props.cleanupIntervalStep, 456);
+      assertTrue(Math.abs(props.consolidationPolicy.threshold - 0.3) < 0.001);
+      assertEqual(props.consolidationPolicy.type, "bytes_accum");
+
+      var res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
       assertEqual(5000, res.length);
 
       res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
@@ -334,7 +339,7 @@ function dumpTestSuite () {
 
       res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 5000 RETURN doc").toArray();
       assertEqual(0, res.length);
-      
+
       res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en')  RETURN doc").toArray();
       assertEqual(1, res.length);
     }
@@ -415,7 +420,6 @@ function dumpTestEnterpriseSuite () {
       assertEqual(2, c.type()); // Document
       assertEqual(5, p.numberOfShards);
       assertTrue(p.isSmart, p);
-      assertFalse(Object.hasOwnProperty(p, "distributeShardsLike"));
       assertEqual(100, c.count());
       assertEqual("value", p.smartGraphAttribute);
     },
@@ -472,7 +476,6 @@ function dumpTestEnterpriseSuite () {
       assertEqual(2, c.type()); // Document
       assertEqual(5, p.numberOfShards);
       assertTrue(p.isSmart);
-      assertEqual(vertices, p.distributeShardsLike);
       assertEqual(100, c.count());
       assertEqual("value", p.smartGraphAttribute);
     },
@@ -524,13 +527,12 @@ function dumpTestEnterpriseSuite () {
       assertEqual(100, c.count());
     },
 
-    testEdges : function () {
+    testEEEdges : function () {
       let c = db._collection(edges);
       let p = c.properties();
       assertEqual(3, c.type()); // Edges
       //assertEqual(5, p.numberOfShards);
       assertTrue(p.isSmart);
-      assertEqual(vertices, p.distributeShardsLike);
       assertEqual(300, c.count());
     },
 
@@ -623,17 +625,49 @@ function dumpTestEnterpriseSuite () {
       assertEqual("9", res[1].value);
       assertEqual("11", res[2].value);
       assertEqual("12", res[3].value);
-    }
+    },
+
+    testSmartGraphSharding: function () {
+      const eCol = db._collection(edges);
+      const eProp = eCol.properties();
+      const vCol = db._collection(vertices);
+      const vProp = vCol.properties();
+      const oCol = db._collection(orphans);
+      const oProp = oCol.properties();
+      // It is random if a vertex collection or an orphan
+      // collection is selected to lead the shard distribution.
+      // But one of the two has to be selected, edges is
+      // impossible
+      if (oProp.hasOwnProperty("distributeShardsLike")) {
+        // The Vertex collection is selected as leading.
+        assertFalse(Object.hasOwnProperty(vProp, "distributeShardsLike"));
+        assertEqual(vertices, eProp.distributeShardsLike);
+        assertEqual(vertices, oProp.distributeShardsLike);
+      } else {
+        // The orphan collection is selected as leading.
+        assertFalse(Object.hasOwnProperty(oProp, "distributeShardsLike"));
+        assertEqual(orphans, eProp.distributeShardsLike);
+        assertEqual(orphans, vProp.distributeShardsLike);
+      }
+    },
+
+    testReplicationFactor : function () {
+      let c = db._collection("UnitTestsDumpReplicationFactor1");
+      let p = c.properties();
+
+      assertEqual(1, p.replicationFactor);
+      assertEqual(7, p.numberOfShards);
+      
+      c = db._collection("UnitTestsDumpReplicationFactor2");
+      p = c.properties();
+ 
+      assertEqual(2, p.replicationFactor);
+      assertEqual(6, p.numberOfShards);
+    },
 
   };
 
 }
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(dumpTestSuite);
 

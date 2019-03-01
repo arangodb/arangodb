@@ -139,14 +139,6 @@ ArangoView.prototype._baseurl = function (suffix) {
   return this._prefixurl(url);
 };
 
-// /////////////////////////////////////////////////////////////////////////////
-// @brief converts into an array
-// /////////////////////////////////////////////////////////////////////////////
-
-ArangoView.prototype.toArray = function () {
-  return this.all().toArray();
-};
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief print the help for ArangoView
 // //////////////////////////////////////////////////////////////////////////////
@@ -218,6 +210,7 @@ ArangoView.prototype.properties = function (properties, partialUpdate) {
 
   const mask = {
     'code': true,
+    'globallyUniqueId': true,
     'id': true,
     'name': true,
     'type': true,

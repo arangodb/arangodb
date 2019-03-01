@@ -24,7 +24,7 @@
 #include "catch.hpp"
 #include "common.h"
 
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"
@@ -70,7 +70,7 @@
 
 extern const char* ARGV0; // defined in main.cpp
 
-NS_LOCAL
+namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -164,7 +164,7 @@ struct IResearchQueryStartsWithSetup {
   }
 }; // IResearchQuerySetup
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -217,12 +217,12 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
         "\"collection_2\" : { \"includeAllFields\" : true }"
       "}}"
     );
-    CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((view->properties(updateJson->slice(), true).ok()));
 
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->toVelocyPack(builder, true, false);
+    view->properties(builder, true, false);
     builder.close();
 
     auto slice = builder.slice();
@@ -273,7 +273,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
     }
 
     CHECK((trx.commit().ok()));
-    view->sync();
+    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").code)); // commit
   }
 
   // invalid field
@@ -317,6 +317,37 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH starts_with(d.name, 'A') RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // exact term, ordered
+  {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
+      { "A", &insertedDocs[0] }
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH starts_with(d.name, 'A', 0) SORT TFIDF(d) DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -386,7 +417,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH starts_with(d.prefix, '') SORT TFIDF(d), BM25(d), d.seq DESC RETURN d"
+       "FOR d IN testView SEARCH starts_with(d.prefix, '') SORT TFIDF(d), BM25(d), d.seq DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -399,6 +430,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
+
       CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }

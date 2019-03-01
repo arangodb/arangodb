@@ -46,7 +46,7 @@ Reading from Follower
 ---------------------
 
 Followers in the active-failover setup are in a read-only mode. It is possible to read from these
-followers by adding a `X-Arango-Allow-Dirty-Read` header on each request. Responses will then automatically
+followers by adding a `X-Arango-Allow-Dirty-Read: true` header on each request. Responses will then automatically
 contain the `X-Arango-Potential-Dirty-Read` header so that clients can reject accidental dirty reads.
 
 Depending on the driver support for your specific programming language, you should be able to enable this option.

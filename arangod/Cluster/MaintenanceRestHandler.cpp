@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
+#include "Cluster/DBServerAgencySync.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -35,18 +36,14 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-MaintenanceRestHandler::MaintenanceRestHandler(GeneralRequest* request,
-                               GeneralResponse* response)
-    : RestBaseHandler(request, response) {
-
-}
+MaintenanceRestHandler::MaintenanceRestHandler(GeneralRequest* request, GeneralResponse* response)
+    : RestBaseHandler(request, response) {}
 
 RestStatus MaintenanceRestHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
 
-  switch(type) {
-
+  switch (type) {
     // retrieve list of all actions
     case rest::RequestType::GET:
       getAction();
@@ -66,11 +63,10 @@ RestStatus MaintenanceRestHandler::execute() {
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     (int)rest::ResponseCode::METHOD_NOT_ALLOWED);
       break;
-  } // switch
+  }  // switch
 
   return RestStatus::DONE;
 }
-
 
 void MaintenanceRestHandler::putAction() {
   bool good(true);
@@ -80,13 +76,15 @@ void MaintenanceRestHandler::putAction() {
     parameters = _request->payload();
   } catch (VPackException const& ex) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  std::string("expecting a valid JSON object in the request. got: ") + ex.what());
-    good=false;
-  } // catch
+                  std::string(
+                      "expecting a valid JSON object in the request. got: ") +
+                      ex.what());
+    good = false;
+  }  // catch
 
   if (good && _request->payload().isEmptyObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
-    good=false;
+    good = false;
   }
 
   // convert vpack into key/value map
@@ -96,35 +94,37 @@ void MaintenanceRestHandler::putAction() {
     // bad json
     if (!good) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    std::string("unable to parse JSON object into key/value pairs."));
-    } // if
-  } // if
+                    std::string(
+                        "unable to parse JSON object into key/value pairs."));
+    }  // if
+  }    // if
 
   if (good) {
     Result result;
 
     // build the action
-    auto maintenance = ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
+    auto maintenance =
+        ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
     result = maintenance->addAction(_actionDesc);
 
     if (!result.ok()) {
-      // possible errors? TRI_ERROR_BAD_PARAMETER    TRI_ERROR_TASK_DUPLICATE_ID  TRI_ERROR_SHUTTING_DOWN
+      // possible errors? TRI_ERROR_BAD_PARAMETER    TRI_ERROR_TASK_DUPLICATE_ID
+      // TRI_ERROR_SHUTTING_DOWN
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     result.errorMessage());
-    } // if
-  } // if
+    }  // if
+  }    // if
 
-} // MaintenanceRestHandler::putAction
+}  // MaintenanceRestHandler::putAction
 
-
-bool MaintenanceRestHandler::parsePutBody(VPackSlice const & parameters) {
+bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
   bool good(true);
 
   std::map<std::string, std::string> desc;
   auto prop = std::make_shared<VPackBuilder>();
 
   VPackObjectIterator it(parameters, true);
-  for ( ; it.valid() && good; ++it) {
+  for (; it.valid() && good; ++it) {
     VPackSlice key, value;
 
     key = it.key();
@@ -132,36 +132,47 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const & parameters) {
 
     // attempt insert into map ... but needs to be unique
     if (key.isString() && value.isString()) {
-      good = desc.insert(
-        {key.copyString(), value.copyString()}).second;
-    } else if (key.isString() && (key.copyString() == "properties")
-               && value.isObject()) {
+      good = desc.insert({key.copyString(), value.copyString()}).second;
+    } else if (key.isString() && (key.copyString() == "properties") && value.isObject()) {
       // code here
       prop.reset(new VPackBuilder(value));
     } else {
       good = false;
-    } // else
-  } // for
+    }  // else
+  }    // for
 
   _actionDesc = std::make_shared<maintenance::ActionDescription>(desc, prop);
 
   return good;
 
-} // MaintenanceRestHandler::parsePutBody
-
+}  // MaintenanceRestHandler::parsePutBody
 
 void MaintenanceRestHandler::getAction() {
   // build the action
-  auto maintenance = ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
+  auto maintenance =
+      ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
 
-  VPackBuilder registry = maintenance->toVelocyPack();
-  generateResult(rest::ResponseCode::OK, registry.slice());
+  bool found;
+  std::string const& detailsStr = _request->value("details", found);
 
-} // MaintenanceRestHandler::getAction
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder o(&builder);
+    builder.add(VPackValue("registry"));
+    maintenance->toVelocyPack(builder);
+    if (found && StringUtils::boolean(detailsStr)) {
+      builder.add(VPackValue("state"));
+      DBServerAgencySync::getLocalCollections(builder);
+    }
+  }
 
+  generateResult(rest::ResponseCode::OK, builder.slice());
+
+}  // MaintenanceRestHandler::getAction
 
 void MaintenanceRestHandler::deleteAction() {
-  auto maintenance = ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
+  auto maintenance =
+      ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
 
   std::vector<std::string> const& suffixes = _request->suffixes();
 
@@ -183,10 +194,10 @@ void MaintenanceRestHandler::deleteAction() {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                       result.errorMessage());
       }  // if
-    } // else
+    }    // else
 
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
   }
 
-} // MaintenanceRestHandler::deleteAction
+}  // MaintenanceRestHandler::deleteAction

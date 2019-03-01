@@ -24,17 +24,21 @@
 #include "catch.hpp"
 #include "common.h"
 
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "Aql/Ast.h"
+#include "Aql/ExpressionContext.h"
+#include "Aql/Query.h"
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/Helpers.h"
 #include "Utils/OperationOptions.h"
 #include "Transaction/Methods.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -57,8 +61,6 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Aql/Ast.h"
-#include "Aql/Query.h"
 #include "3rdParty/iresearch/tests/tests_config.hpp"
 
 #include "IResearch/VelocyPackHelper.h"
@@ -70,7 +72,7 @@
 
 extern const char* ARGV0; // defined in main.cpp
 
-NS_LOCAL
+namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -139,7 +141,7 @@ struct IResearchQueryStringTermSetup {
         // fake non-deterministic
         arangodb::aql::Function::Flags::CanRunOnDBServer
       ),
-      [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
+      [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
     }});
@@ -154,7 +156,7 @@ struct IResearchQueryStringTermSetup {
         arangodb::aql::Function::Flags::Cacheable,
         arangodb::aql::Function::Flags::CanRunOnDBServer
       ),
-      [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
+      [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
     }});
@@ -193,7 +195,7 @@ struct IResearchQueryStringTermSetup {
   }
 }; // IResearchQuerySetup
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -256,12 +258,12 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
         "\"collection_2\" : { \"includeAllFields\" : true }"
       "}}"
     );
-    CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+    CHECK((view->properties(updateJson->slice(), true).ok()));
 
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->toVelocyPack(builder, true, false);
+    view->properties(builder, true, false);
     builder.close();
 
     auto slice = builder.slice();
@@ -312,7 +314,144 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
     }
 
     CHECK((trx.commit().ok()));
-    view->sync();
+    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").code)); // commit
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 system attributes
+  // -----------------------------------------------------------------------------
+
+  // _rev attribute
+  {
+    auto rev = arangodb::transaction::helpers::extractRevSliceFromDocument(
+      VPackSlice(insertedDocs.front().vpack())
+    );
+    auto const revRef = arangodb::iresearch::getStringRef(rev);
+
+    std::string const query = "FOR d IN testView SEARCH d._rev == '" + static_cast<std::string>(revRef) + "' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
+      { "A", &insertedDocs[0] }
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(
+      vocbase,
+      query
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // _key attribute
+  {
+    auto key = arangodb::transaction::helpers::extractKeyPart(
+      VPackSlice(insertedDocs.front().vpack()).get(arangodb::StaticStrings::KeyString)
+    );
+
+    std::string const query = "FOR d IN testView SEARCH d._key == '" + key.toString() + "' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
+      { "A", &insertedDocs[0] }
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(
+      vocbase,
+      query
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // _id attribute
+  {
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY, EMPTY, EMPTY,
+      arangodb::transaction::Options()
+    );
+
+    auto const id = trx.extractIdString(VPackSlice(insertedDocs.front().vpack()));
+    std::string const query = "FOR d IN testView SEARCH d._id == '" + id + "' RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
+      { "A", &insertedDocs[0] }
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(
+      vocbase,
+      query
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
   }
 
   // -----------------------------------------------------------------------------

@@ -134,7 +134,7 @@ void VstConnection<ST>::tryConnect(unsigned retries) {
       return;
     }
     FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
-    if (retries > 0) {
+    if (retries > 0 && ec != asio_ns::error::operation_aborted) {
       tryConnect(retries - 1);
     } else {
       shutdownConnection(ErrorCondition::CouldNotConnect);
@@ -523,6 +523,13 @@ void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
       default:
         throw std::logic_error("Unknown VST version");
     }
+    
+    if (available < chunk.chunkLength()) { // prevent reading beyond buffer
+      FUERTE_LOG_ERROR << "invalid chunk header";
+      shutdownConnection(ErrorCondition::ProtocolError);
+      return;
+    }
+    
     // move cursors
     cursor += chunk.chunkLength();
     available -= chunk.chunkLength();

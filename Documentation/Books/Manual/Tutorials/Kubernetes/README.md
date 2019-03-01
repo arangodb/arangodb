@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/kube-arangodb.git / docs/Manual/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/kube-arangodb.git / docs/Manual/ -->
 # Start ArangoDB on Kubernetes in 5 minutes
 
 Starting an ArangoDB database (either single server or full blown cluster)
@@ -13,6 +13,20 @@ this process.
 In this guide, we will explain what the ArangoDB Kubernetes Operator is,
 how to install it and how use it to deploy your first ArangoDB database
 in a Kubernetes cluster.
+
+First, you obviously need a Kubernetes cluster and the right credentials
+to access it. If you already have this, you can immediately skip to the
+next section. Since different cloud providers differ slightly in their
+Kubernetes offering, we have put together detailed tutorials for those
+platforms we officially support, follow the link for detailed setup
+instructions:
+
+ - [Amazon Elastic Kubernetes Service (EKS)](EKS.md)
+ - [Google Kubernetes Engine (GKE)](GKE.md)
+ - [Microsoft Azure Kubernetes Service (AKS)](AKS.md)
+
+Note that in particular the details of Role Based Access Control (RBAC)
+matter.
 
 ## What is `kube-arangodb`
 
@@ -38,16 +52,19 @@ For now, any recent Kubernetes cluster will do (e.g. `minikube`).
 Then run (replace `<version>` with the version of the operator that you want to install):
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/<version>/manifests/crd.yaml
+kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/<version>/manifests/arango-crd.yaml
 kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/<version>/manifests/arango-deployment.yaml
-# Optional
+# To use `ArangoLocalStorage`, also run
 kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/<version>/manifests/arango-storage.yaml
+# To use `ArangoDeploymentReplication`, also run
+kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/<version>/manifests/arango-deployment-replication.yaml
 ```
 
 The first command installs two `CustomResourceDefinitions` in your Kubernetes cluster:
 
 - `ArangoDeployment` is the resource used to deploy ArangoDB database.
-- `ArangoLocalStorage` is the resource used to provision `PersistentVolumes` on local storage.
+- `ArangoDeploymentReplication` is the resource used to deploy ArangoDB DC2DC
+  replications.
 
 The second command installs a `Deployment` that runs the operator that controls
 `ArangoDeployment` resources.
@@ -55,7 +72,13 @@ The second command installs a `Deployment` that runs the operator that controls
 The optional third command installs a `Deployment` that runs the operator that
 provides `PersistentVolumes` on local disks of the cluster nodes.
 Use this when running on bare-metal or if there is no provisioner for fast
-storage in your Kubernetes cluster.
+storage in your Kubernetes cluster. Furthermore, this also installs a
+new custom resource definition:
+
+- `ArangoLocalStorage` is the resource used to provision `PersistentVolumes` on local storage.
+
+The optioal fourth command installs a `Deployment` that runs the
+operator that takes care of DC2DC replications.
 
 ## Deploying your first ArangoDB database
 

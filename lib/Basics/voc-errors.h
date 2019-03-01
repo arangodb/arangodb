@@ -660,11 +660,6 @@ constexpr int TRI_ERROR_REPLICATION_NO_START_TICK                               
 /// tick, but that start tick is not present on the logger server anymore.
 constexpr int TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT                      = 1414;
 
-/// 1415: ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT
-/// "the checksum format is wrong"
-///  "Will be raised when the format of the checksum is wrong")
-constexpr int TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT                       = 1415;
-
 /// 1416: ERROR_REPLICATION_WRONG_CHECKSUM
 /// "wrong checksum"
 /// Will be raised when a new born follower submits a wrong checksum
@@ -972,6 +967,12 @@ constexpr int TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN                   
 /// the view ID already exists.
 constexpr int TRI_ERROR_CLUSTER_VIEW_ID_EXISTS                                  = 1498;
 
+/// 1499: ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION
+/// "could not drop collection in plan"
+/// Will be raised when a coordinator in a cluster cannot drop a collection
+/// entry in the Plan hierarchy in the agency.
+constexpr int TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION                       = 1499;
+
 /// 1500: ERROR_QUERY_KILLED
 /// "query killed"
 /// Will be raised when a running query is killed by an explicit admin command.
@@ -1025,9 +1026,9 @@ constexpr int TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN                             
 constexpr int TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED                            = 1521;
 
 /// 1522: ERROR_QUERY_TOO_MANY_COLLECTIONS
-/// "too many collections"
-/// Will be raised when the number of collections in a query is beyond the
-/// allowed value.
+/// "too many collections/shards"
+/// Will be raised when the number of collections or shards in a query is
+/// beyond the allowed value.
 constexpr int TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS                              = 1522;
 
 /// 1530: ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED
@@ -1433,7 +1434,7 @@ constexpr int TRI_ERROR_GRAPH_CREATE_MISSING_NAME                               
 constexpr int TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION                  = 1923;
 
 /// 1924: ERROR_GRAPH_NOT_FOUND
-/// "graph not found"
+/// "graph '%s' not found"
 /// a graph with this name could not be found.
 constexpr int TRI_ERROR_GRAPH_NOT_FOUND                                         = 1924;
 
@@ -1572,6 +1573,36 @@ constexpr int TRI_COMMUNICATOR_REQUEST_ABORTED                                  
 /// "Communication was disabled"
 /// Communication was disabled.
 constexpr int TRI_COMMUNICATOR_DISABLED                                         = 2101;
+
+/// 2200: ERROR_INTERNAL_AQL
+/// "General internal AQL error"
+/// Internal error during AQL execution
+constexpr int TRI_ERROR_INTERNAL_AQL                                            = 2200;
+
+/// 2201: ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS
+/// "An AQL block wrote too few output registers"
+/// An AQL block wrote too few output registers
+constexpr int TRI_ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS                          = 2201;
+
+/// 2202: ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS
+/// "An AQL block wrote too many output registers"
+/// An AQL block wrote too many output registers
+constexpr int TRI_ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS                         = 2202;
+
+/// 2203: ERROR_WROTE_OUTPUT_REGISTER_TWICE
+/// "An AQL block wrote an output register twice"
+/// An AQL block wrote an output register twice
+constexpr int TRI_ERROR_WROTE_OUTPUT_REGISTER_TWICE                             = 2203;
+
+/// 2204: ERROR_WROTE_IN_WRONG_REGISTER
+/// "An AQL block wrote in a register that is not its output"
+/// An AQL block wrote in a register that is not its output
+constexpr int TRI_ERROR_WROTE_IN_WRONG_REGISTER                                 = 2204;
+
+/// 2205: ERROR_INPUT_REGISTERS_NOT_COPIED
+/// "An AQL block did not copy its input registers"
+/// An AQL block did not copy its input registers
+constexpr int TRI_ERROR_INPUT_REGISTERS_NOT_COPIED                              = 2205;
 
 /// 3000: ERROR_MALFORMED_MANIFEST_FILE
 /// "failed to parse manifest file"

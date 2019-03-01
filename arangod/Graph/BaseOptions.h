@@ -38,12 +38,13 @@ struct AstNode;
 class ExecutionPlan;
 class Expression;
 class Query;
-}
+
+}  // namespace aql
 
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace graph {
 
@@ -88,8 +89,7 @@ struct BaseOptions {
   ///        After planning this node should not be copied anywhere.
   explicit BaseOptions(BaseOptions const&);
 
-  BaseOptions(arangodb::aql::Query*, arangodb::velocypack::Slice,
-              arangodb::velocypack::Slice);
+  BaseOptions(arangodb::aql::Query*, arangodb::velocypack::Slice, arangodb::velocypack::Slice);
 
   virtual ~BaseOptions();
 
@@ -110,6 +110,8 @@ struct BaseOptions {
 
   transaction::Methods* trx() const;
 
+  aql::Query* query() const;
+
   TraverserCache* cache() const;
 
   /// @brief Build a velocypack for cloning in the plan.
@@ -124,14 +126,11 @@ struct BaseOptions {
 
   TraverserCache* cache();
 
-  void activateCache(
-      bool enableDocumentCache,
-      std::unordered_map<ServerID, traverser::TraverserEngineID> const*
-          engines);
+  void activateCache(bool enableDocumentCache,
+                     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines);
 
  protected:
-  double costForLookupInfoList(std::vector<LookupInfo> const& list,
-                               size_t& createItems) const;
+  double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;
 
   // Requires an open Object in the given builder an
   // will inject index information into it.
@@ -145,23 +144,21 @@ struct BaseOptions {
 
   aql::Expression* getEdgeExpression(size_t cursorId, bool& needToInjectVertex) const;
 
-  bool evaluateExpression(aql::Expression*,
-                          arangodb::velocypack::Slice varValue) const;
+  bool evaluateExpression(aql::Expression*, arangodb::velocypack::Slice varValue) const;
 
   void injectLookupInfoInList(std::vector<LookupInfo>&, aql::ExecutionPlan* plan,
                               std::string const& collectionName,
-                              std::string const& attributeName,
-                              aql::AstNode* condition);
+                              std::string const& attributeName, aql::AstNode* condition);
 
- private:
-  aql::FixedVarExpressionContext* _ctx;
-
- protected:
-  EdgeCursor* nextCursorLocal(ManagedDocumentResult*, StringRef vid,
+  EdgeCursor* nextCursorLocal(ManagedDocumentResult*, arangodb::velocypack::StringRef vid,
                               std::vector<LookupInfo>&);
+
+  void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
 
  protected:
   aql::Query* _query;
+
+  aql::FixedVarExpressionContext* _ctx;
 
   transaction::Methods* _trx;
 

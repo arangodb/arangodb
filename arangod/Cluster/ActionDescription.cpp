@@ -30,10 +30,9 @@ using namespace arangodb;
 using namespace arangodb::maintenance;
 
 /// @brief ctor
-ActionDescription::ActionDescription(
-  std::map<std::string, std::string> const& d,
-  std::shared_ptr<VPackBuilder> const p) :
-  _description(d), _properties(p) {
+ActionDescription::ActionDescription(std::map<std::string, std::string> const& d,
+                                     std::shared_ptr<VPackBuilder> const& p)
+    : _description(d), _properties(p) {
   TRI_ASSERT(d.find(NAME) != d.end());
   TRI_ASSERT(p == nullptr || p->isEmpty() || p->slice().isObject());
 }
@@ -77,7 +76,7 @@ std::size_t ActionDescription::hash() const {
   return std::hash<std::string>{}(propstr);
 }
 
-std::size_t ActionDescription::hash(std::map<std::string, std::string> const &desc) {
+std::size_t ActionDescription::hash(std::map<std::string, std::string> const& desc) {
   std::string propstr;
   for (auto const& i : desc) {
     propstr += i.first + i.second;
@@ -86,9 +85,8 @@ std::size_t ActionDescription::hash(std::map<std::string, std::string> const &de
 }
 
 /// @brief Equality operator
-bool ActionDescription::operator==(
-  ActionDescription const& other) const {
-  return _description== other._description;
+bool ActionDescription::operator==(ActionDescription const& other) const {
+  return _description == other._description;
 }
 
 /// @brief Get action name. Cannot throw. See constructor
@@ -101,11 +99,12 @@ std::string const& ActionDescription::name() const {
 /// @brief summary to velocypack
 VPackBuilder ActionDescription::toVelocyPack() const {
   VPackBuilder b;
-  { VPackObjectBuilder bb(&b);
-    toVelocyPack(b);  }
+  {
+    VPackObjectBuilder bb(&b);
+    toVelocyPack(b);
+  }
   return b;
 }
-
 
 /// @brief summary to velocypack
 void ActionDescription::toVelocyPack(VPackBuilder& b) const {
@@ -118,30 +117,24 @@ void ActionDescription::toVelocyPack(VPackBuilder& b) const {
   }
 }
 
-
 /// @brief summary to JSON string
 std::string ActionDescription::toJson() const {
   return toVelocyPack().toJson();
 }
-
 
 /// @brief non discrimantory properties.
 std::shared_ptr<VPackBuilder> const ActionDescription::properties() const {
   return _properties;
 }
 
-
 /// @brief hash implementation for ActionRegistry
 namespace std {
-std::size_t hash<ActionDescription>::operator()(
-  ActionDescription const& a) const noexcept {
+std::size_t hash<ActionDescription>::operator()(ActionDescription const& a) const noexcept {
   return a.hash();
 }
 
-ostream& operator<< (
-  ostream& out, arangodb::maintenance::ActionDescription const& d) {
+ostream& operator<<(ostream& out, arangodb::maintenance::ActionDescription const& d) {
   out << d.toJson();
   return out;
 }
-}
-
+}  // namespace std

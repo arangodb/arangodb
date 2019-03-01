@@ -47,23 +47,23 @@ NS_END
 
 TEST(directory_reader_test, open_empty_directory) {
   irs::memory_directory dir;
-  irs::version10::format codec;
-  iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
+  auto codec = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec);
 
   /* no index */
-  ASSERT_THROW(irs::directory_reader::open(dir, codec_ptr), irs::index_not_found);
+  ASSERT_THROW(irs::directory_reader::open(dir, codec), irs::index_not_found);
 }
 
 TEST(directory_reader_test, open_empty_index) {
   irs::memory_directory dir;
-  irs::version10::format codec;
-  iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
+  auto codec = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec);
 
   /* create empty index */
-  irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE)->commit();
+  irs::index_writer::make(dir, codec, irs::OM_CREATE)->commit();
 
   /* open reader */
-  auto rdr = irs::directory_reader::open(dir, codec_ptr);
+  auto rdr = irs::directory_reader::open(dir, codec);
   ASSERT_FALSE(!rdr);
   ASSERT_EQ(0, rdr.docs_count());
   ASSERT_EQ(0, rdr.live_docs_count());
@@ -168,8 +168,8 @@ TEST(directory_reader_test, open) {
   tests::document const* doc9 = gen.next(); 
 
   irs::memory_directory dir;
-  irs::version10::format codec;
-  iresearch::format::ptr codec_ptr(&codec, [](iresearch::format*)->void{});
+  auto codec_ptr = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec_ptr);
 
   // create index
   {
@@ -228,6 +228,8 @@ TEST(directory_reader_test, open) {
   ASSERT_EQ(9, rdr.docs_count());
   ASSERT_EQ(9, rdr.live_docs_count());  
   ASSERT_EQ(3, rdr.size());
+  ASSERT_EQ("segments_3", rdr.meta().filename);
+  ASSERT_EQ(rdr.size(), rdr.meta().meta.size());
 
   // check subreaders
   auto sub = rdr.begin();
@@ -314,20 +316,23 @@ TEST(directory_reader_test, open) {
 // ----------------------------------------------------------------------------
 
 TEST(segment_reader_test, segment_reader_has) {
-  irs::version10::format codec;
+  auto codec = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec);
+
+  std::string filename;
 
   // has none (default)
   {
     irs::memory_directory dir;
-    auto writer = codec.get_segment_meta_writer();
-    auto reader = codec.get_segment_meta_reader();
+    auto writer = codec->get_segment_meta_writer();
+    auto reader = codec->get_segment_meta_reader();
     irs::segment_meta expected;
 
-    writer->write(dir, expected);
+    writer->write(dir, filename, expected);
 
     irs::segment_meta meta;
 
-    reader->read(dir, meta, writer->filename(expected));
+    reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
     ASSERT_FALSE(irs::segment_reader::has<irs::columnstore_reader>(meta));
@@ -337,16 +342,16 @@ TEST(segment_reader_test, segment_reader_has) {
   // has column store
   {
     irs::memory_directory dir;
-    auto writer = codec.get_segment_meta_writer();
-    auto reader = codec.get_segment_meta_reader();
+    auto writer = codec->get_segment_meta_writer();
+    auto reader = codec->get_segment_meta_reader();
     irs::segment_meta expected;
 
     expected.column_store = true;
-    writer->write(dir, expected);
+    writer->write(dir, filename, expected);
 
     irs::segment_meta meta;
 
-    reader->read(dir, meta, writer->filename(expected));
+    reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
     ASSERT_TRUE(irs::segment_reader::has<irs::columnstore_reader>(meta));
@@ -356,20 +361,20 @@ TEST(segment_reader_test, segment_reader_has) {
   // has document mask
   {
     irs::memory_directory dir;
-    auto writer = codec.get_segment_meta_writer();
-    auto reader = codec.get_segment_meta_reader();
-    auto docs_mask_writer = codec.get_document_mask_writer();
+    auto writer = codec->get_segment_meta_writer();
+    auto reader = codec->get_segment_meta_reader();
+    auto docs_mask_writer = codec->get_document_mask_writer();
     irs::segment_meta expected;
 
-    expected.version = 1; // version > 0 implies document_mask
-    docs_mask_writer->prepare(dir, expected);
-    docs_mask_writer->begin(0);
-    docs_mask_writer->end();
-    writer->write(dir, expected);
+    expected.docs_count = 43;
+    expected.live_docs_count = 42;
+    expected.version = 0;
+    docs_mask_writer->write(dir, expected, {0});
+    writer->write(dir, filename, expected);
 
     irs::segment_meta meta;
 
-    reader->read(dir, meta, writer->filename(expected));
+    reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
     ASSERT_FALSE(irs::segment_reader::has<irs::columnstore_reader>(meta));
@@ -379,21 +384,21 @@ TEST(segment_reader_test, segment_reader_has) {
   // has all
   {
     irs::memory_directory dir;
-    auto writer = codec.get_segment_meta_writer();
-    auto reader = codec.get_segment_meta_reader();
-    auto docs_mask_writer = codec.get_document_mask_writer();
+    auto writer = codec->get_segment_meta_writer();
+    auto reader = codec->get_segment_meta_reader();
+    auto docs_mask_writer = codec->get_document_mask_writer();
     irs::segment_meta expected;
 
+    expected.docs_count = 43;
+    expected.live_docs_count = 42;
     expected.column_store = true;
-    expected.version = 1; // version > 0 implies document_mask
-    docs_mask_writer->prepare(dir, expected);
-    docs_mask_writer->begin(0);
-    docs_mask_writer->end();
-    writer->write(dir, expected);
+    expected.version = 1;
+    docs_mask_writer->write(dir, expected, {0});
+    writer->write(dir, filename, expected);
 
     irs::segment_meta meta;
 
-    reader->read(dir, meta, writer->filename(expected));
+    reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
     ASSERT_TRUE(irs::segment_reader::has<irs::columnstore_reader>(meta));
@@ -403,8 +408,8 @@ TEST(segment_reader_test, segment_reader_has) {
 
 TEST(segment_reader_test, open_invalid_segment) {
   irs::memory_directory dir;
-  irs::version10::format codec;
-  irs::format::ptr codec_ptr(&codec, [](irs::format*)->void{});
+  auto codec_ptr = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec_ptr);
 
   /* open invalid segment */
   {
@@ -412,7 +417,7 @@ TEST(segment_reader_test, open_invalid_segment) {
     meta.codec = codec_ptr;
     meta.name = "invalid_segment_name";
 
-    ASSERT_THROW(irs::segment_reader::open(dir, meta), irs::detailed_io_error);
+    ASSERT_THROW(irs::segment_reader::open(dir, meta), irs::io_error);
   }
 }
 
@@ -431,8 +436,8 @@ TEST(segment_reader_test, open) {
   tests::document const* doc9 = gen.next(); 
 
   irs::memory_directory dir;
-  irs::version10::format codec;
-  irs::format::ptr codec_ptr(&codec, [](irs::format*)->void{});
+  auto codec_ptr = irs::formats::get("1_0");
+  ASSERT_NE(nullptr, codec_ptr);
   {
     // open writer
     auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);

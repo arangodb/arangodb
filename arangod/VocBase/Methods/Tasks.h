@@ -34,7 +34,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/asio_ns.h"
+#include "Scheduler/Scheduler.h"
 
 struct TRI_vocbase_t;
 
@@ -45,10 +45,8 @@ class ExecContext;
 
 class Task : public std::enable_shared_from_this<Task> {
  public:
-  static std::shared_ptr<Task> createTask(std::string const& id,
-                                          std::string const& name,
-                                          TRI_vocbase_t*,
-                                          std::string const& command,
+  static std::shared_ptr<Task> createTask(std::string const& id, std::string const& name,
+                                          TRI_vocbase_t*, std::string const& command,
                                           bool allowUseDatabase, int& ec);
 
   static int unregisterTask(std::string const& id, bool cancel);
@@ -85,7 +83,7 @@ class Task : public std::enable_shared_from_this<Task> {
   void toVelocyPack(velocypack::Builder&) const;
   void work(ExecContext const*);
   void queue(std::chrono::microseconds offset);
-  std::function<void(asio::error_code const&)> callbackFunction();
+  std::function<void(bool cancelled)> callbackFunction();
   std::string const& name() const { return _name; }
 
  private:
@@ -94,7 +92,8 @@ class Task : public std::enable_shared_from_this<Task> {
   double const _created;
   std::string _user;
 
-  std::unique_ptr<asio::steady_timer> _timer;
+  Scheduler::WorkHandle _taskHandle;
+  Mutex _taskHandleMutex;
 
   // guard to make sure the database is not dropped while used by us
   std::unique_ptr<DatabaseGuard> _dbGuard;
@@ -105,7 +104,7 @@ class Task : public std::enable_shared_from_this<Task> {
 
   std::chrono::microseconds _offset;
   std::chrono::microseconds _interval;
-  bool _periodic = false;
+  std::atomic<bool> _periodic{false};
 };
 
 }  // namespace arangodb

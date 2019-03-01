@@ -25,65 +25,127 @@
 #ifndef ARANGOD_SCHEDULER_SCHEDULER_H
 #define ARANGOD_SCHEDULER_SCHEDULER_H 1
 
-#include "Basics/Common.h"
+#include <condition_variable>
+#include <mutex>
+#include <queue>
 
-#include <boost/lockfree/queue.hpp>
-
-#include "Basics/Mutex.h"
-#include "Basics/asio_ns.h"
-#include "Basics/socket-utils.h"
-#include "Endpoint/Endpoint.h"
 #include "GeneralServer/RequestLane.h"
+#include "Logger/Logger.h"
 
 namespace arangodb {
-class JobGuard;
-class ListenTask;
 
 namespace velocypack {
 class Builder;
 }
 
-namespace rest {
-class GeneralCommTask;
-class SocketTask;
+class Scheduler;
+class SchedulerThread;
+class SchedulerCronThread;
 
 class Scheduler {
-  Scheduler(Scheduler const&) = delete;
-  Scheduler& operator=(Scheduler const&) = delete;
-
-  friend class arangodb::JobGuard;
-  friend class arangodb::rest::GeneralCommTask;
-  friend class arangodb::rest::SocketTask;
-  friend class arangodb::ListenTask;
-
  public:
-  Scheduler(uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
-            uint64_t fifo1Size, uint64_t fifo2Size);
+  explicit Scheduler();
   virtual ~Scheduler();
 
-  // queue handling:
-  //
-  // The Scheduler queue is an `io_context` that is server by a number
-  // of SchedulerThreads. Jobs can be posted to the `io_context` using
-  // the function `post`. A job in the Scheduler queue can be queues,
-  // i.e. the executing has not yet been started, or running, i.e.
-  // the executing has already been started.
-  //
-  // `numRunning` returns the number of running threads that are
-  // currently serving the `io_context`.
-  //
-  // `numQueued` returns the number of jobs queued in the io_context
-  // that are not yet worked on.
-  //
-  // `numWorking`returns the number of jobs currently worked on.
-  //
-  // The scheduler also has a number of FIFO where it stores jobs in
-  // case that the there are too many jobs in Scheduler queue. The
-  // function `queue` will handle the queuing. Depending on the fifos
-  // and the number of queues jobs it will either queue the job
-  // directly in the Scheduler queue or move it to the corresponding
-  // FIFO.
+  // ---------------------------------------------------------------------------
+  // Scheduling and Task Queuing - the relevant stuff
+  // ---------------------------------------------------------------------------
+ public:
+  class WorkItem;
+  typedef std::chrono::steady_clock clock;
+  typedef std::shared_ptr<WorkItem> WorkHandle;
 
+  // Enqueues a task - this is implemented on the specific scheduler
+  virtual bool queue(RequestLane lane, std::function<void()>) = 0;
+
+  // Enqueues a task after delay - this uses the queue functions above.
+  // WorkHandle is a shared_ptr to a WorkItem. If all references the WorkItem
+  // are dropped, the task is canceled.
+  virtual WorkHandle queueDelay(RequestLane lane, clock::duration delay,
+                                std::function<void(bool canceled)> handler);
+
+  class WorkItem {
+   public:
+    virtual ~WorkItem() { cancel(); };
+
+    // Cancels the WorkItem
+    void cancel() { executeWithCancel(true); }
+
+    // Runs the WorkItem immediately
+    void run() { executeWithCancel(false); }
+
+    explicit WorkItem(std::function<void(bool canceled)>&& handler,
+                      RequestLane lane, Scheduler* scheduler)
+        : _handler(std::move(handler)), _lane(lane), _disable(false), _scheduler(scheduler){};
+
+   private:
+    // This is not copyable or movable
+    WorkItem(WorkItem const&) = delete;
+    WorkItem(WorkItem&&) = delete;
+    void operator=(WorkItem const&) const = delete;
+
+    inline void executeWithCancel(bool arg) {
+      bool disabled = _disable.exchange(true);
+      // If exchange returns false, the item was not yet scheduled.
+      // Hence we are the first dealing with this WorkItem
+      if (disabled == false) {
+        // The following code moves the _handler into the Scheduler.
+        // Thus any reference to class to self in the _handler will be released
+        // as soon as the scheduler executed the _handler lambda.
+        _scheduler->queue(_lane, [handler = std::move(_handler), arg]() {
+          handler(arg);
+        });
+      }
+    }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    bool isDisabled() { return _disable.load(); }
+    friend class Scheduler;
+#endif
+
+   private:
+    std::function<void(bool)> _handler;
+    RequestLane _lane;
+    std::atomic<bool> _disable;
+    Scheduler* _scheduler;
+  };
+
+  // ---------------------------------------------------------------------------
+  // CronThread and delayed tasks
+  // ---------------------------------------------------------------------------
+ private:
+  // The priority queue is managed by a CronThread. It wakes up on a regular basis (10ms currently)
+  // and looks at queue.top(). It the _expire time is smaller than now() and the task is not canceled
+  // it is posted on the scheduler. The next sleep time is computed depending on queue top.
+  //
+  // Note that tasks that have a delay of less than 1ms are posted directly.
+  // For tasks above 50ms the CronThread is woken up to potentially update its sleep time, which
+  // could now be shorter than before.
+
+  // Entry point for the CronThread
+  void runCronThread();
+  friend class SchedulerCronThread;
+
+  // Removed all tasks from the priority queue and cancels them
+  void cancelAllCronTasks();
+
+  typedef std::pair<clock::time_point, std::weak_ptr<WorkItem>> CronWorkItem;
+
+  struct CronWorkItemCompare {
+    bool operator()(CronWorkItem const& left, CronWorkItem const& right) {
+      // Reverse order, because std::priority_queue is a max heap.
+      return right.first < left.first;
+    }
+  };
+
+  std::priority_queue<CronWorkItem, std::vector<CronWorkItem>, CronWorkItemCompare> _cronQueue;
+
+  std::mutex _cronQueueMutex;
+  std::condition_variable _croncv;
+  std::unique_ptr<SchedulerCronThread> _cronThread;
+
+  // ---------------------------------------------------------------------------
+  // Statistics stuff
+  // ---------------------------------------------------------------------------
  public:
   struct QueueStatistics {
     uint64_t _running;
@@ -91,229 +153,32 @@ class Scheduler {
     uint64_t _queued;
     uint64_t _fifo1;
     uint64_t _fifo2;
-    uint64_t _fifo8;
-    uint64_t _queuedV8;
+    uint64_t _fifo3;
   };
 
-  void post(std::function<void()> const callback, bool isV8,
-            uint64_t timeout = 0);
-  void post(asio_ns::io_context::strand&, std::function<void()> const callback);
+  virtual void addQueueStatistics(velocypack::Builder&) const = 0;
+  virtual QueueStatistics queueStatistics() const = 0;
+  virtual std::string infoStatus() const = 0;
 
-  bool queue(RequestPriority prio, std::function<void()> const&);
-  void drain();
-
-  void addQueueStatistics(velocypack::Builder&) const;
-  QueueStatistics queueStatistics() const;
-  std::string infoStatus();
-
-  bool isRunning() const { return numRunning(_counters) > 0; }
-  bool isStopping() const noexcept { return (_counters & (1ULL << 63)) != 0; }
-
- private:
-  inline void setStopping() noexcept { _counters |= (1ULL << 63); }
-
-  inline bool isStopping(uint64_t value) const noexcept {
-    return (value & (1ULL << 63)) != 0;
-  }
-
-  bool canPostDirectly() const noexcept;
-
-  static uint64_t numRunning(uint64_t value) noexcept {
-    return value & 0xFFFFULL;
-  }
-
-  inline void incRunning() noexcept { _counters += 1ULL << 0; }
-
-  inline void decRunning() noexcept {
-    TRI_ASSERT((_counters & 0xFFFFUL) > 0);
-    _counters -= 1ULL << 0;
-  }
-
-  static uint64_t numQueued(uint64_t value) noexcept {
-    return (value >> 32) & 0xFFFFULL;
-  }
-
-  inline void incQueued() noexcept { _counters += 1ULL << 32; }
-
-  inline void decQueued() noexcept {
-    TRI_ASSERT(((_counters & 0XFFFF00000000UL) >> 32) > 0);
-    _counters -= 1ULL << 32;
-  }
-
-  static uint64_t numWorking(uint64_t value) noexcept {
-    return (value >> 16) & 0xFFFFULL;
-  }
-
-  inline void incWorking() noexcept { _counters += 1ULL << 16; }
-
-  inline void decWorking() noexcept {
-    TRI_ASSERT(((_counters & 0XFFFF0000UL) >> 16) > 0);
-    _counters -= 1ULL << 16;
-  }
-
-  std::atomic<int64_t> _queuedV8;
-  int64_t const _maxQueuedV8;
-
-  // maximal number of running + queued jobs in the Scheduler `io_context`
-  uint64_t const _maxQueueSize;
-
-  // we store most of the threads status info in a single atomic uint64_t
-  // the encoding of the values inside this variable is (left to right means
-  // high to low bytes):
-  //
-  //   AA BB CC DD
-  //
-  // we use the lowest 2 bytes (DD) to store the number of running threads
-  //
-  // the next lowest bytes (CC) are used to store the number of currently
-  // working threads
-  //
-  // the next bytes (BB) are used to store the number of currently blocked
-  // threads
-  //
-  // the highest bytes (AA) are used only to encode a stopping bit. when this
-  // bit is set, the scheduler is stopping (or already stopped)
-
-  std::atomic<uint64_t> _counters;
-
-  inline uint64_t getCounters() const noexcept { return _counters; }
-
-  // the fifos will collect the outstand requests in case the Scheduler
-  // queue is full
-
-  struct FifoJob {
-    FifoJob(std::function<void()> const& callback, bool isV8)
-        : _isV8(isV8), _callback(callback) {}
-    bool const _isV8;
-    std::function<void()> _callback;
-  };
-
-  bool pushToFifo(int64_t fifo, std::function<void()> const& callback,
-                  bool isV8);
-  bool popFifo(int64_t fifo);
-
-  static constexpr int64_t NUMBER_FIFOS = 3;
-  static constexpr int64_t FIFO1 = 0;
-  static constexpr int64_t FIFO2 = 1;
-  static constexpr int64_t FIFO8 = 2;
-
-  uint64_t const _maxFifoSize[NUMBER_FIFOS];
-  std::atomic<int64_t> _fifoSize[NUMBER_FIFOS];
-
-  boost::lockfree::queue<FifoJob*> _fifo1;
-  boost::lockfree::queue<FifoJob*> _fifo2;
-  boost::lockfree::queue<FifoJob*> _fifo8;
-  boost::lockfree::queue<FifoJob*>* _fifos[NUMBER_FIFOS];
-
-  // the following methds create tasks in the `io_context`.
-  // The `io_context` itself is not exposed because everything
-  // should use the method `post` of the Scheduler.
-
+  // ---------------------------------------------------------------------------
+  // Start/Stop/IsRunning stuff
+  // ---------------------------------------------------------------------------
  public:
-  template <typename T>
-  asio_ns::deadline_timer* newDeadlineTimer(T timeout) {
-    return new asio_ns::deadline_timer(*_ioContext, timeout);
-  }
+  virtual bool start();
+  virtual void shutdown();
 
-  asio_ns::steady_timer* newSteadyTimer() {
-    return new asio_ns::steady_timer(*_ioContext);
-  }
-
-  asio_ns::io_context::strand* newStrand() {
-    return new asio_ns::io_context::strand(*_ioContext);
-  }
-
-  asio_ns::ip::tcp::acceptor* newAcceptor() {
-    return new asio_ns::ip::tcp::acceptor(*_ioContext);
-  }
-
-#ifndef _WIN32
-  asio_ns::local::stream_protocol::acceptor* newDomainAcceptor() {
-    return new asio_ns::local::stream_protocol::acceptor(*_ioContext);
-  }
-#endif
-
-  asio_ns::ip::tcp::socket* newSocket() {
-    return new asio_ns::ip::tcp::socket(*_ioContext);
-  }
-
-#ifndef _WIN32
-  asio_ns::local::stream_protocol::socket* newDomainSocket() {
-    return new asio_ns::local::stream_protocol::socket(*_ioContext);
-  }
-#endif
-
-  asio_ns::ssl::stream<asio_ns::ip::tcp::socket>* newSslSocket(
-      asio_ns::ssl::context& context) {
-    return new asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(*_ioContext,
-                                                              context);
-  }
-
-  asio_ns::ip::tcp::resolver* newResolver() {
-    return new asio_ns::ip::tcp::resolver(*_ioContext);
-  }
-
-  asio_ns::signal_set* newSignalSet() {
-    return new asio_ns::signal_set(*_managerContext);
-  }
+ protected:
+  // You wondering why Scheduler::isStopping() no longer works for you?
+  // Go away and use `application_features::ApplicationServer::isStopping()`
+  // It is made for people that want to know if the should stop doing things.
+  virtual bool isStopping() = 0;
 
  private:
-  static void initializeSignalHandlers();
-
-  // `start`will start the Scheduler threads
-  // `stopRebalancer` will stop the rebalancer thread
-  // `beginShutdown` will begin to shut down the Scheduler threads
-  // `shutdown` will shutdown the Scheduler threads
-
- public:
-  bool start();
-  void beginShutdown();
-  void shutdown();
-
- private:
-  void startIoService();
-  void startManagerThread();
-  void startRebalancer();
-
- public:
-  void stopRebalancer() noexcept;
-
- private:
-  std::shared_ptr<asio_ns::io_context::work> _serviceGuard;
-  std::unique_ptr<asio_ns::io_context> _ioContext;
-
-  std::shared_ptr<asio_ns::io_context::work> _managerGuard;
-  std::unique_ptr<asio_ns::io_context> _managerContext;
-
-  std::unique_ptr<asio_ns::steady_timer> _threadManager;
-  std::function<void(const asio_ns::error_code&)> _threadHandler;
-
-  // There will never be less than `_minThread` Scheduler threads.
-  // There will never be more than `_maxThread` Scheduler threads.
-
- private:
-  void rebalanceThreads();
-
- public:
-  // decrements the nrRunning counter for the thread
-  void threadHasStopped();
-
-  // check if the current thread should be stopped returns true if
-  // yes, otherwise false. when the function returns true, it has
-  // already decremented the nrRunning counter!
-  bool threadShouldStop(double now);
-
- private:
-  void startNewThread();
-
- private:
-  uint64_t const _minThreads;
-  uint64_t const _maxThreads;
-
-  mutable Mutex _threadCreateLock;
-  double _lastAllBusyStamp;
+  Scheduler(Scheduler const&) = delete;
+  Scheduler(Scheduler&&) = delete;
+  void operator=(Scheduler const&) = delete;
 };
-}  // namespace rest
+
 }  // namespace arangodb
 
 #endif

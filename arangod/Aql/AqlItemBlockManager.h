@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H
 #define ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H 1
 
-#include "Basics/Common.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
 
 #include <array>
 
@@ -41,11 +41,11 @@ class AqlItemBlockManager {
   explicit AqlItemBlockManager(ResourceMonitor*);
 
   /// @brief destroy the manager
-  ~AqlItemBlockManager();
+  TEST_VIRTUAL ~AqlItemBlockManager();
 
  public:
   /// @brief request a block with the specified size
-  AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
+  TEST_VIRTUAL AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
 
   /// @brief return a block to the manager
   void returnBlock(AqlItemBlock*& block) noexcept;
@@ -60,24 +60,20 @@ class AqlItemBlockManager {
 
  private:
   ResourceMonitor* _resourceMonitor;
-    
+
   static constexpr size_t numBuckets = 12;
   static constexpr size_t numBlocksPerBucket = 7;
 
   struct Bucket {
     std::array<AqlItemBlock*, numBlocksPerBucket> blocks;
     size_t numItems;
-    
+
     Bucket();
-    ~Bucket(); 
+    ~Bucket();
 
-    bool empty() const noexcept { 
-      return numItems == 0; 
-    }
+    bool empty() const noexcept { return numItems == 0; }
 
-    bool full() const noexcept {
-      return (numItems == numBlocksPerBucket);
-    }
+    bool full() const noexcept { return (numItems == numBlocksPerBucket); }
 
     AqlItemBlock* pop() noexcept {
       TRI_ASSERT(!empty());
@@ -136,7 +132,7 @@ class AqlItemBlockManager {
   Bucket _buckets[numBuckets];
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

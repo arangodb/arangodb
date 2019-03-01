@@ -41,20 +41,21 @@ namespace maintenance {
 class Action;
 
 class ActionBase {
-
  public:
-  ActionBase (MaintenanceFeature&, ActionDescription const&);
+  ActionBase(MaintenanceFeature&, ActionDescription const&);
 
-  ActionBase (MaintenanceFeature&, ActionDescription&&);
+  ActionBase(MaintenanceFeature&, ActionDescription&&);
 
   ActionBase() = delete;
+
+  ActionBase(ActionBase const&) = delete;
+  ActionBase& operator=(ActionBase const&) = delete;
 
   virtual ~ActionBase();
 
   //
   // MaintenanceWork entry points
   //
-
 
   /// @brief initial call to object to perform a unit of work.
   ///   really short tasks could do all work here and return false
@@ -65,19 +66,18 @@ class ActionBase {
   /// @return true to continue processing, false done (result() set)
   virtual bool next() { return false; }
 
-  /// @brief execution finished successfully or failed ... and race timer expired
+  /// @brief execution finished successfully or failed ... and race timer
+  /// expired
   virtual bool done() const;
 
   /// @brief waiting for a worker to grab it and go!
-  bool runable() const {return READY==_state;}
+  bool runable() const { return READY == _state; }
 
   /// @brief did initialization have issues?
-  bool ok() const {return FAILED!=_state;}
+  bool ok() const { return FAILED != _state; }
 
   /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
-  ActionState state() const {
-    return _state;
-  }
+  ActionState state() const { return _state; }
 
   bool fastTrack() const;
 
@@ -96,14 +96,10 @@ class ActionBase {
   VPackSlice const properties() const;
 
   /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
-  ActionState getState() const {
-    return _state;
-  }
+  ActionState getState() const;
 
   /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
-  void setState(ActionState state) {
-    _state = state;
-  }
+  virtual void setState(ActionState state);
 
   /// @brief update incremental statistics
   void startStats();
@@ -115,10 +111,10 @@ class ActionBase {
   void endStats();
 
   /// @brief return progress statistic
-  uint64_t getProgress() const {return _progress.load();}
+  uint64_t getProgress() const { return _progress.load(); }
 
   /// @brief Once PreAction completes, remove its pointer
-  void clearPreAction() {_preAction.reset();}
+  void clearPreAction() { _preAction.reset(); }
 
   /// @brief Retrieve pointer to action that should run before this one
   std::shared_ptr<Action> getPreAction();
@@ -133,8 +129,8 @@ class ActionBase {
   std::shared_ptr<Action> getPostAction();
 
   /// @brief Save pointer to successor action
-  void setPostAction(std::shared_ptr<ActionDescription> &post) {
-    _postAction=post;
+  void setPostAction(std::shared_ptr<ActionDescription>& post) {
+    _postAction = post;
   }
 
   /// @brief hash value of ActionDescription
@@ -143,14 +139,14 @@ class ActionBase {
 
   /// @brief hash value of ActionDescription
   /// @return uint64_t hash
-  uint64_t hash() const {return _hash;}
+  uint64_t hash() const { return _hash; }
 
   /// @brief hash value of ActionDescription
   /// @return uint64_t hash
-  uint64_t id() const {return _id;}
+  uint64_t id() const { return _id; }
 
   /// @brief add VPackObject to supplied builder with info about this action
-  virtual void toVelocyPack(VPackBuilder & builder) const;
+  virtual void toVelocyPack(VPackBuilder& builder) const;
 
   /// @brief add VPackObject to supplied builder with info about this action
   VPackBuilder toVelocyPack() const;
@@ -160,31 +156,34 @@ class ActionBase {
   //  virtual Result toJson(/* builder */) {return Result;}
 
   /// @brief Return Result object contain action specific status
-  Result result() const {return _result;}
+  Result result() const { return _result; }
 
   /// @brief When object was constructed
-  std::chrono::system_clock::time_point getCreateTime() const
-    {return std::chrono::system_clock::time_point() + _actionCreated.load(); }
+  std::chrono::system_clock::time_point getCreateTime() const {
+    return std::chrono::system_clock::time_point() + _actionCreated.load();
+  }
 
   /// @brief When object was first started
-  std::chrono::system_clock::time_point getStartTime() const
-    {return std::chrono::system_clock::time_point() + _actionStarted.load(); }
+  std::chrono::system_clock::time_point getStartTime() const {
+    return std::chrono::system_clock::time_point() + _actionStarted.load();
+  }
 
   /// @brief When object most recently iterated
-  std::chrono::system_clock::time_point getLastStatTime() const
-    {return std::chrono::system_clock::time_point() + _actionLastStat.load(); }
+  std::chrono::system_clock::time_point getLastStatTime() const {
+    return std::chrono::system_clock::time_point() + _actionLastStat.load();
+  }
 
   /// @brief When object finished executing
-  std::chrono::system_clock::time_point getDoneTime() const
-    {return std::chrono::system_clock::time_point() + _actionDone.load(); }
+  std::chrono::system_clock::time_point getDoneTime() const {
+    return std::chrono::system_clock::time_point() + _actionDone.load();
+  }
 
   /// @brief check if worker lables match ours
   bool matches(std::unordered_set<std::string> const& options) const;
-  
-  std::string const static FAST_TRACK; 
 
-protected:
+  std::string const static FAST_TRACK;
 
+ protected:
   /// @brief common initialization for all constructors
   void init();
 
@@ -202,7 +201,8 @@ protected:
 
   std::atomic<ActionState> _state;
 
-  // NOTE: preAction should only be set within first() or post(), not construction
+  // NOTE: preAction should only be set within first() or post(), not
+  // construction
   std::shared_ptr<ActionDescription> _preAction;
   std::shared_ptr<ActionDescription> _postAction;
 
@@ -214,21 +214,19 @@ protected:
   std::atomic<std::chrono::system_clock::duration> _actionDone;
 
   std::atomic<uint64_t> _progress;
-  
-  Result _result;
-  
-}; // class ActionBase
 
-} // namespace maintenance
+  Result _result;
+
+};  // class ActionBase
+
+}  // namespace maintenance
 
 Result actionError(int errorCode, std::string const& errorMessage);
 Result actionWarn(int errorCode, std::string const& errorMessage);
 
-} // namespace arangodb
-
+}  // namespace arangodb
 
 namespace std {
-ostream& operator<< (
-  ostream& o, arangodb::maintenance::ActionBase const& d);
+ostream& operator<<(ostream& o, arangodb::maintenance::ActionBase const& d);
 }
 #endif

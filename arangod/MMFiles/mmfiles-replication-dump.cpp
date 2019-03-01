@@ -22,21 +22,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "mmfiles-replication-dump.h"
-#include "mmfiles-replication-common.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesLogfileManager.h" 
 #include "MMFiles/MMFilesCompactionLocker.h"
 #include "MMFiles/MMFilesDitch.h"
+#include "MMFiles/MMFilesLogfileManager.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+#include "mmfiles-replication-common.h"
 
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -68,8 +68,7 @@ static void Append(MMFilesReplicationDumpContext* dump, std::string const& value
 }
 
 /// @brief translate a (local) collection id into a collection name
-static std::string const& nameFromCid(MMFilesReplicationDumpContext* dump,
-                                      TRI_voc_cid_t cid) {
+static std::string const& nameFromCid(MMFilesReplicationDumpContext* dump, TRI_voc_cid_t cid) {
   auto it = dump->_collectionNames.find(cid);
 
   if (it != dump->_collectionNames.end()) {
@@ -98,11 +97,9 @@ static std::string const& nameFromCid(MMFilesReplicationDumpContext* dump,
 
 /// @brief stringify a raw marker from a logfile for a log dump or logger
 /// follow command
-static int StringifyMarker(MMFilesReplicationDumpContext* dump,
-                           TRI_voc_tick_t databaseId,
-                           TRI_voc_cid_t collectionId,
-                           MMFilesMarker const* marker, bool isDump,
-                           bool withTicks, bool isEdgeCollection) {
+static int StringifyMarker(MMFilesReplicationDumpContext* dump, TRI_voc_tick_t databaseId,
+                           TRI_voc_cid_t collectionId, MMFilesMarker const* marker,
+                           bool isDump, bool withTicks, bool isEdgeCollection) {
   TRI_ASSERT(MustReplicateWalMarkerType(marker, false));
   MMFilesMarkerType const type = marker->getType();
 
@@ -116,8 +113,7 @@ static int StringifyMarker(MMFilesReplicationDumpContext* dump,
     // Append(dump, "\",\"typeName\":\"");
     // Append(dump, TRI_NameMarkerDatafile(marker));
 
-    if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
-        type == TRI_DF_MARKER_VPACK_REMOVE ||
+    if (type == TRI_DF_MARKER_VPACK_DOCUMENT || type == TRI_DF_MARKER_VPACK_REMOVE ||
         type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
         type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
         type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
@@ -172,16 +168,15 @@ static int StringifyMarker(MMFilesReplicationDumpContext* dump,
     case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
     case TRI_DF_MARKER_VPACK_DROP_DATABASE:
     case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
-    case TRI_DF_MARKER_VPACK_DROP_INDEX: 
+    case TRI_DF_MARKER_VPACK_DROP_INDEX:
     case TRI_DF_MARKER_VPACK_DROP_VIEW: {
       Append(dump, ",\"data\":");
 
       VPackSlice slice(reinterpret_cast<char const*>(marker) +
                        MMFilesDatafileHelper::VPackOffset(type));
       arangodb::basics::VPackStringBufferAdapter adapter(dump->_buffer);
-      VPackDumper dumper(
-          &adapter,
-          &dump->_vpackOptions);  // note: we need the CustomTypeHandler here
+      VPackDumper dumper(&adapter,
+                         &dump->_vpackOptions);  // note: we need the CustomTypeHandler here
       dumper.dump(slice);
       break;
     }
@@ -195,7 +190,8 @@ static int StringifyMarker(MMFilesReplicationDumpContext* dump,
 
     default: {
       TRI_ASSERT(false);
-      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION) << "got invalid marker of type " << static_cast<int>(type); 
+      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+          << "got invalid marker of type " << static_cast<int>(type);
       return TRI_ERROR_INTERNAL;
     }
   }
@@ -204,10 +200,9 @@ static int StringifyMarker(MMFilesReplicationDumpContext* dump,
   return TRI_ERROR_NO_ERROR;
 }
 
-static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
-                          TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                          MMFilesMarker const* marker, bool isDump,
-                          bool withTicks, bool isEdgeCollection) {
+static int SliceifyMarker(MMFilesReplicationDumpContext* dump, TRI_voc_tick_t databaseId,
+                          TRI_voc_cid_t collectionId, MMFilesMarker const* marker,
+                          bool isDump, bool withTicks, bool isEdgeCollection) {
   TRI_ASSERT(MustReplicateWalMarkerType(marker, false));
   MMFilesMarkerType const type = marker->getType();
 
@@ -221,21 +216,19 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
   if (!isDump) {
     // logger-follow command
     builder.add("tick", VPackValue(static_cast<uint64_t>(marker->getTick())));
-    builder.add("type",
-                VPackValue(static_cast<uint64_t>(TranslateType(marker))));
+    builder.add("type", VPackValue(static_cast<uint64_t>(TranslateType(marker))));
 
-    if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
-        type == TRI_DF_MARKER_VPACK_REMOVE ||
+    if (type == TRI_DF_MARKER_VPACK_DOCUMENT || type == TRI_DF_MARKER_VPACK_REMOVE ||
         type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
         type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
         type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
       // transaction id
-      builder.add("tid", VPackValue(MMFilesDatafileHelper::TransactionId(marker)));
+      builder.add("tid", VPackValue(std::to_string(MMFilesDatafileHelper::TransactionId(marker))));
     }
     if (databaseId > 0) {
-      builder.add("database", VPackValue(databaseId));
+      builder.add("database", VPackValue(std::to_string(databaseId)));
       if (collectionId > 0) {
-        builder.add("cid", VPackValue(collectionId));
+        builder.add("cid", VPackValue(std::to_string(collectionId)));
         // also include collection name
         std::string const& cname = nameFromCid(dump, collectionId);
         if (!cname.empty()) {
@@ -246,10 +239,10 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
   } else {
     // collection dump
     if (withTicks) {
-      builder.add("tick", VPackValue(static_cast<uint64_t>(marker->getTick())));
+      builder.add("tick",
+                  VPackValue(std::to_string(static_cast<uint64_t>(marker->getTick()))));
     }
-    builder.add("type",
-                VPackValue(static_cast<uint64_t>(TranslateType(marker))));
+    builder.add("type", VPackValue(static_cast<uint64_t>(TranslateType(marker))));
   }
 
   switch (type) {
@@ -264,8 +257,8 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
     case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
     case TRI_DF_MARKER_VPACK_DROP_DATABASE:
     case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
-    case TRI_DF_MARKER_VPACK_DROP_INDEX: 
-    case TRI_DF_MARKER_VPACK_DROP_VIEW: { 
+    case TRI_DF_MARKER_VPACK_DROP_INDEX:
+    case TRI_DF_MARKER_VPACK_DROP_VIEW: {
       VPackSlice slice(reinterpret_cast<char const*>(marker) +
                        MMFilesDatafileHelper::VPackOffset(type));
       builder.add("data", slice);
@@ -281,7 +274,8 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
 
     default: {
       TRI_ASSERT(false);
-      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION) << "got invalid marker of type " << static_cast<int>(type); 
+      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+          << "got invalid marker of type " << static_cast<int>(type);
       return TRI_ERROR_INTERNAL;
     }
   }
@@ -309,11 +303,10 @@ static bool IsTransactionWalMarker(MMFilesReplicationDumpContext* dump,
 }
 
 /// @brief whether or not a marker is replicated
-static bool MustReplicateWalMarker(
-    MMFilesReplicationDumpContext* dump, MMFilesMarker const* marker,
-    TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-    TRI_voc_tick_t firstRegularTick,
-    std::unordered_set<TRI_voc_tid_t> const& transactionIds) {
+static bool MustReplicateWalMarker(MMFilesReplicationDumpContext* dump,
+                                   MMFilesMarker const* marker, TRI_voc_tick_t databaseId,
+                                   TRI_voc_cid_t collectionId, TRI_voc_tick_t firstRegularTick,
+                                   std::unordered_set<TRI_voc_tid_t> const& transactionIds) {
   // first check the marker type
   if (!MustReplicateWalMarkerType(marker, false)) {
     return false;
@@ -330,15 +323,13 @@ static bool MustReplicateWalMarker(
   if (cid != 0) {
     std::string const& name = nameFromCid(dump, cid);
 
-    if (!name.empty() &&
-        TRI_ExcludeCollectionReplication(name, dump->_includeSystem)) {
+    if (!name.empty() && TRI_ExcludeCollectionReplication(name, dump->_includeSystem, /*includeFoxxQueues*/false)) {
       return false;
     }
   }
 
   if (dump->_restrictCollection > 0 &&
-      (cid != dump->_restrictCollection &&
-       !IsTransactionWalMarker(dump, marker))) {
+      (cid != dump->_restrictCollection && !IsTransactionWalMarker(dump, marker))) {
     // restrict output to a single collection, but a different one
     return false;
   }
@@ -360,24 +351,19 @@ static bool MustReplicateWalMarker(
 
 /// @brief dump data from a collection
 static int DumpCollection(MMFilesReplicationDumpContext* dump,
-                          LogicalCollection* collection,
-                          TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                          TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
-                          bool withTicks, bool useVst = false) {
-  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
-    << "dumping collection " << collection->id()
-    << ", tick range " << dataMin << " - " << dataMax;
-
+                          LogicalCollection* collection, TRI_voc_tick_t databaseId,
+                          TRI_voc_cid_t collectionId, TRI_voc_tick_t dataMin,
+                          TRI_voc_tick_t dataMax, bool withTicks, bool useVst = false) {
   bool const isEdgeCollection = (collection->type() == TRI_COL_TYPE_EDGE);
 
   // setup some iteration state
   TRI_voc_tick_t lastFoundTick = 0;
+  size_t numMarkers = 0;
   bool bufferFull = false;
 
-  auto callback = [&dump, &lastFoundTick, &databaseId, &collectionId,
-                   &withTicks, &isEdgeCollection, &bufferFull, &useVst,
-                   &collection](
-      TRI_voc_tick_t foundTick, MMFilesMarker const* marker) {
+  auto callback = [&dump, &lastFoundTick, &databaseId, &collectionId, &withTicks,
+                   &isEdgeCollection, &bufferFull, &useVst, &collection,
+                   &numMarkers](TRI_voc_tick_t foundTick, MMFilesMarker const* marker) {
     // note the last tick we processed
     lastFoundTick = foundTick;
 
@@ -390,14 +376,17 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
                             withTicks, isEdgeCollection);
     }
 
+    ++numMarkers;
+
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION) << "got error during dump dump of collection '" << collection->name() << "': " << TRI_errno_string(res);
+      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+          << "got error during dump dump of collection '" << collection->name()
+          << "': " << TRI_errno_string(res);
       THROW_ARANGO_EXCEPTION(res);
     }
 
     // TODO if vstcase find out slice length of _slices.back()
-    if (static_cast<uint64_t>(TRI_LengthStringBuffer(dump->_buffer)) >
-        dump->_chunkSize) {
+    if (static_cast<uint64_t>(TRI_LengthStringBuffer(dump->_buffer)) > dump->_chunkSize) {
       // abort the iteration
       bufferFull = true;
       return false;  // stop iterating
@@ -407,7 +396,8 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
   };
 
   try {
-    bool hasMore = static_cast<MMFilesCollection*>(collection->getPhysical())->applyForTickRange(dataMin, dataMax, callback);
+    bool hasMore = static_cast<MMFilesCollection*>(collection->getPhysical())
+                       ->applyForTickRange(dataMin, dataMax, callback);
 
     if (lastFoundTick > 0) {
       // data available for requested range
@@ -421,25 +411,40 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
       dump->_bufferFull = false;
     }
 
+    LOG_TOPIC(DEBUG, arangodb::Logger::REPLICATION)
+        << "dumped collection '" << collection->name() << "', tick range "
+        << dataMin << " - " << dataMax << ", markers: " << numMarkers
+        << ", last found tick: " << dump->_lastFoundTick
+        << ", hasMore: " << dump->_hasMore << ", buffer full: " << dump->_bufferFull;
+
     return TRI_ERROR_NO_ERROR;
   } catch (basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION) << "caught exception during dump of collection '" << collection->name() << "': " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+        << "caught exception during dump of collection '" << collection->name()
+        << "': " << ex.what();
     return ex.code();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION) << "caught exception during dump of collection '" << collection->name() << "': " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+        << "caught exception during dump of collection '" << collection->name()
+        << "': " << ex.what();
     return TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION) << "caught unknown exception during dump of collection '" << collection->name() << "'";
+    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+        << "caught unknown exception during dump of collection '"
+        << collection->name() << "'";
     return TRI_ERROR_INTERNAL;
   }
 }
 
 /// @brief dump data from a collection
 int MMFilesDumpCollectionReplication(MMFilesReplicationDumpContext* dump,
-                                  arangodb::LogicalCollection* collection,
-                                  TRI_voc_tick_t dataMin,
-                                  TRI_voc_tick_t dataMax, bool withTicks) {
+                                     arangodb::LogicalCollection* collection,
+                                     TRI_voc_tick_t dataMin,
+                                     TRI_voc_tick_t dataMax, bool withTicks) {
   TRI_ASSERT(collection != nullptr);
+  
+  LOG_TOPIC(DEBUG, arangodb::Logger::REPLICATION)
+      << "dumping collection '" << collection->name() << "', tick range " << dataMin << " - " << dataMax;
 
   // get a custom type handler
   auto customTypeHandler = dump->_transactionContext->orderCustomTypeHandler();
@@ -452,6 +457,9 @@ int MMFilesDumpCollectionReplication(MMFilesReplicationDumpContext* dump,
   if (b == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+  
+  // always execute this
+  TRI_DEFER(mmfiles->ditches()->freeDitch(b));
 
   // block compaction
   int res;
@@ -460,33 +468,21 @@ int MMFilesDumpCollectionReplication(MMFilesReplicationDumpContext* dump,
     MMFilesCompactionPreventer compactionPreventer(mmfiles);
 
     try {
-      res = DumpCollection(
-        dump,
-        collection,
-        collection->vocbase().id(),
-        collection->id(),
-        dataMin,
-        dataMax,
-        withTicks
-      );
+      res = DumpCollection(dump, collection, collection->vocbase().id(),
+                           collection->id(), dataMin, dataMax, withTicks);
     } catch (...) {
       res = TRI_ERROR_INTERNAL;
     }
   }
 
-  // always execute this
-  mmfiles->ditches()->freeDitch(b);
-
   return res;
 }
 
 /// @brief dump data from the replication log
-int MMFilesDumpLogReplication(
-    MMFilesReplicationDumpContext* dump,
-    std::unordered_set<TRI_voc_tid_t> const& transactionIds,
-    TRI_voc_tick_t firstRegularTick, TRI_voc_tick_t tickMin,
-    TRI_voc_tick_t tickMax, bool outputAsArray) {
-  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION) << "dumping log, tick range " << tickMin << " - " << tickMax;
+int MMFilesDumpLogReplication(MMFilesReplicationDumpContext* dump,
+                              std::unordered_set<TRI_voc_tid_t> const& transactionIds,
+                              TRI_voc_tick_t firstRegularTick, TRI_voc_tick_t tickMin,
+                              TRI_voc_tick_t tickMax, bool outputAsArray) {
 
   // get a custom type handler
   auto customTypeHandler = dump->_transactionContext->orderCustomTypeHandler();
@@ -495,8 +491,13 @@ int MMFilesDumpLogReplication(
   // ask the logfile manager which datafiles qualify
   bool fromTickIncluded = false;
   std::vector<arangodb::MMFilesWalLogfile*> logfiles =
-      MMFilesLogfileManager::instance()->getLogfilesForTickRange(
-          tickMin, tickMax, fromTickIncluded);
+      MMFilesLogfileManager::instance()->getLogfilesForTickRange(tickMin, tickMax, fromTickIncluded);
+  
+  // always return the logfiles we have used
+  TRI_DEFER(MMFilesLogfileManager::instance()->returnLogfiles(logfiles));
+  
+  LOG_TOPIC(DEBUG, arangodb::Logger::REPLICATION)
+      << "dumping log, tick range " << tickMin << " - " << tickMax << ", fromTickIncluded: " << fromTickIncluded;
 
   // setup some iteration state
   int res = TRI_ERROR_NO_ERROR;
@@ -506,6 +507,7 @@ int MMFilesDumpLogReplication(
   TRI_voc_cid_t lastCollectionId = 0;
   bool hasMore = true;
   bool bufferFull = false;
+  size_t numMarkers = 0;
 
   try {
     if (outputAsArray) {
@@ -521,8 +523,10 @@ int MMFilesDumpLogReplication(
 
       char const* ptr;
       char const* end;
-      MMFilesLogfileManager::instance()->getActiveLogfileRegion(
-          logfile, ptr, end);
+      MMFilesLogfileManager::instance()->getActiveLogfileRegion(logfile, ptr, end);
+  
+      LOG_TOPIC(DEBUG, arangodb::Logger::REPLICATION)
+          << "dumping logfile " << logfile->id();
 
       while (ptr < end) {
         auto const* marker = reinterpret_cast<MMFilesMarker const*>(ptr);
@@ -542,8 +546,7 @@ int MMFilesDumpLogReplication(
         if (type == TRI_DF_MARKER_PROLOGUE) {
           lastDatabaseId = MMFilesDatafileHelper::DatabaseId(marker);
           lastCollectionId = MMFilesDatafileHelper::CollectionId(marker);
-        } else if (type == TRI_DF_MARKER_HEADER ||
-                   type == TRI_DF_MARKER_FOOTER) {
+        } else if (type == TRI_DF_MARKER_HEADER || type == TRI_DF_MARKER_FOOTER) {
           lastDatabaseId = 0;
           lastCollectionId = 0;
         } else if (type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION) {
@@ -593,8 +596,7 @@ int MMFilesDumpLogReplication(
         TRI_voc_tick_t databaseId;
         TRI_voc_cid_t collectionId;
 
-        if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
-            type == TRI_DF_MARKER_VPACK_REMOVE) {
+        if (type == TRI_DF_MARKER_VPACK_DOCUMENT || type == TRI_DF_MARKER_VPACK_REMOVE) {
           databaseId = lastDatabaseId;
           collectionId = lastCollectionId;
         } else {
@@ -619,19 +621,18 @@ int MMFilesDumpLogReplication(
         }
 
         if (dump->_useVst) {
-          res = SliceifyMarker(dump, databaseId, collectionId, marker, false,
-                               true, false);
+          res = SliceifyMarker(dump, databaseId, collectionId, marker, false, true, false);
         } else {
-          res = StringifyMarker(dump, databaseId, collectionId, marker, false,
-                                true, false);
+          res = StringifyMarker(dump, databaseId, collectionId, marker, false, true, false);
         }
 
         if (res != TRI_ERROR_NO_ERROR) {
           THROW_ARANGO_EXCEPTION(res);
         }
+    
+        ++numMarkers;
 
-        if (static_cast<uint64_t>(TRI_LengthStringBuffer(dump->_buffer)) >=
-            dump->_chunkSize) {
+        if (static_cast<uint64_t>(TRI_LengthStringBuffer(dump->_buffer)) >= dump->_chunkSize) {
           // abort the iteration
           bufferFull = true;
           break;
@@ -647,18 +648,18 @@ int MMFilesDumpLogReplication(
       Append(dump, "]");
     }
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION) << "caught exception while dumping replication log: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+        << "caught exception while dumping replication log: " << ex.what();
     res = ex.code();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION) << "caught exception while dumping replication log: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+        << "caught exception while dumping replication log: " << ex.what();
     res = TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION) << "caught unknown exception while dumping replication log";
+    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+        << "caught unknown exception while dumping replication log";
     res = TRI_ERROR_INTERNAL;
   }
-
-  // always return the logfiles we have used
-  MMFilesLogfileManager::instance()->returnLogfiles(logfiles);
 
   dump->_fromTickIncluded = fromTickIncluded;
   dump->_lastScannedTick = lastScannedTick;
@@ -675,6 +676,14 @@ int MMFilesDumpLogReplication(
       dump->_hasMore = false;
       dump->_bufferFull = false;
     }
+    
+    LOG_TOPIC(DEBUG, arangodb::Logger::REPLICATION)
+        << "dumped log, tick range " << tickMin << " - " << tickMax 
+        << ", markers: " << numMarkers
+        << ", last found tick: " << dump->_lastFoundTick
+        << ", last scanned tick: " << dump->_lastScannedTick
+        << ", from tick included: " << dump->_fromTickIncluded
+        << ", hasMore: " << dump->_hasMore << ", buffer full: " << dump->_bufferFull;
   }
 
   return res;
@@ -682,25 +691,24 @@ int MMFilesDumpLogReplication(
 
 /// @brief determine the transactions that were open at a given point in time
 int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* dump,
-                                             TRI_voc_tick_t tickMin,
-                                             TRI_voc_tick_t tickMax,
-                                             bool useVst) {
-  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION) << "determining transactions, tick range " << tickMin << " - "
-             << tickMax;
+                                                TRI_voc_tick_t tickMin,
+                                                TRI_voc_tick_t tickMax, bool useVst) {
+  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+      << "determining transactions, tick range " << tickMin << " - " << tickMax;
 
   std::unordered_map<TRI_voc_tid_t, TRI_voc_tick_t> transactions;
 
   // ask the logfile manager which datafiles qualify
   bool fromTickIncluded = false;
   std::vector<arangodb::MMFilesWalLogfile*> logfiles =
-      MMFilesLogfileManager::instance()->getLogfilesForTickRange(
-          tickMin, tickMax, fromTickIncluded);
+      MMFilesLogfileManager::instance()->getLogfilesForTickRange(tickMin, tickMax, fromTickIncluded);
+  
+  // always return the logfiles we have used
+  TRI_DEFER(MMFilesLogfileManager::instance()->returnLogfiles(logfiles));
 
   // setup some iteration state
   TRI_voc_tick_t lastFoundTick = 0;
   int res = TRI_ERROR_NO_ERROR;
-
-  // LOG_TOPIC(INFO, arangodb::Logger::REPLICATION) << "found logfiles: " << logfiles.size();
 
   try {
     // iterate over the datafiles found
@@ -710,10 +718,8 @@ int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* d
 
       char const* ptr;
       char const* end;
-      MMFilesLogfileManager::instance()->getActiveLogfileRegion(
-          logfile, ptr, end);
+      MMFilesLogfileManager::instance()->getActiveLogfileRegion(logfile, ptr, end);
 
-      // LOG_TOPIC(INFO, arangodb::Logger::REPLICATION) << "scanning logfile " << i;
       while (ptr < end) {
         auto const* marker = reinterpret_cast<MMFilesMarker const*>(ptr);
 
@@ -768,9 +774,6 @@ int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* d
       }
     }
 
-    // LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "found transactions: " << transactions.size();
-    // LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "last tick: " << lastFoundTick;
-
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer);
     if (useVst) {
@@ -814,23 +817,21 @@ int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* d
 
     dump->_fromTickIncluded = fromTickIncluded;
     dump->_lastFoundTick = lastFoundTick;
-    // LOG_TOPIC(INFO, arangodb::Logger::REPLICATION) << "last tick2: " << lastFoundTick;
-
     dump->_slices.push_back(std::move(buffer));
 
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION) << "caught exception while determining open transactions: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+        << "caught exception while determining open transactions: " << ex.what();
     res = ex.code();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION) << "caught exception while determining open transactions: " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+        << "caught exception while determining open transactions: " << ex.what();
     res = TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION) << "caught unknown exception while determining open transactions";
+    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+        << "caught unknown exception while determining open transactions";
     res = TRI_ERROR_INTERNAL;
   }
-
-  // always return the logfiles we have used
-  MMFilesLogfileManager::instance()->returnLogfiles(logfiles);
 
   return res;
 }

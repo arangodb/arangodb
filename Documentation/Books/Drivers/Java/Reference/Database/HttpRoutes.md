@@ -1,13 +1,12 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
 # Arbitrary HTTP routes
 
 ## ArangoDatabase.route
 
-```
-ArangoDatabase.route(String... path) : ArangoRoute
-```
+`ArangoDatabase.route(String... path) : ArangoRoute`
 
-Returns a new _ArangoRoute_ instance for the given path (relative to the database) that can be used to perform arbitrary requests.
+Returns a new _ArangoRoute_ instance for the given path
+(relative to the database) that can be used to perform arbitrary requests.
 
 **Arguments**
 

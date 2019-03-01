@@ -576,6 +576,62 @@ function TransactionsImplicitCollectionsSuite () {
       }
     },
 
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief perform an infinite loop
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testUseQueryStreamCursorInAql : function () {
+      let docs = [];
+      for(let i = 0; i < 50000; i++) {
+        docs.push({value: i});
+        if (i % 5000 === 0) {
+          c1.save(docs);
+          docs = [];
+        }
+      }
+      c1.save(docs);
+      
+      var result = db._executeTransaction({
+        collections: { allowImplicit: false, read: cn1 },
+        action: `function (params) {
+          const db = require('internal').db;
+          let cc = db._query('FOR i IN @@cn1 RETURN i', { '@cn1' : params.cn1 }, {stream: true});
+          let xx = 0;
+          while (cc.hasNext()) {cc.next(); xx++;}
+          let cc2 = db._query('FOR i IN 1..1000000000 RETURN i', {}, {stream: true});
+          return xx; }`,
+        params: { cn1: cn1 }
+      });
+      assertEqual(50000, result);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief perform an infinite loop
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testUseQueryStreamCursorInAql2 : function () {
+      let docs = [];
+      for(let i = 0; i < 5000; i++) {
+        docs.push({value: i});
+      }
+      c1.save(docs);
+      
+      var result = db._executeTransaction({
+        collections: { allowImplicit: false, read: cn1, write: cn2 },
+        action: `function (params) {
+          const db = require('internal').db;
+          let cc = cursor = db._query("FOR o IN @@cn1 RETURN o", { '@cn1' : params.cn1 }, {stream: true});
+          let xx = 0;
+          while(cc.hasNext()) {
+            db._collection(params.cn2).save({val: cc.next(), _from:"abc/x", _to:"abc/y"});
+            xx++;
+          };
+          return xx; }`,
+        params: { cn1: cn1, cn2: cn2 }
+      });
+      assertEqual(5000, result);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief uses an explicitly declared collection for reading
 ////////////////////////////////////////////////////////////////////////////////

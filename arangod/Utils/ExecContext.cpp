@@ -43,8 +43,7 @@ bool ExecContext::isAuthEnabled() {
 ///        a singleton instance, deleting is an error
 ExecContext const* ExecContext::superuser() { return &ExecContext::SUPERUSER; }
 
-ExecContext* ExecContext::create(std::string const& user,
-                                 std::string const& dbname) {
+ExecContext* ExecContext::create(std::string const& user, std::string const& dbname) {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   auth::Level dbLvl = auth::Level::RW;
@@ -52,6 +51,10 @@ ExecContext* ExecContext::create(std::string const& user,
   if (af->isActive()) {
     auth::UserManager* um = af->userManager();
     TRI_ASSERT(um != nullptr);
+    if (um == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unable to find userManager instance");
+    }
     dbLvl = sysLvl = um->databaseAuthLevel(user, dbname);
     if (dbname != TRI_VOC_SYSTEM_DATABASE) {
       sysLvl = um->databaseAuthLevel(user, TRI_VOC_SYSTEM_DATABASE);
@@ -60,17 +63,22 @@ ExecContext* ExecContext::create(std::string const& user,
   return new ExecContext(ExecContext::Type::Default, user, dbname, sysLvl, dbLvl);
 }
 
-bool ExecContext::canUseDatabase(std::string const& db,
-                                 auth::Level requested) const {
+bool ExecContext::canUseDatabase(std::string const& db, auth::Level requested) const {
   if (isInternal() || _database == db) {
     // should be RW for superuser, RO for read-only
     return requested <= _databaseAuthLevel;
   }
-  
+
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   if (af->isActive()) {
-    auth::Level allowed = af->userManager()->databaseAuthLevel(_user, db);
+    auth::UserManager* um = af->userManager();
+    TRI_ASSERT(um != nullptr);
+    if (um == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unable to find userManager instance");
+    }
+    auth::Level allowed = um->databaseAuthLevel(_user, db);
     return requested <= allowed;
   }
   return true;
@@ -83,7 +91,7 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
     // should be RW for superuser, RO for read-only
     return _databaseAuthLevel;
   }
-  
+
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   if (!af->isActive()) {
@@ -99,8 +107,12 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
   } else if (coll == "_frontend") {
     return auth::Level::RW;
   }  // intentional fall through
-  
+
   auth::UserManager* um = af->userManager();
   TRI_ASSERT(um != nullptr);
+  if (um == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "unable to find userManager instance");
+  }
   return um->collectionAuthLevel(_user, dbname, coll);
 }

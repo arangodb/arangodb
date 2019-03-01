@@ -56,6 +56,7 @@ var sanitizeStats = function (stats) {
   delete stats.executionTime;
   delete stats.httpRequests;
   delete stats.fullCount;
+  delete stats.peakMemoryUsage;
   return stats;
 };
 
@@ -67,7 +68,8 @@ let hasDistributeNode = function(nodes) {
 
 let allNodesOfTypeAreRestrictedToShard = function(nodes, typeName, collection) {
   return nodes.filter(function(node) {
-    return node.type === typeName;
+    return node.type === typeName &&
+           node.collection === collection.name();
   }).every(function(node) {
     return (collection.shards().indexOf(node.restrictedTo) !== -1);
   });
@@ -531,7 +533,7 @@ function ahuacatlModifySuite () {
       if (isCluster) {
         let plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
         assertFalse(hasDistributeNode(plan.nodes));
-        assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'RemoveNode', c));
+        assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'IndexNode', c));
         assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
       }
 
@@ -553,7 +555,7 @@ function ahuacatlModifySuite () {
       if (isCluster) {
         let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
         assertFalse(hasDistributeNode(plan.nodes));
-        assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'RemoveNode', c));
+        assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'IndexNode', c));
         assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
       }
 
@@ -774,10 +776,11 @@ function ahuacatlModifySuite () {
       let query = "FOR d IN " + cn + " REMOVE { _key: d._key, id: 42 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
-        expected = { writesExecuted: 100, writesIgnored: 400 };
+        expected = { writesExecuted: 100, writesIgnored: 0 };
         let plan = AQL_EXPLAIN(query).plan;
         assertFalse(hasDistributeNode(plan.nodes));
         assertEqual(-1, plan.rules.indexOf("undistribute-remove-after-enum-coll"));
+        assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
       } else {
         expected = { writesExecuted: 100, writesIgnored: 0 };
       }
@@ -822,12 +825,13 @@ function ahuacatlModifySuite () {
       let expected = { writesExecuted: 1, writesIgnored: 0 };
       let query = "FOR d IN " + cn + " FILTER d.id == 42 REMOVE { _key: d._key, id: 42 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
-      
+
       if (isCluster) {
-        expected = { writesExecuted: 1, writesIgnored: 4 };
+        expected = { writesExecuted: 1, writesIgnored: 0 };
         let plan = AQL_EXPLAIN(query).plan;
         assertFalse(hasDistributeNode(plan.nodes));
         assertEqual(-1, plan.rules.indexOf("undistribute-remove-after-enum-coll"));
+        assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
       }
 
       assertEqual(99, c.count());
@@ -1578,6 +1582,130 @@ function ahuacatlModifySuite () {
   };
 }
 
+function ahuacatlModifySkipSuite () {
+  var errors = internal.errors;
+  var cn = "UnitTestsAhuacatlModify";
+
+  return {
+
+    setUp : function () {
+      db._drop(cn);
+      let c = db._create(cn, {numberOfShards:5});
+      for (let i = 0; i < 1000; ++i) {
+        c.insert({ value1 : i, value2: (i % 10), updated: false });
+      }
+    },
+
+    tearDown : function () {
+      db._drop(cn);
+    },
+    
+    testUpdateFull : function () {
+      let query = "FOR doc IN " + cn + " UPDATE doc WITH { updated: true } IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
+      let result = AQL_EXECUTE(query);
+      assertEqual(1000, result.json[0]);
+
+      assertEqual(0, db[cn].byExample({ updated: false }).toArray().length);
+      assertEqual(1000, db[cn].byExample({ updated: true }).toArray().length);
+    },
+    
+    testUpdateLimit : function () {
+      let query = "FOR doc IN " + cn + " LIMIT 500 UPDATE doc WITH { updated: true } IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
+      let result = AQL_EXECUTE(query);
+      assertEqual(500, result.json[0]);
+
+      assertEqual(500, db[cn].byExample({ updated: false }).toArray().length);
+      assertEqual(500, db[cn].byExample({ updated: true }).toArray().length);
+    },
+
+    testUpdateSkip : function () {
+      let query = "FOR doc IN " + cn + " LIMIT 100, 200 UPDATE doc WITH { updated: true } IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
+      let result = AQL_EXECUTE(query);
+      assertEqual(200, result.json[0]);
+
+      assertEqual(800, db[cn].byExample({ updated: false }).toArray().length);
+      assertEqual(200, db[cn].byExample({ updated: true }).toArray().length);
+    },
+    
+    testUpdateSkipAlmostAll : function () {
+      let query = "FOR doc IN " + cn + " LIMIT 990, 5 UPDATE doc WITH { updated: true } IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
+      let result = AQL_EXECUTE(query);
+      assertEqual(5, result.json[0]);
+
+      assertEqual(995, db[cn].byExample({ updated: false }).toArray().length);
+      assertEqual(5, db[cn].byExample({ updated: true }).toArray().length);
+    },
+    
+    testUpdateSkipAll : function () {
+      let query = "FOR doc IN " + cn + " LIMIT 1000, 200 UPDATE doc WITH { updated: true } IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
+      let result = AQL_EXECUTE(query);
+      assertEqual(0, result.json[0]);
+
+      assertEqual(1000, db[cn].byExample({ updated: false }).toArray().length);
+      assertEqual(0, db[cn].byExample({ updated: true }).toArray().length);
+    },
+    
+    testUpdateSkipTheUniverse : function () {
+      let query = "FOR doc IN " + cn + " LIMIT 1000000, 1 UPDATE doc WITH { updated: true } IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
+      let result = AQL_EXECUTE(query);
+      assertEqual(0, result.json[0]);
+
+      assertEqual(1000, db[cn].byExample({ updated: false }).toArray().length);
+      assertEqual(0, db[cn].byExample({ updated: true }).toArray().length);
+    },
+    
+    testRemoveFull : function () {
+      let query = "FOR doc IN " + cn + " REMOVE doc IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
+      let result = AQL_EXECUTE(query);
+      assertEqual(1000, result.json[0]);
+
+      assertEqual(0, db[cn].count());
+    },
+    
+    testRemoveLimit : function () {
+      let query = "FOR doc IN " + cn + " LIMIT 500 REMOVE doc IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
+      let result = AQL_EXECUTE(query);
+      assertEqual(500, result.json[0]);
+
+      assertEqual(500, db[cn].count());
+    },
+
+    testRemoveSkip : function () {
+      let query = "FOR doc IN " + cn + " LIMIT 100, 200 REMOVE doc IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
+      let result = AQL_EXECUTE(query);
+      assertEqual(200, result.json[0]);
+
+      assertEqual(800, db[cn].count());
+    },
+    
+    testRemoveSkipAlmostAll : function () {
+      let query = "FOR doc IN " + cn + " LIMIT 990, 5 REMOVE doc IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
+      let result = AQL_EXECUTE(query);
+      assertEqual(5, result.json[0]);
+
+      assertEqual(995, db[cn].count());
+    },
+    
+    testRemoveSkipAll : function () {
+      let query = "FOR doc IN " + cn + " LIMIT 1000, 200 REMOVE doc IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
+      let result = AQL_EXECUTE(query);
+      assertEqual(0, result.json[0]);
+
+      assertEqual(1000, db[cn].count());
+    },
+    
+    testRemoveSkipTheUniverse : function () {
+      let query = "FOR doc IN " + cn + " LIMIT 1000000, 1 REMOVE doc IN " + cn + " COLLECT WITH COUNT INTO l RETURN l";
+      let result = AQL_EXECUTE(query);
+      assertEqual(0, result.json[0]);
+
+      assertEqual(1000, db[cn].count());
+    },
+  };
+}
+
+
 jsunity.run(ahuacatlModifySuite);
+jsunity.run(ahuacatlModifySkipSuite);
 
 return jsunity.done();

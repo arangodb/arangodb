@@ -27,7 +27,7 @@
 
 #include "catch.hpp"
 #include "../IResearch/common.h"
-#include "../IResearch/StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
 
@@ -75,25 +75,38 @@ struct TestView: public arangodb::LogicalView {
   TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition, uint64_t planVersion)
     : arangodb::LogicalView(vocbase, definition, planVersion) {
   }
-  virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder, bool /*detailed*/, bool /*forPersistence*/) const override { 
+  virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder& builder, bool, bool) const override { 
     builder.add("properties", _properties.slice());
     return _appendVelocyPackResult;
   }
-  virtual arangodb::Result drop() override { return arangodb::Result(); }
-  static std::shared_ptr<LogicalView> make(
-        TRI_vocbase_t& vocbase,
-        arangodb::velocypack::Slice const& definition,
-        bool isNew,
-        uint64_t planVersion,
-        arangodb::LogicalView::PreCommitCallback const& preCommit
-  ) {
-    auto view = std::make_shared<TestView>(vocbase, definition, planVersion);
-    return preCommit(view) ? view : nullptr;
-  }
+  virtual arangodb::Result dropImpl() override { return arangodb::Result(); }
   virtual void open() override {}
-  virtual arangodb::Result rename(std::string&& newName, bool doSync) override { name(std::move(newName)); return arangodb::Result(); }
-  virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& properties, bool partialUpdate, bool doSync) override { _properties = arangodb::velocypack::Builder(properties); return arangodb::Result(); }
+  virtual arangodb::Result renameImpl(std::string const&) override { return arangodb::Result(); }
+  virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties, bool partialUpdate) override { _properties = arangodb::velocypack::Builder(properties); return arangodb::Result(); }
   virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
+};
+
+struct ViewFactory: public arangodb::ViewFactory {
+  virtual arangodb::Result create(
+      arangodb::LogicalView::ptr& view,
+      TRI_vocbase_t& vocbase,
+      arangodb::velocypack::Slice const& definition
+  ) const override {
+    view = vocbase.createView(definition);
+
+    return arangodb::Result();
+  }
+
+  virtual arangodb::Result instantiate(
+      arangodb::LogicalView::ptr& view,
+      TRI_vocbase_t& vocbase,
+      arangodb::velocypack::Slice const& definition,
+      uint64_t planVersion
+  ) const override {
+    view = std::make_shared<TestView>(vocbase, definition, planVersion);
+
+    return arangodb::Result();
+  }
 };
 
 }
@@ -107,6 +120,7 @@ struct V8UsersSetup {
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  ViewFactory viewFactory;
 
   V8UsersSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
@@ -153,7 +167,7 @@ struct V8UsersSetup {
 
     viewTypesFeature->emplace(
       arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("testViewType")),
-      TestView::make
+      viewFactory
     );
   }
 
@@ -265,7 +279,7 @@ SECTION("test_collection_auth") {
     CHECK((arangodb::auth::Level::NONE == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_grantCollection)->CallAsFunction(context, arangoUsers, grantArgs.size(), grantArgs.data());
+    auto result = v8::Function::Cast(*fn_grantCollection)->CallAsFunction(context, arangoUsers, static_cast<int>(grantArgs.size()), grantArgs.data());
     CHECK((result.IsEmpty()));
     CHECK((tryCatch.HasCaught()));
     CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -289,7 +303,7 @@ SECTION("test_collection_auth") {
     CHECK((arangodb::auth::Level::RO == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_revokeCollection)->CallAsFunction(context, arangoUsers, revokeArgs.size(), revokeArgs.data());
+    auto result = v8::Function::Cast(*fn_revokeCollection)->CallAsFunction(context, arangoUsers, static_cast<int>(revokeArgs.size()), revokeArgs.data());
     CHECK((result.IsEmpty()));
     CHECK((tryCatch.HasCaught()));
     CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -315,7 +329,7 @@ SECTION("test_collection_auth") {
     CHECK((arangodb::auth::Level::NONE == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_grantCollection)->CallAsFunction(context, arangoUsers, grantArgs.size(), grantArgs.data());
+    auto result = v8::Function::Cast(*fn_grantCollection)->CallAsFunction(context, arangoUsers, static_cast<int>(grantArgs.size()), grantArgs.data());
     CHECK((!result.IsEmpty()));
     CHECK((result.ToLocalChecked()->IsUndefined()));
     CHECK((!tryCatch.HasCaught()));
@@ -339,7 +353,7 @@ SECTION("test_collection_auth") {
     CHECK((arangodb::auth::Level::RO == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_revokeCollection)->CallAsFunction(context, arangoUsers, revokeArgs.size(), revokeArgs.data());
+    auto result = v8::Function::Cast(*fn_revokeCollection)->CallAsFunction(context, arangoUsers, static_cast<int>(revokeArgs.size()), revokeArgs.data());
     CHECK((!result.IsEmpty()));
     CHECK((result.ToLocalChecked()->IsUndefined()));
     CHECK((!tryCatch.HasCaught()));
@@ -362,7 +376,7 @@ SECTION("test_collection_auth") {
     CHECK((arangodb::auth::Level::NONE == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_grantCollection)->CallAsFunction(context, arangoUsers, grantArgs.size(), grantArgs.data());
+    auto result = v8::Function::Cast(*fn_grantCollection)->CallAsFunction(context, arangoUsers, static_cast<int>(grantArgs.size()), grantArgs.data());
     CHECK((result.IsEmpty()));
     CHECK((tryCatch.HasCaught()));
     CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -389,7 +403,7 @@ SECTION("test_collection_auth") {
     CHECK((arangodb::auth::Level::RO == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_revokeCollection)->CallAsFunction(context, arangoUsers, revokeArgs.size(), revokeArgs.data());
+    auto result = v8::Function::Cast(*fn_revokeCollection)->CallAsFunction(context, arangoUsers, static_cast<int>(revokeArgs.size()), revokeArgs.data());
     CHECK((result.IsEmpty()));
     CHECK((tryCatch.HasCaught()));
     CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
@@ -415,7 +429,7 @@ SECTION("test_collection_auth") {
     CHECK((arangodb::auth::Level::NONE == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_grantCollection)->CallAsFunction(context, arangoUsers, grantWildcardArgs.size(), grantWildcardArgs.data());
+    auto result = v8::Function::Cast(*fn_grantCollection)->CallAsFunction(context, arangoUsers, static_cast<int>(grantWildcardArgs.size()), grantWildcardArgs.data());
     CHECK((!result.IsEmpty()));
     CHECK((result.ToLocalChecked()->IsUndefined()));
     CHECK((!tryCatch.HasCaught()));
@@ -439,7 +453,7 @@ SECTION("test_collection_auth") {
     CHECK((arangodb::auth::Level::RO == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_revokeCollection)->CallAsFunction(context, arangoUsers, revokeWildcardArgs.size(), revokeWildcardArgs.data());
+    auto result = v8::Function::Cast(*fn_revokeCollection)->CallAsFunction(context, arangoUsers, static_cast<int>(revokeWildcardArgs.size()), revokeWildcardArgs.data());
     CHECK((!result.IsEmpty()));
     CHECK((result.ToLocalChecked()->IsUndefined()));
     CHECK((!tryCatch.HasCaught()));

@@ -42,8 +42,7 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-RestTasksHandler::RestTasksHandler(GeneralRequest* request,
-                                   GeneralResponse* response)
+RestTasksHandler::RestTasksHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RestTasksHandler::execute() {
@@ -67,8 +66,7 @@ RestStatus RestTasksHandler::execute() {
       break;
     }
     default: {
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     }
   }
   return RestStatus::DONE;
@@ -77,10 +75,8 @@ RestStatus RestTasksHandler::execute() {
 /// @brief returns the short id of the server which should handle this request
 uint32_t RestTasksHandler::forwardingTarget() {
   rest::RequestType const type = _request->requestType();
-  if (type != rest::RequestType::POST &&
-      type != rest::RequestType::PUT &&
-      type != rest::RequestType::GET &&
-      type != rest::RequestType::DELETE_REQ) {
+  if (type != rest::RequestType::POST && type != rest::RequestType::PUT &&
+      type != rest::RequestType::GET && type != rest::RequestType::DELETE_REQ) {
     return 0;
   }
 
@@ -92,9 +88,7 @@ uint32_t RestTasksHandler::forwardingTarget() {
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
-  return (sourceServer == ServerState::instance()->getShortId())
-      ? 0
-      : sourceServer;
+  return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
 }
 
 void RestTasksHandler::getTasks() {
@@ -163,8 +157,8 @@ void RestTasksHandler::registerTask(bool byId) {
 
   // job id
   if (id.empty()) {
-    id = VelocyPackHelper::getStringValue(
-        body, "id", std::to_string(TRI_NewServerSpecificTick()));
+    id = VelocyPackHelper::getStringValue(body, "id",
+                                          std::to_string(TRI_NewServerSpecificTick()));
   }
 
   // job name
@@ -174,8 +168,7 @@ void RestTasksHandler::registerTask(bool byId) {
   bool isSystem = VelocyPackHelper::getBooleanValue(body, "isSystem", false);
 
   // offset in seconds into period or from now on if no period
-  double offset =
-      VelocyPackHelper::getNumericValue<double>(body, "offset", 0.0);
+  double offset = VelocyPackHelper::getNumericValue<double>(body, "offset", 0.0);
 
   // period in seconds & count
   double period = 0.0;
@@ -184,7 +177,7 @@ void RestTasksHandler::registerTask(bool byId) {
     period = VelocyPackHelper::getNumericValue<double>(body, "period", 0.0);
     if (period <= 0.0) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                  "task period must be specified and positive");
+                    "task period must be specified and positive");
       return;
     }
   }
@@ -215,7 +208,7 @@ void RestTasksHandler::registerTask(bool byId) {
 
   {
     Result res;
-    v8::Isolate* isolate = v8::Isolate::GetCurrent();
+    v8::Isolate* isolate = nullptr;
     try {
       V8ContextDealerGuard dealerGuard(res, isolate, &_vocbase, true);
       if (res.fail()) {
@@ -223,8 +216,7 @@ void RestTasksHandler::registerTask(bool byId) {
         return;
       }
       v8::HandleScope scope(isolate);
-      v8::Handle<v8::Object> bv8 =
-          TRI_VPackToV8(isolate, body).As<v8::Object>();
+      v8::Handle<v8::Object> bv8 = TRI_VPackToV8(isolate, body).As<v8::Object>();
 
       if (bv8->Get(TRI_V8_ASCII_STRING(isolate, "command"))->IsFunction()) {
         // need to add ( and ) around function because call will otherwise break

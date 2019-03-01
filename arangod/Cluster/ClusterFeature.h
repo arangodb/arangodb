@@ -46,27 +46,23 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void beginShutdown() override final;
   void unprepare() override final;
 
-  std::vector<std::string> agencyEndpoints() const {
-    return _agencyEndpoints;
-  }
+  std::vector<std::string> agencyEndpoints() const { return _agencyEndpoints; }
 
-  std::string agencyPrefix() const {
-    return _agencyPrefix;
-  }
+  std::string agencyPrefix() const { return _agencyPrefix; }
 
   void syncDBServerStatusQuo();
 
-protected:
+ protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
-                            uint64_t interval_ms,
-                            uint64_t maxFailsBeforeWarning,
-                            const std::string & endpoints);
+                            uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
+                            const std::string& endpoints);
 
  private:
   std::vector<std::string> _agencyEndpoints;
   std::string _agencyPrefix;
   std::string _myRole;
-  std::string _myAddress;
+  std::string _myEndpoint;
+  std::string _myAdvertisedEndpoint;
   uint32_t _systemReplicationFactor = 2;
   bool _createWaitsForSyncReplication = true;
   double _indexCreationTimeout = 3600.0;
@@ -82,12 +78,12 @@ protected:
     return "/_api/agency/agency-callbacks";
   };
 
-  std::string const clusterRestPath() const {
-    return "/_api/cluster";
-  };
+  std::string const clusterRestPath() const { return "/_api/cluster"; };
 
   void setUnregisterOnShutdown(bool);
-  bool createWaitsForSyncReplication() const { return _createWaitsForSyncReplication; };
+  bool createWaitsForSyncReplication() const {
+    return _createWaitsForSyncReplication;
+  };
   double indexCreationTimeout() const { return _indexCreationTimeout; }
   uint32_t systemReplicationFactor() { return _systemReplicationFactor; };
 
@@ -103,6 +99,6 @@ protected:
   ServerState::RoleEnum _requestedRole;
 };
 
-}
+}  // namespace arangodb
 
 #endif

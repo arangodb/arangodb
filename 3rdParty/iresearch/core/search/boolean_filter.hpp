@@ -107,7 +107,7 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
 class IRESEARCH_API And: public boolean_filter {
  public:
   DECLARE_FILTER_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   And() NOEXCEPT;
 
@@ -136,7 +136,7 @@ class IRESEARCH_API And: public boolean_filter {
 class IRESEARCH_API Or : public boolean_filter {
  public:
   DECLARE_FILTER_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   Or() NOEXCEPT;
 
@@ -175,7 +175,7 @@ class IRESEARCH_API Or : public boolean_filter {
 class IRESEARCH_API Not: public filter {
  public:
   DECLARE_FILTER_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   Not() NOEXCEPT;
 

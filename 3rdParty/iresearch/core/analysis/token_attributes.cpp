@@ -32,14 +32,14 @@ NS_ROOT
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(iresearch::offset);
-DEFINE_ATTRIBUTE_TYPE(offset);
+DEFINE_ATTRIBUTE_TYPE(offset)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         increment
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(iresearch::increment);
-DEFINE_ATTRIBUTE_TYPE(increment);
+DEFINE_ATTRIBUTE_TYPE(increment)
 
 increment::increment() NOEXCEPT
   : basic_attribute<uint32_t>(1U) {
@@ -50,28 +50,28 @@ increment::increment() NOEXCEPT
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(iresearch::term_attribute);
-DEFINE_ATTRIBUTE_TYPE(term_attribute);
+DEFINE_ATTRIBUTE_TYPE(term_attribute)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           payload
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(iresearch::payload);
-DEFINE_ATTRIBUTE_TYPE(payload);
+DEFINE_ATTRIBUTE_TYPE(payload)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  payload_iterator
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(irs::payload_iterator);
-DEFINE_ATTRIBUTE_TYPE(payload_iterator);
+DEFINE_ATTRIBUTE_TYPE(payload_iterator)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          document
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(iresearch::document);
-DEFINE_ATTRIBUTE_TYPE(document);
+DEFINE_ATTRIBUTE_TYPE(document)
 
 document::document() NOEXCEPT:
   basic_attribute<doc_id_t>(type_limits<type_t::doc_id_t>::invalid()) {
@@ -82,22 +82,22 @@ document::document() NOEXCEPT:
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(iresearch::frequency);
-DEFINE_ATTRIBUTE_TYPE(frequency);
+DEFINE_ATTRIBUTE_TYPE(frequency)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                granularity_prefix
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(iresearch::granularity_prefix);
-DEFINE_ATTRIBUTE_TYPE(iresearch::granularity_prefix);
+DEFINE_ATTRIBUTE_TYPE(iresearch::granularity_prefix)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              norm
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(iresearch::norm);
-DEFINE_ATTRIBUTE_TYPE(norm);
-DEFINE_FACTORY_DEFAULT(norm);
+DEFINE_ATTRIBUTE_TYPE(norm)
+DEFINE_FACTORY_DEFAULT(norm)
 
 const document INVALID_DOCUMENT;
 
@@ -142,10 +142,13 @@ float_t norm::read() const {
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(iresearch::position);
-DEFINE_ATTRIBUTE_TYPE(position);
+DEFINE_ATTRIBUTE_TYPE(position)
 
-position::impl::impl(size_t reserve_attrs)
-  : attrs_(reserve_attrs) {
+position::position(size_t reserve_attrs): attrs_(reserve_attrs) {
 }
 
 NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

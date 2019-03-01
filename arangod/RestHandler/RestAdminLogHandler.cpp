@@ -36,8 +36,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminLogHandler::RestAdminLogHandler(GeneralRequest* request,
-                                         GeneralResponse* response)
+RestAdminLogHandler::RestAdminLogHandler(GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
 RestStatus RestAdminLogHandler::execute() {
@@ -48,18 +47,16 @@ RestStatus RestAdminLogHandler::execute() {
   } else {
     setLogLevel();
   }
-  return RestStatus::DONE; 
+  return RestStatus::DONE;
 }
 
 void RestAdminLogHandler::reportLogs() {
   // check the maximal log level to report
   bool found1;
-  std::string const& upto =
-      StringUtils::tolower(_request->value("upto", found1));
+  std::string const& upto = StringUtils::tolower(_request->value("upto", found1));
 
   bool found2;
-  std::string const& lvl =
-      StringUtils::tolower(_request->value("level", found2));
+  std::string const& lvl = StringUtils::tolower(_request->value("level", found2));
 
   LogLevel ul = LogLevel::INFO;
   bool useUpto = true;
@@ -88,8 +85,7 @@ void RestAdminLogHandler::reportLogs() {
     } else if (logLevel == "trace" || logLevel == "5") {
       ul = LogLevel::TRACE;
     } else {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("unknown '") + (found2 ? "level" : "upto") +
                         "' log level: '" + logLevel + "'");
       return;
@@ -134,8 +130,7 @@ void RestAdminLogHandler::reportLogs() {
 
   // check the search criteria
   bool search = false;
-  std::string searchString =
-      StringUtils::tolower(_request->value("search", search));
+  std::string searchString = StringUtils::tolower(_request->value("search", search));
 
   // generate result
   std::vector<LogBuffer> entries = LogBuffer::entries(ul, start, useUpto);
@@ -184,8 +179,11 @@ void RestAdminLogHandler::reportLogs() {
     result.add("lid", VPackValue(VPackValueType::Array));
 
     for (size_t i = 0; i < length; ++i) {
-      auto& buf = clean.at(i + static_cast<size_t>(offset));
-      result.add(VPackValue(buf._id));
+      try {
+        auto& buf = clean.at(i + static_cast<size_t>(offset));
+        result.add(VPackValue(buf._id));
+      } catch (...) {
+      }
     }
 
     result.close();
@@ -193,8 +191,11 @@ void RestAdminLogHandler::reportLogs() {
     result.add("topic", VPackValue(VPackValueType::Array));
 
     for (size_t i = 0; i < length; ++i) {
-      auto& buf = clean.at(i + static_cast<size_t>(offset));
-      result.add(VPackValue(LogTopic::lookup(buf._topicId)));
+      try {
+        auto& buf = clean.at(i + static_cast<size_t>(offset));
+        result.add(VPackValue(LogTopic::lookup(buf._topicId)));
+      } catch (...) {
+      }
     }
     result.close();
 
@@ -202,32 +203,35 @@ void RestAdminLogHandler::reportLogs() {
     result.add("level", VPackValue(VPackValueType::Array));
 
     for (size_t i = 0; i < length; ++i) {
-      auto& buf = clean.at(i + static_cast<size_t>(offset));
-      uint32_t l = 0;
+      try {
+        auto& buf = clean.at(i + static_cast<size_t>(offset));
+        uint32_t l = 0;
 
-      switch (buf._level) {
-        case LogLevel::FATAL:
-          l = 0;
-          break;
-        case LogLevel::ERR:
-          l = 1;
-          break;
-        case LogLevel::WARN:
-          l = 2;
-          break;
-        case LogLevel::DEFAULT:
-        case LogLevel::INFO:
-          l = 3;
-          break;
-        case LogLevel::DEBUG:
-          l = 4;
-          break;
-        case LogLevel::TRACE:
-          l = 5;
-          break;
+        switch (buf._level) {
+          case LogLevel::FATAL:
+            l = 0;
+            break;
+          case LogLevel::ERR:
+            l = 1;
+            break;
+          case LogLevel::WARN:
+            l = 2;
+            break;
+          case LogLevel::DEFAULT:
+          case LogLevel::INFO:
+            l = 3;
+            break;
+          case LogLevel::DEBUG:
+            l = 4;
+            break;
+          case LogLevel::TRACE:
+            l = 5;
+            break;
+        }
+
+        result.add(VPackValue(l));
+      } catch (...) {
       }
-
-      result.add(VPackValue(l));
     }
 
     result.close();
@@ -236,8 +240,11 @@ void RestAdminLogHandler::reportLogs() {
     result.add("timestamp", VPackValue(VPackValueType::Array));
 
     for (size_t i = 0; i < length; ++i) {
-      auto& buf = clean.at(i + static_cast<size_t>(offset));
-      result.add(VPackValue(static_cast<size_t>(buf._timestamp)));
+      try {
+        auto& buf = clean.at(i + static_cast<size_t>(offset));
+        result.add(VPackValue(static_cast<size_t>(buf._timestamp)));
+      } catch (...) {
+      }
     }
 
     result.close();
@@ -246,8 +253,11 @@ void RestAdminLogHandler::reportLogs() {
     result.add("text", VPackValue(VPackValueType::Array));
 
     for (size_t i = 0; i < length; ++i) {
-      auto& buf = clean.at(i + static_cast<size_t>(offset));
-      result.add(VPackValue(buf._message));
+      try {
+        auto& buf = clean.at(i + static_cast<size_t>(offset));
+        result.add(VPackValue(buf._message));
+      } catch (...) {
+      }
     }
 
     result.close();
@@ -269,8 +279,7 @@ void RestAdminLogHandler::setLogLevel() {
   TRI_ASSERT(!suffixes.empty());
 
   if (suffixes[0] != "level") {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting /_admin/log/level");
     return;
   }
@@ -288,14 +297,14 @@ void RestAdminLogHandler::setLogLevel() {
     builder.close();
 
     generateResult(rest::ResponseCode::OK, builder.slice());
-  } else if (type == rest::RequestType::PUT) { 
+  } else if (type == rest::RequestType::PUT) {
     // set log level
     bool parseSuccess = false;
     VPackSlice slice = this->parseVPackBody(parseSuccess);
     if (!parseSuccess) {
-      return; // error message generated in parseVPackBody
+      return;  // error message generated in parseVPackBody
     }
-    
+
     if (slice.isString()) {
       Logger::setLogLevel(slice.copyString());
     } else if (slice.isObject()) {
@@ -306,7 +315,7 @@ void RestAdminLogHandler::setLogLevel() {
         }
       }
     }
-    
+
     // now report current log level
     VPackBuilder builder;
     builder.openObject();
@@ -319,7 +328,6 @@ void RestAdminLogHandler::setLogLevel() {
     generateResult(rest::ResponseCode::OK, builder.slice());
   } else {
     // invalid method
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 }

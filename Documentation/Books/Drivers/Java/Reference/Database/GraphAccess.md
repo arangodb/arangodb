@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
 # Accessing graphs
 
 These functions implement the
@@ -6,9 +6,7 @@ These functions implement the
 
 ## ArangoDatabase.graph
 
-```
-ArangoDatabase.graph(String name) : ArangoGraph
-```
+`ArangoDatabase.graph(String name) : ArangoGraph`
 
 Returns a _ArangoGraph_ instance for the given graph name.
 

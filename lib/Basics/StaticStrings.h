@@ -80,20 +80,23 @@ class StaticStrings {
   static std::string const SystemDatabase;
 
   // LogicalDataSource definition fields
-  static std::string const DataSourceDeleted; // data-source deletion marker
-  static std::string const DataSourceGuid; // data-source globaly-unique id
-  static std::string const DataSourceId; // data-source id
-  static std::string const DataSourceName; // data-source name
-  static std::string const DataSourcePlanId; // data-source plan id
-  static std::string const DataSourceSystem; // data-source system marker
-  static std::string const DataSourceType; // data-source type
+  static std::string const DataSourceDeleted;  // data-source deletion marker
+  static std::string const DataSourceGuid;     // data-source globaly-unique id
+  static std::string const DataSourceId;       // data-source id
+  static std::string const DataSourceName;     // data-source name
+  static std::string const DataSourcePlanId;   // data-source plan id
+  static std::string const DataSourceSystem;   // data-source system marker
+  static std::string const DataSourceType;     // data-source type
 
   // Index definition fields
-  static std::string const IndexFields; // index fields
-  static std::string const IndexId; // index id
-  static std::string const IndexSparse; // index sparsness marker
-  static std::string const IndexType; // index type
-  static std::string const IndexUnique; // index uniqueness marker
+  static std::string const IndexExpireAfter;   // ttl index expire value
+  static std::string const IndexFields;        // index fields
+  static std::string const IndexId;            // index id
+  static std::string const IndexSparse;        // index sparsity marker
+  static std::string const IndexType;          // index type
+  static std::string const IndexUnique;        // index uniqueness marker
+  static std::string const IndexIsBuilding;    // index build in-process
+  static std::string const IndexInBackground;  // index in background
 
   // HTTP headers
   static std::string const Accept;
@@ -135,7 +138,6 @@ class StaticStrings {
   static std::string const NoSniff;
   static std::string const Origin;
   static std::string const PotentialDirtyRead;
-  static std::string const Queue;
   static std::string const RequestForwardedTo;
   static std::string const ResponseCode;
   static std::string const Server;
@@ -143,12 +145,20 @@ class StaticStrings {
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
   static std::string const XArangoNoLock;
+  static std::string const XArangoFrontend;
 
   // mime types
   static std::string const MimeTypeJson;
   static std::string const MimeTypeText;
   static std::string const MimeTypeVPack;
   static std::string const MultiPartContentType;
+
+  // collection attributes
+  static std::string const NumberOfShards;
+  static std::string const IsSmart;
+  static std::string const DistributeShardsLike;
+  static std::string const ReplicationFactor;
+  static std::string const ShardKeys;
 
   // graph attribute names
   static std::string const GraphCollection;
@@ -157,9 +167,6 @@ class StaticStrings {
   static std::string const GraphTo;
   static std::string const GraphOptions;
   static std::string const GraphSmartGraphAttribute;
-  static std::string const NumberOfShards;
-  static std::string const DistributeShardsLike;
-  static std::string const ReplicationFactor;
   static std::string const GraphDropCollections;
   static std::string const GraphDropCollection;
   static std::string const GraphCreateCollections;
@@ -170,9 +177,13 @@ class StaticStrings {
   static std::string const GraphInitialCid;
   static std::string const GraphName;
 
+  // Replication
+  static std::string const ReplicationSoftLockOnly;
+
   // misc strings
   static std::string const LastValue;
+  static std::string const checksumFileJs;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -39,7 +39,6 @@ namespace arangodb {
 class SingleCollectionTransaction;
 class VocbaseContext;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abstract base request handler
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,7 +231,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generate20x(arangodb::OperationResult const&, std::string const&,
-                   TRI_col_type_e, arangodb::velocypack::Options const*);
+                   TRI_col_type_e, arangodb::velocypack::Options const*,
+                   bool isMultiple, rest::ResponseCode waitForSyncResponseCode);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates message for a saved document
@@ -248,7 +248,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   void generateDeleted(arangodb::OperationResult const& result,
                        std::string const& collectionName, TRI_col_type_e type,
-                       arangodb::velocypack::Options const*);
+                       arangodb::velocypack::Options const*, bool isMultiple);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates document not found error message, no transaction info
@@ -256,8 +256,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   void generateDocumentNotFound(std::string const& /* collection name */,
                                 std::string const& /* document key */) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -305,14 +304,14 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generateTransactionError(std::string const&, OperationResult const&,
-      std::string const& key, TRI_voc_rid_t = 0);
+                                std::string const& key, TRI_voc_rid_t = 0);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generate an error message for a transaction error
   //////////////////////////////////////////////////////////////////////////////
 
   void generateTransactionError(std::string const& str, Result const& res,
-                                std::string const& key, TRI_voc_rid_t rid = 0){
+                                std::string const& key, TRI_voc_rid_t rid = 0) {
     generateTransactionError(str, OperationResult(res), key, rid);
   }
 
@@ -330,7 +329,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @note @FA{header} must be lowercase.
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_voc_rid_t extractRevision(char const*, bool&);
+  TRI_voc_rid_t extractRevision(char const*, bool&) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief extracts a string parameter value
@@ -339,15 +338,18 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   void extractStringParameter(std::string const& name, std::string& ret) const;
 
   /**
-   * @brief Helper to create a new Transaction for a single collection. The helper method will consider
-   *        no-lock headers send via http and will lock the collection accordingly.
+   * @brief Helper to create a new Transaction for a single collection. The
+   * helper method will consider no-lock headers send via http and will lock the
+   * collection accordingly.
    *
    * @param collectionName Name of the collection to be locked
    * @param mode The access mode (READ / WRITE / EXCLUSIVE)
    *
-   * @return A freshly created transaction for the given collection with proper locking.
+   * @return A freshly created transaction for the given collection with proper
+   * locking.
    */
-  std::unique_ptr<SingleCollectionTransaction> createTransaction(std::string const& collectionName, AccessMode::Type mode) const;
+  std::unique_ptr<SingleCollectionTransaction> createTransaction(std::string const& collectionName,
+                                                                 AccessMode::Type mode) const;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -391,13 +393,12 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   void clearNoLockHeaders() noexcept;
 
  private:
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Container that holds the no-lock header set
   ////////////////////////////////////////////////////////////////////////////////
   std::unique_ptr<std::unordered_set<std::string>> _nolockHeaderSet;
 };
 
-}
+}  // namespace arangodb
 
 #endif

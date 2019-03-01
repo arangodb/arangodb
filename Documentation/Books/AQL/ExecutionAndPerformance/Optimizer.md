@@ -135,7 +135,7 @@ Here is the meaning of these rules in context of this query:
 * `use-indexes`: use an index to iterate over a collection instead of performing a
   full collection scan. In the example case this makes sense, as the index can be
   used for filtering and sorting.
-* `remove-filter-covered-by-index`: remove an unnessary filter whose functionality
+* `remove-filter-covered-by-index`: remove an unnecessary filter whose functionality
   is already covered by an index. In this case the index only returns documents 
   matching the filter.
 * `use-index-for-sort`: removes a `SORT` operation if it is already satisfied by
@@ -428,6 +428,10 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
 * `replace-function-with-index`: will appear when a deprecated index function such as
    `FULLTEXT`, `NEAR`, `WITHIN` or `WITHIN_RECTANGLE` is replaced with a regular
    subquery.
+* `fuse-filters`: will appear if the optimizer merges adjacent FILTER nodes together into
+   a single FILTER node
+* `simplify-conditions`: will appear if the optimizer replaces parts in a CalculationNode's
+   expression with simpler expressions 
 * `remove-sort-rand`: will appear when a *SORT RAND()* expression is removed by
   moving the random iteration into an *EnumerateCollectionNode*. This optimizer rule
   is specific for the MMFiles storage engine.
@@ -441,6 +445,12 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   value of subqueries in case only the number of subquery results is checked later. 
   This saves copying the document data from the subquery to the outer scope and may
   enable follow-up optimizations.
+* `sort-limit`: will appear when a *SortNode* is followed by a *LimitNode* with no
+  intervening nodes that may change the element count (e.g. a *FilterNode* which
+  could not be moved before the sort, or an source node like *EnumerateCollectionNode*).
+  This is used to make the *SortNode* aware of the limit and offset from the *LimitNode*
+  to enable some optimizations internal to the *SortNode* which allow for reduced
+  memory usage and and in many cases, improved sorting speed.
 
 The following optimizer rules may appear in the `rules` attribute of cluster plans:
 

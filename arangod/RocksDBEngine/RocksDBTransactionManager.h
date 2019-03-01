@@ -37,12 +37,12 @@ class RocksDBTransactionManager final : public TransactionManager {
   ~RocksDBTransactionManager() {}
 
   // register a list of failed transactions
-  void registerFailedTransactions(
-      std::unordered_set<TRI_voc_tid_t> const& failedTransactions) override {}
+  void registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) override {
+  }
 
   // unregister a list of failed transactions
-  void unregisterFailedTransactions(
-      std::unordered_set<TRI_voc_tid_t> const& failedTransactions) override {}
+  void unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) override {
+  }
 
   // return the set of failed transactions
   std::unordered_set<TRI_voc_tid_t> getFailedTransactions() override {
@@ -57,21 +57,20 @@ class RocksDBTransactionManager final : public TransactionManager {
   }
 
   // unregister a transaction
-  void unregisterTransaction(TRI_voc_tid_t transactionId,
-                             bool markAsFailed) override {
+  void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed) override {
+    TRI_ASSERT(_nrRunning > 0);
     --_nrRunning;
   }
 
   // iterate all the active transactions
   void iterateActiveTransactions(
-      std::function<void(TRI_voc_tid_t, TransactionData const*)> const&
-          callback) override {}
+      std::function<void(TRI_voc_tid_t, TransactionData const*)> const& callback) override {}
 
   uint64_t getActiveTransactionCount() override { return _nrRunning; }
 
  private:
   std::atomic<uint64_t> _nrRunning;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -48,38 +48,33 @@
 using namespace arangodb;
 
 /// @brief rotate the active journal of the collection
-static void JS_RotateVocbaseCol(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_RotateVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  SingleCollectionTransaction trx(
-    transaction::V8Context::Create(collection->vocbase(), true),
-    *collection,
-    AccessMode::Type::WRITE
-  );
+  SingleCollectionTransaction trx(transaction::V8Context::Create(collection->vocbase(), true),
+                                  *collection, AccessMode::Type::WRITE);
   Result res = trx.begin();
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  OperationResult result =
-    trx.rotateActiveJournal(collection->name(), OperationOptions());
-
-  res.reset(result.result);
+  MMFilesCollection* mcoll = static_cast<MMFilesCollection*>(collection->getPhysical());
+  res.reset(mcoll->rotateActiveJournal());
   trx.finish(res);
 
   if (!res.ok()) {
-    res.reset(res.errorNumber(), std::string("could not rotate journal: ") + res.errorMessage());
+    res.reset(res.errorNumber(),
+              std::string("could not rotate journal: ") + res.errorMessage());
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -89,12 +84,11 @@ static void JS_RotateVocbaseCol(
 
 /// @brief returns information about the datafiles
 /// the collection must be unloaded.
-static void JS_DatafilesVocbaseCol(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_DatafilesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -106,14 +100,12 @@ static void JS_DatafilesVocbaseCol(
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   auto status = collection->getStatusLocked();
 
-  if (status != TRI_VOC_COL_STATUS_UNLOADED &&
-      status != TRI_VOC_COL_STATUS_CORRUPTED) {
+  if (status != TRI_VOC_COL_STATUS_UNLOADED && status != TRI_VOC_COL_STATUS_CORRUPTED) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
   }
 
   auto structure = dynamic_cast<MMFilesEngine*>(engine)->scanCollectionDirectory(
-   collection->getPhysical()->path()
-  );
+      collection->getPhysical()->path());
 
   // build result
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -151,12 +143,11 @@ static void JS_DatafilesVocbaseCol(
 
 /// @brief returns information about the datafiles
 /// Returns information about the datafiles. The collection must be unloaded.
-static void JS_DatafileScanVocbaseCol(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_DatafileScanVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -166,14 +157,13 @@ static void JS_DatafileScanVocbaseCol(
     TRI_V8_THROW_EXCEPTION_USAGE("datafileScan(<path>)");
   }
 
-  std::string path = TRI_ObjectToString(args[0]);
+  std::string path = TRI_ObjectToString(isolate, args[0]);
 
   v8::Handle<v8::Object> result;
   {
     auto status = collection->getStatusLocked();
 
-    if (status != TRI_VOC_COL_STATUS_UNLOADED &&
-        status != TRI_VOC_COL_STATUS_CORRUPTED) {
+    if (status != TRI_VOC_COL_STATUS_UNLOADED && status != TRI_VOC_COL_STATUS_CORRUPTED) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
     }
 
@@ -208,14 +198,16 @@ static void JS_DatafileScanVocbaseCol(
              v8::Number::New(isolate, entry.size));
       o->Set(TRI_V8_ASCII_STRING(isolate, "realSize"),
              v8::Number::New(isolate, entry.realSize));
-      o->Set(TRI_V8_ASCII_STRING(isolate, "tick"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, entry.tick));
+      o->Set(TRI_V8_ASCII_STRING(isolate, "tick"),
+             TRI_V8UInt64String<TRI_voc_tick_t>(isolate, entry.tick));
       o->Set(TRI_V8_ASCII_STRING(isolate, "type"),
              v8::Number::New(isolate, static_cast<int>(entry.type)));
       o->Set(TRI_V8_ASCII_STRING(isolate, "status"),
              v8::Number::New(isolate, static_cast<int>(entry.status)));
 
       if (!entry.key.empty()) {
-        o->Set(TRI_V8_ASCII_STRING(isolate, "key"), TRI_V8_STD_STRING(isolate, entry.key));
+        o->Set(TRI_V8_ASCII_STRING(isolate, "key"),
+               TRI_V8_STD_STRING(isolate, entry.key));
       }
 
       if (entry.typeName != nullptr) {
@@ -237,12 +229,11 @@ static void JS_DatafileScanVocbaseCol(
 }
 
 /// @brief tries to repair a datafile
-static void JS_TryRepairDatafileVocbaseCol(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_TryRepairDatafileVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -254,11 +245,10 @@ static void JS_TryRepairDatafileVocbaseCol(
     TRI_V8_THROW_EXCEPTION_USAGE("tryRepairDatafile(<datafile>)");
   }
 
-  std::string path = TRI_ObjectToString(args[0]);
+  std::string path = TRI_ObjectToString(isolate, args[0]);
   auto status = collection->getStatusLocked();
 
-  if (status != TRI_VOC_COL_STATUS_UNLOADED &&
-      status != TRI_VOC_COL_STATUS_CORRUPTED) {
+  if (status != TRI_VOC_COL_STATUS_UNLOADED && status != TRI_VOC_COL_STATUS_CORRUPTED) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
   }
 
@@ -273,12 +263,11 @@ static void JS_TryRepairDatafileVocbaseCol(
 }
 
 /// @brief truncates a datafile
-static void JS_TruncateDatafileVocbaseCol(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_TruncateDatafileVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = UnwrapCollection(args.Holder());
+  auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
@@ -290,12 +279,11 @@ static void JS_TruncateDatafileVocbaseCol(
     TRI_V8_THROW_EXCEPTION_USAGE("truncateDatafile(<datafile>, <size>)");
   }
 
-  std::string path = TRI_ObjectToString(args[0]);
-  size_t size = (size_t)TRI_ObjectToInt64(args[1]);
+  std::string path = TRI_ObjectToString(isolate, args[0]);
+  size_t size = (size_t)TRI_ObjectToInt64(isolate, args[1]);
   auto status = collection->getStatusLocked();
 
-  if (status != TRI_VOC_COL_STATUS_UNLOADED &&
-      status != TRI_VOC_COL_STATUS_CORRUPTED) {
+  if (status != TRI_VOC_COL_STATUS_UNLOADED && status != TRI_VOC_COL_STATUS_CORRUPTED) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
   }
 
@@ -311,6 +299,7 @@ static void JS_TruncateDatafileVocbaseCol(
 
 static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
   if (args.Length() > 1 || (args.Length() == 1 && !args[0]->IsObject())) {
@@ -322,38 +311,40 @@ static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() == 1) {
     // set the properties
     v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "allowOversizeEntries"))) {
+    if (TRI_HasProperty(context, isolate, object, "allowOversizeEntries")) {
       bool value = TRI_ObjectToBoolean(
+          isolate,
           object->Get(TRI_V8_ASCII_STRING(isolate, "allowOversizeEntries")));
       l->allowOversizeEntries(value);
     }
 
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "logfileSize"))) {
+    if (TRI_HasProperty(context, isolate, object, "logfileSize")) {
       uint32_t value = static_cast<uint32_t>(TRI_ObjectToUInt64(
-          object->Get(TRI_V8_ASCII_STRING(isolate, "logfileSize")), true));
+          isolate, object->Get(TRI_V8_ASCII_STRING(isolate, "logfileSize")), true));
       l->filesize(value);
     }
 
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "historicLogfiles"))) {
+    if (TRI_HasProperty(context, isolate, object, "historicLogfiles")) {
       uint32_t value = static_cast<uint32_t>(TRI_ObjectToUInt64(
-          object->Get(TRI_V8_ASCII_STRING(isolate, "historicLogfiles")), true));
+          isolate, object->Get(TRI_V8_ASCII_STRING(isolate, "historicLogfiles")), true));
       l->historicLogfiles(value);
     }
 
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "reserveLogfiles"))) {
+    if (TRI_HasProperty(context, isolate, object, "reserveLogfiles")) {
       uint32_t value = static_cast<uint32_t>(TRI_ObjectToUInt64(
-          object->Get(TRI_V8_ASCII_STRING(isolate, "reserveLogfiles")), true));
+          isolate, object->Get(TRI_V8_ASCII_STRING(isolate, "reserveLogfiles")), true));
       l->reserveLogfiles(value);
     }
 
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "throttleWait"))) {
+    if (TRI_HasProperty(context, isolate, object, "throttleWait")) {
       uint64_t value = TRI_ObjectToUInt64(
-          object->Get(TRI_V8_ASCII_STRING(isolate, "throttleWait")), true);
+          isolate, object->Get(TRI_V8_ASCII_STRING(isolate, "throttleWait")), true);
       l->maxThrottleWait(value);
     }
 
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "throttleWhenPending"))) {
+    if (TRI_HasProperty(context, isolate, object, "throttleWhenPending")) {
       uint64_t value = TRI_ObjectToUInt64(
+          isolate,
           object->Get(TRI_V8_ASCII_STRING(isolate, "throttleWhenPending")), true);
       l->throttleWhenPending(value);
     }
@@ -381,6 +372,7 @@ static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
   bool waitForSync = false;
@@ -390,34 +382,37 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (args.Length() > 0) {
     if (args[0]->IsObject()) {
-      v8::Handle<v8::Object> obj = args[0]->ToObject();
-      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "waitForSync"))) {
-        waitForSync =
-            TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSync")));
+      v8::Handle<v8::Object> obj =
+          args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      if (TRI_HasProperty(context, isolate, obj, "waitForSync")) {
+        waitForSync = TRI_ObjectToBoolean(
+            isolate, obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSync")));
       }
-      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "waitForCollector"))) {
+      if (TRI_HasProperty(context, isolate, obj, "waitForCollector")) {
         waitForCollector = TRI_ObjectToBoolean(
+            isolate,
             obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForCollector")));
       }
-      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile"))) {
+      if (TRI_HasProperty(context, isolate, obj, "writeShutdownFile")) {
         writeShutdownFile = TRI_ObjectToBoolean(
+            isolate,
             obj->Get(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile")));
       }
-      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "maxWaitTime"))) {
+      if (TRI_HasProperty(context, isolate, obj, "maxWaitTime")) {
         maxWaitTime = TRI_ObjectToDouble(
-            obj->Get(TRI_V8_ASCII_STRING(isolate, "maxWaitTime")));
+            isolate, obj->Get(TRI_V8_ASCII_STRING(isolate, "maxWaitTime")));
       }
     } else {
-      waitForSync = TRI_ObjectToBoolean(args[0]);
+      waitForSync = TRI_ObjectToBoolean(isolate, args[0]);
 
       if (args.Length() > 1) {
-        waitForCollector = TRI_ObjectToBoolean(args[1]);
+        waitForCollector = TRI_ObjectToBoolean(isolate, args[1]);
 
         if (args.Length() > 2) {
-          writeShutdownFile = TRI_ObjectToBoolean(args[2]);
+          writeShutdownFile = TRI_ObjectToBoolean(isolate, args[2]);
 
           if (args.Length() > 3) {
-            maxWaitTime = TRI_ObjectToDouble(args[3]);
+            maxWaitTime = TRI_ObjectToDouble(isolate, args[3]);
           }
         }
       }
@@ -435,13 +430,14 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_RETURN_TRUE();
   }
 
-  res = MMFilesLogfileManager::instance()->flush(
-      waitForSync, waitForCollector, writeShutdownFile, maxWaitTime);
+  res = MMFilesLogfileManager::instance()->flush(waitForSync, waitForCollector,
+                                                 writeShutdownFile, maxWaitTime);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_LOCK_TIMEOUT) {
       // improved diagnostic message for this special case
-      TRI_V8_THROW_EXCEPTION_MESSAGE(res, "timed out waiting for WAL flush operation");
+      TRI_V8_THROW_EXCEPTION_MESSAGE(
+          res, "timed out waiting for WAL flush operation");
     }
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -452,8 +448,7 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 /// @brief wait for WAL collector to finish operations for the specified
 /// collection
-static void JS_WaitCollectorWal(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_WaitCollectorWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -468,7 +463,7 @@ static void JS_WaitCollectorWal(
         "WAL_WAITCOLLECTOR(<collection-id>, <timeout>)");
   }
 
-  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
   auto col = vocbase.lookupCollection(name);
 
   if (col == nullptr) {
@@ -477,12 +472,10 @@ static void JS_WaitCollectorWal(
 
   double timeout = 30.0;
   if (args.Length() > 1) {
-    timeout = TRI_ObjectToDouble(args[1]);
+    timeout = TRI_ObjectToDouble(isolate, args[1]);
   }
 
-  int res = MMFilesLogfileManager::instance()->waitForCollectorQueue(
-    col->id(), timeout
-  );
+  int res = MMFilesLogfileManager::instance()->waitForCollectorQueue(col->id(), timeout);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -493,29 +486,25 @@ static void JS_WaitCollectorWal(
 }
 
 /// @brief get information about the currently running transactions
-static void JS_TransactionsWal(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_TransactionsWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto const& info =
-      MMFilesLogfileManager::instance()->runningTransactions();
+  auto const& info = MMFilesLogfileManager::instance()->runningTransactions();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  result->ForceSet(
-      TRI_V8_ASCII_STRING(isolate, "runningTransactions"),
-      v8::Number::New(isolate, static_cast<double>(std::get<0>(info))));
+  result->Set(TRI_V8_ASCII_STRING(isolate, "runningTransactions"),
+              v8::Number::New(isolate, static_cast<double>(std::get<0>(info))));
 
   // lastCollectedId
   {
     auto value = std::get<1>(info);
     if (value == UINT64_MAX) {
-      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "minLastCollected"),
-                       v8::Null(isolate));
+      result->Set(TRI_V8_ASCII_STRING(isolate, "minLastCollected"), v8::Null(isolate));
     } else {
-      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "minLastCollected"),
-                       TRI_V8UInt64String<TRI_voc_tick_t>(isolate, static_cast<TRI_voc_tick_t>(value)));
+      result->Set(TRI_V8_ASCII_STRING(isolate, "minLastCollected"),
+                  TRI_V8UInt64String<TRI_voc_tick_t>(isolate, static_cast<TRI_voc_tick_t>(value)));
     }
   }
 
@@ -523,10 +512,10 @@ static void JS_TransactionsWal(
   {
     auto value = std::get<2>(info);
     if (value == UINT64_MAX) {
-      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "minLastSealed"), v8::Null(isolate));
+      result->Set(TRI_V8_ASCII_STRING(isolate, "minLastSealed"), v8::Null(isolate));
     } else {
-      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "minLastSealed"),
-                       TRI_V8UInt64String<TRI_voc_tick_t>(isolate, static_cast<TRI_voc_tick_t>(value)));
+      result->Set(TRI_V8_ASCII_STRING(isolate, "minLastSealed"),
+                  TRI_V8UInt64String<TRI_voc_tick_t>(isolate, static_cast<TRI_voc_tick_t>(value)));
     }
   }
 
@@ -551,25 +540,29 @@ void MMFilesV8Functions::registerResources() {
   TRI_GET_GLOBALS();
 
   // patch ArangoCollection object
-  v8::Handle<v8::ObjectTemplate> rt = v8::Handle<v8::ObjectTemplate>::New(isolate, v8g->VocbaseColTempl);
+  v8::Handle<v8::ObjectTemplate> rt =
+      v8::Handle<v8::ObjectTemplate>::New(isolate, v8g->VocbaseColTempl);
   TRI_ASSERT(!rt.IsEmpty());
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "datafiles"),
                        JS_DatafilesVocbaseCol, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "datafileScan"),
                        JS_DatafileScanVocbaseCol, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "rotate"),
-                       JS_RotateVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "truncateDatafile"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "rotate"), JS_RotateVocbaseCol);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "truncateDatafile"),
                        JS_TruncateDatafileVocbaseCol, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "tryRepairDatafile"),
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "tryRepairDatafile"),
                        JS_TryRepairDatafileVocbaseCol, true);
 
   // add global WAL handling functions
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "WAL_FLUSH"), JS_FlushWal, true);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "WAL_WAITCOLLECTOR"),
+                               TRI_V8_ASCII_STRING(isolate, "WAL_FLUSH"),
+                               JS_FlushWal, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "WAL_WAITCOLLECTOR"),
                                JS_WaitCollectorWal, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "WAL_PROPERTIES"),

@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global ArangoClusterInfo, ArangoClusterComm, require, exports, module */
+/*global ArangoClusterInfo, require, exports, module */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoCollection
@@ -74,8 +74,12 @@ var ArangoError = require('@arangodb').ArangoError;
 var ArangoDatabase = require('@arangodb/arango-database').ArangoDatabase;
 
       
-ArangoCollection.prototype.shards = function () {
-  return Object.keys(ArangoClusterInfo.getCollectionInfo(require('internal').db._name(), this.name()).shardShorts);
+ArangoCollection.prototype.shards = function (detailed) {
+  let base = ArangoClusterInfo.getCollectionInfo(require('internal').db._name(), this.name());
+  if (detailed) {
+    return base.shards;
+  }
+  return Object.keys(base.shardShorts);
 };
 
 // //////////////////////////////////////////////////////////////////////////////

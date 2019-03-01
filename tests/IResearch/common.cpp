@@ -31,6 +31,8 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Ast.h"
+#include "ClusterEngine/ClusterEngine.h"
+#include "Random/RandomGenerator.h"
 #include "Basics/files.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "V8/v8-utils.h"
@@ -63,24 +65,37 @@ struct BoostScorer : public irs::sort {
 
     Prepared() = default;
 
-    virtual void add(score_t& dst, const score_t& src) const override {
-      dst += src;
+    virtual void add(irs::byte_type* dst, irs::byte_type const* src) const override {
+      score_cast(dst) += score_cast(src);
+    }
+
+    virtual void collect(
+      irs::attribute_store& filter_attrs,
+      const irs::index_reader& index,
+      const irs::sort::field_collector* field,
+      const irs::sort::term_collector* term
+    ) const override {
+      // NOOP
     }
 
     virtual irs::flags const& features() const override {
       return irs::flags::empty_instance();
     }
 
-    virtual bool less(const score_t& lhs, const score_t& rhs) const override {
-      return lhs < rhs;
+    virtual bool less(irs::byte_type const* lhs, irs::byte_type const* rhs) const override {
+      return score_cast(lhs) < score_cast(rhs);
     }
 
-    virtual irs::sort::collector::ptr prepare_collector() const override {
+    virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
       return nullptr;
     }
 
-    virtual void prepare_score(score_t& score) const override {
-      score = 0.f;
+    virtual void prepare_score(irs::byte_type* score) const override {
+      score_cast(score) = 0.f;
+    }
+
+    virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
+      return nullptr;
     }
 
     virtual irs::sort::scorer::ptr prepare_scorer(
@@ -123,6 +138,114 @@ struct BoostScorer : public irs::sort {
 
 REGISTER_SCORER_JSON(BoostScorer, BoostScorer::make);
 
+struct CustomScorer : public irs::sort {
+  struct Prepared: public irs::sort::prepared_base<float_t> {
+   public:
+    DECLARE_FACTORY(Prepared);
+
+    Prepared(float_t i)
+      : i(i) {
+    }
+
+    virtual void add(irs::byte_type* dst, const irs::byte_type* src) const override {
+      score_cast(dst) += score_cast(src);
+    }
+
+    virtual void collect(
+      irs::attribute_store& filter_attrs,
+      const irs::index_reader& index,
+      const irs::sort::field_collector* field,
+      const irs::sort::term_collector* term
+    ) const override {
+      // NOOP
+    }
+
+    virtual irs::flags const& features() const override {
+      return irs::flags::empty_instance();
+    }
+
+    virtual bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override {
+      return score_cast(lhs) < score_cast(rhs);
+    }
+
+    virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
+      return nullptr;
+    }
+
+    virtual void prepare_score(irs::byte_type* score) const override {
+      score_cast(score) = 0.f;
+    }
+
+    virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
+      return nullptr;
+    }
+
+    virtual irs::sort::scorer::ptr prepare_scorer(
+      irs::sub_reader const&,
+      irs::term_reader const&,
+      irs::attribute_store const&,
+      irs::attribute_view const&
+    ) const override {
+      struct Scorer : public irs::sort::scorer {
+        Scorer(float_t score): i(score) { }
+
+        virtual void score(irs::byte_type* score_buf) override {
+          *reinterpret_cast<score_t*>(score_buf) = i;
+        }
+
+        float_t i;
+      };
+
+      return irs::sort::scorer::make<Scorer>(i);
+    }
+
+    float_t i;
+  };
+
+  static ::iresearch::sort::type_id const& type() {
+    static ::iresearch::sort::type_id TYPE("customscorer");
+    return TYPE;
+  }
+
+  static irs::sort::ptr make(irs::string_ref const& args) {
+    if (args.null()) {
+      return std::make_shared<CustomScorer>(0.f);
+    }
+
+    // velocypack::Parser::fromJson(...) will throw exception on parse error
+    auto json = arangodb::velocypack::Parser::fromJson(args.c_str(), args.size());
+    auto slice = json ? json->slice() : arangodb::velocypack::Slice();
+
+    if (!slice.isArray()) {
+      return nullptr; // incorrect argument format
+    }
+
+    arangodb::velocypack::ArrayIterator itr(slice);
+
+    if (!itr.valid()) {
+      return nullptr;
+    }
+
+    auto const value = itr.value();
+
+    if (!value.isNumber()) {
+      return nullptr;
+    }
+
+    return std::make_shared<CustomScorer>(itr.value().getNumber<size_t>());
+  }
+
+  CustomScorer(size_t i) : irs::sort(CustomScorer::type()), i(i) {}
+
+  virtual irs::sort::prepared::ptr prepare() const override {
+    return irs::memory::make_unique<Prepared>(static_cast<float_t>(i));
+  }
+
+  size_t i;
+}; // CustomScorer
+
+REGISTER_SCORER_JSON(CustomScorer, CustomScorer::make);
+
 }
 
 namespace arangodb {
@@ -130,6 +253,8 @@ namespace tests {
 
 void init(bool withICU /*= false*/) {
   arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
+  ClusterEngine::Mocking = true;
+  arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
 }
 
 // @Note: once V8 is initialized all 'CATCH' errors will result in SIGILL
@@ -218,7 +343,7 @@ arangodb::aql::QueryResult executeQuery(
 
   arangodb::aql::QueryResult result;
   while (true) {
-    auto state = query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY, result);
+    auto state = query.execute(arangodb::QueryRegistryFeature::registry(), result);
     if (state == arangodb::aql::ExecutionState::WAITING) {
       ss->waitForAsyncResponse();
     } else {
@@ -254,14 +379,12 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
     return nullptr;
   }
 
-  return std::unique_ptr<arangodb::aql::ExecutionPlan>(
-    arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast())
-  );
+  return arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast());
 }
 
 uint64_t getCurrentPlanVersion() {
   auto const result = arangodb::AgencyComm().getValues("Plan");
-  auto const planVersionSlice = result.slice()[0].get(
+  auto const planVersionSlice = result.slice()[0].get<std::string>(
     { arangodb::AgencyCommManager::path(), "Plan", "Version" }
   );
   return planVersionSlice.getNumber<uint64_t>();

@@ -40,6 +40,15 @@
     },
     toString: function (v) {
       return v.major + '.' + v.minor + '.' + v.patch;
+    },
+    toDocuVersion: function (v) {
+      var version;
+      if (v.toLowerCase().indexOf('devel') >= 0 || v.toLowerCase().indexOf('rc') >= 0) {
+        version = 'devel';
+      } else {
+        version = v.substring(0, 3);
+      }
+      return version;
     }
   };
 
@@ -120,7 +129,7 @@
           }
         });
       }
-      return shortName;
+      return arangoHelper.escapeHtml(shortName);
     },
 
     getDatabaseShortName: function (id) {
@@ -176,14 +185,18 @@
         if (!$(element).hasClass('nav-header')) {
           if ($(element).find('input').attr('checked')) {
             if ($(element).find('i').hasClass('css-round-label')) {
+              $(element).find('i').removeClass('fa-circle-o');
               $(element).find('i').addClass('fa-dot-circle-o');
             } else {
+              $(element).find('i').removeClass('fa-square-o');
               $(element).find('i').addClass('fa-check-square-o');
             }
           } else {
             if ($(element).find('i').hasClass('css-round-label')) {
+              $(element).find('i').removeClass('fa-dot-circle-o');
               $(element).find('i').addClass('fa-circle-o');
             } else {
+              $(element).find('i').removeClass('fa-check-square-o');
               $(element).find('i').addClass('fa-square-o');
             }
           }
@@ -785,7 +798,7 @@
       });
     },
 
-    syncAndReturnUninishedAardvarkJobs: function (type, callback) {
+    syncAndReturnUnfinishedAardvarkJobs: function (type, callback) {
       var callbackInner = function (error, AaJobs) {
         if (error) {
           callback(true);
@@ -1028,8 +1041,7 @@
     },
 
     download: function (url, callback) {
-      $.ajax(url)
-      .success(function (result, dummy, request) {
+      $.ajax(url).success(function (result, dummy, request) {
         if (callback) {
           callback(result);
           return;
@@ -1230,12 +1242,12 @@
           validateInput: function () {
             return [
               {
-                rule: Joi.string().regex(/^((APP[^/]+|(?!APP)[a-zA-Z0-9_\-%]+))+$/i),
-                msg: 'May not contain /APP'
+                rule: Joi.string().regex(/(\/|^)APP(\/|$)/i, {invert: true}),
+                msg: 'May not contain APP'
               },
               {
-                rule: Joi.string().regex(/^([a-zA-Z0-9_\-%]+)+$/),
-                msg: 'Can only contain [a-zA-Z0-9_-%]'
+                rule: Joi.string().regex(/^([a-zA-Z0-9_\-/]+)+$/),
+                msg: 'Can only contain [a-zA-Z0-9_-/]'
               },
               {
                 rule: Joi.string().regex(/([^_]|_open\/)/),

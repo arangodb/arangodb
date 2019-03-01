@@ -75,11 +75,14 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Options.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Parser.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Slice.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/SliceStaticData.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/StringRef.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Utf8Helper.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/ValueType.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Validator.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Version.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/asm-functions.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/asm-utf8check.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/fpconv.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/velocypack-common.cpp
   ${PROJECT_SOURCE_DIR}/lib/Basics/xxhash.cpp
@@ -135,6 +138,7 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/ApplicationFeaturePhase.cpp
   ApplicationFeatures/ApplicationServer.cpp
   ApplicationFeatures/AgencyPhase.cpp
+  ApplicationFeatures/CommunicationPhase.cpp
   ApplicationFeatures/AQLPhase.cpp
   ApplicationFeatures/BasicPhase.cpp
   ApplicationFeatures/ClusterPhase.cpp
@@ -171,7 +175,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/LocalTaskQueue.cpp
   Basics/Mutex.cpp
   Basics/Nonce.cpp
-  Basics/OpenFilesTracker.cpp
   Basics/ReadWriteLock.cpp
   Basics/Result.cpp
   Basics/RocksDBLogger.cpp
@@ -180,7 +183,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/StaticStrings.cpp
   Basics/StringBuffer.cpp
   Basics/StringHeap.cpp
-  Basics/StringRef.cpp
   Basics/StringUtils.cpp
   Basics/Thread.cpp
   Basics/Utf8Helper.cpp
@@ -218,6 +220,7 @@ add_library(${LIB_ARANGO} STATIC
   Endpoint/EndpointIpV4.cpp
   Endpoint/EndpointIpV6.cpp
   Endpoint/EndpointList.cpp
+  Futures/Future.cpp
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
   Logger/LogAppenderSyslog.cpp
@@ -229,6 +232,11 @@ add_library(${LIB_ARANGO} STATIC
   Logger/LoggerBufferFeature.cpp
   Logger/LoggerFeature.cpp
   Logger/LoggerStream.cpp
+  Maskings/AttributeMasking.cpp
+  Maskings/Collection.cpp
+  Maskings/Maskings.cpp
+  Maskings/Path.cpp
+  Maskings/RandomStringMask.cpp
   ProgramOptions/Option.cpp
   ProgramOptions/ProgramOptions.cpp
   ProgramOptions/Section.cpp
@@ -246,7 +254,6 @@ add_library(${LIB_ARANGO} STATIC
   Rest/Version.cpp
   SimpleHttpClient/ClientConnection.cpp
   SimpleHttpClient/Communicator.cpp
-  SimpleHttpClient/ConnectionManager.cpp
   SimpleHttpClient/GeneralClientConnection.cpp
   SimpleHttpClient/SimpleHttpClient.cpp
   SimpleHttpClient/SimpleHttpResult.cpp

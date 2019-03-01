@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
-#include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBKey.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
@@ -51,7 +51,6 @@ namespace arangodb {
 namespace cache {
 
 struct Transaction;
-
 }
 
 class LogicalCollection;
@@ -62,9 +61,8 @@ namespace transaction {
 class Methods;
 struct Options;
 
-}
+}  // namespace transaction
 
-class TransactionCollection;
 class RocksDBMethods;
 
 /// @brief transaction type
@@ -72,15 +70,12 @@ class RocksDBTransactionState final : public TransactionState {
   friend class RocksDBMethods;
   friend class RocksDBReadOnlyMethods;
   friend class RocksDBTrxMethods;
-  friend class RocksDBTrxUntrackedMethods;
   friend class RocksDBBatchedMethods;
+  friend class RocksDBBatchedWithIndexMethods;
 
  public:
-  RocksDBTransactionState(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_tid_t tid,
-    transaction::Options const& options
-  );
+  RocksDBTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+                          transaction::Options const& options);
   ~RocksDBTransactionState();
 
   /// @brief begin a transaction
@@ -92,7 +87,9 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief abort a transaction
   Result abortTransaction(transaction::Methods* trx) override;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   uint64_t numCommits() const { return _numCommits; }
+#endif
   uint64_t numInserts() const { return _numInserts; }
   uint64_t numUpdates() const { return _numUpdates; }
   uint64_t numRemoves() const { return _numRemoves; }
@@ -108,20 +105,21 @@ class RocksDBTransactionState final : public TransactionState {
   void prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t rid,
                         TRI_voc_document_operation_e operationType);
 
+  /// @brief undo the effects of the previous prepareOperation call
+  void rollbackOperation(TRI_voc_document_operation_e operationType);
+
   /// @brief add an operation for a transaction collection
-  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was performed
-  Result addOperation(TRI_voc_cid_t collectionId,
-      TRI_voc_rid_t revisionId, TRI_voc_document_operation_e opType,
-      bool& hasPerformedIntermediateCommit);
+  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
+  /// performed
+  Result addOperation(TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
+                      TRI_voc_document_operation_e opType,
+                      bool& hasPerformedIntermediateCommit);
 
-  RocksDBMethods* rocksdbMethods();
-
-  /// @brief insert a snapshot into a (not yet started) transaction.
-  ///        Only ever valid on a trx in CREATED state
-  void donateSnapshot(rocksdb::Snapshot const* snap);
-  /// @brief steal snapshot of this transaction.
-  /// Does not work on a single operation
-  rocksdb::Snapshot const* stealReadSnapshot();
+  /// @brief return wrapper around rocksdb transaction
+  RocksDBMethods* rocksdbMethods() {
+    TRI_ASSERT(_rocksMethods);
+    return _rocksMethods.get();
+  }
 
   /// @brief Rocksdb sequence number of snapshot. Works while trx
   ///        has either a snapshot or a transaction
@@ -149,14 +147,14 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief temporarily lease a Builder object. Not thread safe
   RocksDBKey* leaseRocksDBKey();
   /// @brief return a temporary RocksDBKey object. Not thread safe
-  void returnRocksDBKey(RocksDBKey* key);
+  void returnRocksDBKey(RocksDBKey* key) noexcept;
 
   /// @brief Every index can track hashes inserted into this index
-  ///        Used to update the estimate after the trx commited
+  ///        Used to update the estimate after the trx committed
   void trackIndexInsert(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);
 
   /// @brief Every index can track hashes removed from this index
-  ///        Used to update the estimate after the trx commited
+  ///        Used to update the estimate after the trx committed
   void trackIndexRemove(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);
 
  private:
@@ -170,12 +168,13 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief Trigger an intermediate commit.
   /// Handle with care if failing after this commit it will only
   /// be rolled back until this point of time.
-  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was performed
-  /// Not thread safe
+  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
+  /// performed Not thread safe
   Result triggerIntermediateCommit(bool& hasPerformedIntermediateCommit);
-  
+
   /// @brief check sizes and call internalCommit if too big
-  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was performed
+  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
+  /// performed
   Result checkIntermediateCommit(uint64_t newSize, bool& hasPerformedIntermediateCommit);
 
   /// @brief rocksdb transaction may be null for read only transactions
@@ -183,31 +182,29 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief used for read-only trx and intermediate commits
   /// For intermediate commits this MUST ONLY be used for iteratos
   rocksdb::Snapshot const* _readSnapshot;
-  /// @brief shared write options used
-  rocksdb::WriteOptions _rocksWriteOptions;
   /// @brief shared read options which can be used by operations
   /// For intermediate commits iterators MUST use the _readSnapshot
   rocksdb::ReadOptions _rocksReadOptions;
-  
+
   /// @brief cache transaction to unblock blacklisted keys
   cache::Transaction* _cacheTx;
   /// @brief wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBMethods> _rocksMethods;
 
-  uint64_t _numCommits;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  /// store the number of log entries in WAL
+  uint64_t _numLogdata = 0;
+  uint64_t _numCommits = 0;
+#endif
   // if a transaction gets bigger than these values then an automatic
   // intermediate commit will be done
   uint64_t _numInserts;
   uint64_t _numUpdates;
   uint64_t _numRemoves;
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  /// store the number of log entries in WAL
-  uint64_t _numLogdata = 0;
-#endif
   SmallVector<RocksDBKey*, 32>::allocator_type::arena_type _arena;
   SmallVector<RocksDBKey*, 32> _keys;
-  /// @brief if true there key buffers will no longer be shared
+  /// @brief if true the key buffers will no longer be shared
   bool _parallel;
 };
 
@@ -218,7 +215,8 @@ class RocksDBKeyLeaser {
   inline RocksDBKey* builder() const { return _key; }
   inline RocksDBKey* operator->() const { return _key; }
   inline RocksDBKey* get() const { return _key; }
-  inline RocksDBKey& ref() const {return *_key; }
+  inline RocksDBKey& ref() const { return *_key; }
+
  private:
   RocksDBTransactionState* _rtrx;
   bool _parallel;

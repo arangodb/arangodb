@@ -24,18 +24,19 @@
 #ifndef ARANGOD_AQL_BASE_EXPRESSION_CONTEXT_H
 #define ARANGOD_AQL_BASE_EXPRESSION_CONTEXT_H 1
 
-#include "ExpressionContext.h"
+#include "QueryExpressionContext.h"
 
 namespace arangodb {
 namespace aql {
 class AqlItemBlock;
+class Query;
 
-class BaseExpressionContext final : public ExpressionContext {
+class BaseExpressionContext final : public QueryExpressionContext {
  public:
-  BaseExpressionContext(size_t startPos, AqlItemBlock const* argv,
+  BaseExpressionContext(Query* query, size_t startPos, AqlItemBlock const* argv,
                         std::vector<Variable const*> const& vars,
                         std::vector<RegisterId> const& regs)
-      : ExpressionContext(),
+      : QueryExpressionContext(query),
         _startPos(startPos),
         _argv(argv),
         _vars(&vars),
@@ -43,7 +44,7 @@ class BaseExpressionContext final : public ExpressionContext {
 
   ~BaseExpressionContext() {}
 
-  size_t numRegisters() const override;
+  size_t numRegisters() const override { return _regs->size(); }
 
   AqlValue const& getRegisterValue(size_t i) const override;
 
@@ -59,6 +60,6 @@ class BaseExpressionContext final : public ExpressionContext {
   std::vector<Variable const*> const* _vars;
   std::vector<RegisterId> const* _regs;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 #endif

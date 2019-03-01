@@ -1,4 +1,5 @@
 /* jshint strict: false, sub: true */
+/* global print */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -81,13 +82,14 @@ function replicationFuzz (options) {
                          customInstanceInfos,
                          startStopHandlers) {
       let message;
+      print("starting replication slave: ");
       let slave = pu.startInstance('tcp', options, {}, 'slave_fuzz');
       let state = (typeof slave === 'object');
 
       if (state) {
         message = 'failed to start slave instance!';
       }
-
+      slave['isSlaveInstance'] = true;
       return {
         instanceInfo: slave,
         message: message,
@@ -98,13 +100,22 @@ function replicationFuzz (options) {
       };
     },
 
+    healthCheck: function (options,
+                           serverOptions,
+                           instanceInfo,
+                           customInstanceInfos,
+                           startStopHandlers) {
+      return pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options);
+    },
+
     preStop: function (options,
                        serverOptions,
                        instanceInfo,
                        customInstanceInfos,
                        startStopHandlers) {
-      pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
-
+      if (pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options)) {
+        pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+      }
       return {};
     },
 
@@ -140,6 +151,7 @@ function replicationRandom (options) {
                          customInstanceInfos,
                          startStopHandlers) {
       let message;
+      print("starting replication slave: ");
       let slave = pu.startInstance('tcp', options, {}, 'slave_random');
       let state = (typeof slave === 'object');
 
@@ -147,6 +159,7 @@ function replicationRandom (options) {
         message = 'failed to start slave instance!';
       }
 
+      slave['isSlaveInstance'] = true;
       return {
         instanceInfo: slave,
         message: message,
@@ -157,13 +170,22 @@ function replicationRandom (options) {
       };
     },
 
+    healthCheck: function (options,
+                           serverOptions,
+                           instanceInfo,
+                           customInstanceInfos,
+                           startStopHandlers) {
+      return pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options);
+    },
+
     preStop: function (options,
                        serverOptions,
                        instanceInfo,
                        customInstanceInfos,
                        startStopHandlers) {
-      pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
-
+      if (pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options)) {
+        pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+      }
       return {};
     },
 
@@ -199,6 +221,7 @@ function replicationAql (options) {
                          customInstanceInfos,
                          startStopHandlers) {
       let message;
+      print("starting replication slave: ");
       let slave = pu.startInstance('tcp', options, {}, 'slave_aql');
       let state = (typeof slave === 'object');
 
@@ -206,6 +229,7 @@ function replicationAql (options) {
         message = 'failed to start slave instance!';
       }
 
+      slave['isSlaveInstance'] = true;
       return {
         instanceInfo: slave,
         message: message,
@@ -216,13 +240,22 @@ function replicationAql (options) {
       };
     },
 
+    healthCheck: function (options,
+                           serverOptions,
+                           instanceInfo,
+                           customInstanceInfos,
+                           startStopHandlers) {
+      return pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options);
+    },
+
     preStop: function (options,
                        serverOptions,
                        instanceInfo,
                        customInstanceInfos,
                        startStopHandlers) {
-      pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
-
+      if (pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options)) {
+        pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+      }
       return {};
     },
 
@@ -261,6 +294,7 @@ function replicationOngoing (options) {
                          customInstanceInfos,
                          startStopHandlers) {
       let message;
+      print("starting replication slave: ");
       let slave = pu.startInstance('tcp', options, {}, 'slave_ongoing');
       let state = (typeof slave === 'object');
 
@@ -268,6 +302,7 @@ function replicationOngoing (options) {
         message = 'failed to start slave instance!';
       }
 
+      slave['isSlaveInstance'] = true;
       return {
         instanceInfo: slave,
         message: message,
@@ -278,13 +313,22 @@ function replicationOngoing (options) {
       };
     },
 
+    healthCheck: function (options,
+                           serverOptions,
+                           instanceInfo,
+                           customInstanceInfos,
+                           startStopHandlers) {
+      return pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options);
+    },
+
     preStop: function (options,
                        serverOptions,
                        instanceInfo,
                        customInstanceInfos,
                        startStopHandlers) {
-      pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
-
+      if (pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options)) {
+        pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+      }
       return {};
     },
 
@@ -324,6 +368,7 @@ function replicationStatic (options) {
                          startStopHandlers) {
       let message;
       let res = true;
+      print("starting replication slave: ");
       let slave = pu.startInstance('tcp', options, {}, 'slave_static');
       let state = (typeof slave === 'object');
 
@@ -344,10 +389,10 @@ function replicationStatic (options) {
           message = 'failed to setup slave connection' + res.message;
           pu.shutdownInstance(slave, options);
         }
+        slave['isSlaveInstance'] = true;
       } else {
         message = 'failed to start slave instance!';
       }
-
       return {
         instanceInfo: slave,
         message: message,
@@ -358,12 +403,22 @@ function replicationStatic (options) {
       };
     },
 
+    healthCheck: function (options,
+                           serverOptions,
+                           instanceInfo,
+                           customInstanceInfos,
+                           startStopHandlers) {
+      return pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options);
+    },
+
     preStop: function (options,
                        serverOptions,
                        instanceInfo,
                        customInstanceInfos,
                        startStopHandlers) {
-      pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+      if (pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options)) {
+        pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+      }
       return {};
     },
 
@@ -410,6 +465,7 @@ function replicationSync (options) {
                          startStopHandlers) {
       let message;
       let res = true;
+      print("starting replication slave: ");
       let slave = pu.startInstance('tcp', options, {"log.level" : "replication=trace", "--log.level": "replication=trace"}, 'slave_sync');
       let state = (typeof slave === 'object');
 
@@ -428,6 +484,7 @@ function replicationSync (options) {
           message = 'failed to setup slave connection' + res.message;
           pu.shutdownInstance(slave, options);
         }
+        slave['isSlaveInstance'] = true;
       } else {
         message = 'failed to start slave instance!';
       }
@@ -442,13 +499,22 @@ function replicationSync (options) {
       };
     },
 
+    healthCheck: function (options,
+                           serverOptions,
+                           instanceInfo,
+                           customInstanceInfos,
+                           startStopHandlers) {
+      return pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options);
+    },
+
     preStop: function (options,
                        serverOptions,
                        instanceInfo,
                        customInstanceInfos,
                        startStopHandlers) {
-      pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
-
+      if (pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options)) {
+        pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+      }
       return {};
     },
 

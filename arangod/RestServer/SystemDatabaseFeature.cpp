@@ -38,11 +38,10 @@ void SystemDatabaseFeature::VocbaseReleaser::operator()(TRI_vocbase_t* ptr) {
   }
 }
 
-SystemDatabaseFeature::SystemDatabaseFeature(
-    application_features::ApplicationServer& server,
-    TRI_vocbase_t* vocbase /*= nullptr*/
-): ApplicationFeature(server, SystemDatabaseFeature::name()),
-   _vocbase(vocbase) {
+SystemDatabaseFeature::SystemDatabaseFeature(application_features::ApplicationServer& server,
+                                             TRI_vocbase_t* vocbase /*= nullptr*/
+                                             )
+    : ApplicationFeature(server, SystemDatabaseFeature::name()), _vocbase(vocbase) {
   startsAfter("Database");
 }
 
@@ -51,9 +50,9 @@ SystemDatabaseFeature::SystemDatabaseFeature(
 }
 
 void SystemDatabaseFeature::start() {
-  auto* feature = application_features::ApplicationServer::lookupFeature<
-    arangodb::DatabaseFeature
-  >("Database");
+  auto* feature =
+      application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
+          "Database");
 
   if (feature) {
     _vocbase.store(feature->lookupDatabase(TRI_VOC_SYSTEM_DATABASE));
@@ -62,13 +61,12 @@ void SystemDatabaseFeature::start() {
   }
 
   LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-    << "failure to find feature 'Database' while starting feature '" << FEATURE_NAME << "'";
+      << "failure to find feature 'Database' while starting feature '"
+      << FEATURE_NAME << "'";
   FATAL_ERROR_EXIT();
 }
 
-void SystemDatabaseFeature::unprepare() {
-  _vocbase.store(nullptr);
-}
+void SystemDatabaseFeature::unprepare() { _vocbase.store(nullptr); }
 
 SystemDatabaseFeature::ptr SystemDatabaseFeature::use() const {
   auto* vocbase = _vocbase.load();
@@ -76,7 +74,7 @@ SystemDatabaseFeature::ptr SystemDatabaseFeature::use() const {
   return ptr(vocbase && vocbase->use() ? vocbase : nullptr);
 }
 
-} // arangodb
+}  // namespace arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

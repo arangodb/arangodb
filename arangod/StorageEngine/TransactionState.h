@@ -58,7 +58,7 @@ namespace transaction {
 class Methods;
 struct Options;
 
-}
+}  // namespace transaction
 
 class ExecContext;
 class TransactionCollection;
@@ -66,7 +66,6 @@ class TransactionCollection;
 /// @brief transaction type
 class TransactionState {
  public:
-
   /// @brief an implementation-dependent structure for storing runtime data
   struct Cookie {
     typedef std::unique_ptr<Cookie> ptr;
@@ -79,11 +78,8 @@ class TransactionState {
   TransactionState(TransactionState const&) = delete;
   TransactionState& operator=(TransactionState const&) = delete;
 
-  TransactionState(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_tid_t tid,
-    transaction::Options const& options
-  );
+  TransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+                   transaction::Options const& options);
   virtual ~TransactionState();
 
   /// @return a cookie associated with the specified key, nullptr if none
@@ -104,7 +100,11 @@ class TransactionState {
   inline TRI_vocbase_t& vocbase() const { return _vocbase; }
   inline TRI_voc_tid_t id() const { return _id; }
   inline transaction::Status status() const { return _status; }
-  inline bool isRunning() const { return _status == transaction::Status::RUNNING; }
+  inline bool isRunning() const {
+    return _status == transaction::Status::RUNNING;
+  }
+  void setRegistered() noexcept { _registeredTransaction = true; }
+  bool wasRegistered() const noexcept { return _registeredTransaction; }
 
   int increaseNesting() { return ++_nestingLevel; }
   int decreaseNesting() {
@@ -132,11 +132,8 @@ class TransactionState {
     _options.allowImplicitCollections = value;
   }
 
-  std::vector<std::string> collectionNames(std::unordered_set<std::string> const& initial = std::unordered_set<std::string>()) const;
-
   /// @brief return the collection from a transaction
-  TransactionCollection* collection(TRI_voc_cid_t cid,
-                                    AccessMode::Type accessType);
+  TransactionCollection* collection(TRI_voc_cid_t cid, AccessMode::Type accessType);
 
   /// @brief add a collection to a transaction
   int addCollection(TRI_voc_cid_t cid, std::string const& cname,
@@ -149,7 +146,7 @@ class TransactionState {
   Result useCollections(int nestingLevel);
 
   /// @brief run a callback on all collections of the transaction
-  void allCollections(std::function<bool(TransactionCollection*)> const& cb);
+  void allCollections(std::function<bool(TransactionCollection&)> const& cb);
 
   /// @brief return the number of collections in the transaction
   size_t numCollections() const { return _collections.size(); }
@@ -214,18 +211,16 @@ class TransactionState {
    * @param lockedShards The list of locked shards.
    */
   void setLockedShards(std::unordered_set<std::string> const& lockedShards);
-  
-  /// @brief whether or not a transaction is an exclusive transaction on a single collection
-  bool isExclusiveTransactionOnSingleCollection() const;
+
+  /// @brief whether or not a transaction only has exculsive or read accesses
+  bool isOnlyExclusiveTransaction() const;
 
  protected:
   /// @brief find a collection in the transaction's list of collections
-  TransactionCollection* findCollection(TRI_voc_cid_t cid,
-                                        size_t& position) const;
+  TransactionCollection* findCollection(TRI_voc_cid_t cid, size_t& position) const;
 
   /// @brief check if current user can access this collection
-  int checkCollectionPermission(TRI_voc_cid_t cid,
-                                std::string const& cname,
+  int checkCollectionPermission(TRI_voc_cid_t cid, std::string const& cname,
                                 AccessMode::Type) const;
 
   /// @brief release collection locks for a transaction
@@ -234,7 +229,7 @@ class TransactionState {
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
   void clearQueryCache();
-  
+
   /// @brief vocbase for this transaction
   TRI_vocbase_t& _vocbase;
 
@@ -245,15 +240,14 @@ class TransactionState {
   /// @brief current status
   transaction::Status _status;
 
-  SmallVector<TransactionCollection*>::allocator_type::arena_type
-      _arena;  // memory for collections
-  SmallVector<TransactionCollection*>
-      _collections;  // list of participating collections
+  SmallVector<TransactionCollection*>::allocator_type::arena_type _arena;  // memory for collections
+  SmallVector<TransactionCollection*> _collections;  // list of participating collections
 
   ServerState::RoleEnum const _serverRole;  // role of the server
 
   transaction::Hints _hints;  // hints;
   int _nestingLevel;
+  bool _registeredTransaction;
 
   transaction::Options _options;
 
@@ -265,6 +259,6 @@ class TransactionState {
   std::unordered_set<std::string> _lockedShards;
 };
 
-}
+}  // namespace arangodb
 
 #endif

@@ -134,8 +134,6 @@ field_base& field_base::operator=(field_base&& rhs) NOEXCEPT {
   return *this;
 }
 
-field_base::~field_base() { }
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                         long_field implementation
 // -----------------------------------------------------------------------------
@@ -221,8 +219,6 @@ particle& particle::operator=(particle&& rhs) NOEXCEPT {
 
   return *this;
 }
-
-particle::~particle() { }
 
 bool particle::contains(const irs::string_ref& name) const {
   return fields_.end() != std::find_if(
@@ -344,6 +340,10 @@ void csv_doc_generator::reset() {
   ifs_.clear();
   ifs_.seekg(ifs_.beg);
   doc_.reset();
+}
+
+bool csv_doc_generator::skip() {
+  return false == !getline(ifs_, line_);
 }
 
 //////////////////////////////////////////////////////////////////////////////

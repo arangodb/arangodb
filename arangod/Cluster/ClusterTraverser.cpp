@@ -24,6 +24,7 @@
 #include "ClusterTraverser.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterMethods.h"
 #include "Graph/BreadthFirstEnumerator.h"
 #include "Graph/ClusterTraverserCache.h"
@@ -38,22 +39,20 @@ using namespace arangodb::graph;
 
 using ClusterTraverser = arangodb::traverser::ClusterTraverser;
 
-ClusterTraverser::ClusterTraverser(
-    arangodb::traverser::TraverserOptions* opts,
-    ManagedDocumentResult* mmdr,
-    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-    std::string const& dbname, transaction::Methods* trx)
-    : Traverser(opts, trx, mmdr), _dbname(dbname), _engines(engines) {
+ClusterTraverser::ClusterTraverser(arangodb::traverser::TraverserOptions* opts,
+                                   std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+                                   std::string const& dbname, transaction::Methods* trx)
+    : Traverser(opts, trx), _dbname(dbname), _engines(engines) {
   _opts->linkTraverser(this);
 }
 
 void ClusterTraverser::setStartVertex(std::string const& vid) {
   _verticesToFetch.clear();
-  _startIdBuilder->clear();
-  _startIdBuilder->add(VPackValue(vid));
-  VPackSlice idSlice = _startIdBuilder->slice();
+  _startIdBuilder.clear();
+  _startIdBuilder.add(VPackValue(vid));
+  VPackSlice idSlice = _startIdBuilder.slice();
 
-  auto it = _vertices.find(StringRef(vid));
+  auto it = _vertices.find(arangodb::velocypack::StringRef(vid));
   if (it == _vertices.end()) {
     size_t firstSlash = vid.find("/");
     if (firstSlash == std::string::npos ||
@@ -65,29 +64,26 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
     }
   }
 
-  if (!vertexMatchesConditions(StringRef(vid), 0)) {
+  if (!vertexMatchesConditions(arangodb::velocypack::StringRef(vid), 0)) {
     // Start vertex invalid
     _done = true;
     return;
   }
-  StringRef persId = traverserCache()->persistString(StringRef(vid));
+  arangodb::velocypack::StringRef persId = traverserCache()->persistString(arangodb::velocypack::StringRef(vid));
 
   _vertexGetter->reset(persId);
   if (_opts->useBreadthFirst) {
-    _enumerator.reset(
-        new arangodb::graph::BreadthFirstEnumerator(this, idSlice, _opts));
+    _enumerator.reset(new arangodb::graph::BreadthFirstEnumerator(this, idSlice, _opts));
   } else {
-    _enumerator.reset(
-        new arangodb::traverser::DepthFirstEnumerator(this, vid, _opts));
+    _enumerator.reset(new arangodb::traverser::DepthFirstEnumerator(this, vid, _opts));
   }
   _done = false;
 }
 
-bool ClusterTraverser::getVertex(VPackSlice edge,
-                                 std::vector<StringRef>& result) {
+bool ClusterTraverser::getVertex(VPackSlice edge, std::vector<arangodb::velocypack::StringRef>& result) {
   bool res = _vertexGetter->getVertex(edge, result);
   if (res) {
-    StringRef const& other = result.back();
+    arangodb::velocypack::StringRef const& other = result.back();
     if (_vertices.find(other) == _vertices.end()) {
       // Vertex not yet cached. Prepare it.
       _verticesToFetch.emplace(other);
@@ -96,8 +92,9 @@ bool ClusterTraverser::getVertex(VPackSlice edge,
   return res;
 }
 
-bool ClusterTraverser::getSingleVertex(arangodb::velocypack::Slice edge, StringRef const sourceVertexId,
-                     uint64_t depth, StringRef& targetVertexId) {
+bool ClusterTraverser::getSingleVertex(arangodb::velocypack::Slice edge,
+                                       arangodb::velocypack::StringRef const sourceVertexId,
+                                       uint64_t depth, arangodb::velocypack::StringRef& targetVertexId) {
   bool res = _vertexGetter->getSingleVertex(edge, sourceVertexId, depth, targetVertexId);
   if (res) {
     if (_vertices.find(targetVertexId) == _vertices.end()) {
@@ -117,8 +114,8 @@ void ClusterTraverser::fetchVertices() {
   _verticesToFetch.clear();
 }
 
-aql::AqlValue ClusterTraverser::fetchVertexData(StringRef idString) {
-  //TRI_ASSERT(idString.isString());
+aql::AqlValue ClusterTraverser::fetchVertexData(arangodb::velocypack::StringRef idString) {
+  // TRI_ASSERT(idString.isString());
   auto cached = _vertices.find(idString);
   if (cached == _vertices.end()) {
     // Vertex not yet cached. Prepare for load.
@@ -135,8 +132,7 @@ aql::AqlValue ClusterTraverser::fetchVertexData(StringRef idString) {
 /// @brief Function to add the real data of a vertex into a velocypack builder
 //////////////////////////////////////////////////////////////////////////////
 
-void ClusterTraverser::addVertexToVelocyPack(StringRef vid,
-                                             VPackBuilder& result) {
+void ClusterTraverser::addVertexToVelocyPack(arangodb::velocypack::StringRef vid, VPackBuilder& result) {
   auto cached = _vertices.find(vid);
   if (cached == _vertices.end()) {
     // Vertex not yet cached. Prepare for load.
@@ -147,4 +143,37 @@ void ClusterTraverser::addVertexToVelocyPack(StringRef vid,
   // Now all vertices are cached!!
   TRI_ASSERT(cached != _vertices.end());
   result.add(VPackSlice((*cached).second->data()));
+}
+
+void ClusterTraverser::destroyEngines() {
+  // We have to clean up the engines in Coordinator Case.
+  auto cc = ClusterComm::instance();
+
+  if (cc != nullptr) {
+    // nullptr only happens on controlled server shutdown
+    std::string const url(
+        "/_db/" + arangodb::basics::StringUtils::urlEncode(_trx->vocbase().name()) +
+        "/_internal/traverser/");
+
+    for (auto const& it : *_engines) {
+      arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
+      std::unordered_map<std::string, std::string> headers;
+      auto res = cc->syncRequest(coordTransactionID, "server:" + it.first,
+                                 RequestType::DELETE_REQ,
+                                 url + arangodb::basics::StringUtils::itoa(it.second),
+                                 "", headers, 30.0);
+
+      if (res->status != CL_COMM_SENT) {
+        // Note If there was an error on server side we do not have
+        // CL_COMM_SENT
+        std::string message("Could not destroy all traversal engines");
+
+        if (!res->errorMessage.empty()) {
+          message += std::string(": ") + res->errorMessage;
+        }
+
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << message;
+      }
+    }
+  }
 }

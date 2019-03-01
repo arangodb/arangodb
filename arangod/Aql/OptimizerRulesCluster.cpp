@@ -21,7 +21,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRules.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
@@ -30,6 +29,7 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Basics/StaticStrings.h"
+#include "OptimizerRules.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -37,7 +37,8 @@ using EN = arangodb::aql::ExecutionNode;
 
 namespace {
 
-ExecutionNode* hasSingleParent(ExecutionNode const* in, std::vector<EN::NodeType> const& types) {
+ExecutionNode* hasSingleParent(ExecutionNode const* in,
+                               std::vector<EN::NodeType> const& types) {
   auto* parent = in->getFirstParent();
   if (parent) {
     for (auto const& type : types) {
@@ -83,39 +84,37 @@ std::vector<AstNode const*> hasBinaryCompare(ExecutionNode const* node) {
   AstNode const* cond = indexNode->condition()->root();
   std::vector<AstNode const*> result;
 
-  auto preVisitor = [&result] (AstNode const* node) {
+  auto preVisitor = [&result](AstNode const* node) {
     if (node == nullptr) {
       return false;
     };
 
-    if(node->type == NODE_TYPE_OPERATOR_BINARY_EQ){
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
       result.push_back(node);
       return false;
     }
 
-    //skip over NARY AND/OR
-    if(node->type == NODE_TYPE_OPERATOR_NARY_OR ||
-       node->type == NODE_TYPE_OPERATOR_NARY_AND) {
+    // skip over NARY AND/OR
+    if (node->type == NODE_TYPE_OPERATOR_NARY_OR || node->type == NODE_TYPE_OPERATOR_NARY_AND) {
       return true;
     } else {
       return false;
     }
-
   };
-  auto postVisitor = [](AstNode const*){};
+  auto postVisitor = [](AstNode const*) {};
   Ast::traverseReadOnly(cond, preVisitor, postVisitor);
 
   return result;
 }
 
 std::string getFirstKey(std::vector<AstNode const*> const& compares) {
-  for(auto const* node : compares){
+  for (auto const* node : compares) {
     AstNode const* keyNode = node->getMemberUnchecked(0);
-    if (keyNode->type == AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS && 
+    if (keyNode->type == AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS &&
         keyNode->stringEquals(StaticStrings::KeyString)) {
       keyNode = node->getMemberUnchecked(1);
     }
-    if (keyNode->isStringValue()){
+    if (keyNode->isStringValue()) {
       return keyNode->getString();
     }
   }
@@ -137,7 +136,9 @@ bool depIsSingletonOrConstCalc(ExecutionNode const* node) {
       return false;
     }
 
-    if (!node->getVariablesUsedHere().empty()) {
+    arangodb::HashSet<Variable const*> used;
+    node->getVariablesUsedHere(used);
+    if (!used.empty()) {
       return false;
     }
   }
@@ -150,7 +151,7 @@ bool parentIsReturnOrConstCalc(ExecutionNode const* node) {
     auto type = node->getType();
     // we do not need to check the order because
     // we expect a valid plan
-    if(type != EN::CALCULATION && type != EN::RETURN) {
+    if (type != EN::CALCULATION && type != EN::RETURN) {
       return false;
     }
     node = node->getFirstParent();
@@ -159,11 +160,11 @@ bool parentIsReturnOrConstCalc(ExecutionNode const* node) {
 }
 
 void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* newNode) {
-  if(oldNode == plan->root()) {
-    for(auto* dep : oldNode->getDependencies()) {
+  if (oldNode == plan->root()) {
+    for (auto* dep : oldNode->getDependencies()) {
       newNode->addDependency(dep);
     }
-    plan->root(newNode,true);
+    plan->root(newNode, true);
   } else {
     // replaceNode does not seem to work well with subqueries
     // if the subqueries root is replaced.
@@ -177,20 +178,18 @@ void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* new
   }
 }
 
-bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
-                                                    ExecutionPlan* plan,
+bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPlan* plan,
                                                     OptimizerRule const* rule) {
   bool modified = false;
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::INDEX, false);
 
-  if(nodes.size() != 1){
+  if (nodes.size() != 1) {
     return modified;
   }
 
-  for(auto* node : nodes){
-
+  for (auto* node : nodes) {
     if (!::depIsSingletonOrConstCalc(node)) {
       continue;
     }
@@ -204,32 +203,35 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
         continue;
       }
 
-      auto* parentModification = ::hasSingleParent(node, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE});
+      TRI_ASSERT(node != nullptr);
 
-      if (parentModification){
-        auto mod = ExecutionNode::castTo<ModificationNode*>(parentModification);
+      auto* parentModification =
+          ::hasSingleParent(node, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE});
+
+      if (parentModification) {
         auto parentType = parentModification->getType();
-        auto const& vec = mod->getVariablesUsedHere();
-
+        auto mod = ExecutionNode::castTo<ModificationNode*>(parentModification);
         Variable const* update = nullptr;
         Variable const* keyVar = nullptr;
 
-        if ( parentType == EN::REMOVE) {
-          keyVar = vec.front();
-          TRI_ASSERT(vec.size() == 1);
+        if (parentType == EN::REMOVE) {
+          keyVar = ExecutionNode::castTo<RemoveNode const*>(mod)->inVariable();
+        } else if (parentType == EN::INSERT) {
+          keyVar = ExecutionNode::castTo<InsertNode const*>(mod)->inVariable();
         } else {
-          update = vec.front();
-          if (vec.size() > 1) {
-            keyVar = vec.back();
+          auto updateReplaceNode = ExecutionNode::castTo<UpdateReplaceNode const*>(mod);
+          update = updateReplaceNode->inDocVariable();
+          if (updateReplaceNode->inKeyVariable() != nullptr) {
+            keyVar = updateReplaceNode->inKeyVariable();
           }
         }
 
-        if(keyVar && indexNode->outVariable()->id != keyVar->id){
+        if (keyVar && indexNode->outVariable()->id != keyVar->id) {
           continue;
         }
 
-        if(!keyVar){
-          if (update && indexNode->outVariable()->id == update->id){
+        if (!keyVar) {
+          if (update && indexNode->outVariable()->id == update->id) {
             // the update document is already described by the key provided
             // in the index condition
             update = nullptr;
@@ -238,43 +240,35 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
           }
         }
 
-        ExecutionNode* singleOperationNode = plan->registerNode(
-          new SingleRemoteOperationNode(
-            plan, plan->nextId(),
-            parentType,
-            true, key, mod->collection(),
-            mod->getOptions(),
-            update,
-            nullptr,
-            mod->getOutVariableOld(),
-            mod->getOutVariableNew()
-          )
-        );
-
         if (!::parentIsReturnOrConstCalc(mod)) {
           continue;
         }
+
+        ExecutionNode* singleOperationNode = plan->registerNode(new SingleRemoteOperationNode(
+            plan, plan->nextId(), parentType, true, key, mod->collection(),
+            mod->getOptions(), update, indexNode->outVariable(),
+            mod->getOutVariableOld(), mod->getOutVariableNew()));
 
         ::replaceNode(plan, mod, singleOperationNode);
         plan->unlinkNode(indexNode);
         modified = true;
       } else if (::parentIsReturnOrConstCalc(node)) {
         ExecutionNode* singleOperationNode = plan->registerNode(
-            new SingleRemoteOperationNode(plan, plan->nextId()
-                                          ,EN::INDEX, true, key, indexNode->collection(), ModificationOptions{}
-                                          , nullptr /*in*/ , indexNode->outVariable() /*out*/, nullptr /*old*/, nullptr /*new*/)
-        );
+            new SingleRemoteOperationNode(plan, plan->nextId(), EN::INDEX, true,
+                                          key, indexNode->collection(),
+                                          ModificationOptions{}, nullptr /*in*/,
+                                          indexNode->outVariable() /*out*/,
+                                          nullptr /*old*/, nullptr /*new*/));
         ::replaceNode(plan, indexNode, singleOperationNode);
         modified = true;
-
       }
     }
   }
+
   return modified;
 }
 
-bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
-                                                      ExecutionPlan* plan,
+bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionPlan* plan,
                                                       OptimizerRule const* rule) {
   bool modified = false;
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
@@ -292,25 +286,24 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
       continue;
     }
 
-    if (!::parentIsReturnOrConstCalc (node)) {
+    if (!::parentIsReturnOrConstCalc(node)) {
       continue;
     }
 
     auto depType = mod->getType();
     Variable const* update = nullptr;
     Variable const* keyVar = nullptr;
-    std::string key = "";
-    auto const& vec = mod->getVariablesUsedHere();
-
-    if ( depType == EN::REMOVE) {
-      keyVar = vec.front();
-      TRI_ASSERT(vec.size() == 1);
+    std::string key;
+        
+    if (depType == EN::REMOVE) {
+      keyVar = ExecutionNode::castTo<RemoveNode const*>(mod)->inVariable();
+    } else if (depType == EN::INSERT) {
+      update = ExecutionNode::castTo<InsertNode const*>(mod)->inVariable();
     } else {
-      update = vec.front(); // this can be same as keyvar!
-                            // this use is possible because we
-                            // not delete the variable's setter
-      if (vec.size() > 1) {
-        keyVar = vec.back();
+      auto updateReplaceNode = ExecutionNode::castTo<UpdateReplaceNode const*>(mod);
+      update = updateReplaceNode->inDocVariable();
+      if (updateReplaceNode->inKeyVariable() != nullptr) {
+        keyVar = updateReplaceNode->inKeyVariable();
       }
     }
 
@@ -318,7 +311,7 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
     CalculationNode* calc = nullptr;
 
     if (keyVar) {
-      std::unordered_set<Variable const*> keySet;
+      arangodb::HashSet<Variable const*> keySet;
       keySet.emplace(keyVar);
 
       while (cursor) {
@@ -326,8 +319,8 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
         if (cursor) {
           CalculationNode* c = ExecutionNode::castTo<CalculationNode*>(cursor);
           if (c->setsVariable(keySet)) {
-           calc = c;
-           break;
+            calc = c;
+            break;
           }
         }
       }
@@ -340,14 +333,14 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
         key = expr->getString();
       } else if (expr->isObject()) {
         bool foundKey = false;
-        for (std::size_t i = 0 ; i < expr->numMembers(); i++) {
+        for (std::size_t i = 0; i < expr->numMembers(); i++) {
           auto* anode = expr->getMemberUnchecked(i);
           if (anode->getString() == StaticStrings::KeyString) {
             key = anode->getMember(0)->getString();
             foundKey = true;
           }
           if (anode->getString() == StaticStrings::RevString) {
-            foundKey = false; // decline if _rev is in the game
+            foundKey = false;  // decline if _rev is in the game
             break;
           }
         }
@@ -371,17 +364,10 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
     }
 
     ExecutionNode* singleOperationNode = plan->registerNode(
-      new SingleRemoteOperationNode(
-        plan, plan->nextId(),
-        depType,
-        false, key, mod->collection(),
-        mod->getOptions(),
-        update /*in*/,
-        nullptr,
-        mod->getOutVariableOld(),
-        mod->getOutVariableNew()
-      )
-    );
+        new SingleRemoteOperationNode(plan, plan->nextId(), depType, false, key,
+                                      mod->collection(), mod->getOptions(), update /*in*/,
+                                      nullptr, mod->getOutVariableOld(),
+                                      mod->getOutVariableNew()));
 
     ::replaceNode(plan, mod, singleOperationNode);
 
@@ -389,24 +375,22 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
       plan->unlinkNode(calc);
     }
     modified = true;
-  } // for node : nodes
+  }  // for node : nodes
 
   return modified;
 }
 
-} // namespace
+}  // namespace
 
-void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
-                                                              std::unique_ptr<ExecutionPlan> plan,
-                                                              OptimizerRule const* rule) {
+void arangodb::aql::substituteClusterSingleDocumentOperations(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const* rule) {
   bool modified = false;
 
-  for (auto const& fun : { &::substituteClusterSingleDocumentOperationsIndex
-                         , &::substituteClusterSingleDocumentOperationsNoIndex
-                        }) {
+  for (auto const& fun : {&::substituteClusterSingleDocumentOperationsIndex,
+                          &::substituteClusterSingleDocumentOperationsNoIndex}) {
     modified = fun(opt, plan.get(), rule);
-    if (modified) {  
-      break; 
+    if (modified) {
+      break;
     }
   }
 

@@ -35,14 +35,9 @@
 
 namespace arangodb {
 
-MMFilesExportCursor::MMFilesExportCursor(
-    TRI_vocbase_t& vocbase,
-    CursorId id,
-    arangodb::MMFilesCollectionExport* ex,
-    size_t batchSize,
-    double ttl,
-    bool hasCount
-)
+MMFilesExportCursor::MMFilesExportCursor(TRI_vocbase_t& vocbase, CursorId id,
+                                         arangodb::MMFilesCollectionExport* ex,
+                                         size_t batchSize, double ttl, bool hasCount)
     : Cursor(id, batchSize, ttl, hasCount),
       _guard(vocbase),
       _ex(ex),
@@ -101,8 +96,7 @@ Result MMFilesExportCursor::dumpSync(VPackBuilder& builder) {
         break;
       }
 
-      VPackSlice const slice(
-          reinterpret_cast<char const*>(_ex->_vpack.at(_position++)));
+      VPackSlice const slice(reinterpret_cast<char const*>(_ex->_vpack.at(_position++)));
 
       builder.openObject();
 
@@ -110,16 +104,15 @@ Result MMFilesExportCursor::dumpSync(VPackBuilder& builder) {
       for (auto const& entry : VPackObjectIterator(slice)) {
         std::string key(entry.key.copyString());
 
-        if (!CollectionExport::IncludeAttribute(restrictionType, _ex->_restrictions.fields,
-                              key)) {
+        if (!CollectionExport::IncludeAttribute(restrictionType,
+                                                _ex->_restrictions.fields, key)) {
           // Ignore everything that should be excluded or not included
           continue;
         }
         // If we get here we need this entry in the final result
         if (entry.value.isCustom()) {
-          builder.add(key,
-                      VPackValue(builder.options->customTypeHandler->toString(
-                          entry.value, builder.options, slice)));
+          builder.add(key, VPackValue(builder.options->customTypeHandler->toString(
+                               entry.value, builder.options, slice)));
         } else {
           builder.add(key, entry.value);
         }
@@ -144,21 +137,22 @@ Result MMFilesExportCursor::dumpSync(VPackBuilder& builder) {
       // mark the cursor as deleted
       delete _ex;
       _ex = nullptr;
-      this->deleted();
+      this->setDeleted();
     }
   } catch (arangodb::basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    return Result(TRI_ERROR_INTERNAL, "internal error during MMFilesExportCursor::dump");
+    return Result(TRI_ERROR_INTERNAL,
+                  "internal error during MMFilesExportCursor::dump");
   }
   builder.options = oldOptions;
   return TRI_ERROR_NO_ERROR;
 }
 
 std::shared_ptr<transaction::Context> MMFilesExportCursor::context() const {
-  return transaction::StandaloneContext::Create(_guard.database()); // likely not used
+  return transaction::StandaloneContext::Create(_guard.database());  // likely not used
 }
 
-} // arangodb
+}  // namespace arangodb

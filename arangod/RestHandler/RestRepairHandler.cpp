@@ -40,14 +40,12 @@ using namespace arangodb::rest;
 using namespace arangodb::rest_repair;
 using namespace arangodb::cluster_repairs;
 
-RestRepairHandler::RestRepairHandler(GeneralRequest* request,
-                                     GeneralResponse* response)
+RestRepairHandler::RestRepairHandler(GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
 RestStatus RestRepairHandler::execute() {
-  if (SchedulerFeature::SCHEDULER->isStopping()) {
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                  TRI_ERROR_SHUTTING_DOWN);
+  if (application_features::ApplicationServer::isStopping()) {
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_SHUTTING_DOWN);
     return RestStatus::DONE;
   }
 
@@ -105,8 +103,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
       LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
           << "RestRepairHandler::repairDistributeShardsLike: "
           << "No ClusterInfo instance";
-      generateError(rest::ResponseCode::SERVER_ERROR,
-                    TRI_ERROR_HTTP_SERVER_ERROR);
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
 
       return RestStatus::DONE;
     }
@@ -132,10 +129,8 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
 
     VPackSlice supervisionHealth(healthResult.get()->data());
 
-    ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>>
-        repairOperationsByCollectionResult =
-            DistributeShardsLikeRepairer::repairDistributeShardsLike(
-                planCollections, supervisionHealth);
+    ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> repairOperationsByCollectionResult =
+        DistributeShardsLikeRepairer::repairDistributeShardsLike(planCollections, supervisionHealth);
 
     if (repairOperationsByCollectionResult.fail()) {
       LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
@@ -149,8 +144,8 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
 
       return RestStatus::DONE;
     }
-    std::map<CollectionID, ResultT<std::list<RepairOperation>>>&
-        repairOperationsByCollection = repairOperationsByCollectionResult.get();
+    std::map<CollectionID, ResultT<std::list<RepairOperation>>>& repairOperationsByCollection =
+        repairOperationsByCollectionResult.get();
 
     VPackBuilder response;
     response.add(VPackValue(VPackValueType::Object));
@@ -162,13 +157,12 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
       errorOccurred = false;
     } else {
       std::stringstream message;
-      message << "Repairing " << repairOperationsByCollection.size()
-              << " collections";
+      message << "Repairing " << repairOperationsByCollection.size() << " collections";
 
       response.add("collections", VPackValue(VPackValueType::Object));
 
-      bool allCollectionsSucceeded = repairAllCollections(
-          planCollections, repairOperationsByCollection, response);
+      bool allCollectionsSucceeded =
+          repairAllCollections(planCollections, repairOperationsByCollection, response);
 
       if (!allCollectionsSucceeded) {
         responseCode = rest::ResponseCode::SERVER_ERROR;
@@ -193,15 +187,13 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
     if (ClusterInfo* clusterInfo = ClusterInfo::instance()) {
       clusterInfo->loadPlan();
     }
-
   }
   return RestStatus::DONE;
 }
 
 bool RestRepairHandler::repairAllCollections(
     VPackSlice const& planCollections,
-    std::map<CollectionID, ResultT<std::list<RepairOperation>>> const&
-        repairOperationsByCollection,
+    std::map<CollectionID, ResultT<std::list<RepairOperation>>> const& repairOperationsByCollection,
     VPackBuilder& response) {
   bool allCollectionsSucceeded = true;
 
@@ -224,8 +216,7 @@ bool RestRepairHandler::repairAllCollections(
       // This should never happen.
       allCollectionsSucceeded = false;
       response.add(StaticStrings::Error, VPackValue(true));
-      response.add(StaticStrings::ErrorMessage,
-                   VPackValue(nameResult.errorMessage()));
+      response.add(StaticStrings::ErrorMessage, VPackValue(nameResult.errorMessage()));
       continue;
     }
 
@@ -252,11 +243,11 @@ bool RestRepairHandler::repairAllCollections(
   return allCollectionsSucceeded;
 }
 
-bool RestRepairHandler::repairCollection(
-    DatabaseID const& databaseId, CollectionID const& collectionId,
-    std::string const& dbAndCollectionName,
-    std::list<RepairOperation> const& repairOperations,
-    VPackBuilder& response) {
+bool RestRepairHandler::repairCollection(DatabaseID const& databaseId,
+                                         CollectionID const& collectionId,
+                                         std::string const& dbAndCollectionName,
+                                         std::list<RepairOperation> const& repairOperations,
+                                         VPackBuilder& response) {
   bool success = true;
 
   response.add("PlannedOperations", VPackValue(velocypack::ValueType::Array));
@@ -270,12 +261,11 @@ bool RestRepairHandler::repairCollection(
   response.close();
 
   if (!pretendOnly()) {
-    Result result = executeRepairOperations(
-        databaseId, collectionId, dbAndCollectionName, repairOperations);
+    Result result = executeRepairOperations(databaseId, collectionId,
+                                            dbAndCollectionName, repairOperations);
     if (result.fail()) {
       success = false;
-      response.add(StaticStrings::ErrorMessage,
-                   VPackValue(result.errorMessage()));
+      response.add(StaticStrings::ErrorMessage, VPackValue(result.errorMessage()));
       addErrorDetails(response, result.errorNumber());
     }
   }
@@ -300,7 +290,7 @@ ResultT<bool> RestRepairHandler::jobFinished(std::string const& jobId) {
         break;
 
       case JobStatus::finished:
-        return true;
+        return ResultT<bool>::success(true);
         break;
 
       case JobStatus::failed:
@@ -308,14 +298,14 @@ ResultT<bool> RestRepairHandler::jobFinished(std::string const& jobId) {
             << "RestRepairHandler::jobFinished: "
             << "Job " << jobId << " failed, aborting";
 
-        return Result(TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED);
+        return ResultT<bool>::error(TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED);
 
       case JobStatus::missing:
         LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
             << "RestRepairHandler::jobFinished: "
             << "Job " << jobId << " went missing, aborting";
 
-        return Result(TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED);
+        return ResultT<bool>::error(TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED);
     }
 
   } else {
@@ -324,16 +314,16 @@ ResultT<bool> RestRepairHandler::jobFinished(std::string const& jobId) {
         << "Failed to get job status: "
         << "[" << jobStatus.errorNumber() << "] " << jobStatus.errorMessage();
 
-    return jobStatus;
+    return ResultT<bool>::error(std::move(jobStatus.result()));
   }
 
-  return false;
+  return ResultT<bool>::success(false);
 }
 
-Result RestRepairHandler::executeRepairOperations(
-    DatabaseID const& databaseId, CollectionID const& collectionId,
-    std::string const& dbAndCollectionName,
-    std::list<RepairOperation> const& repairOperations) {
+Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
+                                                  CollectionID const& collectionId,
+                                                  std::string const& dbAndCollectionName,
+                                                  std::list<RepairOperation> const& repairOperations) {
   AgencyComm comm;
 
   size_t opNum = 0;
@@ -385,7 +375,7 @@ Result RestRepairHandler::executeRepairOperations(
       while (!previousJobFinished) {
         ResultT<bool> jobFinishedResult = jobFinished(jobId);
         if (jobFinishedResult.fail()) {
-          return jobFinishedResult;
+          return std::move(jobFinishedResult).result();
         }
         previousJobFinished = jobFinishedResult.get();
 
@@ -406,7 +396,7 @@ Result RestRepairHandler::executeRepairOperations(
             checkReplicationFactor(databaseId, collectionId);
 
         if (checkReplicationFactorResult.fail()) {
-          return checkReplicationFactorResult;
+          return std::move(checkReplicationFactorResult).result();
         }
         replicationFactorMatches = checkReplicationFactorResult.get();
 
@@ -431,12 +421,13 @@ ResultT<std::array<VPackBufferPtr, N>> RestRepairHandler::getFromAgency(
   std::vector<std::string> paths;
 
   // apply AgencyCommManager::path on every element and copy to vector
-  std::transform(
-      agencyKeyArray.begin(), agencyKeyArray.end(), std::back_inserter(paths),
-      [](std::string const& key) { return AgencyCommManager::path(key); });
+  std::transform(agencyKeyArray.begin(), agencyKeyArray.end(),
+                 std::back_inserter(paths), [](std::string const& key) {
+                   return AgencyCommManager::path(key);
+                 });
 
-  AgencyCommResult result = agency.sendTransactionWithFailover(
-      AgencyReadTransaction{std::move(paths)});
+  AgencyCommResult result =
+      agency.sendTransactionWithFailover(AgencyReadTransaction{std::move(paths)});
 
   for (size_t i = 0; i < N; i++) {
     std::string const& agencyKey = agencyKeyArray[i];
@@ -448,8 +439,8 @@ ResultT<std::array<VPackBufferPtr, N>> RestRepairHandler::getFromAgency(
       generateError(rest::ResponseCode::SERVER_ERROR, result.errorCode(),
                     result.errorMessage());
 
-      return ResultT<std::array<VPackBufferPtr, N>>::error(
-          result.errorCode(), result.errorMessage());
+      return ResultT<std::array<VPackBufferPtr, N>>::error(result.errorCode(),
+                                                           result.errorMessage());
     }
 
     std::vector<std::string> agencyPath =
@@ -468,29 +459,26 @@ ResultT<std::array<VPackBufferPtr, N>> RestRepairHandler::getFromAgency(
   return ResultT<std::array<VPackBufferPtr, N>>::success(resultArray);
 }
 
-ResultT<VPackBufferPtr> RestRepairHandler::getFromAgency(
-    std::string const& agencyKey) {
+ResultT<VPackBufferPtr> RestRepairHandler::getFromAgency(std::string const& agencyKey) {
   ResultT<std::array<VPackBufferPtr, 1>> rv = getFromAgency<1>({{agencyKey}});
 
   if (rv.ok()) {
     return ResultT<VPackBufferPtr>::success(rv.get()[0]);
   } else {
-    return ResultT<VPackBufferPtr>(rv);
+    return ResultT<VPackBufferPtr>(std::move(rv).result());
   }
 }
 
-ResultT<JobStatus> RestRepairHandler::getJobStatusFromAgency(
-    std::string const& jobId) {
+ResultT<JobStatus> RestRepairHandler::getJobStatusFromAgency(std::string const& jobId) {
   // As long as getFromAgency doesn't get all values at once, the order here
   // matters: if e.g. finished was checked before pending, this would
   // introduce a race condition which would result in JobStatus::missing
   // despite it being finished.
-  auto rv =
-      getFromAgency<4>({{"Target/ToDo/" + jobId, "Target/Pending/" + jobId,
-                       "Target/Finished/" + jobId, "Target/Failed/" + jobId}});
+  auto rv = getFromAgency<4>({{"Target/ToDo/" + jobId, "Target/Pending/" + jobId,
+                               "Target/Finished/" + jobId, "Target/Failed/" + jobId}});
 
   if (rv.fail()) {
-    return ResultT<JobStatus>(rv);
+    return ResultT<JobStatus>(std::move(rv).result());
   }
 
   VPackSlice todo(rv.get()[0]->data());
@@ -519,8 +507,8 @@ ResultT<JobStatus> RestRepairHandler::getJobStatusFromAgency(
   return ResultT<JobStatus>::success(JobStatus::missing);
 }
 
-ResultT<std::string> RestRepairHandler::getDbAndCollectionName(
-    VPackSlice const planCollections, CollectionID const& collectionID) {
+ResultT<std::string> RestRepairHandler::getDbAndCollectionName(VPackSlice const planCollections,
+                                                               CollectionID const& collectionID) {
   for (auto const& db : VPackObjectIterator{planCollections}) {
     std::string dbName = db.key.copyString();
     for (auto const& collection : VPackObjectIterator{db.value}) {
@@ -542,8 +530,7 @@ ResultT<std::string> RestRepairHandler::getDbAndCollectionName(
   return Result{TRI_ERROR_INTERNAL, "Collection not found"};
 }
 
-void RestRepairHandler::addErrorDetails(VPackBuilder& builder,
-                                        int const errorNumber) {
+void RestRepairHandler::addErrorDetails(VPackBuilder& builder, int const errorNumber) {
   boost::optional<const char*> errorDetails;
 
   switch (errorNumber) {
@@ -640,17 +627,16 @@ void RestRepairHandler::addErrorDetails(VPackBuilder& builder,
 
 bool RestRepairHandler::pretendOnly() { return _pretendOnly; }
 
-ResultT<bool> RestRepairHandler::checkReplicationFactor(
-    DatabaseID const& databaseId, CollectionID const& collectionId) {
+ResultT<bool> RestRepairHandler::checkReplicationFactor(DatabaseID const& databaseId,
+                                                        CollectionID const& collectionId) {
   ClusterInfo* clusterInfo = ClusterInfo::instance();
   if (clusterInfo == nullptr) {
     LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
         << "RestRepairHandler::checkReplicationFactor: "
         << "No ClusterInfo instance";
-    generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_HTTP_SERVER_ERROR);
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
 
-    return Result(TRI_ERROR_INTERNAL);
+    return ResultT<bool>::error(TRI_ERROR_INTERNAL);
   }
 
   clusterInfo->loadPlan();
@@ -662,8 +648,7 @@ ResultT<bool> RestRepairHandler::checkReplicationFactor(
     auto const& shardId = it.first;
     auto const& dbServers = it.second;
 
-    if (dbServers.size() !=
-        static_cast<size_t>(collection->replicationFactor())) {
+    if (dbServers.size() != static_cast<size_t>(collection->replicationFactor())) {
       LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
           << "RestRepairHandler::checkReplicationFactor: "
           << "replicationFactor doesn't match in shard " << shardId
@@ -671,16 +656,15 @@ ResultT<bool> RestRepairHandler::checkReplicationFactor(
           << "replicationFactor is " << collection->replicationFactor()
           << ", but the shard has " << dbServers.size() << " DBServers.";
 
-      return false;
+      return ResultT<bool>::success(false);
     }
   }
 
-  return true;
+  return ResultT<bool>::success(true);
 }
 
 void RestRepairHandler::generateResult(rest::ResponseCode code,
-                                       const VPackBuilder& payload,
-                                       bool error) {
+                                       const VPackBuilder& payload, bool error) {
   resetResponse(code);
 
   try {

@@ -24,7 +24,7 @@
 #include "catch.hpp"
 #include "common.h"
 
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #include "3rdParty/iresearch/tests/tests_config.hpp"
 #include "analysis/analyzers.hpp"
@@ -39,6 +39,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -54,7 +55,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
-NS_LOCAL
+namespace {
 
 struct TestAttributeX: public irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();
@@ -144,11 +145,13 @@ struct IResearchIndexSetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
     // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::ERR); // suppress WARNING {aql} Suboptimal AqlItemMatrix index lookup:
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
     features.emplace_back(new arangodb::AqlFeature(server), true); // required for arangodb::aql::Query(...)
+    features.emplace_back(new arangodb::DatabaseFeature(server), false); // required for LogicalViewStorageEngine::modify(...)
     features.emplace_back(new arangodb::DatabasePathFeature(server), false); // requires for IResearchView::open()
     features.emplace_back(new arangodb::ShardingFeature(server), false);
     features.emplace_back(new arangodb::ViewTypesFeature(server), true); // required by TRI_vocbase_t::createView(...)
@@ -190,6 +193,7 @@ struct IResearchIndexSetup {
   ~IResearchIndexSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
@@ -208,7 +212,7 @@ struct IResearchIndexSetup {
   }
 };
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -267,10 +271,10 @@ SECTION("test_analyzer") {
       } } \
     } }");
 
-    CHECK((viewImpl->updateProperties(updateJson->slice(), false, false).ok()));
+    CHECK((viewImpl->properties(updateJson->slice(), false).ok()));
   }
 
-  // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
+  // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
@@ -293,7 +297,7 @@ SECTION("test_analyzer") {
     CHECK((i == expected.size()));
   }
 
-  // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
+  // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
@@ -316,7 +320,7 @@ SECTION("test_analyzer") {
     CHECK((i == expected.size()));
   }
 
-    // docs match from both collections (2 analyzers used for collectio0, 1 analyzer used for collection 1)
+    // docs match from both collections (2 analyzers used for collection0, 1 analyzer used for collection 1)
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
@@ -498,7 +502,7 @@ SECTION("test_async_index") {
       } } \
     } }");
 
-    CHECK((viewImpl->updateProperties(updateJson->slice(), false, false).ok()));
+    CHECK((viewImpl->properties(updateJson->slice(), false).ok()));
   }
 
   // `catch` doesn't support cuncurrent checks
@@ -872,7 +876,7 @@ SECTION("test_fields") {
       } } \
     } }");
 
-    CHECK((viewImpl->updateProperties(updateJson->slice(), false, false).ok()));
+    CHECK((viewImpl->properties(updateJson->slice(), false).ok()));
   }
 
   // docs match from both collections

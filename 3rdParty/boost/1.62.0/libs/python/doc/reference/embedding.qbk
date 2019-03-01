@@ -1,6 +1,0 @@
-[chapter Embedding
-    [quickbook 1.7]
-]
-
-[include exec.qbk]
-[include import.qbk]

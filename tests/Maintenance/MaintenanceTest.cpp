@@ -23,12 +23,14 @@
 ///
 /// @author Kaveh Vahedipour
 /// @author Matthew Von-Maszewski
-/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "catch.hpp"
 
 #include "Cluster/Maintenance.h"
+#include "MMFiles/MMFilesEngine.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -38,6 +40,8 @@
 #include <iostream>
 #include <random>
 #include <typeinfo>
+
+#include "MaintenanceFeatureMock.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -410,14 +414,23 @@ TEST_CASE("ActionDescription", "[cluster][maintenance]") {
 }
 
 TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
+  std::shared_ptr<arangodb::options::ProgramOptions> po =
+    std::make_shared<arangodb::options::ProgramOptions>(
+      "test", std::string(), std::string(), "path");
+  arangodb::application_features::ApplicationServer as(po, nullptr);
+  TestMaintenanceFeature feature(as);
+  MaintenanceFeature::errors_t errors;
 
   std::map<std::string, Node> localNodes {
     {dbsIds[shortNames[0]], createNode(dbs0Str)},
     {dbsIds[shortNames[1]], createNode(dbs1Str)},
     {dbsIds[shortNames[2]], createNode(dbs2Str)}};
 
-  MaintenanceFeature::errors_t errors;
-  
+  arangodb::MMFilesEngine engine(as); // arbitrary implementation that has index types registered
+  auto* origStorageEngine = arangodb::EngineSelectorFeature::ENGINE;
+  arangodb::EngineSelectorFeature::ENGINE = &engine;
+  auto resetStorageEngine = std::shared_ptr<void>(&engine, [origStorageEngine](void*)->void { arangodb::EngineSelectorFeature::ENGINE = origStorageEngine; });
+
   SECTION("In sync should have 0 effects") {
 
     std::vector<ActionDescription> actions;
@@ -425,7 +438,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
     for (auto const& node : localNodes) {
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
-        node.first, errors, actions);
+        node.first, errors, feature, actions);
 
       if (actions.size() != 0) {
         std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
@@ -445,7 +458,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
     arangodb::maintenance::diffPlanLocal(
       plan.toBuilder().slice(), localNodes.begin()->second.toBuilder().slice(),
-      localNodes.begin()->first, errors, actions);
+      localNodes.begin()->first, errors, feature, actions);
 
     if (actions.size() != 1) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
@@ -465,7 +478,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
     arangodb::maintenance::diffPlanLocal(
       plan.toBuilder().slice(), localNodes.begin()->second.toBuilder().slice(),
-      localNodes.begin()->first, errors, actions);
+      localNodes.begin()->first, errors, feature, actions);
 
     REQUIRE(actions.size() == 1);
     REQUIRE(actions.front().name() == "DropDatabase");
@@ -491,7 +504,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
-        node.first, errors, actions);
+        node.first, errors, feature, actions);
 
       if (actions.size() != 1) {
         std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
@@ -522,7 +535,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
-        node.first, errors, actions);
+        node.first, errors, feature, actions);
 
       if (actions.size() != 2) {
         std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
@@ -551,7 +564,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
       auto local = node.second;
       
       arangodb::maintenance::diffPlanLocal(
-        plan.toBuilder().slice(), local.toBuilder().slice(), node.first, errors,
+        plan.toBuilder().slice(), local.toBuilder().slice(), node.first, errors, feature,
         actions);
 
       size_t n = 0;
@@ -591,7 +604,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
       auto local = node.second;
       
       arangodb::maintenance::diffPlanLocal(
-        plan.toBuilder().slice(), local.toBuilder().slice(), node.first, errors,
+        plan.toBuilder().slice(), local.toBuilder().slice(), node.first, errors, feature,
         actions);
       
       size_t n = 0;
@@ -624,7 +637,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
       
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
-        node.first, errors, actions);
+        node.first, errors, feature, actions);
       
       if (actions.size() != 1) {
         std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
@@ -660,7 +673,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
-        node.first, errors, actions);
+        node.first, errors, feature, actions);
 
       /*
       if (actions.size() != 1) {
@@ -699,7 +712,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
-        node.first, errors, actions);
+        node.first, errors, feature, actions);
 
       if (check) {
         if (actions.size() != 1) {
@@ -732,7 +745,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
-        node.first, errors, actions);
+        node.first, errors, feature, actions);
 
       REQUIRE(actions.size() == node.second("db3").children().size());
       for (auto const& action : actions) {
@@ -780,7 +793,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
       
       arangodb::maintenance::diffPlanLocal (
         plan.toBuilder().slice(), node.second.toBuilder().slice(), node.first,
-        errors, actions);
+        errors, feature, actions);
 
       if (actions.size() != 2) {
         std::cout << actions << std::endl;
@@ -793,6 +806,48 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
       REQUIRE(actions[1].name() == "ResignShardLeadership");
       REQUIRE(actions[1].get(DATABASE) == dbname);
       REQUIRE(actions[1].get(SHARD) == shname);
+    }
+
+  }
+
+  SECTION( "Removed follower in Plan must be dropped" ) {
+    plan = originalPlan;
+    std::string const dbname("_system");
+    std::string const colname("bar");
+    auto cid = collectionMap(plan).at(dbname + "/" + colname);
+    Node::Children& shards = plan({"Collections",dbname,cid,"shards"}).children();
+    auto firstShard = shards.begin();
+    VPackBuilder b = firstShard->second->toBuilder();
+    std::string const shname = firstShard->first;
+    std::string const leaderName = b.slice()[0].copyString();
+    std::string const followerName = b.slice()[1].copyString();
+    firstShard->second->handle<POP>(
+      arangodb::velocypack::Slice::emptyObjectSlice());
+
+    for (auto const& node : localNodes) {
+      std::vector<ActionDescription> actions;
+      
+      arangodb::maintenance::diffPlanLocal (
+        plan.toBuilder().slice(), node.second.toBuilder().slice(), node.first,
+        errors, feature, actions);
+
+      if (node.first == followerName) {
+        // Must see an action dropping the shard
+        REQUIRE(actions.size() == 1);
+        REQUIRE(actions.front().name() == "DropCollection");
+        REQUIRE(actions.front().get(DATABASE) == dbname);
+        REQUIRE(actions.front().get(COLLECTION) == shname);
+      } else if (node.first == leaderName) {
+        // Must see an UpdateCollection action to drop the follower
+        REQUIRE(actions.size() == 1);
+        REQUIRE(actions.front().name() == "UpdateCollection");
+        REQUIRE(actions.front().get(DATABASE) == dbname);
+        REQUIRE(actions.front().get(SHARD) == shname);
+        REQUIRE(actions.front().get(FOLLOWERS_TO_DROP) == followerName);
+      } else {
+        // No actions required
+        REQUIRE(actions.size() == 0);
+      }
     }
 
   }
@@ -843,6 +898,5 @@ TEST_CASE("ActionPhaseTwo", "[cluster][maintenance]") {
   }
 */
 }
-
 
 #endif

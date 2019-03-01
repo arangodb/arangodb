@@ -67,48 +67,40 @@ QueryRegistry::~QueryRegistry() {
 }
 
 /// @brief insert
-void QueryRegistry::insert(QueryId id, Query* query, double ttl, bool isPrepared) {
+void QueryRegistry::insert(QueryId id, Query* query, double ttl,
+                           bool isPrepared, bool keepLease) {
   TRI_ASSERT(query != nullptr);
   TRI_ASSERT(query->trx() != nullptr);
-  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Register query with id " << id << " : " << query->queryString();
+  LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
+      << "Register query with id " << id << " : " << query->queryString();
   auto& vocbase = query->vocbase();
 
   // create the query info object outside of the lock
   auto p = std::make_unique<QueryInfo>(id, query, ttl, isPrepared);
+  p->_isOpen = keepLease;
 
   // now insert into table of running queries
   {
     WRITE_LOCKER(writeLocker, _lock);
 
-    auto m = _queries.find(vocbase.name());
-    if (m == _queries.end()) {
-      m = _queries.emplace(vocbase.name(),
-                           std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>()).first;
-
-      TRI_ASSERT(_queries.find(vocbase.name()) != _queries.end());
-    }
-
-    auto q = m->second.find(id);
-
-    if (q != m->second.end()) {
+    auto result = _queries[vocbase.name()].emplace(id, std::move(p));
+    if (!result.second) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL, "query with given vocbase and id already there");
     }
-
-    m->second.emplace(id, std::move(p));
   }
 }
 
 /// @brief open
 Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
-
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Open query with id " << id;
   // std::cout << "Taking out query with ID " << id << std::endl;
   WRITE_LOCKER(writeLocker, _lock);
 
   auto m = _queries.find(vocbase->name());
   if (m == _queries.end()) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Found no queries for DB: " << vocbase->name();
+    LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
+        << "Found no queries for DB: " << vocbase->name();
     return nullptr;
   }
   auto q = m->second.find(id);
@@ -127,7 +119,7 @@ Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
   qi->_isOpen = true;
 
   if (!qi->_isPrepared) {
-    qi->_query->prepare(this, 0);
+    qi->_query->prepare(this);
     qi->_isPrepared = true;
   }
 
@@ -160,7 +152,7 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
 
   if (!qi->_isPrepared) {
     qi->_isPrepared = true;
-    qi->_query->prepare(this, 0);
+    qi->_query->prepare(this);
   }
 
   qi->_isOpen = false;
@@ -169,8 +161,7 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
 }
 
 /// @brief destroy
-void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
-                            int errorCode) {
+void QueryRegistry::destroy(std::string const& vocbase, QueryId id, int errorCode) {
   std::unique_ptr<QueryInfo> queryInfo;
 
   {
@@ -179,15 +170,15 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
     auto m = _queries.find(vocbase);
 
     if (m == _queries.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                    "query with given vocbase and id not found");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER, "query with given vocbase and id not found");
     }
 
     auto q = m->second.find(id);
 
     if (q == m->second.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                    "query with given vocbase and id not found");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER, "query with given vocbase and id not found");
     }
 
     if (q->second->_isOpen) {
@@ -209,9 +200,8 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
 
   if (!queryInfo->_isPrepared) {
     queryInfo->_isPrepared = true;
-    queryInfo->_query->prepare(this, 0);
+    queryInfo->_query->prepare(this);
   }
-
 
   // If the query was open, we can delete it right away, if not, we need
   // to register the transaction with the current context and adjust
@@ -226,6 +216,25 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
 /// @brief destroy
 void QueryRegistry::destroy(TRI_vocbase_t* vocbase, QueryId id, int errorCode) {
   destroy(vocbase->name(), id, errorCode);
+}
+
+ResultT<bool> QueryRegistry::isQueryInUse(TRI_vocbase_t* vocbase, QueryId id) {
+  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Test if query with id " << id << "is in use.";
+
+  READ_LOCKER(readLocker, _lock);
+
+  auto m = _queries.find(vocbase->name());
+  if (m == _queries.end()) {
+    LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
+        << "Found no queries for DB: " << vocbase->name();
+    return ResultT<bool>::error(TRI_ERROR_QUERY_NOT_FOUND);
+  }
+  auto q = m->second.find(id);
+  if (q == m->second.end()) {
+    LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Query id " << id << " not found in registry";
+    return ResultT<bool>::error(TRI_ERROR_QUERY_NOT_FOUND);
+  }
+  return ResultT<bool>::success(q->second->_isOpen);
 }
 
 /// @brief expireQueries
@@ -269,7 +278,7 @@ void QueryRegistry::expireQueries() {
 size_t QueryRegistry::numberRegisteredQueries() {
   READ_LOCKER(readLocker, _lock);
   size_t sum = 0;
-  for (auto const&m : _queries) {
+  for (auto const& m : _queries) {
     sum += m.second.size();
   }
   return sum;
@@ -288,7 +297,8 @@ void QueryRegistry::destroyAll() {
   }
   for (auto& p : allQueries) {
     try {
-      LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Timeout for query with id " << p.second << " due to shutdown";
+      LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
+          << "Timeout for query with id " << p.second << " due to shutdown";
       destroy(p.first, p.second, TRI_ERROR_SHUTTING_DOWN);
     } catch (...) {
       // ignore any errors here
@@ -297,7 +307,7 @@ void QueryRegistry::destroyAll() {
 }
 
 QueryRegistry::QueryInfo::QueryInfo(QueryId id, Query* query, double ttl, bool isPrepared)
-     : _vocbase(&(query->vocbase())),
+    : _vocbase(&(query->vocbase())),
       _id(id),
       _query(query),
       _isOpen(false),
@@ -305,6 +315,4 @@ QueryRegistry::QueryInfo::QueryInfo(QueryId id, Query* query, double ttl, bool i
       _timeToLive(ttl),
       _expires(TRI_microtime() + ttl) {}
 
-QueryRegistry::QueryInfo::~QueryInfo() {
-  delete _query;
-}
+QueryRegistry::QueryInfo::~QueryInfo() { delete _query; }

@@ -33,14 +33,9 @@ using namespace arangodb::basics;
 // --SECTION--                                                    static members
 // -----------------------------------------------------------------------------
 
-Mutex ConnectionStatistics::_dataLock;
-
 std::unique_ptr<ConnectionStatistics[]> ConnectionStatistics::_statisticsBuffer;
 
-boost::lockfree::queue<
-    ConnectionStatistics*,
-    boost::lockfree::capacity<ConnectionStatistics::QUEUE_SIZE>>
-    ConnectionStatistics::_freeList;
+boost::lockfree::queue<ConnectionStatistics*, boost::lockfree::capacity<ConnectionStatistics::QUEUE_SIZE>> ConnectionStatistics::_freeList;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
@@ -74,25 +69,21 @@ ConnectionStatistics* ConnectionStatistics::acquire() {
   return nullptr;
 }
 
-void ConnectionStatistics::fill(StatisticsCounter& httpConnections,
-                                StatisticsCounter& totalRequests,
-                                std::vector<StatisticsCounter>& methodRequests,
-                                StatisticsCounter& asyncRequests,
-                                StatisticsDistribution& connectionTime) {
+void ConnectionStatistics::fill(
+    StatisticsCounter& httpConnections, StatisticsCounter& totalRequests,
+    std::array<StatisticsCounter, MethodRequestsStatisticsSize>& methodRequests,
+    StatisticsCounter& asyncRequests, StatisticsDistribution& connectionTime) {
   if (!StatisticsFeature::enabled()) {
     // all the below objects may be deleted if we don't have statistics enabled
-    for (int i = 0; i < ((int)rest::RequestType::ILLEGAL) + 1; ++i) {
-      methodRequests.emplace_back(StatisticsCounter());
-    }
-
     return;
   }
 
-  MUTEX_LOCKER(mutexLocker, _dataLock);
-
   httpConnections = TRI_HttpConnectionsStatistics;
   totalRequests = TRI_TotalRequestsStatistics;
-  methodRequests = TRI_MethodRequestsStatistics;
+  {
+    MUTEX_LOCKER(locker, TRI_RequestsStatisticsMutex);
+    methodRequests = TRI_MethodRequestsStatistics;
+  }
   asyncRequests = TRI_AsyncRequestsStatistics;
   connectionTime = TRI_ConnectionTimeDistributionStatistics;
 }
@@ -103,8 +94,6 @@ void ConnectionStatistics::fill(StatisticsCounter& httpConnections,
 
 void ConnectionStatistics::release() {
   {
-    MUTEX_LOCKER(mutexLocker, _dataLock);
-
     if (_http) {
       TRI_HttpConnectionsStatistics.decCounter();
     }

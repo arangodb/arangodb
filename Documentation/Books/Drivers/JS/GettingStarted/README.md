@@ -1,12 +1,17 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodbjs.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangojs.git / docs/Drivers/ -->
 # ArangoDB JavaScript Driver - Getting Started
 
 ## Compatibility
 
-ArangoJS is compatible with ArangoDB 3.0 and later. **For using ArangoJS with
-2.8 or earlier see the upgrade note below.** ArangoJS is tested against the two
-most-recent releases of ArangoDB 3 (currently 3.2 and 3.3) as well as the most
-recent version of 2.8 and the latest development version.
+ArangoJS is compatible with the latest stable version of ArangoDB available at
+the time of the driver release.
+
+The [_arangoVersion_ option](../Reference/Database/README.md)
+can be used to tell arangojs to target a specific
+ArangoDB version. Depending on the version this will enable or disable certain
+methods and change behavior to maintain compatibility with the given version.
+The oldest version of ArangoDB supported by arangojs when using this option
+is 2.8.0 (using `arangoVersion: 20800`).
 
 The yarn/npm distribution of ArangoJS is compatible with Node.js versions 9.x
 (latest), 8.x (LTS) and 6.x (LTS). Node.js version support follows
@@ -17,16 +22,10 @@ versions of all modern browsers (Edge, Chrome, Firefox and Safari).
 
 Versions outside this range may be compatible but are not actively supported.
 
-**Upgrade note**: If you want to use arangojs with ArangoDB 2.8 or earlier
-remember to set the appropriate `arangoVersion` option (e.g. `20800` for version
-2.8.0). The current default value is `30000` (indicating compatibility with
-version 3.0.0 and newer). **The driver will behave differently depending on this
-value when using APIs that have changed between these versions.**
-
-**Upgrade note for 6.0.0**: All asynchronous functions now return promises and
-support for node-style callbacks has been removed. If you are using a version of
-Node.js older than Node.js 6.x LTS ("Boron") make sure you replace the native
-`Promise` implementation with a substitute like [bluebird](https://github.com/petkaantonov/bluebird)
+**Note**: Starting with arangojs 6.0.0, all asynchronous functions return
+promises. If you are using a version of Node.js older than Node.js 6.x LTS
+("Boron") make sure you replace the native `Promise` implementation with a
+substitute like [bluebird](https://github.com/petkaantonov/bluebird)
 to avoid a known memory leak in older versions of the V8 JavaScript engine.
 
 ## Versions
@@ -35,11 +34,11 @@ The version number of this driver does not indicate supported ArangoDB versions!
 
 This driver uses semantic versioning:
 
-* A change in the bugfix version (e.g. X.Y.0 -> X.Y.1) indicates internal
+- A change in the bugfix version (e.g. X.Y.0 -> X.Y.1) indicates internal
   changes and should always be safe to upgrade.
-* A change in the minor version (e.g. X.1.Z -> X.2.0) indicates additions and
+- A change in the minor version (e.g. X.1.Z -> X.2.0) indicates additions and
   backwards-compatible changes that should not affect your code.
-* A change in the major version (e.g. 1.Y.Z -> 2.0.0) indicates _breaking_
+- A change in the major version (e.g. 1.Y.Z -> 2.0.0) indicates _breaking_
   changes that require changes in your code to upgrade.
 
 If you are getting weird errors or functions seem to be missing, make sure you
@@ -58,27 +57,6 @@ npm install --save arangojs@4
 You can find the documentation for each version by clicking on the corresponding
 date on the left in
 [the list of version tags](https://github.com/arangodb/arangojs/tags).
-
-## Testing
-
-Run the tests using the `yarn test` or `npm test` commands:
-
-```sh
-yarn test
-# - or -
-npm test
-```
-
-By default the tests will be run against a server listening on
-`http://localhost:8529` (using username `root` with no password). To
-override this, you can set the environment variable `TEST_ARANGODB_URL` to
-something different:
-
-```sh
-TEST_ARANGODB_URL=http://myserver.local:8530 yarn test
-# - or -
-TEST_ARANGODB_URL=http://myserver.local:8530 npm test
-```
 
 ## Install
 
@@ -171,11 +149,10 @@ const db = new Database();
 var arangojs = require("arangojs");
 var db = new arangojs.Database();
 var now = Date.now();
-db
-  .query({
-    query: "RETURN @value",
-    bindVars: { value: now }
-  })
+db.query({
+  query: "RETURN @value",
+  bindVars: { value: now }
+})
   .then(function(cursor) {
     return cursor.next().then(function(result) {
       // ...
@@ -213,7 +190,9 @@ AQL queries without making your code vulnerable to injection attacks.
 ## Error responses
 
 If arangojs encounters an API error, it will throw an _ArangoError_ with an
-[_errorNum_ as defined in the ArangoDB documentation](../../..//Manual/Appendix/ErrorCodes.html) as well as a _code_ and _statusCode_ property indicating the intended and actual HTTP status code of the response.
+[_errorNum_ error code](../../..//Manual/Appendix/ErrorCodes.html)
+as well as a _code_ and _statusCode_ property indicating the intended and
+actual HTTP status code of the response.
 
 For any other error responses (4xx/5xx status code), it will throw an
 _HttpError_ error with the status code indicated by the _code_ and _statusCode_ properties.
@@ -224,22 +203,22 @@ not be parsed, a _SyntaxError_ may be thrown instead.
 In all of these cases the error object will additionally have a _response_
 property containing the server response object.
 
-If the request failed at a network level or the connection was closed without receiving a response, the underlying error will be thrown instead.
+If the request failed at a network level or the connection was closed without
+receiving a response, the underlying error will be thrown instead.
 
 **Examples**
 
 ```js
 // Using async/await
 try {
-  const info = await db.createDatabase('mydb');
+  const info = await db.createDatabase("mydb");
   // database created
 } catch (err) {
   console.error(err.stack);
 }
 
 // Using promises with arrow functions
-db.createDatabase('mydb')
-.then(
+db.createDatabase("mydb").then(
   info => {
     // database created
   },
@@ -247,7 +226,9 @@ db.createDatabase('mydb')
 );
 ```
 
-**Note**: the examples in the remainder of this documentation use async/await
+{% hint 'tip' %}
+The examples in the remainder of this documentation use `async`/`await`
 and other modern language features like multi-line strings and template tags.
 When developing for an environment without support for these language features,
-just use promises instead as in the above example.
+substitute promises for `await` syntax as in the above example.
+{% endhint %}

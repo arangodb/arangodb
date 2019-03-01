@@ -32,12 +32,11 @@ namespace arangodb {
 namespace traverser {
 class Traverser;
 struct TraverserOptions;
-}
+}  // namespace traverser
 
 namespace graph {
 
-class BreadthFirstEnumerator final
-    : public arangodb::traverser::PathEnumerator {
+class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator {
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief One entry in the schreier vector
@@ -46,13 +45,13 @@ class BreadthFirstEnumerator final
   struct PathStep {
     size_t sourceIdx;
     graph::EdgeDocumentToken edge;
-    arangodb::StringRef const vertex;
+    arangodb::velocypack::StringRef const vertex;
 
    public:
-    explicit PathStep(arangodb::StringRef const vertex);
+    explicit PathStep(arangodb::velocypack::StringRef const vertex);
 
     PathStep(size_t sourceIdx, graph::EdgeDocumentToken&& edge,
-             arangodb::StringRef const vertex);
+             arangodb::velocypack::StringRef const vertex);
 
     ~PathStep();
 
@@ -159,9 +158,9 @@ class BreadthFirstEnumerator final
    * @param index The index of the path to search for
    * @param vertex The vertex that should be checked against.
    *
-   * @return true if the vertex is already in the path 
+   * @return true if the vertex is already in the path
    */
-  bool pathContainsVertex(size_t index, StringRef vertex) const;
+  bool pathContainsVertex(size_t index, arangodb::velocypack::StringRef vertex) const;
 
   /**
    * @brief Helper function to validate if the path contains the given
@@ -170,11 +169,26 @@ class BreadthFirstEnumerator final
    * @param index The index of the path to search for
    * @param edge The edge that should be checked against.
    *
-   * @return true if the edge is already in the path 
+   * @return true if the edge is already in the path
    */
   bool pathContainsEdge(size_t index, graph::EdgeDocumentToken const& edge) const;
+
+  /**
+   * @brief Reset iterators to search within next depth
+   *        Also honors pruned paths
+   * @return true if we can continue searching. False if we are done
+   */
+  bool prepareSearchOnNextDepth();
+
+  aql::AqlValue vertexToAqlValue(size_t index);
+
+  aql::AqlValue edgeToAqlValue(size_t index);
+
+  aql::AqlValue pathToIndexToAqlValue(arangodb::velocypack::Builder& result, size_t index);
+
+  bool shouldPrune();
 };
-}
-}
+}  // namespace graph
+}  // namespace arangodb
 
 #endif

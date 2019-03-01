@@ -30,23 +30,20 @@
 #ifdef TRI_HAVE_DIRECT_H
 #include <direct.h>
 #endif
+#include <unicode/unistr.h>
+
+#include <functional>
 
 #include "Basics/Exceptions.h"
-#include "Basics/OpenFilesTracker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 
-#if defined(_WIN32) && defined(_MSC_VER)
-
-#define TRI_DIR_FN(item) item.name
-
-#else
-
-#define TRI_DIR_FN(item) item->d_name
-
-#endif
+namespace {
+std::function<bool(std::string const&)> const passAllFilter =
+    [](std::string const&) { return false; };
+}
 
 namespace arangodb {
 namespace basics {
@@ -75,6 +72,29 @@ std::string removeTrailingSeparator(std::string const& name) {
 
 void normalizePath(std::string& name) {
   std::replace(name.begin(), name.end(), '/', TRI_DIR_SEPARATOR_CHAR);
+
+#ifdef _WIN32
+  // for Windows the situation is a bit more complicated,
+  // as a mere replacement of all forward slashes to backslashes
+  // may leave us with a double backslash for sequences like "bla/\foo".
+  // in this case we collapse duplicate dir separators to a single one.
+  // we intentionally ignore the first 2 characters, because they may
+  // contain a network share filename such as "\\foo\bar"
+
+  size_t const n = name.size();
+  size_t out = 0;
+
+  for (size_t i = 0; i < n; ++i) {
+    if (name[i] == TRI_DIR_SEPARATOR_CHAR && out > 1 && name[out - 1] == TRI_DIR_SEPARATOR_CHAR) {
+      continue;
+    }
+    name[out++] = name[i];
+  }
+
+  if (out != n) {
+    name.resize(out);
+  }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,8 +146,7 @@ static void throwFileReadError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
   int res = TRI_errno();
 
-  std::string message("read failed for file '" + filename + "': " +
-                      strerror(res));
+  std::string message("read failed for file '" + filename + "': " + strerror(res));
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << message;
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, message);
@@ -154,13 +173,13 @@ static void fillStringBuffer(int fd, std::string const& filename,
 }
 
 std::string slurp(std::string const& filename) {
-  int fd = TRI_TRACKED_OPEN_FILE(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+  int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
     throwFileReadError(filename);
   }
 
-  TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+  TRI_DEFER(TRI_CLOSE(fd));
 
   constexpr size_t chunkSize = 8192;
   StringBuffer buffer(chunkSize, false);
@@ -171,13 +190,13 @@ std::string slurp(std::string const& filename) {
 }
 
 void slurp(std::string const& filename, StringBuffer& result) {
-  int fd = TRI_TRACKED_OPEN_FILE(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+  int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
     throwFileReadError(filename);
   }
 
-  TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+  TRI_DEFER(TRI_CLOSE(fd));
 
   result.reset();
   constexpr size_t chunkSize = 8192;
@@ -195,15 +214,14 @@ static void throwFileWriteError(std::string const& filename) {
 }
 
 void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
-  int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
-                                   O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
-                                   S_IRUSR | S_IWUSR | S_IRGRP);
+  int fd = TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
+                      S_IRUSR | S_IWUSR | S_IRGRP);
 
   if (fd == -1) {
     throwFileWriteError(filename);
   }
 
-  TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+  TRI_DEFER(TRI_CLOSE(fd));
 
   while (0 < len) {
     ssize_t n = TRI_WRITE(fd, ptr, static_cast<TRI_write_t>(len));
@@ -244,21 +262,6 @@ bool remove(std::string const& fileName, int* errorNumber) {
   return (result != 0) ? false : true;
 }
 
-bool rename(std::string const& oldName, std::string const& newName,
-            int* errorNumber) {
-  if (errorNumber != nullptr) {
-    *errorNumber = 0;
-  }
-
-  int result = std::rename(oldName.c_str(), newName.c_str());
-
-  if (errorNumber != nullptr) {
-    *errorNumber = errno;
-  }
-
-  return (result != 0) ? false : true;
-}
-
 bool createDirectory(std::string const& name, int* errorNumber) {
   if (errorNumber != nullptr) {
     *errorNumber = 0;
@@ -288,40 +291,58 @@ bool createDirectory(std::string const& name, int mask, int* errorNumber) {
   return (result != 0) ? false : true;
 }
 
+/// @brief will not copy files/directories for which the filter function
+/// returns true
 bool copyRecursive(std::string const& source, std::string const& target,
+                   std::function<bool(std::string const&)> const& filter,
                    std::string& error) {
   if (isDirectory(source)) {
-    return copyDirectoryRecursive(source, target, error);
+    return copyDirectoryRecursive(source, target, filter, error);
   }
 
+  if (filter(source)) {
+    return TRI_ERROR_NO_ERROR;
+  }
   return TRI_CopyFile(source, target, error);
 }
 
-bool copyDirectoryRecursive(std::string const& source,
-                            std::string const& target, std::string& error) {
+/// @brief will not copy files/directories for which the filter function
+/// returns true
+bool copyDirectoryRecursive(std::string const& source, std::string const& target,
+                            std::function<bool(std::string const&)> const& filter,
+                            std::string& error) {
+  char* fn = nullptr;
   bool rc = true;
 
   auto isSubDirectory = [](std::string const& name) -> bool {
     return isDirectory(name);
   };
 #ifdef TRI_HAVE_WIN32_LIST_FILES
-  struct _finddata_t oneItem;
+  struct _wfinddata_t oneItem;
   intptr_t handle;
 
-  std::string filter = source + "\\*";
-  handle = _findfirst(filter.c_str(), &oneItem);
+  std::string rcs;
+  std::string flt = source + "\\*";
+
+  icu::UnicodeString f(flt.c_str());
+
+  handle = _wfindfirst(reinterpret_cast<const wchar_t*>(f.getTerminatedBuffer()), &oneItem);
 
   if (handle == -1) {
-    error = "directory " + source + "not found";
+    error = "directory " + source + " not found";
     return false;
   }
 
   do {
+    rcs.clear();
+    icu::UnicodeString d(reinterpret_cast<const wchar_t*>(oneItem.name), static_cast<int32_t>(wcslen(oneItem.name)));
+    d.toUTF8String<std::string>(rcs);
+    fn = (char*)rcs.c_str();
 #else
   DIR* filedir = opendir(source.c_str());
 
   if (filedir == nullptr) {
-    error = "directory " + source + "not found";
+    error = "directory " + source + " not found";
     return false;
   }
 
@@ -334,25 +355,29 @@ bool copyDirectoryRecursive(std::string const& source,
   // to be thread-safe in reality, and newer versions of POSIX may require its
   // thread-safety formally, and in addition obsolete readdir_r() altogether
   while ((oneItem = (readdir(filedir))) != nullptr) {
+    fn = oneItem->d_name;
 #endif
+
     // Now iterate over the items.
     // check its not the pointer to the upper directory:
-    if (!strcmp(TRI_DIR_FN(oneItem), ".") ||
-        !strcmp(TRI_DIR_FN(oneItem), "..")) {
+    if (!strcmp(fn, ".") || !strcmp(fn, "..")) {
       continue;
     }
+    std::string dst = target + TRI_DIR_SEPARATOR_STR + fn;
+    std::string src = source + TRI_DIR_SEPARATOR_STR + fn;
 
-    std::string dst = target + TRI_DIR_SEPARATOR_STR + TRI_DIR_FN(oneItem);
-    std::string src = source + TRI_DIR_SEPARATOR_STR + TRI_DIR_FN(oneItem);
+    if (filter(src)) {
+      continue;
+    }
 
     // Handle subdirectories:
     if (isSubDirectory(src)) {
       long systemError;
       int rc = TRI_CreateDirectory(dst.c_str(), systemError, error);
-      if (rc != TRI_ERROR_NO_ERROR) {
+      if (rc != TRI_ERROR_NO_ERROR && rc != TRI_ERROR_FILE_EXISTS) {
         break;
       }
-      if (!copyDirectoryRecursive(src, dst, error)) {
+      if (!copyDirectoryRecursive(src, dst, filter, error)) {
         break;
       }
       if (!TRI_CopyAttributes(src, dst, error)) {
@@ -370,7 +395,7 @@ bool copyDirectoryRecursive(std::string const& source,
       }
     }
 #ifdef TRI_HAVE_WIN32_LIST_FILES
-  } while (_findnext(handle, &oneItem) != -1);
+  } while (_wfindnext(handle, &oneItem) != -1);
 
   _findclose(handle);
 
@@ -386,26 +411,37 @@ std::vector<std::string> listFiles(std::string const& directory) {
   std::vector<std::string> result;
 
 #ifdef TRI_HAVE_WIN32_LIST_FILES
+  char* fn = nullptr;
 
-  struct _finddata_t fd;
+  struct _wfinddata_t oneItem;
   intptr_t handle;
+  std::string rcs;
 
   std::string filter = directory + "\\*";
-  handle = _findfirst(filter.c_str(), &fd);
+  icu::UnicodeString f(filter.c_str());
+  handle = _wfindfirst(reinterpret_cast<const wchar_t*>(f.getTerminatedBuffer()), &oneItem);
 
   if (handle == -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     int res = TRI_errno();
 
-    std::string message("failed to enumerate files in directory '" + directory + "': " + strerror(res));
+    std::string message("failed to enumerate files in directory '" + directory +
+                        "': " + strerror(res));
     THROW_ARANGO_EXCEPTION_MESSAGE(res, message);
   }
 
   do {
-    if (strcmp(fd.name, ".") != 0 && strcmp(fd.name, "..") != 0) {
-      result.push_back(fd.name);
+    rcs.clear();
+    icu::UnicodeString d(reinterpret_cast<const wchar_t*>(oneItem.name), static_cast<int32_t>(wcslen(oneItem.name)));
+    d.toUTF8String<std::string>(rcs);
+    fn = (char*)rcs.c_str();
+
+    if (!strcmp(fn, ".") || !strcmp(fn, "..")) {
+      continue;
     }
-  } while (_findnext(handle, &fd) != -1);
+
+    result.push_back(rcs);
+  } while (_wfindnext(handle, &oneItem) != -1);
 
   _findclose(handle);
 
@@ -417,7 +453,8 @@ std::vector<std::string> listFiles(std::string const& directory) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     int res = TRI_errno();
 
-    std::string message("failed to enumerate files in directory '" + directory + "': " + strerror(res));
+    std::string message("failed to enumerate files in directory '" + directory +
+                        "': " + strerror(res));
     THROW_ARANGO_EXCEPTION_MESSAGE(res, message);
   }
 
@@ -493,8 +530,7 @@ off_t size(std::string const& path) {
   return (off_t)result;
 }
 
-std::string stripExtension(std::string const& path,
-                           std::string const& extension) {
+std::string stripExtension(std::string const& path, std::string const& extension) {
   size_t pos = path.rfind(extension);
   if (pos == std::string::npos) {
     return path;
@@ -569,8 +605,7 @@ static void throwProgramError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
   int res = TRI_errno();
 
-  std::string message("open failed for file '" + filename + "': " +
-                      strerror(res));
+  std::string message("open failed for file '" + filename + "': " + strerror(res));
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << message;
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
@@ -578,7 +613,8 @@ static void throwProgramError(std::string const& filename) {
 
 std::string slurpProgram(std::string const& program) {
 #ifdef _WIN32
-  FILE* fp = _popen(program.c_str(), "r");
+  icu::UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
+  FILE* fp = _wpopen(reinterpret_cast<const wchar_t*>(uprog.getTerminatedBuffer()), L"r");
 #else
   FILE* fp = popen(program.c_str(), "r");
 #endif
@@ -590,7 +626,7 @@ std::string slurpProgram(std::string const& program) {
     int c;
 
     while ((c = getc(fp)) != EOF) {
-      buffer.appendChar((char) c);
+      buffer.appendChar((char)c);
     }
 
 #ifdef _WIN32
@@ -608,6 +644,6 @@ std::string slurpProgram(std::string const& program) {
 
   return std::string(buffer.data(), buffer.length());
 }
-}
-}
-}
+}  // namespace FileUtils
+}  // namespace basics
+}  // namespace arangodb

@@ -20,12 +20,17 @@ describe ArangoDB do
     context "dealing with the routing" do
       before do
         @id = nil
+        # make sure system collection exists
+        ArangoDB.post("/_admin/execute", :body => "var db = require('internal').db; try { db._create('_routing', { isSystem: true, distributeShardsLike: '_graphs' }); } catch (err) {}")   
       end
 
       after do
         if @id != nil 
           ArangoDB.delete("/_api/document/" + @id)
         end 
+      
+        # drop collection
+        ArangoDB.post("/_admin/execute", :body => "var db = require('internal').db; try { db._drop('_routing', true); } catch (err) {}")   
       end
       
       it "checks a simple routing" do

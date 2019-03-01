@@ -28,15 +28,22 @@
 #include "TraversalNode.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
-#include "Aql/TraversalBlock.h"
+#include "Aql/TraversalExecutor.h"
 #include "Aql/Variable.h"
+#include "Cluster/ClusterTraverser.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Cluster/SmartGraphTraverser.h"
+#endif
 #include "Graph/BaseOptions.h"
+#include "Graph/SingleServerTraverser.h"
+#include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Graph/TraverserOptions.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Iterator.h>
@@ -47,16 +54,13 @@ using namespace arangodb::basics;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
-    TraversalNode const* tn)
-    : EdgeConditionBuilder(tn->_plan->getAst()->createNodeNaryOperator(
-          NODE_TYPE_OPERATOR_NARY_AND)),
+TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(TraversalNode const* tn)
+    : EdgeConditionBuilder(tn->_plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND)),
       _tn(tn) {}
 
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
     TraversalNode const* tn, arangodb::velocypack::Slice const& condition)
-    : EdgeConditionBuilder(new AstNode(tn->_plan->getAst(), condition)),
-      _tn(tn) {}
+    : EdgeConditionBuilder(new AstNode(tn->_plan->getAst(), condition)), _tn(tn) {}
 
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
     TraversalNode const* tn, TraversalEdgeConditionBuilder const* other)
@@ -76,8 +80,8 @@ void TraversalNode::TraversalEdgeConditionBuilder::buildToCondition() {
   _toCondition = _tn->_toCondition;
 }
 
-void TraversalNode::TraversalEdgeConditionBuilder::toVelocyPack(
-    VPackBuilder& builder, bool verbose) {
+void TraversalNode::TraversalEdgeConditionBuilder::toVelocyPack(VPackBuilder& builder,
+                                                                bool verbose) {
   if (_containsCondition) {
     _modCondition->removeMemberUnchecked(_modCondition->numMembers() - 1);
     _containsCondition = false;
@@ -85,24 +89,25 @@ void TraversalNode::TraversalEdgeConditionBuilder::toVelocyPack(
   _modCondition->toVelocyPack(builder, verbose);
 }
 
-TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
-                             TRI_vocbase_t* vocbase, AstNode const* direction,
-                             AstNode const* start, AstNode const* graph,
+TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+                             AstNode const* direction, AstNode const* start,
+                             AstNode const* graph, std::unique_ptr<Expression> pruneExpression,
                              std::unique_ptr<BaseOptions> options)
     : GraphNode(plan, id, vocbase, direction, graph, std::move(options)),
       _pathOutVariable(nullptr),
       _inVariable(nullptr),
       _condition(nullptr),
       _fromCondition(nullptr),
-      _toCondition(nullptr) {
+      _toCondition(nullptr),
+      _pruneExpression(std::move(pruneExpression)) {
   TRI_ASSERT(start != nullptr);
 
   auto ast = _plan->getAst();
   // Let us build the conditions on _from and _to. Just in case we need them.
   {
-    auto const* access = ast->createNodeAttributeAccess(
-        _tmpObjVarNode, StaticStrings::FromString.c_str(),
-        StaticStrings::FromString.length());
+    auto const* access =
+        ast->createNodeAttributeAccess(_tmpObjVarNode, StaticStrings::FromString.c_str(),
+                                       StaticStrings::FromString.length());
     _fromCondition = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
                                                    access, _tmpIdNode);
   }
@@ -110,9 +115,9 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
   TRI_ASSERT(_fromCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
 
   {
-    auto const* access = ast->createNodeAttributeAccess(
-        _tmpObjVarNode, StaticStrings::ToString.c_str(),
-        StaticStrings::ToString.length());
+    auto const* access =
+        ast->createNodeAttributeAccess(_tmpObjVarNode, StaticStrings::ToString.c_str(),
+                                       StaticStrings::ToString.length());
     _toCondition = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
                                                  access, _tmpIdNode);
   }
@@ -140,19 +145,22 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                                      "_id string or an object with _id.");
   }
 
+  if (_pruneExpression) {
+    _pruneExpression->variables(_pruneVariables);
+  }
+
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   checkConditionsDefined();
 #endif
 }
 
 /// @brief Internal constructor to clone the node.
-TraversalNode::TraversalNode(
-    ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-    std::vector<std::unique_ptr<Collection>> const& edgeColls,
-    std::vector<std::unique_ptr<Collection>> const& vertexColls,
-    Variable const* inVariable, std::string const& vertexId,
-    std::vector<TRI_edge_direction_e> const& directions,
-    std::unique_ptr<BaseOptions> options)
+TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+                             std::vector<std::unique_ptr<Collection>> const& edgeColls,
+                             std::vector<std::unique_ptr<Collection>> const& vertexColls,
+                             Variable const* inVariable, std::string const& vertexId,
+                             std::vector<TRI_edge_direction_e> const& directions,
+                             std::unique_ptr<BaseOptions> options)
     : GraphNode(plan, id, vocbase, edgeColls, vertexColls, directions, std::move(options)),
       _pathOutVariable(nullptr),
       _inVariable(inVariable),
@@ -161,8 +169,7 @@ TraversalNode::TraversalNode(
       _fromCondition(nullptr),
       _toCondition(nullptr) {}
 
-TraversalNode::TraversalNode(ExecutionPlan* plan,
-                             arangodb::velocypack::Slice const& base)
+TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : GraphNode(plan, base),
       _pathOutVariable(nullptr),
       _inVariable(nullptr),
@@ -197,14 +204,14 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
 
   if (list.isArray()) {
     for (auto const& v : VPackArrayIterator(list)) {
-      _conditionVariables.emplace(
-          _plan->getAst()->variables()->createVariable(v));
+      _conditionVariables.emplace(_plan->getAst()->variables()->createVariable(v));
     }
   }
 
   // Out variables
- if (base.hasKey("pathOutVariable")) {
-    _pathOutVariable = Variable::varFromVPack(plan->getAst(), base, "pathOutVariable");
+  if (base.hasKey("pathOutVariable")) {
+    _pathOutVariable =
+        Variable::varFromVPack(plan->getAst(), base, "pathOutVariable");
   }
 
   // Filter Condition Parts
@@ -241,9 +248,19 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
   if (list.isObject()) {
     for (auto const& cond : VPackObjectIterator(list)) {
       std::string key = cond.key.copyString();
-      auto ecbuilder =
-          std::make_unique<TraversalEdgeConditionBuilder>(this, cond.value);
+      auto ecbuilder = std::make_unique<TraversalEdgeConditionBuilder>(this, cond.value);
       _edgeConditions.emplace(StringUtils::uint64(key), std::move(ecbuilder));
+    }
+  }
+
+  list = base.get("expression");
+  if (!list.isNone()) {
+    _pruneExpression = std::make_unique<aql::Expression>(plan, plan->getAst(), base);
+    TRI_ASSERT(base.hasKey("pruneVariables"));
+    list = base.get("pruneVariables");
+    TRI_ASSERT(list.isArray());
+    for (auto const& varinfo : VPackArrayIterator(list)) {
+      _pruneVariables.emplace(plan->getAst()->variables()->createVariable(varinfo));
     }
   }
 
@@ -297,8 +314,7 @@ bool TraversalNode::allDirectionsEqual() const {
   return true;
 }
 
-void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes,
-                                       unsigned flags) const {
+void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   GraphNode::toVelocyPackHelper(nodes, flags);  // call base class method
   // In variable
   if (usesInVariable()) {
@@ -380,16 +396,132 @@ void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes,
   nodes.add(VPackValue("indexes"));
   _options->toVelocyPackIndexes(nodes);
 
+  if (_pruneExpression != nullptr) {
+    // The Expression constructor expects only this name
+    nodes.add(VPackValue("expression"));
+    _pruneExpression->toVelocyPack(nodes, flags);
+    nodes.add(VPackValue("pruneVariables"));
+    nodes.openArray();
+    for (auto const& var : _pruneVariables) {
+      var->toVelocyPack(nodes);
+    }
+    nodes.close();
+  }
   // And close it:
   nodes.close();
 }
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-) const {
-  return std::make_unique<TraversalBlock>(&engine, this);
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto& varInfo = getRegisterPlan()->varInfo;
+  RegisterId inputRegister = MaxRegisterId;
+  if (usesInVariable()) {
+    auto it = varInfo.find(inVariable()->id);
+    TRI_ASSERT(it != varInfo.end());
+    inputRegisters->emplace(it->second.registerId);
+    inputRegister = it->second.registerId;
+    TRI_ASSERT(getStartVertex().empty());
+  }
+  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId, TraversalExecutorInfos::OutputNameHash> outputRegisterMapping;
+
+  if (usesVertexOutVariable()) {
+    auto it = varInfo.find(vertexOutVariable()->id);
+    TRI_ASSERT(it != varInfo.end());
+    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+    outputRegisters->emplace(it->second.registerId);
+    outputRegisterMapping.emplace(TraversalExecutorInfos::OutputName::VERTEX,
+                                  it->second.registerId);
+  }
+  if (usesEdgeOutVariable()) {
+    auto it = varInfo.find(edgeOutVariable()->id);
+    TRI_ASSERT(it != varInfo.end());
+    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+    outputRegisters->emplace(it->second.registerId);
+    outputRegisterMapping.emplace(TraversalExecutorInfos::OutputName::EDGE,
+                                  it->second.registerId);
+  }
+  if (usesPathOutVariable()) {
+    auto it = varInfo.find(pathOutVariable()->id);
+    TRI_ASSERT(it != varInfo.end());
+    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+    outputRegisters->emplace(it->second.registerId);
+    outputRegisterMapping.emplace(TraversalExecutorInfos::OutputName::PATH,
+                                  it->second.registerId);
+  }
+  auto opts = static_cast<TraverserOptions*>(options());
+  std::unique_ptr<Traverser> traverser;
+  auto trx = engine.getQuery()->trx();
+
+  if (pruneExpression() != nullptr) {
+    std::vector<Variable const*> pruneVars;
+    getPruneVariables(pruneVars);
+    std::vector<RegisterId> pruneRegs;
+    // Create List for _pruneVars
+    pruneRegs.reserve(pruneVars.size());
+    size_t vertexRegIdx = std::numeric_limits<std::size_t>::max();
+    size_t edgeRegIdx = std::numeric_limits<std::size_t>::max();
+    size_t pathRegIdx = std::numeric_limits<std::size_t>::max();
+    for (auto const v : pruneVars) {
+      auto it = varInfo.find(v->id);
+      TRI_ASSERT(it != varInfo.end());
+      if (v == vertexOutVariable()) {
+        vertexRegIdx = pruneRegs.size();
+      } else if (v == edgeOutVariable()) {
+        edgeRegIdx = pruneRegs.size();
+      } else if (v == pathOutVariable()) {
+        pathRegIdx = pruneRegs.size();
+      }
+      pruneRegs.emplace_back(it->second.registerId);
+    }
+
+    opts->activatePrune(std::move(pruneVars), std::move(pruneRegs),
+                        vertexRegIdx, edgeRegIdx, pathRegIdx, pruneExpression());
+  }
+
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+#ifdef USE_ENTERPRISE
+    if (isSmart()) {
+      traverser.reset(
+          new arangodb::traverser::SmartGraphTraverser(opts, engines(),
+                                                       trx->vocbase().name(), trx));
+    } else {
+#endif
+      traverser.reset(new arangodb::traverser::ClusterTraverser(opts, engines(),
+                                                                trx->vocbase().name(), trx));
+#ifdef USE_ENTERPRISE
+    }
+#endif
+  } else {
+    traverser.reset(new arangodb::traverser::SingleServerTraverser(opts, trx));
+  }
+
+  // Optimized condition
+  std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables;
+  filterConditionVariables.reserve(_conditionVariables.size());
+  for (auto const& it : _conditionVariables) {
+    if (it != _tmpObjVariable) {
+      auto idIt = varInfo.find(it->id);
+      TRI_ASSERT(idIt != varInfo.end());
+      filterConditionVariables.emplace_back(std::make_pair(it, idIt->second.registerId));
+      inputRegisters->emplace(idIt->second.registerId);
+    }
+  }
+
+  TRI_ASSERT(traverser != nullptr);
+  TraversalExecutorInfos infos(inputRegisters, outputRegisters,
+                               getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                               getRegisterPlan()->nrRegs[getDepth()],
+                               getRegsToClear(), calcRegsToKeep(), std::move(traverser),
+                               outputRegisterMapping, getStartVertex(),
+                               inputRegister, std::move(filterConditionVariables));
+
+  return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(&engine, this,
+                                                                 std::move(infos));
 }
 
 /// @brief clone ExecutionNode recursively
@@ -397,16 +529,15 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
   TRI_ASSERT(!_optionsBuilt);
   auto oldOpts = static_cast<TraverserOptions*>(options());
-  std::unique_ptr<BaseOptions> tmp =
-      std::make_unique<TraverserOptions>(*oldOpts);
-  auto c = std::make_unique<TraversalNode>(plan, _id, _vocbase, _edgeColls, _vertexColls,
-                             _inVariable, _vertexId, _directions, std::move(tmp));
+  std::unique_ptr<BaseOptions> tmp = std::make_unique<TraverserOptions>(*oldOpts);
+  auto c = std::make_unique<TraversalNode>(plan, _id, _vocbase, _edgeColls,
+                                           _vertexColls, _inVariable, _vertexId,
+                                           _directions, std::move(tmp));
 
   if (usesVertexOutVariable()) {
     auto vertexOutVariable = _vertexOutVariable;
     if (withProperties) {
-      vertexOutVariable =
-          plan->getAst()->variables()->createVariable(vertexOutVariable);
+      vertexOutVariable = plan->getAst()->variables()->createVariable(vertexOutVariable);
     }
     TRI_ASSERT(vertexOutVariable != nullptr);
     c->setVertexOutput(vertexOutVariable);
@@ -415,8 +546,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   if (usesEdgeOutVariable()) {
     auto edgeOutVariable = _edgeOutVariable;
     if (withProperties) {
-      edgeOutVariable =
-          plan->getAst()->variables()->createVariable(edgeOutVariable);
+      edgeOutVariable = plan->getAst()->variables()->createVariable(edgeOutVariable);
     }
     TRI_ASSERT(edgeOutVariable != nullptr);
     c->setEdgeOutput(edgeOutVariable);
@@ -425,8 +555,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   if (usesPathOutVariable()) {
     auto pathOutVariable = _pathOutVariable;
     if (withProperties) {
-      pathOutVariable =
-          plan->getAst()->variables()->createVariable(pathOutVariable);
+      pathOutVariable = plan->getAst()->variables()->createVariable(pathOutVariable);
     }
     TRI_ASSERT(pathOutVariable != nullptr);
     c->setPathOutput(pathOutVariable);
@@ -528,14 +657,12 @@ void TraversalNode::prepareOptions() {
       // made non-overlapping.
       switch (dir) {
         case TRI_EDGE_IN:
-          opts->addDepthLookupInfo(
-              _plan, _edgeColls[i]->name(), StaticStrings::ToString,
-              builder->getInboundCondition()->clone(ast), depth);
+          opts->addDepthLookupInfo(_plan, _edgeColls[i]->name(), StaticStrings::ToString,
+                                   builder->getInboundCondition()->clone(ast), depth);
           break;
         case TRI_EDGE_OUT:
-          opts->addDepthLookupInfo(
-              _plan, _edgeColls[i]->name(), StaticStrings::FromString,
-              builder->getOutboundCondition()->clone(ast), depth);
+          opts->addDepthLookupInfo(_plan, _edgeColls[i]->name(), StaticStrings::FromString,
+                                   builder->getOutboundCondition()->clone(ast), depth);
           break;
         case TRI_EDGE_ANY:
           TRI_ASSERT(false);
@@ -552,8 +679,7 @@ void TraversalNode::prepareOptions() {
     opts->_vertexExpressions.emplace(it.first, new Expression(_plan, ast, it.second));
   }
   if (!_globalVertexConditions.empty()) {
-    auto cond =
-        _plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+    auto cond = _plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
     for (auto const& it : _globalVertexConditions) {
       cond->addMember(it);
     }
@@ -571,13 +697,12 @@ void TraversalNode::prepareOptions() {
 
 /// @brief remember the condition to execute for early traversal abortion.
 void TraversalNode::setCondition(arangodb::aql::Condition* condition) {
-  std::unordered_set<Variable const*> varsUsedByCondition;
+  arangodb::HashSet<Variable const*> varsUsedByCondition;
 
   Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
 
   for (auto const& oneVar : varsUsedByCondition) {
-    if ((_vertexOutVariable == nullptr ||
-         oneVar->id != _vertexOutVariable->id) &&
+    if ((_vertexOutVariable == nullptr || oneVar->id != _vertexOutVariable->id) &&
         (_edgeOutVariable == nullptr || oneVar->id != _edgeOutVariable->id) &&
         (_pathOutVariable == nullptr || oneVar->id != _pathOutVariable->id) &&
         (_inVariable == nullptr || oneVar->id != _inVariable->id)) {
@@ -588,8 +713,7 @@ void TraversalNode::setCondition(arangodb::aql::Condition* condition) {
   _condition = condition;
 }
 
-void TraversalNode::registerCondition(bool isConditionOnEdge,
-                                      uint64_t conditionLevel,
+void TraversalNode::registerCondition(bool isConditionOnEdge, uint64_t conditionLevel,
                                       AstNode const* condition) {
   Ast::getReferencedVariables(condition, _conditionVariables);
   if (isConditionOnEdge) {
@@ -604,8 +728,7 @@ void TraversalNode::registerCondition(bool isConditionOnEdge,
   } else {
     auto const& it = _vertexConditions.find(conditionLevel);
     if (it == _vertexConditions.end()) {
-      auto cond =
-          _plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+      auto cond = _plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
       cond->addMember(condition);
       _vertexConditions.emplace(conditionLevel, cond);
     } else {
@@ -614,8 +737,7 @@ void TraversalNode::registerCondition(bool isConditionOnEdge,
   }
 }
 
-void TraversalNode::registerGlobalCondition(bool isConditionOnEdge,
-                                            AstNode const* condition) {
+void TraversalNode::registerGlobalCondition(bool isConditionOnEdge, AstNode const* condition) {
   Ast::getReferencedVariables(condition, _conditionVariables);
   if (isConditionOnEdge) {
     _globalEdgeConditions.emplace_back(condition);
@@ -624,10 +746,17 @@ void TraversalNode::registerGlobalCondition(bool isConditionOnEdge,
   }
 }
 
-void TraversalNode::getConditionVariables(
-    std::vector<Variable const*>& res) const {
+void TraversalNode::getConditionVariables(std::vector<Variable const*>& res) const {
   for (auto const& it : _conditionVariables) {
     if (it != _tmpObjVariable) {
+      res.emplace_back(it);
+    }
+  }
+}
+
+void TraversalNode::getPruneVariables(std::vector<Variable const*>& res) const {
+  if (_pruneExpression) {
+    for (auto const& it : _pruneVariables) {
       res.emplace_back(it);
     }
   }
@@ -645,4 +774,5 @@ void TraversalNode::checkConditionsDefined() const {
   TRI_ASSERT(_toCondition != nullptr);
   TRI_ASSERT(_toCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
 }
+
 #endif

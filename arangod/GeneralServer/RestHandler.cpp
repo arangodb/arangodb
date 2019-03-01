@@ -123,7 +123,8 @@ bool RestHandler::forwardRequest() {
     return false;
   }
 
-  LOG_TOPIC(DEBUG, Logger::REQUESTS) << "forwarding request " << _request->messageId() << " to " << serverId;
+  LOG_TOPIC(DEBUG, Logger::REQUESTS)
+      << "forwarding request " << _request->messageId() << " to " << serverId;
 
   bool useVst = false;
   if (_request->transportType() == Endpoint::TransportType::VST) {
@@ -131,10 +132,8 @@ bool RestHandler::forwardRequest() {
   }
   std::string const& dbname = _request->databaseName();
 
-  std::unordered_map<std::string, std::string> const& oldHeaders =
-      _request->headers();
-  std::unordered_map<std::string, std::string>::const_iterator it =
-      oldHeaders.begin();
+  std::unordered_map<std::string, std::string> const& oldHeaders = _request->headers();
+  std::unordered_map<std::string, std::string>::const_iterator it = oldHeaders.begin();
   std::unordered_map<std::string, std::string> headers;
   while (it != oldHeaders.end()) {
     std::string const& key = (*it).first;
@@ -147,14 +146,19 @@ bool RestHandler::forwardRequest() {
   }
   auto auth = AuthenticationFeature::instance();
   if (auth != nullptr && auth->isActive()) {
-    VPackBuilder builder;
-    {
-      VPackObjectBuilder payload{&builder};
-      payload->add("preferred_username", VPackValue(_request->user()));
+    // when in superuser mode, username is empty
+    //  in this case ClusterComm will add the default superuser token
+    std::string const& username = _request->user();
+    if (!username.empty()) {
+      VPackBuilder builder;
+      {
+        VPackObjectBuilder payload{&builder};
+        payload->add("preferred_username", VPackValue(username));
+      }
+      VPackSlice slice = builder.slice();
+      headers.emplace(StaticStrings::Authorization,
+                      "bearer " + auth->tokenCache().generateJwt(slice));
     }
-    VPackSlice slice = builder.slice();
-    headers.emplace(StaticStrings::Authorization,
-                    "bearer " + auth->tokenCache().generateJwt(slice));
   }
 
   auto& values = _request->values();
@@ -187,7 +191,7 @@ bool RestHandler::forwardRequest() {
     }
 
     // Send a synchronous request to that shard using ClusterComm:
-    res = cc->syncRequest("", TRI_NewTickServer(), "server:" + serverId,
+    res = cc->syncRequest(TRI_NewTickServer(), "server:" + serverId,
                           _request->requestType(),
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               _request->requestPath() + params,
@@ -195,7 +199,7 @@ bool RestHandler::forwardRequest() {
   } else {
     // do we need to handle multiple payloads here? - TODO
     // here we switch from vst to http
-    res = cc->syncRequest("", TRI_NewTickServer(), "server:" + serverId,
+    res = cc->syncRequest(TRI_NewTickServer(), "server:" + serverId,
                           _request->requestType(),
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               _request->requestPath() + params,
@@ -224,8 +228,7 @@ bool RestHandler::forwardRequest() {
   }
 
   bool dummy;
-  resetResponse(
-      static_cast<rest::ResponseCode>(res->result->getHttpReturnCode()));
+  resetResponse(static_cast<rest::ResponseCode>(res->result->getHttpReturnCode()));
 
   _response->setContentType(
       res->result->getHeaderField(StaticStrings::ContentTypeHeader, dummy));
@@ -241,8 +244,7 @@ bool RestHandler::forwardRequest() {
     // need to switch back from http to vst
     std::shared_ptr<VPackBuilder> builder = res->result->getBodyVelocyPack();
     std::shared_ptr<VPackBuffer<uint8_t>> buf = builder->steal();
-    _response->setPayload(std::move(*buf),
-                          true);
+    _response->setPayload(std::move(*buf), true);
   }
 
   auto const& resultHeaders = res->result->getHeaderFields();
@@ -267,8 +269,9 @@ void RestHandler::runHandlerStateMachine() {
         executeEngine(false);
         if (_state == HandlerState::PAUSED) {
           shutdownExecute(false);
-          LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Pausing rest handler execution";
-          return; // stop state machine
+          LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+              << "Pausing rest handler execution";
+          return;  // stop state machine
         }
         break;
       }
@@ -407,8 +410,7 @@ void RestHandler::executeEngine(bool isContinue) {
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-        << "caught exception in " << name() << ": "
-        << DIAGNOSTIC_INFORMATION(ex);
+        << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     handleError(ex);
@@ -419,9 +421,11 @@ void RestHandler::executeEngine(bool isContinue) {
         << DIAGNOSTIC_INFORMATION(ex);
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    bool const isParseError = (ex.errorCode() == arangodb::velocypack::Exception::ParseError);
-    Exception err(isParseError ? TRI_ERROR_HTTP_CORRUPTED_JSON : TRI_ERROR_INTERNAL, std::string("VPack error: ") + ex.what(),
-                  __FILE__, __LINE__);
+    bool const isParseError =
+        (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
+         ex.errorCode() == arangodb::velocypack::Exception::UnexpectedControlCharacter);
+    Exception err(isParseError ? TRI_ERROR_HTTP_CORRUPTED_JSON : TRI_ERROR_INTERNAL,
+                  std::string("VPack error: ") + ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::bad_alloc const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -435,16 +439,14 @@ void RestHandler::executeEngine(bool isContinue) {
   } catch (std::exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-        << "caught exception in " << name() << ": "
-        << DIAGNOSTIC_INFORMATION(ex);
+        << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (...) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-        << "caught unknown exception in " << name();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught unknown exception in " << name();
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
@@ -465,10 +467,8 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
     builder.add(VPackValue(VPackValueType::Object));
     builder.add(StaticStrings::Error, VPackValue(true));
     builder.add(StaticStrings::ErrorMessage, VPackValue(message));
-    builder.add(StaticStrings::Code,
-                VPackValue(static_cast<int>(code)));
-    builder.add(StaticStrings::ErrorNum,
-                VPackValue(errorNumber));
+    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
+    builder.add(StaticStrings::ErrorNum, VPackValue(errorNumber));
     builder.close();
 
     VPackOptions options(VPackOptions::Defaults);

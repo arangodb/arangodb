@@ -27,7 +27,17 @@
 
 #include "Basics/Common.h"
 
+#include <utility>
 #include <vector>
+
+#if __cpp_lib_to_chars >= 201611
+// use non-throwing, non-allocating std::from_chars etc. from standard library
+#include <charconv>
+#define TRI_STRING_UTILS_USE_FROM_CHARS 1
+#else
+// use own functionality
+#undef TRI_STRING_UTILS_USE_FROM_CHARS
+#endif
 
 namespace arangodb {
 namespace basics {
@@ -38,51 +48,8 @@ namespace basics {
 namespace StringUtils {
 
 // -----------------------------------------------------------------------------
-// STRING AND STRING POINTER
-// -----------------------------------------------------------------------------
-
-/// @brief creates a C string using new
-char* duplicate(std::string const&);
-
-/// @brief creates a C string using new
-char* duplicate(char const*, size_t);
-
-/// @brief creates a C string using new
-char* duplicate(char const*);
-
-/// @brief deletes and clears a string
-///
-/// The string is cleared using memset and then deleted. The pointer is
-/// set to 0.
-void destroy(char*&);
-
-/// @brief deletes and clears a string
-///
-/// The string is cleared using memset and then deleted. The pointer is
-/// set to 0.
-void destroy(char*&, size_t);
-
-/// @brief deletes but does not clear a character string
-///
-/// The pointer deleted and then set to 0.
-void erase(char*&);
-
-// -----------------------------------------------------------------------------
 // STRING CONVERSION
 // -----------------------------------------------------------------------------
-
-/// @brief capitalize string
-///
-/// This method converts characters at the beginning of a word to uppercase
-/// and remove any whitespaces. If first is true the first character of the
-/// first word is also converted to uppercase. Name must not be empty.
-std::string capitalize(std::string const& name, bool first = true);
-
-/// @brief separate words
-///
-/// This method converts all characters to lowercase and separates
-/// the words with a given character. Name must not be empty.
-std::string separate(std::string const& name, char separator = '-');
 
 /// @brief escape unicode
 ///
@@ -90,25 +57,8 @@ std::string separate(std::string const& name, char separator = '-');
 /// characters by a \\uXXXX sequence.
 std::string escapeUnicode(std::string const& name, bool escapeSlash = true);
 
-/// @brief escape html
-std::string escapeHtml(std::string const& name);
-
-/// @brief escape xml
-std::string escapeXml(std::string const& name);
-
-/// @brief escape hex for all non-printable characters (including space)
-std::string escapeHex(std::string const& name, char quote = '%');
-
-/// @brief escape hex
-std::string escapeHex(std::string const& name, std::string const& specials,
-                      char quote = '%');
-
-/// @brief escape as C code
-std::string escapeC(std::string const& name);
-
 /// @brief splits a string
-std::vector<std::string> split(std::string const& source, char delim = ',',
-                               char quote = '\\');
+std::vector<std::string> split(std::string const& source, char delim = ',', char quote = '\\');
 
 /// @brief splits a string
 std::vector<std::string> split(std::string const& source,
@@ -210,37 +160,27 @@ std::string urlEncode(char const* src);
 
 /// @brief url encodes the string
 std::string urlEncode(char const* src, size_t const len);
-    
+
 /// @brief uri encodes the component string
-std::string encodeURIComponent(std:: string const& str);
-    
+std::string encodeURIComponent(std::string const& str);
+
 /// @brief uri encodes the component string
 std::string encodeURIComponent(char const* src, size_t const len);
-  
+
 /// @brief converts input string to soundex code
 std::string soundex(std::string const& str);
-   
+
 /// @brief converts input string to soundex code
 std::string soundex(char const* src, size_t const len);
-   
+
 /// @brief converts input string to vector of character codes
 std::vector<uint32_t> characterCodes(std::string const& str);
-    
+
 /// @brief calculates the levenshtein distance between the input strings
 unsigned int levenshteinDistance(std::string const& str1, std::string const& str2);
-  
+
 /// @brief calculates the levenshtein distance between the input strings
 size_t levenshteinDistance(std::vector<uint32_t> vect1, std::vector<uint32_t> vect2);
-
-/// @brief unicode hexadecimal characters to utf8
-bool unicodeToUTF8(char const* inputStr, size_t const& len,
-                   std::string& outputStr);
-
-/// @brief converts an utf16 symbol which needs UTF16 to UTF8
-///        The conversion correspond to the specification:
-///        http://en.wikipedia.org/wiki/UTF-16#Code_points_U.2B10000_to_U.2B10FFFF
-bool convertUTF16ToUTF8(char const* high_surrogate, char const* low_surrogate,
-                        std::string& outputStr);
 
 /// @brief url encodes the string
 std::string urlEncode(std::string const& str);
@@ -309,18 +249,40 @@ inline int hex2int(char ch, int errorValue = 0) {
 bool boolean(std::string const& str);
 
 /// @brief parses an integer
-int64_t int64(std::string const& str);
-
+#ifdef TRI_STRING_UTILS_USE_FROM_CHARS
+// use functionality provided by c++17
+inline int64_t int64(char const* value, size_t size) noexcept {
+  int64_t result = 0;
+  std::from_chars(value, value + size, result, 10);
+  return result;
+}
+inline int64_t int64(std::string const& value) noexcept {
+  return StringUtils::int64(value.data(), value.size());
+}
+#else
+int64_t int64(std::string const& value);
 inline int64_t int64(char const* value, size_t size) {
   return StringUtils::int64(std::string(value, size));
 }
+#endif
 
 /// @brief parses an unsigned integer
-uint64_t uint64(std::string const& str);
-
+#ifdef TRI_STRING_UTILS_USE_FROM_CHARS
+// use functionality provided by c++17
+inline uint64_t uint64(char const* value, size_t size) noexcept {
+  uint64_t result = 0;
+  std::from_chars(value, value + size, result, 10);
+  return result;
+}
+inline uint64_t uint64(std::string const& value) noexcept {
+  return StringUtils::uint64(value.data(), value.size());
+}
+#else
+uint64_t uint64(std::string const& value);
 inline uint64_t uint64(char const* value, size_t size) {
   return StringUtils::uint64(std::string(value, size));
 }
+#endif
 
 /// @brief parses an unsigned integer
 /// the caller must make sure that the input buffer only contains valid
@@ -328,28 +290,41 @@ inline uint64_t uint64(char const* value, size_t size) {
 /// because the input is restricted to some valid characters, this function
 /// is highly optimized
 uint64_t uint64_trusted(char const* value, size_t length);
-
 inline uint64_t uint64_trusted(std::string const& value) {
-  return uint64_trusted(value.c_str(), value.size());
+  return uint64_trusted(value.data(), value.size());
 }
 
 /// @brief parses an integer
-int32_t int32(std::string const& str);
-
-/// @brief parses an integer
+#ifdef TRI_STRING_UTILS_USE_FROM_CHARS
+// use functionality provided by c++17
+inline int32_t int32(char const* value, size_t size) noexcept {
+  int32_t result = 0;
+  std::from_chars(value, value + size, result, 10);
+  return result;
+}
+inline int32_t int32(std::string const& value) noexcept {
+  return StringUtils::int32(value.data(), value.size());
+}
+#else
+int32_t int32(std::string const& value);
 int32_t int32(char const* value, size_t size);
+#endif
 
 /// @brief parses an unsigned integer
-uint32_t uint32(std::string const& str);
-
-/// @brief parses an unsigned integer
+#ifdef TRI_STRING_UTILS_USE_FROM_CHARS
+// use functionality provided by c++17
+inline uint32_t uint32(char const* value, size_t size) noexcept {
+  uint32_t result = 0;
+  std::from_chars(value, value + size, result, 10);
+  return result;
+}
+inline uint32_t uint32(std::string const& value) noexcept {
+  return StringUtils::uint32(value.data(), value.size());
+}
+#else
+uint32_t uint32(std::string const& value);
 uint32_t uint32(char const* value, size_t size);
-
-/// @brief parses an unsigned integer given in HEX
-uint32_t unhexUint32(std::string const& str);
-
-/// @brief parses an unsigned integer given in HEX
-uint32_t unhexUint32(char const* value, size_t size);
+#endif
 
 /// @brief parses a decimal
 double doubleDecimal(std::string const& str);
@@ -408,17 +383,15 @@ std::string encodeHex(std::string const& value);
 std::string decodeHex(char const* value, size_t length);
 std::string decodeHex(std::string const& value);
 
-bool gzipUncompress(char const* compressed, size_t compressedLength,
-                    std::string& uncompressed);
+bool gzipUncompress(char const* compressed, size_t compressedLength, std::string& uncompressed);
 
 bool gzipUncompress(std::string const& compressed, std::string& uncompressed);
 
-bool gzipDeflate(char const* compressed, size_t compressedLength,
-                 std::string& uncompressed);
+bool gzipDeflate(char const* compressed, size_t compressedLength, std::string& uncompressed);
 
 bool gzipDeflate(std::string const& compressed, std::string& uncompressed);
-}
-}
-}
+}  // namespace StringUtils
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

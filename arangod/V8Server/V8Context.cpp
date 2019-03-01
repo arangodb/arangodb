@@ -46,19 +46,24 @@ std::string const GlobalContextMethods::CodeBootstrapCoordinator =
 
 std::string const GlobalContextMethods::CodeWarmupExports =
     "require(\"@arangodb/actions\").warmupExports()";
-  
+
 V8Context::V8Context(size_t id, v8::Isolate* isolate)
-    : _id(id), _isolate(isolate), _locker(nullptr), 
-      _creationStamp(TRI_microtime()), _lastGcStamp(0.0), 
-      _invocations(0), _invocationsSinceLastGc(0), _hasActiveExternals(false) {}
+    : _id(id),
+      _isolate(isolate),
+      _locker(nullptr),
+      _creationStamp(TRI_microtime()),
+      _lastGcStamp(0.0),
+      _invocations(0),
+      _invocationsSinceLastGc(0),
+      _hasActiveExternals(false) {}
 
 void V8Context::lockAndEnter() {
   TRI_ASSERT(_isolate != nullptr);
   TRI_ASSERT(_locker == nullptr);
   _locker = new v8::Locker(_isolate);
   _isolate->Enter();
-     
-  assertLocked(); 
+
+  assertLocked();
 
   ++_invocations;
   ++_invocationsSinceLastGc;
@@ -66,11 +71,11 @@ void V8Context::lockAndEnter() {
 
 void V8Context::unlockAndExit() {
   assertLocked();
-  
+
   _isolate->Exit();
   delete _locker;
   _locker = nullptr;
-  
+
   TRI_ASSERT(!v8::Locker::IsLocked(_isolate));
 }
 
@@ -80,7 +85,7 @@ void V8Context::assertLocked() const {
   TRI_ASSERT(_locker->IsLocked(_isolate));
   TRI_ASSERT(v8::Locker::IsLocked(_isolate));
 }
-  
+
 bool V8Context::hasGlobalMethodsQueued() {
   MUTEX_LOCKER(mutexLocker, _globalMethodsLock);
   return !_globalMethods.empty();
@@ -91,10 +96,8 @@ void V8Context::setCleaned(double stamp) {
   _invocationsSinceLastGc = 0;
 }
 
-double V8Context::age() const {
-  return TRI_microtime() - _creationStamp;
-}
-  
+double V8Context::age() const { return TRI_microtime() - _creationStamp; }
+
 bool V8Context::shouldBeRemoved(double maxAge, uint64_t maxInvocations) const {
   if (maxAge > 0.0 && age() > maxAge) {
     // context is "too old"
@@ -110,8 +113,7 @@ bool V8Context::shouldBeRemoved(double maxAge, uint64_t maxInvocations) const {
   return false;
 }
 
-bool V8Context::addGlobalContextMethod(
-    std::string const& method) {
+bool V8Context::addGlobalContextMethod(std::string const& method) {
   GlobalContextMethods::MethodType type = GlobalContextMethods::type(method);
 
   if (type == GlobalContextMethods::MethodType::UNKNOWN) {
@@ -152,20 +154,21 @@ void V8Context::handleGlobalContextMethods() {
   for (auto& type : copy) {
     std::string const& func = GlobalContextMethods::code(type);
 
-    LOG_TOPIC(DEBUG, arangodb::Logger::V8) << "executing global context method '" << func
-               << "' for context " << _id;
+    LOG_TOPIC(DEBUG, arangodb::Logger::V8)
+        << "executing global context method '" << func << "' for context " << _id;
 
     TRI_GET_GLOBALS2(_isolate);
     bool allowUseDatabase = v8g->_allowUseDatabase;
     v8g->_allowUseDatabase = true;
 
     try {
-      v8::TryCatch tryCatch;
+      v8::TryCatch tryCatch(_isolate);
 
-      TRI_ExecuteJavaScriptString(
-          _isolate, _isolate->GetCurrentContext(),
-          TRI_V8_STD_STRING(_isolate, func),
-          TRI_V8_ASCII_STRING(_isolate, "global context method"), false);
+      TRI_ExecuteJavaScriptString(_isolate, _isolate->GetCurrentContext(),
+                                  TRI_V8_STD_STRING(_isolate, func),
+                                  TRI_V8_ASCII_STRING(_isolate,
+                                                      "global context method"),
+                                  false);
 
       if (tryCatch.HasCaught()) {
         if (tryCatch.CanContinue()) {
@@ -173,7 +176,8 @@ void V8Context::handleGlobalContextMethods() {
         }
       }
     } catch (...) {
-      LOG_TOPIC(WARN, arangodb::Logger::V8) << "caught exception during global context method '" << func << "'";
+      LOG_TOPIC(WARN, arangodb::Logger::V8)
+          << "caught exception during global context method '" << func << "'";
     }
 
     v8g->_allowUseDatabase = allowUseDatabase;
@@ -183,7 +187,8 @@ void V8Context::handleGlobalContextMethods() {
 void V8Context::handleCancelationCleanup() {
   v8::HandleScope scope(_isolate);
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::V8) << "executing cancelation cleanup context #" << _id;
+  LOG_TOPIC(DEBUG, arangodb::Logger::V8)
+      << "executing cancelation cleanup context #" << _id;
 
   try {
     TRI_ExecuteJavaScriptString(
@@ -192,15 +197,15 @@ void V8Context::handleCancelationCleanup() {
                             "require('module')._cleanupCancelation();"),
         TRI_V8_ASCII_STRING(_isolate, "context cleanup method"), false);
   } catch (...) {
-    LOG_TOPIC(WARN, arangodb::Logger::V8) << "caught exception during cancelation cleanup";
+    LOG_TOPIC(WARN, arangodb::Logger::V8)
+        << "caught exception during cancelation cleanup";
     // do not throw from here
   }
 }
 
-V8ContextEntryGuard::V8ContextEntryGuard(V8Context* context) : _context(context) {
+V8ContextEntryGuard::V8ContextEntryGuard(V8Context* context)
+    : _context(context) {
   _context->lockAndEnter();
 }
 
-V8ContextEntryGuard::~V8ContextEntryGuard() {
-  _context->unlockAndExit();
-}
+V8ContextEntryGuard::~V8ContextEntryGuard() { _context->unlockAndExit(); }

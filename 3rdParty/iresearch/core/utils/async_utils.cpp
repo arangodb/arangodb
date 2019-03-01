@@ -74,13 +74,18 @@ void busywait_mutex::unlock() {
   }
 }
 
-read_write_mutex::read_write_mutex()
-  : concurrent_count_(0), exclusive_count_(0), exclusive_owner_recursion_count_(0) {
+read_write_mutex::read_write_mutex() NOEXCEPT
+  : concurrent_count_(0),
+    exclusive_count_(0),
+    exclusive_owner_recursion_count_(0) {
 }
 
-read_write_mutex::~read_write_mutex() {
+read_write_mutex::~read_write_mutex() NOEXCEPT {
+#ifdef IRESEARCH_DEBUG
+  // ensure mutex is not locked before destroying it
   TRY_SCOPED_LOCK_NAMED(mutex_, lock);
   assert(lock && !concurrent_count_.load() && !exclusive_count_);
+#endif
 }
 
 void read_write_mutex::lock_read() {
@@ -115,15 +120,21 @@ void read_write_mutex::lock_write() {
 
   // wait until lock is held exclusively by the current thread
   while (concurrent_count_) {
-    writer_cond_.wait_for(lock, std::chrono::milliseconds(1000));
+    try {
+      writer_cond_.wait_for(lock, std::chrono::milliseconds(1000));
+    } catch (...) {
+      // 'wait_for' may throw according to specification
+    }
   }
 
   --exclusive_count_;
+  VALGRIND_ONLY(SCOPED_LOCK(exclusive_owner_mutex_);) // suppress valgrind false-positives related to std::atomic_*
   exclusive_owner_.store(std::this_thread::get_id());
   lock.release(); // disassociate the associated mutex without unlocking it
 }
 
-bool read_write_mutex::owns_write() {
+bool read_write_mutex::owns_write() NOEXCEPT {
+  VALGRIND_ONLY(SCOPED_LOCK(exclusive_owner_mutex_);) // suppress valgrind false-positives related to std::atomic_*
   return exclusive_owner_.load() == std::this_thread::get_id();
 }
 
@@ -160,6 +171,7 @@ bool read_write_mutex::try_lock_write() {
     return false;
   }
 
+  VALGRIND_ONLY(SCOPED_LOCK(exclusive_owner_mutex_);) // suppress valgrind false-positives related to std::atomic_*
   exclusive_owner_.store(std::this_thread::get_id());
   lock.release(); // disassociate the associated mutex without unlocking it
 
@@ -184,6 +196,7 @@ void read_write_mutex::unlock(bool exclusive_only /*= false*/) {
       ++concurrent_count_; // aquire the read-lock
     }
 
+    VALGRIND_ONLY(SCOPED_LOCK(exclusive_owner_mutex_);) // suppress valgrind false-positives related to std::atomic_*
     exclusive_owner_.store(unowned);
     reader_cond_.notify_all(); // wake all reader and writers
     writer_cond_.notify_all(); // wake all reader and writers
@@ -202,6 +215,7 @@ void read_write_mutex::unlock(bool exclusive_only /*= false*/) {
   #ifdef IRESEARCH_DEBUG
     auto count = --concurrent_count_;
     assert(count != size_t(-1)); // ensure decrement was for a positive number (i.e. not --0)
+    UNUSED(count);
   #else
     --concurrent_count_;
   #endif // IRESEARCH_DEBUG

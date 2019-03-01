@@ -23,7 +23,6 @@
 #include "TraverserCache.h"
 
 #include "Basics/StringHeap.h"
-#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 
 #include "Aql/AqlValue.h"
@@ -37,6 +36,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -45,7 +45,8 @@ using namespace arangodb::graph;
 TraverserCache::TraverserCache(aql::Query* query)
     : _mmdr(new ManagedDocumentResult{}),
       _query(query),
-      _trx(query->trx()), _insertedDocuments(0),
+      _trx(query->trx()),
+      _insertedDocuments(0),
       _filteredDocuments(0),
       _stringHeap(new StringHeap{4096}) /* arbitrary block-size may be adjusted for performance */ {
 }
@@ -58,30 +59,32 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
 
   if (col == nullptr) {
     // collection gone... should not happen
-    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS) << "Could not extract indexed edge document. collection not found";
-    TRI_ASSERT(col != nullptr); // for maintainer mode
+    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS)
+        << "Could not extract indexed edge document. collection not found";
+    TRI_ASSERT(col != nullptr);  // for maintainer mode
     return arangodb::velocypack::Slice::nullSlice();
   }
 
   if (!col->readDocument(_trx, idToken.localDocumentId(), *_mmdr.get())) {
     // We already had this token, inconsistent state. Return NULL in Production
-    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS) << "Could not extract indexed edge document, return 'null' instead. "
-      << "This is most likely a caching issue. Try: 'db."
-      << col->name() <<".unload(); db." << col->name() << ".load()' in arangosh to fix this.";
-    TRI_ASSERT(false); // for maintainer mode
+    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS)
+        << "Could not extract indexed edge document, return 'null' instead. "
+        << "This is most likely a caching issue. Try: 'db." << col->name()
+        << ".unload(); db." << col->name() << ".load()' in arangosh to fix this.";
+    TRI_ASSERT(false);  // for maintainer mode
     return arangodb::velocypack::Slice::nullSlice();
   }
 
   return VPackSlice(_mmdr->vpack());
 }
 
-VPackSlice TraverserCache::lookupInCollection(StringRef id) {
-  //TRI_ASSERT(!ServerState::instance()->isCoordinator());
+VPackSlice TraverserCache::lookupInCollection(arangodb::velocypack::StringRef id) {
+  // TRI_ASSERT(!ServerState::instance()->isCoordinator());
   size_t pos = id.find('/');
   if (pos == std::string::npos || pos + 1 == id.size()) {
-    // Invalid input. If we get here somehow we managed to store invalid _from/_to
-    // values or the traverser did a let an illegal start through
-    TRI_ASSERT(false); // for maintainer mode
+    // Invalid input. If we get here somehow we managed to store invalid
+    // _from/_to values or the traverser did a let an illegal start through
+    TRI_ASSERT(false);  // for maintainer mode
     return arangodb::velocypack::Slice::nullSlice();
   }
 
@@ -106,13 +109,12 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
 }
 
 void TraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
-                                      VPackBuilder& builder) {
+                                          VPackBuilder& builder) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   builder.add(lookupToken(idToken));
 }
 
-void TraverserCache::insertVertexIntoResult(StringRef idString,
-                                      VPackBuilder& builder) {
+void TraverserCache::insertVertexIntoResult(arangodb::velocypack::StringRef idString, VPackBuilder& builder) {
   builder.add(lookupInCollection(idString));
 }
 
@@ -121,17 +123,16 @@ aql::AqlValue TraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const& idToke
   return aql::AqlValue(lookupToken(idToken));
 }
 
-aql::AqlValue TraverserCache::fetchVertexAqlResult(StringRef idString) {
+aql::AqlValue TraverserCache::fetchVertexAqlResult(arangodb::velocypack::StringRef idString) {
   return aql::AqlValue(lookupInCollection(idString));
 }
 
-StringRef TraverserCache::persistString(
-    StringRef const idString) {
+arangodb::velocypack::StringRef TraverserCache::persistString(arangodb::velocypack::StringRef const idString) {
   auto it = _persistedStrings.find(idString);
   if (it != _persistedStrings.end()) {
     return *it;
   }
-  StringRef res = _stringHeap->registerString(idString.begin(), idString.length());
+  arangodb::velocypack::StringRef res = _stringHeap->registerString(idString.begin(), idString.length());
   _persistedStrings.emplace(res);
   return res;
 }

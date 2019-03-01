@@ -142,23 +142,6 @@
       });
     },
 
-    getActiveFailoverHealth: function () {
-      /*
-      $.ajax({
-        type: 'GET',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_admin/cluster/health'),
-        contentType: 'application/json',
-        success: function (data) {
-          console.log(data);
-        },
-        error: function (data) {
-          console.log(data);
-        }
-      });
-      */
-    },
-
     renderEndpoints: function (endpoints) {
       var self = this;
 
@@ -315,14 +298,14 @@
         }
 
         $('#repl-follower-table tbody').append(
-        '<tr class="' + state + '">' +
-          '<td id="applier-database-id">' + applier.database + '</td>' +
-          '<td id="applier-running-id">' + applier.state.running + '</td>' +
-          '<td>' + applier.state.phase + '</td>' +
-          '<td id="applier-endpoint-id">' + endpoint + '</td>' +
-          '<td>' + applier.state.lastAppliedContinuousTick + '</td>' +
-          '<td>' + health + '</td>' +
-        '</tr>'
+          '<tr class="' + state + '">' +
+            '<td id="applier-database-id">' + applier.database + '</td>' +
+            '<td id="applier-running-id">' + applier.state.running + '</td>' +
+            '<td>' + applier.state.phase + '</td>' +
+            '<td id="applier-endpoint-id">' + endpoint + '</td>' +
+            '<td>' + applier.state.lastAppliedContinuousTick + '</td>' +
+            '<td>' + health + '</td>' +
+          '</tr>'
         );
         serverId = applier.server.serverId;
       });
@@ -363,7 +346,6 @@
       if (this.mode === 3) {
         this.getActiveFailoverEndpoints();
         this.getLoggerState();
-        this.getActiveFailoverHealth();
       } else if (this.mode === 2) {
         if (this.info.role === 'leader') {
           this.getLoggerState();
@@ -556,13 +538,13 @@
       var self = this;
       // time chart
       d3.select('#replicationTimeChart svg')
-          .datum(self.parseLoggerData().graphDataTime)
+        .datum(self.parseLoggerData().graphDataTime)
         .transition().duration(500)
         .call(this.charts.replicationTimeChart);
 
       // tick chart
       d3.select('#replicationTickChart svg')
-          .datum(self.parseLoggerData().graphDataTick)
+        .datum(self.parseLoggerData().graphDataTick)
         .transition().duration(500)
         .call(this.charts.replicationTickChart);
 

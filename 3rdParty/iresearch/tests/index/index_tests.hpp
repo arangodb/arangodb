@@ -25,6 +25,7 @@
 #define IRESEARCH_INDEX_TESTS_H
 
 #include "tests_shared.hpp"
+#include "tests_param.hpp"
 #include "assert_format.hpp"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_streams.hpp"
@@ -52,8 +53,6 @@ class directory_mock: public irs::directory {
   virtual irs::attribute_store& attributes() NOEXCEPT override {
     return impl_.attributes();
   }
-
-  virtual void close() NOEXCEPT override { impl_.close(); }
 
   virtual irs::index_output::ptr create(
     const std::string& name
@@ -114,19 +113,82 @@ class directory_mock: public irs::directory {
   irs::directory& impl_;
 }; // directory_mock
 
-class index_test_base : public virtual test_base {
+struct blocking_directory : directory_mock {
+  explicit blocking_directory(irs::directory& impl, const std::string& blocker)
+    : tests::directory_mock(impl), blocker(blocker) {
+  }
+
+  irs::index_output::ptr create(const std::string& name) NOEXCEPT {
+    auto stream = tests::directory_mock::create(name);
+
+    if (name == blocker) {
+      {
+        SCOPED_LOCK_NAMED(policy_lock, guard);
+        policy_applied.notify_all();
+      }
+
+      // wait for intermediate commits to be applied
+      SCOPED_LOCK_NAMED(intermediate_commits_lock, guard);
+    }
+
+    return stream;
+  }
+
+  void wait_for_blocker() {
+    bool has = false;
+    exists(has, blocker);
+
+    while (!has) {
+      exists(has, blocker);
+
+      SCOPED_LOCK_NAMED(policy_lock, policy_guard);
+      policy_applied.wait_for(policy_guard, std::chrono::milliseconds(1000));
+    }
+  }
+
+  std::string blocker;
+  std::mutex policy_lock;
+  std::condition_variable policy_applied;
+  std::mutex intermediate_commits_lock;
+}; // blocking_directory
+
+typedef std::tuple<dir_factory_f, const char*> index_test_context;
+
+std::string to_string(const testing::TestParamInfo<index_test_context>& info);
+
+class index_test_base : public virtual test_param_base<index_test_context> {
  protected:
-  virtual irs::directory* get_directory() = 0;
-  virtual irs::format::ptr get_codec() = 0;
+  std::shared_ptr<irs::directory> get_directory(const test_base& ctx) const {
+    dir_factory_f factory;
+    std::tie(factory, std::ignore) = GetParam();
+
+    return (*factory)(&ctx).first;
+  }
+
+  irs::format::ptr get_codec() const {
+    const char* codec_name;
+    std::tie(std::ignore, codec_name) = GetParam();
+
+    return irs::formats::get(codec_name);
+  }
 
   irs::directory& dir() const { return *dir_; }
   irs::format::ptr codec() { return codec_; }
   const index_t& index() const { return index_; }
 
   irs::index_writer::ptr open_writer(
-      irs::OPEN_MODE mode = irs::OPEN_MODE::OM_CREATE
+      irs::directory& dir,
+      irs::OpenMode mode = irs::OM_CREATE,
+      const irs::index_writer::init_options& options = {}
   ) {
-    return irs::index_writer::make(*dir_, codec_, mode);
+    return irs::index_writer::make(dir, codec_, mode, options);
+  }
+
+  irs::index_writer::ptr open_writer(
+      irs::OpenMode mode = irs::OM_CREATE,
+      const irs::index_writer::init_options& options = {}
+  ) {
+    return irs::index_writer::make(*dir_, codec_, mode, options);
   }
 
   irs::directory_reader open_reader() {
@@ -139,18 +201,20 @@ class index_test_base : public virtual test_base {
 
   virtual void SetUp() {
     test_base::SetUp();
+    MSVC_ONLY(_setmaxstdio(2048)); // workaround for error: EMFILE - Too many open files
 
     // set directory
-    dir_.reset(get_directory());
+    dir_ = get_directory(*this);
+    ASSERT_NE(nullptr, dir_);
 
     // set codec
     codec_ = get_codec();
-
-    assert(dir_);
-    assert(codec_);
+    ASSERT_NE(nullptr, codec_);
   }
 
   virtual void TearDown() {
+    dir_ = nullptr;
+    codec_ = nullptr;
     test_base::TearDown();
     iresearch::timer_utils::init_stats(); // disable profile state tracking
   }
@@ -165,11 +229,11 @@ class index_test_base : public virtual test_base {
 
     while ((src = gen.next())) {
       segment.add(src->indexed.begin(), src->indexed.end());
-      ASSERT_TRUE(writer.insert([src](irs::segment_writer::document& doc)->bool {
-        doc.insert(irs::action::index, src->indexed.begin(), src->indexed.end());
-        doc.insert(irs::action::store, src->stored.begin(), src->stored.end());
-        return false;
-      }));
+      ASSERT_TRUE(insert(
+        writer,
+        src->indexed.begin(), src->indexed.end(),
+        src->stored.begin(), src->stored.end()
+      ));
     }
   }
 
@@ -191,7 +255,7 @@ class index_test_base : public virtual test_base {
 
   void add_segment(
       tests::doc_generator_base& gen,
-      irs::OPEN_MODE mode = irs::OPEN_MODE::OM_CREATE
+      irs::OpenMode mode = irs::OM_CREATE
   ) {
     auto writer = open_writer(mode);
     add_segment(*writer, gen);
@@ -199,7 +263,7 @@ class index_test_base : public virtual test_base {
 
  private:
   index_t index_;
-  irs::directory::ptr dir_;
+  std::shared_ptr<irs::directory> dir_;
   irs::format::ptr codec_;
 }; // index_test_base
 
@@ -284,11 +348,6 @@ class text_field : public tests::field_base {
 
  private:
   virtual bool write(irs::data_output&) const { return false; }
-
-  static std::locale& get_locale() {
-    static auto locale = iresearch::locale_utils::locale(nullptr, true);
-    return locale;
-  }
 
   std::unique_ptr<token_stream_payload> pay_stream_;
   irs::analysis::analyzer::ptr token_stream_;

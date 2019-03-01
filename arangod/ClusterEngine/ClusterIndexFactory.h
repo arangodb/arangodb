@@ -32,26 +32,22 @@ class ClusterIndexFactory final : public IndexFactory {
   ClusterIndexFactory();
   ~ClusterIndexFactory() = default;
   
-  Result enhanceIndexDefinition(
-    velocypack::Slice const definition,
-    velocypack::Builder& normalized,
-    bool isCreation,
-    bool isCoordinator
-  ) const override;
+  /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" => "hash")
+  /// used to display storage engine capabilities
+  std::unordered_map<std::string, std::string> indexAliases() const override;
 
-  void fillSystemIndexes(
-    arangodb::LogicalCollection& col,
-    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes
-  ) const override;
+  Result enhanceIndexDefinition(velocypack::Slice const definition,
+                                velocypack::Builder& normalized, bool isCreation,
+                                bool isCoordinator) const override;
+
+  void fillSystemIndexes(arangodb::LogicalCollection& col,
+                         std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const override;
 
   /// @brief create indexes from a list of index definitions
-  void prepareIndexes(
-    LogicalCollection& col,
-    arangodb::velocypack::Slice const& indexesSlice,
-    std::vector<std::shared_ptr<arangodb::Index>>& indexes
-  ) const override;
+  void prepareIndexes(LogicalCollection& col, arangodb::velocypack::Slice const& indexesSlice,
+                      std::vector<std::shared_ptr<arangodb::Index>>& indexes) const override;
 };
 
-}
+}  // namespace arangodb
 
 #endif

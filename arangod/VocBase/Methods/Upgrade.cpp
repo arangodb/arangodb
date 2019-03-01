@@ -17,7 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Gräter
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Upgrade.h"
@@ -25,10 +25,10 @@
 
 #include "Agency/AgencyComm.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Rest/Version.h"
+#include "RestServer/UpgradeFeature.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/Methods/UpgradeTasks.h"
 #include "VocBase/Methods/Version.h"
@@ -38,14 +38,27 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+namespace {
+
+void addTask(std::string&& name, std::string&& desc, uint32_t systemFlag, uint32_t clusterFlag,
+             uint32_t dbFlag, arangodb::methods::Upgrade::TaskFunction&& action) {
+  auto* upgradeFeature =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::UpgradeFeature>(
+          "Upgrade");
+
+  TRI_ASSERT(upgradeFeature);
+  upgradeFeature->addTask(arangodb::methods::Upgrade::Task{name, desc, systemFlag, clusterFlag,
+                                                           dbFlag, action});
+}
+
+}  // namespace
+
 using namespace arangodb;
 using namespace arangodb::methods;
 
-std::vector<Upgrade::Task> Upgrade::_tasks;
-
 /// corresponding to cluster-bootstrap.js
 UpgradeResult Upgrade::clusterBootstrap(TRI_vocbase_t& system) {
-  uint64_t cc = Version::current(); // not actually used here
+  uint64_t cc = Version::current();  // not actually used here
   VersionResult vinfo = {VersionResult::VERSION_MATCH, cc, cc, {}};
   uint32_t clusterFlag = Flags::CLUSTER_COORDINATOR_GLOBAL;
   if (ServerState::instance()->isDBServer()) {
@@ -54,15 +67,12 @@ UpgradeResult Upgrade::clusterBootstrap(TRI_vocbase_t& system) {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
 
   VPackSlice params = VPackSlice::emptyObjectSlice();
-  return runTasks(system, vinfo, params, clusterFlag,
-                  Upgrade::Flags::DATABASE_INIT);
+  return runTasks(system, vinfo, params, clusterFlag, Upgrade::Flags::DATABASE_INIT);
 }
 
 /// corresponding to local-database.js
-UpgradeResult Upgrade::createDB(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& users
-) {
+UpgradeResult Upgrade::createDB(TRI_vocbase_t& vocbase,
+                                arangodb::velocypack::Slice const& users) {
   TRI_ASSERT(users.isArray());
 
   uint32_t clusterFlag = 0;
@@ -92,15 +102,10 @@ UpgradeResult Upgrade::createDB(
   // to create a DB we use an empty version result because we want
   // to execute all tasks not needed for an upgrade
   VersionResult vinfo = {VersionResult::VERSION_MATCH, cc, cc, {}};
-  return runTasks(vocbase, vinfo, params.slice(), clusterFlag,
-                  Upgrade::Flags::DATABASE_INIT);
+  return runTasks(vocbase, vinfo, params.slice(), clusterFlag, Upgrade::Flags::DATABASE_INIT);
 }
 
-UpgradeResult Upgrade::startup(
-    TRI_vocbase_t& vocbase,
-    bool isUpgrade,
-    bool ignoreFileErrors
-) {
+UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool ignoreFileErrors) {
   uint32_t clusterFlag = Flags::CLUSTER_LOCAL;
 
   if (ServerState::instance()->isSingleServer()) {
@@ -116,13 +121,16 @@ UpgradeResult Upgrade::startup(
       // try to install a fresh new, empty VERSION file instead
       if (methods::Version::write(&vocbase, std::map<std::string, bool>(), true).ok()) {
         // give it another try
-        LOG_TOPIC(WARN, Logger::STARTUP) << "overwriting unparsable VERSION file with default value "
-                                         << "because option `--database.ignore-logfile-errors` is set";
+        LOG_TOPIC(WARN, Logger::STARTUP)
+            << "overwriting unparsable VERSION file with default value "
+            << "because option `--database.ignore-logfile-errors` is set";
         vinfo = methods::Version::check(&vocbase);
       }
     } else {
-      LOG_TOPIC(WARN, Logger::STARTUP) << "in order to automatically fix the VERSION file on startup, "
-                                       << "please start the server with option `--database.ignore-logfile-errors true`";
+      LOG_TOPIC(WARN, Logger::STARTUP)
+          << "in order to automatically fix the VERSION file on startup, "
+          << "please start the server with option "
+             "`--database.ignore-logfile-errors true`";
     }
   }
 
@@ -133,29 +141,30 @@ UpgradeResult Upgrade::startup(
       break;  // just run tasks that weren't run yet
     case VersionResult::UPGRADE_NEEDED: {
       if (!isUpgrade) {
-        // we do not perform upgrades without beeing told so during startup
+        // we do not perform upgrades without being told so during startup
         LOG_TOPIC(ERR, Logger::STARTUP)
             << "Database directory version (" << vinfo.databaseVersion
-            << ") is lower than current version (" << vinfo.serverVersion
-            << ").";
+            << ") is lower than current version (" << vinfo.serverVersion << ").";
 
         LOG_TOPIC(ERR, Logger::STARTUP)
-    << "----------------------------------------------------------------------";
+            << "---------------------------------------------------------------"
+               "-------";
         LOG_TOPIC(ERR, Logger::STARTUP)
             << "It seems like you have upgraded the ArangoDB binary.";
         LOG_TOPIC(ERR, Logger::STARTUP)
-            << "If this is what you wanted to do, please restart with the'";
-        LOG_TOPIC(ERR, Logger::STARTUP) << "  --database.auto-upgrade true'";
+            << "If this is what you wanted to do, please restart with the";
+        LOG_TOPIC(ERR, Logger::STARTUP) << "  --database.auto-upgrade true";
         LOG_TOPIC(ERR, Logger::STARTUP)
-            << "option to upgrade the data in the database directory.'";
+            << "option to upgrade the data in the database directory.";
 
         LOG_TOPIC(ERR, Logger::STARTUP) << "Normally you can use the control "
                                            "script to upgrade your database'";
-        LOG_TOPIC(ERR, Logger::STARTUP) << "  /etc/init.d/arangodb stop'";
-        LOG_TOPIC(ERR, Logger::STARTUP) << "  /etc/init.d/arangodb upgrade'";
-        LOG_TOPIC(ERR, Logger::STARTUP) << "  /etc/init.d/arangodb start'";
+        LOG_TOPIC(ERR, Logger::STARTUP) << "  /etc/init.d/arangodb stop";
+        LOG_TOPIC(ERR, Logger::STARTUP) << "  /etc/init.d/arangodb upgrade";
+        LOG_TOPIC(ERR, Logger::STARTUP) << "  /etc/init.d/arangodb start";
         LOG_TOPIC(ERR, Logger::STARTUP)
-        << "----------------------------------------------------------------------'";
+            << "---------------------------------------------------------------"
+               "-------'";
         return UpgradeResult(TRI_ERROR_BAD_PARAMETER, vinfo.status);
       }
       // do perform the upgrade
@@ -166,8 +175,7 @@ UpgradeResult Upgrade::startup(
       // we do not support downgrades, just error out
       LOG_TOPIC(ERR, Logger::STARTUP)
           << "Database directory version (" << vinfo.databaseVersion
-          << ") is higher than current version (" << vinfo.serverVersion
-          << ").";
+          << ") is higher than current version (" << vinfo.serverVersion << ").";
       LOG_TOPIC(ERR, Logger::STARTUP)
           << "It seems like you are running ArangoDB on a database directory"
           << " that was created with a newer version of ArangoDB. Maybe this"
@@ -178,8 +186,7 @@ UpgradeResult Upgrade::startup(
     case VersionResult::CANNOT_READ_VERSION_FILE:
     case VersionResult::NO_SERVER_VERSION: {
       LOG_TOPIC(DEBUG, Logger::STARTUP) << "Error reading version file";
-      std::string msg =
-          std::string("error during ") + (isUpgrade ? "upgrade" : "startup");
+      std::string msg = std::string("error during ") + (isUpgrade ? "upgrade" : "startup");
       return UpgradeResult(TRI_ERROR_INTERNAL, msg, vinfo.status);
     }
     case VersionResult::NO_VERSION_FILE:
@@ -198,13 +205,18 @@ UpgradeResult Upgrade::startup(
 
 /// @brief register tasks, only run once on startup
 void methods::Upgrade::registerTasks() {
+  auto* upgradeFeature =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::UpgradeFeature>(
+          "Upgrade");
+
+  TRI_ASSERT(upgradeFeature);
+  auto& _tasks = upgradeFeature->_tasks;
   TRI_ASSERT(_tasks.empty());
 
   addTask("upgradeGeoIndexes", "upgrade legacy geo indexes",
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
-          /*database*/ DATABASE_UPGRADE,
-          &UpgradeTasks::upgradeGeoIndexes);
+          /*database*/ DATABASE_UPGRADE, &UpgradeTasks::upgradeGeoIndexes);
   addTask("setupGraphs", "setup _graphs collection",
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
@@ -218,39 +230,16 @@ void methods::Upgrade::registerTasks() {
   addTask("createUsersIndex", "create index on 'user' attribute in _users",
           /*system*/ Flags::DATABASE_SYSTEM,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT | DATABASE_UPGRADE,
-          &UpgradeTasks::createUsersIndex);
+          /*database*/ DATABASE_INIT | DATABASE_UPGRADE, &UpgradeTasks::createUsersIndex);
   addTask("addDefaultUserOther", "add default users for a new database",
           /*system*/ Flags::DATABASE_EXCEPT_SYSTEM,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT, &UpgradeTasks::addDefaultUserOther);
-  addTask("updateUserModels",
-          "convert documents in _users collection to new format",
-          /*system*/ Flags::DATABASE_SYSTEM,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_UPGRADE,  // DATABASE_EXISTING
-          &UpgradeTasks::updateUserModels);
-  addTask("createModules", "setup _modules collection",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
-          &UpgradeTasks::createModules);
-  // FIXME simon: Determine whether this is still necessary
   addTask("setupAnalyzers", "setup _iresearch_analyzers collection",
           /*system*/ Flags::DATABASE_SYSTEM,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::setupAnalyzers);
-  addTask("createRouting", "setup _routing collection",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
-          &UpgradeTasks::createRouting);
-  addTask("insertRedirectionsAll", "insert default routes for admin interface",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT | DATABASE_EXISTING,
-          &UpgradeTasks::insertRedirections);
   addTask("setupAqlFunctions", "setup _aqlfunctions collection",
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
@@ -291,15 +280,28 @@ void methods::Upgrade::registerTasks() {
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::setupAppBundles);
+  addTask("persistLocalDocumentIds", "convert collection data from old format",
+          /*system*/ Flags::DATABASE_ALL,
+          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
+          /*database*/ DATABASE_UPGRADE, &UpgradeTasks::persistLocalDocumentIds);
+  addTask("renameReplicationApplierStateFiles",
+          "rename replication applier state files",
+          /*system*/ Flags::DATABASE_ALL,
+          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
+          /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
+          &UpgradeTasks::renameReplicationApplierStateFiles);
 }
 
-UpgradeResult methods::Upgrade::runTasks(
-    TRI_vocbase_t& vocbase,
-    VersionResult& vinfo,
-    arangodb::velocypack::Slice const& params,
-    uint32_t clusterFlag,
-    uint32_t dbFlag
-) {
+UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& vinfo,
+                                         arangodb::velocypack::Slice const& params,
+                                         uint32_t clusterFlag, uint32_t dbFlag) {
+  auto* upgradeFeature =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::UpgradeFeature>(
+          "Upgrade");
+
+  TRI_ASSERT(upgradeFeature);
+  auto& _tasks = upgradeFeature->_tasks;
+
   TRI_ASSERT(clusterFlag != 0 && dbFlag != 0);
   TRI_ASSERT(!_tasks.empty());  // forgot to call registerTask!!
   // needs to run in superuser scope, otherwise we get errors
@@ -322,14 +324,16 @@ UpgradeResult methods::Upgrade::runTasks(
 
     // check that the cluster occurs in the cluster list
     if (!(t.clusterFlags & clusterFlag)) {
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: cluster mismatch, skipping " << t.name;
+      LOG_TOPIC(DEBUG, Logger::STARTUP)
+          << "Upgrade: cluster mismatch, skipping " << t.name;
       continue;
     }
 
     auto const& it = vinfo.tasks.find(t.name);
     if (it != vinfo.tasks.end()) {
       if (it->second) {
-        LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Already executed, skipping " << t.name;
+        LOG_TOPIC(DEBUG, Logger::STARTUP)
+            << "Upgrade: Already executed, skipping " << t.name;
         continue;
       }
       vinfo.tasks.erase(it);  // in case we encounter false
@@ -339,11 +343,11 @@ UpgradeResult methods::Upgrade::runTasks(
     if (!(t.databaseFlags & dbFlag)) {
       // special optimization: for local server and new database,
       // an upgrade-only task can be viewed as executed.
-      if (isLocal && dbFlag == DATABASE_INIT &&
-          t.databaseFlags == DATABASE_UPGRADE) {
+      if (isLocal && dbFlag == DATABASE_INIT && t.databaseFlags == DATABASE_UPGRADE) {
         vinfo.tasks.emplace(t.name, true);
       }
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: db flag mismatch, skipping " << t.name;
+      LOG_TOPIC(DEBUG, Logger::STARTUP)
+          << "Upgrade: db flag mismatch, skipping " << t.name;
       continue;
     }
 
@@ -357,9 +361,9 @@ UpgradeResult methods::Upgrade::runTasks(
         return UpgradeResult(TRI_ERROR_INTERNAL, msg, vinfo.status);
       }
     } catch (basics::Exception const& e) {
-      LOG_TOPIC(ERR, Logger::STARTUP) << "Executing " << t.name << " ("
-                                      << t.description << ") failed with "
-                                      << e.message() << ". Aborting procedure.";
+      LOG_TOPIC(ERR, Logger::STARTUP)
+          << "Executing " << t.name << " (" << t.description << ") failed with "
+          << e.message() << ". Aborting procedure.";
       return UpgradeResult(e.code(), e.what(), vinfo.status);
     }
 
@@ -367,11 +371,10 @@ UpgradeResult methods::Upgrade::runTasks(
     vinfo.tasks.emplace(t.name, true);
 
     if (isLocal) {  // save after every task for resilience
-      auto res = methods::Version::write(&vocbase, vinfo.tasks, /*sync*/false);
+      auto res = methods::Version::write(&vocbase, vinfo.tasks, /*sync*/ false);
 
       if (res.fail()) {
-        return UpgradeResult(res.errorNumber(), res.errorMessage(),
-                             vinfo.status);
+        return UpgradeResult(res.errorNumber(), res.errorMessage(), vinfo.status);
       }
 
       ranOnce = true;
@@ -381,7 +384,7 @@ UpgradeResult methods::Upgrade::runTasks(
   if (isLocal) {  // no need to write this for cluster bootstrap
     // save even if no tasks were executed
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Writing VERSION file";
-    auto res = methods::Version::write(&vocbase, vinfo.tasks, /*sync*/ranOnce);
+    auto res = methods::Version::write(&vocbase, vinfo.tasks, /*sync*/ ranOnce);
 
     if (res.fail()) {
       return UpgradeResult(res.errorNumber(), res.errorMessage(), vinfo.status);

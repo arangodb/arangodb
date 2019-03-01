@@ -42,21 +42,20 @@ class RestBatchHandler;
 namespace rest {
 class GeneralCommTask;
 class VstCommTask;
-}
+}  // namespace rest
 
 namespace velocypack {
 class Builder;
 struct Options;
-}
+}  // namespace velocypack
 
 using rest::VstInputMessage;
 
 class VstRequest final : public GeneralRequest {
   friend class rest::VstCommTask;
   friend class rest::GeneralCommTask;
-  
-public:
-  
+
+ public:
   VstRequest(ConnectionInfo const& connectionInfo, VstInputMessage&& message,
              uint64_t messageId);
 
@@ -64,30 +63,28 @@ public:
 
  public:
   uint64_t messageId() const override { return _messageId; }
-  
+
   size_t contentLength() const override { return _message.payloadSize(); }
-  arangodb::StringRef rawPayload() const override { return _message.payload(); }
+  arangodb::velocypack::StringRef rawPayload() const override { return _message.payload(); }
   VPackSlice payload(arangodb::velocypack::Options const*) override;
 
   virtual arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
   };
-  
-private:
-  
+
+ private:
   void setHeader(VPackSlice key, VPackSlice content);
-  
+
   void parseHeaderInformation();
 
  private:
-  
   uint64_t _messageId;
   VstInputMessage _message;
-  
+
   /// @brief was VPack payload validated
   bool _validatedPayload;
   /// @brief if payload was not VPack this will store parsed result
   std::shared_ptr<velocypack::Builder> _vpackBuilder;
 };
-}
+}  // namespace arangodb
 #endif

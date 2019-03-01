@@ -31,9 +31,9 @@
 
 namespace arangodb {
 
-class CacheManagerFeature final
-    : public application_features::ApplicationFeature {
+class CacheManagerFeature final : public application_features::ApplicationFeature {
  public:
+  // note that the cache is optional and that MANAGER can be a nullptr!
   static cache::Manager* MANAGER;
 
   explicit CacheManagerFeature(application_features::ApplicationServer& server);
@@ -55,6 +55,6 @@ class CacheManagerFeature final
   uint64_t _rebalancingInterval;
 };
 
-}
+}  // namespace arangodb
 
 #endif

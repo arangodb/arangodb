@@ -38,23 +38,22 @@ using namespace arangodb::rest;
 /// @brief listen to given port
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralListenTask::GeneralListenTask(Scheduler* scheduler, GeneralServer* server,
-                                     Endpoint* endpoint,
-                                     ProtocolType connectionType)
-    : Task(scheduler, "GeneralListenTask"),
-      ListenTask(scheduler, endpoint),
-      _server(server),
+GeneralListenTask::GeneralListenTask(GeneralServer& server, GeneralServer::IoContext& context,
+                                     Endpoint* endpoint, ProtocolType connectionType)
+    : IoTask(server, context, "GeneralListenTask"),
+      ListenTask(server, context, endpoint),
       _connectionType(connectionType) {
   _keepAliveTimeout = GeneralServerFeature::keepAliveTimeout();
-  
+
   TRI_ASSERT(_connectionType == ProtocolType::HTTP || _connectionType == ProtocolType::HTTPS);
 }
 
 void GeneralListenTask::handleConnected(std::unique_ptr<Socket> socket,
                                         ConnectionInfo&& info) {
-  auto commTask = std::make_shared<HttpCommTask>(_scheduler, _server, std::move(socket),
+  auto commTask = std::make_shared<HttpCommTask>(_server, _context, std::move(socket),
                                                  std::move(info), _keepAliveTimeout);
   bool res = commTask->start();
   LOG_TOPIC_IF(DEBUG, Logger::COMMUNICATION, res) << "Started comm task";
-  LOG_TOPIC_IF(DEBUG, Logger::COMMUNICATION, !res) << "Failed to start comm task";
+  LOG_TOPIC_IF(DEBUG, Logger::COMMUNICATION, !res)
+      << "Failed to start comm task";
 }

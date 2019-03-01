@@ -14,12 +14,20 @@ The properties need to be passed in the attribute *properties* in the body
 of the HTTP request. *properties* needs to be a JSON object with the following
 properties:
 
-@RESTBODYPARAM{mode,string,required,string}
+@RESTBODYPARAM{mode,string,optional,string}
  the mode the AQL query cache should operate in. Possible values are *off*, *on* or *demand*.
 
-@RESTBODYPARAM{maxResults,integer,required,int64}
+@RESTBODYPARAM{maxResults,integer,optional,int64}
 the maximum number of query results that will be stored per database-specific cache.
 
+@RESTBODYPARAM{maxResultsSize,integer,optional,int64}
+the maximum cumulated size of query results that will be stored per database-specific cache.
+
+@RESTBODYPARAM{maxEntrySize,integer,optional,int64}
+the maximum individual size of query results that will be stored per database-specific cache.
+
+@RESTBODYPARAM{includeSystem,boolean,optional,}
+whether or not to store results of queries that involve system collections.
 
 @RESTRETURNCODES
 

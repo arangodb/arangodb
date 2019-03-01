@@ -48,7 +48,7 @@ namespace tests {
 
 struct attribute : iresearch::stored_attribute {
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   virtual void clear() { value = 0; }
 
@@ -59,20 +59,20 @@ struct attribute : iresearch::stored_attribute {
   }
 };
 
-DEFINE_ATTRIBUTE_TYPE(tests::attribute);
-DEFINE_FACTORY_DEFAULT(attribute);
+DEFINE_ATTRIBUTE_TYPE(tests::attribute)
+DEFINE_FACTORY_DEFAULT(attribute)
 
 struct invalid_attribute : iresearch::stored_attribute {
   DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   virtual void clear() { value = 0; }
 
   int value = 5;
 };
 
-DEFINE_ATTRIBUTE_TYPE(tests::invalid_attribute);
-DEFINE_FACTORY_DEFAULT(invalid_attribute);
+DEFINE_ATTRIBUTE_TYPE(tests::invalid_attribute)
+DEFINE_FACTORY_DEFAULT(invalid_attribute)
 
 } // tests
 

@@ -23,11 +23,11 @@
 #ifndef ARANGODB_PREGEL_ALGOS_EC_HLLCounter_H
 #define ARANGODB_PREGEL_ALGOS_EC_HLLCounter_H 1
 
+#include "Pregel/CommonFormats.h"
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
-#include "Pregel/MessageFormat.h"
 #include "Pregel/MessageCombiner.h"
-#include "Pregel/CommonFormats.h"
+#include "Pregel/MessageFormat.h"
 
 namespace arangodb {
 namespace pregel {
@@ -37,12 +37,11 @@ struct HLLCounterFormat : public MessageFormat<HLLCounter> {
   void unwrapValue(VPackSlice s, HLLCounter& senderVal) const override {
     VPackArrayIterator array(s);
     for (size_t i = 0; i < HLLCounter::NUM_BUCKETS; i++) {
-      senderVal._buckets[i] = (uint8_t) (*array).getUInt();
+      senderVal._buckets[i] = (uint8_t)(*array).getUInt();
       ++array;
     }
   }
-  void addValue(VPackBuilder& arrayBuilder,
-                HLLCounter const& senderVal) const override {
+  void addValue(VPackBuilder& arrayBuilder, HLLCounter const& senderVal) const override {
     // TODO fucking pack 8-bytes into one 64 bit entry
     arrayBuilder.openArray();
     for (size_t i = 0; i < HLLCounter::NUM_BUCKETS; i++) {
@@ -51,13 +50,13 @@ struct HLLCounterFormat : public MessageFormat<HLLCounter> {
     arrayBuilder.close();
   }
 };
-  
+
 struct HLLCounterCombiner : MessageCombiner<HLLCounter> {
   void combine(HLLCounter& firstValue, HLLCounter const& secondValue) const override {
     firstValue.merge(secondValue);
   };
 };
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 
 #endif

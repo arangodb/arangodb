@@ -3,6 +3,13 @@
 
 @RESTHEADER{PUT /_api/simple/update-by-example, Update documents by example}
 
+@HINTS
+{% hint 'warning' %}
+This route should no longer be used.
+All endpoints for Simple Queries are deprecated from version 3.4.0 on.
+They are superseded by AQL queries.
+{% endhint %}
+
 @RESTBODYPARAM{collection,string,required,string}
 The name of the collection to update within.
 
@@ -50,7 +57,6 @@ Note: the *limit* attribute is not supported on sharded collections.
 Using it will result in an error.
 
 Returns the number of documents that were updated.
-
 
 @RESTRETURNCODES
 

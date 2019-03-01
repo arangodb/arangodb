@@ -34,12 +34,12 @@ class RestBatchHandler;
 namespace rest {
 class GeneralCommTask;
 class HttpCommTask;
-}
+}  // namespace rest
 
 namespace velocypack {
 class Builder;
 struct Options;
-}
+}  // namespace velocypack
 
 class HttpRequest final : public GeneralRequest {
   friend class rest::HttpCommTask;
@@ -84,7 +84,7 @@ class HttpRequest final : public GeneralRequest {
   /// @brief the body content length
   size_t contentLength() const override { return _contentLength; }
   // Payload
-  arangodb::StringRef rawPayload() const override { return StringRef(_body); };
+  arangodb::velocypack::StringRef rawPayload() const override { return arangodb::velocypack::StringRef(_body); };
   VPackSlice payload(arangodb::velocypack::Options const*) override;
 
   /// @brief sets a key/value header
@@ -92,8 +92,7 @@ class HttpRequest final : public GeneralRequest {
   //  the found key / value with respective lengths.
   //  the function sets member variables like _contentType. All
   //  key that do not get special treatment end um in the _headers map.
-  void setHeader(char const* key, size_t keyLength, char const* value,
-                 size_t valueLength);
+  void setHeader(char const* key, size_t keyLength, char const* value, size_t valueLength);
 
   void setHeader(std::string const& key, std::string const& value) {
     setHeader(key.c_str(), key.length(), value.c_str(), value.length());
@@ -101,9 +100,9 @@ class HttpRequest final : public GeneralRequest {
   /// @brief sets a key-only header
   void setHeader(char const* key, size_t keyLength);
 
-  static HttpRequest* createHttpRequest(
-      ContentType contentType, char const* body, int64_t contentLength,
-      std::unordered_map<std::string, std::string> const& headers);
+  static HttpRequest* createHttpRequest(ContentType contentType,
+                                        char const* body, int64_t contentLength,
+                                        std::unordered_map<std::string, std::string> const& headers);
 
  protected:
   void setValue(char const* key, char const* value);
@@ -127,6 +126,6 @@ class HttpRequest final : public GeneralRequest {
   bool _allowMethodOverride;
   std::shared_ptr<velocypack::Builder> _vpackBuilder;
 };
-}
+}  // namespace arangodb
 
 #endif

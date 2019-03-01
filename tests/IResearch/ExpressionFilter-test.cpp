@@ -24,7 +24,7 @@
 #include "catch.hpp"
 #include "common.h"
 
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"
@@ -67,6 +67,7 @@
 #include "ExpressionContextMock.h"
 
 #include "IResearch/ExpressionFilter.h"
+#include "index/directory_reader.hpp"
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 #include "search/all_filter.hpp"
@@ -79,36 +80,41 @@
 
 extern const char* ARGV0; // defined in main.cpp
 
-NS_LOCAL
+namespace {
 
 struct custom_sort: public irs::sort {
   DECLARE_SORT_TYPE();
 
   class prepared: public irs::sort::prepared_base<irs::doc_id_t> {
    public:
-    class collector: public irs::sort::collector {
+    class collector
+      : public irs::sort::field_collector, public irs::sort::term_collector {
      public:
+      collector(const custom_sort& sort): sort_(sort) {
+      }
+
+      virtual void collect(
+        const irs::sub_reader& segment,
+        const irs::term_reader& field
+      ) override {
+        if (sort_.field_collector_collect) {
+          sort_.field_collector_collect(segment, field);
+        }
+      }
+
       virtual void collect(
         const irs::sub_reader& segment,
         const irs::term_reader& field,
         const irs::attribute_view& term_attrs
       ) override {
-        if (sort_.collector_collect) {
-          sort_.collector_collect(segment, field, term_attrs);
+        if (sort_.term_collector_collect) {
+          sort_.term_collector_collect(segment, field, term_attrs);
         }
       }
 
-      virtual void finish(
-          irs::attribute_store& filter_attrs,
-          const irs::index_reader& index
-      ) override {
-        if (sort_.collector_finish) {
-          sort_.collector_finish(filter_attrs, index);
-        }
-      }
+      virtual void collect(const irs::bytes_ref& in) override {}
 
-      collector(const custom_sort& sort): sort_(sort) {
-      }
+      virtual void write(irs::data_output& out) const override {}
 
      private:
       const custom_sort& sort_;
@@ -156,16 +162,27 @@ struct custom_sort: public irs::sort {
     prepared(const custom_sort& sort): sort_(sort) {
     }
 
+    virtual void collect(
+        irs::attribute_store& filter_attrs,
+        const irs::index_reader& index,
+        const irs::sort::field_collector* field,
+        const irs::sort::term_collector* term
+    ) const override {
+      if (sort_.collector_finish) {
+        sort_.collector_finish(filter_attrs, index);
+      }
+    }
+
     virtual const iresearch::flags& features() const override {
       return iresearch::flags::empty_instance();
     }
 
-    virtual collector::ptr prepare_collector() const override {
-      if (sort_.prepare_collector) {
-        return sort_.prepare_collector();
+    virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
+      if (sort_.prepare_field_collector) {
+        return sort_.prepare_field_collector();
       }
 
-      return irs::sort::collector::make<custom_sort::prepared::collector>(sort_);
+      return irs::memory::make_unique<custom_sort::prepared::collector>(sort_);
     }
 
     virtual scorer::ptr prepare_scorer(
@@ -185,41 +202,51 @@ struct custom_sort: public irs::sort {
       );
     }
 
-    virtual void prepare_score(irs::doc_id_t& score) const override {
-      score = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+    virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
+      if (sort_.prepare_term_collector) {
+        return sort_.prepare_term_collector();
+      }
+
+      return irs::memory::make_unique<custom_sort::prepared::collector>(sort_);
     }
 
-    virtual void add(irs::doc_id_t& dst, const irs::doc_id_t& src) const override {
+    virtual void prepare_score(irs::byte_type* score) const override {
+      score_cast(score) = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+    }
+
+    virtual void add(irs::byte_type* dst, irs::byte_type const* src) const override {
       if (sort_.scorer_add) {
-        sort_.scorer_add(dst, src);
+        sort_.scorer_add(score_cast(dst), score_cast(src));
       }
     }
 
-    virtual bool less(const irs::doc_id_t& lhs, const irs::doc_id_t& rhs) const override {
-      return sort_.scorer_less ? sort_.scorer_less(lhs, rhs) : false;
+    virtual bool less(irs::byte_type const* lhs, const irs::byte_type* rhs) const override {
+      return sort_.scorer_less ? sort_.scorer_less(score_cast(lhs), score_cast(rhs)) : false;
     }
 
    private:
     const custom_sort& sort_;
   };
 
-  std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)> collector_collect;
+  std::function<void(const irs::sub_reader&, const irs::term_reader&)> field_collector_collect;
+  std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)> term_collector_collect;
   std::function<void(irs::attribute_store&, const irs::index_reader&)> collector_finish;
-  std::function<collector::ptr()> prepare_collector;
+  std::function<irs::sort::field_collector::ptr()> prepare_field_collector;
   std::function<scorer::ptr(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_store&, const irs::attribute_view&)> prepare_scorer;
+  std::function<irs::sort::term_collector::ptr()> prepare_term_collector;
   std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_add;
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
   std::function<void(irs::doc_id_t&)> scorer_score;
 
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
   custom_sort(): sort(custom_sort::type()) {}
   virtual prepared::ptr prepare() const override {
-    return custom_sort::prepared::make<custom_sort::prepared>(*this);
+    return std::make_unique<custom_sort::prepared>(*this);
   }
 };
 
-DEFINE_SORT_TYPE(custom_sort);
-DEFINE_FACTORY_DEFAULT(custom_sort);
+DEFINE_SORT_TYPE(custom_sort)
+DEFINE_FACTORY_DEFAULT(custom_sort)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -287,7 +314,7 @@ struct IResearchExpressionFilterSetup {
         // fake non-deterministic
         arangodb::aql::Function::Flags::CanRunOnDBServer
       ),
-      [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
+      [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
     }});
@@ -325,7 +352,7 @@ struct IResearchExpressionFilterSetup {
   }
 }; // TestSetup
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -368,12 +395,13 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     );
     REQUIRE(writer);
 
-    for (auto doc : arangodb::velocypack::ArrayIterator(testDataRoot)) {
-      storedField.str = arangodb::iresearch::getStringRef(doc.get("name"));
-      writer->insert([&storedField](irs::segment_writer::document& doc)->bool {
-        doc.insert(irs::action::store, storedField);
-        return false; // break the loop
-      });
+    for (auto data : arangodb::velocypack::ArrayIterator(testDataRoot)) {
+      storedField.str = arangodb::iresearch::getStringRef(data.get("name"));
+
+      auto ctx = writer->documents();
+      auto doc = ctx.insert();
+      CHECK(doc.insert(irs::action::store, storedField));
+      CHECK(doc);
     }
 
     writer->commit();
@@ -1144,16 +1172,20 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   // query with nondeterministic expression and custom order
   {
     irs::order order;
-    size_t collector_collect_count = 0;
     size_t collector_finish_count = 0;
+    size_t field_collector_collect_count = 0;
+    size_t term_collector_collect_count = 0;
     size_t scorer_score_count = 0;
     auto& sort = order.add<custom_sort>(false);
 
-    sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
-      ++collector_collect_count;
+    sort.field_collector_collect = [&field_collector_collect_count](const irs::sub_reader&, const irs::term_reader&)->void {
+      ++field_collector_collect_count;
     };
     sort.collector_finish = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&)->void {
       ++collector_finish_count;
+    };
+    sort.term_collector_collect = [&term_collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
+      ++term_collector_collect_count;
     };
     sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void {
       dst = src;
@@ -1239,7 +1271,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     auto prepared = filter.prepare(*reader, preparedOrder, queryCtx);
     auto const& boost = prepared->attributes().get<irs::boost>();
     CHECK(boost);
-    CHECK(1.5f == boost->get()->value);
+    CHECK(1.5f == boost->value);
 
     auto column = segment.column_reader("name");
     REQUIRE(column);
@@ -1287,7 +1319,8 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     CHECK(irs::type_limits<irs::type_t::doc_id_t>::eof() == docs->value());
 
     // check order
-    CHECK(0 == collector_collect_count); // should not be executed
+    CHECK(0 == field_collector_collect_count); // should not be executed
+    CHECK(0 == term_collector_collect_count); // should not be executed
     CHECK(1 == collector_finish_count);
     CHECK(it.size() / 2 == scorer_score_count);
   }

@@ -24,8 +24,8 @@
 #ifndef ARANGOD_MMFILES_MMFILES_INDEX_H
 #define ARANGOD_MMFILES_MMFILES_INDEX_H 1
 
-#include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/Common.h"
 #include "Indexes/Index.h"
 
 #include <velocypack/Slice.h>
@@ -36,28 +36,38 @@ class LogicalCollection;
 
 class MMFilesIndex : public Index {
  public:
-  MMFilesIndex(
-      TRI_idx_iid_t id,
-      LogicalCollection& collection,
-      std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
-      bool unique,
-      bool sparse
-  )
-    : Index(id, collection, attributes, unique, sparse) {}
+  MMFilesIndex(TRI_idx_iid_t id, LogicalCollection& collection,
+               std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
+               bool unique, bool sparse)
+      : Index(id, collection, attributes, unique, sparse) {}
 
-  MMFilesIndex(
-      TRI_idx_iid_t id,
-      LogicalCollection& collection,
-      arangodb::velocypack::Slice const& info
-  )
-    : Index(id, collection, info) {}
+  MMFilesIndex(TRI_idx_iid_t id, LogicalCollection& collection,
+               arangodb::velocypack::Slice const& info)
+      : Index(id, collection, info) {}
 
+  /// @brief if true this index should not be shown externally
+  virtual bool isHidden() const override {
+    return false;  // do not generally hide MMFiles indexes
+  }
+  
+  virtual bool isPersistent() const override { return false; };
 
-  void afterTruncate() override {
+  virtual void batchInsert(transaction::Methods& trx,
+                           std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const& docs,
+                           std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);
+  
+  virtual Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
+                        arangodb::velocypack::Slice const& doc, OperationMode mode) = 0;
+  
+  virtual Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
+                        arangodb::velocypack::Slice const& doc, OperationMode mode) = 0;
+  
+  void afterTruncate(TRI_voc_tick_t) override {
     // for mmfiles, truncating the index just unloads it
     unload();
   }
+
 };
-}
+}  // namespace arangodb
 
 #endif

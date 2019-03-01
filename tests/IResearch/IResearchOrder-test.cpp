@@ -23,7 +23,7 @@
 
 #include "catch.hpp"
 #include "common.h"
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 #include "ExpressionContextMock.h"
 
 #include "Aql/Ast.h"
@@ -31,7 +31,6 @@
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "Aql/ExecutionPlan.h"
-#include "IResearch/AttributeScorer.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -48,7 +47,7 @@
 #include "search/scorers.hpp"
 #include "utils/misc.hpp"
 
-NS_LOCAL
+namespace {
 
 struct dummy_scorer: public irs::sort {
   static std::function<bool(irs::string_ref const&)> validateArgs;
@@ -210,7 +209,7 @@ void assertOrderParseFail(std::string const& queryString, size_t parseCode) {
   REQUIRE(parseCode == parseResult.code);
 }
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down

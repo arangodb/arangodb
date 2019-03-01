@@ -23,12 +23,8 @@
 
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
-#include "formats/formats_10.hpp" 
-#include "filter_test_case_base.hpp"
 #include "analysis/token_attributes.hpp"
 #include "search/phrase_filter.hpp"
-#include "store/memory_directory.hpp"
-#include "store/fs_directory.hpp"
 #ifndef IRESEARCH_DLL
 #include "search/term_query.hpp"
 #endif
@@ -68,7 +64,9 @@ void analyzed_json_field_factory(
   }
 }
 
-class phrase_filter_test_case : public filter_test_case_base {
+NS_END
+
+class phrase_filter_test_case : public tests::filter_test_case_base {
  protected:
   void sequential() {
     // add segment
@@ -179,7 +177,7 @@ class phrase_filter_test_case : public filter_test_case_base {
       auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
       // check single word phrase optimization
-      ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+      ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
 #endif
       irs::bytes_ref actual_value;
       auto sub = rdr.begin();
@@ -215,7 +213,7 @@ class phrase_filter_test_case : public filter_test_case_base {
       auto prepared = q.prepare(rdr);
 #ifndef IRESEARCH_DLL
       // check single word phrase optimization
-      ASSERT_NE(nullptr, dynamic_cast<irs::term_query*>(prepared.get()));
+      ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
 #endif
       auto sub = rdr.begin();
       auto column = sub->column_reader("name");
@@ -330,18 +328,26 @@ class phrase_filter_test_case : public filter_test_case_base {
        .push_back("brown")
        .push_back("fox");
 
-      size_t collect_count = 0;
+      size_t collect_field_count = 0;
+      size_t collect_term_count = 0;
       size_t finish_count = 0;
       irs::order ord;
       auto& sort = ord.add<tests::sort::custom_sort>(false);
-      sort.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
-        ++collect_count;
+
+      sort.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+        ++collect_field_count;
       };
-      sort.collector_finish = [&finish_count](irs::attribute_store&, const irs::index_reader&)->void{
+      sort.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+        ++collect_term_count;
+      };
+      sort.collectors_collect_ = [&finish_count](irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++finish_count;
       };
-      sort.prepare_collector = [&sort]()->irs::sort::collector::ptr {
-        return irs::memory::make_unique<sort::custom_sort::prepared::collector>(sort);
+      sort.prepare_field_collector_ = [&sort]()->irs::sort::field_collector::ptr {
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(sort);
+      };
+      sort.prepare_term_collector_ = [&sort]()->irs::sort::term_collector::ptr {
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(sort);
       };
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void {
         ASSERT_TRUE(
@@ -353,7 +359,8 @@ class phrase_filter_test_case : public filter_test_case_base {
 
       auto pord = ord.prepare();
       auto prepared = q.prepare(rdr, pord);
-      ASSERT_EQ(3, collect_count);
+      ASSERT_EQ(1, collect_field_count); // 1 field in 1 segment
+      ASSERT_EQ(3, collect_term_count); // 3 different terms
       ASSERT_EQ(3, finish_count); // 3 sub-terms in phrase
       auto sub = rdr.begin();
       auto column = sub->column_reader("name");
@@ -685,11 +692,9 @@ class phrase_filter_test_case : public filter_test_case_base {
   }
 }; // phrase_filter_test_case
 
-NS_END // tests
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                             by_phrase base tests 
-// ----------------------------------------------------------------------------
+TEST_P(phrase_filter_test_case, by_phrase) {
+  sequential();
+}
 
 TEST(by_phrase_test, ctor) {
   irs::by_phrase q;
@@ -714,7 +719,7 @@ TEST(by_phrase_test, boost) {
       irs::by_phrase q;
       q.field("field");
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
 
@@ -723,7 +728,7 @@ TEST(by_phrase_test, boost) {
       irs::by_phrase q;
       q.field("field").push_back("quick");
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
 
@@ -732,7 +737,7 @@ TEST(by_phrase_test, boost) {
       irs::by_phrase q;
       q.field("field").push_back("quick").push_back("brown");
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
   }
@@ -747,7 +752,7 @@ TEST(by_phrase_test, boost) {
       q.field("field");
       q.boost(boost);
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
     }
 
@@ -757,7 +762,7 @@ TEST(by_phrase_test, boost) {
       q.field("field").push_back("quick");
       q.boost(boost);
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(boost, irs::boost::extract(prepared->attributes()));
     }
     
@@ -767,7 +772,7 @@ TEST(by_phrase_test, boost) {
       q.field("field").push_back("quick").push_back("brown");
       q.boost(boost);
 
-      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(boost, irs::boost::extract(prepared->attributes()));
     }
   }
@@ -892,49 +897,19 @@ TEST(by_phrase_test, equal) {
   }
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                           memory_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
-
-class memory_phrase_filter_test_case : public tests::phrase_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    return new irs::memory_directory();
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    static irs::version10::format FORMAT;
-    return irs::format::ptr(&FORMAT, [](irs::format*)->void{});
-  }
-};
-
-TEST_F(memory_phrase_filter_test_case, by_phrase) {
-  sequential();
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                               fs_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
-
-class fs_phrase_filter_test_case : public tests::phrase_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    auto dir = test_dir();
-
-    dir /= "index";
-
-    return new irs::fs_directory(dir.utf8());
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    static irs::version10::format FORMAT;
-    return irs::format::ptr(&FORMAT, [](irs::format*)->void{});
-  }
-};
-
-TEST_F(fs_phrase_filter_test_case, by_phrase) {
-  sequential();
-}
+INSTANTIATE_TEST_CASE_P(
+  phrase_filter_test,
+  phrase_filter_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_0")
+  ),
+  tests::to_string
+);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

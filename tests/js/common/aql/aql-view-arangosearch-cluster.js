@@ -30,20 +30,22 @@
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
+var ERRORS = require("@arangodb").errors;
+var deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
+function IResearchAqlTestSuite(args) {
   var c;
+  var c2;
   var v;
+  var v2;
+  var cg;
+  var vg;
+  var meta;
 
-  // provided arguments
-  var args = {
-    numberOfShards: numberOfShards, 
-    replicationFactor: replicationFactor 
-  };
   console.info("Test suite arguments: " + JSON.stringify(args));
 
   return {
@@ -51,12 +53,15 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection", args);
 
+      db._drop("UnitTestsCollection2");
+      c2 = db._create("UnitTestsCollection2", args);
+
       db._drop("AnotherUnitTestsCollection");
       var ac = db._create("AnotherUnitTestsCollection", args);
 
       db._dropView("UnitTestsView");
       v = db._createView("UnitTestsView", "arangosearch", {});
-      var meta = {
+      meta = {
         links: { 
           "UnitTestsCollection": { 
             includeAllFields: true,
@@ -69,6 +74,34 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       };
       v.properties(meta);
 
+      db._drop("CompoundView");
+      v2 = db._createView("CompoundView", "arangosearch",
+        { links : {
+          UnitTestsCollection: { includeAllFields: true },
+          UnitTestsCollection2 : { includeAllFields: true }
+        }}
+      );
+
+      db._drop("UnitTestsGraphCollection");
+      cg = db._create("UnitTestsGraphCollection", args);
+
+      vg = db._createView("UnitTestsGraphView", "arangosearch", {});
+      meta = {
+        links: { 
+          "UnitTestsGraphCollection": { 
+            includeAllFields: true,
+            storeValues: "id",
+            fields: {
+              text: { analyzers: [ "text_en" ] }
+            }
+          }
+        }
+      };
+      vg.properties(meta);
+
+      db._drop("UnitTestsGraph");
+      var g = db._createEdgeCollection("UnitTestsGraph", args);
+
       ac.save({ a: "foo", id : 0 });
       ac.save({ a: "ba", id : 1 });
 
@@ -77,6 +110,10 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
         c.save({ a: "foo", b: "baz", c: i });
         c.save({ a: "bar", b: "foo", c: i });
         c.save({ a: "baz", b: "foo", c: i });
+
+        c2.save({ a: "foo", b: "bar", c: i });
+        c2.save({ a: "bar", b: "foo", c: i });
+        c2.save({ a: "baz", b: "foo", c: i });
       }
 
       c.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
@@ -88,14 +125,136 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       c.save({ name: "null", anotherNullField: null });
       c.save({ name: "bool", anotherBoolField: true });
       c.save({ _key: "foo", xyz: 1 });
+
+      cg.save({ _key: "begin", vName: "vBegin" });
+      cg.save({ _key: "intermediate", vName: "vIntermediate" });
+      cg.save({ _key: "end", vName: "vEnd" });
+
+      g.save({ _from: "UnitTestsGraphCollection/begin", _to: "UnitTestsGraphCollection/intermediate" });
+      g.save({ _from: "UnitTestsGraphCollection/intermediate", _to: "UnitTestsGraphCollection/end" });
     },
 
     tearDown : function () {
-      var meta = { links : { "UnitTestsCollection": null } };
+      meta = { links : { "UnitTestsCollection": null } };
       v.properties(meta);
       v.drop();
+
+      v2.drop();
+
+      meta = { links : { "UnitTestsGraphCollection": null } };
+      vg.properties(meta);
+      vg.drop();
+
       db._drop("UnitTestsCollection");
+      db._drop("UnitTestsCollection2");
       db._drop("AnotherUnitTestsCollection");
+      db._drop("UnitTestsGraph");
+      db._drop("UnitTestsGraphCollection");
+    },
+    
+    testViewInFunctionCall : function () {
+      try {
+        db._query("FOR doc IN 1..1 RETURN COUNT(UnitTestsView)");
+      } catch (e) {
+        assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, e.errorNum);
+      }
+    },
+
+    testViewCollectionOptions : function() {
+      var result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } RETURN doc").toArray();
+
+      assertEqual(result.length, 10);
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        assertTrue(res._id.startsWith('UnitTestsCollection/'));
+      });
+
+      result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ @collectionName ] } RETURN doc", { collectionName : 'UnitTestsCollection' }).toArray();
+
+      assertEqual(result.length, 10);
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        assertTrue(res._id.startsWith('UnitTestsCollection/'));
+      });
+
+      result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : @collections } RETURN doc", { collections : [ 'UnitTestsCollection' ] }).toArray();
+
+      assertEqual(result.length, 10);
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        assertTrue(res._id.startsWith('UnitTestsCollection/'));
+      });
+
+      result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ " + c2._id + " ] } RETURN doc").toArray();
+
+      assertEqual(result.length, 5);
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        assertTrue(res._id.startsWith('UnitTestsCollection2/'));
+      });
+
+      result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ '" + c2._id + "', 'UnitTestsCollection' ] } RETURN doc").toArray();
+
+      assertEqual(result.length, 15);
+      var CountC1 = 0;
+      var CountC2 = 0;
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        if (res._id.startsWith('UnitTestsCollection2/')) {
+          ++CountC2;
+        } else if (res._id.startsWith('UnitTestsCollection/')) {
+          ++CountC1;
+        }
+      });
+      assertEqual(CountC1, 10);
+      assertEqual(CountC2, 5);
+
+      result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : null } RETURN doc").toArray();
+
+      assertEqual(result.length, 15);
+      CountC1 = 0;
+      CountC2 = 0;
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        if (res._id.startsWith('UnitTestsCollection2/')) {
+          ++CountC2;
+        } else if (res._id.startsWith('UnitTestsCollection/')) {
+          ++CountC1;
+        }
+      });
+      assertEqual(CountC1, 10);
+      assertEqual(CountC2, 5);
+
+      result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : @collections } RETURN doc", { collections: null }).toArray();
+
+      assertEqual(result.length, 15);
+      CountC1 = 0;
+      CountC2 = 0;
+      result.forEach(function(res) {
+        assertEqual(res.a, "foo");
+        if (res._id.startsWith('UnitTestsCollection2/')) {
+          ++CountC2;
+        } else if (res._id.startsWith('UnitTestsCollection/')) {
+          ++CountC1;
+        }
+      });
+      assertEqual(CountC1, 10);
+      assertEqual(CountC2, 5);
+
+      result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [] } RETURN doc").toArray();
+      assertEqual(result.length, 0);
+
+      result = db._query(
+        "FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } FOR doc2 IN CompoundView SEARCH doc2.a == 'foo' OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection2' ] } RETURN { doc, doc2 }"
+      ).toArray();
+
+      assertEqual(result.length, 50);
+      result.forEach(function(res) {
+        assertEqual(res.doc.a, "foo");
+        assertEqual(res.doc2.a, "foo");
+        assertTrue(res.doc._id.startsWith('UnitTestsCollection/'));
+        assertTrue(res.doc2._id.startsWith('UnitTestsCollection2/'));
+      });
     },
 
     testAttributeEqualityFilter : function () {
@@ -444,6 +603,238 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       });
     },
 
+    testJoinTwoViewsSortByAttribute : function() {
+      var expected = [];
+      expected.push({ a: "bar", b: "foo", c: 1 });
+      expected.push({ a: "baz", b: "foo", c: 1 });
+      expected.push({ a: "foo", b: "bar", c: 1 });
+      expected.push({ a: "foo", b: "baz", c: 1 });
+      expected.push({ a: "bar", b: "foo", c: 0 });
+      expected.push({ a: "baz", b: "foo", c: 0 });
+      expected.push({ a: "foo", b: "bar", c: 0 });
+      expected.push({ a: "foo", b: "baz", c: 0 });
+
+      var result = db._query(
+        "FOR doc0 IN CompoundView OPTIONS { collections: ['UnitTestsCollection2'], waitForSync:true } " +
+        "  FOR doc1 IN UnitTestsView SEARCH doc0.c == doc1.c && STARTS_WITH(doc1['a'], doc0.a) OPTIONS { waitForSync: true } " +
+        "FILTER doc1.c < 2 " +
+        "SORT doc1.c DESC, doc1.a, doc1.b " +
+        "RETURN doc1"
+      , null, { waitForSync: true }).toArray();
+
+      assertEqual(result.length, expected.length);
+      var i = 0;
+      result.forEach(function(res) {
+        var doc = expected[i++];
+        assertEqual(doc.a, res.a);
+        assertEqual(doc.b, res.b);
+        assertEqual(doc.c, res.c);
+      });
+    },
+
+    testWithKeywordForViewInGraph : function() {
+      var results = [];
+
+      results[0] = db._query(
+        "WITH UnitTestsGraphCollection " + 
+        "FOR doc IN UnitTestsGraphView " +
+        "SEARCH doc.vName == 'vBegin' OPTIONS {waitForSync: true} " +
+        "FOR v IN 2..2 OUTBOUND doc UnitTestsGraph " +
+        "RETURN v").toArray();
+
+      results[1] = db._query(
+        "WITH UnitTestsGraphView " +
+        "FOR doc IN UnitTestsGraphView " +
+        "SEARCH doc.vName == 'vBegin' OPTIONS {waitForSync: true} " +
+        "FOR v IN 2..2 OUTBOUND doc UnitTestsGraph " +
+        "RETURN v").toArray();
+
+      results[2] = db._query(
+        "WITH UnitTestsGraphCollection, UnitTestsGraphView " +
+        "FOR doc IN UnitTestsGraphView " +
+        "SEARCH doc.vName == 'vBegin' OPTIONS {waitForSync: true} " +
+        "FOR v IN 2..2 OUTBOUND doc UnitTestsGraph " +
+        "RETURN v").toArray();
+
+      results.forEach(function(res) {
+        assertTrue(res.length, 1);
+        assertEqual(res[0].vName, "vEnd");
+      });
+    },
+
+    testViewInSubquery : function() {
+      var entitiesData = [
+        {
+          "_key": "person1",
+          "_id": "entities/person1",
+          "_rev": "_YOr40eu--_",
+          "type": "person",
+          "id": "person1"
+        },
+        {
+          "_key": "person5",
+          "_id": "entities/person5",
+          "_rev": "_YOr48rO---",
+          "type": "person",
+          "id": "person5"
+        },
+        {
+          "_key": "person4",
+          "_id": "entities/person4",
+          "_rev": "_YOr5IGu--_",
+          "type": "person",
+          "id": "person4"
+        },
+        {
+          "_key": "person3",
+          "_id": "entities/person3",
+          "_rev": "_YOr5PBK--_",
+          "type": "person",
+          "id": "person3"
+        },
+        {
+          "_key": "person2",
+          "_id": "entities/person2",
+          "_rev": "_YOr5Umq--_",
+          "type": "person",
+          "id": "person2"
+        }
+      ];
+
+      var linksData = [
+        {
+          "_key": "3301",
+          "_id": "links/3301",
+          "_from": "entities/person1",
+          "_to": "entities/person2",
+          "_rev": "_YOrbp_S--_",
+          "type": "relationship",
+          "subType": "married",
+          "from": "person1",
+          "to": "person2"
+        },
+        {
+          "_key": "3377",
+          "_id": "links/3377",
+          "_from": "entities/person4",
+          "_to": "entities/person5",
+          "_rev": "_YOrbxN2--_",
+          "type": "relationship",
+          "subType": "married",
+          "from": "person4",
+          "to": "person5"
+        },
+        {
+          "_key": "3346",
+          "_id": "links/3346",
+          "_from": "entities/person1",
+          "_to": "entities/person3",
+          "_rev": "_YOrb4kq--_",
+          "type": "relationship",
+          "subType": "married",
+          "from": "person1",
+          "to": "person3"
+        }
+      ];
+
+      // create entities collection
+      var entities = db._createDocumentCollection("entities");
+
+      entitiesData.forEach(function(doc) {
+        entities.save(doc);
+      });
+
+      // create links collection
+      var links = db._createEdgeCollection("links", args);
+      linksData.forEach(function(doc) {
+        links.save(doc);
+      });
+
+      var entitiesView = db._createView("entities_view", "arangosearch",{
+        "writebufferSizeMax": 33554432,
+        "consolidationPolicy": {
+          "type": "bytes_accum",
+          "threshold": 0.10000000149011612
+        },
+        "writebufferActive": 0,
+        "consolidationIntervalMsec": 60000,
+        "cleanupIntervalStep": 10,
+        "links": {
+          "entities": {
+            "analyzers": [
+              "identity"
+            ],
+            "fields": {},
+            "includeAllFields": true,
+            "storeValues": "id",
+            "trackListPositions": false
+          }
+        },
+        "type": "arangosearch",
+        "writebufferIdle": 64
+      });
+
+      var linksView = db._createView("links_view", "arangosearch",{
+        "writebufferSizeMax": 33554432,
+        "consolidationPolicy": {
+          "type": "bytes_accum",
+          "threshold": 0.10000000149011612
+        },
+        "writebufferActive": 0,
+        "consolidationIntervalMsec": 60000,
+        "cleanupIntervalStep": 10,
+        "links": {
+          "links": {
+            "analyzers": [
+              "identity"
+            ],
+            "fields": {},
+            "includeAllFields": true,
+            "storeValues": "id",
+            "trackListPositions": false
+          }
+        },
+        "type": "arangosearch",
+        "writebufferIdle": 64
+      });
+
+      var expectedResult = [
+        { id: "person1", marriedIds: ["person2", "person3"] },
+        { id: "person2", marriedIds: ["person1" ] },
+        { id: "person3", marriedIds: ["person1" ] },
+        { id: "person4", marriedIds: ["person5" ] },
+        { id: "person5", marriedIds: ["person4" ] }
+      ];
+
+      var queryString = 
+        "FOR org IN entities_view SEARCH org.type == 'person' OPTIONS {waitForSync:true} " + 
+        "LET marriedIds = ( " +
+        " LET entityIds = ( " +
+        " FOR l IN links_view SEARCH l.type == 'relationship' AND l.subType == 'married' AND (l.from == org.id OR l.to == org.id) OPTIONS {waitForSync:true} " +
+        "    RETURN DISTINCT l.from == org.id ? l.to : l.from" +
+        "  ) " +
+        "  FOR entityId IN entityIds SORT entityId RETURN entityId " +
+        ") " +
+        "LIMIT 10 " +
+        "SORT org._key " + 
+        "RETURN { id: org._key, marriedIds: marriedIds }";
+
+      var result = db._query(queryString).toArray();
+
+      assertEqual(result.length, expectedResult.length);
+
+      var i = 0;
+      result.forEach(function(doc) {
+        var expectedDoc = expectedResult[i++];
+        assertEqual(expectedDoc.org, doc.org);
+        assertEqual(expectedDoc.marriedIds, doc.marriedIds);
+      });
+
+      entitiesView.drop();
+      linksView.drop();
+      entities.drop();
+      links.drop();
+    }
   };
 }
 
@@ -452,19 +843,96 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(function IResearchAqlTestSuite_s1_r1() {
-  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 1 });
+  let suite = {};
+
+  deriveTestSuite(
+    IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 1 }),
+    suite,
+    "_OneShard"
+  );
+
+  // same order as for single-server (valid only for 1 shard case)
+  suite.testInTokensFilterSortTFIDF_OneShard = function () {
+    var result = db._query(
+      "FOR doc IN UnitTestsView SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') OPTIONS { waitForSync : true } SORT TFIDF(doc) LIMIT 4 RETURN doc"
+    ).toArray();
+
+    assertEqual(result.length, 4);
+    assertEqual(result[0].name, 'half');
+    assertEqual(result[1].name, 'quarter');
+    assertEqual(result[2].name, 'other half');
+    assertEqual(result[3].name, 'full');
+  };
+
+  return suite;
 });
 
 jsunity.run(function IResearchAqlTestSuite_s4_r1() {
-  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 1 });
+  let suite = {};
+
+  deriveTestSuite(
+    IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 1 }),
+    suite,
+    "_FourShards"
+  );
+
+  // order for multiple shards is nondeterministic
+  suite.testInTokensFilterSortTFIDF_FourShards = function () {
+    var result = db._query(
+      "FOR doc IN UnitTestsView SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') OPTIONS { waitForSync : true } SORT TFIDF(doc) LIMIT 4 RETURN doc"
+    ).toArray();
+
+    assertEqual(result.length, 4);
+  };
+
+  return suite;
 });
 
 jsunity.run(function IResearchAqlTestSuite_s1_r2() {
-  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 2 });
+  let suite = {};
+
+  deriveTestSuite(
+    IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 2 }),
+    suite,
+    "_ReplTwo"
+  );
+
+  // same order as for single-server (valid only for 1 shard case)
+  suite.testInTokensFilterSortTFIDF_ReplTwo = function () {
+    var result = db._query(
+      "FOR doc IN UnitTestsView SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') OPTIONS { waitForSync : true } SORT TFIDF(doc) LIMIT 4 RETURN doc"
+    ).toArray();
+
+    assertEqual(result.length, 4);
+    assertEqual(result[0].name, 'half');
+    assertEqual(result[1].name, 'quarter');
+    assertEqual(result[2].name, 'other half');
+    assertEqual(result[3].name, 'full');
+  };
+
+  return suite;
 });
 
 jsunity.run(function IResearchAqlTestSuite_s4_r3() {
-  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 3 });
+  let suite = {
+  };
+
+  deriveTestSuite(
+    IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 2 }),
+    suite,
+    "_FourShardsReplTwo"
+  );
+
+  // order for multiple shards is nondeterministic
+  suite.testInTokensFilterSortTFIDF_FourShardsReplTwo = function () {
+    var result = db._query(
+      "FOR doc IN UnitTestsView SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') OPTIONS { waitForSync : true } SORT TFIDF(doc) LIMIT 4 RETURN doc"
+    ).toArray();
+
+    assertEqual(result.length, 4);
+  };
+
+  return suite;
 });
 
 return jsunity.done();

@@ -49,17 +49,17 @@ class WalkerWorker {
 
   virtual void leaveSubquery(T*,  // super,
                              T*   // sub
-                             ) {}
+  ) {}
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 
   bool done(T* en) {
     // make sure a node is only processed once
-    if (_done.find(en) == _done.end()) {
-      _done.emplace(en);
+    if (_done.emplace(en).second) {
       return false;
     }
 
+    // should never happen
     TRI_ASSERT(false);
 
     return true;
@@ -79,10 +79,10 @@ class WalkerWorker {
 
  private:
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  std::unordered_set<T*> _done;
+  arangodb::HashSet<T*> _done;
 #endif
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif
