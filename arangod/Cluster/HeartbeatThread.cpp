@@ -678,8 +678,7 @@ void HeartbeatThread::runSingleServer() {
         }
         
         // server is now responsible for expiring outdated documents
-        ttlFeature->activate();
-
+        ttlFeature->allowRunning(true);
         continue;  // nothing more to do
       }
 
@@ -689,7 +688,7 @@ void HeartbeatThread::runSingleServer() {
       LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Following: " << leaderStr;
         
       // server is not responsible anymore for expiring outdated documents
-      ttlFeature->deactivate();
+      ttlFeature->allowRunning(false);
 
       ServerState::instance()->setFoxxmaster(leaderStr);  // leader is foxxmater
       ServerState::instance()->setReadOnly(true);  // Disable writes with dirty-read header

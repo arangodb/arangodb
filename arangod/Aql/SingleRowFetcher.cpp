@@ -33,7 +33,10 @@ using namespace arangodb::aql;
 
 template <bool passBlocksThrough>
 SingleRowFetcher<passBlocksThrough>::SingleRowFetcher(BlockFetcher<passBlocksThrough>& executionBlock)
-    : _blockFetcher(&executionBlock), _currentRow{CreateInvalidInputRowHint{}} {}
+    : _blockFetcher(&executionBlock),
+      _upstreamState(ExecutionState::HASMORE),
+      _rowIndex(0),
+      _currentRow{CreateInvalidInputRowHint{}} {}
 
 template <bool passBlocksThrough>
 std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>

@@ -60,6 +60,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
+  /// @brief extracts just _key. not supported for use with _id
   bool nextCovering(DocumentCallback const& cb, size_t limit) override;
 
   void reset() override;
