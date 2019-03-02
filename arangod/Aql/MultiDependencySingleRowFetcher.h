@@ -107,7 +107,7 @@ class MultiDependencySingleRowFetcher {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  std::pair<ExecutionState, size_t> preFetchNumberOfRows() {
+  std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost) {
     // This is not implemented for this fetcher
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
