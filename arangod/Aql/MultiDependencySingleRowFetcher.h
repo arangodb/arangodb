@@ -113,7 +113,7 @@ class MultiDependencySingleRowFetcher {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  size_t numberDependencies() const { return _dependencyInfos.size(); }
+  size_t numberDependencies();
 
   /**
    * @brief Fetch one new AqlItemRow from upstream.

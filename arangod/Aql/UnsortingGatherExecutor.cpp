@@ -30,13 +30,17 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 UnsortingGatherExecutor::UnsortingGatherExecutor(Fetcher& fetcher, Infos&)
-    : _fetcher(fetcher),
-      _currentDependency(0),
-      _numberDependencies(_fetcher.numberDependencies()) {}
+    : _fetcher(fetcher), _currentDependency(0), _numberDependencies(0) {}
 
 UnsortingGatherExecutor::~UnsortingGatherExecutor() = default;
 
 std::pair<ExecutionState, NoStats> UnsortingGatherExecutor::produceRow(OutputAqlItemRow& output) {
+  if (_numberDependencies == 0) {
+    // We need to initialize the dependencies once, they are injected
+    // after the fetcher is created.
+    _numberDependencies = _fetcher.numberDependencies();
+    TRI_ASSERT(_numberDependencies > 0);
+  }
   if (_currentDependency >= _numberDependencies) {
     // We are done
     return {ExecutionState::DONE, NoStats{}};
@@ -57,6 +61,13 @@ std::pair<ExecutionState, NoStats> UnsortingGatherExecutor::produceRow(OutputAql
         // The next dependency most likely has more
         // We do not check to save lookups.
         state = ExecutionState::HASMORE;
+      } else {
+        // We are done, copy if necessary
+        if (input.isInitialized()) {
+          // We have an input, write it
+          output.copyRow(input);
+        }
+        return {state, NoStats{}};
       }
     }
     if (input.isInitialized()) {

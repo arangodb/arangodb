@@ -32,16 +32,11 @@ MultiDependencySingleRowFetcher::DependencyInfo::DependencyInfo()
     : _upstreamState{ExecutionState::HASMORE}, _rowIndex{0}, _currentRow{CreateInvalidInputRowHint{}} {}
 
 MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher(BlockFetcher<false>& executionBlock)
-    : _blockFetcher(&executionBlock) {
-  TRI_ASSERT(_blockFetcher->numberDependencies() > 0);
-  _dependencyInfos.reserve(_blockFetcher->numberDependencies());
-  for (size_t i = 0; i < _blockFetcher->numberDependencies(); ++i) {
-    _dependencyInfos.emplace_back(DependencyInfo{});
-  }
-}
+    : _blockFetcher(&executionBlock) {}
 
 std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> MultiDependencySingleRowFetcher::fetchBlockForDependency(
     size_t dependency, size_t atMost) {
+  TRI_ASSERT(!_dependencyInfos.empty());
   atMost = (std::min)(atMost, ExecutionBlock::DefaultBatchSize());
   TRI_ASSERT(dependency < _dependencyInfos.size());
 
@@ -61,4 +56,16 @@ MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher()
 
 RegisterId MultiDependencySingleRowFetcher::getNrInputRegisters() const {
   return _blockFetcher->getNrInputRegisters();
+}
+
+size_t MultiDependencySingleRowFetcher::numberDependencies() {
+  if (_dependencyInfos.empty()) {
+    // Need to setup the dependencies, they are injected lazily.
+    TRI_ASSERT(_blockFetcher->numberDependencies() > 0);
+    _dependencyInfos.reserve(_blockFetcher->numberDependencies());
+    for (size_t i = 0; i < _blockFetcher->numberDependencies(); ++i) {
+      _dependencyInfos.emplace_back(DependencyInfo{});
+    }
+  }
+  return _dependencyInfos.size();
 }
