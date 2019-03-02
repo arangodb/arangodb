@@ -48,6 +48,7 @@ class NoResultsExecutor {
   struct Properties {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
+    static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = ExecutorInfos;

@@ -28,8 +28,8 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/Stats.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Stats.h"
 #include "Aql/types.h"
 
 #include <memory>
@@ -50,7 +50,7 @@ class TestExecutorHelperInfos : public ExecutorInfos {
                           std::unordered_set<RegisterId> registersToKeep);
 
   TestExecutorHelperInfos() = delete;
-  TestExecutorHelperInfos(TestExecutorHelperInfos &&) = default;
+  TestExecutorHelperInfos(TestExecutorHelperInfos&&) = default;
   TestExecutorHelperInfos(TestExecutorHelperInfos const&) = delete;
   ~TestExecutorHelperInfos() = default;
 
@@ -70,6 +70,7 @@ class TestExecutorHelper {
   struct Properties {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
+    static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = TestExecutorHelperInfos;
@@ -90,6 +91,7 @@ class TestExecutorHelper {
 
  public:
   Infos& _infos;
+
  private:
   Fetcher& _fetcher;
   bool _returnedDone = false;
