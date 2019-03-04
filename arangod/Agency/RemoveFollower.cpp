@@ -65,7 +65,7 @@ RemoveFollower::RemoveFollower(Node const& snapshot, AgentInterface* agent,
 
 RemoveFollower::~RemoveFollower() {}
 
-void RemoveFollower::run() { runHelper("", _shard); }
+void RemoveFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 
 bool RemoveFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
@@ -122,7 +122,7 @@ bool RemoveFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   return false;
 }
 
-bool RemoveFollower::start() {
+bool RemoveFollower::start(bool&) {
   // If anything throws here, the run() method catches it and finishes
   // the job.
 
@@ -149,7 +149,19 @@ bool RemoveFollower::start() {
 
   // First check that we still have too many followers for the current
   // `replicationFactor`:
-  size_t desiredReplFactor = collection.hasAsUInt("replicationFactor").first;
+  size_t desiredReplFactor = 1;
+  auto replFact = collection.hasAsUInt("replicationFactor");
+  if (replFact.second) {
+    desiredReplFactor = replFact.first;
+  } else {
+    auto replFact2 = collection.hasAsString("replicationFactor");
+    if (replFact2.second && replFact2.first == "satellite") {
+      // satellites => distribute to every server
+      auto available = Job::availableServers(_snapshot);
+      desiredReplFactor = Job::countGoodServersInList(_snapshot, available);
+    }
+  }
+
   size_t actualReplFactor = planned.length();
   if (actualReplFactor <= desiredReplFactor) {
     finish("", "", true, "job no longer necessary, have few enough replicas");
@@ -286,11 +298,33 @@ bool RemoveFollower::start() {
           if (pair.second >= 0 &&
               static_cast<size_t>(pair.second) >= shardsLikeMe.size() &&
               pair.first != planned[0].copyString()) {
-            chosenToRemove.insert(pair.first);
-            --currentReplFactor;
+            if (Job::isInServerList(_snapshot, toBeCleanedPrefix, pair.first, true) ||
+                Job::isInServerList(_snapshot, cleanedPrefix, pair.first, true)) {
+              // Prefer those cleaned or to be cleaned servers
+              chosenToRemove.insert(pair.first);
+              --currentReplFactor;
+            }
           }
           if (currentReplFactor == desiredReplFactor) {
             break;
+          }
+        }
+        if (currentReplFactor > desiredReplFactor) {
+          // Now allow those which are perfectly good as well:
+          for (auto const& it : reversedPlannedServers) {
+            auto const pair = *overview.find(it);
+            if (pair.second >= 0 &&
+                static_cast<size_t>(pair.second) >= shardsLikeMe.size() &&
+                pair.first != planned[0].copyString()) {
+              if (!Job::isInServerList(_snapshot, toBeCleanedPrefix, pair.first, true) &&
+                  !Job::isInServerList(_snapshot, cleanedPrefix, pair.first, true)) {
+                chosenToRemove.insert(pair.first);
+                --currentReplFactor;
+              }
+            }
+            if (currentReplFactor == desiredReplFactor) {
+              break;
+            }
           }
         }
       }

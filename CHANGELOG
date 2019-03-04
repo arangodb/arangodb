@@ -5,6 +5,12 @@ devel
 
 * fixed overflow in windows NowNanos in RocksDB
 
+* Allow MoveShard from leader to a follower, thus swapping the two
+
+* Supervision fix: Satellite collections, various fixes
+
+* Add coordinator route for agency dump
+
 * Supervision fix: abort MoveShard job does not leave a lock behind,
 
 * Supervision fix: abort MoveShard (leader) job moves forwards when point
