@@ -69,7 +69,7 @@ SECTION("test_defaults") {
 
   CHECK((true == metaState._collections.empty()));
   CHECK(true == (10 == meta._cleanupIntervalStep));
-  CHECK((true == (60 * 1000 == meta._commitIntervalMsec)));
+  CHECK((true == (1000 == meta._commitIntervalMsec)));
   CHECK(true == (60 * 1000 == meta._consolidationIntervalMsec));
   CHECK((std::string("bytes_accum") == meta._consolidationPolicy.properties().get("type").copyString()));
   CHECK((false == !meta._consolidationPolicy.policy()));
@@ -132,7 +132,7 @@ SECTION("test_readDefaults") {
     CHECK((true == metaState.init(json->slice(), tmpString)));
     CHECK((true == metaState._collections.empty()));
     CHECK(10 == meta._cleanupIntervalStep);
-    CHECK((60 * 1000 == meta._commitIntervalMsec));
+    CHECK((1000 == meta._commitIntervalMsec));
     CHECK(60 * 1000 == meta._consolidationIntervalMsec);
     CHECK((std::string("bytes_accum") == meta._consolidationPolicy.properties().get("type").copyString()));
     CHECK((false == !meta._consolidationPolicy.policy()));
@@ -301,7 +301,7 @@ SECTION("test_writeDefaults") {
   tmpSlice = slice.get("cleanupIntervalStep");
   CHECK((true == tmpSlice.isNumber<size_t>() && 10 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("commitIntervalMsec");
-  CHECK((true == tmpSlice.isNumber<size_t>() && 60000 == tmpSlice.getNumber<size_t>()));
+  CHECK((true == tmpSlice.isNumber<size_t>() && 1000 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("consolidationIntervalMsec");
   CHECK((true == tmpSlice.isNumber<size_t>() && 60000 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("consolidationPolicy");
