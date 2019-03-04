@@ -233,7 +233,8 @@ Any non-zero value will restrict the size of the WAL files archive to about the
 specified value and trigger WAL archive file deletion once the threshold is reached.
 Please note that the value is only a threshold, so the archive may get bigger than 
 the configured value until the background thread actually deletes files from
-the archive.
+the archive. Also note that deletion from the archive will only kick in after
+`--rocksdb.wal-file-timeout-initial` seconds have elapsed after server start.
 
 The default value is `0` (i.e. unlimited).
 
