@@ -35,6 +35,12 @@ ParseResult<Path> Path::parse(std::string const& def) {
                              "path must not be empty");
   }
 
+  std::vector<std::string> components;
+
+  if (def == "*") {
+    return ParseResult<Path>(Path(false, true, components));
+  }
+
   bool wildcard = false;
 
   if (def[0] == '.') {
@@ -50,7 +56,6 @@ ParseResult<Path> Path::parse(std::string const& def) {
     U8_NEXT(p, off, len, ch);
   }
 
-  std::vector<std::string> components;
   std::string buffer;
 
   while (off < len) {
@@ -68,7 +73,7 @@ ParseResult<Path> Path::parse(std::string const& def) {
 
       components.push_back(buffer);
       buffer.clear();
-    } else if (ch == 96 || ch == 180) { // windows does not like U'`' and U'´'
+    } else if (ch == 96 || ch == 180) {  // windows does not like U'`' and U'´'
       UChar32 quote = ch;
       U8_NEXT(p, off, len, ch);
 
@@ -116,12 +121,16 @@ ParseResult<Path> Path::parse(std::string const& def) {
                              "path '" + def + "' contains no component");
   }
 
-  return ParseResult<Path>(Path(wildcard, components));
+  return ParseResult<Path>(Path(wildcard, false, components));
 }
 
 bool Path::match(std::vector<std::string> const& path) const {
   size_t cs = _components.size();
   size_t ps = path.size();
+
+  if (_any) {
+    return true;
+  }
 
   if (!_wildcard) {
     if (ps != cs) {

@@ -20,27 +20,24 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_MASKINGS_ATTRIBUTE_RANDOM_STRING_MASK_H
-#define ARANGODB_MASKINGS_ATTRIBUTE_RANDOM_STRING_MASK_H 1
+#ifndef ARANGODB_MASKINGS_ATTRIBUTE_RANDOM_MASK_H
+#define ARANGODB_MASKINGS_ATTRIBUTE_RANDOM_MASK_H 1
 
-#include "Maskings/AttributeMasking.h"
-#include "Maskings/MaskingFunction.h"
-#include "Maskings/ParseResult.h"
+#include "Maskings/RandomStringMask.h"
 
 namespace arangodb {
 namespace maskings {
-class RandomStringMask : public MaskingFunction {
+class RandomMask : public RandomStringMask {
  public:
   static ParseResult<AttributeMasking> create(Path, Maskings*, VPackSlice const& def);
 
  public:
   VPackValue mask(bool, std::string& buffer) const override;
-  VPackValue mask(std::string const& data, std::string& buffer) const override;
   VPackValue mask(int64_t, std::string& buffer) const override;
   VPackValue mask(double, std::string& buffer) const override;
 
- protected:
-  explicit RandomStringMask(Maskings* maskings) : MaskingFunction(maskings) {}
+ private:
+  explicit RandomMask(Maskings* maskings) : RandomStringMask(maskings) {}
 };
 }  // namespace maskings
 }  // namespace arangodb
