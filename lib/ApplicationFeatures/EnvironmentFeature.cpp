@@ -47,7 +47,7 @@ void EnvironmentFeature::collectOptions(std::shared_ptr<options::ProgramOptions>
   options->addSection("environment", "Configure the environment");
 
   options->addOption("--environment.delete",
-                     "delete the variables from the environment",
+                     "variables to remove from the environment, so they are not accessible by the ArangoDB process",
                      new options::VectorParameter<options::StringParameter>(&_envDelete));
 }
 
