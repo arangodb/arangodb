@@ -180,6 +180,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
     }
     if (!fromIncluded && fromTick > 0) {
       until = fromTick;
+      abortOngoingTransactions();
       return Result(
           TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,
           std::string("required follow tick value '") + StringUtils::itoa(lastIncludedTick) +
