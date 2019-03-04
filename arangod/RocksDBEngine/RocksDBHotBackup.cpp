@@ -681,6 +681,8 @@ void RocksDBHotBackupRestore::execute() {
       *restartAction = localRestoreAction;
       application_features::ApplicationServer::server->beginShutdown();
       _success = true;
+      _result.add(VPackValue(VPackValueType::Object));
+      _result.close();
     } // if
   } else {
     // restartAction already populated, nothing we can do

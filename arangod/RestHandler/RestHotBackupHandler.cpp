@@ -70,7 +70,7 @@ RestStatus RestHotBackupHandler::execute() {
       operation->execute();
 
       if (operation->success()) {
-        generateOk(rest::ResponseCode::OK, VPackBuilder());
+        generateOk(rest::ResponseCode::OK, operation->resultSlice());
       } else {
         reportError();
       }
