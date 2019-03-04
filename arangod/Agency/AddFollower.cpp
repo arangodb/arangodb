@@ -64,7 +64,7 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
 
 AddFollower::~AddFollower() {}
 
-void AddFollower::run() { runHelper("", _shard); }
+void AddFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 
 bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC(INFO, Logger::SUPERVISION)
@@ -119,7 +119,7 @@ bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   return false;
 }
 
-bool AddFollower::start() {
+bool AddFollower::start(bool&) {
   // If anything throws here, the run() method catches it and finishes
   // the job.
 
@@ -146,7 +146,19 @@ bool AddFollower::start() {
 
   // First check that we still have too few followers for the current
   // `replicationFactor`:
-  size_t desiredReplFactor = collection.hasAsUInt("replicationFactor").first;
+  size_t desiredReplFactor = 1;
+  auto replFact = collection.hasAsUInt("replicationFactor");
+  if (replFact.second) {
+    desiredReplFactor = replFact.first;
+  } else {
+    auto replFact2 = collection.hasAsString("replicationFactor");
+    if (replFact2.second && replFact2.first == "satellite") {
+      // satellites => distribute to every server
+      auto available = Job::availableServers(_snapshot);
+      desiredReplFactor = Job::countGoodServersInList(_snapshot, available);
+    }
+  }
+
   VPackBuilder onlyFollowers;
   {
     VPackArrayBuilder guard(&onlyFollowers);
