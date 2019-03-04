@@ -54,6 +54,7 @@ const std::string FOLLOWER3 = "SNGL-follower23"; // tick 9, STATE GOOD
 const std::string FOLLOWER4 = "SNGL-follower4"; // tick 100, STATE BAD
 const std::string FOLLOWER5 = "SNGL-follower5"; // tick 1000, STATE GOOD wrong leader
 
+bool aborts = false;
 
 const char *agency =
 #include "ActiveFailoverTest.json"
@@ -229,7 +230,7 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
       return fakeWriteResult;
     });
     
-    REQUIRE(job.start());
+    REQUIRE(job.start(aborts));
     REQUIRE(job.status() == JOB_STATUS::FINISHED);
     Verify(Method(mockAgent,write)).Exactly(2);
     
@@ -280,7 +281,7 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
       return fakeWriteResult;
     });
   
-    REQUIRE(job.start());
+    REQUIRE(job.start(aborts));
     REQUIRE(job.status() == JOB_STATUS::FINISHED);
     Verify(Method(mockAgent,write)).Exactly(2);
   
@@ -331,7 +332,7 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
       return fakeWriteResult;
     });
 
-    REQUIRE_FALSE(job.start());
+    REQUIRE_FALSE(job.start(aborts));
     // job status stays on TODO and can retry later
     REQUIRE(job.status() == JOB_STATUS::TODO);
     Verify(Method(mockAgent,transient)).Exactly(Once);
@@ -402,7 +403,7 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
       return fakeWriteResult;
     });
         
-    REQUIRE(job.start());
+    REQUIRE(job.start(aborts));
     // job status stays on TODO and can retry later
     REQUIRE(job.status() == JOB_STATUS::FINISHED);
     Verify(Method(mockAgent,transient)).Exactly(1);

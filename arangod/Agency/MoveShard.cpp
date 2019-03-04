@@ -93,7 +93,7 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
 
 MoveShard::~MoveShard() {}
 
-void MoveShard::run() { runHelper(_to, _shard); }
+void MoveShard::run(bool& aborts) { runHelper(_to, _shard, aborts); }
 
 bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
@@ -167,7 +167,7 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   return false;
 }
 
-bool MoveShard::start() {
+bool MoveShard::start(bool&) {
   // If anything throws here, the run() method catches it and finishes
   // the job.
 
@@ -265,11 +265,16 @@ bool MoveShard::start() {
 
   int found = -1;
   int count = 0;
+  _toServerIsFollower = false;
   for (auto const& srv : VPackArrayIterator(planned)) {
     TRI_ASSERT(srv.isString());
     if (srv.copyString() == _to) {
-      finish("", "", false, "toServer must not yet be planned for shard");
-      return false;
+      if (!_isLeader) {
+        finish("", "", false, "toServer must not be planned for a following shard");
+        return false;
+      } else {
+        _toServerIsFollower = true;
+      }
     }
     if (srv.copyString() == _from) {
       found = count;
@@ -347,10 +352,11 @@ bool MoveShard::start() {
                          if (_isLeader) {
                            TRI_ASSERT(plan[0].copyString() != _to);
                            pending.add(plan[0]);
-                           pending.add(VPackValue(_to));
+                           if (!_toServerIsFollower) {
+                             pending.add(VPackValue(_to));
+                           } 
                            for (size_t i = 1; i < plan.length(); ++i) {
                              pending.add(plan[i]);
-                             TRI_ASSERT(plan[i].copyString() != _to);
                            }
                          } else {
                            for (auto const& srv : VPackArrayIterator(plan)) {
@@ -743,10 +749,29 @@ arangodb::Result MoveShard::abort() {
     return result;
   }
 
-  // Can now only be TODO or PENDING
+
+  // Can now only be TODO or PENDING. 
   if (_status == TODO) {
-    finish("", "", true, "job aborted");
-    return result;
+
+    // Do NOT remove, just cause it seems obvious!
+    // We're working off a snapshot.
+    // Make sure ToDo is still actually to be done
+    auto todoPrec = std::make_shared<Builder>();
+    { VPackArrayBuilder b(todoPrec.get());
+      { VPackObjectBuilder o(todoPrec.get()); } // nothing to declare
+      { VPackObjectBuilder path(todoPrec.get()); // expect jobs still to be sitting in ToDo
+        todoPrec->add(VPackValue(toDoPrefix + _jobId));
+        { VPackObjectBuilder guard(todoPrec.get());
+          todoPrec->add("oldEmpty", VPackValue(false));
+        }
+      }
+    }
+  
+    if (finish("", "", true, "job aborted", todoPrec)) {
+      return result;
+    }
+    _status = PENDING;
+    // If the above finish failed, then we must be in PENDING
   }
 
   // Can now only be PENDING

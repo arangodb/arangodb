@@ -81,7 +81,7 @@ FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
 
 FailedLeader::~FailedLeader() {}
 
-void FailedLeader::run() { runHelper("", _shard); }
+void FailedLeader::run(bool& aborts) { runHelper("", _shard, aborts); }
 
 void FailedLeader::rollback() {
   // Create new plan servers (exchange _to and _from)
@@ -164,7 +164,7 @@ bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
 
 }
 
-bool FailedLeader::start() {
+bool FailedLeader::start(bool& aborts) {
   std::vector<std::string> existing =
       _snapshot.exists(planColPrefix + _database + "/" + _collection + "/" +
                        "distributeShardsLike");
@@ -309,7 +309,9 @@ bool FailedLeader::start() {
     if (jobId.second && !abortable(_snapshot, jobId.first)) {
       return false;
     } else if (jobId.second) {
+      aborts = true;
       JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+      return false;
     }
   }
 
