@@ -37,6 +37,12 @@ v3.4.4 (2019-XX-XX)
 
 * Maintenance fix: added precondition of unchanged Plan in phase2
 
+* Allow MoveShard from leader to a follower, thus swapping the two
+
+* Supervision fix: Satellite collections, various fixes
+
+* Add coordinator route for agency dump
+
 v3.4.3 (2019-02-19)
 -------------------
 

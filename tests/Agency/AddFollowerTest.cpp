@@ -56,6 +56,8 @@ const std::string SHARD_FOLLOWER2 = "follower2";
 const std::string FREE_SERVER = "free";
 const std::string FREE_SERVER2 = "free2";
 
+bool aborts = false;
+
 const char *agency =
 #include "AddFollowerTest.json"
   ;
@@ -209,7 +211,7 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
     
     When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
     auto& agent = mockAgent.get();
-    AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start();
+    AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
     
   }
   
@@ -266,7 +268,7 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
       });
     When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
     auto& agent = mockAgent.get();
-    AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start();
+    AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
     
   }
   
@@ -331,7 +333,7 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
       });
     When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
     AgentInterface &agent = mockAgent.get();
-    AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start();
+    AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
     
   }
   
@@ -384,7 +386,7 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
       });
     When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
     auto& agent = mockAgent.get();
-    AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start();
+    AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
     
   }
   
@@ -439,7 +441,7 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
       });
     When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
     AgentInterface &agent = mockAgent.get();
-    AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start();
+    AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 
   }
 
@@ -494,7 +496,7 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
       });
     When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
     AgentInterface &agent = mockAgent.get();
-    AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start();
+    AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
     
   }
   
