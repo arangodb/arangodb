@@ -1,6 +1,8 @@
 devel
 -----
 
+* added "random" masking to mask any data type, added wildcard masking
+
 * fixed overflow in windows NowNanos in RocksDB
 
 * add "PRUNE <condition>" to AQL Traversals. This allows to early abort searching of

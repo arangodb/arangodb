@@ -36,13 +36,14 @@ class Path {
  public:
   Path() : _wildcard(false) {}
 
-  Path(bool wildcard, std::vector<std::string> const& components)
-      : _wildcard(wildcard), _components(components) {}
+  Path(bool wildcard, bool any, std::vector<std::string> const& components)
+      : _wildcard(wildcard), _any(any), _components(components) {}
 
   bool match(std::vector<std::string> const& path) const;
 
  private:
   bool _wildcard;
+  bool _any;
   std::vector<std::string> _components;
 };
 }  // namespace maskings
