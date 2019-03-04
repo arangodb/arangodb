@@ -1606,59 +1606,66 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
   WRITE_LOCKER(lock, _walFileLock);
   TRI_voc_tick_t minTickToKeep = std::min(_releasedTick, minTickExternal);
 
+  // Retrieve the sorted list of all wal files with earliest file first
   auto status = _db->GetSortedWalFiles(files);
   if (!status.ok()) {
     LOG_TOPIC(INFO, Logger::ENGINES) << "could not get WAL files " << status.ToString();
     return;
   }
 
-  uint64_t totalRemainingFileSize = 0;
-  size_t lastLess = files.size();
+  uint64_t totalArchiveSize = 0;
   for (size_t current = 0; current < files.size(); current++) {
-    auto f = files[current].get();
+    auto const& f = files[current].get();
+    
+    if (f->Type() != rocksdb::WalFileType::kArchivedLogFile) {
+      // we are only interested in files of the archive
+      continue;
+    }
+    
+    // always determine the size of the archive
+    totalArchiveSize += f->SizeFileBytes();
+
     if (f->StartSequence() < minTickToKeep) {
-      lastLess = current;
-    } else if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
+      // this file will be removed because it does not contain any data we 
+      // still need
       if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
-        totalRemainingFileSize += f->SizeFileBytes();
+        LOG_TOPIC(DEBUG, Logger::ENGINES)
+            << "RocksDB WAL file '" << f->PathName() << "' with start sequence "
+            << f->StartSequence() << " added to prunable list because it is not needed anymore";
+        _prunableWalFiles.emplace(f->PathName(), TRI_microtime() + _pruneWaitTime);
       }
-    }
+    } 
   }
-
-  // insert all candidate files into the map of deletable files
-  if (lastLess > 0 && lastLess < files.size()) {
-    for (size_t current = 0; current < lastLess; current++) {
-      auto const& f = files[current].get();
-      if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
-        if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
-          LOG_TOPIC(DEBUG, Logger::ENGINES)
-              << "RocksDB WAL file '" << f->PathName() << "' with start sequence "
-              << f->StartSequence() << " added to prunable list because it is not needed anymore";
-          _prunableWalFiles.emplace(f->PathName(), TRI_microtime() + _pruneWaitTime);
-        }
-      }
-    }
-  }
-
+          
   if (_maxWalArchiveSizeLimit > 0 &&
-      totalRemainingFileSize > _maxWalArchiveSizeLimit) {
+      totalArchiveSize > _maxWalArchiveSizeLimit) {
     // we got more archived files than "allowed" from the outside
-    for (size_t current = lastLess; current < files.size(); current++) {
+    for (size_t current = 0; current < files.size(); current++) {
       auto const& f = files[current].get();
-      if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
-        if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
-          LOG_TOPIC(DEBUG, Logger::ENGINES)
-              << "RocksDB WAL file '" << f->PathName() << "' with start sequence "
-              << f->StartSequence() << " added to prunable list because of overflowing archive";
-          _prunableWalFiles.emplace(f->PathName(), TRI_microtime() + _pruneWaitTime);
-          TRI_ASSERT(totalRemainingFileSize >= f->SizeFileBytes());
-          totalRemainingFileSize -= f->SizeFileBytes();
+
+      if (f->Type() != rocksdb::WalFileType::kArchivedLogFile) {
+        continue;
+      }
         
-          if (totalRemainingFileSize <= _maxWalArchiveSizeLimit) {
-            // got enough files to remove
-            break;
-          }
-        }
+      // force pruning
+      auto it = _prunableWalFiles.find(f->PathName());
+      if (it == _prunableWalFiles.end()) {
+        LOG_TOPIC(WARN, Logger::ENGINES)
+            << "forcing removal of RocksDB WAL file '" << f->PathName() << "' with start sequence "
+            << f->StartSequence() << " because of overflowing archive. configured maximum archive size is " << _maxWalArchiveSizeLimit << ", actual archive size is: " << totalArchiveSize;
+        _prunableWalFiles.emplace(f->PathName(), TRI_microtime() - 1.0);
+      } else {
+        // file already in list. now set its expiration time to the past
+        // so we are sure it will get deleted
+        (*it).second = TRI_microtime() - 1.0;
+      }
+      
+      TRI_ASSERT(totalArchiveSize >= f->SizeFileBytes());
+      totalArchiveSize -= f->SizeFileBytes();
+        
+      if (totalArchiveSize <= _maxWalArchiveSizeLimit) {
+        // got enough files to remove
+        break;
       }
     }
   }

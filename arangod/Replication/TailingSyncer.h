@@ -159,6 +159,9 @@ class TailingSyncer : public Syncer {
 
   arangodb::Result removeSingleDocument(arangodb::LogicalCollection* coll, std::string const& key);
 
+  arangodb::Result handleRequiredFromPresentFailure(TRI_voc_tick_t fromTick,
+                                                    TRI_voc_tick_t readTick);
+
  protected:
   virtual bool skipMarker(arangodb::velocypack::Slice const& slice) = 0;
 

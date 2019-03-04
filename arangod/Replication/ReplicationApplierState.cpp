@@ -46,7 +46,7 @@ ReplicationApplierState::ReplicationApplierState()
       _totalDocuments(0),
       _totalRemovals(0),
       _totalResyncs(0),
-      _skippedOperations(0),
+      _totalSkippedOperations(0),
       _totalApplyTime(0.0),
       _totalApplyInstances(0),
       _totalFetchTime(0.0),
@@ -81,7 +81,7 @@ ReplicationApplierState& ReplicationApplierState::operator=(ReplicationApplierSt
   _totalDocuments = other._totalDocuments;
   _totalRemovals = other._totalRemovals;
   _totalResyncs = other._totalResyncs;
-  _skippedOperations = other._skippedOperations;
+  _totalSkippedOperations = other._totalSkippedOperations;
   _totalApplyTime = other._totalApplyTime;
   _totalApplyInstances = other._totalApplyInstances;
   _totalFetchTime = other._totalFetchTime;
@@ -95,9 +95,19 @@ void ReplicationApplierState::reset(bool resetPhase, bool reducedSet) {
   _lastAppliedContinuousTick = 0;
   _safeResumeTick = 0;
   _failedConnects = 0;
-  _totalRequests = 0;
-  _totalFailedConnects = 0;
-  _totalResyncs = 0;
+  // don't need to reset the following
+  // _totalFailedConnects = 0;
+  // _totalResyncs = 0; 
+  // _totalRequests = 0;
+  // _totalEvents = 0;
+  // _totalDocuments = 0;
+  // _totalRemovals = 0;
+  // _totalSkippedOperations = 0;
+  // _totalApplyTime = 0.0;
+  // _totalApplyInstances = 0;
+  // _totalFetchTime = 0.0;
+  // _totalFetchInstances = 0;
+  // _startTime[0] = '\0';
 
   if (reducedSet) { 
     return;
@@ -108,18 +118,8 @@ void ReplicationApplierState::reset(bool resetPhase, bool reducedSet) {
   _stopInitialSynchronization = false;
   _progressMsg.clear();
   _progressTime[0] = '\0';
-  _startTime[0] = '\0';
   _serverId = 0;
   _lastError.reset();
-
-  _totalEvents = 0;
-  _totalDocuments = 0;
-  _totalRemovals = 0;
-  _skippedOperations = 0;
-  _totalApplyTime = 0.0;
-  _totalApplyInstances = 0;
-  _totalFetchTime = 0.0;
-  _totalFetchInstances = 0;
 
   if (resetPhase) {
     _phase = ActivityPhase::INACTIVE;
@@ -204,7 +204,7 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
     result.add("totalDocuments", VPackValue(_totalDocuments));
     result.add("totalRemovals", VPackValue(_totalRemovals));
     result.add("totalResyncs", VPackValue(_totalResyncs));
-    result.add("totalOperationsExcluded", VPackValue(_skippedOperations));
+    result.add("totalOperationsExcluded", VPackValue(_totalSkippedOperations));
     result.add("totalApplyTime", VPackValue(_totalApplyTime));
     if (_totalApplyInstances == 0) {
       result.add("averageApplyTime", VPackValue(0));
