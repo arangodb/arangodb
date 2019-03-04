@@ -1224,9 +1224,24 @@ void Supervision::enforceReplication() {
       if (!clone) {
         for (auto const& shard_ : col.hasAsChildren("shards").first) {  // Pl shards
           auto const& shard = *(shard_.second);
+          VPackBuilder onlyFollowers;
+          {
+            VPackArrayBuilder guard(&onlyFollowers);
+            bool first = true;
+            for (auto const& pp : VPackArrayIterator(shard.slice())) {
+              if (!first) {
+                onlyFollowers.add(pp);
+              }
+              first = false;
+            }
+          }
+          size_t actualReplicationFactor
+            = 1 + Job::countGoodServersInList(_snapshot, onlyFollowers.slice());
+            // leader plus GOOD followers
+          size_t apparentReplicationFactor = shard.slice().length();
 
-          size_t actualReplicationFactor = shard.slice().length();
-          if (actualReplicationFactor != replicationFactor) {
+          if (actualReplicationFactor != replicationFactor ||
+              apparentReplicationFactor != replicationFactor) {
             // Check that there is not yet an addFollower or removeFollower
             // or moveShard job in ToDo for this shard:
             auto const& todo = _snapshot.hasAsChildren(toDoPrefix).first;
@@ -1257,7 +1272,7 @@ void Supervision::enforceReplication() {
                 AddFollower(_snapshot, _agent, std::to_string(_jobId++),
                             "supervision", db_.first, col_.first, shard_.first)
                     .run();
-              } else {
+              } else if (apparentReplicationFactor > replicationFactor) {
                 RemoveFollower(_snapshot, _agent, std::to_string(_jobId++),
                                "supervision", db_.first, col_.first, shard_.first)
                     .run();

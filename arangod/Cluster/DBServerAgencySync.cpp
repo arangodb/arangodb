@@ -254,7 +254,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
           }
           operations.push_back(AgencyOperation("Current/Version",
                                                AgencySimpleOperationType::INCREMENT_OP));
-          AgencyWriteTransaction currentTransaction(operations);
+          AgencyPrecondition precondition("Plan/Version",
+            AgencyPrecondition::Type::VALUE, plan->slice().get("Version"));
+          AgencyWriteTransaction currentTransaction(operations, precondition);
           AgencyCommResult r = comm.sendTransactionWithFailover(currentTransaction);
           if (!r.successful()) {
             LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Error reporting to agency";
