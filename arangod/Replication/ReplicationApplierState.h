@@ -133,7 +133,7 @@ struct ReplicationApplierState {
   uint64_t _totalDocuments;
   uint64_t _totalRemovals;
   uint64_t _totalResyncs;
-  uint64_t _skippedOperations;
+  uint64_t _totalSkippedOperations;
 
   /// @brief total time spend in applyLog()
   double _totalApplyTime;

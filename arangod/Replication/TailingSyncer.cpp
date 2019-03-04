@@ -1107,7 +1107,7 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
     }
 
     if (skipped) {
-      ++_applier->_state._skippedOperations;
+      ++_applier->_state._totalSkippedOperations;
     } else if (_ongoingTransactions.empty()) {
       _applier->_state._safeResumeTick = _applier->_state._lastProcessedContinuousTick;
     }
@@ -1121,6 +1121,9 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
 /// catches exceptions
 Result TailingSyncer::run() {
   try {
+    auto guard = scopeGuard([this]() {
+      abortOngoingTransactions();
+    });
     return runInternal();
   } catch (arangodb::basics::Exception const& ex) {
     return Result(ex.code(),
@@ -1301,7 +1304,7 @@ retry:
           // message only makes sense if there's at least one retry
           LOG_TOPIC(WARN, Logger::REPLICATION)
               << "aborting automatic resynchronization for database '" << _state.databaseName
-              << "' after " << _state.applier._autoResyncRetries << " retries";
+              << "' after " << _state.applier._autoResyncRetries << " short-term retries";
         } else {
           LOG_TOPIC(WARN, Logger::REPLICATION)
               << "aborting automatic resynchronization for database '"
@@ -1341,6 +1344,12 @@ retry:
               << lastLogTick;
           _initialTick = lastLogTick;
           _useTick = true;
+        
+          {
+            WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+            _applier->_state.setStartTime();
+          }
+          _applier->markThreadTailing();
           goto retry;
         }
         res.reset(r.errorNumber(), r.errorMessage());
@@ -1633,16 +1642,12 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tic
 
   if (!fromIncluded && fromTick > 0 &&
       (!_state.master.simulate32Client() || fromTick != readTick)) {
-    const std::string msg =
-        std::string("required init tick value '") + StringUtils::itoa(fromTick) +
-        "' is not present (anymore?) on master at " + _state.master.endpoint +
-        ". Last tick available on master is '" + StringUtils::itoa(readTick) +
-        "'. It may be required to do a full resync and increase the number "
-        "of historic logfiles/WAL file timeout on the master.";
-    if (_requireFromPresent) {  // hard fail
-      return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, msg);
+    Result r = handleRequiredFromPresentFailure(fromTick, readTick);
+    TRI_ASSERT(_ongoingTransactions.empty());
+
+    if (r.fail()) {
+      return r;
     }
-    LOG_TOPIC(WARN, Logger::REPLICATION) << msg;
   }
 
   startTick = readTick;
@@ -1883,17 +1888,12 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
 
   if (!fromIncluded && fetchTick > 0 &&
       (!_state.master.simulate32Client() || originalFetchTick != tick)) {
-    std::string const msg =
-        std::string("required follow tick value '") + StringUtils::itoa(fetchTick) +
-        "' is not present (anymore?) on master at " + _state.master.endpoint +
-        ". Last tick available on master is '" + StringUtils::itoa(tick) +
-        "'. It may be required to do a full resync and increase "
-        "the number " +
-        "of historic logfiles/WAL file timeout on the master";
-    if (_requireFromPresent) {  // hard fail
-      return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, msg);
+    Result r = handleRequiredFromPresentFailure(fetchTick, tick);
+    TRI_ASSERT(_ongoingTransactions.empty());
+
+    if (r.fail()) {
+      return r;
     }
-    LOG_TOPIC(WARN, Logger::REPLICATION) << msg;
   }
 
   // already fetch next batch of data in the background...
@@ -2014,4 +2014,32 @@ void TailingSyncer::checkParallel() {
     // we do not access the list of ongoing transactions in parallel
     _workInParallel = true;
   }
+}
+
+Result TailingSyncer::handleRequiredFromPresentFailure(TRI_voc_tick_t fromTick,
+                                                       TRI_voc_tick_t readTick) {
+  std::string const msg =
+        std::string("required init tick value '") + StringUtils::itoa(fromTick) +
+        "' is not present (anymore?) on master at " + _state.master.endpoint +
+        ". Last tick available on master is '" + StringUtils::itoa(readTick) +
+        "'. It may be required to do a full resync and increase the number "
+        "of historic logfiles/WAL file timeout on the master.";
+  if (_requireFromPresent) {  // hard fail
+    abortOngoingTransactions();
+    return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, msg);
+  }
+
+  // only print a warning about the failure, abort ongoing transactions and go on...
+  // we may have data loss and follow-up failures here, but at least all these
+  // will be either logged or make the replication fail later on
+  LOG_TOPIC(WARN, Logger::REPLICATION) << msg;
+    
+  // we have to abort any running ongoing transactions, as they will be
+  // holding exclusive locks on the underlying collection(s)
+  if (!_ongoingTransactions.empty()) {
+    LOG_TOPIC(WARN, Logger::REPLICATION) << "aborting ongoing open transactions (" << _ongoingTransactions.size() << ")";
+    abortOngoingTransactions();
+  }
+
+  return Result();
 }
