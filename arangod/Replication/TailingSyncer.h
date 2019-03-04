@@ -120,9 +120,6 @@ class TailingSyncer : public Syncer {
   Result applyLog(httpclient::SimpleHttpResult*, TRI_voc_tick_t firstRegularTick,
                   ApplyStats& applyStats, uint64_t& ignoreCount);
 
-  /// @brief get local replication applier state
-  void getLocalState();
-
   /// @brief perform a continuous sync with the master
   Result runContinuousSync();
 
@@ -134,6 +131,9 @@ class TailingSyncer : public Syncer {
   virtual Result saveApplierState() = 0;
 
  private:
+  /// @brief get local replication applier state
+  void getLocalState();
+
   /// @brief run method, performs continuous synchronization
   /// internal method, may throw exceptions
   arangodb::Result runInternal();

@@ -1,6 +1,36 @@
 v3.4.4 (2019-XX-XX)
 -------------------
 
+* added replication applier state figures `totalDocuments` and `totalRemovals` to 
+  access the number of document insert/replace operations and the number of document
+  removals operations separately. Also added figures `totalApplyTime` and 
+  `totalFetchTime` for determining the total time the replication spent for 
+  applying changes or fetching new data from the master. Also added are the figures
+  `averageApplyTime` and `averageFetchTime`, which show the average time spent
+  for applying a batch or for fetching data from the master, resp.
+
+* fixed race condition in which the value of the informational replication applier 
+  figure `ticksBehind` could underflow and thus show a very huge number of ticks.
+
+* always clear all ongoing replication transactions on the slave if the slave 
+  discovers the data it has asked for is not present anymore on the master and the
+  `requireFromPresent` value for the applier is set to `false`.
+  
+  In this case aborting the ongoing transactions on the slave is necessary because 
+  they may have held exclusive locks on collections, which may otherwise not be 
+  released.
+
+* speed up replication of transactions containing updates of existing documents.
+ 
+  The replication protocol does not provide any information on whether a document
+  was inserted on the master or updated/replaced. Therefore the slave will always
+  try an insert first, and move to a replace if the insert fails with "unique
+  constraint violation". This case is however very costly in a bigger transaction,
+  as the rollback of the insert will force the underlying RocksDB write batch to be
+  entirely rewritten. To circumvent rewriting entire write batches, we now do a
+  quick check if the target document already exists, and then branch to either
+  insert or replace internally.
+
 * added option `--rocksdb.wal-archive-size-limit` for controlling the
   maximum total size (in bytes) of archived WAL files. The default is 0
   (meaning: unlimited).
