@@ -81,6 +81,9 @@ class State {
   ///        Default: [first, last]
   std::vector<log_t> get(index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
+  
+  uint64_t toVelocyPack(index_t lastIndex, VPackBuilder& builder) const;
+
  private:
   /// @brief Get complete log entries bound by lower and upper bounds.
   ///        Default: [first, last]
