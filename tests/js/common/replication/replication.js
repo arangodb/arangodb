@@ -569,7 +569,6 @@ function ReplicationLoggerSuite () {
       // truncate marker
       assertEqual(2004, entry[0].type);
       assertEqual(2300, entry[1].type);
-      print(entry);
       assertEqual("aha", entry[1].data._key);
     },
 
