@@ -434,18 +434,13 @@ bool IResearchLink::canBeDropped() const {
   return true; // valid for a link to be dropped from an iResearch view
 }
 
-arangodb::Result IResearchLink::cleanup() {
+////////////////////////////////////////////////////////////////////////////////
+/// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
+////////////////////////////////////////////////////////////////////////////////
+arangodb::Result IResearchLink::cleanupUnsafe() {
   char runId = 0; // value not used
 
-  SCOPED_LOCK(_asyncSelf->mutex()); // '_dataStore' can be asynchronously modified
-
-  if (!*_asyncSelf) {
-    return arangodb::Result( // result
-      TRI_ERROR_ARANGO_INDEX_HANDLE_BAD, // the current link is no longer valid (checked after ReadLock aquisition)
-      std::string("failed to lock arangosearch link while cleaning up arangosearch link '") + std::to_string(id()) + "' run id '" + std::to_string(size_t(&runId)) + "'"
-    );
-  }
-
+  // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
   TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
 
   try {
@@ -470,32 +465,37 @@ arangodb::LogicalCollection& IResearchLink::collection() const noexcept {
 }
 
 arangodb::Result IResearchLink::commit() {
-  SCOPED_LOCK(_asyncSelf->mutex());  // '_dataStore' can be asynchronously modified
+  SCOPED_LOCK(_asyncSelf->mutex()); // '_dataStore' can be asynchronously modified
 
   if (!*_asyncSelf) {
     return arangodb::Result(
-        TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,  // the current link is no longer
-                                            // valid (checked after ReadLock
-                                            // aquisition)
-        std::string("failed to lock arangosearch link while commiting "
-                    "arangosearch link '") +
-            std::to_string(id()) + "'");
+      TRI_ERROR_ARANGO_INDEX_HANDLE_BAD, // the current link is no longer valid (checked after ReadLock aquisition)
+      std::string("failed to lock arangosearch link while commiting arangosearch link '") + std::to_string(id()) + "'"
+    );
   }
 
-  TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
+  return commitUnsafe();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
+////////////////////////////////////////////////////////////////////////////////
+arangodb::Result IResearchLink::commitUnsafe() {
+  char runId = 0; // value not used
+
+  // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
+  TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
 
   try {
     _dataStore._writer->commit();
 
     SCOPED_LOCK(_readerMutex);
-    auto reader = _dataStore._reader.reopen();  // update reader
+    auto reader = _dataStore._reader.reopen(); // update reader
 
     if (!reader) {
       // nothing more to do
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failed to update snapshot after commit, reuse the existing "
-             "snapshot for arangosearch link '"
-          << id() << "'";
+        << "failed to update snapshot after commit, run id '" << size_t(&runId) << "', reuse the existing snapshot for arangosearch link '" << id() << "'";
 
       return arangodb::Result();
     }
@@ -531,7 +531,7 @@ arangodb::Result IResearchLink::commit() {
         if (!out) { // create checkpoint
           return arangodb::Result( // result
             TRI_ERROR_CANNOT_WRITE_FILE, // code
-            std::string("failed to write checkpoint file for arangosearch link '") + std::to_string(id()) + "', ignoring commit success, path: " + checkpointFile
+            std::string("failed to write checkpoint file for arangosearch link '") + std::to_string(id()) + "', run id '" + std::to_string(size_t(&runId)) + "', ignoring commit success, path: " + checkpointFile
           );
         }
 
@@ -541,14 +541,14 @@ arangodb::Result IResearchLink::commit() {
 
         return arangodb::Result( // result
           TRI_ERROR_ARANGO_IO_ERROR, // code
-          std::string("caught exception while writing checkpoint file for arangosearch link '") + std::to_string(id()) + "': " + e.what()
+          std::string("caught exception while writing checkpoint file for arangosearch link '") + std::to_string(id()) + "' run id '" + std::to_string(size_t(&runId)) + "': " + e.what()
         );
       } catch (...) {
         _dataStore._directory->remove(checkpointFile); // try to remove failed file
 
         return arangodb::Result( // result
           TRI_ERROR_ARANGO_IO_ERROR, // code
-          std::string("caught exception while writing checkpoint file for arangosearch link '") + std::to_string(id()) + "'"
+          std::string("caught exception while writing checkpoint file for arangosearch link '") + std::to_string(id()) + "' run id '" + std::to_string(size_t(&runId)) + "'"
         );
       }
 
@@ -564,24 +564,27 @@ arangodb::Result IResearchLink::commit() {
   } catch (arangodb::basics::Exception const& e) {
     return arangodb::Result( // result
       e.code(), // code
-      std::string("caught exception while committing arangosearch link '") + std::to_string(id()) + "': " + e.what()
+      std::string("caught exception while committing arangosearch link '") + std::to_string(id()) + "' run id '" + std::to_string(size_t(&runId)) + "': " + e.what()
     );
   } catch (std::exception const& e) {
     return arangodb::Result( // result
       TRI_ERROR_INTERNAL, // code
-      std::string("caught exception while committing arangosearch link '") + std::to_string(id()) + "': " + e.what()
+      std::string("caught exception while committing arangosearch link '") + std::to_string(id()) + "' run id '" + std::to_string(size_t(&runId)) + "': " + e.what()
     );
   } catch (...) {
     return arangodb::Result( // result
       TRI_ERROR_INTERNAL, // code
-      std::string("caught exception while committing arangosearch link '") + std::to_string(id()) + "'"
+      std::string("caught exception while committing arangosearch link '") + std::to_string(id()) + "' run id '" + std::to_string(size_t(&runId)) + "'"
     );
   }
 
   return arangodb::Result();
 }
 
-arangodb::Result IResearchLink::consolidate( // consolidate segments
+////////////////////////////////////////////////////////////////////////////////
+/// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
+////////////////////////////////////////////////////////////////////////////////
+arangodb::Result IResearchLink::consolidateUnsafe( // consolidate segments
     IResearchViewMeta::ConsolidationPolicy const& policy, // policy to apply
     irs::merge_writer::flush_progress_t const& progress // policy progress to use
 ) {
@@ -594,15 +597,7 @@ arangodb::Result IResearchLink::consolidate( // consolidate segments
     );
   }
 
-  SCOPED_LOCK(_asyncSelf->mutex()); // '_dataStore' can be asynchronously modified
-
-  if (!*_asyncSelf) {
-    return arangodb::Result( // result
-      TRI_ERROR_ARANGO_INDEX_HANDLE_BAD, // the current link is no longer valid (checked after ReadLock aquisition)
-      std::string("failed to lock arangosearch link while executing consolidation policy '") + policy.properties().toString() + "' on arangosearch link '" + std::to_string(id()) + "' run id '" + std::to_string(size_t(&runId)) + "'"
-    );
-  }
-
+  // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
   TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
 
   try {
@@ -1176,7 +1171,7 @@ arangodb::Result IResearchLink::initDataStore() {
         state._last = std::chrono::system_clock::now(); // remember last task start time
         timeoutMsec = state._commitIntervalMsec;
 
-        auto res = commit(); // run commit
+        auto res = commitUnsafe(); // run commit ('_asyncSelf' locked by async task)
 
         if (!res.ok()) {
           LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -1184,7 +1179,7 @@ arangodb::Result IResearchLink::initDataStore() {
         } else if (state._cleanupIntervalStep // if enabled
                    && state._cleanupIntervalCount++ > state._cleanupIntervalStep) {
           state._cleanupIntervalCount = 0; // reset counter
-          res = cleanup(); // run cleanup
+          res = cleanupUnsafe(); // run cleanup ('_asyncSelf' locked by async task)
 
           if (!res.ok()) {
             LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -1243,7 +1238,8 @@ arangodb::Result IResearchLink::initDataStore() {
         state._last = std::chrono::system_clock::now(); // remember last task start time
         timeoutMsec = state._consolidationIntervalMsec;
 
-        auto res = consolidate(state._consolidationPolicy, state._progress); // run consolidation
+        auto res = // consolidate
+          consolidateUnsafe(state._consolidationPolicy, state._progress); // run consolidation ('_asyncSelf' locked by async task)
 
         if (!res.ok()) {
           LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -1251,7 +1247,7 @@ arangodb::Result IResearchLink::initDataStore() {
         } else if (state._cleanupIntervalStep // if enabled
                    && state._cleanupIntervalCount++ > state._cleanupIntervalStep) {
           state._cleanupIntervalCount = 0; // reset counter
-          res = cleanup(); // run cleanup
+          res = cleanupUnsafe(); // run cleanup ('_asyncSelf' locked by async task)
 
           if (!res.ok()) {
             LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)

@@ -103,10 +103,10 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   /// @return the associated collection
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::LogicalCollection& collection() const noexcept;  // arangodb::Index override
+  arangodb::LogicalCollection& collection() const noexcept; // arangodb::Index override
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief mark the current data store state as te latest valid state
+  /// @brief mark the current data store state as the latest valid state
   //////////////////////////////////////////////////////////////////////////////
   arangodb::Result commit();
 
@@ -265,13 +265,21 @@ class IResearchLink {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run filesystem cleanup on the data store
+  /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result cleanup();
+  arangodb::Result cleanupUnsafe();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief mark the current data store state as the latest valid state
+  /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result commitUnsafe();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run segment consolidation on the data store
+  /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result consolidate( // consolidate segments
+  arangodb::Result consolidateUnsafe( // consolidate segments
     IResearchViewMeta::ConsolidationPolicy const& policy, // policy to apply
     irs::merge_writer::flush_progress_t const& progress // policy progress to use
   );
@@ -280,7 +288,7 @@ class IResearchLink {
   /// @brief initialize the data store with a new or from an existing directory
   //////////////////////////////////////////////////////////////////////////////
   arangodb::Result initDataStore();
-};  // IResearchLink
+}; // IResearchLink
 
 }  // namespace iresearch
 }  // namespace arangodb
