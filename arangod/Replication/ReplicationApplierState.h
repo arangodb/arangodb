@@ -85,8 +85,6 @@ struct ReplicationApplierState {
 
   void setError(int code, std::string const& msg) { _lastError.set(code, msg); }
 
-  void clearError() { _lastError.reset(); }
-
   void setStartTime();
 
   // last error that occurred during replication

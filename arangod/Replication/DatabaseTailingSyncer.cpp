@@ -79,7 +79,7 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(TRI_vocbase_t& vocbase,
 /// @brief save the current applier state
 Result DatabaseTailingSyncer::saveApplierState() {
   auto rv = _applier->persistStateResult(false);
-  if (rv.fail()){
+  if (rv.fail()) {
     THROW_ARANGO_EXCEPTION(rv);
   }
   return rv;
