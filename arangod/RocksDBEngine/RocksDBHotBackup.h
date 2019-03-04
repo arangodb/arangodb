@@ -86,6 +86,7 @@ protected:
   static const char * dirCreatingString;
   static const char * dirRestoringString;
   static const char * dirDownloadingString;
+  static const char * dirFailsafeString;
 
 
   ////////////////////////////////////////////////////////////////////////////////

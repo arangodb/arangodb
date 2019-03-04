@@ -27,7 +27,7 @@
 #include "Agency/TimeString.h"
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "Basics/FileUtils.h"
-#include "Basics/ScopeGuard.h"
+#include "Basics/MutexLocker.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -47,6 +47,7 @@ namespace arangodb {
 const char * RocksDBHotBackup::dirCreatingString = "CREATING";
 const char * RocksDBHotBackup::dirRestoringString = "RESTORING";
 const char * RocksDBHotBackup::dirDownloadingString = "DOWNLOADING";
+const char * RocksDBHotBackup::dirFailsafeString = "FAILSAFE";
 
 
 //
@@ -610,108 +611,85 @@ static basics::FileUtils::TRI_copy_recursive_e copyVersusLink(std::string const 
 } // copyVersusLink
 
 
+/// @brief This external is buried in RestServer/arangod.cpp.
+///        Used to perform one last action upon shutdown.
+extern std::function<int()> * restartAction;
+
+static std::string restoreExistingPath;  // path of 'engine-rocksdb'
+static std::string restoreReplacingPath; // path of restored rocksdb files
+static std::string restoreFailsafePath;  // temp location of engine-rocksdb in case of error
+
+static Mutex restoreMutex; // only one restore at a time
+
+/// @brief Routine called by RestServer/arangod.cpp after everything else
+///        shutdown.
+static int localRestoreAction() {
+  int retVal;
+  std::string errorStr;
+  long systemError;
+  std::string savePath;
+  bool failsafeSet;
+
+  /// Step 3.  Save previous dataset just in case
+  retVal = TRI_RenameFile(restoreExistingPath.c_str(), restoreFailsafePath.c_str(), &systemError, &errorStr);
+  failsafeSet = (TRI_ERROR_NO_ERROR == retVal);
+
+  if (failsafeSet) {
+    /// Step 4. shift copy of restoring directory to active database position
+    retVal = TRI_RenameFile(restoreReplacingPath.c_str(), restoreExistingPath.c_str(), &systemError, &errorStr);
+
+    if (TRI_ERROR_NO_ERROR != retVal) {
+      // failed to move new data into place.  attempt to restore old
+      std::cerr << "FATAL: HotBackup restore unable to rename "
+                << restoreReplacingPath << " to " << restoreExistingPath
+                << "(error code " << retVal << ", " << errorStr << ").";
+      TRI_RenameFile(restoreFailsafePath.c_str(), restoreExistingPath.c_str(), &systemError, &errorStr);
+    }
+  } else {
+      std::cerr << "FATAL: HotBackup restore unable to rename "
+                << restoreExistingPath << " to " << restoreFailsafePath
+                << "(error code " << retVal << ", " << errorStr << ").";
+  } // else
+
+  return retVal;
+
+} // localRestoreAction
+
+
 /// @brief step through the restore procedures
+///        (due to redesign, majority of work happens in subroutine createRestoringDirectory())
 void RocksDBHotBackupRestore::execute() {
   std::string errors, restoringDir, rocksDBPath;
-  bool good = {true}, restoringReady={false}, gotLock={false}, pauseWorked={false};
+  bool good = {false};
 
-  rocksDBPath = getRocksDBPath();
+  /// Step 0. Take a global mutex, prevent two restores
+  MUTEX_LOCKER (mLock, restoreMutex);
 
-  /// 1. create copy of hotbackup to restore
-  ///    (restoringDir populated by function)
-  restoringReady = createRestoringDirectory(restoringDir);
-  good = restoringReady;
+  if (nullptr == restartAction) {
+    /// Step 1. create copy of hotbackup to restore
+    ///    (restoringDir populated by function)
+    ///    (populates error fields if good ==false)
+    good = createRestoringDirectory(restoreReplacingPath);
 
-  // proceed only if copy completed
-  if (good) {
-    // make sure the transaction hold is released
-    auto guardHold = scopeGuard([&gotLock, this]()
-                                { if (gotLock) releaseRocksDBTransactions(); } );
-    try {
-      /// 2. attempt to stop transactions,
-      // convert timeout from seconds to microseconds
-      gotLock = holdRocksDBTransactions();
+    if (good) {
+      /// Step 2. initiate shutdown and restart with new data directory
+      restoreExistingPath = getRocksDBPath();
+      restoreFailsafePath = rebuildPath(dirFailsafeString);
+      clearPath(restoreFailsafePath);
 
-      if (gotLock || _forceRestore) {
-        int retVal;
-        std::string nowStamp, newDirectory, errorStr;
-        long systemError;
-
-        /// 3. stop rocksdb
-        pauseWorked = pauseRocksDB();
-        if (pauseWorked) {
-          /// 4. shift active database to a hotbackup directory
-          nowStamp = timepointToString(std::chrono::system_clock::now());
-          newDirectory = buildDirectoryPath(nowStamp, "before_restore");
-          retVal = TRI_RenameFile(rocksDBPath.c_str(), newDirectory.c_str(), &systemError, &errorStr);
-
-          if (TRI_ERROR_NO_ERROR == retVal) {
-            /// 5. shift copy of restoring directory to active database position
-            retVal = TRI_RenameFile(restoringDir.c_str(), rocksDBPath.c_str(), &systemError, &errorStr);
-
-            if (TRI_ERROR_NO_ERROR == retVal) {
-              /// 6. restart rocksdb
-              restartRocksDB();
-              _success = true;
-            } else {
-              // rename to move restoring into position failed.
-              good = false;
-              _respCode = rest::ResponseCode::BAD;
-              _errorMessage = "Unable to rename restore directory into production. (";
-              _errorMessage += errorStr;
-              _errorMessage += ")";
-              LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-                << "RocksDBHotBackupRestore: " << _errorMessage;
-
-              // ... and if this fails too? ...
-              retVal = TRI_RenameFile(newDirectory.c_str(), rocksDBPath.c_str(), &systemError, &errorStr);
-              if (TRI_ERROR_NO_ERROR != retVal) {
-                TRI_ASSERT(false);
-                LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-                  << "RocksDBHotBackupRestore: Unable to rename old production back after failure."
-                  << errorStr;
-              } // if
-            } // else
-          } else {
-            // rename to move production away, failed
-            good = false;
-            _respCode = rest::ResponseCode::BAD;
-            _errorMessage = "Unable to rename existing database directory. (";
-            _errorMessage += errorStr;
-            _errorMessage += ")";
-          } // else
-        } else {
-          // unable to pause rocksdb, production db still alive and running
-          good = false;
-          _respCode = rest::ResponseCode::BAD;
-          _errorMessage = "Unable to stop rocksdb within timeout.";
-        } // else
-      } else {
-        // rocks db did not stop
-        good = false;
-        _respCode = rest::ResponseCode::BAD;
-        _errorMessage = "Unable to stop rocksdb transactions within timeout.";
-      } // else
-    } catch(...) {
-      good = false;
-      _respCode = rest::ResponseCode::BAD;
-      _errorMessage = "RocksDBHotBackupRestore::execute caught exception.";
-      // _respError = 0;???
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-        << "RocksDBHotBackupRestore::execute caught exception.";
-    } // catch
-  }  // if
-
-  /// clean up on error
-  if (!good) {
-    if (pauseWorked) {
-      restartRocksDB();
+      restartAction = new std::function<int()>();
+      *restartAction = localRestoreAction;
+      application_features::ApplicationServer::server->beginShutdown();
+      _success = true;
     } // if
-
-    if (restoringReady) {
-      TRI_RemoveDirectory(restoringDir.c_str());
-    } // if
-  }  // if
+  } else {
+    // restartAction already populated, nothing we can do
+    good = false;
+    _respCode = rest::ResponseCode::BAD;
+    _errorMessage = "restartAction already set.  More than one restore occurring in parallel?";
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      << "RocksDBHotBackupRestore: " << _errorMessage;
+  } // else
 
   return;
 
