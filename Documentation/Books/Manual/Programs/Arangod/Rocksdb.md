@@ -226,10 +226,14 @@ are space-restricted and do not require keeping much WAL file data at all.
 
 `--rocksdb.wal-archive-size-limit`
 
-Mmaximum total size (in bytes) of archived WAL files to keep on a leader.
-A value of `0` will not restrict the size of the archive, whereas any other
-value will restrict the size to about the specified value and trigger WAL
-archive file deletion once the threshold will be reached.
+Maximum total size (in bytes) of archived WAL files to keep on a leader.
+A value of `0` will not restrict the size of the archive, so the leader will
+removed archived WAL files when there are no replication clients needing them.
+Any non-zero value will restrict the size of the WAL files archive to about the 
+specified value and trigger WAL archive file deletion once the threshold is reached.
+Please note that the value is only a threshold, so the archive may get bigger than 
+the configured value until the background thread actually deletes files from
+the archive.
 
 The default value is `0` (i.e. unlimited).
 
