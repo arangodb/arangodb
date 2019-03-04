@@ -30,6 +30,7 @@
 #include "utils/locale_utils.hpp"
 
 #include "Basics/StringUtils.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "VelocyPackHelper.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
@@ -172,10 +173,13 @@ bool IResearchLinkMeta::operator!=(IResearchLinkMeta const& other) const noexcep
   return meta;
 }
 
-bool IResearchLinkMeta::init(arangodb::velocypack::Slice const& slice, std::string& errorField,
-                             IResearchLinkMeta const& defaults /*= DEFAULT()*/,
-                             Mask* mask /*= nullptr*/
-                             ) noexcept {
+bool IResearchLinkMeta::init( // initialize meta
+    arangodb::velocypack::Slice const& slice, // definition
+    std::string& errorField, // field causing error (out-param)
+    IResearchLinkMeta const& defaults /*= DEFAULT()*/, // inherited defaults
+    TRI_vocbase_t const* defaultVocbase /*= nullptr*/, // fallback vocbase
+    Mask* mask /*= nullptr*/ // initialized fields (out-param)
+) noexcept {
   if (!slice.isObject()) {
     return false;
   }
@@ -195,8 +199,9 @@ bool IResearchLinkMeta::init(arangodb::velocypack::Slice const& slice, std::stri
     if (!mask->_analyzers) {
       _analyzers = defaults._analyzers;
     } else {
-      auto* analyzers =
-          arangodb::application_features::ApplicationServer::lookupFeature<IResearchAnalyzerFeature>();
+      auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
+        IResearchAnalyzerFeature // featue type
+      >();
       auto field = slice.get(fieldName);
 
       if (!analyzers || !field.isArray()) {
@@ -218,7 +223,23 @@ bool IResearchLinkMeta::init(arangodb::velocypack::Slice const& slice, std::stri
         }
 
         auto name = getStringRef(key);
-        auto analyzer = analyzers->ensure(name);
+        IResearchAnalyzerFeature::AnalyzerPool::ptr analyzer;
+
+        // get analyzer or placeholder
+        if (defaultVocbase) {
+          auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
+            arangodb::SystemDatabaseFeature // featue type
+          >();
+          auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
+
+          if (sysVocbase) {
+            analyzer = analyzers->ensure(IResearchAnalyzerFeature::normalize( // normalize
+              name, *defaultVocbase, *sysVocbase // args
+            ));
+          }
+        } else {
+          analyzer = analyzers->ensure(name); // verbatim (assume already normalized)
+        }
 
         if (!analyzer) {
           errorField = fieldName + "=>" + std::string(name);
@@ -354,7 +375,7 @@ bool IResearchLinkMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
         std::string childErrorField;
 
-        if (!_fields[name]->init(value, errorField, subDefaults)) {
+        if (!_fields[name]->init(value, errorField, subDefaults, defaultVocbase)) {
           errorField = fieldName + "=>" + name + "=>" + childErrorField;
 
           return false;
@@ -477,5 +498,5 @@ size_t IResearchLinkMeta::memory() const noexcept {
 }  // namespace arangodb
 
 // -----------------------------------------------------------------------------
-// --SECTION-- END-OF-FILE
+// --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

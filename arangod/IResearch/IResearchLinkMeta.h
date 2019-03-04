@@ -116,10 +116,17 @@ struct IResearchLinkMeta {
   /// @brief initialize IResearchLinkMeta with values from a JSON description
   ///        return success or set 'errorField' to specific field with error
   ///        on failure state is undefined
+  /// @param defaultVocbase fallback vocbase for analyzer name normalization
+  ///                       nullptr == do not normalize
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(arangodb::velocypack::Slice const& slice, std::string& errorField,
-            IResearchLinkMeta const& defaults = DEFAULT(), Mask* mask = nullptr) noexcept;
+  bool init( // initialize meta
+    arangodb::velocypack::Slice const& slice, // definition
+    std::string& errorField, // field causing error (out-param)
+    IResearchLinkMeta const& defaults = DEFAULT(), // inherited defaults
+    TRI_vocbase_t const* defaultVocbase = nullptr, // fallback vocbase
+    Mask* mask = nullptr // initialized fields (out-param)
+  ) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLinkMeta object

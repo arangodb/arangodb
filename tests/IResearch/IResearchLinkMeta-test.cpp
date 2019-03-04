@@ -580,7 +580,7 @@ SECTION("test_readMaskAll") {
     \"storeValues\": \"full\", \
     \"analyzers\": [] \
   }");
-  CHECK(true == meta.init(json->slice(), tmpString, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
+  CHECK(true == meta.init(json->slice(), tmpString, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), nullptr, &mask));
   CHECK(true == mask._fields);
   CHECK(true == mask._includeAllFields);
   CHECK(true == mask._trackListPositions);
@@ -594,7 +594,7 @@ SECTION("test_readMaskNone") {
   std::string tmpString;
 
   auto json = arangodb::velocypack::Parser::fromJson("{}");
-  CHECK(true == meta.init(json->slice(), tmpString, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
+  CHECK(true == meta.init(json->slice(), tmpString, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), nullptr, &mask));
   CHECK(false == mask._fields);
   CHECK(false == mask._includeAllFields);
   CHECK(false == mask._trackListPositions);

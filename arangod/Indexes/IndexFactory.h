@@ -47,7 +47,7 @@ struct IndexTypeFactory {
   ///        index once instantiated
   virtual bool equal(Index::IndexType type, velocypack::Slice const& lhs, velocypack::Slice const& rhs,
                      bool attributeOrderMatters) const;
-  
+
   virtual bool equal(velocypack::Slice const& lhs, velocypack::Slice const& rhs) const = 0;
 
   /// @brief instantiate an Index definition
@@ -56,9 +56,13 @@ struct IndexTypeFactory {
                              bool isClusterConstructor) const = 0;
 
   /// @brief normalize an Index definition prior to instantiation/persistence
-  virtual Result normalize(velocypack::Builder& normalized,
-                           velocypack::Slice definition, bool isCreation) const = 0;
-  
+  virtual Result normalize( // normalize definition
+    velocypack::Builder& normalized, // normalized definition (out-param)
+    velocypack::Slice definition, // source definition
+    bool isCreation, // definition for index creation
+    TRI_vocbase_t const& vocbase // index vocbase
+  ) const = 0;
+
   /// @brief the order of attributes matters by default  
   virtual bool attributeOrderMatters() const {
     // can be overridden by specific indexes
@@ -73,9 +77,12 @@ class IndexFactory {
   /// @return 'factory' for 'type' was added successfully
   Result emplace(std::string const& type, IndexTypeFactory const& factory);
 
-  virtual Result enhanceIndexDefinition(velocypack::Slice const definition,
-                                        velocypack::Builder& normalized,
-                                        bool isCreation, bool isCoordinator) const;
+  virtual Result enhanceIndexDefinition( // normalizze definition
+    velocypack::Slice const definition, // source definition
+    velocypack::Builder& normalized, // normalized definition (out-param)
+    bool isCreation, // definition for index creation
+    TRI_vocbase_t const& vocbase // index vocbase
+  ) const;
 
   /// @return factory for the specified type or a failing placeholder if no such
   /// type
@@ -87,7 +94,7 @@ class IndexFactory {
 
   /// @brief used to display storage engine capabilities
   virtual std::vector<std::string> supportedIndexes() const;
-  
+
   /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" => "hash")
   /// used to display storage engine capabilities
   virtual std::unordered_map<std::string, std::string> indexAliases() const;

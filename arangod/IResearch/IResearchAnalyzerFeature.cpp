@@ -46,6 +46,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VelocyPackHelper.h"
@@ -57,6 +58,7 @@
 namespace {
 
 static std::string const ANALYZER_COLLECTION_NAME("_iresearch_analyzers");
+static char const ANALYZER_PREFIX_DELIM = ':'; // name prefix delimiter (2 chars)
 static size_t const DEFAULT_POOL_SIZE = 8;  // arbitrary value
 static std::string const FEATURE_NAME("IResearchAnalyzer");
 static irs::string_ref const IDENTITY_ANALYZER_NAME("identity");
@@ -145,7 +147,24 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
     return arangodb::aql::AqlValue();
   }
 
-  auto pool = analyzers->get(name);
+  arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr pool;
+
+  if (trx) {
+    auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
+      arangodb::SystemDatabaseFeature // featue type
+    >();
+    auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
+
+    if (sysVocbase) {
+      pool = analyzers->get( // get analyzer
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
+          name, trx->vocbase(), *sysVocbase // args
+        )
+      );
+    }
+  } else {
+    pool = analyzers->get(name); // verbatim
+  }
 
   if (!pool) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -274,6 +293,37 @@ arangodb::SystemDatabaseFeature::ptr getSystemDatabase() {
   return database->use();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief split the analyzer name into the vocbase part and analyzer part
+/// @param name analyzer name
+/// @return pair of first == vocbase name, second == analyzer name
+///         EMPTY == system vocbase
+///         NIL == unprefixed analyzer name, i.e. active vocbase
+////////////////////////////////////////////////////////////////////////////////
+std::pair<irs::string_ref, irs::string_ref> splitAnalyzerName( // split name
+    irs::string_ref const& analyzer // analyzer name
+) noexcept {
+  // search for vocbase prefix ending with '::'
+  for (size_t i = 1, count = analyzer.size(); i < count; ++i) {
+    if (analyzer[i] == ANALYZER_PREFIX_DELIM // current is delim
+        && analyzer[i - 1] == ANALYZER_PREFIX_DELIM // previous is also delim
+       ) {
+      auto vocbase = i > 1 // non-empty prefix, +1 for first delimiter char
+        ? irs::string_ref(analyzer.c_str(), i - 1) // -1 for the first ':' delimiter
+        : irs::string_ref::EMPTY
+        ;
+      auto name = i < count - 1 // have suffix
+        ? irs::string_ref(analyzer.c_str() + i + 1, count - i - 1) // +-1 for the suffix after '::'
+        : irs::string_ref::EMPTY // do not point after end of buffer
+        ;
+
+      return std::make_pair(vocbase, name); // prefixed analyzer name
+    }
+  }
+
+  return std::make_pair(irs::string_ref::NIL, analyzer); // unprefixed analyzer name
+}
+
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
@@ -382,10 +432,6 @@ void IResearchAnalyzerFeature::AnalyzerPool::setKey(irs::string_ref const& key) 
   }
 }
 
-irs::flags const& IResearchAnalyzerFeature::AnalyzerPool::features() const noexcept {
-  return _features;
-}
-
 irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const noexcept {
   try {
     // FIXME do not use shared_ptr
@@ -414,10 +460,6 @@ irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const
   return nullptr;
 }
 
-std::string const& IResearchAnalyzerFeature::AnalyzerPool::name() const noexcept {
-  return _name;
-}
-
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_features::ApplicationServer& server)
     : ApplicationFeature(server, IResearchAnalyzerFeature::name()),
       _analyzers(getStaticAnalyzers()),  // load static analyzers
@@ -428,6 +470,18 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_feature
   startsAfter("AQLFunctions");  // used for registering IResearch analyzer functions
   startsAfter("SystemDatabase");  // used for getting the system database
                                   // containing the persisted configuration
+}
+
+/*static*/ bool IResearchAnalyzerFeature::canUse( // check permissions
+    TRI_vocbase_t const& vocbase, // analyzer vocbase
+    arangodb::auth::Level const& level // access level
+) {
+  auto* ctx = arangodb::ExecContext::CURRENT;
+
+  return !ctx // authentication not enabled
+    || (ctx->canUseDatabase(vocbase.name(), level) // can use vocbase
+        && (ctx->canUseCollection(vocbase.name(), ANALYZER_COLLECTION_NAME, level)) // can use analyzers
+       );
 }
 
 std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFeature::emplace(
@@ -559,13 +613,15 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
   return std::make_pair(AnalyzerPool::ptr(), false);
 }
 
-IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::ensure(irs::string_ref const& name) {
+IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::ensure( // get analyzer or placeholder
+    irs::string_ref const& name // analyzer name
+) {
   // insert dummy (uninitialized) placeholders if this feature has not been
   // started to break the dependency loop on DatabaseFeature
   // placeholders will be loaded/validation during start()/loadConfiguration()
   return _started
-             ? get(name)
-             : emplace(name, irs::string_ref::NIL, irs::string_ref::NIL, false).first;
+    ? get(name)
+    : emplace(name, irs::string_ref::NIL, irs::string_ref::NIL, false).first;
 }
 
 size_t IResearchAnalyzerFeature::erase(irs::string_ref const& name) noexcept {
@@ -676,8 +732,9 @@ size_t IResearchAnalyzerFeature::erase(irs::string_ref const& name) noexcept {
   return 0;
 }
 
-IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(irs::string_ref const& name) const
-    noexcept {
+IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
+    irs::string_ref const& name // analyzer name
+) const noexcept {
   try {
     ReadMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
@@ -1085,6 +1142,39 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
   return FEATURE_NAME;
 }
 
+/*static*/ std::string IResearchAnalyzerFeature::normalize( // normalize name
+  irs::string_ref const& name, // analyzer name
+  TRI_vocbase_t const& activeVocbase, // fallback vocbase if not part of name
+  TRI_vocbase_t const& systemVocbase, // the system vocbase for use with empty prefix
+  bool expandVocbasePrefix /*= true*/ // use full vocbase name as prefix for active/system v.s. EMPTY/'::'
+) {
+  auto split = splitAnalyzerName(name);
+
+  if (expandVocbasePrefix) {
+    if (split.first.null()) {
+      return std::string(activeVocbase.name()).append(2, ANALYZER_PREFIX_DELIM).append(split.second);
+    }
+
+    if (split.first.empty()) {
+      return std::string(systemVocbase.name()).append(2, ANALYZER_PREFIX_DELIM).append(split.second);
+    }
+  } else {
+    // .........................................................................
+    // normalize vocbase such that active vocbase takes precedence over system
+    // vocbase i.e. prefer NIL over EMPTY
+    // .........................................................................
+    if (split.first.null() || split.first == activeVocbase.name()) { // active vocbase
+      return split.second;
+    }
+
+    if (split.first.empty() || split.first == systemVocbase.name()) { // system vocbase
+      return std::string(2, ANALYZER_PREFIX_DELIM).append(split.second);
+    }
+  }
+
+  return name; // name prefixed with vocbase (or NIL)
+}
+
 void IResearchAnalyzerFeature::prepare() {
   ApplicationFeature::prepare();
 
@@ -1332,14 +1422,18 @@ bool IResearchAnalyzerFeature::storeConfiguration(AnalyzerPool& pool) {
   return false;
 }
 
-bool IResearchAnalyzerFeature::visit(
-    std::function<bool(irs::string_ref const& name, irs::string_ref const& type,
-                       irs::string_ref const& properties)> const& visitor) {
+bool IResearchAnalyzerFeature::visit( // visit analyzers
+    VisitorType const& visitor, // visitor
+    TRI_vocbase_t const* vocbase /*= nullptr*/ // analyzers for vocbase
+) {
   ReadMutex mutex(_mutex);
   SCOPED_LOCK(mutex);
 
-  for (auto& entry : _analyzers) {
-    if (entry.second && !visitor(entry.first, entry.second->_type, entry.second->_properties)) {
+  for (auto& entry: _analyzers) {
+    if (entry.second // have entry
+        && (!vocbase || splitAnalyzerName(entry.first).first == vocbase->name()) // requested vocbase
+        && !visitor(entry.first, entry.second->_type, entry.second->_properties) // termination request
+       ) {
       return false;
     }
   }
@@ -1351,5 +1445,5 @@ bool IResearchAnalyzerFeature::visit(
 }  // namespace arangodb
 
 // -----------------------------------------------------------------------------
-// --SECTION-- END-OF-FILE
+// --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
