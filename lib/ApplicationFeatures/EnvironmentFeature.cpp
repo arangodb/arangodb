@@ -52,7 +52,7 @@ void EnvironmentFeature::collectOptions(std::shared_ptr<options::ProgramOptions>
 }
 
 void EnvironmentFeature::prepare() {
-  for (auto env : _envDelete) {
+  for (auto const& env : _envDelete) {
     utilities::unsetenv(env.c_str());
   }
 
