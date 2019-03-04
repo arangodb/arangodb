@@ -121,6 +121,12 @@ JOB_STATUS CleanOutServer::status() {
         reportTrx.add("op", VPackValue("push"));
         reportTrx.add("new", VPackValue(_server));
       }
+      reportTrx.add(VPackValue(toBeCleanedPrefix));
+      {
+        VPackObjectBuilder guard4(&reportTrx);
+        reportTrx.add("op", VPackValue("erase"));
+        reportTrx.add("val", VPackValue(_server));
+      }
       addRemoveJobFromSomewhere(reportTrx, "Pending", _jobId);
       Builder job;
       _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
@@ -311,6 +317,14 @@ bool CleanOutServer::start() {
 
       addBlockServer(*pending, _server, _jobId);
 
+      // Put ourselves in list of servers to be cleaned:
+      pending->add(VPackValue(toBeCleanedPrefix));
+      {
+        VPackObjectBuilder guard4(pending.get());
+        pending->add("op", VPackValue("push"));
+        pending->add("new", VPackValue(_server));
+      }
+
       // Schedule shard relocations
       if (!scheduleMoveShards(pending)) {
         finish("", "", false, "Could not schedule MoveShard.");
@@ -495,7 +509,18 @@ arangodb::Result CleanOutServer::abort() {
     }
   }
 
-  finish(_server, "", false, "job aborted");
+  auto payload = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder p(payload.get());
+    payload->add(VPackValue(toBeCleanedPrefix));
+    {
+      VPackObjectBuilder pp(payload.get());
+      payload->add("op", VPackValue("erase"));
+      payload->add("val", VPackValue(_server));
+    }
+  }
+
+  finish(_server, "", false, "job aborted", payload);
 
   return result;
 }
