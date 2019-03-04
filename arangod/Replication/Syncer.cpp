@@ -42,6 +42,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -443,20 +444,43 @@ Result Syncer::applyCollectionDumpMarkerInternal(transaction::Methods& trx,
     options.indexOperationMode = Index::OperationMode::internal;
 
     try {
-      // try insert first
-      OperationResult opRes = trx.insert(coll->name(), slice, options);
-
-      if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-        bool useReplace = true;
-
+      OperationResult opRes;
+      bool useReplace = false;
+      VPackSlice keySlice = slice.get(StaticStrings::KeyString);
+      
+      // if we are about to process a single document marker we first check if the target 
+      // document exists. if yes, we don't try an insert (which would fail anyway) but carry 
+      // on with a replace.
+      if (keySlice.isString()) {
+        arangodb::LocalDocumentId const oldDocumentId =
+            coll->getPhysical()->lookupKey(&trx, keySlice);
+        if (oldDocumentId.isSet()) {
+          useReplace = true;
+          opRes.result.reset(TRI_ERROR_NO_ERROR, keySlice.copyString());
+        }
+      }
+      
+      if (!useReplace) {
+        // try insert first
+        opRes = trx.insert(coll->name(), slice, options);
+        if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
+          useReplace = true;
+        }
+      }
+      
+      if (useReplace) {
         // conflicting key is contained in opRes.errorMessage() now
-        VPackSlice keySlice = slice.get(StaticStrings::KeyString);
-
         if (keySlice.isString()) {
           // let's check if the key we have got is the same as the one
           // that we would like to insert
           if (keySlice.copyString() != opRes.errorMessage()) {
             // different key
+            if (trx.isSingleOperationTransaction()) {
+              // return a special error code from here, with the key of
+              // the conflicting document as the error message :-|
+              return Result(TRI_ERROR_ARANGO_TRY_AGAIN, opRes.errorMessage());
+            }
+
             VPackBuilder tmp;
             tmp.add(VPackValue(opRes.errorMessage()));
 
@@ -467,7 +491,7 @@ Result Syncer::applyCollectionDumpMarkerInternal(transaction::Methods& trx,
           }
         }
 
-        options.indexOperationMode = Index::OperationMode::normal;
+        options.indexOperationMode = arangodb::Index::OperationMode::normal;
 
         if (useReplace) {
           // perform a replace

@@ -192,6 +192,44 @@ function BaseTestConfig() {
       );
     },
     
+    testPrimaryKeyConflictInTransaction: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          db._drop(cn);
+          db._create(cn);
+        },
+
+        function(state) {
+          // insert same record on slave that we will insert on the master
+          connectToSlave();
+          db[cn].insert({ _key: "boom", who: "slave" });
+          connectToMaster();
+          db._executeTransaction({ 
+            collections: { write: cn },
+            action: function(params) {
+              let db = require("internal").db;
+              db[params.cn].insert({ _key: "meow", foo: "bar" });
+              db[params.cn].insert({ _key: "boom", who: "master" });
+            },
+            params: { cn }
+          });
+        },
+
+        function(state) {
+          return true;
+        },
+
+        function(state) {
+          assertEqual(2, db[cn].count());
+          assertEqual("bar", db[cn].document("meow").foo);
+          // master document version must have won
+          assertEqual("master", db[cn].document("boom").who);
+        }
+      );
+    },
+    
     testSecondaryKeyConflict: function() {
       connectToMaster();
 
@@ -219,6 +257,55 @@ function BaseTestConfig() {
           assertNotNull(db[cn].firstExample({ _key: "master" }));
           assertEqual("master", db[cn].toArray()[0]._key);
           assertEqual("one", db[cn].toArray()[0].value);
+        }
+      );
+    },
+    
+    testSecondaryKeyConflictInTransaction: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          db._drop(cn);
+          db._create(cn);
+          db[cn].ensureIndex({ type: "hash", fields: ["value"], unique: true });
+        },
+
+        function(state) {
+          // insert same record on slave that we will insert on the master
+          connectToSlave();
+          db[cn].insert({ _key: "slave", value: "one" });
+          connectToMaster();
+          db._executeTransaction({ 
+            collections: { write: cn },
+            action: function(params) {
+              let db = require("internal").db;
+              db[params.cn].insert({ _key: "meow", value: "abc" });
+              db[params.cn].insert({ _key: "master", value: "one" });
+            },
+            params: { cn }
+          });
+        },
+
+        function(state) {
+          return true;
+        },
+
+        function(state) {
+          assertEqual(2, db[cn].count());
+          assertEqual("abc", db[cn].document("meow").value);
+
+          assertNull(db[cn].firstExample({ _key: "slave" }));
+          assertNotNull(db[cn].firstExample({ _key: "master" }));
+          let docs = db[cn].toArray();
+          docs.sort(function(l, r) { 
+            if (l._key !== r._key) {
+              return l._key < r._key ? -1 : 1;
+            }
+            return 0;
+          });
+          assertEqual("master", docs[0]._key);
+          assertEqual("one", docs[0].value);
         }
       );
     },

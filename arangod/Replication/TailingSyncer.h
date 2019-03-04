@@ -129,6 +129,8 @@ class TailingSyncer : public Syncer {
   /// internal method, may throw exceptions
   arangodb::Result runInternal();
 
+  arangodb::Result removeSingleDocument(LogicalCollection* coll, std::string const& key);
+
  protected:
   virtual bool skipMarker(arangodb::velocypack::Slice const& slice) = 0;
 

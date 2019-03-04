@@ -371,43 +371,105 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
     return r;
   }
+  
+  // this variable will store the key of a conflicting document we will have to remove first
+  // it is initially empty, and may be populated by a failing operation
+  std::string conflictDocumentKey;
+    
+  // normally we will go into this while loop just once. only in the very exceptional case
+  // that there is a unique constraint violation in one of the secondary indexes we will
+  // get into the while loop a second time
+  int tries = 0;
+  while (tries++ < 10) {
+    if (!conflictDocumentKey.empty()) {
+      // a rather exceptional case in which we have to remove a conflicting document,
+      // which is conflicting with the to-be-inserted document in one the unique
+      // secondary indexes
 
-  // standalone operation
-  // update the apply tick for all standalone operations
-  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
-                                  coll->cid(), AccessMode::Type::EXCLUSIVE);
+      // intentionally ignore the return code here, as the operation will be followed
+      // by yet another insert/replace
+      removeSingleDocument(coll, conflictDocumentKey);
+      conflictDocumentKey.clear();
+    }
+    
+    // standalone operation
+    // update the apply tick for all standalone operations
+    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
+                                    coll->cid(), AccessMode::Type::EXCLUSIVE);
 
-  if (_supportsSingleOperations) {
-    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+    if (_supportsSingleOperations) {
+      trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+    }
+
+    Result res = trx.begin();
+
+    // fix error handling here when function returns result
+    if (!res.ok()) {
+      return Result(res.errorNumber(),
+                    std::string("unable to create replication transaction: ") +
+                        res.errorMessage());
+    }
+
+    std::string collectionName = trx.name();
+
+    res = applyCollectionDumpMarker(trx, coll, type, old, doc);
+    
+    if (res.is(TRI_ERROR_ARANGO_TRY_AGAIN)) {
+      // TRY_AGAIN we will only be getting when there is a conflicting document.
+      // the key of the conflicting document can be found in the errorMessage
+      // of the result :-|
+      TRI_ASSERT(type != REPLICATION_MARKER_REMOVE);
+      TRI_ASSERT(!res.errorMessage().empty());
+      conflictDocumentKey = std::move(res.errorMessage());
+      // restart the while loop above
+      continue;
+    }
+
+    if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
+      // ignore unique constraint violations for system collections
+      res.reset();
+    }
+
+    // fix error handling here when function returns result
+    if (res.ok()) {
+      res = trx.commit();
+
+      if (res.ok() && collectionName == TRI_COL_NAME_USERS) {
+        _usersModified = true;
+      }
+    }
+
+    return res;
   }
+  
+  return Result(TRI_ERROR_INTERNAL, "invalid state reached in processDocument");
+}
+
+Result TailingSyncer::removeSingleDocument(LogicalCollection* coll, std::string const& key) {
+  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(coll->vocbase()),
+                                  coll->name(), AccessMode::Type::EXCLUSIVE);
+
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
-
-  // fix error handling here when function returns result
-  if (!res.ok()) {
-    return Result(res.errorNumber(),
-                  std::string("unable to create replication transaction: ") +
-                      res.errorMessage());
+  if (res.fail()) {
+    return res;
   }
 
-  std::string collectionName = trx.name();
-
-  res = applyCollectionDumpMarker(trx, coll, type, old, doc);
-  if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
-    // ignore unique constraint violations for system collections
-    res.reset();
+  OperationOptions options;
+  options.silent = true;
+  options.ignoreRevs = true;
+  options.isRestore = true;
+            
+  VPackBuilder tmp;
+  tmp.add(VPackValue(key));
+  
+  OperationResult opRes = trx.remove(coll->name(), tmp.slice(), options);
+  if (opRes.fail()) {
+    return opRes.result;
   }
-
-  // fix error handling here when function returns result
-  if (res.ok()) {
-    res = trx.commit();
-
-    if (res.ok() && collectionName == TRI_COL_NAME_USERS) {
-      _usersModified = true;
-    }
-  }
-
-  return res;
+  
+  return trx.commit();
 }
 
 /// @brief starts a transaction, based on the VelocyPack provided
@@ -921,6 +983,8 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
 /// catches exceptions
 Result TailingSyncer::run() {
   try {
+    TRI_DEFER(abortOngoingTransactions());
+
     return runInternal();
   } catch (arangodb::basics::Exception const& ex) {
     return Result(ex.code(),
@@ -950,6 +1014,9 @@ Result TailingSyncer::runInternal() {
   uint64_t shortTermFailsInRow = 0;
 
 retry:
+  // just to be sure we are starting/restarting from a clean state
+  abortOngoingTransactions();
+
   double const start = TRI_microtime();
 
   Result res;
@@ -1092,7 +1159,7 @@ retry:
           // message only makes sense if there's at least one retry
           LOG_TOPIC(WARN, Logger::REPLICATION)
               << "aborting automatic resynchronization for database '" << _databaseName
-              << "' after " << _configuration._autoResyncRetries << " retries";
+              << "' after " << _configuration._autoResyncRetries << " short-term retries";
         } else {
           LOG_TOPIC(WARN, Logger::REPLICATION)
               << "aborting automatic resynchronization for database '"
@@ -1128,6 +1195,7 @@ retry:
               << lastLogTick;
           _initialTick = lastLogTick;
           _useTick = true;
+          _applier->markThreadTailing();
           goto retry;
         }
         res.reset(r.errorNumber(), r.errorMessage());
@@ -1404,6 +1472,7 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tic
 
   if (!fromIncluded && _requireFromPresent && fromTick > 0 &&
       (!simulate32Client() || fromTick != readTick)) {
+    abortOngoingTransactions();
     return Result(
         TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,
         std::string("required init tick value '") + StringUtils::itoa(fromTick) +
@@ -1593,6 +1662,7 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
 
   if (!fromIncluded && _requireFromPresent && fetchTick > 0 &&
       (!simulate32Client() || originalFetchTick != tick)) {
+    abortOngoingTransactions();
     return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,
                   std::string("required follow tick value '") + StringUtils::itoa(fetchTick) +
                       "' is not present (anymore?) on master at " + _masterInfo._endpoint +

@@ -89,11 +89,12 @@ void ReplicationApplierState::reset(bool resetState) {
   _lastError.reset();
 
   _failedConnects = 0;
-  _totalRequests = 0;
-  _totalFailedConnects = 0;
-  _totalEvents = 0;
-  _totalResyncs = 0;
-  _skippedOperations = 0;
+  // intentionally do not reset the following counters
+  // _totalRequests = 0;
+  // _totalFailedConnects = 0;
+  // _totalEvents = 0;
+  // _totalResyncs = 0;
+  // _skippedOperations = 0;
 
   if (resetState) {
     _phase = ActivityPhase::INACTIVE;
