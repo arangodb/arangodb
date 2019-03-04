@@ -536,7 +536,7 @@ class ClusterInfo {
 
   virtual std::unordered_map<ServerID, std::string> getServerAliases();
 
- private:
+private:
   void loadClusterId();
 
   //////////////////////////////////////////////////////////////////////////////

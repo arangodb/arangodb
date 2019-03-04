@@ -1518,7 +1518,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   arangodb::aql::Query logQuery(false, _vocbase, aql::QueryString(querystr), bindVars,
                              nullptr, arangodb::aql::PART_MAIN);
 
-  aql::QueryResult logQueryResult = logQuery.executeSync(_queryRegistry);
+  aql::QueryResult logQueryResult = logQuery.execute(_queryRegistry);
 
   if (logQueryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(logQueryResult.code, logQueryResult.details);
@@ -1546,10 +1546,10 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
       = "FOR c in compact FILTER c._key >= '" + firstIndex +
         "' SORT c._key LIMIT 1 RETURN c";
 
-    arangodb::aql::Query compQuery(false, *_vocbase, aql::QueryString(compstr),
+    arangodb::aql::Query compQuery(false, _vocbase, aql::QueryString(compstr),
                                bindVars, nullptr, arangodb::aql::PART_MAIN);
 
-    aql::QueryResult compQueryResult = compQuery.executeSync(_queryRegistry);
+    aql::QueryResult compQueryResult = compQuery.execute(_queryRegistry);
 
     if (compQueryResult.code != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION_MESSAGE(compQueryResult.code, compQueryResult.details);

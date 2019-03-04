@@ -2994,31 +2994,6 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
   return ret;
 }
 
-std::unordered_map<ServerID, std::string> ClusterInfo::getServerAdvertisedEndpoints() {
-  READ_LOCKER(readLocker, _serversProt.lock);
-  std::unordered_map<std::string, std::string> ret;
-  for (const auto& i : _serverAdvertisedEndpoints) {
-    ret.emplace(i.second, i.first);
-  }
-  return ret;
-}
-
-arangodb::Result ClusterInfo::getShardServers(ShardID const& shardId,
-                                              std::vector<ServerID>& servers) {
-  READ_LOCKER(readLocker, _planProt.lock);
-
-  auto it = _shardServers.find(shardId);
-  if (it != _shardServers.end()) {
-    servers = (*it).second;
-    return arangodb::Result();
-  }
-
-  LOG_TOPIC(DEBUG, Logger::CLUSTER)
-      << "Strange, did not find shard in _shardServers: " << shardId;
-  return arangodb::Result(TRI_ERROR_FAILED);
-}
-
-
 arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
 
   AgencyCommResult dump = _agency.dump();
