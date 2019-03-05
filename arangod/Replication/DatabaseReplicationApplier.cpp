@@ -57,7 +57,7 @@ DatabaseReplicationApplier::DatabaseReplicationApplier(ReplicationApplierConfigu
 
 DatabaseReplicationApplier::~DatabaseReplicationApplier() {
   try {
-    stop();
+    stopAndJoin();
   } catch (...) {
   }
 }
