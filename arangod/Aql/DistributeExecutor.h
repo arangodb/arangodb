@@ -47,7 +47,8 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlockWithClients {
   ExecutionBlockImpl(ExecutionEngine* engine, DistributeNode const* node,
                      ExecutorInfos&& infos, std::vector<std::string> const& shardIds,
                      Collection const* collection, RegisterId regId,
-                     RegisterId alternativeRegId, bool allowSpecifiedKeys);
+                     RegisterId alternativeRegId, bool allowSpecifiedKeys,
+                     bool allowKeyConversionToObject, bool createKeys);
 
   ~ExecutionBlockImpl() override = default;
 
@@ -136,6 +137,10 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlockWithClients {
 
   /// @brief allow specified keys even in non-default sharding case
   bool _allowSpecifiedKeys;
+
+  bool _allowKeyConversionToObject;
+
+  bool _createKeys;
 };
 
 }  // namespace aql

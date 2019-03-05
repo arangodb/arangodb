@@ -305,8 +305,8 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
   }
 
   return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(
-      &engine, this, std::move(infos), clients(), collection(), regId,
-      alternativeRegId, _allowSpecifiedKeys);
+      &engine, this, std::move(infos), clients(), collection(), regId, alternativeRegId,
+      _allowSpecifiedKeys, _allowKeyConversionToObject, _createKeys);
 }
 
 /// @brief toVelocyPack, for DistributedNode

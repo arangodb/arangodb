@@ -34,7 +34,8 @@ using namespace arangodb::aql;
 ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(
     ExecutionEngine* engine, DistributeNode const* node, ExecutorInfos&& infos,
     std::vector<std::string> const& shardIds, Collection const* collection,
-    RegisterId regId, RegisterId alternativeRegId, bool allowSpecifiedKeys)
+    RegisterId regId, RegisterId alternativeRegId, bool allowSpecifiedKeys,
+    bool allowKeyConversionToObject, bool createKeys)
     : BlockWithClients(engine, node, shardIds),
       _infos(std::move(infos)),
       _query(*engine->getQuery()),
@@ -42,7 +43,9 @@ ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(
       _index(0),
       _regId(regId),
       _alternativeRegId(alternativeRegId),
-      _allowSpecifiedKeys(allowSpecifiedKeys) {
+      _allowSpecifiedKeys(allowSpecifiedKeys),
+      _allowKeyConversionToObject(allowKeyConversionToObject),
+      _createKeys(createKeys) {
   _usesDefaultSharding = collection->usesDefaultSharding();
 }
 
@@ -287,8 +290,7 @@ size_t ExecutionBlockImpl<DistributeExecutor>::sendToClient(AqlItemBlock* cur) {
   VPackSlice value = input;
   bool hasCreatedKeyAttribute = false;
 
-  if (input.isString() &&
-      ExecutionNode::castTo<DistributeNode const*>(_exeNode)->_allowKeyConversionToObject) {
+  if (input.isString() && _allowKeyConversionToObject) {
     _keyBuilder.clear();
     _keyBuilder.openObject(true);
     _keyBuilder.add(StaticStrings::KeyString, input);
@@ -308,7 +310,7 @@ size_t ExecutionBlockImpl<DistributeExecutor>::sendToClient(AqlItemBlock* cur) {
 
   TRI_ASSERT(value.isObject());
 
-  if (ExecutionNode::castTo<DistributeNode const*>(_exeNode)->_createKeys) {
+  if (_createKeys) {
     bool buildNewObject = false;
     // we are responsible for creating keys if none present
 
