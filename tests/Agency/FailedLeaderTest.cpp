@@ -58,6 +58,8 @@ const std::string SHARD_FOLLOWER2 = "follower2";
 const std::string FREE_SERVER = "free";
 const std::string FREE_SERVER2 = "free2";
 
+bool aborts = false;
+
 const char *agency =
 #include "FailedLeaderTest.json"
 ;
@@ -224,7 +226,7 @@ SECTION("if we want to start and the collection went missing from plan (our trut
     JOB_STATUS::TODO,
     jobId
   );
-  failedLeader.start();
+  failedLeader.start(aborts);
 }
 
 SECTION("if we are supposed to fail a distributeShardsLike job we immediately fail because this should be done by a job running on the master shard") {
@@ -280,7 +282,7 @@ SECTION("if we are supposed to fail a distributeShardsLike job we immediately fa
     JOB_STATUS::TODO,
     jobId
   );
-  failedLeader.start();
+  failedLeader.start(aborts);
 }
 
 SECTION("if the leader is healthy again we fail the job") {
@@ -337,7 +339,7 @@ SECTION("if the leader is healthy again we fail the job") {
     JOB_STATUS::TODO,
     jobId
   );
-  REQUIRE_FALSE(failedLeader.start());
+  REQUIRE_FALSE(failedLeader.start(aborts));
   Verify(Method(mockAgent, transact));
   Verify(Method(mockAgent, write)).Exactly(Once);
 }
@@ -383,7 +385,7 @@ SECTION("the job must not be started if there is no server that is in sync for e
     JOB_STATUS::TODO,
     jobId
   );
-  REQUIRE_FALSE(failedLeader.start());
+  REQUIRE_FALSE(failedLeader.start(aborts));
 }
 
 SECTION("the job must not be started if there if one of the linked shards (distributeShardsLike) is not in sync") {
@@ -444,10 +446,10 @@ SECTION("the job must not be started if there if one of the linked shards (distr
     JOB_STATUS::TODO,
     jobId
   );
-  failedLeader.start();
+  failedLeader.start(aborts);
 }
 
-SECTION("abort any moveShard job blocking the shard and start") {
+SECTION("abort any moveShard job blocking the shard and stay in ToDo") {
   Mock<AgentInterface> moveShardMockAgent;
 
   Builder moveShardBuilder;
@@ -518,13 +520,6 @@ SECTION("abort any moveShard job blocking the shard and start") {
     return fakeWriteResult;
   });
 
-  When(Method(mockAgent, transact)).Do([&](query_t const& q) -> trans_ret_t {
-    // check that the job is now pending
-    INFO("Transaction: " << q->slice().toJson());
-    auto writes = q->slice()[0][0];
-    REQUIRE(std::string(writes.get("/arango/Target/Pending/1").typeName()) == "object");
-    return fakeTransResult;
-  });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
   auto failedLeader = FailedLeader(
@@ -533,8 +528,7 @@ SECTION("abort any moveShard job blocking the shard and start") {
     JOB_STATUS::TODO,
     jobId
   );
-  failedLeader.start();
-  Verify(Method(mockAgent, transact));
+  REQUIRE_FALSE(failedLeader.start(aborts));
   Verify(Method(mockAgent, write));
 }
 
@@ -637,7 +631,7 @@ SECTION("if everything is fine than the job should be written to pending, adding
     JOB_STATUS::TODO,
     jobId
   );
-  failedLeader.start();
+  failedLeader.start(aborts);
 }
 
 SECTION("if we want are working and our collection went missing from plan the job should just finish") {
@@ -707,7 +701,7 @@ SECTION("if we want are working and our collection went missing from plan the jo
     JOB_STATUS::PENDING,
     jobId
   );
-  failedLeader.run();
+  failedLeader.run(aborts);
 }
 
 SECTION("if the newly supposed leader didn't catch up yet we wait") {
@@ -767,7 +761,7 @@ SECTION("if the newly supposed leader didn't catch up yet we wait") {
     JOB_STATUS::PENDING,
     jobId
   );
-  failedLeader.run();
+  failedLeader.run(aborts);
 }
 
 SECTION("in case of a timeout the job should be aborted") {
@@ -845,7 +839,7 @@ SECTION("in case of a timeout the job should be aborted") {
     JOB_STATUS::PENDING,
     jobId
   );
-  failedLeader.run();
+  failedLeader.run(aborts);
   Verify(Method(mockAgent, write));
 }
 
@@ -924,7 +918,7 @@ SECTION("when everything is finished there should be proper cleanup") {
     JOB_STATUS::PENDING,
     jobId
   );
-  failedLeader.run();
+  failedLeader.run(aborts);
   Verify(Method(mockAgent, write));
 }
 
@@ -984,7 +978,7 @@ SECTION("a failedleader must not take a follower into account that is in sync bu
     JOB_STATUS::TODO,
     jobId
   );
-  failedLeader.start();
+  failedLeader.start(aborts);
 }
 }
 }

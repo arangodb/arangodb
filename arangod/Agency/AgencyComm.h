@@ -631,6 +631,8 @@ class AgencyComm {
 
   std::string version();
 
+  AgencyCommResult dump();
+
   bool increaseVersion(std::string const& key) {
     AgencyCommResult result = increment(key);
     return result.successful();

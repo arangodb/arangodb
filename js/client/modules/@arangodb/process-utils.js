@@ -851,6 +851,15 @@ function checkArangoAlive (arangod, options) {
 }
 
 function checkInstanceAlive (instanceInfo, options) {
+  if (options.activefailover && instanceInfo.hasOwnProperty('authOpts')) {
+    let d = detectCurrentLeader(instanceInfo);
+    if (instanceInfo.endpoint !== d.endpoint) {
+      print('failover has happened, leader is no more! Marking Crashy!');
+      serverCrashedLocal = true;
+      return false;
+    }
+  }
+  
   return instanceInfo.arangods.reduce((previous, arangod) => {
     return previous && checkArangoAlive(arangod, options);
   }, true);
@@ -1010,6 +1019,16 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     forceTerminate = false;
   }
 
+  // we need to find the leading server
+  if (options.activefailover) {
+    let d = detectCurrentLeader(instanceInfo);
+    if (instanceInfo.endpoint !== d.endpoint) {
+      print('failover has happened, leader is no more! Marking Crashy!');
+      serverCrashedLocal = true;
+      forceTerminate = true;
+    }
+  }
+
   if (!checkInstanceAlive(instanceInfo, options)) {
     print('Server already dead, doing nothing. This shouldn\'t happen?');
   }
@@ -1161,6 +1180,35 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
   cleanupDirectories.unshift(instanceInfo.rootDir);
 }
 
+function detectCurrentLeader(instanceInfo) {
+  let opts = {
+    method: 'POST',
+    jwt: crypto.jwtEncode(instanceInfo.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256'),
+    headers: {'content-type': 'application/json' }
+  };
+  let reply = download(instanceInfo.agencyUrl + '/_api/agency/read', '[["/arango/Plan/AsyncReplication/Leader"]]', opts);
+
+  if (!reply.error && reply.code === 200) {
+    let res = JSON.parse(reply.body);
+    //internal.print("Response ====> " + reply.body);
+    let leader = res[0].arango.Plan.AsyncReplication.Leader;
+    if (!leader) {
+      throw "Leader is not selected";
+    }
+  }
+
+  opts['method'] = 'GET';
+  reply = download(instanceInfo.url + '/_api/cluster/endpoints', '', opts);
+  let res = JSON.parse(reply.body);
+  let leader = res.endpoints[0].endpoint;
+  let leaderInstance;
+  instanceInfo.arangods.forEach(d => {
+    if (d.endpoint === leader) {
+      leaderInstance = d;
+    }
+  });
+  return leaderInstance;
+}
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief starts an instance
 // /
@@ -1194,7 +1242,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
   startInstanceAgency(instanceInfo, protocol, options, ...makeArgs('agency', 'agency', {}));
 
   let agencyEndpoint = instanceInfo.endpoint;
-  let agencyUrl = instanceInfo.url;
+  instanceInfo.agencyUrl = instanceInfo.url;
   if (!checkInstanceAlive(instanceInfo, options)) {
     throw new Error('startup of agency failed! bailing out!');
   }
@@ -1250,9 +1298,9 @@ function startInstanceCluster (instanceInfo, protocol, options,
   httpOptions.returnBodyOnError = true;
 
   // scrape the jwt token
-  let authOpts = _.clone(options);
-  if (addArgs['server.jwt-secret'] && !authOpts['server.jwt-secret']) {
-    authOpts['server.jwt-secret'] = addArgs['server.jwt-secret'];
+  instanceInfo.authOpts = _.clone(options);
+  if (addArgs['server.jwt-secret'] && !instanceInfo.authOpts['server.jwt-secret']) {
+    instanceInfo.authOpts['server.jwt-secret'] = addArgs['server.jwt-secret'];
   }
 
   let count = 0;
@@ -1260,7 +1308,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
     ++count;
 
     instanceInfo.arangods.forEach(arangod => {
-      const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(authOpts));
+      const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(instanceInfo.authOpts));
       if (!reply.error && reply.code === 200) {
         arangod.upAndRunning = true;
         return true;
@@ -1304,32 +1352,12 @@ function startInstanceCluster (instanceInfo, protocol, options,
   // we need to find the leading server
   if (options.activefailover) {
     internal.wait(5.0, false);
-    let opts = {
-      method: 'POST',
-      jwt: crypto.jwtEncode(authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256'),
-      headers: {'content-type': 'application/json' }
-    };
-    let reply = download(agencyUrl + '/_api/agency/read', '[["/arango/Plan/AsyncReplication/Leader"]]', opts);
-
-    if (!reply.error && reply.code === 200) {
-      let res = JSON.parse(reply.body);
-      //internal.print("Response ====> " + reply.body);
-      let leader = res[0].arango.Plan.AsyncReplication.Leader;
-      if (!leader) {
-        throw "Leader is not selected";
-      }
+    let d = detectCurrentLeader(instanceInfo);
+    if (d === undefined) {
+      throw "failed to detect a leader";
     }
-
-    opts['method'] = 'GET';
-    reply = download(instanceInfo.url + '/_api/cluster/endpoints', '', opts);
-    let res = JSON.parse(reply.body);
-    let leader = res.endpoints[0].endpoint;
-    instanceInfo.arangods.forEach(d => {
-      if (d.endpoint === leader) {
-        instanceInfo.endpoint = d.endpoint;
-        instanceInfo.url = d.url;
-      }
-    });
+    instanceInfo.endpoint = d.endpoint;
+    instanceInfo.url = d.url;
   }
 
   arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
