@@ -1148,6 +1148,20 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
   TRI_vocbase_t const& systemVocbase, // the system vocbase for use with empty prefix
   bool expandVocbasePrefix /*= true*/ // use full vocbase name as prefix for active/system v.s. EMPTY/'::'
 ) {
+  if (IDENTITY_ANALYZER_NAME == name) {
+    return name; // special case for the 'identity' analyzer which is a singleton
+  }
+
+  // FIXME TODO remove once lagacy analyzers will be added to each vocbase via an upgrade step and JavaScript tests updated accordingly
+  {
+    static std::unordered_set<std::string> legacyAnalyzers = {
+      "text_de", "text_en", "text_es", "text_fi", "text_fr", "text_it", "text_nl", "text_no", "text_pt", "text_ru", "text_sv", "text_zh"
+    };
+    if (legacyAnalyzers.find(name) != legacyAnalyzers.end()) {
+      return name;
+    }
+  }
+
   auto split = splitAnalyzerName(name);
 
   if (expandVocbasePrefix) {

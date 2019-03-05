@@ -134,19 +134,15 @@ struct IResearchLinkMeta {
   ///        or (if 'mask' != nullptr) values in 'mask' that are set to false
   ///        elements are appended to an existing object
   ///        return success or set TRI_set_errno(...) and return false
+  /// @param defaultVocbase fallback vocbase for analyzer name normalization
+  ///                       nullptr == do not normalize
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::velocypack::Builder& builder,
-            IResearchLinkMeta const* ignoreEqual = nullptr, Mask const* mask = nullptr) const;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief fill and return a JSON description of a IResearchLinkMeta object
-  ///        do not fill values identical to ones available in 'ignoreEqual'
-  ///        or (if 'mask' != nullptr) values in 'mask' that are set to false
-  ///        elements are appended to an existing object
-  ///        return success or set TRI_set_errno(...) and return false
-  ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::velocypack::ObjectBuilder const& builder,
-            IResearchLinkMeta const* ignoreEqual = nullptr, Mask const* mask = nullptr) const;
+  bool json( // append meta jSON
+    arangodb::velocypack::Builder& builder, // output buffer (out-param)
+    IResearchLinkMeta const* ignoreEqual = nullptr, // values to ignore if equal
+    TRI_vocbase_t const* defaultVocbase = nullptr, // fallback vocbase
+    Mask const* mask = nullptr // values to ignore always
+  ) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this iResearch Link meta

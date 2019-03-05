@@ -666,6 +666,20 @@ SECTION("test_normalize") {
   TRI_vocbase_t active(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "active");
   TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "system");
 
+  // normalize 'identity' (with prefix)
+  {
+    irs::string_ref analyzer = "identity";
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, true);
+    CHECK((std::string("identity") == normalized));
+  }
+
+  // normalize 'identity' (without prefix)
+  {
+    irs::string_ref analyzer = "identity";
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, true);
+    CHECK((std::string("identity") == normalized));
+  }
+
   // normalize NIL (with prefix)
   {
     irs::string_ref analyzer = irs::string_ref::NIL;

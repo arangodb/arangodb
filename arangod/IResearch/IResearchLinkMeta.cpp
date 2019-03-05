@@ -387,10 +387,12 @@ bool IResearchLinkMeta::init( // initialize meta
   return true;
 }
 
-bool IResearchLinkMeta::json(arangodb::velocypack::Builder& builder,
-                             IResearchLinkMeta const* ignoreEqual /*= nullptr*/,
-                             Mask const* mask /*= nullptr*/
-                             ) const {
+bool IResearchLinkMeta::json( // append meta jSON
+    arangodb::velocypack::Builder& builder, // output buffer (out-param)
+    IResearchLinkMeta const* ignoreEqual /*= nullptr*/, // values to ignore if equal
+    TRI_vocbase_t const* defaultVocbase /*= nullptr*/, // fallback vocbase
+    Mask const* mask /*= nullptr*/ // values to ignore always
+) const {
   if (!builder.isOpenObject()) {
     return false;
   }
@@ -402,8 +404,27 @@ bool IResearchLinkMeta::json(arangodb::velocypack::Builder& builder,
     analyzersBuilder.openArray();
 
     for (auto& entry : _analyzers) {
-      if (entry) {  // skip null analyzers
-        analyzersBuilder.add(arangodb::velocypack::Value(entry->name()));
+      if (!entry) {
+        continue; // skip null analyzers
+      }
+
+      if (defaultVocbase) {
+        auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
+          arangodb::SystemDatabaseFeature // featue type
+        >();
+        auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
+
+        if (!sysVocbase) {
+          return false;
+        }
+
+        analyzersBuilder.add(arangodb::velocypack::Value(
+          IResearchAnalyzerFeature::normalize( // normalize
+            entry->name(), *defaultVocbase, *sysVocbase, false // args
+          ) // normalized value
+        ));
+      } else {
+        analyzersBuilder.add(arangodb::velocypack::Value(entry->name())); // verbatim (assume already normalized)
       }
     }
 
@@ -412,30 +433,28 @@ bool IResearchLinkMeta::json(arangodb::velocypack::Builder& builder,
   }
 
   if (!mask || mask->_fields) {  // fields are not inherited from parent
+    arangodb::velocypack::Builder fieldBuilder;
     arangodb::velocypack::Builder fieldsBuilder;
+    Mask fieldMask(true); // output all non-matching fields
+    auto subDefaults = *this; // make modifable copy
 
-    {
-      arangodb::velocypack::ObjectBuilder fieldsBuilderWrapper(&fieldsBuilder);
-      arangodb::velocypack::Builder fieldBuilder;
-      Mask mask(true);  // output all non-matching fields
-      auto subDefaults = *this;
-
-      subDefaults._fields.clear();  // do not inherit fields and overrides
-                                    // overrides from this field
+    subDefaults._fields.clear(); // do not inherit fields and overrides from this field
+    fieldsBuilder.openObject();
 
       for (auto& entry : _fields) {
-        mask._fields = !entry.value()->_fields.empty();  // do not output empty fields on subobjects
+        fieldMask._fields = !entry.value()->_fields.empty(); // do not output empty fields on subobjects
+        fieldBuilder.openObject();
 
-        if (!entry.value()->json(arangodb::velocypack::ObjectBuilder(&fieldBuilder),
-                                 &subDefaults, &mask)) {
-          return false;
-        }
+          if (!entry.value()->json(fieldBuilder, &subDefaults, defaultVocbase, &fieldMask)) {
+            return false;
+          }
 
-        fieldsBuilderWrapper->add(entry.key(), fieldBuilder.slice());
+        fieldBuilder.close();
+        fieldsBuilder.add(entry.key(), fieldBuilder.slice());
         fieldBuilder.clear();
       }
-    }
 
+    fieldsBuilder.close();
     builder.add("fields", fieldsBuilder.slice());
   }
 
@@ -471,13 +490,6 @@ bool IResearchLinkMeta::json(arangodb::velocypack::Builder& builder,
   }
 
   return true;
-}
-
-bool IResearchLinkMeta::json(arangodb::velocypack::ObjectBuilder const& builder,
-                             IResearchLinkMeta const* ignoreEqual /*= nullptr*/,
-                             Mask const* mask /*= nullptr*/
-                             ) const {
-  return builder.builder && json(*(builder.builder), ignoreEqual, mask);
 }
 
 size_t IResearchLinkMeta::memory() const noexcept {
