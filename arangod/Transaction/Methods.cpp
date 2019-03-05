@@ -1003,7 +1003,6 @@ Result transaction::Methods::abort() {
     if (res.fail()) {  // do not commit locally
       LOG_TOPIC(WARN, Logger::TRANSACTIONS)
       << "failed to abort on subordinates: " << res.errorMessage();
-      return res;
     }
   }
 
@@ -3324,8 +3323,9 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
     return res;
   }
   
-  if (_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
-      (_state->isDBServer() && _state->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL))) {
+  // begin a consistent transaction on all followers
+  if (_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+    // FIXME: we should be able to begin a transaction via a header
     auto const& followerInfo = collection.followers();
     res = ClusterMethods::beginTransactionOnFollowers(*this, *followerInfo, *followers);
     if (res.fail()) {

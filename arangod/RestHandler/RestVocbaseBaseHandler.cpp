@@ -555,7 +555,7 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
     TRI_ASSERT(mgr != nullptr);
     
     if (pos > 0 && pos < value.size()) {
-      if (value.compare(pos, std::string::npos, " begin aql") == 0) {
+      if (value.compare(pos, std::string::npos, " aql") == 0) {
         auto ctx = std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
         return std::make_unique<SingleCollectionTransaction>(ctx, name, type);
       } else if (value.compare(pos, std::string::npos, " begin") == 0) {
@@ -563,7 +563,7 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
         if (found) {
           auto trxOpts = VPackParser::fromJson(value);
           Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());;
-          if (!res.fail()) {
+          if (res.fail()) {
             THROW_ARANGO_EXCEPTION(res);
           }
         } else {
@@ -604,7 +604,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createAQLTransacti
     TRI_ASSERT(mgr != nullptr);
     
     if (pos > 0 && pos < value.size()) {
-      if (value.compare(pos, std::string::npos, " begin aql") == 0) {
+      if (value.compare(pos, std::string::npos, " aql") == 0) {
         return std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
       }
 //      else if (value.compare(pos, std::string::npos, " begin") == 0) {
@@ -612,7 +612,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createAQLTransacti
 //        if (found) {
 //          auto trxOpts = VPackParser::fromJson(value);
 //          Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());;
-//          if (!res.fail()) {
+//          if (res.fail()) {
 //            THROW_ARANGO_EXCEPTION(res);
 //          }
 //        } else {

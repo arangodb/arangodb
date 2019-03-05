@@ -192,10 +192,10 @@ class TransactionState {
   bool isOnlyExclusiveTransaction() const;
   
   /// @brief servers already contacted
-  arangodb::HashSet<std::string> const& servers() const {
+  std::set<std::string> const& servers() const {
     return _servers;
   }
-  
+
   bool knowsServer(std::string const& uuid) const {
     return _servers.find(uuid) != _servers.end();
   }
@@ -243,7 +243,8 @@ protected:
   std::map<void const*, Cookie::ptr> _cookies;
   
   /// @brief servers we already talked to for this transactions
-  arangodb::HashSet<std::string> _servers;
+  //arangodb::HashSet<std::string> _servers;
+  std::set<std::string> _servers;
   
   /// @brief reference counter of # of 'Methods' instances using this object
   std::atomic<int> _nestingLevel;

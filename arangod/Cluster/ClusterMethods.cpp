@@ -961,13 +961,16 @@ int countOnCoordinator(transaction::Methods& trx, std::string const& cname,
   if (collinfo == nullptr) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-
+  
   std::shared_ptr<ShardMap> shards = collinfo->shardIds();
   std::vector<ClusterCommRequest> requests;
   auto body = std::make_shared<std::string>();
-  for (auto const& p : *shards) {
+  for (std::pair<ShardID, std::vector<ServerID>> const& p : *shards) {
     auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-    addTransactionHeaderForShard(trx, *shards, p.first, *headers);
+    // workaround to avoid adding a trx header during AQL optimization
+    if (!p.second.empty() && trx.state()->knowsServer(p.second[0])) {
+      addTransactionHeaderForShard(trx, *shards, p.first, *headers);
+    }
     requests.emplace_back("shard:" + p.first, arangodb::rest::RequestType::GET,
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               "/_api/collection/" +
@@ -1545,11 +1548,14 @@ Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string co
   // We have to contact everybody:
   std::shared_ptr<ShardMap> shards = collinfo->shardIds();
 
+  const bool global = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   // lazily begin transactions on leaders
-  if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+  if (global) {
     std::vector<ServerID> leaders;
     for (auto const& shardServers : *shards) {
-      leaders.emplace_back(shardServers.second[0]);
+      if (!trx.state()->knowsServer(shardServers.second[0])) {
+        leaders.emplace_back(shardServers.second[0]);
+      }
     }
     Result res = ClusterMethods::beginTransactionOnLeaders(*trx.state(), leaders);
     if (res.fail()) {
@@ -1561,7 +1567,9 @@ Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string co
   std::unordered_map<std::string, std::string> headers;
   for (auto const& p : *shards) {
     std::unordered_map<std::string, std::string> headers;
-    addTransactionHeaderForShard(trx, *shards, /*shard*/p.first, headers);
+    if (global) {
+      addTransactionHeaderForShard(trx, *shards, /*shard*/p.first, headers);
+    }
     cc->asyncRequest(coordTransactionID, "shard:" + p.first,
                      arangodb::rest::RequestType::PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) +
@@ -2952,28 +2960,28 @@ void ClusterMethods::addTransactionHeader(transaction::Methods const& trx,
   }
   TRI_voc_tid_t tidPlus = state.id() + 1;
   TRI_ASSERT(tidPlus % 4 != 3);
-
+  
   std::string value = std::to_string(tidPlus);
   const bool addBegin = !state.knowsServer(server);
   if (addBegin) {
     TRI_ASSERT(state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
-    value.append(" begin aql");
-//    if (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-//      value.append(" begin");
-//      VPackBuilder builder;
-//      ::buildTransactionBody(state, server, builder);
-//      headers.emplace(StaticStrings::TransactionBody, builder.toJson());
-//    } else { // This is a single AQL query
-//      TRI_ASSERT(state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
-//      if (state.isCoordinator()) {
-//        value.append(" begin aql"); // Leader TRX is a standalone aql query
-//      } else {
-//        value.append(" begin");
-//      }
-//    }
+    if (state.isCoordinator()) {
+      value.append(" aql"); // This is a single AQL query
+    } else if (transaction::isLeaderTransactionId(state.id())) {
+      TRI_ASSERT(state.isDBServer());
+      value.append(" begin");
+      VPackBuilder builder;
+      ::buildTransactionBody(state, server, builder);
+      headers.emplace(StaticStrings::TransactionBody, builder.toJson());
+    }
     // FIXME: only add server on a successful response ?
     state.addServer(server);  // remember server
   }
+  LOG_DEVEL << "adding trx header for " << server << " '" << value << "'";
+  if (!addBegin) {
+    std::this_thread::sleep_for(std::chrono::seconds(20));
+  }
+
   headers.emplace(arangodb::StaticStrings::TransactionId, std::move(value));
 }
 

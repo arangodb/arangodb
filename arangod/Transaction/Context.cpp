@@ -145,7 +145,7 @@ void transaction::Context::returnStringBuffer(basics::StringBuffer* stringBuffer
 
 /// @brief temporarily lease a std::string
 std::string* transaction::Context::leaseString() {
-  if (_stringBuffer == nullptr) {
+  if (_stdString == nullptr) {
     _stdString.reset(new std::string());
   } else {
     _stdString->clear();
