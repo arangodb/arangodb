@@ -340,22 +340,6 @@ std::string RocksDBHotBackup::getRocksDBPath() {
 } // RocksDBHotBackup::getRocksDBPath()
 
 
-/// @brief wrapper for easy unit testing
-bool RocksDBHotBackup::pauseRocksDB() {
-
-  return true; // rocksutils::globalRocksDB()->pauseRocksDB(std::chrono::seconds(_timeoutSeconds));
-
-} //  RocksDBHotBackup::pauseRocksDB
-
-
-/// @brief wrapper for easy unit testing
-bool RocksDBHotBackup::restartRocksDB() {
-
-  return true; // rocksutils::globalRocksDB()->restartRocksDB();
-
-} //  RocksDBHotBackup::restartRocksDB
-
-
 bool RocksDBHotBackup::holdRocksDBTransactions() {
 
   return TransactionManagerFeature::manager()->holdTransactions(_timeoutSeconds * 1000000);
@@ -368,6 +352,13 @@ void RocksDBHotBackup::releaseRocksDBTransactions() {
   TransactionManagerFeature::manager()->releaseTransactions();
 
 } // RocksDBHotBackup::releaseRocksDBTransactions()
+
+
+void RocksDBHotBackup::startGlobalShutdown() {
+
+  application_features::ApplicationServer::server->beginShutdown();
+
+} // RocksDBHotBackup::startGlobalShutdown
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -539,7 +530,7 @@ void RocksDBHotBackupCreate::executeCreate() {
 ///        POST:  Initiate restore of rocksdb snapshot in place of working directory
 ////////////////////////////////////////////////////////////////////////////////
 RocksDBHotBackupRestore::RocksDBHotBackupRestore(const VPackSlice body)
-  : RocksDBHotBackup(body), _saveCurrent(true), _forceRestore(true)
+  : RocksDBHotBackup(body), _saveCurrent(false)
 {
 }
 
@@ -566,8 +557,6 @@ void RocksDBHotBackupRestore::parseParameters(rest::RequestType const type) {
 
   // remaining params are optional
   getParamValue("saveCurrent", _saveCurrent, false);
-  getParamValue("forceRestore", _forceRestore, false);
-  getParamValue("timeout", _timeoutSeconds, false);
 
   //
   // extra validation
@@ -659,7 +648,7 @@ static int localRestoreAction() {
 /// @brief step through the restore procedures
 ///        (due to redesign, majority of work happens in subroutine createRestoringDirectory())
 void RocksDBHotBackupRestore::execute() {
-  std::string errors, restoringDir, rocksDBPath;
+  std::string errors, restoringDir, rocksDBPath, failsafeName;
   bool good = {false};
 
   /// Step 0. Take a global mutex, prevent two restores
@@ -674,15 +663,30 @@ void RocksDBHotBackupRestore::execute() {
     if (good) {
       /// Step 2. initiate shutdown and restart with new data directory
       restoreExistingPath = getRocksDBPath();
-      restoreFailsafePath = rebuildPath(dirFailsafeString);
+      if (_saveCurrent) {
+        restoreFailsafePath = buildDirectoryPath(timepointToString(std::chrono::system_clock::now()),
+                                                                   "before_restore");
+        failsafeName = TRI_Basename(restoreFailsafePath.c_str());
+      } else {
+        failsafeName=dirFailsafeString;
+        if (0==failsafeName.compare(_directoryRestore)) {
+          failsafeName += ".1";
+        } // if
+        restoreFailsafePath = rebuildPath(failsafeName);
+      };
       clearPath(restoreFailsafePath);
 
       restartAction = new std::function<int()>();
       *restartAction = localRestoreAction;
-      application_features::ApplicationServer::server->beginShutdown();
+      startGlobalShutdown();
       _success = true;
-      _result.add(VPackValue(VPackValueType::Object));
-      _result.close();
+
+      try {
+        _result.add(VPackValue(VPackValueType::Object));
+        _result.add("previous", VPackValue(failsafeName));
+        _result.close();
+      } catch (...) {
+      }
     } // if
   } else {
     // restartAction already populated, nothing we can do

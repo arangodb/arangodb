@@ -94,10 +94,9 @@ protected:
   ////////////////////////////////////////////////////////////////////////////////
   virtual std::string getDatabasePath();
   virtual std::string getPersistedId();
-  virtual bool pauseRocksDB();
-  virtual bool restartRocksDB();
   virtual bool holdRocksDBTransactions();
   virtual void releaseRocksDBTransactions();
+  virtual void startGlobalShutdown();
 
 };// class RocksDBHotBackup
 
@@ -161,7 +160,6 @@ public:
 protected:
 
   bool _saveCurrent;
-  bool _forceRestore;  // relates to transaction pause only, not rocksdb pause
   std::string _timestampCurrent;
   std::string _directoryRestore;
 
