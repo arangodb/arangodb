@@ -639,6 +639,9 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase, uint64_t ti
   uint64_t lastTick = tickStart;         // generally contains begin of last wb
   uint64_t lastWrittenTick = tickStart;  // contains end tick of last wb
   uint64_t lastScannedTick = tickStart;
+  
+  // prevent purging of WAL files while we are in here
+  RocksDBFilePurgePreventer purgePreventer(rocksutils::globalRocksEngine()->disallowPurging());
 
   // LOG_TOPIC(WARN, Logger::FIXME) << "1. Starting tailing: tickStart " <<
   // tickStart << " tickEnd " << tickEnd << " chunkSize " << chunkSize;//*/
