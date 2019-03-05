@@ -447,7 +447,7 @@ bool IResearchLinkMeta::json( // append meta jSON
           arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
         );
 
-          if (!entry.value()->json(fieldBuilder, &subDefaults, defaultVocbase, &fieldMask)) {
+          if (!entry.value()->json(fieldsBuilder, &subDefaults, defaultVocbase, &fieldMask)) {
             return false;
           }
 
