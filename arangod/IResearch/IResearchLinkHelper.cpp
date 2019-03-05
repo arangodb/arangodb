@@ -203,7 +203,7 @@ arangodb::Result modifyLinks(std::unordered_set<TRI_voc_cid_t>& modified,
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "request for removal of a stale link to a missing collection '" << id << "', ignoring";
 
-      continue; // skip adding removal requests to stale links to non-existant collections (already dropped)
+      continue; // skip adding removal requests to stale links to non-existent collections (already dropped)
     }
 
     linkModifications.emplace_back(collectionsToLock.size());

@@ -179,7 +179,7 @@ bool IResearchLinkMeta::init( // initialize meta
     IResearchLinkMeta const& defaults /*= DEFAULT()*/, // inherited defaults
     TRI_vocbase_t const* defaultVocbase /*= nullptr*/, // fallback vocbase
     Mask* mask /*= nullptr*/ // initialized fields (out-param)
-) noexcept {
+) {
   if (!slice.isObject()) {
     return false;
   }
@@ -410,7 +410,7 @@ bool IResearchLinkMeta::json( // append meta jSON
 
       if (defaultVocbase) {
         auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-          arangodb::SystemDatabaseFeature // featue type
+          arangodb::SystemDatabaseFeature // feature type
         >();
         auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
 
@@ -433,7 +433,6 @@ bool IResearchLinkMeta::json( // append meta jSON
   }
 
   if (!mask || mask->_fields) {  // fields are not inherited from parent
-    arangodb::velocypack::Builder fieldBuilder;
     arangodb::velocypack::Builder fieldsBuilder;
     Mask fieldMask(true); // output all non-matching fields
     auto subDefaults = *this; // make modifable copy
@@ -443,15 +442,16 @@ bool IResearchLinkMeta::json( // append meta jSON
 
       for (auto& entry : _fields) {
         fieldMask._fields = !entry.value()->_fields.empty(); // do not output empty fields on subobjects
-        fieldBuilder.openObject();
+        fieldsBuilder.add( // add sub-object
+          entry.key(), // field name
+          arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
+        );
 
           if (!entry.value()->json(fieldBuilder, &subDefaults, defaultVocbase, &fieldMask)) {
             return false;
           }
 
-        fieldBuilder.close();
-        fieldsBuilder.add(entry.key(), fieldBuilder.slice());
-        fieldBuilder.clear();
+        fieldsBuilder.close();
       }
 
     fieldsBuilder.close();

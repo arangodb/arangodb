@@ -126,7 +126,7 @@ struct IResearchLinkMeta {
     IResearchLinkMeta const& defaults = DEFAULT(), // inherited defaults
     TRI_vocbase_t const* defaultVocbase = nullptr, // fallback vocbase
     Mask* mask = nullptr // initialized fields (out-param)
-  ) noexcept;
+  );
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLinkMeta object
