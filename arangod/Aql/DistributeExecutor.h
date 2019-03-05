@@ -24,11 +24,12 @@
 #define ARANGOD_AQL_DISTRIBUTE_EXECUTOR_H
 
 #include "Aql/ClusterBlocks.h"
-#include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlockImpl.h"
 
 namespace arangodb {
 namespace aql {
+
+class DistributeNode;
 
 // The DistributeBlock is actually implemented by specializing
 // ExecutionBlockImpl, so this class only exists to identify the specialization.
@@ -45,7 +46,8 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlockWithClients {
   // some DistributeExecutorInfos class.
   ExecutionBlockImpl(ExecutionEngine* engine, DistributeNode const* node,
                      ExecutorInfos&& infos, std::vector<std::string> const& shardIds,
-                     Collection const* collection);
+                     Collection const* collection, RegisterId regId,
+                     RegisterId alternativeRegId, bool allowSpecifiedKeys);
 
   ~ExecutionBlockImpl() override = default;
 

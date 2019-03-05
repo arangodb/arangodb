@@ -278,10 +278,35 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
 
   ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
                       std::move(regsToKeep));
-  return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(&engine, this,
-                                                                  std::move(infos),
-                                                                  clients(),
-                                                                  collection());
+
+  RegisterId regId;
+  RegisterId alternativeRegId;
+
+  {  // set regId and alternativeRegId:
+
+    // get the variable to inspect . . .
+    VariableId varId = _variable->id;
+
+    // get the register id of the variable to inspect . . .
+    auto it = getRegisterPlan()->varInfo.find(varId);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    regId = (*it).second.registerId;
+
+    TRI_ASSERT(regId < ExecutionNode::MaxRegisterId);
+
+    if (_alternativeVariable != _variable) {
+      // use second variable
+      auto it = getRegisterPlan()->varInfo.find(_alternativeVariable->id);
+      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+      alternativeRegId = (*it).second.registerId;
+
+      TRI_ASSERT(alternativeRegId < ExecutionNode::MaxRegisterId);
+    }
+  }
+
+  return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(
+      &engine, this, std::move(infos), clients(), collection(), regId,
+      alternativeRegId, _allowSpecifiedKeys);
 }
 
 /// @brief toVelocyPack, for DistributedNode

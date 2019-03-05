@@ -33,36 +33,17 @@ using namespace arangodb::aql;
 
 ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(
     ExecutionEngine* engine, DistributeNode const* node, ExecutorInfos&& infos,
-    std::vector<std::string> const& shardIds, Collection const* collection)
+    std::vector<std::string> const& shardIds, Collection const* collection,
+    RegisterId regId, RegisterId alternativeRegId, bool allowSpecifiedKeys)
     : BlockWithClients(engine, node, shardIds),
       _infos(std::move(infos)),
       _query(*engine->getQuery()),
       _collection(collection),
       _index(0),
-      _regId(ExecutionNode::MaxRegisterId),
-      _alternativeRegId(ExecutionNode::MaxRegisterId),
-      _allowSpecifiedKeys(false) {
-  // get the variable to inspect . . .
-  VariableId varId = node->_variable->id;
-
-  // get the register id of the variable to inspect . . .
-  auto it = node->getRegisterPlan()->varInfo.find(varId);
-  TRI_ASSERT(it != node->getRegisterPlan()->varInfo.end());
-  _regId = (*it).second.registerId;
-
-  TRI_ASSERT(_regId < ExecutionNode::MaxRegisterId);
-
-  if (node->_alternativeVariable != node->_variable) {
-    // use second variable
-    auto it = node->getRegisterPlan()->varInfo.find(node->_alternativeVariable->id);
-    TRI_ASSERT(it != node->getRegisterPlan()->varInfo.end());
-    _alternativeRegId = (*it).second.registerId;
-
-    TRI_ASSERT(_alternativeRegId < ExecutionNode::MaxRegisterId);
-  }
-
+      _regId(regId),
+      _alternativeRegId(alternativeRegId),
+      _allowSpecifiedKeys(allowSpecifiedKeys) {
   _usesDefaultSharding = collection->usesDefaultSharding();
-  _allowSpecifiedKeys = node->_allowSpecifiedKeys;
 }
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<DistributeExecutor>::traceGetSomeEnd(
