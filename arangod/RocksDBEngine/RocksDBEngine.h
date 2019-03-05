@@ -42,6 +42,7 @@
 namespace rocksdb {
 
 class TransactionDB;
+class EncryptionProvider;
 }
 
 namespace arangodb {
@@ -295,6 +296,14 @@ class RocksDBEngine final : public StorageEngine {
  public:
   static std::string const EngineName;
   static std::string const FeatureName;
+
+  rocksdb::EncryptionProvider* encryptionProvider() const noexcept {
+#ifdef USE_ENTERPRISE
+    return _eeData._encryptionProvider;
+#else
+    return nullptr;
+#endif
+  }
 
   /// @brief allow / disbable removal of WAL files
   void disableWalFilePruning(bool disable);

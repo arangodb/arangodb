@@ -1182,7 +1182,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   rocksdb::WriteBatch batch;
   RocksDBLogValue logValue =
       RocksDBLogValue::CollectionDrop(vocbase.id(), collection.id(),
-                                      StringRef(collection.guid()));
+                                      arangodb::velocypack::StringRef(collection.guid()));
   batch.PutLogData(logValue.slice());
 
   RocksDBKey key;
@@ -1301,7 +1301,7 @@ arangodb::Result RocksDBEngine::renameCollection(TRI_vocbase_t& vocbase,
   auto builder = collection.toVelocyPackIgnore({"path", "statusString"}, true, true);
   int res = writeCreateCollectionMarker(
       vocbase.id(), collection.id(), builder.slice(),
-      RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(), StringRef(oldName)));
+      RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(), arangodb::velocypack::StringRef(oldName)));
 
   return arangodb::Result(res);
 }
@@ -1354,7 +1354,7 @@ arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
   builder.close();
 
   auto logValue =
-      RocksDBLogValue::ViewDrop(vocbase.id(), view.id(), StringRef(view.guid()));
+      RocksDBLogValue::ViewDrop(vocbase.id(), view.id(), arangodb::velocypack::StringRef(view.guid()));
   RocksDBKey key;
   key.constructView(vocbase.id(), view.id());
 
@@ -2142,7 +2142,7 @@ Result RocksDBEngine::lastLogger(TRI_vocbase_t& vocbase,
   builder->close();
   builderSPtr = std::move(builder);
 
-  return std::move(rep);
+  return std::move(rep).result();
 }
 
 WalAccess const* RocksDBEngine::walAccess() const {

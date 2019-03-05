@@ -418,6 +418,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING:
     case TRI_ERROR_CLUSTER_NOT_LEADER:
     case TRI_ERROR_SHUTTING_DOWN:
+    case TRI_ERROR_CLUSTER_CONNECTION_LOST:
       return ResponseCode::SERVICE_UNAVAILABLE;
 
     case TRI_ERROR_CLUSTER_UNSUPPORTED:

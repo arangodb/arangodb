@@ -501,7 +501,7 @@
   },
   "output-directory" : {
     "category" : "option",
-    "default" : "/oskar/work/ArangoDB/dump",
+    "default" : "/home/steemann/ArangoNoAsan/dump",
     "deprecatedIn" : null,
     "description" : "output directory",
     "dynamic" : false,

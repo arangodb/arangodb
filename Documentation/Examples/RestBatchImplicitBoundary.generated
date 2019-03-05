@@ -12,7 +12,7 @@ DELETE _api/collection/notexisting2 HTTP/1.1
 
 EOF
 
-HTTP/1.1 undefined
+HTTP/1.1 OK
 content-type: application/json
 x-arango-errors: 2
 x-content-type-options: nosniff

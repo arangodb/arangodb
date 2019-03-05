@@ -168,7 +168,7 @@ exports.manage = function () {
     }
     // Reset jobs before updating the queue delay. Don't continue on errors,
     // but retry later.
-     resetDeadJobsOnFirstRun();
+    resetDeadJobsOnFirstRun();
     if (isCluster) {
       var foxxQueues = require('@arangodb/foxx/queues');
       foxxQueues._updateQueueDelay();

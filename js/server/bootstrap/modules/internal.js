@@ -149,6 +149,18 @@
       return global.WAL_WAITCOLLECTOR.apply(null, arguments);
     }
   };
+  
+  // / @brief ttlStatistics
+  if (global.SYS_TTL_STATISTICS) {
+    exports.ttlStatistics = global.SYS_TTL_STATISTICS;
+    delete global.SYS_TTL_STATISTICS;
+  }
+  
+  // / @brief ttlProperties
+  if (global.SYS_TTL_PROPERTIES) {
+    exports.ttlProperties = global.SYS_TTL_PROPERTIES;
+    delete global.SYS_TTL_PROPERTIES;
+  }
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief defines an action

@@ -23,7 +23,6 @@
 #include "TraverserCache.h"
 
 #include "Basics/StringHeap.h"
-#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 
 #include "Aql/AqlValue.h"
@@ -37,6 +36,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -78,7 +78,7 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
   return VPackSlice(_mmdr->vpack());
 }
 
-VPackSlice TraverserCache::lookupInCollection(StringRef id) {
+VPackSlice TraverserCache::lookupInCollection(arangodb::velocypack::StringRef id) {
   // TRI_ASSERT(!ServerState::instance()->isCoordinator());
   size_t pos = id.find('/');
   if (pos == std::string::npos || pos + 1 == id.size()) {
@@ -114,7 +114,7 @@ void TraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
   builder.add(lookupToken(idToken));
 }
 
-void TraverserCache::insertVertexIntoResult(StringRef idString, VPackBuilder& builder) {
+void TraverserCache::insertVertexIntoResult(arangodb::velocypack::StringRef idString, VPackBuilder& builder) {
   builder.add(lookupInCollection(idString));
 }
 
@@ -123,16 +123,16 @@ aql::AqlValue TraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const& idToke
   return aql::AqlValue(lookupToken(idToken));
 }
 
-aql::AqlValue TraverserCache::fetchVertexAqlResult(StringRef idString) {
+aql::AqlValue TraverserCache::fetchVertexAqlResult(arangodb::velocypack::StringRef idString) {
   return aql::AqlValue(lookupInCollection(idString));
 }
 
-StringRef TraverserCache::persistString(StringRef const idString) {
+arangodb::velocypack::StringRef TraverserCache::persistString(arangodb::velocypack::StringRef const idString) {
   auto it = _persistedStrings.find(idString);
   if (it != _persistedStrings.end()) {
     return *it;
   }
-  StringRef res = _stringHeap->registerString(idString.begin(), idString.length());
+  arangodb::velocypack::StringRef res = _stringHeap->registerString(idString.begin(), idString.length());
   _persistedStrings.emplace(res);
   return res;
 }

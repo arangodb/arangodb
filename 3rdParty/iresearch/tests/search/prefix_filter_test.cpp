@@ -24,12 +24,10 @@
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
 #include "search/prefix_filter.hpp"
-#include "store/memory_directory.hpp"
-#include "formats/formats_10.hpp"
 
-NS_BEGIN(tests)
+NS_LOCAL
 
-class prefix_filter_test_case : public filter_test_case_base {
+class prefix_filter_test_case : public tests::filter_test_case_base {
  protected:
   void by_prefix_order() {
     // add segment
@@ -54,7 +52,7 @@ class prefix_filter_test_case : public filter_test_case_base {
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
       size_t finish_count = 0;
-      auto& scorer = order.add<sort::custom_sort>(false);
+      auto& scorer = order.add<tests::sort::custom_sort>(false);
 
       scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
         ++collect_field_count;
@@ -66,10 +64,10 @@ class prefix_filter_test_case : public filter_test_case_base {
         ++finish_count;
       };
       scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
-        return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer);
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
       };
       scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
-        return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer);
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
       };
       check_query(irs::by_prefix().field("prefix"), order, docs, rdr);
       ASSERT_EQ(9, collect_field_count); // 9 fields (1 per term since treated as a disjunction) in 1 segment
@@ -83,7 +81,7 @@ class prefix_filter_test_case : public filter_test_case_base {
       costs_t costs{ docs.size() };
       irs::order order;
 
-      order.add<sort::frequency_sort>(false);
+      order.add<tests::sort::frequency_sort>(false);
       check_query(irs::by_prefix().field("prefix"), order, docs, rdr);
     }
 
@@ -104,7 +102,7 @@ class prefix_filter_test_case : public filter_test_case_base {
       costs_t costs{ docs.size() };
       irs::order order;
 
-      order.add<sort::frequency_sort>(false);
+      order.add<tests::sort::frequency_sort>(false);
       check_query(irs::by_prefix().field("prefix").term("a"), order, docs, rdr);
     }
   }
@@ -193,7 +191,7 @@ class prefix_filter_test_case : public filter_test_case_base {
     {
       auto writer = open_writer(iresearch::OM_CREATE);
 
-      std::vector<doc_generator_base::ptr> gens;
+      std::vector<tests::doc_generator_base::ptr> gens;
       gens.emplace_back(new tests::json_doc_generator(
         resource("AdventureWorks2014.json"),
         &tests::generic_json_field_factory
@@ -218,12 +216,6 @@ class prefix_filter_test_case : public filter_test_case_base {
     check_query(irs::by_prefix().field("Name").term("Addr"), docs_t{1, 2, 77, 78}, rdr);
   }
 }; // filter_test_case_base
-
-NS_END // tests
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                             by_prefix base tests
-// ----------------------------------------------------------------------------
 
 TEST(by_prefix_test, ctor) {
   irs::by_prefix q;
@@ -280,26 +272,27 @@ TEST(by_prefix_test, boost) {
   }
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                           memory_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
-
-class memory_prefix_filter_test_case : public tests::prefix_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    return new irs::memory_directory();
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-};
-
-TEST_F(memory_prefix_filter_test_case, by_prefix) {
+TEST_P(prefix_filter_test_case, by_prefix) {
   by_prefix_order();
   by_prefix_sequential();
   by_prefix_schemas();
 }
+
+INSTANTIATE_TEST_CASE_P(
+  prefix_filter_test,
+  prefix_filter_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_0")
+  ),
+  tests::to_string
+);
+
+NS_END
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

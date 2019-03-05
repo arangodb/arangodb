@@ -110,6 +110,8 @@ Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
       return result;
     }
 
+    setRegistered();
+
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }

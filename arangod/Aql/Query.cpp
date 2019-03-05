@@ -220,7 +220,7 @@ Query::~Query() {
 void Query::addDataSource(                                  // track DataSource
     std::shared_ptr<arangodb::LogicalDataSource> const& ds  // DataSource to track
 ) {
-  _queryDataSources.emplace(ds);
+  _queryDataSources.emplace(ds->guid(), ds->name());
 }
 
 /// @brief clone a query
@@ -270,9 +270,6 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 
   return clone.release();
 }
-
-/// @brief whether or not the query is killed
-bool Query::killed() const { return _killed; }
 
 /// @brief set the query to killed
 void Query::kill() { _killed = true; }
@@ -572,11 +569,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
             // got a result from the query cache
             if (exe != nullptr) {
               for (auto& dataSource : cacheEntry->_dataSources) {
-                if (!dataSource) {
-                  continue;
-                }
-
-                auto& dataSourceName = dataSource->name();
+                auto const& dataSourceName = dataSource.second;
 
                 if (!exe->canUseCollection(dataSourceName, auth::Level::RO)) {
                   // cannot use query cache result because of permissions
@@ -667,7 +660,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
             }
           }
 
-          _engine->_itemBlockManager.returnBlock(std::move(res.second));
+          _engine->itemBlockManager().returnBlock(std::move(res.second));
 
           if (res.first == ExecutionState::DONE) {
             break;
@@ -683,7 +676,8 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
 
           _trx->state()->allCollections(  // collect transaction DataSources
               [&dataSources](TransactionCollection& trxCollection) -> bool {
-                dataSources.emplace(trxCollection.collection());  // add collection from transaction
+                auto const& c = trxCollection.collection();
+                dataSources.emplace(c->guid(), c->name());
                 return true;  // continue traversal
               });
 
@@ -788,12 +782,8 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
 
         // got a result from the query cache
         if (exe != nullptr) {
-          for (auto& dataSource : cacheEntry->_dataSources) {
-            if (!dataSource) {
-              continue;
-            }
-
-            auto& dataSourceName = dataSource->name();
+          for (auto const& dataSource : cacheEntry->_dataSources) {
+            auto const& dataSourceName = dataSource.second;
 
             if (!exe->canUseCollection(dataSourceName, auth::Level::RO)) {
               // cannot use query cache result because of permissions
@@ -890,7 +880,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
           }
         }
 
-        _engine->_itemBlockManager.returnBlock(std::move(value));
+        _engine->itemBlockManager().returnBlock(std::move(value));
       }
 
       builder->close();
@@ -909,7 +899,8 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
 
       _trx->state()->allCollections(  // collect transaction DataSources
           [&dataSources](TransactionCollection& trxCollection) -> bool {
-            dataSources.emplace(trxCollection.collection());  // add collection from transaction
+            auto const& c = trxCollection.collection();
+            dataSources.emplace(c->guid(), c->name());
             return true;  // continue traversal
           });
 
@@ -1169,12 +1160,13 @@ void Query::prepareV8Context() {
 
   {
     v8::HandleScope scope(isolate);
+    v8::ScriptOrigin scriptOrigin(TRI_V8_ASCII_STRING(isolate, "--script--"));
     v8::Handle<v8::Script> compiled =
-        v8::Script::Compile(TRI_V8_STD_STRING(isolate, body),
-                            TRI_V8_ASCII_STRING(isolate, "--script--"));
+        v8::Script::Compile(TRI_IGETC, TRI_V8_STD_STRING(isolate, body), &scriptOrigin)
+            .FromMaybe(v8::Local<v8::Script>());
 
     if (!compiled.IsEmpty()) {
-      compiled->Run();
+      compiled->Run(TRI_IGETC).FromMaybe(v8::Local<v8::Value>());  // TODO: Result?
       _preparedV8Context = true;
     }
   }

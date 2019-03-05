@@ -480,7 +480,8 @@ function optimizerIndexesInOrTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var plan = AQL_EXPLAIN(query[0]).plan;
+        let opt = { optimizer: { rules: ["-reduce-extraction-to-projection"] } };
+        var plan = AQL_EXPLAIN(query[0], {}, opt).plan;
         var nodeTypes = plan.nodes.map(function(node) {
           return node.type;
         });
@@ -488,7 +489,7 @@ function optimizerIndexesInOrTestSuite () {
         // ensure no index is used
         assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
 
-        var results = AQL_EXECUTE(query[0]);
+        var results = AQL_EXECUTE(query[0], {}, opt);
         assertEqual(query[1], results.json.length, query); 
         assertTrue(results.stats.scannedFull > 0);
         assertEqual(0, results.stats.scannedIndex);

@@ -153,7 +153,7 @@ void RestCollectionHandler::handleCommandGet() {
                                  /*detailedCount*/ true);
       } else {
         skipGenerate = true;
-        this->generateError(result);
+        this->generateError(result.result());
       }
     } else if (sub == "figures") {
       // /_api/collection/<identifier>/figures

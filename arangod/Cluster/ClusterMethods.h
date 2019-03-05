@@ -24,16 +24,16 @@
 #ifndef ARANGOD_CLUSTER_CLUSTER_METHODS_H
 #define ARANGOD_CLUSTER_CLUSTER_METHODS_H 1
 
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
-
 #include "Agency/AgencyComm.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Rest/HttpResponse.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
+
+#include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace velocypack {
@@ -45,6 +45,7 @@ class Slice;
 
 struct OperationOptions;
 class TransactionState;
+struct TtlStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a copy of all HTTP headers to forward
@@ -141,7 +142,7 @@ int getDocumentOnCoordinator(transaction::Methods& trx, std::string const& colln
 int fetchEdgesFromEngines(std::string const&,
                           std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
                           arangodb::velocypack::Slice vertexId, size_t,
-                          std::unordered_map<StringRef, arangodb::velocypack::Slice>&,
+                          std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>&,
                           std::vector<arangodb::velocypack::Slice>&,
                           std::vector<std::shared_ptr<arangodb::velocypack::Builder>>&,
                           arangodb::velocypack::Builder&, size_t&, size_t&);
@@ -161,7 +162,7 @@ int fetchEdgesFromEngines(std::string const&,
 int fetchEdgesFromEngines(std::string const& dbname,
                           std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
                           arangodb::velocypack::Slice vertexId, bool backward,
-                          std::unordered_map<StringRef, arangodb::velocypack::Slice>& cache,
+                          std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>& cache,
                           std::vector<arangodb::velocypack::Slice>& result,
                           std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake,
                           arangodb::velocypack::Builder& builder, size_t& read);
@@ -177,8 +178,8 @@ int fetchEdgesFromEngines(std::string const& dbname,
 
 void fetchVerticesFromEngines(
     std::string const&, std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
-    std::unordered_set<StringRef>&,
-    std::unordered_map<StringRef, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>&,
+    std::unordered_set<arangodb::velocypack::StringRef>&,
+    std::unordered_map<arangodb::velocypack::StringRef, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>&,
     arangodb::velocypack::Builder&);
 
 /// @brief fetch vertices from TraverserEngines
@@ -193,8 +194,8 @@ void fetchVerticesFromEngines(
 
 void fetchVerticesFromEngines(
     std::string const&, std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
-    std::unordered_set<StringRef>&,
-    std::unordered_map<StringRef, arangodb::velocypack::Slice>& result,
+    std::unordered_set<arangodb::velocypack::StringRef>&,
+    std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>& result,
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake,
     arangodb::velocypack::Builder&);
 
@@ -234,6 +235,15 @@ Result truncateCollectionOnCoordinator(transaction::Methods& trx,
 
 int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector,
                            double maxWaitTime = -1.0);
+
+/// @brief get TTL statistics from all DBservers and aggregate them
+Result getTtlStatisticsFromAllDBServers(TtlStatistics& out);
+
+/// @brief get TTL properties from all DBservers
+Result getTtlPropertiesFromAllDBServers(arangodb::velocypack::Builder& out);
+
+/// @brief set TTL properties on all DBservers
+Result setTtlPropertiesOnAllDBServers(arangodb::velocypack::Slice const& properties, arangodb::velocypack::Builder& out);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rotate the active journals for the collection on all DBservers

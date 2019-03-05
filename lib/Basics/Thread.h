@@ -53,10 +53,13 @@ class Thread {
 #endif
 
   enum class ThreadState { CREATED, STARTING, STARTED, STOPPING, STOPPED };
+  
+  std::string stringifyState() {
+    return stringify(state());
+  }
 
   static std::string stringify(ThreadState);
-
- public:
+  
   /// @brief returns the process id
   static TRI_pid_t currentProcessId();
 
@@ -119,6 +122,11 @@ class Thread {
 
   /// @brief starts the thread
   bool start(basics::ConditionVariable* _finishedCondition = nullptr);
+  
+  /// @brief return the threads current state
+  ThreadState state() const {
+    return _state.load(std::memory_order_relaxed);
+  }
 
  protected:
   /// @brief MUST be called from the destructor of the MOST DERIVED class
@@ -128,7 +136,7 @@ class Thread {
   /// races in the destructor.
   /// That is also the reason why it has to be called by the MOST DERIVED
   /// class (potential race on the objects vtable). Usually the call to
-  /// shutdown should be the very first thing in the destructur. Any access
+  /// shutdown should be the very first thing in the destructor. Any access
   /// to members of the thread that happen before the call to shutdown must
   /// be threadsafe!
   void shutdown();

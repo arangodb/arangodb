@@ -97,14 +97,16 @@ class Context {
   void returnBuilder(arangodb::velocypack::Builder*);
 
   /// @brief get velocypack options with a custom type handler
-  arangodb::velocypack::Options* getVPackOptions();
+  TEST_VIRTUAL arangodb::velocypack::Options* getVPackOptions();
 
   /// @brief get velocypack options for dumping
   arangodb::velocypack::Options* getVPackOptionsForDump();
 
   /// @brief unregister the transaction
   /// this will save the transaction's id and status locally
-  void storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations) noexcept;
+  void storeTransactionResult(TRI_voc_tid_t id,
+                              bool hasFailedOperations,
+                              bool wasRegistered) noexcept;
   
  public:
 

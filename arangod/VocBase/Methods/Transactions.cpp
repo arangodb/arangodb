@@ -45,7 +45,7 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
   v8::Handle<v8::Value> in = TRI_VPackToV8(isolate, slice);
 
   v8::Handle<v8::Value> result;
-  v8::TryCatch tryCatch;
+  v8::TryCatch tryCatch(isolate);;
 
   v8::Handle<v8::Object> request = v8::Object::New(isolate);
   v8::Handle<v8::Value> jsPortTypeKey =
@@ -85,7 +85,7 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
     // we have some javascript error that is not an arangoError
     std::string msg;
     if (!tryCatch.Message().IsEmpty()) {
-      v8::String::Utf8Value m(tryCatch.Message()->Get());
+      v8::String::Utf8Value m(isolate, tryCatch.Message()->Get());
       if (*m != nullptr) {
         msg = *m;
       }
@@ -108,6 +108,7 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
 
 Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& arg,
                             v8::Handle<v8::Value>& result, v8::TryCatch& tryCatch) {
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   Result rv;
   auto& vocbase = GetContextVocBase(isolate);
 
@@ -120,13 +121,13 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
 
   // do extra sanity checking for user facing APIs, parsing
   // is performed in `transaction::Options::fromVelocyPack`
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "lockTimeout")) &&
+  if (TRI_HasProperty(context, isolate, object, "lockTimeout") &&
       !object->Get(TRI_V8_ASCII_STRING(isolate, "lockTimeout"))->IsNumber()) {
     rv.reset(TRI_ERROR_BAD_PARAMETER,
              "<lockTimeout> must be a valid numeric value");
     return rv;
   }
-  if (object->Has(WaitForSyncKey) && !object->Get(WaitForSyncKey)->IsBoolean() &&
+  if (TRI_HasProperty(context, isolate, object, WaitForSyncKey) && !object->Get(WaitForSyncKey)->IsBoolean() &&
       !object->Get(WaitForSyncKey)->IsBooleanObject()) {
     rv.reset(TRI_ERROR_BAD_PARAMETER, "<waitForSync> must be a boolean value");
     return rv;
@@ -159,7 +160,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   // "collections"
   std::string collectionError;
 
-  if (!object->Has(TRI_V8_ASCII_STRING(isolate, "collections")) ||
+  if (!TRI_HasProperty(context, isolate, object, "collections") ||
       !object->Get(TRI_V8_ASCII_STRING(isolate, "collections"))->IsObject()) {
     collectionError = "missing/invalid collections definition for transaction";
     rv.reset(TRI_ERROR_BAD_PARAMETER, collectionError);
@@ -180,15 +181,15 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   std::vector<std::string> writeCollections;
   std::vector<std::string> exclusiveCollections;
 
-  if (collections->Has(TRI_V8_ASCII_STRING(isolate, "allowImplicit"))) {
-    trxOptions.allowImplicitCollections = TRI_ObjectToBoolean(
+  if (TRI_HasProperty(context, isolate, collections, "allowImplicit")) {
+    trxOptions.allowImplicitCollections = TRI_ObjectToBoolean(isolate, 
         collections->Get(TRI_V8_ASCII_STRING(isolate, "allowImplicit")));
   }
 
   auto getCollections =
-      [&isolate](v8::Handle<v8::Object> obj, std::vector<std::string>& collections,
+    [&isolate, &context](v8::Handle<v8::Object> obj, std::vector<std::string>& collections,
                  char const* attributeName, std::string& collectionError) -> bool {
-    if (obj->Has(TRI_V8_ASCII_STRING(isolate, attributeName))) {
+    if (TRI_HasProperty(context, isolate, obj, attributeName)) {
       if (obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName))->IsArray()) {
         v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(
             obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName)));
@@ -202,10 +203,10 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
             return false;
           }
 
-          collections.emplace_back(TRI_ObjectToString(collection));
+          collections.emplace_back(TRI_ObjectToString(isolate, collection));
         }
       } else if (obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName))->IsString()) {
-        collections.emplace_back(TRI_ObjectToString(
+        collections.emplace_back(TRI_ObjectToString(isolate, 
             obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName))));
       } else {
         collectionError +=
@@ -234,7 +235,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
       "missing/invalid action definition for transaction";
   std::string actionError = actionErrorPrototype;
 
-  if (!object->Has(TRI_V8_ASCII_STRING(isolate, "action"))) {
+  if (!TRI_HasProperty(context, isolate, object, "action")) {
     rv.reset(TRI_ERROR_BAD_PARAMETER, actionError);
     return rv;
   }
@@ -242,7 +243,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   // function parameters
   v8::Handle<v8::Value> params;
 
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "params"))) {
+  if (TRI_HasProperty(context, isolate, object, "params")) {
     params = v8::Handle<v8::Array>::Cast(
         object->Get(TRI_V8_ASCII_STRING(isolate, "params")));
   } else {
@@ -255,10 +256,10 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   }
 
   bool embed = false;
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "embed"))) {
+  if (TRI_HasProperty(context, isolate, object, "embed")) {
     v8::Handle<v8::Value> v = v8::Handle<v8::Object>::Cast(
         object->Get(TRI_V8_ASCII_STRING(isolate, "embed")));
-    embed = TRI_ObjectToBoolean(v);
+    embed = TRI_ObjectToBoolean(isolate, v);
   }
 
   v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
@@ -269,7 +270,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
     action = v8::Handle<v8::Function>::Cast(
         object->Get(TRI_V8_ASCII_STRING(isolate, "action")));
     v8::Local<v8::Value> v8_fnname = action->GetName();
-    std::string fnname = TRI_ObjectToString(v8_fnname);
+    std::string fnname = TRI_ObjectToString(isolate, v8_fnname);
     if (fnname.length() == 0) {
       action->SetName(TRI_V8_ASCII_STRING(isolate, "userTransactionFunction"));
     }
@@ -280,23 +281,24 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
 
     // Invoke Function constructor to create function with the given body and no
     // arguments
-    std::string body = TRI_ObjectToString(
-        object->Get(TRI_V8_ASCII_STRING(isolate, "action"))->ToString());
+    std::string body = TRI_ObjectToString(isolate, 
+                                          TRI_GetProperty(context, isolate, object, "action"));
     body = "return (" + body + ")(params);";
     v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
                                      TRI_V8_STD_STRING(isolate, body)};
-    v8::Local<v8::Object> function = ctor->NewInstance(2, args);
+    v8::Local<v8::Object> function = ctor->NewInstance(TRI_IGETC, 2, args).FromMaybe(v8::Local<v8::Object>());
 
     action = v8::Local<v8::Function>::Cast(function);
     if (tryCatch.HasCaught()) {
       if (!tryCatch.Message().IsEmpty()) {
-        v8::String::Utf8Value tryCatchMessage(tryCatch.Message()->Get());
+        v8::String::Utf8Value tryCatchMessage(isolate, tryCatch.Message()->Get());
         if (*tryCatchMessage != nullptr) {
           actionError += " - ";
           actionError += *tryCatchMessage;
         }
       }
-      v8::String::Utf8Value tryCatchStackTrace(tryCatch.StackTrace());
+      auto stacktraceV8 = tryCatch.StackTrace(TRI_IGETC).FromMaybe(v8::Local<v8::Value>());
+      v8::String::Utf8Value tryCatchStackTrace(isolate, stacktraceV8);
       if (*tryCatchStackTrace != nullptr) {
         actionError += " - ";
         actionError += *tryCatchStackTrace;

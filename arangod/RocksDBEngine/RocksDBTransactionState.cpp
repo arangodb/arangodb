@@ -49,7 +49,6 @@
 
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
-#include <rocksdb/utilities/optimistic_transaction_db.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
@@ -103,6 +102,8 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     // register with manager
     transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr);
     updateStatus(transaction::Status::RUNNING);
+
+    setRegistered();
 
     TRI_ASSERT(_rocksTransaction == nullptr);
     TRI_ASSERT(_cacheTx == nullptr);
@@ -192,7 +193,7 @@ void RocksDBTransactionState::createTransaction() {
 
   if (isOnlyExclusiveTransaction()) {
     // we are exclusively modifying collection data here, so we can turn off
-    // all concurrency controls to save time
+    // all concurrency control checks to save time
     trxOpts.skip_concurrency_control = true;
   }
 
@@ -307,7 +308,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     uint64_t numOps = _rocksTransaction->GetNumPuts() +
                       _rocksTransaction->GetNumDeletes() +
                       _rocksTransaction->GetNumMerges();
-    // will invaliate all counts
+    // will invalidate all counts
     result = rocksutils::convertStatus(_rocksTransaction->Commit());
 
     if (result.ok()) {

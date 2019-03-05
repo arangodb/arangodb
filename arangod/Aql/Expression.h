@@ -112,7 +112,7 @@ class Expression {
     if (_type == UNPROCESSED) {
       initExpression();
     }
-    
+
     if (_type == JSON) {
       // always deterministic
       return true;
@@ -128,7 +128,7 @@ class Expression {
     if (_type == UNPROCESSED) {
       initExpression();
     }
-    
+
     if (_type != SIMPLE) {
       return false;
     }
@@ -136,7 +136,7 @@ class Expression {
     // only simple expressions can make use of V8
     TRI_ASSERT(_type == SIMPLE);
     TRI_ASSERT(_node != nullptr);
-     return _node->willUseV8();
+    return _node->willUseV8();
   }
 
   /// @brief clone the expression, needed to clone execution plans
@@ -226,7 +226,7 @@ class Expression {
   }
 
   void clearVariable(Variable const* variable) { _variables.erase(variable); }
-  
+
   /// @brief reset internal attributes after variables in the expression were
   /// changed
   void invalidateAfterReplacements();

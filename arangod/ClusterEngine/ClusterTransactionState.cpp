@@ -77,6 +77,8 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   if (nestingLevel() == 0) {
     transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr);
     
+    setRegistered();
+    
     ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
     if (ce->isMMFiles() && hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
       TRI_ASSERT(isCoordinator());

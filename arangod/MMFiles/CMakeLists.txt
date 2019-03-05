@@ -47,6 +47,7 @@ set(MMFILES_SOURCES
   MMFiles/MMFilesTransactionCollection.cpp
   MMFiles/MMFilesTransactionContextData.cpp
   MMFiles/MMFilesTransactionState.cpp
+  MMFiles/MMFilesTtlIndex.cpp
   MMFiles/MMFilesV8Functions.cpp
   MMFiles/MMFilesWalAccess.cpp
   MMFiles/MMFilesWalLogfile.cpp

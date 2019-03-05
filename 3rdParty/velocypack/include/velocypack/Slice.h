@@ -375,7 +375,7 @@ class Slice {
       Slice first(_start + firstSubOffset);
       ValueLength s = first.byteSize();
       if (s == 0) {
-        throw Exception(Exception::InternalError, "Invalid data for Object");
+        throw Exception(Exception::InternalError, "Invalid data for Array");
       }
       return (end - firstSubOffset) / s;
     } else if (offsetSize < 8) {
@@ -384,7 +384,7 @@ class Slice {
 
     return readIntegerNonEmpty<ValueLength>(_start + end - offsetSize, offsetSize);
   }
-
+  
   // extract a key from an Object at the specified index
   // - 0x0a      : empty object
   // - 0x0b      : object with 1-byte index table entries, sorted by attribute
@@ -950,6 +950,71 @@ class Slice {
   int64_t getSmallIntUnchecked() const noexcept;
   
  private:
+  // return the number of members for an Array
+  // must only be called for Slices that have been validated to be of type Array
+  ValueLength arrayLength(uint8_t head) const {
+    VELOCYPACK_ASSERT(type(head) == ValueType::Array); 
+
+    if (head == 0x01) {
+      // special case: empty!
+      return 0;
+    }
+
+    if (head == 0x13) {
+      // compact Array
+      ValueLength end = readVariableValueLength<false>(_start + 1);
+      return readVariableValueLength<true>(_start + end - 1);
+    }
+
+    ValueLength const offsetSize = indexEntrySize(head);
+    VELOCYPACK_ASSERT(offsetSize > 0);
+
+    // find number of items
+    if (head <= 0x05) {  // No offset table or length, need to compute:
+      VELOCYPACK_ASSERT(head != 0x00 && head != 0x01);
+      ValueLength firstSubOffset = findDataOffset(head);
+      Slice first(_start + firstSubOffset);
+      ValueLength s = first.byteSize();
+      if (s == 0) {
+        throw Exception(Exception::InternalError, "Invalid data for Array");
+      }
+      ValueLength end = readIntegerNonEmpty<ValueLength>(_start + 1, offsetSize);
+      return (end - firstSubOffset) / s;
+    } else if (offsetSize < 8) {
+      return readIntegerNonEmpty<ValueLength>(_start + offsetSize + 1, offsetSize);
+    }
+
+    ValueLength end = readIntegerNonEmpty<ValueLength>(_start + 1, offsetSize);
+    return readIntegerNonEmpty<ValueLength>(_start + end - offsetSize, offsetSize);
+  }
+  
+  // return the number of members for an Object
+  // must only be called for Slices that have been validated to be of type Object
+  ValueLength objectLength(uint8_t head) const {
+    VELOCYPACK_ASSERT(type(head) == ValueType::Object);
+
+    if (head == 0x0a) {
+      // special case: empty!
+      return 0;
+    }
+
+    if (head == 0x14) {
+      // compact Object
+      ValueLength end = readVariableValueLength<false>(_start + 1);
+      return readVariableValueLength<true>(_start + end - 1);
+    }
+
+    ValueLength const offsetSize = indexEntrySize(head);
+    VELOCYPACK_ASSERT(offsetSize > 0);
+
+    if (offsetSize < 8) {
+      return readIntegerNonEmpty<ValueLength>(_start + offsetSize + 1, offsetSize);
+    }
+
+    ValueLength end = readIntegerNonEmpty<ValueLength>(_start + 1, offsetSize);
+    return readIntegerNonEmpty<ValueLength>(_start + end - offsetSize, offsetSize);
+  }
+
   // get the total byte size for a String slice, including the head byte
   // not check is done if the type of the slice is actually String 
   ValueLength stringSliceLength() const noexcept {
@@ -983,6 +1048,16 @@ class Slice {
 
   // get the offset for the nth member from a compact Array or Object type
   ValueLength getNthOffsetFromCompact(ValueLength index) const;
+  
+  // get the offset for the first member from a compact Array or Object type
+  // it is only valid to call this method for compact Array or Object values with
+  // at least one member!!
+  ValueLength getStartOffsetFromCompact() const {
+    VELOCYPACK_ASSERT(head() == 0x13 || head() == 0x14);
+
+    ValueLength end = readVariableValueLength<false>(_start + 1);
+    return 1 + getVariableValueLength(end);
+  }
 
   constexpr inline ValueLength indexEntrySize(uint8_t head) const noexcept {
     return static_cast<ValueLength>(SliceStaticData::WidthMap[head]);

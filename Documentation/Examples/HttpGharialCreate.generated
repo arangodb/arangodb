@@ -15,9 +15,9 @@
 }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> Accepted
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _XWq5j0u--_
+etag: _YOn1G0O--B
 x-content-type-options: nosniff
 
 { 
@@ -40,7 +40,7 @@ x-content-type-options: nosniff
       } 
     ], 
     <span class="hljs-string">"orphanCollections"</span> : [ ], 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5j0u--_"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YOn1G0O--B"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/myGraph"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"myGraph"</span> 
   } 

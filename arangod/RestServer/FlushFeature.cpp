@@ -45,7 +45,6 @@
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/FlushThread.h"
-#include "Utils/FlushTransaction.h"
 
 namespace arangodb {
 
@@ -198,7 +197,7 @@ class MMFilesFlushMarker final: public arangodb::MMFilesWalMarker {
 
     auto* data = reinterpret_cast<uint8_t const*>(&marker);
     auto* ptr = data + sizeof(MMFilesMarker);
-    auto* end = ptr + marker.getSize();
+    auto* end = ptr + marker.getSize() - sizeof(MMFilesMarker);
 
     if (sizeof(TRI_voc_tick_t) > size_t(end - ptr)) {
       THROW_ARANGO_EXCEPTION(arangodb::Result( // exception
@@ -279,6 +278,13 @@ class MMFilesFlushSubscription final
   }
 
   ~MMFilesFlushSubscription() {
+    if (!arangodb::MMFilesLogfileManager::instance(true)) { // true to avoid assertion failure
+      LOG_TOPIC(ERR, arangodb::Logger::FLUSH)
+        << "failed to remove MMFiles Logfile barrier from subscription due to missing LogFileManager";
+
+      return; // ignore (probably already deallocated)
+    }
+
     try {
       _wal.removeLogfileBarrier(_barrier);
     } catch (...) {
@@ -287,6 +293,11 @@ class MMFilesFlushSubscription final
   }
 
   arangodb::Result commit(arangodb::velocypack::Slice const& data) override {
+    // must be present for WAL write to succeed or '_wal' is a dangling instance
+    // guard against scenario: FlushFeature::stop() + MMFilesEngine::stop() and later commit()
+    // since subscription could survive after FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
+    TRI_ASSERT(arangodb::MMFilesLogfileManager::instance(true)); // true to avoid assertion failure
+
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
@@ -296,7 +307,7 @@ class MMFilesFlushSubscription final
 
     MMFilesFlushMarker marker(_databaseId, builder.slice());
     auto tick = _engine.currentTick(); // get before writing marker to ensure nothing between tick and marker
-    auto res = arangodb::Result(_wal.allocateAndWrite(marker, true).errorCode);
+    auto res = arangodb::Result(_wal.allocateAndWrite(marker, true).errorCode); // will check for allowWalWrites()
 
     if (res.ok()) {
       auto barrier = _wal.addLogfileBarrier( // barier starting from previous marker
@@ -432,6 +443,14 @@ class RocksDBFlushSubscription final
   }
 
   arangodb::Result commit(arangodb::velocypack::Slice const& data) override {
+    // must be present for WAL write to succeed or '_wal' is a dangling instance
+    // guard against scenario: FlushFeature::stop() + RocksDBEngine::stop() and later commit()
+    // since subscription could survive after FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
+    TRI_ASSERT( // precondition
+      arangodb::EngineSelectorFeature::ENGINE // ensure have engine
+      && static_cast<arangodb::RocksDBEngine*>(arangodb::EngineSelectorFeature::ENGINE)->db() // not stopped
+    );
+
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
@@ -531,7 +550,9 @@ namespace arangodb {
 std::atomic<bool> FlushFeature::_isRunning(false);
 
 FlushFeature::FlushFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Flush"), _flushInterval(1000000) {
+    : ApplicationFeature(server, "Flush"),
+      _flushInterval(1000000),
+      _stopped(false) {
   setOptional(true);
   startsAfter("BasicsPhase");
 
@@ -585,6 +606,13 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
     );
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
+    if (_stopped) {
+      LOG_TOPIC(ERR, Logger::FLUSH)
+        << "FlushFeature not running";
+
+      return nullptr;
+    }
+
     _flushSubscriptions.emplace(subscription);
 
     return subscription;
@@ -615,6 +643,13 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
       type, vocbase.id(), *rocksdbEngine, *rootDb
     );
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
+
+    if (_stopped) {
+      LOG_TOPIC(ERR, Logger::FLUSH)
+        << "FlushFeature not running";
+
+      return nullptr;
+    }
 
     _flushSubscriptions.emplace(subscription);
 
@@ -766,63 +801,19 @@ void FlushFeature::stop() {
       _isRunning.store(false);
       _flushThread.reset();
     }
+
+    {
+      std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
+
+      // release any remaining flush subscriptions so that they may get deallocated ASAP
+      // subscriptions could survive after FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
+      _flushSubscriptions.clear();
+      _stopped = true;
+    }
   }
 }
 
 void FlushFeature::unprepare() {
-  WRITE_LOCKER(locker, _callbacksLock);
-  _callbacks.clear();
-}
-
-void FlushFeature::registerCallback(void* ptr, FlushFeature::FlushCallback const& cb) {
-  WRITE_LOCKER(locker, _callbacksLock);
-  _callbacks.emplace(ptr, std::move(cb));
-  LOG_TOPIC(TRACE, arangodb::Logger::FLUSH) << "registered new flush callback";
-}
-
-bool FlushFeature::unregisterCallback(void* ptr) {
-  WRITE_LOCKER(locker, _callbacksLock);
-
-  auto it = _callbacks.find(ptr);
-  if (it == _callbacks.end()) {
-    return false;
-  }
-
-  _callbacks.erase(it);
-  LOG_TOPIC(TRACE, arangodb::Logger::FLUSH) << "unregistered flush callback";
-  return true;
-}
-
-void FlushFeature::executeCallbacks() {
-  std::vector<FlushTransactionPtr> transactions;
-
-  {
-    READ_LOCKER(locker, _callbacksLock);
-    transactions.reserve(_callbacks.size());
-
-    // execute all callbacks. this will create as many transactions as
-    // there are callbacks
-    for (auto const& cb : _callbacks) {
-      // copy elision, std::move(..) not required
-      LOG_TOPIC(TRACE, arangodb::Logger::FLUSH) << "executing flush callback";
-      transactions.emplace_back(cb.second());
-    }
-  }
-
-  // TODO: make sure all data is synced
-
-  // commit all transactions
-  for (auto const& trx : transactions) {
-    LOG_TOPIC(DEBUG, Logger::FLUSH)
-        << "commiting flush transaction '" << trx->name() << "'";
-
-    Result res = trx->commit();
-
-    LOG_TOPIC_IF(ERR, Logger::FLUSH, res.fail())
-        << "could not commit flush transaction '" << trx->name()
-        << "': " << res.errorMessage();
-    // TODO: honor the commit results here
-  }
 }
 
 }  // namespace arangodb

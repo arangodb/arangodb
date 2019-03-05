@@ -333,8 +333,8 @@ bool RestTransactionHandler::cancel() {
   WRITE_LOCKER(writeLock, _lock);
   _canceled.store(true);
   auto isolate = _v8Context->_isolate;
-  if (!v8::V8::IsExecutionTerminating(isolate)) {
-    v8::V8::TerminateExecution(isolate);
+  if (!isolate->IsExecutionTerminating()) {
+    isolate->TerminateExecution();
   }
   return true;
 }

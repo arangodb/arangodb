@@ -103,6 +103,8 @@ class TransactionState {
   inline bool isRunning() const {
     return _status == transaction::Status::RUNNING;
   }
+  void setRegistered() noexcept { _registeredTransaction = true; }
+  bool wasRegistered() const noexcept { return _registeredTransaction; }
 
   int increaseNesting() {
     return _nestingLevel.fetch_add(1, std::memory_order_relaxed) + 1;
@@ -248,6 +250,8 @@ protected:
   
   /// @brief reference counter of # of 'Methods' instances using this object
   std::atomic<int> _nestingLevel;
+  
+  bool _registeredTransaction;
 };
 
 }  // namespace arangodb

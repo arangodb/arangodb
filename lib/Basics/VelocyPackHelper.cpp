@@ -26,7 +26,6 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VPackStringBufferAdapter.h"
@@ -54,10 +53,13 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 
+static arangodb::velocypack::StringRef const idRef("id");
+static arangodb::velocypack::StringRef const cidRef("cid");
+
 static std::unique_ptr<VPackAttributeTranslator> translator;
 static std::unique_ptr<VPackAttributeExcludeHandler> excludeHandler;
 static std::unique_ptr<VPackCustomTypeHandler>customTypeHandler;
-      
+
 template<bool useUtf8, typename Comparator>
 int compareObjects(VPackSlice const& lhs, 
                    VPackSlice const& rhs,
@@ -306,20 +308,26 @@ bool VelocyPackHelper::AttributeSorterBinaryStringRef::operator()(VPackStringRef
 
 size_t VelocyPackHelper::VPackHash::operator()(VPackSlice const& slice) const {
   return static_cast<size_t>(slice.normalizedHash());
-};
+}
 
 size_t VelocyPackHelper::VPackStringHash::operator()(VPackSlice const& slice) const noexcept {
   return static_cast<size_t>(slice.hashString());
-};
-
-size_t VelocyPackHelper::VPackKeyHash::operator()(VPackSlice const& slice) const {
-  return static_cast<size_t>(slice.get(StaticStrings::KeyString).hashString());
-};
+}
 
 bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs,
                                               VPackSlice const& rhs) const {
   return VelocyPackHelper::compare(lhs, rhs, false, _options) == 0;
-};
+}
+
+static inline int8_t TypeWeight(VPackSlice& slice) {
+again:
+  int8_t w = ::typeWeights[slice.head()];
+  if (ADB_UNLIKELY(w == -50)) {
+    slice = slice.resolveExternal();
+    goto again;
+  }
+  return w;
+}
 
 bool VelocyPackHelper::VPackStringEqual::operator()(VPackSlice const& lhs,
                                                     VPackSlice const& rhs) const noexcept {
@@ -344,76 +352,6 @@ bool VelocyPackHelper::VPackStringEqual::operator()(VPackSlice const& lhs,
 
   size = static_cast<VPackValueLength>(lh - 0x40);
   return (memcmp(lhs.start() + 1, rhs.start() + 1, static_cast<size_t>(size)) == 0);
-};
-
-bool VelocyPackHelper::VPackIdEqual::operator()(VPackSlice const& lhs,
-                                                VPackSlice const& rhs) const {
-  if (lhs.get(StaticStrings::IdString) != rhs.get(StaticStrings::IdString)) {
-    // short-cut, we are in a different collection
-    return false;
-  }
-  // Same collection now actually compare the key
-  VPackSlice lhsKey = lhs.get(StaticStrings::KeyString);
-  VPackSlice rhsKey = rhs.get(StaticStrings::KeyString);
-  auto const lh = lhsKey.head();
-  auto const rh = rhsKey.head();
-
-  if (lh != rh) {
-    return false;
-  }
-
-  VPackValueLength size;
-  if (lh == 0xbf) {
-    // long UTF-8 String
-    size = static_cast<VPackValueLength>(
-        velocypack::readIntegerFixed<VPackValueLength, 8>(lhsKey.begin() + 1));
-    if (size != static_cast<VPackValueLength>(
-                    velocypack::readIntegerFixed<VPackValueLength, 8>(rhsKey.begin() + 1))) {
-      return false;
-    }
-    return (memcmp(lhsKey.start() + 1 + 8, rhsKey.start() + 1 + 8,
-                   static_cast<size_t>(size)) == 0);
-  }
-
-  size = static_cast<VPackValueLength>(lh - 0x40);
-  return (memcmp(lhsKey.start() + 1, rhsKey.start() + 1, static_cast<size_t>(size)) == 0);
-};
-
-bool VelocyPackHelper::VPackHashedStringEqual::operator()(
-    basics::VPackHashedSlice const& lhs, basics::VPackHashedSlice const& rhs) const noexcept {
-  auto const lh = lhs.slice.head();
-  auto const rh = rhs.slice.head();
-
-  if (lh != rh) {
-    return false;
-  }
-
-  VPackValueLength size;
-  if (lh == 0xbf) {
-    // long UTF-8 String
-    size = static_cast<VPackValueLength>(
-        velocypack::readIntegerFixed<VPackValueLength, 8>(lhs.slice.begin() + 1));
-    if (size != static_cast<VPackValueLength>(velocypack::readIntegerFixed<VPackValueLength, 8>(
-                    rhs.slice.begin() + 1))) {
-      return false;
-    }
-    return (memcmp(lhs.slice.start() + 1 + 8, rhs.slice.start() + 1 + 8,
-                   static_cast<size_t>(size)) == 0);
-  }
-
-  size = static_cast<VPackValueLength>(lh - 0x40);
-  return (memcmp(lhs.slice.start() + 1, rhs.slice.start() + 1,
-                 static_cast<size_t>(size)) == 0);
-};
-
-static inline int8_t TypeWeight(VPackSlice& slice) {
-again:
-  int8_t w = ::typeWeights[slice.head()];
-  if (w == -50) {
-    slice = slice.resolveExternal();
-    goto again;
-  }
-  return w;
 }
 
 int VelocyPackHelper::compareNumberValues(VPackValueType lhsType,
@@ -829,7 +767,7 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
         left = lhsString.data();
         nl = lhsString.size();
       } else {
-        left = lhs.getString(nl);
+        left = lhs.getStringUnchecked(nl);
       }
 
       if (rhs.isCustom()) {
@@ -841,7 +779,7 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
         right = rhsString.data();
         nr = rhsString.size();
       } else {
-        right = rhs.getString(nr);
+        right = rhs.getStringUnchecked(nr);
       }
 
       TRI_ASSERT(left != nullptr);
@@ -1041,16 +979,16 @@ uint64_t VelocyPackHelper::extractIdValue(VPackSlice const& slice) {
   if (!slice.isObject()) {
     return 0;
   }
-  VPackSlice id = slice.get("id");
+  VPackSlice id = slice.get(::idRef);
   if (id.isNone()) {
     // pre-3.1 compatibility
-    id = slice.get("cid");
+    id = slice.get(::cidRef);
   }
 
   if (id.isString()) {
     // string cid, e.g. "9988488"
     VPackValueLength l;
-    char const* p = id.getString(l);
+    char const* p = id.getStringUnchecked(l);
     return NumberUtils::atoi_zero<uint64_t>(p, p + l);
   } else if (id.isNumber()) {
     // numeric cid, e.g. 9988488

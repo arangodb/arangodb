@@ -137,11 +137,11 @@ class RocksDBTransactionState final : public TransactionState {
   bool inParallelMode() const { return _parallel; }
 
   /// @brief Every index can track hashes inserted into this index
-  ///        Used to update the estimate after the trx commited
+  ///        Used to update the estimate after the trx committed
   void trackIndexInsert(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);
 
   /// @brief Every index can track hashes removed from this index
-  ///        Used to update the estimate after the trx commited
+  ///        Used to update the estimate after the trx committed
   void trackIndexRemove(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);
 
  private:

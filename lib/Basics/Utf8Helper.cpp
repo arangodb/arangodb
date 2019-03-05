@@ -41,6 +41,7 @@
 #endif
 
 using namespace arangodb::basics;
+using namespace icu;
 
 Utf8Helper Utf8Helper::DefaultUtf8Helper(nullptr);
 
@@ -67,11 +68,11 @@ int Utf8Helper::compareUtf8(char const* left, size_t leftLength,
   TRI_ASSERT(_coll);
 
   UErrorCode status = U_ZERO_ERROR;
-  int result = _coll->compareUTF8(StringPiece(left, (int32_t)leftLength),
-                                  StringPiece(right, (int32_t)rightLength), status);
-  if (U_FAILURE(status)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "error in Collator::compareUTF8(...): " << u_errorName(status);
+
+  int result = _coll->compareUTF8(icu::StringPiece(left, (int32_t)leftLength),
+                                  icu::StringPiece(right, (int32_t)rightLength), status);
+  if (ADB_UNLIKELY(U_FAILURE(status))) {
+    TRI_ASSERT(false);
     return (strncmp(left, right, leftLength < rightLength ? leftLength : rightLength));
   }
 
@@ -82,27 +83,8 @@ int Utf8Helper::compareUtf16(uint16_t const* left, size_t leftLength,
                              uint16_t const* right, size_t rightLength) const {
   TRI_ASSERT(left != nullptr);
   TRI_ASSERT(right != nullptr);
+  TRI_ASSERT(_coll);
 
-  if (!_coll) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "no Collator in Utf8Helper::compareUtf16()!";
-
-    if (leftLength == rightLength) {
-      return memcmp((const void*)left, (const void*)right, leftLength * 2);
-    }
-
-    int result = memcmp((const void*)left, (const void*)right,
-                        leftLength < rightLength ? leftLength * 2 : rightLength * 2);
-
-    if (result == 0) {
-      if (leftLength < rightLength) {
-        return -1;
-      }
-      return 1;
-    }
-
-    return result;
-  }
   // ..........................................................................
   // Take note here: we are assuming that the ICU type UChar is two bytes.
   // There is no guarantee that this will be the case on all platforms and
@@ -128,7 +110,7 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang, void* icuDataPoint
 
   if (_coll) {
     ULocDataLocaleType type = ULOC_ACTUAL_LOCALE;
-    const Locale& locale = _coll->getLocale(type, status);
+    const icu::Locale& locale = _coll->getLocale(type, status);
 
     if (U_FAILURE(status)) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
@@ -140,13 +122,13 @@ bool Utf8Helper::setCollatorLanguage(std::string const& lang, void* icuDataPoint
     }
   }
 
-  Collator* coll;
+  icu::Collator* coll;
   if (lang == "") {
     // get default collator for empty language
-    coll = Collator::createInstance(status);
+    coll = icu::Collator::createInstance(status);
   } else {
-    Locale locale(lang.c_str());
-    coll = Collator::createInstance(locale, status);
+    icu::Locale locale(lang.c_str());
+    coll = icu::Collator::createInstance(locale, status);
   }
 
   if (U_FAILURE(status)) {
@@ -185,7 +167,7 @@ std::string Utf8Helper::getCollatorLanguage() {
   if (_coll) {
     UErrorCode status = U_ZERO_ERROR;
     ULocDataLocaleType type = ULOC_VALID_LOCALE;
-    const Locale& locale = _coll->getLocale(type, status);
+    const icu::Locale& locale = _coll->getLocale(type, status);
 
     if (U_FAILURE(status)) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
@@ -201,7 +183,7 @@ std::string Utf8Helper::getCollatorCountry() {
   if (_coll) {
     UErrorCode status = U_ZERO_ERROR;
     ULocDataLocaleType type = ULOC_VALID_LOCALE;
-    const Locale& locale = _coll->getLocale(type, status);
+    const icu::Locale& locale = _coll->getLocale(type, status);
 
     if (U_FAILURE(status)) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
@@ -250,7 +232,7 @@ char* Utf8Helper::tolower(char const* src, int32_t srcLength, int32_t& dstLength
   UErrorCode status = U_ZERO_ERROR;
 
   std::string locale = getCollatorLanguage();
-  LocalUCaseMapPointer csm(ucasemap_open(locale.c_str(), options, &status));
+  icu::LocalUCaseMapPointer csm(ucasemap_open(locale.c_str(), options, &status));
 
   if (U_FAILURE(status)) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
@@ -421,7 +403,7 @@ bool Utf8Helper::tokenize(std::set<std::string>& words,
   }
 
   ULocDataLocaleType type = ULOC_VALID_LOCALE;
-  const Locale& locale = _coll->getLocale(type, status);
+  const icu::Locale& locale = _coll->getLocale(type, status);
 
   if (U_FAILURE(status)) {
     TRI_Free(textUtf16);
@@ -475,11 +457,11 @@ bool Utf8Helper::tokenize(std::set<std::string>& words,
 /// @brief builds a regex matcher for the specified pattern
 ////////////////////////////////////////////////////////////////////////////////
 
-RegexMatcher* Utf8Helper::buildMatcher(std::string const& pattern) {
+icu::RegexMatcher* Utf8Helper::buildMatcher(std::string const& pattern) {
   UErrorCode status = U_ZERO_ERROR;
 
   auto matcher =
-      std::make_unique<RegexMatcher>(UnicodeString::fromUTF8(pattern), 0, status);
+    std::make_unique<icu::RegexMatcher>(icu::UnicodeString::fromUTF8(pattern), 0, status);
   if (U_FAILURE(status)) {
     return nullptr;
   }
@@ -491,11 +473,11 @@ RegexMatcher* Utf8Helper::buildMatcher(std::string const& pattern) {
 /// @brief whether or not value matches a regex
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Utf8Helper::matches(RegexMatcher* matcher, char const* value,
+bool Utf8Helper::matches(icu::RegexMatcher* matcher, char const* value,
                          size_t valueLength, bool partial, bool& error) {
   TRI_ASSERT(value != nullptr);
-  UnicodeString v =
-      UnicodeString::fromUTF8(StringPiece(value, static_cast<int32_t>(valueLength)));
+  icu::UnicodeString v =
+    icu::UnicodeString::fromUTF8(icu::StringPiece(value, static_cast<int32_t>(valueLength)));
 
   matcher->reset(v);
 
@@ -523,15 +505,15 @@ bool Utf8Helper::matches(RegexMatcher* matcher, char const* value,
 /// @brief replace value using a regex
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Utf8Helper::replace(RegexMatcher* matcher, char const* value,
+std::string Utf8Helper::replace(icu::RegexMatcher* matcher, char const* value,
                                 size_t valueLength, char const* replacement,
                                 size_t replacementLength, bool partial, bool& error) {
   TRI_ASSERT(value != nullptr);
-  UnicodeString v =
-      UnicodeString::fromUTF8(StringPiece(value, static_cast<int32_t>(valueLength)));
+  icu::UnicodeString v =
+    icu::UnicodeString::fromUTF8(icu::StringPiece(value, static_cast<int32_t>(valueLength)));
 
-  UnicodeString r = UnicodeString::fromUTF8(
-      StringPiece(replacement, static_cast<int32_t>(replacementLength)));
+  icu::UnicodeString r = icu::UnicodeString::fromUTF8(
+    icu::StringPiece(replacement, static_cast<int32_t>(replacementLength)));
 
   matcher->reset(v);
 
@@ -539,7 +521,7 @@ std::string Utf8Helper::replace(RegexMatcher* matcher, char const* value,
   error = false;
 
   TRI_ASSERT(matcher != nullptr);
-  UnicodeString result;
+  icu::UnicodeString result;
 
   if (partial) {
     // partial match

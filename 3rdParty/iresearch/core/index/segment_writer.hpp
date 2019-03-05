@@ -354,4 +354,6 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
 NS_END
 
+MSVC_ONLY(template class IRESEARCH_API std::unique_ptr<irs::segment_writer>;) // segment_writer::ptr
+
 #endif

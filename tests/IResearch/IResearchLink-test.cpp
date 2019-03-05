@@ -23,7 +23,7 @@
 
 #include "catch.hpp"
 #include "common.h"
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #include "store/fs_directory.hpp"
 #include "utils/log.hpp"
@@ -358,7 +358,7 @@ SECTION("test_flush_marker") {
     arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
     buf.append(json->slice().begin(), json->slice().byteSize());
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-    marker->setSize(buf.size() - sizeof(::MMFilesMarker));
+    marker->setSize(buf.size());
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
     arangodb::MMFilesWalRecoverState state(false);
     CHECK((0 == state.errorCount));
@@ -374,7 +374,7 @@ SECTION("test_flush_marker") {
     arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
     buf.append(json->slice().begin(), json->slice().byteSize());
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-    marker->setSize(buf.size() - sizeof(::MMFilesMarker));
+    marker->setSize(buf.size());
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
     arangodb::MMFilesWalRecoverState state(false);
     CHECK((0 == state.errorCount));
@@ -390,7 +390,7 @@ SECTION("test_flush_marker") {
     arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
     buf.append(json->slice().begin(), json->slice().byteSize());
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-    marker->setSize(buf.size() - sizeof(::MMFilesMarker));
+    marker->setSize(buf.size());
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
     arangodb::MMFilesWalRecoverState state(false);
     CHECK((0 == state.errorCount));
@@ -406,7 +406,7 @@ SECTION("test_flush_marker") {
     arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
     buf.append(json->slice().begin(), json->slice().byteSize());
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-    marker->setSize(buf.size() - sizeof(::MMFilesMarker));
+    marker->setSize(buf.size());
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
     arangodb::MMFilesWalRecoverState state(false);
     CHECK((0 == state.errorCount));
@@ -422,7 +422,7 @@ SECTION("test_flush_marker") {
     arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
     buf.append(json->slice().begin(), json->slice().byteSize());
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-    marker->setSize(buf.size() - sizeof(::MMFilesMarker));
+    marker->setSize(buf.size());
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
     arangodb::MMFilesWalRecoverState state(false);
     CHECK((0 == state.errorCount));
@@ -438,7 +438,7 @@ SECTION("test_flush_marker") {
     arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
     buf.append(json->slice().begin(), json->slice().byteSize());
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-    marker->setSize(buf.size() - sizeof(::MMFilesMarker));
+    marker->setSize(buf.size());
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
     arangodb::MMFilesWalRecoverState state(false);
     CHECK((0 == state.errorCount));
@@ -464,7 +464,7 @@ SECTION("test_flush_marker") {
     arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
     buf.append(json->slice().begin(), json->slice().byteSize());
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-    marker->setSize(buf.size() - sizeof(::MMFilesMarker));
+    marker->setSize(buf.size());
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
     arangodb::MMFilesWalRecoverState state(false);
     CHECK((0 == state.errorCount));
@@ -480,7 +480,7 @@ SECTION("test_flush_marker") {
     arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
     buf.append(json->slice().begin(), json->slice().byteSize());
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-    marker->setSize(buf.size() - sizeof(::MMFilesMarker));
+    marker->setSize(buf.size());
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
     arangodb::MMFilesWalRecoverState state(false);
     CHECK((0 == state.errorCount));
@@ -976,10 +976,9 @@ SECTION("test_write") {
     REQUIRE(l != nullptr);
     CHECK((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
+    CHECK((l->commit().ok()));
   }
 
-  flush->executeCallbacks(); // prepare memory store to be flushed to persisted storage
-  CHECK((view->commit().ok()));
   CHECK((1 == reader.reopen().live_docs_count()));
 
   {
@@ -995,10 +994,9 @@ SECTION("test_write") {
     REQUIRE(l != nullptr);
     CHECK((l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
+    CHECK((l->commit().ok()));
   }
 
-  flush->executeCallbacks(); // prepare memory store to be flushed to persisted storage
-  CHECK((view->commit().ok()));
   CHECK((2 == reader.reopen().live_docs_count()));
 
   {
@@ -1014,13 +1012,11 @@ SECTION("test_write") {
     REQUIRE(l != nullptr);
     CHECK((l->remove(trx, arangodb::LocalDocumentId(2), doc1->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
+    CHECK((l->commit().ok()));
   }
 
-  flush->executeCallbacks(); // prepare memory store to be flushed to persisted storage
-  CHECK((view->commit().ok()));
   CHECK((1 == reader.reopen().live_docs_count()));
   logicalCollection->dropIndex(link->id());
-  CHECK((view->commit().ok()));
   CHECK_THROWS((reader.reopen()));
 }
 

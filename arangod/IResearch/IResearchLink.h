@@ -51,20 +51,6 @@ class IResearchLink {
   typedef std::shared_ptr<TypedResourceMutex<IResearchLink>> AsyncLinkPtr;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief runtime (not persisted) configurable properties of a link
-  //////////////////////////////////////////////////////////////////////////////
-  struct RuntimeMeta {
-    size_t _cleanupIntervalStep{0}; // issue cleanup after <count> commits (0 == disable)
-    size_t _commitIntervalMsec{0}; // issue commit after <interval> milliseconds (0 == disable)
-    size_t _consolidationIntervalMsec{0}; // issue consolidation after <interval> milliseconds (0 == disable)
-    IResearchViewMeta::ConsolidationPolicy _consolidationPolicy; // the consolidation policy to use
-    size_t _writebufferActive{0}; // maximum number of concurrent segments before segment aquisition blocks, e.g. max number of concurrent transacitons) (0 == unlimited)
-    size_t _writebufferSizeMax{0}; // maximum memory byte size per segment before a segment flush is triggered (0 == unlimited)
-    bool operator==(RuntimeMeta const& other) const noexcept;
-    bool operator!=(RuntimeMeta const& other) const noexcept;
-  };
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief a snapshot representation of the data-store
   ///        locked to prevent data store deallocation
   //////////////////////////////////////////////////////////////////////////////
@@ -117,20 +103,12 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   /// @return the associated collection
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::LogicalCollection& collection() const noexcept;  // arangodb::Index override
+  arangodb::LogicalCollection& collection() const noexcept; // arangodb::Index override
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief mark the current data store state as te latest valid state
+  /// @brief mark the current data store state as the latest valid state
   //////////////////////////////////////////////////////////////////////////////
   arangodb::Result commit();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief invoke internal data store consolidation with the specified policy
-  /// @return success
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result consolidate(IResearchViewMeta::ConsolidationPolicy const& policy,
-                               irs::merge_writer::flush_progress_t const& progress,
-                               bool runCleanupAfterConsolidation);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is dropped
@@ -185,7 +163,7 @@ class IResearchLink {
   /// @brief update runtine data processing properties (not persisted)
   /// @return success
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result properties(RuntimeMeta const& meta);
+  arangodb::Result properties(IResearchViewMeta const& meta);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an ArangoDB document from an iResearch View
@@ -232,6 +210,8 @@ class IResearchLink {
   arangodb::Result unload(); // arangodb::Index override
 
  protected:
+  typedef std::function<void(irs::directory&)> InitCallback;
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief construct an uninitialized IResearch link, must call init(...)
   /// after
@@ -242,7 +222,10 @@ class IResearchLink {
   /// @brief initialize from the specified definition used in make(...)
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
-  arangodb::Result init(arangodb::velocypack::Slice const& definition);
+  arangodb::Result init(
+    arangodb::velocypack::Slice const& definition,
+    InitCallback const& initCallback = {}
+  );
 
  private:
 
@@ -261,7 +244,7 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   struct DataStore {
     irs::directory::ptr _directory;
-    RuntimeMeta _meta; // runtime properties (not persisted)
+    IResearchViewMeta _meta; // runtime meta for a data store (not persisted)
     irs::async_utils::read_write_mutex _mutex; // for use with member '_meta'
     irs::utf8_path _path;
     irs::directory_reader _reader;
@@ -287,13 +270,21 @@ class IResearchLink {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run filesystem cleanup on the data store
+  /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result cleanup();
+  arangodb::Result cleanupUnsafe();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief mark the current data store state as the latest valid state
+  /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result commitUnsafe();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run segment consolidation on the data store
+  /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result consolidate( // consolidate segments
+  arangodb::Result consolidateUnsafe( // consolidate segments
     IResearchViewMeta::ConsolidationPolicy const& policy, // policy to apply
     irs::merge_writer::flush_progress_t const& progress // policy progress to use
   );
@@ -301,7 +292,7 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result initDataStore();
+  arangodb::Result initDataStore(InitCallback const& initCallback);
 };  // IResearchLink
 
 }  // namespace iresearch

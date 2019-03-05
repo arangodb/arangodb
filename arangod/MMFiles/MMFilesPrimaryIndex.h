@@ -201,7 +201,7 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(StringRef const& = StringRef()) const override {
+  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override {
     return 1.0;
   }
 

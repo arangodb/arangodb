@@ -33,6 +33,10 @@
 // / @brief normalize a single row result
 // //////////////////////////////////////////////////////////////////////////////
 
+let isEqual = require("@arangodb/test-helper").isEqual;
+
+exports.isEqual = isEqual;
+
 function normalizeRow (row, recursive) {
   if (row !== null &&
     typeof row === 'object' &&
@@ -134,91 +138,6 @@ function getQueryResults (query, bindVars, recursive, options = {}) {
   }
 
   return result;
-}
-
-function typeName (value) {
-  if (value === null) {
-    return 'null';
-  }
-  if (value === undefined) {
-    return 'undefined';
-  }
-  if (Array.isArray(value)) {
-    return 'array';
-  }
-
-  var type = typeof value;
-
-  if (type === 'object') {
-    return 'object';
-  }
-  if (type === 'string') {
-    return 'string';
-  }
-  if (type === 'boolean') {
-    return 'boolean';
-  }
-  if (type === 'number') {
-    return 'number';
-  }
-
-  throw 'unknown variable type';
-}
-
-function isEqual (lhs, rhs) {
-  var ltype = typeName(lhs), rtype = typeName(rhs), i;
-
-  if (ltype !== rtype) {
-    return false;
-  }
-
-  if (ltype === 'null' || ltype === 'undefined') {
-    return true;
-  }
-
-  if (ltype === 'array') {
-    if (lhs.length !== rhs.length) {
-      return false;
-    }
-    for (i = 0; i < lhs.length; ++i) {
-      if (!isEqual(lhs[i], rhs[i])) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  if (ltype === 'object') {
-    var lkeys = Object.keys(lhs), rkeys = Object.keys(rhs);
-    if (lkeys.length !== rkeys.length) {
-      return false;
-    }
-    for (i = 0; i < lkeys.length; ++i) {
-      var key = lkeys[i];
-      if (!isEqual(lhs[key], rhs[key])) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  if (ltype === 'boolean') {
-    return (lhs === rhs);
-  }
-  if (ltype === 'string') {
-    return (lhs === rhs);
-  }
-  if (ltype === 'number') {
-    if (isNaN(lhs)) {
-      return isNaN(rhs);
-    }
-    if (!isFinite(lhs)) {
-      return (lhs === rhs);
-    }
-    return (lhs.toFixed(10) === rhs.toFixed(10));
-  }
-
-  throw 'unknown variable type';
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -462,7 +381,6 @@ function removeClusterNodesFromPlan (nodes) {
   });
 }
 
-exports.isEqual = isEqual;
 exports.getParseResults = getParseResults;
 exports.assertParseError = assertParseError;
 exports.getQueryExplanation = getQueryExplanation;
