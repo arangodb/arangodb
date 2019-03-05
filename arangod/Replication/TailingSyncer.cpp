@@ -1329,7 +1329,8 @@ retry:
       // do an automatic full resync
       LOG_TOPIC(WARN, Logger::REPLICATION)
           << "restarting initial synchronization for database '" << _state.databaseName
-          << "' because autoResync option is set. retry #" << shortTermFailsInRow;
+          << "' because autoResync option is set. retry #" << shortTermFailsInRow 
+          << " of " << _state.applier._autoResyncRetries;
 
       // start initial synchronization
       try {
@@ -2023,7 +2024,7 @@ Result TailingSyncer::handleRequiredFromPresentFailure(TRI_voc_tick_t fromTick,
         "' is not present (anymore?) on master at " + _state.master.endpoint +
         ". Last tick available on master is '" + StringUtils::itoa(readTick) +
         "'. It may be required to do a full resync and increase the number "
-        "of historic logfiles/WAL file timeout on the master.";
+        "of historic logfiles/WAL file timeout or archive size on the master.";
   if (_requireFromPresent) {  // hard fail
     abortOngoingTransactions();
     return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, msg);

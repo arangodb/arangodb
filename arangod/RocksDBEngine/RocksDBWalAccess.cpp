@@ -743,6 +743,9 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   uint64_t lastWrittenTick = 0;      // lastTick at the end of a write batch
   uint64_t latestTick = db->GetLatestSequenceNumber();
 
+  // prevent purging of WAL files while we are in here
+  RocksDBFilePurgePreventer purgePreventer(rocksutils::globalRocksEngine()->disallowPurging());
+
   std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
   // no need verifying the WAL contents
   rocksdb::TransactionLogIterator::ReadOptions ro(false);
