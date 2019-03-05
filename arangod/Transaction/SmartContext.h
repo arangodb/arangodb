@@ -65,12 +65,12 @@ class SmartContext : public Context {
   CollectionNameResolver const& resolver() override final;
 
   /// @brief whether or not the transaction is embeddable
-  bool isEmbeddable() const override {
+  bool isEmbeddable() const override final {
     return true;
   }
   
   /// @brief locally persisted transaction ID
-  TRI_voc_tid_t generateId() const override;
+  TRI_voc_tid_t generateId() const override final;
   
  protected:
   /// @brief ID of the transaction to use

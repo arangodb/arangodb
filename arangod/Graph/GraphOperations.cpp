@@ -38,6 +38,7 @@
 #include "Graph/GraphManager.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Methods.h"
+#include "Transaction/SmartContext.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
@@ -786,10 +787,11 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
     edgeCollections.emplace(it);  // but also to edgeCollections for later iteration
   }
 
+  TRI_voc_tid_t tid = TRI_NewTickServer() << 1; // (tid mod 4 != 3)
+  auto ctx = std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
-  auto context = ctx();
-  UserTransaction trx{context, {}, trxCollections, {}, trxOptions};
+  UserTransaction trx{ctx, {}, trxCollections, {}, trxOptions};
 
   res = trx.begin();
 
@@ -818,7 +820,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
 
       arangodb::aql::Query query(false, _vocbase, queryString, bindVars,
                                  nullptr, arangodb::aql::PART_DEPENDENT);
-      query.setTransactionContext(context);
+      query.setTransactionContext(ctx); // hack to share  the same transaction
 
       auto queryResult = query.executeSync(QueryRegistryFeature::registry());
       if (queryResult.code != TRI_ERROR_NO_ERROR) {
