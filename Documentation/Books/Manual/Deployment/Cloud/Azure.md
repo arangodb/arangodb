@@ -5,7 +5,7 @@ ArangoDB can be deployed on Azure or other cloud platforms. Deploying on a cloud
 provider is common choice and many of the most big ArangoDB installation are running
 on the cloud.
 
-No specific scripts or tools are available to deploy on Azure. Deploying on Azure
+No Azure-specific scripts or tools are needed to deploy on Azure. Deploying on Azure
 is still possible, and again, a quite common scenario.
 
 After having initialized your preferred Azure instance, with one of the ArangoDB supported

@@ -903,6 +903,37 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
   return result;
 }
 
+AgencyCommResult AgencyComm::dump() {
+  std::string url = AgencyComm::AGENCY_URL_PREFIX + "/state";
+
+  AgencyCommResult result =
+    sendWithFailover(
+      arangodb::rest::RequestType::GET,
+      AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
+      url, VPackSlice::noneSlice());
+
+  if (!result.successful()) {
+    return result;
+  }
+
+  try {
+
+    result.setVPack(VPackParser::fromJson(result.bodyRef()));
+    result._body.clear();
+    result._statusCode = 200;
+
+  } catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Error transforming result: " << e.what();
+    result.clear();
+  } catch (...) {
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM)
+      << "Error transforming result: out of memory";
+    result.clear();
+  }
+
+  return result;
+}
+
 AgencyCommResult AgencyComm::removeValues(std::string const& key, bool recursive) {
   AgencyWriteTransaction transaction(AgencyOperation(key, AgencySimpleOperationType::DELETE_OP));
 
