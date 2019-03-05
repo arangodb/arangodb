@@ -727,6 +727,10 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd, siz
     TRI_ASSERT(lastWrittenTick >= lastTick);
     iterator->Next();
   }
+  
+  // update our latest sequence number again, because it may have been raised
+  // while scanning the WAL
+  latestTick = db->GetLatestSequenceNumber();
 
   WalAccessResult result(TRI_ERROR_NO_ERROR, firstTick <= tickStart,
                          lastWrittenTick, lastScannedTick, latestTick);

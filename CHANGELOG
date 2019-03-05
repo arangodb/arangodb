@@ -1,7 +1,24 @@
 v3.3.23 (XXXX-XX-XX)
 --------------------
 
-* always abort ongoing transactions when replication is stopped
+* always clear all ongoing replication transactions on the slave if the slave
+  discovers the data it has asked for is not present anymore on the master and the
+  `requireFromPresent` value for the applier is set to `false`.
+
+  In this case aborting the ongoing transactions on the slave is necessary because
+  they may have held exclusive locks on collections, which may otherwise not be
+  released.
+
+* speed up replication of transactions containing updates of existing documents.
+
+  The replication protocol does not provide any information on whether a document
+  was inserted on the master or updated/replaced. Therefore the slave will always
+  try an insert first, and move to a replace if the insert fails with "unique
+  constraint violation". This case is however very costly in a bigger transaction,
+  as the rollback of the insert will force the underlying RocksDB write batch to be
+  entirely rewritten. To circumvent rewriting entire write batches, we now do a
+  quick check if the target document already exists, and then branch to either
+  insert or replace internally.
 
 * fixed some escaping issues within the web UI
 
