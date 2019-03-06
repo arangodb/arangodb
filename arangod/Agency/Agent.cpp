@@ -385,14 +385,6 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(
     if (lastIndex > 0) {
       LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Finished empty AppendEntriesRPC from " << leaderId << " with term " << term;
-      {
-        WRITE_LOCKER(oLocker, _outputLock);
-        _commitIndex = std::max(
-          _commitIndex, std::min(leaderCommitIndex, lastIndex));
-        if (_commitIndex >= _state.nextCompactionAfter()) {
-          _compactor.wakeUp();
-        }
-      }
       return priv_rpc_ret_t(true,t);
     } else {
       return priv_rpc_ret_t(false,t);
@@ -420,7 +412,8 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(
     _commitIndex = std::max(
       _commitIndex, std::min(leaderCommitIndex, lastIndex));
     _waitForCV.broadcast();
-    if (_commitIndex >= _state.nextCompactionAfter()) {
+    if (leaderCommitIndex >= _state.nextCompactionAfter() &&
+        payload[nqs - 1].get("index").getNumber<index_t>() >= _state.nextCompactionAfter()) {
       _compactor.wakeUp();
     }
   }

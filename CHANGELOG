@@ -1,3 +1,8 @@
+v3.3.14.8
+---------
+
+* agency compaction robustness and fixes on follower restarts
+
 v3.3.14.7
 ---------
 
