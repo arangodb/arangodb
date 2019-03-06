@@ -311,9 +311,10 @@ POST /_admin/cluster/cleanOutServer
 
 (please compare the above output of the `/_admin/cluster/health` API).
 The value of the `"server"` attribute should be the name of the DBserver
-which is one the pod which shall be drained next. This uses the UI short
-name, alternatively one can use the internal name, which corresponds to
-the pod name. In our example, the pod name is:
+which is the one in the pod which resides on the node that shall be
+drained next. This uses the UI short name, alternatively one can use the
+internal name, which corresponds to the pod name. In our example, the
+pod name is:
 
 ```
 my-arangodb-cluster-prmr-wbsq47rz-5676ed

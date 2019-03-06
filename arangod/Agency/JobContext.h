@@ -44,10 +44,10 @@ class JobContext {
   void create(std::shared_ptr<VPackBuilder> b = nullptr);
 
   /// @brief Start job
-  void start();
+  void start(bool& aborts);
 
   /// @brief Run job
-  void run();
+  void run(bool& aborts);
 
   /// @brief Abort job
   void abort();

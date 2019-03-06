@@ -73,9 +73,9 @@ struct Job {
 
   virtual ~Job();
 
-  virtual void run() = 0;
+  virtual void run(bool& aborts) = 0;
 
-  void runHelper(std::string const& server, std::string const& shard) {
+  void runHelper(std::string const& server, std::string const& shard, bool& aborts) {
     if (_status == FAILED) {  // happens when the constructor did not work
       return;
     }
@@ -88,10 +88,10 @@ struct Job {
     }
     try {
       if (_status == TODO) {
-        start();
+        start(aborts);
       } else if (_status == NOTFOUND) {
         if (create(nullptr)) {
-          start();
+          start(aborts);
         }
       }
     } catch (std::exception const& e) {
@@ -113,7 +113,7 @@ struct Job {
   virtual bool create(std::shared_ptr<VPackBuilder> b) = 0;
 
   // Returns if job was actually started (i.e. false if directly failed!)
-  virtual bool start() = 0;
+  virtual bool start(bool& aborts) = 0;
 
   static bool abortable(Node const& snapshot, std::string const& jobId);
 
@@ -124,8 +124,10 @@ struct Job {
   ///        excluding "exclude" vector
   static std::string randomIdleAvailableServer(Node const& snap,
                                                    std::vector<std::string> const& exclude);
-  static size_t countGoodServersInList(Node const& snap, VPackSlice const& serverList);
   static std::string randomIdleAvailableServer(Node const& snap, VPackSlice const& exclude);
+  static size_t countGoodServersInList(Node const& snap, VPackSlice const& serverList);
+  static size_t countGoodServersInList(Node const& snap, std::vector<std::string> const& serverList);
+  static bool isInServerList(Node const& snap, std::string const& prefix, std::string const& server, bool isArray);
 
   /// @brief Get servers from plan, which are not failed or cleaned out
   static std::vector<std::string> availableServers(const arangodb::consensus::Node&);
