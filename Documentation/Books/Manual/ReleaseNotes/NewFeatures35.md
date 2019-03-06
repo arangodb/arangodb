@@ -55,6 +55,56 @@ AQL now allows the usage of floating point values without leading zeros, e.g.
 `.1234`. Previous versions of ArangoDB required a leading zero in front of
 the decimal separator, i.e `0.1234`.
 
+
+Background Index Creation
+-------------------------
+
+Creating new indexes is by default done under an exclusive collection lock. This means
+that the collection (or the respective shards) are not available for write operations
+as long as the index is created. This "foreground" index creation can be undesirable, 
+if you have to perform it on a live system without a dedicated maintenance window.
+
+Starting with ArangoDB 3.5, indexes can also be created in "background", not using an 
+exclusive lock during the entire index creation. The collection remains basically available, 
+so that other CRUD operations can run on the collection while the index is being created.
+This can be achieved by setting the *inBackground* attribute when creating an index.
+
+To create an index in the background in *arangosh* just specify `inBackground: true`, 
+like in the following example:
+
+```js
+db.collection.ensureIndex({ type: "hash", fields: [ "value" ], inBackground: true });
+```
+
+Indexes that are still in the build process will not be visible via the ArangoDB APIs. 
+Nevertheless it is not possible to create the same index twice via the *ensureIndex* API 
+while an index is still begin created. AQL queries also will not use these indexes until
+the index reports back as fully created. Note that the initial *ensureIndex* call or HTTP 
+request will still block until the index is completely ready. Existing single-threaded 
+client programs can thus safely set the *inBackground* option to *true* and continue to 
+work as before.
+
+Should you be building an index in the background you cannot rename or drop the collection.
+These operations will block until the index creation is finished.
+{% endhint %}
+
+After an interrupted index build (i.e. due to a server crash) the partially built index
+will the removed. In the ArangoDB cluster the index might then be automatically recreated 
+on affected shards.
+
+Background index creation might be slower than the "foreground" index creation and require 
+more RAM. Under a write heavy load (specifically many remove, update or replace operations), 
+the background index creation needs to keep a list of removed documents in RAM. This might 
+become unsustainable if this list grows to tens of millions of entries.
+
+Building an index is always a write-heavy operation, so it is always a good idea to build 
+indexes during times with less load.
+
+Please note that background index creation is useful only in combination with the RocksDB 
+storage engine. With the MMFiles storage engine, creating an index will always block any
+other operations on the collection.
+
+
 TTL (time-to-live) Indexes
 --------------------------
 
@@ -117,6 +167,20 @@ The total maximum number of documents to be removed per thread invocation is
 controlled by the startup option `--ttl.max-total-removes`. The maximum number of
 documents in a single collection at once can be controlled by the startup option
 `--ttl.max-collection-removes`.
+
+
+HTTP API extensions
+-------------------
+
+The HTTP API for creating indexes at POST `/_api/index` has been extended two-fold:
+
+* to create a TTL (time-to-live) index, it is now possible to specify a value of `ttl`
+  in the `type` attribute. When creating a TTL index, the attribute `expireAfter` is 
+  also required. That attribute contains the expiration time (in seconds), which is
+  based on the documents' index attribute value.
+
+* to create an index in background, the attribute `inBackground` can be set to `true`.
+
 
 Web interface
 -------------

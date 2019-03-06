@@ -23,16 +23,15 @@
 
 #include "tests_shared.hpp" 
 #include "iql/query_builder.hpp"
-#include "store/fs_directory.hpp"
-#include "store/mmap_directory.hpp"
 #include "store/memory_directory.hpp"
 #include "utils/index_utils.hpp"
+#include "utils/file_utils.hpp"
 
 #include "index_tests.hpp"
 
 #include <thread>
 
-namespace tests {
+NS_BEGIN(tests)
 
 struct incompatible_attribute : irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();
@@ -312,8 +311,30 @@ void payloaded_json_field_factory(
   }
 }
 
-class index_test_case_base : public tests::index_test_base {
+std::string to_string(
+    const testing::TestParamInfo<index_test_context>& info
+) {
+  dir_factory_f factory;
+  const char* codec_name;
+  std::tie(factory, codec_name) = info.param;
+
+  return (*factory)(nullptr).second + "___" + codec_name;
+}
+
+NS_END // tests
+
+class index_test_case : public tests::index_test_base {
  public:
+  void assert_index(size_t skip = 0) const {
+    index_test_base::assert_index(irs::flags(), skip);
+    index_test_base::assert_index(irs::flags{ irs::document::type() }, skip);
+    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type() }, skip);
+    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type() }, skip);
+    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::offset::type() }, skip);
+    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type() }, skip);
+    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() }, skip);
+  }
+
   void clear_writer() {
     tests::json_doc_generator gen(
       resource("simple_sequential.json"),
@@ -863,9 +884,9 @@ class index_test_case_base : public tests::index_test_base {
   void writer_transaction_isolation() {
     tests::json_doc_generator gen(
       resource("simple_sequential.json"),
-      [] (tests::document& doc, const std::string& name, const json_doc_generator::json_value& data) {
-        if (json_doc_generator::ValueType::STRING == data.vt) {
-          doc.insert(std::make_shared<templates::string_field>(
+      [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+        if (tests::json_doc_generator::ValueType::STRING == data.vt) {
+          doc.insert(std::make_shared<tests::templates::string_field>(
             irs::string_ref(name),
             data.str
           ));
@@ -10902,7 +10923,7 @@ class index_test_case_base : public tests::index_test_base {
         std::vector<field> doc;
         doc.emplace_back(std::string("name"), irs::string_ref("", 0));
         doc.emplace_back(std::string("name"), irs::string_ref::NIL);
-        ASSERT_TRUE(insert(*writer, doc.begin(), doc.end()));
+        ASSERT_TRUE(tests::insert(*writer, doc.begin(), doc.end()));
       }
       // doc1: nullptr, empty, nullptr
       {
@@ -10910,7 +10931,7 @@ class index_test_case_base : public tests::index_test_base {
         doc.emplace_back(std::string("name1"), irs::string_ref::NIL);
         doc.emplace_back(std::string("name1"), irs::string_ref("", 0));
         doc.emplace_back(std::string("name"), irs::string_ref::NIL);
-        ASSERT_TRUE(insert(*writer, doc.begin(), doc.end()));
+        ASSERT_TRUE(tests::insert(*writer, doc.begin(), doc.end()));
       }
       writer->commit();
     }
@@ -11157,7 +11178,7 @@ class index_test_case_base : public tests::index_test_base {
   }
 
   void writer_atomicity_check() {
-    struct override_sync_directory : directory_mock {
+    struct override_sync_directory : tests::directory_mock {
       typedef std::function<bool (const std::string&)> sync_f;
 
       override_sync_directory(irs::directory& impl, sync_f&& sync)
@@ -11275,89 +11296,7 @@ class index_test_case_base : public tests::index_test_base {
   }
 }; // index_test_case
 
-class memory_test_case_base : public index_test_case_base {
-protected:
-  virtual irs::directory* get_directory() override {
-    return new irs::memory_directory();
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-}; // memory_test_case_base
-
-class fs_test_case_base : public index_test_case_base { 
-protected:
-  virtual void SetUp() override {
-    index_test_case_base::SetUp();
-    MSVC_ONLY(_setmaxstdio(2048)); // workaround for error: EMFILE - Too many open files
-  }
-
-  virtual irs::directory* get_directory() override {
-    auto dir = test_dir();
-
-    dir /= "index";
-
-    return new iresearch::fs_directory(dir.utf8());
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-}; // fs_test_case_base
-
-class mmap_test_case_base : public index_test_case_base {
-protected:
-  virtual void SetUp() override {
-    index_test_case_base::SetUp();
-    MSVC_ONLY(_setmaxstdio(2048)); // workaround for error: EMFILE - Too many open files
-  }
-
-  virtual irs::directory* get_directory() override {
-    auto dir = test_dir();
-
-    dir /= "index";
-
-    return new iresearch::mmap_directory(dir.utf8());
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-}; // mmap_test_case_base
-
-namespace cases {
-
-template<typename Base>
-class tfidf : public Base {
- public:
-  using Base::assert_index;
-  using Base::get_codec;
-  using Base::get_directory;
-
-  void assert_index(size_t skip = 0) const {
-    assert_index(irs::flags(), skip);
-    assert_index(irs::flags{ irs::document::type() }, skip);
-    assert_index(irs::flags{ irs::document::type(), irs::frequency::type() }, skip);
-    assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type() }, skip);
-    assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::offset::type() }, skip);
-    assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type() }, skip);
-    assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() }, skip);
-  }
-};
-
-} // cases
-} // tests
-
-// ----------------------------------------------------------------------------
-// --SECTION--                           memory_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
-
-class memory_index_test 
-  : public tests::cases::tfidf<tests::memory_test_case_base> {
-}; // memory_index_test
-
-TEST_F(memory_index_test, arango_demo_docs) {
+TEST_P(index_test_case, arango_demo_docs) {
   {
     tests::json_doc_generator gen(
       resource("arango_demo.json"),
@@ -11367,15 +11306,15 @@ TEST_F(memory_index_test, arango_demo_docs) {
   assert_index();
 }
 
-TEST_F(memory_index_test, check_fields_order) {
+TEST_P(index_test_case, check_fields_order) {
   iterate_fields();
 }
 
-TEST_F(memory_index_test, check_attributes_order) {
+TEST_P(index_test_case, check_attributes_order) {
   iterate_attributes();
 }
 
-TEST_F(memory_index_test, read_write_doc_attributes) {
+TEST_P(index_test_case, read_write_doc_attributes) {
   read_write_doc_attributes_sparse_column_sparse_variable_length();
   read_write_doc_attributes_sparse_column_dense_variable_length();
   read_write_doc_attributes_sparse_column_dense_fixed_length();
@@ -11391,40 +11330,40 @@ TEST_F(memory_index_test, read_write_doc_attributes) {
   read_empty_doc_attributes();
 }
 
-TEST_F(memory_index_test, clear_writer) {
+TEST_P(index_test_case, clear_writer) {
   clear_writer();
 }
 
-TEST_F(memory_index_test, open_writer) {
+TEST_P(index_test_case, open_writer) {
   open_writer_check_lock();
   open_writer_check_directory_allocator();
 }
 
-TEST_F(memory_index_test, check_writer_open_modes) {
+TEST_P(index_test_case, check_writer_open_modes) {
   writer_check_open_modes();
 }
 
-TEST_F(memory_index_test, writer_transaction_isolation) {
+TEST_P(index_test_case, writer_transaction_isolation) {
   writer_transaction_isolation();
 }
 
-TEST_F(memory_index_test, writer_atomicity_check) {
+TEST_P(index_test_case, writer_atomicity_check) {
   writer_atomicity_check();
 }
 
-TEST_F(memory_index_test, writer_bulk_insert) {
+TEST_P(index_test_case, writer_bulk_insert) {
   writer_bulk_insert();
 }
 
-TEST_F(memory_index_test, writer_begin_rollback) {
+TEST_P(index_test_case, writer_begin_rollback) {
   writer_begin_rollback();
 }
 
-TEST_F(memory_index_test, insert_null_empty_term) {
+TEST_P(index_test_case, insert_null_empty_term) {
   insert_doc_with_null_empty_term();
 }
 
-TEST_F(memory_index_test, europarl_docs) {
+TEST_P(index_test_case, europarl_docs) {
   {
     tests::templates::europarl_doc_template doc;
     tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
@@ -11433,7 +11372,7 @@ TEST_F(memory_index_test, europarl_docs) {
   assert_index();
 }
 
-TEST_F(memory_index_test, monarch_eco_onthology) {
+TEST_P(index_test_case, monarch_eco_onthology) {
   {
     tests::json_doc_generator gen(
       resource("ECO_Monarch.json"),
@@ -11443,16 +11382,16 @@ TEST_F(memory_index_test, monarch_eco_onthology) {
   assert_index();
 }
 
-TEST_F(memory_index_test, concurrent_read_column_mt) {
+TEST_P(index_test_case, concurrent_read_column_mt) {
   concurrent_read_single_column_smoke();
   concurrent_read_multiple_columns();
 }
 
-TEST_F(memory_index_test, concurrent_read_index_mt) {
+TEST_P(index_test_case, concurrent_read_index_mt) {
   concurrent_read_index();
 }
 
-TEST_F(memory_index_test, concurrent_add_mt) {
+TEST_P(index_test_case, concurrent_add_mt) {
   tests::json_doc_generator gen(resource("simple_sequential.json"), &tests::generic_json_field_factory);
   std::vector<const tests::document*> docs;
 
@@ -11490,7 +11429,7 @@ TEST_F(memory_index_test, concurrent_add_mt) {
   }
 }
 
-TEST_F(memory_index_test, concurrent_add_remove_mt) {
+TEST_P(index_test_case, concurrent_add_remove_mt) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
@@ -11571,7 +11510,7 @@ TEST_F(memory_index_test, concurrent_add_remove_mt) {
   }
 }
 
-TEST_F(memory_index_test, concurrent_add_remove_overlap_commit_mt) {
+TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
@@ -11703,7 +11642,7 @@ TEST_F(memory_index_test, concurrent_add_remove_overlap_commit_mt) {
   }
 }
 
-TEST_F(memory_index_test, document_context) {
+TEST_P(index_test_case, document_context) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
@@ -13126,7 +13065,7 @@ TEST_F(memory_index_test, document_context) {
   }
 }
 
-TEST_F(memory_index_test, doc_removal) {
+TEST_P(index_test_case, doc_removal) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
@@ -13648,7 +13587,7 @@ TEST_F(memory_index_test, doc_removal) {
   }
 }
 
-TEST_F(memory_index_test, doc_update) {
+TEST_P(index_test_case, doc_update) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
@@ -14429,7 +14368,7 @@ TEST_F(memory_index_test, doc_update) {
   }
 }
 
-TEST_F(memory_index_test, import_reader) {
+TEST_P(index_test_case, import_reader) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
@@ -14846,7 +14785,7 @@ TEST_F(memory_index_test, import_reader) {
   }
 }
 
-TEST_F(memory_index_test, refresh_reader) {
+TEST_P(index_test_case, refresh_reader) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
@@ -15094,7 +15033,7 @@ TEST_F(memory_index_test, refresh_reader) {
   }
 }
 
-TEST_F(memory_index_test, reuse_segment_writer) {
+TEST_P(index_test_case, reuse_segment_writer) {
   tests::json_doc_generator gen0(resource("arango_demo.json"), &tests::generic_json_field_factory);
   tests::json_doc_generator gen1(resource("simple_sequential.json"), &tests::generic_json_field_factory);
   auto writer = open_writer();
@@ -15177,7 +15116,7 @@ TEST_F(memory_index_test, reuse_segment_writer) {
   }
 }
 
-TEST_F(memory_index_test, segment_column_user_system) {
+TEST_P(index_test_case, segment_column_user_system) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
@@ -15251,7 +15190,7 @@ TEST_F(memory_index_test, segment_column_user_system) {
   ASSERT_TRUE(expectedName.empty());
 }
 
-TEST_F(memory_index_test, import_concurrent) {
+TEST_P(index_test_case, import_concurrent) {
   struct store {
     store(const irs::format::ptr& codec)
       : dir(irs::memory::make_unique<irs::memory_directory>()) {
@@ -15378,7 +15317,7 @@ TEST_F(memory_index_test, import_concurrent) {
   ASSERT_TRUE(names.empty());
 }
 
-TEST_F(memory_index_test, concurrent_consolidation) {
+TEST_P(index_test_case, concurrent_consolidation) {
   auto writer = open_writer(dir());
   ASSERT_NE(nullptr, writer);
 
@@ -15506,7 +15445,7 @@ TEST_F(memory_index_test, concurrent_consolidation) {
   ASSERT_TRUE(names.empty());
 }
 
-TEST_F(memory_index_test, concurrent_consolidation_dedicated_commit) {
+TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
   auto writer = open_writer(dir());
   ASSERT_NE(nullptr, writer);
 
@@ -15647,7 +15586,7 @@ TEST_F(memory_index_test, concurrent_consolidation_dedicated_commit) {
   ASSERT_TRUE(names.empty());
 }
 
-TEST_F(memory_index_test, concurrent_consolidation_two_phase_dedicated_commit) {
+TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
   auto writer = open_writer(dir());
   ASSERT_NE(nullptr, writer);
 
@@ -15791,7 +15730,7 @@ TEST_F(memory_index_test, concurrent_consolidation_two_phase_dedicated_commit) {
   ASSERT_TRUE(names.empty());
 }
 
-TEST_F(memory_index_test, concurrent_consolidation_cleanup) {
+TEST_P(index_test_case, concurrent_consolidation_cleanup) {
   auto writer = open_writer(dir());
   ASSERT_NE(nullptr, writer);
 
@@ -15922,7 +15861,7 @@ TEST_F(memory_index_test, concurrent_consolidation_cleanup) {
   ASSERT_TRUE(names.empty());
 }
 
-TEST_F(memory_index_test, consolidate_invalid_candidate) {
+TEST_P(index_test_case, consolidate_invalid_candidate) {
   auto writer = open_writer(dir());
   ASSERT_NE(nullptr, writer);
 
@@ -15990,7 +15929,7 @@ TEST_F(memory_index_test, consolidate_invalid_candidate) {
   }
 }
 
-TEST_F(memory_index_test, consolidate_single_segment) {
+TEST_P(index_test_case, consolidate_single_segment) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
@@ -16106,7 +16045,7 @@ TEST_F(memory_index_test, consolidate_single_segment) {
   }
 }
 
-TEST_F(memory_index_test, segment_consolidate_long_running) {
+TEST_P(index_test_case, segment_consolidate_long_running) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
@@ -16716,7 +16655,7 @@ TEST_F(memory_index_test, segment_consolidate_long_running) {
   }
 }
 
-TEST_F(memory_index_test, segment_consolidate_clear_commit) {
+TEST_P(index_test_case, segment_consolidate_clear_commit) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
       std::set<const irs::segment_meta*>& candidates,
@@ -16892,7 +16831,7 @@ TEST_F(memory_index_test, segment_consolidate_clear_commit) {
   }
 }
 
-TEST_F(memory_index_test, segment_consolidate_commit) {
+TEST_P(index_test_case, segment_consolidate_commit) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
       std::set<const irs::segment_meta*>& candidates,
@@ -17243,7 +17182,7 @@ TEST_F(memory_index_test, segment_consolidate_commit) {
   }
 }
 
-TEST_F(memory_index_test, consolidate_check_consolidating_segments) {
+TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
@@ -17373,7 +17312,7 @@ TEST_F(memory_index_test, consolidate_check_consolidating_segments) {
   }
 }
 
-TEST_F(memory_index_test, segment_consolidate_pending_commit) {
+TEST_P(index_test_case, segment_consolidate_pending_commit) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
       std::set<const irs::segment_meta*>& candidates,
@@ -17633,6 +17572,7 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
 
   // consolidate without deletes
   {
+    SetUp();
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
 
@@ -17797,6 +17737,7 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
 
   // consolidate with deletes
   {
+    SetUp();
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());
 
     auto writer = open_writer();
@@ -17920,6 +17861,7 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
 
   // consolidate with deletes
   {
+    SetUp();
     auto query_doc1_doc4 = iresearch::iql::query_builder().build("name==A||name==D", std::locale::classic());
 
     auto writer = open_writer();
@@ -18051,6 +17993,7 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
 
   // consolidate with deletes + inserts
   {
+    SetUp();
     auto query_doc1_doc4 = iresearch::iql::query_builder().build("name==A||name==D", std::locale::classic());
 
     auto writer = open_writer();
@@ -18207,6 +18150,7 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
 
   // consolidate with deletes + inserts
   {
+    SetUp();
     auto query_doc1_doc4 = iresearch::iql::query_builder().build("name==A||name==D", std::locale::classic());
 
     auto writer = open_writer();
@@ -18363,6 +18307,7 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
 
   // consolidate with deletes + inserts
   {
+    SetUp();
     auto query_doc3_doc4 = iresearch::iql::query_builder().build("name==C||name==D", std::locale::classic());
 
     auto writer = open_writer();
@@ -18517,7 +18462,7 @@ TEST_F(memory_index_test, segment_consolidate_pending_commit) {
   }
 }
 /* FIXME TODO use below once segment_context will not block flush_all()
-TEST_F(memory_index_test, consolidate_segment_versions) {
+TEST_P(index_test_case, consolidate_segment_versions) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
       std::set<const irs::segment_meta*>& candidates,
@@ -20117,7 +20062,7 @@ TEST_F(memory_index_test, consolidate_segment_versions) {
   }
 }
 */
-TEST_F(memory_index_test, consolidate_progress) {
+TEST_P(index_test_case, consolidate_progress) {
   tests::json_doc_generator gen(
     test_base::resource("simple_sequential.json"),
     &tests::generic_json_field_factory
@@ -20287,7 +20232,7 @@ TEST_F(memory_index_test, consolidate_progress) {
   }
 }
 
-TEST_F(memory_index_test, segment_consolidate) {
+TEST_P(index_test_case, segment_consolidate) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
@@ -21153,7 +21098,7 @@ TEST_F(memory_index_test, segment_consolidate) {
   }
 }
 
-TEST_F(memory_index_test, segment_consolidate_policy) {
+TEST_P(index_test_case, segment_consolidate_policy) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
@@ -21714,7 +21659,7 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
   }
 }
 
-TEST_F(memory_index_test, segment_options) {
+TEST_P(index_test_case, segment_options) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
@@ -21941,97 +21886,7 @@ TEST_F(memory_index_test, segment_options) {
   }
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                               fs_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
-
-class fs_index_test 
-  : public tests::cases::tfidf<tests::fs_test_case_base>{
-}; // fs_index_test
-
-TEST_F(fs_index_test, clear_writer) {
-  clear_writer();
-}
-
-TEST_F(fs_index_test, open_writer) {
-  open_writer_check_lock();
-}
-
-TEST_F(fs_index_test, check_fields_order) {
-  iterate_fields();
-}
-
-TEST_F(fs_index_test, check_attributes_order) {
-  iterate_attributes();
-}
-
-TEST_F(fs_index_test, read_write_doc_attributes) {
-  //static_assert(false, "add check: seek to the end, seek backwards, seek to the end again");
-  read_write_doc_attributes_sparse_column_sparse_variable_length();
-  read_write_doc_attributes_sparse_column_dense_variable_length();
-  read_write_doc_attributes_sparse_column_dense_fixed_length();
-  read_write_doc_attributes_sparse_column_dense_fixed_offset();
-  read_write_doc_attributes_sparse_column_sparse_mask();
-  read_write_doc_attributes_sparse_column_dense_mask();
-  read_write_doc_attributes_dense_column_dense_variable_length();
-  read_write_doc_attributes_dense_column_dense_fixed_length();
-  read_write_doc_attributes_dense_column_dense_fixed_offset();
-  read_write_doc_attributes_dense_column_dense_mask();
-  read_write_doc_attributes_big();
-  read_write_doc_attributes();
-  read_empty_doc_attributes();
-}
-
-TEST_F(fs_index_test, writer_transaction_isolation) {
-  writer_transaction_isolation();
-}
-
-TEST_F(fs_index_test, create_empty_index) {
-  writer_check_open_modes();
-}
-
-TEST_F(fs_index_test, concurrent_read_column_mt) {
-  concurrent_read_single_column_smoke();
-  concurrent_read_multiple_columns();
-}
-
-TEST_F(fs_index_test, concurrent_read_index_mt) {
-  concurrent_read_index();
-}
-
-TEST_F(fs_index_test, writer_atomicity_check) {
-  writer_atomicity_check();
-}
-
-TEST_F(fs_index_test, insert_null_empty_term) {
-  insert_doc_with_null_empty_term();
-}
-
-TEST_F(fs_index_test, writer_begin_rollback) {
-  writer_begin_rollback();
-}
-
-TEST_F(fs_index_test, arango_demo_docs) {
-  {
-    tests::json_doc_generator gen(
-      resource("arango_demo.json"), 
-      &tests::generic_json_field_factory
-    );
-    add_segment(gen);
-  }
-  assert_index();
-}
-
-TEST_F(fs_index_test, europarl_docs) {
-  {
-    tests::templates::europarl_doc_template doc;
-    tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
-    add_segment(gen);
-  }
-  assert_index();
-}
-
-TEST_F(fs_index_test, writer_close) {
+TEST_P(index_test_case, writer_close) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"), 
     &tests::generic_json_field_factory
@@ -22067,137 +21922,33 @@ TEST_F(fs_index_test, writer_close) {
   ASSERT_TRUE(files.empty());
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                             mmap_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
+INSTANTIATE_TEST_CASE_P(
+  index_test_10,
+  index_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_0")
+  ),
+  tests::to_string
+);
 
-class mmap_index_test
-  : public tests::cases::tfidf<tests::mmap_test_case_base>{
-}; // mmap_index_test
-
-TEST_F(mmap_index_test, open_writer) {
-  open_writer_check_lock();
-}
-
-TEST_F(mmap_index_test, check_fields_order) {
-  iterate_fields();
-}
-
-TEST_F(mmap_index_test, check_attributes_order) {
-  iterate_attributes();
-}
-
-TEST_F(mmap_index_test, read_write_doc_attributes) {
-  //static_assert(false, "add check: seek to the end, seek backwards, seek to the end again");
-  read_write_doc_attributes_sparse_column_sparse_variable_length();
-  read_write_doc_attributes_sparse_column_dense_variable_length();
-  read_write_doc_attributes_sparse_column_dense_fixed_length();
-  read_write_doc_attributes_sparse_column_dense_fixed_offset();
-  read_write_doc_attributes_sparse_column_sparse_mask();
-  read_write_doc_attributes_sparse_column_dense_mask();
-  read_write_doc_attributes_dense_column_dense_variable_length();
-  read_write_doc_attributes_dense_column_dense_fixed_length();
-  read_write_doc_attributes_dense_column_dense_fixed_offset();
-  read_write_doc_attributes_dense_column_dense_mask();
-  read_write_doc_attributes_big();
-  read_write_doc_attributes();
-  read_empty_doc_attributes();
-}
-
-TEST_F(mmap_index_test, writer_transaction_isolation) {
-  writer_transaction_isolation();
-}
-
-TEST_F(mmap_index_test, create_empty_index) {
-  writer_check_open_modes();
-}
-
-TEST_F(mmap_index_test, concurrent_read_column_mt) {
-  concurrent_read_single_column_smoke();
-  concurrent_read_multiple_columns();
-}
-
-TEST_F(mmap_index_test, concurrent_read_index_mt) {
-  concurrent_read_index();
-}
-
-TEST_F(mmap_index_test, writer_atomicity_check) {
-  writer_atomicity_check();
-}
-
-TEST_F(mmap_index_test, insert_null_empty_term) {
-  insert_doc_with_null_empty_term();
-}
-
-TEST_F(mmap_index_test, writer_begin_rollback) {
-  writer_begin_rollback();
-}
-
-TEST_F(mmap_index_test, arango_demo_docs) {
-  {
-    tests::json_doc_generator gen(
-      resource("arango_demo.json"), 
-      &tests::generic_json_field_factory
-    );
-    add_segment(gen);
-  }
-  assert_index();
-}
-
-TEST_F(mmap_index_test, europarl_docs) {
-  {
-    tests::templates::europarl_doc_template doc;
-    tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
-    add_segment(gen);
-  }
-  assert_index();
-}
-
-TEST_F(mmap_index_test, monarch_eco_onthology) {
-  {
-    tests::json_doc_generator gen(
-      resource("ECO_Monarch.json"),
-      &tests::payloaded_json_field_factory);
-    add_segment(gen);
-  }
-  assert_index();
-}
-
-TEST_F(mmap_index_test, writer_close) {
-  tests::json_doc_generator gen(
-    resource("simple_sequential.json"), 
-    &tests::generic_json_field_factory
-  );
-  auto& directory = dir();
-  auto* doc = gen.next();
-
-  {
-    auto writer = open_writer();
-
-    ASSERT_TRUE(insert(*writer,
-      doc->indexed.begin(), doc->indexed.end(),
-      doc->stored.begin(), doc->stored.end()
-    ));
-    writer->commit();
-  } // ensure writer is closed
-
-  std::vector<std::string> files;
-  auto list_files = [&files] (std::string& name) {
-    files.emplace_back(std::move(name));
-    return true;
-  };
-  ASSERT_TRUE(directory.visit(list_files));
-
-  // file removal should pass for all files (especially valid for Microsoft Windows)
-  for (auto& file: files) {
-    ASSERT_TRUE(directory.remove(file));
-  }
-
-  // validate that all files have been removed
-  files.clear();
-  ASSERT_TRUE(directory.visit(list_files));
-  ASSERT_TRUE(files.empty());
-}
+INSTANTIATE_TEST_CASE_P(
+  index_test_11,
+  index_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
+      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
+      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
+    ),
+    ::testing::Values("1_1")
+  ),
+  tests::to_string
+);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

@@ -47,7 +47,6 @@
 
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
-#include <rocksdb/utilities/optimistic_transaction_db.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
@@ -319,7 +318,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     uint64_t numOps = _rocksTransaction->GetNumPuts() +
                       _rocksTransaction->GetNumDeletes() +
                       _rocksTransaction->GetNumMerges();
-    // will invaliate all counts
+    // will invalidate all counts
     result = rocksutils::convertStatus(_rocksTransaction->Commit());
 
     if (result.ok()) {

@@ -10,7 +10,7 @@ The following incompatible changes have been made in ArangoDB 3.5:
 Web interface
 -------------
 
-### Potentially different sort order for documents
+### Potentially different sort order of documents
 
 In the list of documents for a collection, the documents will now always be sorted
 in lexicographical order of their `_key` values. An exception for keys representing 

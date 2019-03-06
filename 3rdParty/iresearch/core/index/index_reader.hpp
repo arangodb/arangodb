@@ -96,7 +96,7 @@ struct IRESEARCH_API index_reader {
   DECLARE_SHARED_PTR(const index_reader);
   DEFINE_FACTORY_INLINE(index_reader)
 
-  virtual ~index_reader();
+  virtual ~index_reader() = default;
 
   // number of live documents
   virtual uint64_t live_docs_count() const = 0;
