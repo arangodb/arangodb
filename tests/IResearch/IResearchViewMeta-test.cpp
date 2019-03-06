@@ -336,8 +336,10 @@ SECTION("test_writeCustomizedValues") {
     arangodb::velocypack::Slice tmpSlice;
     arangodb::velocypack::Slice tmpSlice2;
 
-    CHECK(true == meta.json(arangodb::velocypack::ObjectBuilder(&builder)));
-    CHECK((true == metaState.json(arangodb::velocypack::ObjectBuilder(&builder))));
+    builder.openObject();
+    CHECK((true == meta.json(builder)));
+    CHECK((true == metaState.json(builder)));
+    builder.close();
 
     auto slice = builder.slice();
     tmpSlice = slice.get("commitIntervalMsec");
@@ -506,8 +508,10 @@ SECTION("test_writeMaskNone") {
   arangodb::iresearch::IResearchViewMetaState::Mask maskState(false);
   arangodb::velocypack::Builder builder;
 
-  CHECK(true == meta.json(arangodb::velocypack::ObjectBuilder(&builder), nullptr, &mask));
-  CHECK((true == metaState.json(arangodb::velocypack::ObjectBuilder(&builder), nullptr, &maskState)));
+  builder.openObject();
+  CHECK((true == meta.json(builder, nullptr, &mask)));
+  CHECK((true == metaState.json(builder, nullptr, &maskState)));
+  builder.close();
 
   auto slice = builder.slice();
 

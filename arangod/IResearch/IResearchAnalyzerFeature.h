@@ -29,9 +29,11 @@
 #include "utils/hash_utils.hpp"
 #include "utils/object_pool.hpp"
 
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Auth/Common.h"
 #include "VocBase/voc-types.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+class TRI_vocbase_t; // forward declaration
 
 namespace arangodb {
 namespace transaction {
@@ -57,13 +59,14 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   class AnalyzerPool : private irs::util::noncopyable {
    public:
     typedef std::shared_ptr<AnalyzerPool> ptr;
-    irs::flags const& features() const noexcept;
+    irs::flags const& features() const noexcept { return _features; }
     irs::analysis::analyzer::ptr get() const noexcept;  // nullptr == error creating analyzer
-    std::string const& name() const noexcept;
+    std::string const& name() const noexcept { return _name; }
+    irs::string_ref const& properties() const noexcept { return _properties; }
+    irs::string_ref const& type() const noexcept { return _type; }
 
    private:
-    friend IResearchAnalyzerFeature;  // required for calling
-                                      // AnalyzerPool::init()
+    friend class IResearchAnalyzerFeature; // required for calling AnalyzerPool::init()
 
     // 'make(...)' method wrapper for irs::analysis::analyzer types
     struct Builder {
@@ -89,29 +92,74 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
 
   explicit IResearchAnalyzerFeature(arangodb::application_features::ApplicationServer& server);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return analyzers in the specified vocbase are granted 'level' access
+  //////////////////////////////////////////////////////////////////////////////
+  static bool canUse( // check permissions
+    TRI_vocbase_t const& vocbase, // analyzer vocbase
+    arangodb::auth::Level const& level // access level
+  );
+
   std::pair<AnalyzerPool::ptr, bool> emplace(
       irs::string_ref const& name, irs::string_ref const& type,
       irs::string_ref const& properties,
       irs::flags const& features = irs::flags::empty_instance()) noexcept;
-  AnalyzerPool::ptr ensure(irs::string_ref const& name);  // before start() returns pool placeholder, during start() all
-                                                          // placeholders are initialized, after start() returns same as
-                                                          // get(...)
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get analyzer or placeholder
+  ///        before start() returns pool placeholder,
+  ///        during start() all placeholders are initialized,
+  ///        after start() returns same as get(...)
+  /// @param name analyzer name (used verbatim)
+  //////////////////////////////////////////////////////////////////////////////
+  AnalyzerPool::ptr ensure(irs::string_ref const& name);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return number of analyzers removed
+  //////////////////////////////////////////////////////////////////////////////
   size_t erase(irs::string_ref const& name) noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief find analyzer
+  /// @param name analyzer name (used verbatim)
+  /// @return analyzer with the specified name or nullptr
+  //////////////////////////////////////////////////////////////////////////////
   AnalyzerPool::ptr get(irs::string_ref const& name) const noexcept;
+
   static AnalyzerPool::ptr identity() noexcept;  // the identity analyzer
   static std::string const& name() noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return normalized analyzer name, i.e. with vocbase prefix
+  //////////////////////////////////////////////////////////////////////////////
+  static std::string normalize( // normalize name
+    irs::string_ref const& name, // analyzer name
+    TRI_vocbase_t const& activeVocbase, // fallback vocbase if not part of name
+    TRI_vocbase_t const& systemVocbase, // the system vocbase for use with empty prefix
+    bool expandVocbasePrefix = true // use full vocbase name as prefix for active/system v.s. EMPTY/'::'
+  );
+
   void prepare() override;
   void start() override;
   void stop() override;
-  bool visit(std::function<bool(irs::string_ref const& name, irs::string_ref const& type,
-                                irs::string_ref const& properties)> const& visitor);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief visit all analyzers for the specified vocbase
+  /// @param vocbase only visit analysers for this vocbase (nullptr == all)
+  /// @return visitation compleated fully
+  //////////////////////////////////////////////////////////////////////////////
+  typedef std::function<bool(irs::string_ref const& analyzer, irs::string_ref const& type, irs::string_ref const& properties)> VisitorType;
+  bool visit( // visit analyzers
+    VisitorType const& visitor, // visitor
+    TRI_vocbase_t const* vocbase = nullptr // analyzers for vocbase
+  );
 
  private:
   // map of caches of irs::analysis::analyzer pools indexed by analyzer name and
   // their associated metas
   typedef std::unordered_map<irs::hashed_string_ref, AnalyzerPool::ptr> Analyzers;
 
-  Analyzers _analyzers;  // all analyzers known to this feature (including static)
+  Analyzers _analyzers; // all analyzers known to this feature (including static) (names are stored with expanded vocbase prefixes)
   Analyzers _customAnalyzers;  // user defined analyzers managed by this feature, a
                                // subset of '_analyzers' (used for removals)
   mutable irs::async_utils::read_write_mutex _mutex;
