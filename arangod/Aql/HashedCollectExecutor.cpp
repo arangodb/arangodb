@@ -38,7 +38,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-static AqlValue EmptyValue;
+static const AqlValue EmptyValue;
 
 HashedCollectExecutorInfos::HashedCollectExecutorInfos(
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
@@ -97,9 +97,6 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   NoStats stats{};
-
-  std::vector<AqlValue> groupValues;
-  groupValues.reserve(_infos.getGroupRegisters().size());
 
   std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*> aggregatorFactories;
   if (_infos.getAggregateVariables().empty()) {
@@ -174,7 +171,7 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
     return {emplaceResult.first, true};
   };
 
-  if (_state == ExecutionState::DONE && _done) {
+  if (_done) {
     return {_state, stats};
   }
 
@@ -224,9 +221,17 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
       return {ExecutionState::HASMORE, stats};
     }
 
+    InputAqlItemRow input = InputAqlItemRow{CreateInvalidInputRowHint{}};
     if (_state != ExecutionState::DONE) {
-      InputAqlItemRow input = InputAqlItemRow{CreateInvalidInputRowHint{}};
       std::tie(_state, input) = _fetcher.fetchRow();
+
+      if (_state == ExecutionState::WAITING) {
+        TRI_ASSERT(!input.isInitialized());
+        return {_state, stats};
+      }
+
+      // !input.isInitialized() => _state == ExecutionState::DONE
+      TRI_ASSERT(input.isInitialized() || _state == ExecutionState::DONE);
 
       // needed to remember the last valid input aql item row
       // NOTE: this might impact the performance
@@ -235,21 +240,16 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
       }
     }
 
-    if (_state == ExecutionState::WAITING) {
-      return {_state, stats};
-    }
-
-    if (!_input && _done) {
+    if (!input && _done) {
       TRI_ASSERT(_state == ExecutionState::DONE);
       return {_state, stats};
     }
 
-    if (_input.isInitialized()) {
-      // NOLINTNEXTLINE(hicpp-use-auto,modernize-use-auto)
+    if (input.isInitialized()) {
       decltype(_allGroups)::iterator currentGroupIt;
       bool newGroup;
-      TRI_ASSERT(_input.isInitialized());
-      std::tie(currentGroupIt, newGroup) = findOrEmplaceGroup(_input);
+      TRI_ASSERT(input.isInitialized());
+      std::tie(currentGroupIt, newGroup) = findOrEmplaceGroup(input);
 
       // reduce the aggregates
       AggregateValuesType* aggregateValues = currentGroupIt->second.get();
@@ -259,7 +259,7 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
         if (_infos.getCount()) {
           // TODO get rid of this special case if possible
           TRI_ASSERT(!aggregateValues->empty());
-          aggregateValues->back()->reduce(AqlValue());
+          aggregateValues->back()->reduce(EmptyValue);
         }
       } else {
         // apply the aggregators for the group
@@ -269,7 +269,7 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
           if (r.second == ExecutionNode::MaxRegisterId) {
             (*aggregateValues)[j]->reduce(EmptyValue);
           } else {
-            (*aggregateValues)[j]->reduce(_input.getValue(r.second));
+            (*aggregateValues)[j]->reduce(input.getValue(r.second));
           }
           ++j;
         }

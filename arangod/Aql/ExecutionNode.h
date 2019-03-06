@@ -584,7 +584,7 @@ class ExecutionNode {
   std::unordered_set<RegisterId> _regsToClear;
 
  public:
-  /// @brief maximum register id that can be assigned.
+  /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
   static constexpr RegisterId MaxRegisterId = 1000;
 
