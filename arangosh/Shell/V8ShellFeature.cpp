@@ -424,7 +424,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
   bool promptError;
   auto v8connection = setup(context, true, positionals, &promptError);
 
-  V8LineEditor v8LineEditor(_isolate, context, "." + _name + ".history");
+  V8LineEditor v8LineEditor(_isolate, context, _console->useHistory() ? "." + _name + ".history" : "");
 
   if (v8connection != nullptr) {
     v8LineEditor.setSignalFunction(
