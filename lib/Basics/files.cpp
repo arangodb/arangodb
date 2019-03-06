@@ -957,7 +957,7 @@ int TRI_CreateLockFile(char const* filename) {
   TRI_ERRORBUF;
   OVERLAPPED ol;
 
-  WRITE_LOCKER(locker, OpenedFilesLock);
+  WRITE_LOCKER(locker, OpenedFilesLock, filename);
 
   for (size_t i = 0; i < OpenedFiles.size(); ++i) {
     if (OpenedFiles[i].first == filename) {
@@ -1212,7 +1212,7 @@ int TRI_VerifyLockFile(char const* filename) {
 #ifdef TRI_HAVE_WIN32_FILE_LOCKING
 
 int TRI_DestroyLockFile(char const* filename) {
-  WRITE_LOCKER(locker, OpenedFilesLock);
+  WRITE_LOCKER(locker, OpenedFilesLock, filename);
   for (size_t i = 0; i < OpenedFiles.size(); ++i) {
     if (OpenedFiles[i].first == filename) {
       HANDLE fd = OpenedFiles[i].second;
