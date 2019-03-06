@@ -33,7 +33,7 @@
 #include "Auth/Common.h"
 #include "VocBase/voc-types.h"
 
-class TRI_vocbase_t; // forward declaration
+struct TRI_vocbase_t; // forward declaration
 
 namespace arangodb {
 namespace transaction {
