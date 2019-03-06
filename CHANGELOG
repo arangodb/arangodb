@@ -1,6 +1,8 @@
 devel
 -----
 
+* added "random" masking to mask any data type, added wildcard masking
+
 * added option `--console.history` to arangosh for controlling whether
   the command-line history should be loaded from and persisted in a file.
 
@@ -10,7 +12,8 @@ devel
   exited. The command-line history will then only be available in the
   current shell session.
 
-* added "random" masking to mask any data type, added wildcard masking
+* display the server role when connecting arangosh against a server (e.g. 
+  SINGLE, COORDINATOR)
 
 * fixed overflow in Windows NowNanos in RocksDB
 

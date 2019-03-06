@@ -316,13 +316,23 @@ std::string ConsoleFeature::readPassword() {
 }
 
 void ConsoleFeature::printWelcomeInfo() {
-  if (!_quiet && _pager) {
-    std::ostringstream s;
-
-    s << "Using pager '" << _pagerCommand << "' for output buffering.";
-
-    printLine(s.str());
+  if (_quiet) {
+    return;
   }
+    
+  std::ostringstream s;
+  
+  if (_pager) {
+    s << "Using pager '" << _pagerCommand << "' for output buffering. ";
+  }
+
+  if (_useHistory) {
+    s << "Command-line history will be persisted when the shell is exited.";
+  } else {
+    s << "Command-line history is enabled for this session only and will *not* be persisted.";
+  }
+
+  printLine(s.str());
 }
 
 void ConsoleFeature::printByeBye() {
