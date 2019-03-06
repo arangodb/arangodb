@@ -59,6 +59,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
 #endif
       _quiet(false),
       _colors(true),
+      _useHistory(true),
       _autoComplete(true),
       _prettyPrint(true),
       _auditFile(),
@@ -108,6 +109,12 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--console.audit-file",
                      "audit log file to save commands and results",
                      new StringParameter(&_auditFile));
+  
+  options->addOption("--console.history",
+                     "whether or not to load and persist command-line history",
+                     new BooleanParameter(&_useHistory))
+                     .setIntroducedIn(30405)
+                     .setIntroducedIn(30500);
 
   options->addOption("--console.pager", "enable paging", new BooleanParameter(&_pager));
 
