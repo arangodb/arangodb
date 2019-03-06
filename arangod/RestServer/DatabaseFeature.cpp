@@ -394,6 +394,10 @@ void DatabaseFeature::stop() {
   p.mode = arangodb::aql::QueryCacheMode::CACHE_ALWAYS_OFF;
   p.maxResultsCount = 0;
   p.maxResultsSize = 0;
+  p.includeSystem = false;
+  p.showBindVars = false;
+
+  
   arangodb::aql::QueryCache::instance()->properties(p);
   arangodb::aql::QueryCache::instance()->invalidate();
 
