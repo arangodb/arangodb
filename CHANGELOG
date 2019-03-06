@@ -10,6 +10,9 @@ v3.4.5 (XXXX-XX-XX)
   exited. The command-line history will then only be available in the
   current shell session.
 
+* display the server role when connecting arangosh against a server (e.g. 
+  SINGLE, COORDINATOR)
+
 
 v3.4.4 (2019-03-08)
 -------------------

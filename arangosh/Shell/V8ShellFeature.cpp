@@ -342,7 +342,7 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
         std::ostringstream is;
 
         is << "Connected to ArangoDB '" << v8connection->endpointSpecification()
-           << "' version: " << v8connection->version() << " ["
+           << "' version: " << v8connection->version() << " [" << v8connection->role() << ", "
            << v8connection->mode() << "], database: '" << v8connection->databaseName()
            << "', username: '" << v8connection->username() << "'";
 
@@ -350,7 +350,8 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
       } else {
         std::ostringstream is;
 
-        is << "Could not connect to endpoint '" << v8connection->endpointSpecification()
+        auto client = server()->getFeature<ClientFeature>("Client");
+        is << "Could not connect to endpoint '" << client->endpoint()
            << "', database: '" << v8connection->databaseName()
            << "', username: '" << v8connection->username() << "'";
 
