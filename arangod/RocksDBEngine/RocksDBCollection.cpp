@@ -181,7 +181,7 @@ void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
 
 /// @brief closes an open collection
 int RocksDBCollection::close() {
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(guard, _indexesLock, this);
   for (auto it : _indexes) {
     it->unload();
   }
@@ -198,7 +198,7 @@ void RocksDBCollection::load() {
       }
     }
   }
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(guard, _indexesLock, this);
   for (auto it : _indexes) {
     it->load();
   }
@@ -209,7 +209,7 @@ void RocksDBCollection::unload() {
     destroyCache();
     TRI_ASSERT(!_cachePresent);
   }
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(guard, _indexesLock, this);
   for (auto it : _indexes) {
     it->unload();
   }
@@ -258,7 +258,7 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   std::vector<std::shared_ptr<Index>> indexes;
   {
-    READ_LOCKER(guard, _indexesLock);  // link creation needs read-lock too
+    READ_LOCKER(guard, _indexesLock, this);  // link creation needs read-lock too
     if (indexesSlice.length() == 0 && _indexes.empty()) {
       engine->indexFactory().fillSystemIndexes(_logicalCollection, indexes);
     } else {
@@ -328,7 +328,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 
   std::shared_ptr<Index> idx;
   {  // Step 1. Check for matching index
-    READ_LOCKER(guard, _indexesLock);
+    READ_LOCKER(guard, _indexesLock, this);
     if ((idx = findIndex(info, _indexes)) != nullptr) {
       // We already have this index.
       if (idx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
@@ -356,7 +356,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX);
 
   {
-    READ_LOCKER(guard, _indexesLock);
+    READ_LOCKER(guard, _indexesLock, this);
     for (auto const& other : _indexes) {  // conflicting index exists
       if (other->id() == idx->id()) {
         return other;  // index already exists
@@ -493,7 +493,7 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
     return false;
   }
 
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(guard, _indexesLock, this);
 
   RocksDBIndex* cindex = static_cast<RocksDBIndex*>(toRemove.get());
   TRI_ASSERT(cindex != nullptr);
@@ -600,7 +600,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
     // delete indexes, place estimator blockers
     {
-      READ_LOCKER(guard, _indexesLock);
+      READ_LOCKER(guard, _indexesLock, this);
       for (std::shared_ptr<Index> const& idx : _indexes) {
         RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
         bounds = ridx->getBounds();
@@ -637,7 +637,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
                                 -static_cast<int64_t>(numDocs));
 
     {
-      READ_LOCKER(guard, _indexesLock);
+      READ_LOCKER(guard, _indexesLock, this);
       for (std::shared_ptr<Index> const& idx : _indexes) {
         idx->afterTruncate(seq);  // clears caches / clears links (if applicable)
       }
@@ -1236,7 +1236,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(guard, _indexesLock, this);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
     res = rIdx->insert(*trx, mthds, documentId, doc, options.indexOperationMode);
@@ -1280,7 +1280,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
       << " objectID " << _objectId << " name: " << _logicalCollection->name();*/
 
   Result resInner;
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(guard, _indexesLock, this);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
     res = ridx->remove(*trx, mthds, documentId, doc, options.indexOperationMode);
@@ -1328,7 +1328,7 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(guard, _indexesLock, this);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
     res = rIdx->update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId, newDoc,
@@ -1552,7 +1552,7 @@ int RocksDBCollection::lockRead(double timeout) {
   double startTime = 0.0;
 
   while (true) {
-    TRY_READ_LOCKER(locker, _exclusiveLock);
+    TRY_READ_LOCKER(locker, _exclusiveLock, this);
 
     if (locker.isLocked()) {
       // keep lock and exit loop
@@ -1674,7 +1674,7 @@ void RocksDBCollection::compact() {
   rocksdb::Slice b = bounds.start(), e = bounds.end();
   db->CompactRange(opts, bounds.columnFamily(), &b, &e);
 
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(guard, _indexesLock, this);
   for (std::shared_ptr<Index> i : _indexes) {
     RocksDBIndex* index = static_cast<RocksDBIndex*>(i.get());
     index->compact();
@@ -1698,7 +1698,7 @@ void RocksDBCollection::estimateSize(velocypack::Builder& builder) {
   builder.add("documents", VPackValue(out));
   builder.add("indexes", VPackValue(VPackValueType::Object));
 
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(guard, _indexesLock, this);
   for (std::shared_ptr<Index> i : _indexes) {
     RocksDBIndex* index = static_cast<RocksDBIndex*>(i.get());
     out = index->memory();

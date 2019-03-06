@@ -207,7 +207,7 @@ void TraverserEngineRegistry::expireEngines() {
 
 /// @brief return number of registered engines
 size_t TraverserEngineRegistry::numberRegisteredEngines() {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _engines.size();
 }
 
@@ -215,7 +215,7 @@ size_t TraverserEngineRegistry::numberRegisteredEngines() {
 void TraverserEngineRegistry::destroyAll() {
   std::vector<TraverserEngineID> engines;
   {
-    READ_LOCKER(readLocker, _lock);
+    READ_LOCKER(readLocker, _lock, this);
     for (auto& p : _engines) {
       engines.push_back(p.first);
     }

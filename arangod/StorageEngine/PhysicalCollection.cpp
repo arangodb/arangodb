@@ -99,7 +99,7 @@ bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
 }
 
 bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(guard, _indexesLock, this);
   for (auto const& idx : _indexes) {
     if (idx->type() == type) {
       return true;
@@ -143,12 +143,12 @@ bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
 
 /// @brief Find index by definition
 std::shared_ptr<Index> PhysicalCollection::lookupIndex(VPackSlice const& info) const {
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(guard, _indexesLock, this);
   return findIndex(info, _indexes);
 }
 
 std::shared_ptr<Index> PhysicalCollection::lookupIndex(TRI_idx_iid_t idxId) const {
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(guard, _indexesLock, this);
   for (auto const& idx : _indexes) {
     if (idx->id() == idxId) {
       return idx;
@@ -512,13 +512,13 @@ int PhysicalCollection::checkRevision(transaction::Methods* trx, TRI_voc_rid_t e
 
 /// @brief hands out a list of indexes
 std::vector<std::shared_ptr<arangodb::Index>> PhysicalCollection::getIndexes() const {
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(guard, _indexesLock, this);
   return _indexes;
 }
 
 void PhysicalCollection::getIndexesVPack(VPackBuilder& result, unsigned flags,
                                          std::function<bool(arangodb::Index const*)> const& filter) const {
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(guard, _indexesLock, this);
   result.openArray();
   for (auto const& idx : _indexes) {
     if (!filter(idx.get())) {
@@ -540,7 +540,7 @@ std::shared_ptr<arangodb::velocypack::Builder> PhysicalCollection::figures() {
 
   {
     bool seenEdgeIndex = false;
-    READ_LOCKER(guard, _indexesLock);
+    READ_LOCKER(guard, _indexesLock, this);
     for (auto const& idx : _indexes) {
       // only count an edge index instance
       if (idx->type() != Index::TRI_IDX_TYPE_EDGE_INDEX || !seenEdgeIndex) {

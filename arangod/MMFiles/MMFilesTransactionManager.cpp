@@ -30,7 +30,7 @@ using namespace arangodb;
 // register a list of failed transactions
 void MMFilesTransactionManager::registerFailedTransactions(
     std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
-  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+  READ_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
 
   for (auto const& it : failedTransactions) {
     size_t bucket = getBucket(it);
@@ -44,7 +44,7 @@ void MMFilesTransactionManager::registerFailedTransactions(
 // unregister a list of failed transactions
 void MMFilesTransactionManager::unregisterFailedTransactions(
     std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
-  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+  READ_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
 
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
     WRITE_LOCKER(locker, _transactions[bucket]._lock, this);
@@ -60,7 +60,7 @@ void MMFilesTransactionManager::registerTransaction(TRI_voc_tid_t transactionId,
   TRI_ASSERT(data != nullptr);
 
   size_t bucket = getBucket(transactionId);
-  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+  READ_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
 
   WRITE_LOCKER(writeLocker, _transactions[bucket]._lock, this);
 
@@ -72,7 +72,7 @@ void MMFilesTransactionManager::registerTransaction(TRI_voc_tid_t transactionId,
 void MMFilesTransactionManager::unregisterTransaction(TRI_voc_tid_t transactionId,
                                                       bool markAsFailed) {
   size_t bucket = getBucket(transactionId);
-  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+  READ_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
 
   WRITE_LOCKER(writeLocker, _transactions[bucket]._lock, this);
 
@@ -91,7 +91,7 @@ std::unordered_set<TRI_voc_tid_t> MMFilesTransactionManager::getFailedTransactio
     WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
 
     for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-      READ_LOCKER(locker, _transactions[bucket]._lock);
+      READ_LOCKER(locker, _transactions[bucket]._lock, this);
 
       for (auto const& it : _transactions[bucket]._failedTransactions) {
         failedTransactions.emplace(it);
@@ -108,7 +108,7 @@ void MMFilesTransactionManager::iterateActiveTransactions(
 
   // iterate over all active transactions
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-    READ_LOCKER(locker, _transactions[bucket]._lock);
+    READ_LOCKER(locker, _transactions[bucket]._lock, this);
 
     for (auto const& it : _transactions[bucket]._activeTransactions) {
       TRI_ASSERT(it.second != nullptr);
@@ -123,7 +123,7 @@ uint64_t MMFilesTransactionManager::getActiveTransactionCount() {
   uint64_t count = 0;
   // iterate over all active transactions
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-    READ_LOCKER(locker, _transactions[bucket]._lock);
+    READ_LOCKER(locker, _transactions[bucket]._lock, this);
     count += _transactions[bucket]._activeTransactions.size();
   }
   return count;

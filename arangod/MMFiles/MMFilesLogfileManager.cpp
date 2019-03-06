@@ -612,7 +612,7 @@ std::unordered_set<TRI_voc_cid_t> MMFilesLogfileManager::getDroppedCollections()
   std::unordered_set<TRI_voc_cid_t> droppedCollections;
 
   {
-    READ_LOCKER(readLocker, _logfilesLock);
+    READ_LOCKER(readLocker, _logfilesLock, this);
     droppedCollections = _droppedCollections;
   }
 
@@ -625,7 +625,7 @@ std::unordered_set<TRI_voc_tick_t> MMFilesLogfileManager::getDroppedDatabases() 
   std::unordered_set<TRI_voc_tick_t> droppedDatabases;
 
   {
-    READ_LOCKER(readLocker, _logfilesLock);
+    READ_LOCKER(readLocker, _logfilesLock, this);
     droppedDatabases = _droppedDatabases;
   }
 
@@ -649,7 +649,7 @@ bool MMFilesLogfileManager::logfileCreationAllowed(uint32_t size) {
 
   // note: this information could also be cached instead of being recalculated
   // every time
-  READ_LOCKER(readLocker, _logfilesLock);
+  READ_LOCKER(readLocker, _logfilesLock, this);
 
   for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
     MMFilesWalLogfile* logfile = (*it).second;
@@ -671,7 +671,7 @@ bool MMFilesLogfileManager::hasReserveLogfiles() {
 
   // note: this information could also be cached instead of being recalculated
   // every time
-  READ_LOCKER(readLocker, _logfilesLock);
+  READ_LOCKER(readLocker, _logfilesLock, this);
 
   // reverse-scan the logfiles map
   for (auto it = _logfiles.rbegin(); it != _logfiles.rend(); ++it) {
@@ -820,7 +820,7 @@ int MMFilesLogfileManager::waitForCollectorQueue(TRI_voc_cid_t cid, double timeo
   double const end = TRI_microtime() + timeout;
 
   while (true) {
-    READ_LOCKER(locker, _collectorThreadLock);
+    READ_LOCKER(locker, _collectorThreadLock, this);
 
     if (_collectorThread == nullptr) {
       break;
@@ -1039,7 +1039,7 @@ void MMFilesLogfileManager::setLogfileSealed(MMFilesWalLogfile::IdType id) {
 
 // return the status of a logfile
 MMFilesWalLogfile::StatusType MMFilesLogfileManager::getLogfileStatus(MMFilesWalLogfile::IdType id) {
-  READ_LOCKER(readLocker, _logfilesLock);
+  READ_LOCKER(readLocker, _logfilesLock, this);
 
   auto it = _logfiles.find(id);
 
@@ -1052,7 +1052,7 @@ MMFilesWalLogfile::StatusType MMFilesLogfileManager::getLogfileStatus(MMFilesWal
 
 // return the file descriptor of a logfile
 int MMFilesLogfileManager::getLogfileDescriptor(MMFilesWalLogfile::IdType id) {
-  READ_LOCKER(readLocker, _logfilesLock);
+  READ_LOCKER(readLocker, _logfilesLock, this);
 
   auto it = _logfiles.find(id);
 
@@ -1117,7 +1117,7 @@ std::vector<TRI_voc_tick_t> MMFilesLogfileManager::getLogfileBarriers() {
   std::vector<TRI_voc_tick_t> result;
 
   {
-    READ_LOCKER(barrierLock, _barriersLock);
+    READ_LOCKER(barrierLock, _barriersLock, this);
     result.reserve(_barriers.size());
 
     for (auto& it : _barriers) {
@@ -1204,7 +1204,7 @@ bool MMFilesLogfileManager::extendLogfileBarrier(TRI_voc_tick_t id, double ttl,
 TRI_voc_tick_t MMFilesLogfileManager::getMinBarrierTick() {
   TRI_voc_tick_t value = 0;
 
-  READ_LOCKER(barrierLock, _barriersLock);
+  READ_LOCKER(barrierLock, _barriersLock, this);
 
   for (auto const& it : _barriers) {
     auto logfileBarrier = it.second;
@@ -1239,7 +1239,7 @@ std::vector<MMFilesWalLogfile*> MMFilesLogfileManager::getLogfilesForTickRange(
   // threads
 
   {
-    READ_LOCKER(readLocker, _logfilesLock);
+    READ_LOCKER(readLocker, _logfilesLock, this);
     temp.reserve(_logfiles.size());
     matching.reserve(_logfiles.size());
 
@@ -1296,7 +1296,7 @@ void MMFilesLogfileManager::returnLogfiles(std::vector<MMFilesWalLogfile*> const
 
 // get a logfile by id
 MMFilesWalLogfile* MMFilesLogfileManager::getLogfile(MMFilesWalLogfile::IdType id) {
-  READ_LOCKER(readLocker, _logfilesLock);
+  READ_LOCKER(readLocker, _logfilesLock, this);
 
   auto it = _logfiles.find(id);
 
@@ -1310,7 +1310,7 @@ MMFilesWalLogfile* MMFilesLogfileManager::getLogfile(MMFilesWalLogfile::IdType i
 // get a logfile and its status by id
 MMFilesWalLogfile* MMFilesLogfileManager::getLogfile(MMFilesWalLogfile::IdType id,
                                                      MMFilesWalLogfile::StatusType& status) {
-  READ_LOCKER(readLocker, _logfilesLock);
+  READ_LOCKER(readLocker, _logfilesLock, this);
 
   auto it = _logfiles.find(id);
 
@@ -1428,7 +1428,7 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
   TransactionManagerFeature::manager()->iterateActiveTransactions(cb);
 
   {
-    READ_LOCKER(readLocker, _logfilesLock);
+    READ_LOCKER(readLocker, _logfilesLock, this);
 
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     TRI_voc_tick_t released = engine->releasedTick();
@@ -1559,7 +1559,7 @@ void MMFilesLogfileManager::setCollectionRequested(MMFilesWalLogfile* logfile) {
 
   if (!_inRecovery) {
     // to start collection
-    READ_LOCKER(locker, _collectorThreadLock);
+    READ_LOCKER(locker, _collectorThreadLock, this);
 
     if (_collectorThread != nullptr) {
       _collectorThread->signal();
@@ -1593,7 +1593,7 @@ void MMFilesLogfileManager::setCollectionDone(MMFilesWalLogfile* logfile) {
   if (!_inRecovery) {
     // to start removal of unneeded datafiles
     {
-      READ_LOCKER(locker, _collectorThreadLock);
+      READ_LOCKER(locker, _collectorThreadLock, this);
       if (_collectorThread != nullptr) {
         _collectorThread->signal();
       }
@@ -1647,7 +1647,7 @@ MMFilesLogfileManagerState MMFilesLogfileManager::state() {
 MMFilesLogfileManager::LogfileRanges MMFilesLogfileManager::ranges() {
   LogfileRanges result;
 
-  READ_LOCKER(readLocker, _logfilesLock);
+  READ_LOCKER(readLocker, _logfilesLock, this);
 
   for (auto const& it : _logfiles) {
     MMFilesWalLogfile* logfile = it.second;
@@ -1718,7 +1718,7 @@ void MMFilesLogfileManager::removeLogfile(MMFilesWalLogfile* logfile) {
 }
 
 void MMFilesLogfileManager::waitForCollectorOnShutdown() {
-  READ_LOCKER(locker, _collectorThreadLock);
+  READ_LOCKER(locker, _collectorThreadLock, this);
 
   if (_collectorThread == nullptr) {
     return;
@@ -1735,7 +1735,7 @@ void MMFilesLogfileManager::waitForCollectorOnShutdown() {
 // queued. This is used in the DatabaseManagerThread when dropping
 // a database to avoid existence of ditches of type DOCUMENT.
 bool MMFilesLogfileManager::executeWhileNothingQueued(std::function<void()> const& cb) {
-  READ_LOCKER(locker, _collectorThreadLock);
+  READ_LOCKER(locker, _collectorThreadLock, this);
 
   if (_collectorThread != nullptr) {
     return _collectorThread->executeWhileNothingQueued(cb);
@@ -1769,7 +1769,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
       return TRI_ERROR_SHUTTING_DOWN;
     }
 
-    READ_LOCKER(locker, _collectorThreadLock);
+    READ_LOCKER(locker, _collectorThreadLock, this);
 
     if (_collectorThread == nullptr) {
       return TRI_ERROR_NO_ERROR;
@@ -1815,7 +1815,7 @@ void MMFilesLogfileManager::logStatus() {
   LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
       << "logfile manager status report: lastCollectedId: " << _lastCollectedId.load()
       << ", lastSealedId: " << _lastSealedId.load();
-  READ_LOCKER(locker, _logfilesLock);
+  READ_LOCKER(locker, _logfilesLock, this);
   for (auto logfile : _logfiles) {
     LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
         << "- logfile " << logfile.second->id() << ", filename '"
@@ -2088,7 +2088,7 @@ void MMFilesLogfileManager::stopMMFilesCollectorThread() {
   while (TRI_microtime() < end) {
     bool canAbort = true;
     {
-      READ_LOCKER(readLocker, _logfilesLock);
+      READ_LOCKER(readLocker, _logfilesLock, this);
       for (auto& it : _logfiles) {
         MMFilesWalLogfile* logfile = it.second;
 

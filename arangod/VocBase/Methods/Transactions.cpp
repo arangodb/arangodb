@@ -31,7 +31,7 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
   //    TRI_V8_TRY_CATCH_END
   // outside of this function!
 
-  READ_LOCKER(readLock, lock);
+  READ_LOCKER(readLock, lock, &builder);
   Result rv;
   if (canceled) {
     rv.reset(TRI_ERROR_REQUEST_CANCELED, "handler canceled");
@@ -62,7 +62,7 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
   }
 
   // do not allow the manipulation of the isolate while we are messing here
-  READ_LOCKER(readLock2, lock);
+  READ_LOCKER(readLock2, lock, &builder);
 
   if (canceled) {  // if it was ok we would already have committed
     if (rv.ok()) {

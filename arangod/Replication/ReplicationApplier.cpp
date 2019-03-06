@@ -154,19 +154,19 @@ ReplicationApplier::ReplicationApplier(ReplicationApplierConfiguration const& co
 
 /// @brief test if the replication applier is running
 bool ReplicationApplier::isActive() const {
-  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
+  READ_LOCKER_EVENTUAL(readLocker, _statusLock, this);
   return _state.isActive();
 }
 
 /// @brief test if the repication applier is performing initial sync
 bool ReplicationApplier::isInitializing() const {
-  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
+  READ_LOCKER_EVENTUAL(readLocker, _statusLock, this);
   return _state.isInitializing();
 }
 
 /// @brief test if the replication applier is shutting down
 bool ReplicationApplier::isShuttingDown() const {
-  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
+  READ_LOCKER_EVENTUAL(readLocker, _statusLock, this);
   return _state.isShuttingDown();
 }
 
@@ -204,19 +204,19 @@ void ReplicationApplier::allowStart() {
 
 /// @brief whether or not autostart option was set
 bool ReplicationApplier::autoStart() const {
-  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
+  READ_LOCKER_EVENTUAL(readLocker, _statusLock, this);
   return _configuration._autoStart;
 }
 
 /// @brief whether or not the applier has a state already
 bool ReplicationApplier::hasState() const {
-  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
+  READ_LOCKER_EVENTUAL(readLocker, _statusLock, this);
   return _state.hasProcessedSomething();
 }
 
 /// @brief check whether the initial synchronization should be stopped
 bool ReplicationApplier::stopInitialSynchronization() const {
-  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
+  READ_LOCKER_EVENTUAL(readLocker, _statusLock, this);
 
   return _state._stopInitialSynchronization;
 }
@@ -589,7 +589,7 @@ void ReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) con
 
   {
     // copy current config and state under the lock
-    READ_LOCKER_EVENTUAL(readLocker, _statusLock);
+    READ_LOCKER_EVENTUAL(readLocker, _statusLock, this);
     configuration = _configuration;
     state = _state;
   }
@@ -614,19 +614,19 @@ void ReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) con
 
 /// @brief return the current configuration
 ReplicationApplierConfiguration ReplicationApplier::configuration() const {
-  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
+  READ_LOCKER_EVENTUAL(readLocker, _statusLock, this);
   return _configuration;
 }
 
 /// @brief return the current configuration
 std::string ReplicationApplier::endpoint() const {
-  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
+  READ_LOCKER_EVENTUAL(readLocker, _statusLock, this);
   return _configuration._endpoint;
 }
 
 /// @brief return last persisted tick
 TRI_voc_tick_t ReplicationApplier::lastTick() const {
-  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
+  READ_LOCKER_EVENTUAL(readLocker, _statusLock, this);
   return std::max(_state._lastAppliedContinuousTick, _state._lastProcessedContinuousTick);
 }
 

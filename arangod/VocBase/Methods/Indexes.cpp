@@ -264,7 +264,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
   bool created = false;
   std::shared_ptr<arangodb::Index> idx;
   
-  READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
+  READ_LOCKER(readLocker, collection->vocbase()._inventoryLock, idx.get());
 
   if (create) {
     try {
@@ -563,7 +563,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
     );
 #endif
   } else {
-    READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
+    READ_LOCKER(readLocker, collection->vocbase()._inventoryLock, collection);
 
     SingleCollectionTransaction trx(
         transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),

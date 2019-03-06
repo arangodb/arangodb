@@ -760,7 +760,7 @@ void FlushFeature::start() {
   }
   DatabaseFeature* dbFeature = DatabaseFeature::DATABASE;
   dbFeature->registerPostRecoveryCallback([this]() -> Result {
-    READ_LOCKER(lock, _threadLock);
+    READ_LOCKER(lock, _threadLock, this);
     if (!this->_flushThread->start()) {
       LOG_TOPIC(FATAL, Logger::FLUSH) << "unable to start FlushThread";
       FATAL_ERROR_ABORT();
@@ -776,7 +776,7 @@ void FlushFeature::start() {
 
 void FlushFeature::beginShutdown() {
   // pass on the shutdown signal
-  READ_LOCKER(lock, _threadLock);
+  READ_LOCKER(lock, _threadLock, this);
   if (_flushThread != nullptr) {
     _flushThread->beginShutdown();
   }
@@ -788,7 +788,7 @@ void FlushFeature::stop() {
 
   FlushThread* thread = nullptr;
   {
-    READ_LOCKER(lock, _threadLock);
+    READ_LOCKER(lock, _threadLock, this);
     thread = _flushThread.get();
   }
   if (thread != nullptr) {

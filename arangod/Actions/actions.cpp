@@ -86,7 +86,7 @@ std::shared_ptr<TRI_action_t> TRI_LookupActionVocBase(arangodb::GeneralRequest* 
   // find a direct match
   std::string name = StringUtils::join(suffixes, '/');
 
-  READ_LOCKER(readLocker, ActionsLock);
+  READ_LOCKER(readLocker, ActionsLock, &name);
   auto it = Actions.find(name);
 
   if (it != Actions.end()) {
@@ -134,7 +134,7 @@ void TRI_CleanupActions() {
 }
 
 void TRI_VisitActions(std::function<void(TRI_action_t*)> const& visitor) {
-  READ_LOCKER(writeLocker, ActionsLock);
+  READ_LOCKER(writeLocker, ActionsLock, (void *)0x678);
 
   for (auto& it : Actions) {
     visitor(it.second.get());

@@ -313,19 +313,19 @@ bool ClusterInfo::doesDatabaseExist(DatabaseID const& databaseID, bool reload) {
     {
       size_t expectedSize;
       {
-        READ_LOCKER(readLocker, _DBServersProt.lock);
+        READ_LOCKER(readLocker, _DBServersProt.lock, this);
         expectedSize = _DBServers.size();
       }
 
       // look up database by name:
 
-      READ_LOCKER(readLocker, _planProt.lock);
+      READ_LOCKER(readLocker, _planProt.lock, this);
       // _plannedDatabases is a map-type<DatabaseID, VPackSlice>
       auto it = _plannedDatabases.find(databaseID);
 
       if (it != _plannedDatabases.end()) {
         // found the database in Plan
-        READ_LOCKER(readLocker, _currentProt.lock);
+        READ_LOCKER(readLocker, _currentProt.lock, this);
         // _currentDatabases is
         //     a map-type<DatabaseID, a map-type<ServerID, VPackSlice>>
         auto it2 = _currentDatabases.find(databaseID);
@@ -372,13 +372,13 @@ std::vector<DatabaseID> ClusterInfo::databases(bool reload) {
 
   size_t expectedSize;
   {
-    READ_LOCKER(readLocker, _DBServersProt.lock);
+    READ_LOCKER(readLocker, _DBServersProt.lock, this);
     expectedSize = _DBServers.size();
   }
 
   {
-    READ_LOCKER(readLockerPlanned, _planProt.lock);
-    READ_LOCKER(readLockerCurrent, _currentProt.lock);
+    READ_LOCKER(readLockerPlanned, _planProt.lock, this);
+    READ_LOCKER(readLockerCurrent, _currentProt.lock, this);
     // _plannedDatabases is a map-type<DatabaseID, VPackSlice>
     auto it = _plannedDatabases.begin();
 
@@ -521,7 +521,7 @@ void ClusterInfo::loadPlan() {
   }
 
   {
-    READ_LOCKER(guard, _planProt.lock);
+    READ_LOCKER(guard, _planProt.lock, this);
 
     if (_planProt.isValid && newPlanVersion <= _planVersion) {
       LOG_TOPIC(DEBUG, Logger::CLUSTER)
@@ -1020,7 +1020,7 @@ void ClusterInfo::loadCurrent() {
   }
 
   {
-    READ_LOCKER(guard, _currentProt.lock);
+    READ_LOCKER(guard, _currentProt.lock, this);
 
     if (_currentProt.isValid && newCurrentVersion <= _currentVersion) {
       LOG_TOPIC(DEBUG, Logger::CLUSTER)
@@ -1150,7 +1150,7 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNT(DatabaseID const
 
   while (true) {  // left by break
     {
-      READ_LOCKER(readLocker, _planProt.lock);
+      READ_LOCKER(readLocker, _planProt.lock, this);
       // look up database by id
       AllCollections::const_iterator it = _plannedCollections.find(databaseID);
 
@@ -1188,7 +1188,7 @@ std::vector<std::shared_ptr<LogicalCollection>> const ClusterInfo::getCollection
   // always reload
   loadPlan();
 
-  READ_LOCKER(readLocker, _planProt.lock);
+  READ_LOCKER(readLocker, _planProt.lock, this);
   // look up database by id
   AllCollections::const_iterator it = _plannedCollections.find(databaseID);
 
@@ -1229,7 +1229,7 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
 
   while (true) {
     {
-      READ_LOCKER(readLocker, _currentProt.lock);
+      READ_LOCKER(readLocker, _currentProt.lock, this);
       // look up database by id
       AllCollectionsCurrent::const_iterator it = _currentCollections.find(databaseID);
 
@@ -1299,7 +1299,7 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(DatabaseID const& databaseID,
 
   while (true) {  // left by break
     {
-      READ_LOCKER(readLocker, _planProt.lock);
+      READ_LOCKER(readLocker, _planProt.lock, this);
       auto const view = lookupView(_plannedViews, databaseID, viewID);
 
       if (view) {
@@ -1330,7 +1330,7 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(DatabaseID
   // always reload
   loadPlan();
 
-  READ_LOCKER(readLocker, _planProt.lock);
+  READ_LOCKER(readLocker, _planProt.lock, this);
   // look up database by id
   AllViews::const_iterator it = _plannedViews.find(databaseID);
 
@@ -1612,7 +1612,7 @@ Result ClusterInfo::createCollectionCoordinator( // create collection
   {
     // check if a collection with the same name is already planned
     loadPlan();
-    READ_LOCKER(readLocker, _planProt.lock);
+    READ_LOCKER(readLocker, _planProt.lock, this);
     {
       AllCollections::const_iterator it = _plannedCollections.find(databaseName);
       if (it != _plannedCollections.end()) {
@@ -1693,7 +1693,7 @@ Result ClusterInfo::createCollectionCoordinator( // create collection
         if (tmpError.empty() && waitForReplication) {
           std::vector<ServerID> plannedServers;
           {
-            READ_LOCKER(readLocker, _planProt.lock);
+            READ_LOCKER(readLocker, _planProt.lock, this);
             auto it = _shardServers.find(p.key.copyString());
             if (it != _shardServers.end()) {
               plannedServers = (*it).second;
@@ -1710,7 +1710,7 @@ Result ClusterInfo::createCollectionCoordinator( // create collection
             }
           }
           if (plannedServers.empty()) {
-            READ_LOCKER(readLocker, _planProt.lock);
+            READ_LOCKER(readLocker, _planProt.lock, this);
             LOG_TOPIC(DEBUG, Logger::CLUSTER)
                 << "This should never have happened, Plan empty. Dumping "
                    "_shards in Plan:";
@@ -2198,7 +2198,7 @@ Result ClusterInfo::createViewCoordinator( // create view
   {
     // check if a view with the same name is already planned
     loadPlan();
-    READ_LOCKER(readLocker, _planProt.lock);
+    READ_LOCKER(readLocker, _planProt.lock, this);
     {
       AllViews::const_iterator it = _plannedViews.find(databaseName);
       if (it != _plannedViews.end()) {
@@ -3177,7 +3177,7 @@ std::string ClusterInfo::getServerEndpoint(ServerID const& serverID) {
 
   while (true) {
     {
-      READ_LOCKER(readLocker, _serversProt.lock);
+      READ_LOCKER(readLocker, _serversProt.lock, this);
 
       // _serversAliases is a map-type <Alias, ServerID>
       auto ita = _serverAliases.find(serverID_);
@@ -3228,7 +3228,7 @@ std::string ClusterInfo::getServerAdvertisedEndpoint(ServerID const& serverID) {
 
   while (true) {
     {
-      READ_LOCKER(readLocker, _serversProt.lock);
+      READ_LOCKER(readLocker, _serversProt.lock, this);
 
       // _serversAliases is a map-type <Alias, ServerID>
       auto ita = _serverAliases.find(serverID_);
@@ -3271,7 +3271,7 @@ std::string ClusterInfo::getServerName(std::string const& endpoint) {
 
   while (true) {
     {
-      READ_LOCKER(readLocker, _serversProt.lock);
+      READ_LOCKER(readLocker, _serversProt.lock, this);
       for (auto const& it : _servers) {
         if (it.second == endpoint) {
           return it.first;
@@ -3514,7 +3514,7 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers() {
     loadCurrentDBServers();
   }
   // return a consistent state of servers
-  READ_LOCKER(readLocker, _DBServersProt.lock);
+  READ_LOCKER(readLocker, _DBServersProt.lock, this);
 
   result.reserve(_DBServers.size());
 
@@ -3543,7 +3543,7 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(ShardID
   while (true) {
     {
       {
-        READ_LOCKER(readLocker, _currentProt.lock);
+        READ_LOCKER(readLocker, _currentProt.lock, this);
         // _shardIds is a map-type <ShardId,
         // std::shared_ptr<std::vector<ServerId>>>
         auto it = _shardIds.find(shardID);
@@ -3590,7 +3590,7 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(CollectionID con
   while (true) {
     {
       // Get the sharding keys and the number of shards:
-      READ_LOCKER(readLocker, _planProt.lock);
+      READ_LOCKER(readLocker, _planProt.lock, this);
       // _shards is a map-type <CollectionId, shared_ptr<vector<string>>>
       auto it = _shards.find(collectionID);
 
@@ -3617,7 +3617,7 @@ std::vector<ServerID> ClusterInfo::getCurrentCoordinators() {
   }
 
   // return a consistent state of servers
-  READ_LOCKER(readLocker, _coordinatorsProt.lock);
+  READ_LOCKER(readLocker, _coordinatorsProt.lock, this);
 
   result.reserve(_coordinators.size());
 
@@ -3640,7 +3640,7 @@ ServerID ClusterInfo::getCoordinatorByShortID(ServerShortID shortId) {
   }
 
   // return a consistent state of servers
-  READ_LOCKER(readLocker, _mappingsProt.lock);
+  READ_LOCKER(readLocker, _mappingsProt.lock, this);
 
   auto it = _coordinatorIdMap.find(shortId);
   if (it != _coordinatorIdMap.end()) {
@@ -3712,7 +3712,7 @@ std::shared_ptr<VPackBuilder> ClusterInfo::getPlan() {
   if (!_planProt.isValid) {
     loadPlan();
   }
-  READ_LOCKER(readLocker, _planProt.lock);
+  READ_LOCKER(readLocker, _planProt.lock, this);
   return _plan;
 }
 
@@ -3724,7 +3724,7 @@ std::shared_ptr<VPackBuilder> ClusterInfo::getCurrent() {
   if (!_currentProt.isValid) {
     loadCurrent();
   }
-  READ_LOCKER(readLocker, _currentProt.lock);
+  READ_LOCKER(readLocker, _currentProt.lock, this);
   return _current;
 }
 
@@ -3732,13 +3732,13 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServers() {
   if (!_serversProt.isValid) {
     loadServers();
   }
-  READ_LOCKER(readLocker, _serversProt.lock);
+  READ_LOCKER(readLocker, _serversProt.lock, this);
   std::unordered_map<ServerID, std::string> serv = _servers;
   return serv;
 }
 
 std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
-  READ_LOCKER(readLocker, _serversProt.lock);
+  READ_LOCKER(readLocker, _serversProt.lock, this);
   std::unordered_map<std::string, std::string> ret;
   for (const auto& i : _serverAliases) {
     ret.emplace(i.second, i.first);
@@ -3747,7 +3747,7 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
 }
 
 std::unordered_map<ServerID, std::string> ClusterInfo::getServerAdvertisedEndpoints() {
-  READ_LOCKER(readLocker, _serversProt.lock);
+  READ_LOCKER(readLocker, _serversProt.lock, this);
   std::unordered_map<std::string, std::string> ret;
   for (const auto& i : _serverAdvertisedEndpoints) {
     ret.emplace(i.second, i.first);
@@ -3757,7 +3757,7 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAdvertisedEndpoi
 
 arangodb::Result ClusterInfo::getShardServers(ShardID const& shardId,
                                               std::vector<ServerID>& servers) {
-  READ_LOCKER(readLocker, _planProt.lock);
+  READ_LOCKER(readLocker, _planProt.lock, this);
 
   auto it = _shardServers.find(shardId);
   if (it != _shardServers.end()) {

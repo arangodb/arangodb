@@ -125,7 +125,7 @@ void RocksDBCollectionMeta::removeBlocker(uint64_t trxId) {
 
 /// @brief updates and returns the largest safe seq to squash updated against
 rocksdb::SequenceNumber RocksDBCollectionMeta::committableSeq() const {
-  READ_LOCKER(locker, _blockerLock);
+  READ_LOCKER(locker, _blockerLock, this);
   // if we have a blocker use the lowest counter
   if (!_blockersBySeq.empty()) {
     auto it = _blockersBySeq.begin();

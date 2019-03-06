@@ -44,7 +44,7 @@ std::unordered_map<std::string, double> ClusterSelectivityEstimates::get(bool al
   double now;
 
   {
-    READ_LOCKER(readLock, _lock);
+    READ_LOCKER(readLock, _lock, this);
 
     if (!allowUpdate) {
       // return whatever is there. may be empty as well

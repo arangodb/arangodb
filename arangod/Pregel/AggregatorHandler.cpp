@@ -39,7 +39,7 @@ AggregatorHandler::~AggregatorHandler() {
 
 IAggregator* AggregatorHandler::getAggregator(AggregatorID const& name) {
   {
-    READ_LOCKER(guard, _lock);
+    READ_LOCKER(guard, _lock, this);
     auto it = _values.find(name);
     if (it != _values.end()) {
       return it->second;
@@ -114,7 +114,7 @@ void AggregatorHandler::resetValues() {
 }
 
 bool AggregatorHandler::serializeValues(VPackBuilder& b, bool onlyConverging) const {
-  READ_LOCKER(guard, _lock);
+  READ_LOCKER(guard, _lock, this);
   bool hasValues = false;
   b.add(Utils::aggregatorValuesKey, VPackValue(VPackValueType::Object));
   for (auto const& pair : _values) {
@@ -130,6 +130,6 @@ bool AggregatorHandler::serializeValues(VPackBuilder& b, bool onlyConverging) co
 }
 
 size_t AggregatorHandler::size() const {
-  READ_LOCKER(guard, _lock);
+  READ_LOCKER(guard, _lock, this);
   return _values.size();
 }

@@ -1468,7 +1468,7 @@ void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
 
 std::vector<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>> RocksDBEngine::collectionMappings() const {
   std::vector<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>> res;
-  READ_LOCKER(guard, _mapLock);
+  READ_LOCKER(guard, _mapLock, this);
   for (auto const& it : _collectionMap) {
     res.emplace_back(it.second.first, it.second.second);
   }
@@ -1499,7 +1499,7 @@ void RocksDBEngine::removeIndexMapping(uint64_t objectId) {
 }
 
 RocksDBEngine::CollectionPair RocksDBEngine::mapObjectToCollection(uint64_t objectId) const {
-  READ_LOCKER(guard, _mapLock);
+  READ_LOCKER(guard, _mapLock, this);
   auto it = _collectionMap.find(objectId);
   if (it == _collectionMap.end()) {
     return {0, 0};
@@ -1508,7 +1508,7 @@ RocksDBEngine::CollectionPair RocksDBEngine::mapObjectToCollection(uint64_t obje
 }
 
 RocksDBEngine::IndexTriple RocksDBEngine::mapObjectToIndex(uint64_t objectId) const {
-  READ_LOCKER(guard, _mapLock);
+  READ_LOCKER(guard, _mapLock, this);
   auto it = _indexMap.find(objectId);
   if (it == _indexMap.end()) {
     return RocksDBEngine::IndexTriple(0, 0, 0);
@@ -2175,7 +2175,7 @@ TRI_voc_tick_t RocksDBEngine::currentTick() const {
 }
 
 TRI_voc_tick_t RocksDBEngine::releasedTick() const {
-  READ_LOCKER(lock, _walFileLock);
+  READ_LOCKER(lock, _walFileLock, this);
   return _releasedTick;
 }
 

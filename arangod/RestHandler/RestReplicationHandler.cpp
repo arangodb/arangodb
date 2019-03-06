@@ -1606,7 +1606,7 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
   Result fres;
 
   grantTemporaryRights();
-  READ_LOCKER(readLocker, _vocbase._inventoryLock);
+  READ_LOCKER(readLocker, _vocbase._inventoryLock, this);
 
   // look up the collection
   try {
@@ -2819,7 +2819,7 @@ static std::string IdToTombstoneKey(TRI_vocbase_t& vocbase, aql::QueryId id) {
 void RestReplicationHandler::timeoutTombstones() const {
   std::unordered_set<std::string> toDelete;
   {
-    READ_LOCKER(readLocker, RestReplicationHandler::_tombLock);
+    READ_LOCKER(readLocker, RestReplicationHandler::_tombLock, this);
     if (RestReplicationHandler::_tombstones.empty()) {
       // Fast path
       return;
@@ -2852,7 +2852,7 @@ bool RestReplicationHandler::isTombstoned(aql::QueryId id) const {
   std::string key = IdToTombstoneKey(_vocbase, id);
   bool isDead = false;
   {
-    READ_LOCKER(readLocker, RestReplicationHandler::_tombLock);
+    READ_LOCKER(readLocker, RestReplicationHandler::_tombLock, this);
     isDead = RestReplicationHandler::_tombstones.find(key) !=
              RestReplicationHandler::_tombstones.end();
   }

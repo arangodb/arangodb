@@ -168,7 +168,7 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionId(std::string const& name) c
 std::shared_ptr<arangodb::LogicalCollection> CollectionNameResolver::getCollectionStruct(
     std::string const& name) const {
   {
-    READ_LOCKER(locker, _nameLock);
+    READ_LOCKER(locker, _nameLock, this);
     auto it = _resolvedNames.find(name);
 
     if (it != _resolvedNames.end()) {
@@ -194,7 +194,7 @@ std::shared_ptr<arangodb::LogicalCollection> CollectionNameResolver::getCollecti
 
 std::string CollectionNameResolver::getCollectionName(TRI_voc_cid_t cid) const {
   {
-    READ_LOCKER(locker, _idLock);
+    READ_LOCKER(locker, _idLock, this);
     auto it = _resolvedIds.find(cid);
 
     if (it != _resolvedIds.end()) {
@@ -219,7 +219,7 @@ std::string CollectionNameResolver::getCollectionName(TRI_voc_cid_t cid) const {
 std::string CollectionNameResolver::getCollectionNameCluster(TRI_voc_cid_t cid) const {
   // First check the cache:
   {
-    READ_LOCKER(locker, _idLock);
+    READ_LOCKER(locker, _idLock, this);
     auto it = _resolvedIds.find(cid);
 
     if (it != _resolvedIds.end()) {

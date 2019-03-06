@@ -250,7 +250,7 @@ std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(AsyncJobResult::St
 
   {
     size_t n = 0;
-    READ_LOCKER(readLocker, _lock);
+    READ_LOCKER(readLocker, _lock, this);
     auto it = _jobs.begin();
 
     // iterate the list. the list is sorted by id

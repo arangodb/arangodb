@@ -26,8 +26,8 @@
 #include "Actions/actions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
@@ -135,7 +135,7 @@ class v8_action_t final : public TRI_action_t {
     TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
 
     // locate the callback
-    READ_LOCKER(readLocker, _callbacksLock);
+    READ_LOCKER(readLocker, _callbacksLock, this);
 
     {
       auto it = _callbacks.find(context->_isolate);

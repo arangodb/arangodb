@@ -278,7 +278,7 @@ void RocksDBSettingsManager::loadSettings() {
 
 /// earliest safe sequence number to throw away from wal
 rocksdb::SequenceNumber RocksDBSettingsManager::earliestSeqNeeded() const {
-  READ_LOCKER(guard, _rwLock);
+  READ_LOCKER(guard, _rwLock, this);
   return _lastSync;
 }
 

@@ -94,14 +94,14 @@ void TRI_SegfaultDebugging(char const* message) {
 
 /// @brief check whether we should fail at a specific failure point
 bool TRI_ShouldFailDebugging(char const* value) {
-  READ_LOCKER(readLocker, ::failurePointsLock);
+  READ_LOCKER(readLocker, ::failurePointsLock, value);
 
   return ::failurePoints.find(arangodb::velocypack::StringRef(value)) != ::failurePoints.end();
 }
 
 /// @brief add a failure point
 void TRI_AddFailurePointDebugging(char const* value) {
-  WRITE_LOCKER(writeLocker, ::failurePointsLock);
+  WRITE_LOCKER(writeLocker, ::failurePointsLock, value);
 
   if (::failurePoints.emplace(value).second) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
@@ -112,14 +112,14 @@ void TRI_AddFailurePointDebugging(char const* value) {
 
 /// @brief remove a failure point
 void TRI_RemoveFailurePointDebugging(char const* value) {
-  WRITE_LOCKER(writeLocker, ::failurePointsLock);
+  WRITE_LOCKER(writeLocker, ::failurePointsLock, value);
 
   ::failurePoints.erase(std::string(value));
 }
 
 /// @brief clear all failure points
 void TRI_ClearFailurePointsDebugging() {
-  WRITE_LOCKER(writeLocker, ::failurePointsLock);
+  WRITE_LOCKER(writeLocker, ::failurePointsLock, value);
 
   ::failurePoints.clear();
 }

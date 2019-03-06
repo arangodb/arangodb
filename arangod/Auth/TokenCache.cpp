@@ -74,7 +74,7 @@ void auth::TokenCache::setJwtSecret(std::string const& jwtSecret) {
 }
 
 std::string auth::TokenCache::jwtSecret() const {
-  READ_LOCKER(writeLocker, _jwtLock);
+  READ_LOCKER(writeLocker, _jwtLock, this);
   return _jwtSecret;  // intentional copy
 }
 
@@ -115,7 +115,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(std::string c
   }
 
   {
-    READ_LOCKER(guard, _basicLock);
+    READ_LOCKER(guard, _basicLock, this);
     auto const& it = _basicCache.find(secret);
     if (it != _basicCache.end() && !it->second.expired()) {
       // copy entry under the read-lock

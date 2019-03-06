@@ -719,7 +719,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
       static_cast<MMFilesCollection*>(collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
-  TRY_READ_LOCKER(readLocker, physical->_filesLock);
+  TRY_READ_LOCKER(readLocker, physical->_filesLock, this);
 
   if (!readLocker.isLocked()) {
     // unable to acquire the lock at the moment

@@ -600,12 +600,12 @@ class ClusterInfo {
   std::unordered_map<ServerID, std::string> getServerAdvertisedEndpoints();
 
   uint64_t getPlanVersion() {
-    READ_LOCKER(guard, _planProt.lock);
+    READ_LOCKER(guard, _planProt.lock, this);
     return _planVersion;
   }
 
   uint64_t getCurrentVersion() {
-    READ_LOCKER(guard, _currentProt.lock);
+    READ_LOCKER(guard, _currentProt.lock, this);
     return _currentVersion;
   }
 

@@ -37,14 +37,14 @@ MMFilesRevisionsCache::~MMFilesRevisionsCache() {}
 
 MMFilesDocumentPosition MMFilesRevisionsCache::lookup(LocalDocumentId const& documentId) const {
   TRI_ASSERT(documentId.isSet());
-  READ_LOCKER(locker, _lock);
+  READ_LOCKER(locker, _lock, this);
 
   return _positions.findByKey(nullptr, documentId.data());
 }
 
 void MMFilesRevisionsCache::batchLookup(
     std::vector<std::pair<LocalDocumentId, uint8_t const*>>& documentIds) const {
-  READ_LOCKER(locker, _lock);
+  READ_LOCKER(locker, _lock, this);
 
   for (auto& it : documentIds) {
     MMFilesDocumentPosition const old = _positions.findByKey(nullptr, it.first.data());
@@ -66,17 +66,17 @@ void MMFilesRevisionsCache::sizeHint(int64_t hint) {
 }
 
 size_t MMFilesRevisionsCache::size() {
-  READ_LOCKER(locker, _lock);
+  READ_LOCKER(locker, _lock, this);
   return _positions.size();
 }
 
 size_t MMFilesRevisionsCache::capacity() {
-  READ_LOCKER(locker, _lock);
+  READ_LOCKER(locker, _lock, this);
   return _positions.capacity();
 }
 
 size_t MMFilesRevisionsCache::memoryUsage() {
-  READ_LOCKER(locker, _lock);
+  READ_LOCKER(locker, _lock, this);
   return _positions.memoryUsage();
 }
 

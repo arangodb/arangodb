@@ -54,7 +54,7 @@ void MMFilesDatafileStatistics::compactionRun(uint64_t noCombined,
 }
 
 MMFilesDatafileStatistics::CompactionStats MMFilesDatafileStatistics::getStats() {
-  READ_LOCKER(readLocker, _statisticsLock);
+  READ_LOCKER(readLocker, _statisticsLock, this);
   return _localStats;
 }
 
@@ -242,7 +242,7 @@ void MMFilesDatafileStatistics::increaseUncollected(TRI_voc_fid_t fid, int64_t n
 MMFilesDatafileStatisticsContainer MMFilesDatafileStatistics::get(TRI_voc_fid_t fid) {
   MMFilesDatafileStatisticsContainer result;
   {
-    READ_LOCKER(readLocker, _lock);
+    READ_LOCKER(readLocker, _lock, this);
 
     auto it = _stats.find(fid);
 
@@ -264,7 +264,7 @@ MMFilesDatafileStatisticsContainer MMFilesDatafileStatistics::get(TRI_voc_fid_t 
 MMFilesDatafileStatisticsContainer MMFilesDatafileStatistics::all() {
   MMFilesDatafileStatisticsContainer result;
   {
-    READ_LOCKER(readLocker, _lock);
+    READ_LOCKER(readLocker, _lock, this);
 
     for (auto& it : _stats) {
       result.update(*(it.second));

@@ -203,7 +203,7 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
   TRI_ASSERT(_info.slice().isObject());
   TRI_ASSERT(_info.isClosed());
 
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(guard, _indexesLock, this);
   for (std::shared_ptr<Index>& idx : _indexes) {
     static_cast<ClusterIndex*>(idx.get())->updateProperties(_info.slice());
   }
@@ -271,7 +271,7 @@ void ClusterCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Bu
 
 /// @brief closes an open collection
 int ClusterCollection::close() {
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(guard, _indexesLock, this);
   for (auto it : _indexes) {
     it->unload();
   }
@@ -279,14 +279,14 @@ int ClusterCollection::close() {
 }
 
 void ClusterCollection::load() {
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(guard, _indexesLock, this);
   for (auto it : _indexes) {
     it->load();
   }
 }
 
 void ClusterCollection::unload() {
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(guard, _indexesLock, this);
   for (auto it : _indexes) {
     it->unload();
   }

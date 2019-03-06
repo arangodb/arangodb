@@ -60,7 +60,7 @@ class MMFilesAllocatorThread final : public Thread {
 
   /// @brief whether or not we are in recovery
   bool inRecovery() {
-    READ_LOCKER(readLocker, _recoveryLock);
+    READ_LOCKER(readLocker, _recoveryLock, this);
     return _inRecovery;
   }
 

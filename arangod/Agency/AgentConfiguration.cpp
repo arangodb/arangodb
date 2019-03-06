@@ -102,7 +102,7 @@ config_t::config_t(config_t const& other) {
 
 config_t& config_t::operator=(config_t const& other) {
   // must hold the lock of other to copy _pool, _minPing, _maxPing etc.
-  READ_LOCKER(readLocker, other._lock);
+  READ_LOCKER(readLocker, other._lock, this);
   _id = other._id;
   _recoveryId = other._recoveryId;
   _agencySize = other._agencySize;
@@ -129,7 +129,7 @@ config_t& config_t::operator=(config_t const& other) {
 }
 
 config_t& config_t::operator=(config_t&& other) {
-  READ_LOCKER(readLocker, other._lock);
+  READ_LOCKER(readLocker, other._lock, this);
 
   _id = std::move(other._id);
   _agencySize = std::move(other._agencySize);
@@ -156,32 +156,32 @@ config_t& config_t::operator=(config_t&& other) {
 }
 
 size_t config_t::version() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _version;
 }
 
 bool config_t::cmdLineTimings() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _cmdLineTimings;
 }
 
 double config_t::supervisionGracePeriod() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _supervisionGracePeriod;
 }
 
 double config_t::minPing() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _minPing;
 }
 
 double config_t::maxPing() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _maxPing;
 }
 
 int64_t config_t::timeoutMult() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _timeoutMult;
 }
 
@@ -203,37 +203,37 @@ void config_t::setTimeoutMult(int64_t m) {
 }
 
 std::unordered_map<std::string, std::string> config_t::pool() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _pool;
 }
 
 std::string config_t::id() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _id;
 }
 
 std::string config_t::recoveryId() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _recoveryId;
 }
 
 std::string config_t::poolAt(std::string const& id) const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _pool.at(id);
 }
 
 std::string config_t::endpoint() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _endpoint;
 }
 
 std::vector<std::string> config_t::active() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _active;
 }
 
 bool config_t::activeEmpty() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _active.empty();
 }
 
@@ -246,17 +246,17 @@ void config_t::activate() {
 }
 
 bool config_t::waitForSync() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _waitForSync;
 }
 
 bool config_t::supervision() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _supervision;
 }
 
 double config_t::supervisionFrequency() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _supervisionFrequency;
 }
 
@@ -272,7 +272,7 @@ bool config_t::activePushBack(std::string const& id) {
 }
 
 std::unordered_set<std::string> config_t::gossipPeers() const {
-  READ_LOCKER(lock, _lock);
+  READ_LOCKER(lock, _lock, this);
   return _gossipPeers;
 }
 
@@ -314,39 +314,39 @@ config_t::upsert_t config_t::upsertPool(VPackSlice const& otherPool,
 }
 
 size_t config_t::maxAppendSize() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _maxAppendSize;
 }
 
 size_t config_t::compactionStepSize() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _compactionStepSize;
 }
 
 size_t config_t::compactionKeepSize() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _compactionKeepSize;
 }
 
 size_t config_t::size() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _agencySize;
 }
 
 size_t config_t::poolSize() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _poolSize;
 }
 
 bool config_t::poolComplete() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _poolSize == _pool.size();
 }
 
 query_t config_t::activeToBuilder() const {
   query_t ret = std::make_shared<arangodb::velocypack::Builder>();
   {
-    READ_LOCKER(readLocker, _lock);
+    READ_LOCKER(readLocker, _lock, this);
     VPackArrayBuilder r(ret.get());
     for (auto const& i : _active) {
       ret->add(VPackValue(i));
@@ -358,7 +358,7 @@ query_t config_t::activeToBuilder() const {
 query_t config_t::activeAgentsToBuilder() const {
   query_t ret = std::make_shared<arangodb::velocypack::Builder>();
   {
-    READ_LOCKER(readLocker, _lock);
+    READ_LOCKER(readLocker, _lock, this);
     VPackObjectBuilder r(ret.get());
     for (auto const& i : _active) {
       ret->add(i, VPackValue(_pool.at(i)));
@@ -370,7 +370,7 @@ query_t config_t::activeAgentsToBuilder() const {
 query_t config_t::poolToBuilder() const {
   query_t ret = std::make_shared<arangodb::velocypack::Builder>();
   {
-    READ_LOCKER(readLocker, _lock);
+    READ_LOCKER(readLocker, _lock, this);
     VPackObjectBuilder r(ret.get());
     for (auto const& i : _pool) {
       ret->add(i.first, VPackValue(i.second));
@@ -435,7 +435,7 @@ void config_t::update(query_t const& message) {
 }
 
 void config_t::toBuilder(VPackBuilder& builder) const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   {
     builder.add(VPackValue(poolStr));
     {
@@ -495,20 +495,20 @@ bool config_t::setId(std::string const& i) {
 
 // Get startup fix
 std::string config_t::startup() const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _startup;
 }
 
 /// @brief findIdInPool
 bool config_t::matchPeer(std::string const& id, std::string const& endpoint) const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   auto const& it = _pool.find(id);
   return (it == _pool.end()) ? false : it->second == endpoint;
 }
 
 /// @brief findIdInPool
 bool config_t::findInPool(std::string const& id) const {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   return _pool.find(id) != _pool.end();
 }
 

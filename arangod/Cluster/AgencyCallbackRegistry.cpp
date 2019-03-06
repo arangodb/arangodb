@@ -75,7 +75,7 @@ bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb
 }
 
 std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint32_t id) {
-  READ_LOCKER(locker, _lock);
+  READ_LOCKER(locker, _lock, this);
   auto it = _endpoints.find(id);
 
   if (it == _endpoints.end()) {

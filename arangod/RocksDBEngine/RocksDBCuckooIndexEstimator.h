@@ -256,7 +256,7 @@ class RocksDBCuckooIndexEstimator {
 
     {
       // Sorry we need a consistent state, so we have to read-lock
-      READ_LOCKER(locker, _lock);
+      READ_LOCKER(locker, _lock, this);
 
       /// appliedSeq might be 0 if we did not applie any operations
       appliedSeq = std::max(appliedSeq, this->committedSeq());
@@ -341,7 +341,7 @@ class RocksDBCuckooIndexEstimator {
   }
 
   double computeEstimate() {
-    READ_LOCKER(locker, _lock);
+    READ_LOCKER(locker, _lock, this);
     if (0 == _nrTotal) {
       TRI_ASSERT(0 == _nrUsed);
       // If we do not have any documents we have a rather constant estimate.
@@ -368,7 +368,7 @@ class RocksDBCuckooIndexEstimator {
     uint64_t pos2 = hashToPos(hash2);
     bool found = false;
     {
-      READ_LOCKER(guard, _lock);
+      READ_LOCKER(guard, _lock, this);
       findSlotNoCuckoo(pos1, pos2, fingerprint, found);
     }
     return found;
@@ -465,7 +465,7 @@ class RocksDBCuckooIndexEstimator {
   uint64_t nrCuckood() const { return _nrCuckood; }
 
   bool needToPersist() const {
-    READ_LOCKER(locker, _lock);
+    READ_LOCKER(locker, _lock, this);
     return _needToPersist.load();
   }
 

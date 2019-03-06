@@ -244,7 +244,7 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
   result.reserve(16);
 
   {
-    READ_LOCKER(readLocker, _lock);
+    READ_LOCKER(readLocker, _lock, this);
     // reserve the actually needed space
     result.reserve(_current.size());
 
@@ -275,7 +275,7 @@ std::vector<QueryEntryCopy> QueryList::listSlow() {
   result.reserve(16);
 
   {
-    READ_LOCKER(readLocker, _lock);
+    READ_LOCKER(readLocker, _lock, this);
     // reserve the actually needed space
     result.reserve(_slow.size());
 

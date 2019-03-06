@@ -36,7 +36,7 @@
 #include <thread>
 
 /// @brief construct locker with file and line information
-#define WRITE_LOCKER(obj, lock, ptr)                                        \
+#define WRITE_LOCKER(obj, lock, ptr)                                            \
   arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> obj( \
       &lock, arangodb::basics::LockerType::BLOCKING, true, ptr, __FILE__, __LINE__)
 

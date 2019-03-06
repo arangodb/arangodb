@@ -1944,7 +1944,7 @@ std::string MMFilesEngine::databaseParametersFilename(TRI_voc_tick_t id) const {
 
 std::string MMFilesEngine::collectionDirectory(TRI_voc_tick_t databaseId,
                                                TRI_voc_cid_t id) const {
-  READ_LOCKER(locker, _pathsLock);
+  READ_LOCKER(locker, _pathsLock, this);
 
   auto it = _collectionPaths.find(databaseId);
 
@@ -1972,7 +1972,7 @@ std::string MMFilesEngine::collectionParametersFilename(TRI_voc_tick_t databaseI
 }
 
 std::string MMFilesEngine::viewDirectory(TRI_voc_tick_t databaseId, TRI_voc_cid_t id) const {
-  READ_LOCKER(locker, _pathsLock);
+  READ_LOCKER(locker, _pathsLock, this);
 
   auto it = _viewPaths.find(databaseId);
 
@@ -3499,7 +3499,7 @@ TRI_voc_tick_t MMFilesEngine::currentTick() const {
 }
 
 TRI_voc_tick_t MMFilesEngine::releasedTick() const {
-  READ_LOCKER(lock, _releaseLock);
+  READ_LOCKER(lock, _releaseLock, this);
   return _releasedTick;
 }
 

@@ -221,7 +221,7 @@ void QueryRegistry::destroy(TRI_vocbase_t* vocbase, QueryId id, int errorCode) {
 ResultT<bool> QueryRegistry::isQueryInUse(TRI_vocbase_t* vocbase, QueryId id) {
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Test if query with id " << id << "is in use.";
 
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
 
   auto m = _queries.find(vocbase->name());
   if (m == _queries.end()) {
@@ -276,7 +276,7 @@ void QueryRegistry::expireQueries() {
 
 /// @brief return number of registered queries
 size_t QueryRegistry::numberRegisteredQueries() {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
   size_t sum = 0;
   for (auto const& m : _queries) {
     sum += m.second.size();
@@ -288,7 +288,7 @@ size_t QueryRegistry::numberRegisteredQueries() {
 void QueryRegistry::destroyAll() {
   std::vector<std::pair<std::string, QueryId>> allQueries;
   {
-    READ_LOCKER(readlock, _lock);
+    READ_LOCKER(readlock, _lock, this);
     for (auto& p : _queries) {
       for (auto& q : p.second) {
         allQueries.emplace_back(p.first, q.first);

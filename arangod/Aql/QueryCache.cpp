@@ -587,7 +587,7 @@ std::shared_ptr<QueryCacheResultEntry> QueryCache::lookup(
     TRI_vocbase_t* vocbase, uint64_t hash, QueryString const& queryString,
     std::shared_ptr<VPackBuilder> const& bindVars) const {
   auto const part = getPart(vocbase);
-  READ_LOCKER(readLocker, _entriesLock[part]);
+  READ_LOCKER(readLocker, _entriesLock[part], this);
 
   auto it = _entries[part].find(vocbase);
 
@@ -725,7 +725,7 @@ void QueryCache::queriesToVelocyPack(TRI_vocbase_t* vocbase, VPackBuilder& build
 
   {
     auto const part = getPart(vocbase);
-    READ_LOCKER(readLocker, _entriesLock[part]);
+    READ_LOCKER(readLocker, _entriesLock[part], this);
 
     auto it = _entries[part].find(vocbase);
 

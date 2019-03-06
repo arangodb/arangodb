@@ -50,7 +50,7 @@ using namespace arangodb::pregel;
 
 #define MY_READ_LOCKER(obj, lock, ptr)                                      \
   ReadLocker<ReadWriteLock> obj(&lock, arangodb::basics::LockerType::BLOCKING, \
-                                true, __FILE__, __LINE__)
+                                true, ptr, __FILE__, __LINE__)
 
 #define MY_WRITE_LOCKER(obj, lock, ptr)                                     \
   WriteLocker<ReadWriteLock> obj(&lock, arangodb::basics::LockerType::BLOCKING, \

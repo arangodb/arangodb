@@ -46,7 +46,7 @@ PlanCache::~PlanCache() {}
 /// @brief lookup a plan in the cache
 std::shared_ptr<PlanCacheEntry> PlanCache::lookup(TRI_vocbase_t* vocbase, uint64_t queryHash,
                                                   QueryString const& queryString) {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _lock, this);
 
   auto it = _plans.find(vocbase);
 
