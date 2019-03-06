@@ -47,8 +47,6 @@ SmartContext::~SmartContext() {
     if (_state->isTopLevelTransaction()) {
       TRI_ASSERT(false); // probably should not happen
       delete _state;
-    } else {
-      _state->decreaseNesting();
     }
   }
 }
@@ -93,6 +91,7 @@ ManagedContext::~ManagedContext() {
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
     mgr->returnManagedTrx(_globalId, _mode);
+    _state = nullptr;
   }
 }
 

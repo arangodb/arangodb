@@ -177,34 +177,61 @@ using namespace arangodb;
   
 /// @brief collect forgotten transactions
 void Manager::garbageCollect() {
-#warning TODO garbage collection
-//  std::vector<TRI_voc_tid_t> gcBuffer;
-//
-//  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-//  for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-//    WRITE_LOCKER(locker, _transactions[bucket]._lock);
-//
-//    double now = TRI_microtime();
-//    auto it = _transactions[bucket]._activeTransactions.begin();
-//    while (it != _transactions[bucket]._activeTransactions.end()) {
-//      // we only concern ourselves with global transactions
-//      if (it->second->_state != nullptr) {
-//        TransactionState* state = it->second->_state;
-//        TRI_ASSERT(!Manager::isManagedTransactionId(state->id()));
-//        if (state->isTopLevelTransaction()) {  // embedded means leased out
-//          // aborted transactions must be cleanead up by the aborting thread
-//          if (state->isRunning() && it->second->_expires > now) {
-//            gcBuffer.emplace_back(state->id());
-//          }
-//        } else {
-//          // auto extend lifetime of leased transactions
-//          it->second->_expires = defaultTTL + TRI_microtime();
-//        }
-//      }
-//      ++it;  // next
-//    }
-//  }
+  std::vector<TRI_voc_tid_t> gcBuffer;
 
+  READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
+  for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
+    WRITE_LOCKER(locker, _transactions[bucket]._lock);
+
+    double now = TRI_microtime();
+    auto it = _transactions[bucket]._managed.begin();
+    while (it != _transactions[bucket]._managed.end()) {
+      
+      ManagedTrx& mtrx = it->second;
+      TRI_ASSERT(mtrx.state != nullptr);
+      
+      if (mtrx.state->isTopLevelTransaction()) {  // embedded means leased out
+        if (mtrx.type == MetaType::StandaloneAQL) {
+          LOG_DEVEL << "expired AQL query " << it->first;
+          return;
+        }
+        // aborted transactions must be cleanead up by the aborting thread
+        if (mtrx.state->isRunning() && mtrx.expires > now) {
+          gcBuffer.emplace_back(mtrx.state->id());
+        }
+      } else {
+        // auto extend lifetime of leased transactions
+        mtrx.expires = defaultTTL + TRI_microtime();
+      }
+      
+      ++it;  // next
+    }
+  }
+
+  
+  for (TRI_voc_tid_t tid : gcBuffer) {
+    
+    auto ctx = leaseTrx(tid, AccessMode::Type::WRITE, transaction::Manager::Ownership::Move);
+    if (!ctx) {
+      continue;
+    }
+    
+    LOG_DEVEL << "gc collecting " << tid;
+    
+    transaction::Options trxOpts;
+    MGMethods trx(ctx, trxOpts);
+    TRI_ASSERT(trx.state()->isRunning());
+    TRI_ASSERT(trx.state()->nestingLevel() == 1);
+    trx.state()->decreaseNesting();
+    TRI_ASSERT(trx.state()->isTopLevelTransaction());
+    Result res = trx.abort();
+    TRI_ASSERT(!trx.state()->isRunning());
+    
+    if (res.fail()) {
+      LOG_DEVEL << "errror " << res.errorMessage();
+    }
+  }
+  
   /*const TRI_voc_tid_t tid = state->id();
    auto ctx =
    std::make_shared<transaction::SmartContext>(state->vocbase(),
@@ -237,6 +264,8 @@ void Manager::registerAQLTrx(TransactionState* state) {
                                    "transaction ID already used");
   }
   
+  LOG_DEVEL << "adding managed AQL query " << state->id();
+
   buck._managed.emplace(std::piecewise_construct,
                         std::forward_as_tuple(state->id()),
                         std::forward_as_tuple(MetaType::StandaloneAQL, state,
@@ -262,6 +291,7 @@ void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
     TRI_ASSERT(false);
     return;
   }
+  LOG_DEVEL << "removing managed AQL query " << tid;
   buck._managed.erase(it);
 }
   
@@ -375,6 +405,7 @@ std::shared_ptr<transaction::Context> Manager::leaseTrx(TRI_voc_tid_t tid, Acces
                                                         Manager::Ownership action) {
   const size_t bucket = getBucket(tid);
   
+  int i = 0;
   TransactionState* state = nullptr;
   do {
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
@@ -430,6 +461,10 @@ std::shared_ptr<transaction::Context> Manager::leaseTrx(TRI_voc_tid_t tid, Acces
     writeLocker.unlock(); // failure;
     allTransactionsLocker.unlock();
     std::this_thread::yield();
+    if (i++ > 10000) {
+      LOG_DEVEL << "waiting on trx lock";
+      i = 0;
+    }
   } while (true);
   
   if (state) {
@@ -457,8 +492,10 @@ void Manager::returnManagedTrx(TRI_voc_tid_t tid, AccessMode::Type mode) noexcep
   
   if (AccessMode::isWriteOrExclusive(mode)) {
     it->second.rwlock.unlockWrite();
-  } else {
+  } else if (mode == AccessMode::Type::READ){
     it->second.rwlock.unlockRead();
+  } else {
+    TRI_ASSERT(false);
   }
 }
 
