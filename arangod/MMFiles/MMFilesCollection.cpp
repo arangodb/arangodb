@@ -2148,7 +2148,7 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
-    READ_LOCKER(guard, _indexesLock);
+    READ_LOCKER(guard, _indexesLock, this);
     bool foundPrimary = false;
 
     for (auto const& it : _indexes) {
