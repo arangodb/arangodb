@@ -38,6 +38,7 @@ class ManagerFeature final : public application_features::ApplicationFeature {
 
   void prepare() override final;
   void start() override;
+  void beginShutdown() override;
   void unprepare() override final;
 
   static transaction::Manager* manager() {

@@ -96,13 +96,10 @@ ManagedContext::~ManagedContext() {
 }
 
 /// @brief get parent transaction (if any) increase nesting
-TransactionState* ManagedContext::leaseParentTransaction() {
+TransactionState* ManagedContext::getParentTransaction() const {
   TRI_ASSERT(_state);
   // single document transaction should never be leased out
   TRI_ASSERT(!_state->hasHint(Hints::Hint::SINGLE_OPERATION));
-  if (_state) {
-    _state->increaseNesting();
-  }
   return _state;
 }
   
@@ -112,11 +109,8 @@ void ManagedContext::unregisterTransaction() noexcept {
 
 // ============= AQLStandaloneContext =============
   
-/// @brief get parent transaction (if any) increase nesting
-TransactionState* AQLStandaloneContext::leaseParentTransaction() {
-  if (_state) {
-    _state->increaseNesting();
-  }
+/// @brief get parent transaction (if any)
+TransactionState* AQLStandaloneContext::getParentTransaction() const {
   return _state;
 }
     

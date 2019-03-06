@@ -468,9 +468,7 @@ std::shared_ptr<transaction::Context> Manager::leaseTrx(TRI_voc_tid_t tid, Acces
   } while (true);
   
   if (state) {
-    if (action == Ownership::Lease) {
-      state->increaseNesting();
-    } else {
+    if (action == Ownership::Move) {
       mode = AccessMode::Type::NONE;
     }
     return std::make_shared<ManagedContext>(tid, state, mode);

@@ -85,8 +85,8 @@ struct ManagedContext final : public SmartContext {
   
   ~ManagedContext();
   
-  /// @brief get parent transaction (if any) increase nesting
-  TransactionState* leaseParentTransaction() override;
+  /// @brief get parent transaction (if any)
+  TransactionState* getParentTransaction() const override;
 
   /// @brief register the transaction,
   void registerTransaction(TransactionState*) override {
@@ -107,8 +107,8 @@ struct AQLStandaloneContext final : public SmartContext {
   AQLStandaloneContext(TRI_vocbase_t& vocbase, TRI_voc_tid_t globalId)
     : SmartContext(vocbase, globalId, nullptr) {}
 
-  /// @brief get parent transaction (if any) increase nesting
-  TransactionState* leaseParentTransaction() override;
+  /// @brief get parent transaction (if any)
+  TransactionState* getParentTransaction() const override;
 
   /// @brief register the transaction,
   void registerTransaction(TransactionState*) override;

@@ -2374,10 +2374,6 @@ static void JS_CountVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) 
   SingleCollectionTransaction trx(transaction::V8Context::Create(col->vocbase(), true),
                                   collectionName, AccessMode::Type::READ);
 
-//  if (trx.isLockedShard(collectionName)) {
-//    trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
-//  }
-
   Result res = trx.begin();
 
   if (!res.ok()) {

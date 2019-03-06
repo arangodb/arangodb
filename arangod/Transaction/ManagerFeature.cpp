@@ -45,10 +45,11 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
   startsAfter("EngineSelector");
       
   _gcfunc = [this] (bool cancelled) {
-    
-    MANAGER->garbageCollect();
-    
     if (!cancelled) {
+      MANAGER->garbageCollect();
+    }
+    
+    if (!ApplicationServer::isStopping() && !cancelled) {
       auto off = std::chrono::seconds(1);
       _workItem = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
     }
@@ -65,9 +66,12 @@ void ManagerFeature::start() {
   auto off = std::chrono::seconds(1);
   _workItem = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
 }
+  
+void ManagerFeature::beginShutdown() {
+  _workItem.reset();
+}
 
 void ManagerFeature::unprepare() {
-  _workItem.reset();
   MANAGER.reset();
 }
 

@@ -86,14 +86,10 @@ CollectionNameResolver const& transaction::V8Context::resolver() {
   return *_resolver;
 }
 
-/// @brief get parent transaction (if any) increase nesting
-TransactionState* transaction::V8Context::leaseParentTransaction() {
+/// @brief get parent transaction (if any)
+TransactionState* transaction::V8Context::getParentTransaction() const {
   TRI_ASSERT(_sharedTransactionContext != nullptr);
-  TransactionState* state = _sharedTransactionContext->_currentTransaction;;
-  if (state) {
-    state->increaseNesting();
-  }
-  return state;
+  return _sharedTransactionContext->_currentTransaction;
 }
 
 /// @brief register the transaction in the context

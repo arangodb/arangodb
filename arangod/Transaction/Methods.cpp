@@ -755,7 +755,7 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
   // this will first check if the transaction is embedded in a parent
   // transaction. if not, it will create a transaction of its own
   // check in the context if we are running embedded
-  TransactionState* parent = _transactionContextPtr->leaseParentTransaction();
+  TransactionState* parent = _transactionContextPtr->getParentTransaction();
 
   if (parent != nullptr) {  // yes, we are embedded
     if (!_transactionContextPtr->isEmbeddable()) {
@@ -764,7 +764,8 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
     }
 
     _state = parent;
-    TRI_ASSERT(_state != nullptr && _state->isEmbeddedTransaction());
+    TRI_ASSERT(_state != nullptr);
+    _state->increaseNesting();
   } else {  // non-embedded
     // now start our own transaction
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
