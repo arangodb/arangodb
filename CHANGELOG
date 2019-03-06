@@ -1,4 +1,4 @@
-v3.4.4 (2019-XX-XX)
+v3.4.4 (2019-03-08)
 -------------------
 
 * follow up to fix JWT authentication in arangosh (#7530):
