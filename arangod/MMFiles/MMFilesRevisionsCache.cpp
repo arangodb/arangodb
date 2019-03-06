@@ -59,7 +59,7 @@ void MMFilesRevisionsCache::batchLookup(
 }
 
 void MMFilesRevisionsCache::sizeHint(int64_t hint) {
-  WRITE_LOCKER(locker, _lock);
+  WRITE_LOCKER(locker, _lock, this);
   if (hint > 256) {
     _positions.resize(nullptr, static_cast<size_t>(hint));
   }
@@ -81,7 +81,7 @@ size_t MMFilesRevisionsCache::memoryUsage() {
 }
 
 void MMFilesRevisionsCache::clear() {
-  WRITE_LOCKER(locker, _lock);
+  WRITE_LOCKER(locker, _lock, this);
   _positions.truncate([](MMFilesDocumentPosition&) { return true; });
 }
 
@@ -92,7 +92,7 @@ MMFilesDocumentPosition MMFilesRevisionsCache::insert(LocalDocumentId const& doc
   TRI_ASSERT(documentId.isSet());
   TRI_ASSERT(dataptr != nullptr);
 
-  CONDITIONAL_WRITE_LOCKER(locker, _lock, shouldLock);
+  CONDITIONAL_WRITE_LOCKER(locker, _lock, shouldLock, this);
   int res = _positions.insert(nullptr, MMFilesDocumentPosition(documentId, dataptr,
                                                                fid, isInWal));
 
@@ -106,7 +106,7 @@ MMFilesDocumentPosition MMFilesRevisionsCache::insert(LocalDocumentId const& doc
 }
 
 void MMFilesRevisionsCache::insert(MMFilesDocumentPosition const& position, bool shouldLock) {
-  CONDITIONAL_WRITE_LOCKER(locker, _lock, shouldLock);
+  CONDITIONAL_WRITE_LOCKER(locker, _lock, shouldLock, this);
   _positions.insert(nullptr, position);
 }
 
@@ -115,7 +115,7 @@ void MMFilesRevisionsCache::update(LocalDocumentId const& documentId, uint8_t co
   TRI_ASSERT(documentId.isSet());
   TRI_ASSERT(dataptr != nullptr);
 
-  WRITE_LOCKER(locker, _lock);
+  WRITE_LOCKER(locker, _lock, this);
 
   MMFilesDocumentPosition* old = _positions.findByKeyRef(nullptr, documentId.data());
   TRI_ASSERT(old != nullptr);
@@ -133,7 +133,7 @@ bool MMFilesRevisionsCache::updateConditional(LocalDocumentId const& documentId,
                                               MMFilesMarker const* oldPosition,
                                               MMFilesMarker const* newPosition,
                                               TRI_voc_fid_t newFid, bool isInWal) {
-  WRITE_LOCKER(locker, _lock);
+  WRITE_LOCKER(locker, _lock, this);
 
   MMFilesDocumentPosition* old = _positions.findByKeyRef(nullptr, documentId.data());
   TRI_ASSERT(old != nullptr);
@@ -163,13 +163,13 @@ bool MMFilesRevisionsCache::updateConditional(LocalDocumentId const& documentId,
 void MMFilesRevisionsCache::remove(LocalDocumentId const& documentId) {
   TRI_ASSERT(documentId.isSet());
 
-  WRITE_LOCKER(locker, _lock);
+  WRITE_LOCKER(locker, _lock, this);
   _positions.removeByKey(nullptr, documentId.data());
 }
 
 MMFilesDocumentPosition MMFilesRevisionsCache::fetchAndRemove(LocalDocumentId const& documentId) {
   TRI_ASSERT(documentId.isSet());
 
-  WRITE_LOCKER(locker, _lock);
+  WRITE_LOCKER(locker, _lock, this);
   return _positions.removeByKey(nullptr, documentId.data());
 }

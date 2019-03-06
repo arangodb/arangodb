@@ -193,7 +193,7 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::Action> newAct
   //  but just in case
   try {
     size_t action_hash = newAction->hash();
-    WRITE_LOCKER(wLock, _actionRegistryLock);
+    WRITE_LOCKER(wLock, _actionRegistryLock, this);
 
     std::shared_ptr<Action> curAction = findActionHashNoLock(action_hash);
 
@@ -244,7 +244,7 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescript
     auto find_it = description->get("name");
 
     size_t action_hash = description->hash();
-    WRITE_LOCKER(wLock, _actionRegistryLock);
+    WRITE_LOCKER(wLock, _actionRegistryLock, this);
 
     std::shared_ptr<Action> curAction = findActionHashNoLock(action_hash);
 
@@ -402,7 +402,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
   while (!_isShuttingDown && !ret_ptr) {
     // scan for ready action (and purge any that are done waiting)
     {
-      WRITE_LOCKER(wLock, _actionRegistryLock);
+      WRITE_LOCKER(wLock, _actionRegistryLock, this);
 
       for (auto loop = _actionRegistry.begin(); _actionRegistry.end() != loop && !ret_ptr;) {
         auto state = (*loop)->getState();

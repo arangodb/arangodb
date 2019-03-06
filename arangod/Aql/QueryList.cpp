@@ -83,7 +83,7 @@ bool QueryList::insert(Query* query) {
   }
 
   try {
-    WRITE_LOCKER(writeLocker, _lock);
+    WRITE_LOCKER(writeLocker, _lock, this);
 
     TRI_IF_FAILURE("QueryList::insert") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -113,7 +113,7 @@ void QueryList::remove(Query* query) {
     return;
   }
 
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
   auto it = _current.find(query->id());
 
   if (it == _current.end()) {
@@ -192,7 +192,7 @@ void QueryList::remove(Query* query) {
 
 /// @brief kills a query
 int QueryList::kill(TRI_voc_tick_t id) {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   auto it = _current.find(id);
 
@@ -212,7 +212,7 @@ int QueryList::kill(TRI_voc_tick_t id) {
 uint64_t QueryList::killAll(bool silent) {
   uint64_t killed = 0;
 
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   for (auto& it : _current) {
     Query* query = it.second;
@@ -289,7 +289,7 @@ std::vector<QueryEntryCopy> QueryList::listSlow() {
 
 /// @brief clear the list of slow queries
 void QueryList::clearSlow() {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
   _slow.clear();
   _slowCount = 0;
 }

@@ -35,7 +35,7 @@ void MMFilesTransactionManager::registerFailedTransactions(
   for (auto const& it : failedTransactions) {
     size_t bucket = getBucket(it);
 
-    WRITE_LOCKER(locker, _transactions[bucket]._lock);
+    WRITE_LOCKER(locker, _transactions[bucket]._lock, this);
 
     _transactions[bucket]._failedTransactions.emplace(it);
   }
@@ -47,7 +47,7 @@ void MMFilesTransactionManager::unregisterFailedTransactions(
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-    WRITE_LOCKER(locker, _transactions[bucket]._lock);
+    WRITE_LOCKER(locker, _transactions[bucket]._lock, this);
 
     std::for_each(failedTransactions.begin(), failedTransactions.end(), [&](TRI_voc_tid_t id) {
       _transactions[bucket]._failedTransactions.erase(id);
@@ -62,7 +62,7 @@ void MMFilesTransactionManager::registerTransaction(TRI_voc_tid_t transactionId,
   size_t bucket = getBucket(transactionId);
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
-  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock, this);
 
   // insert into currently running list of transactions
   _transactions[bucket]._activeTransactions.emplace(transactionId, std::move(data));
@@ -74,7 +74,7 @@ void MMFilesTransactionManager::unregisterTransaction(TRI_voc_tid_t transactionI
   size_t bucket = getBucket(transactionId);
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
-  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock, this);
 
   _transactions[bucket]._activeTransactions.erase(transactionId);
 
@@ -88,7 +88,7 @@ std::unordered_set<TRI_voc_tid_t> MMFilesTransactionManager::getFailedTransactio
   std::unordered_set<TRI_voc_tid_t> failedTransactions;
 
   {
-    WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
+    WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
 
     for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
       READ_LOCKER(locker, _transactions[bucket]._lock);
@@ -104,7 +104,7 @@ std::unordered_set<TRI_voc_tid_t> MMFilesTransactionManager::getFailedTransactio
 
 void MMFilesTransactionManager::iterateActiveTransactions(
     std::function<void(TRI_voc_tid_t, TransactionData const*)> const& callback) {
-  WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
+  WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
 
   // iterate over all active transactions
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
@@ -118,7 +118,7 @@ void MMFilesTransactionManager::iterateActiveTransactions(
 }
 
 uint64_t MMFilesTransactionManager::getActiveTransactionCount() {
-  WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock);
+  WRITE_LOCKER(allTransactionsLocker, _allTransactionsLock, this);
 
   uint64_t count = 0;
   // iterate over all active transactions

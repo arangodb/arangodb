@@ -68,7 +68,7 @@ struct LockfileRemover {
   LockfileRemover() {}
 
   ~LockfileRemover() {
-    WRITE_LOCKER(locker, OpenedFilesLock);
+    WRITE_LOCKER(locker, OpenedFilesLock, this);
 
     for (auto const& it : OpenedFiles) {
 #ifdef TRI_HAVE_WIN32_FILE_LOCKING
@@ -1021,7 +1021,7 @@ int TRI_CreateLockFile(char const* filename) {
 #else
 
 int TRI_CreateLockFile(char const* filename) {
-  WRITE_LOCKER(locker, OpenedFilesLock);
+  WRITE_LOCKER(locker, OpenedFilesLock, (void*)0x123);
 
   for (size_t i = 0; i < OpenedFiles.size(); ++i) {
     if (OpenedFiles[i].first == filename) {
@@ -1230,7 +1230,7 @@ int TRI_DestroyLockFile(char const* filename) {
 #else
 
 int TRI_DestroyLockFile(char const* filename) {
-  WRITE_LOCKER(locker, OpenedFilesLock);
+  WRITE_LOCKER(locker, OpenedFilesLock, (void*)0x234);
   for (size_t i = 0; i < OpenedFiles.size(); ++i) {
     if (OpenedFiles[i].first == filename) {
       int fd = TRI_OPEN(filename, O_RDWR | TRI_O_CLOEXEC);

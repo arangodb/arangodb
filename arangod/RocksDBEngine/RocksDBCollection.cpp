@@ -266,7 +266,7 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
     }
   }
 
-  WRITE_LOCKER(guard, _indexesLock);
+  WRITE_LOCKER(guard, _indexesLock, this);
   TRI_ASSERT(_indexes.empty());
   for (std::shared_ptr<Index>& idx : indexes) {
     auto const id = idx->id();
@@ -415,7 +415,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   // Step 5. cleanup
   if (res.ok()) {
     {
-      WRITE_LOCKER(guard, _indexesLock);
+      WRITE_LOCKER(guard, _indexesLock, this);
       if (inBackground) {  // swap in actual index
         for (size_t i = 0; i < _indexes.size(); i++) {
           if (_indexes[i]->id() == buildIdx->id()) {
@@ -447,7 +447,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 
   if (res.fail()) {
     {  // We could not create the index. Better abort
-      WRITE_LOCKER(guard, _indexesLock);
+      WRITE_LOCKER(guard, _indexesLock, this);
       auto it = _indexes.begin();
       while (it != _indexes.end()) {
         if ((*it)->id() == idx->id()) {
@@ -476,7 +476,7 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
   std::shared_ptr<arangodb::Index> toRemove;
   {
     size_t i = 0;
-    WRITE_LOCKER(guard, _indexesLock);
+    WRITE_LOCKER(guard, _indexesLock, this);
     for (std::shared_ptr<Index>& idx : _indexes) {
       if (iid == idx->id()) {
         toRemove = std::move(idx);
@@ -1504,7 +1504,7 @@ int RocksDBCollection::lockWrite(double timeout) {
   double startTime = 0.0;
 
   while (true) {
-    TRY_WRITE_LOCKER(locker, _exclusiveLock);
+    TRY_WRITE_LOCKER(locker, _exclusiveLock, this);
 
     if (locker.isLocked()) {
       // keep lock and exit loop

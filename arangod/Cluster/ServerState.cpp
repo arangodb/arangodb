@@ -337,7 +337,7 @@ bool ServerState::unregister() {
 bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
                                        std::string const& myEndpoint,
                                        std::string const& advEndpoint) {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   AgencyComm comm;
   if (!checkEngineEquality(comm)) {
@@ -703,7 +703,7 @@ void ServerState::setId(std::string const& id) {
     return;
   }
 
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
   _id = id;
 }
 
@@ -761,7 +761,7 @@ ServerState::StateEnum ServerState::getState() {
 void ServerState::setState(StateEnum state) {
   bool result = false;
 
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   if (state == _state) {
     return;
@@ -805,7 +805,7 @@ std::string ServerState::getJavaScriptPath() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerState::setJavaScriptPath(std::string const& value) {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
   _javaScriptStartupPath = value;
 }
 

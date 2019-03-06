@@ -42,7 +42,7 @@ RestTransactionHandler::RestTransactionHandler(GeneralRequest* request, GeneralR
     : RestVocbaseBaseHandler(request, response), _v8Context(nullptr), _lock() {}
 
 void RestTransactionHandler::returnContext() {
-  WRITE_LOCKER(writeLock, _lock);
+  WRITE_LOCKER(writeLock, _lock, this);
   V8DealerFeature::DEALER->exitContext(_v8Context);
   _v8Context = nullptr;
 }
@@ -74,7 +74,7 @@ RestStatus RestTransactionHandler::execute() {
   VPackBuilder result;
   try {
     {
-      WRITE_LOCKER(lock, _lock);
+      WRITE_LOCKER(lock, _lock, this);
       if (_canceled) {
         generateCanceled();
         return RestStatus::DONE;
@@ -106,7 +106,7 @@ RestStatus RestTransactionHandler::execute() {
 
 bool RestTransactionHandler::cancel() {
   // cancel v8 transaction
-  WRITE_LOCKER(writeLock, _lock);
+  WRITE_LOCKER(writeLock, _lock, this);
   _canceled.store(true);
   auto isolate = _v8Context->_isolate;
   if (!isolate->IsExecutionTerminating()) {

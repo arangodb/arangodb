@@ -36,7 +36,7 @@ MMFilesDatafileStatistics::MMFilesDatafileStatistics()
 
 /// @brief destroy statistics manager
 MMFilesDatafileStatistics::~MMFilesDatafileStatistics() {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
   for (auto& it : _stats) {
     delete it.second;
   }
@@ -44,7 +44,7 @@ MMFilesDatafileStatistics::~MMFilesDatafileStatistics() {
 
 void MMFilesDatafileStatistics::compactionRun(uint64_t noCombined,
                                               uint64_t read, uint64_t written) {
-  WRITE_LOCKER(writeLocker, _statisticsLock);
+  WRITE_LOCKER(writeLocker, _statisticsLock, this);
   _localStats._compactionCount++;
   if (noCombined > 1) {
     _localStats._filesCombined += noCombined;
@@ -62,7 +62,7 @@ MMFilesDatafileStatistics::CompactionStats MMFilesDatafileStatistics::getStats()
 void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid) {
   auto stats = std::make_unique<MMFilesDatafileStatisticsContainer>();
 
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   auto it = _stats.find(fid);
 
@@ -83,7 +83,7 @@ void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid,
   auto stats = std::make_unique<MMFilesDatafileStatisticsContainer>();
   *stats = src;
 
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   auto it = _stats.find(fid);
 
@@ -106,7 +106,7 @@ void MMFilesDatafileStatistics::remove(TRI_voc_fid_t fid) {
 
   MMFilesDatafileStatisticsContainer* found = nullptr;
   {
-    WRITE_LOCKER(writeLocker, _lock);
+    WRITE_LOCKER(writeLocker, _lock, this);
 
     auto it = _stats.find(fid);
 
@@ -123,7 +123,7 @@ void MMFilesDatafileStatistics::remove(TRI_voc_fid_t fid) {
 void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid,
                                        MMFilesDatafileStatisticsContainer const& src,
                                        bool warn) {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   auto it = _stats.find(fid);
 
@@ -145,7 +145,7 @@ void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid,
 
 /// @brief merge statistics for a file, by copying the stats from another
 void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src, bool warn) {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   auto it = _stats.find(fid);
 
@@ -182,7 +182,7 @@ void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src, boo
 void MMFilesDatafileStatistics::replace(TRI_voc_fid_t fid,
                                         MMFilesDatafileStatisticsContainer const& src,
                                         bool warn) {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   auto it = _stats.find(fid);
 
@@ -204,7 +204,7 @@ void MMFilesDatafileStatistics::replace(TRI_voc_fid_t fid,
 
 /// @brief increase dead stats for a datafile, if it exists
 void MMFilesDatafileStatistics::increaseDead(TRI_voc_fid_t fid, int64_t number, int64_t size) {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   auto it = _stats.find(fid);
 
@@ -222,7 +222,7 @@ void MMFilesDatafileStatistics::increaseDead(TRI_voc_fid_t fid, int64_t number, 
 
 /// @brief increase number of uncollected entries
 void MMFilesDatafileStatistics::increaseUncollected(TRI_voc_fid_t fid, int64_t number) {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   auto it = _stats.find(fid);
 

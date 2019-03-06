@@ -89,8 +89,8 @@ class RecursiveWriteLocker {
  public:
   RecursiveWriteLocker(T& mutex, std::atomic<std::thread::id>& owner,
                        arangodb::basics::LockerType type, bool acquire,
-                       char const* file, int line)
-      : _locked(false), _locker(&mutex, type, false, file, line), _owner(owner), _update(noop) {
+                       void const* ptr, char const* file, int line)
+    : _locked(false), _locker(&mutex, type, false, ptr, file, line), _owner(owner), _update(noop) {
     if (acquire) {
       lock();
     }
@@ -137,14 +137,14 @@ class RecursiveWriteLocker {
 #define NAME__(name, line) name##line
 #define NAME_EXPANDER__(name, line) NAME__(name, line)
 #define NAME(name) NAME_EXPANDER__(name, __LINE__)
-#define RECURSIVE_READ_LOCKER(lock, owner)                             \
+#define RECURSIVE_READ_LOCKER(lock, owner)                            \
   RecursiveReadLocker<typename std::decay<decltype(lock)>::type> NAME( \
-      RecursiveLocker)(lock, owner, __FILE__, __LINE__)
-#define RECURSIVE_WRITE_LOCKER_NAMED(name, lock, owner, acquire)        \
+      RecursiveLocker)(lock, owner,  __FILE__, __LINE__)
+#define RECURSIVE_WRITE_LOCKER_NAMED(name, lock, owner, acquire, ptr)       \
   RecursiveWriteLocker<typename std::decay<decltype(lock)>::type> name( \
-      lock, owner, arangodb::basics::LockerType::BLOCKING, acquire, __FILE__, __LINE__)
-#define RECURSIVE_WRITE_LOCKER(lock, owner) \
-  RECURSIVE_WRITE_LOCKER_NAMED(NAME(RecursiveLocker), lock, owner, true)
+      lock, owner, arangodb::basics::LockerType::BLOCKING, acquire, ptr, __FILE__, __LINE__)
+#define RECURSIVE_WRITE_LOCKER(lock, owner, ptr)                            \
+  RECURSIVE_WRITE_LOCKER_NAMED(NAME(RecursiveLocker), lock, owner, true, ptr)
 
 }  // namespace
 
@@ -234,7 +234,7 @@ void TRI_vocbase_t::registerCollection(bool doLock,
   TRI_voc_cid_t cid = collection->id();
   {
     RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _dataSourceLock,
-                                 _dataSourceLockWriteOwner, doLock);
+                                 _dataSourceLockWriteOwner, doLock, collection.get());
 
     checkCollectionInvariants();
     TRI_DEFER(checkCollectionInvariants());
@@ -343,7 +343,7 @@ void TRI_vocbase_t::registerView(bool doLock,
 
   {
     RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _dataSourceLock,
-                                 _dataSourceLockWriteOwner, doLock);
+                                 _dataSourceLockWriteOwner, doLock, view.get());
 
     // check name
     auto it = _dataSourceByName.emplace(name, view);
@@ -428,7 +428,7 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
 /// @brief drops a collection
 /*static */ bool TRI_vocbase_t::DropCollectionCallback(arangodb::LogicalCollection& collection) {
   {
-    WRITE_LOCKER_EVENTUAL(statusLock, collection._lock);
+    WRITE_LOCKER_EVENTUAL(statusLock, collection._lock, &collection);
 
     if (TRI_VOC_COL_STATUS_DELETED != collection.status()) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
@@ -441,7 +441,7 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
   auto& vocbase = collection.vocbase();
 
   {
-    RECURSIVE_WRITE_LOCKER(vocbase._dataSourceLock, vocbase._dataSourceLockWriteOwner);
+    RECURSIVE_WRITE_LOCKER(vocbase._dataSourceLock, vocbase._dataSourceLockWriteOwner, &collection);
     auto it = vocbase._collections.begin();
 
     for (auto end = vocbase._collections.end(); it != end; ++it) {
@@ -480,7 +480,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWork
       std::make_shared<arangodb::LogicalCollection>(*this, parameters, false);
   TRI_ASSERT(collection != nullptr);
 
-  RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+  RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner, collection.get());
 
   // reserve room for the new collection
   _collections.reserve(_collections.size() + 1);
@@ -555,7 +555,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   // write lock
   // .............................................................................
 
-  WRITE_LOCKER_EVENTUAL(locker, collection->_lock);
+  WRITE_LOCKER_EVENTUAL(locker, collection->_lock, this);
 
   // someone else loaded the collection, release the WRITE lock and try again
   if (collection->status() == TRI_VOC_COL_STATUS_LOADED) {
@@ -694,8 +694,8 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
 
   // do not acquire these locks instantly
   RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _dataSourceLock, _dataSourceLockWriteOwner,
-                               basics::ConditionalLocking::DoNotLock);
-  CONDITIONAL_WRITE_LOCKER(locker, collection->_lock, basics::ConditionalLocking::DoNotLock);
+                               basics::ConditionalLocking::DoNotLock, collection);
+  CONDITIONAL_WRITE_LOCKER(locker, collection->_lock, basics::ConditionalLocking::DoNotLock, this);
 
   while (true) {
     TRI_ASSERT(!writeLocker.isLocked());
@@ -851,7 +851,7 @@ void TRI_vocbase_t::shutdown() {
   // starts unloading of collections
   for (auto& collection : collections) {
     {
-      WRITE_LOCKER_EVENTUAL(locker, collection->lock());
+      WRITE_LOCKER_EVENTUAL(locker, collection->lock(), this);
       collection->close();  // required to release indexes
     }
     unloadCollection(collection.get(), true);
@@ -868,7 +868,7 @@ void TRI_vocbase_t::shutdown() {
   setState(TRI_vocbase_t::State::SHUTDOWN_CLEANUP);
 
   {
-    RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+    RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner, engine);
 
     checkCollectionInvariants();
     _dataSourceByName.clear();
@@ -928,7 +928,7 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
   TRI_ASSERT(result.isOpenObject());
 
   // cycle on write-lock
-  WRITE_LOCKER_EVENTUAL(writeLock, _inventoryLock);
+  WRITE_LOCKER_EVENTUAL(writeLock, _inventoryLock, this);
 
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
   std::unordered_map<TRI_voc_cid_t, std::shared_ptr<LogicalDataSource>> dataSourceById;
@@ -1189,7 +1189,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
 /// @brief unloads a collection
 int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, bool force) {
   {
-    WRITE_LOCKER_EVENTUAL(locker, collection->_lock);
+    WRITE_LOCKER_EVENTUAL(locker, collection->_lock, this);
 
     // cannot unload a corrupted collection
     if (collection->status() == TRI_VOC_COL_STATUS_CORRUPTED) {
@@ -1356,7 +1356,7 @@ arangodb::Result TRI_vocbase_t::renameView(TRI_voc_cid_t cid, std::string const&
 
   READ_LOCKER(readLocker, _inventoryLock);
 
-  RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+  RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner, this);
 
   // Check for duplicate name
   auto it = _dataSourceByName.find(newName);
@@ -1426,8 +1426,8 @@ arangodb::Result TRI_vocbase_t::renameCollection(TRI_voc_cid_t cid,
 
   READ_LOCKER(readLocker, _inventoryLock);
 
-  RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _dataSourceLock, _dataSourceLockWriteOwner, false);
-  CONDITIONAL_WRITE_LOCKER(locker, collection->_lock, false);
+  RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _dataSourceLock, _dataSourceLockWriteOwner, false, collection.get());
+  CONDITIONAL_WRITE_LOCKER(locker, collection->_lock, false, this);
 
   while (true) {
     TRI_ASSERT(!writeLocker.isLocked());
@@ -1598,7 +1598,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
   }
 
   READ_LOCKER(readLocker, _inventoryLock);
-  RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+  RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner, &view);
   auto itr = _dataSourceByName.find(view->name());
 
   if (itr != _dataSourceByName.end()) {
@@ -1660,8 +1660,8 @@ arangodb::Result TRI_vocbase_t::dropView(TRI_voc_cid_t cid, bool allowDropSystem
 
   // do not acquire these locks instantly
   RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _dataSourceLock, _dataSourceLockWriteOwner,
-                               basics::ConditionalLocking::DoNotLock);
-  CONDITIONAL_WRITE_LOCKER(locker, view->_lock, basics::ConditionalLocking::DoNotLock);
+                               basics::ConditionalLocking::DoNotLock, &view);
+  CONDITIONAL_WRITE_LOCKER(locker, view->_lock, basics::ConditionalLocking::DoNotLock, this);
 
   while (true) {
     TRI_ASSERT(!writeLocker.isLocked());
@@ -1753,7 +1753,7 @@ TRI_vocbase_t::~TRI_vocbase_t() {
 
   // do a final cleanup of collections
   for (auto& it : _collections) {
-    WRITE_LOCKER_EVENTUAL(locker, it->lock());
+    WRITE_LOCKER_EVENTUAL(locker, it->lock(), this);
     it->close();  // required to release indexes
   }
 
@@ -1833,7 +1833,7 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId, double ttl
   double const timestamp = TRI_microtime();
   double const expires = timestamp + ttl;
 
-  WRITE_LOCKER(writeLocker, _replicationClientsLock);
+  WRITE_LOCKER(writeLocker, _replicationClientsLock, this);
 
   auto it = _replicationClients.find(serverId);
 
@@ -1858,7 +1858,7 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
   double const timestamp = TRI_microtime();
   double const expires = timestamp + ttl;
 
-  WRITE_LOCKER(writeLocker, _replicationClientsLock);
+  WRITE_LOCKER(writeLocker, _replicationClientsLock, this);
 
   try {
     auto it = _replicationClients.find(serverId);
@@ -1907,7 +1907,7 @@ void TRI_vocbase_t::garbageCollectReplicationClients(double expireStamp) {
   LOG_TOPIC(TRACE, Logger::REPLICATION)
       << "garbage collecting replication client entries";
 
-  WRITE_LOCKER(writeLocker, _replicationClientsLock);
+  WRITE_LOCKER(writeLocker, _replicationClientsLock, this);
 
   try {
     auto it = _replicationClients.begin();
@@ -2036,7 +2036,7 @@ bool TRI_vocbase_t::visitDataSources(dataSourceVisitor const& visitor, bool lock
     return true;
   }
 
-  RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+  RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner, this);
   std::vector<std::shared_ptr<arangodb::LogicalDataSource>> dataSources;
 
   dataSources.reserve(_dataSourceById.size());

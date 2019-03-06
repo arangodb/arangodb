@@ -35,7 +35,7 @@ ClusterSelectivityEstimates::ClusterSelectivityEstimates(LogicalCollection& coll
     : _collection(collection), _expireStamp(0.0) {}
 
 void ClusterSelectivityEstimates::flush() {
-  WRITE_LOCKER(lock, _lock);
+  WRITE_LOCKER(lock, _lock, this);
   _estimates.clear();
   _expireStamp = 0.0;
 }
@@ -66,7 +66,7 @@ std::unordered_map<std::string, double> ClusterSelectivityEstimates::get(bool al
   while (true) {
     decltype(_estimates) estimates;
 
-    WRITE_LOCKER(writeLock, _lock);
+    WRITE_LOCKER(writeLock, _lock, this);
 
     if (!_estimates.empty() && _expireStamp > now) {
       // some other thread has updated the estimates for us... just use them
@@ -120,7 +120,7 @@ void ClusterSelectivityEstimates::set(std::unordered_map<std::string, double>&& 
 
   // finally update the cache
   {
-    WRITE_LOCKER(writelock, _lock);
+    WRITE_LOCKER(writelock, _lock, this);
 
     _estimates = std::move(estimates);
     // let selectivity estimates expire less seldom for system collections

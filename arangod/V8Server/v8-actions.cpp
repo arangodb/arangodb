@@ -74,7 +74,7 @@ class v8_action_t final : public TRI_action_t {
   void visit(void* data) override {
     v8::Isolate* isolate = static_cast<v8::Isolate*>(data);
 
-    WRITE_LOCKER(writeLocker, _callbacksLock);
+    WRITE_LOCKER(writeLocker, _callbacksLock, this);
 
     auto it = _callbacks.find(isolate);
 
@@ -89,7 +89,7 @@ class v8_action_t final : public TRI_action_t {
   //////////////////////////////////////////////////////////////////////////////
 
   void createCallback(v8::Isolate* isolate, v8::Handle<v8::Function> callback) {
-    WRITE_LOCKER(writeLocker, _callbacksLock);
+    WRITE_LOCKER(writeLocker, _callbacksLock, this);
 
     auto it = _callbacks.find(isolate);
 

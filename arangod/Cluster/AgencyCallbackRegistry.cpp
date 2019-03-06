@@ -46,7 +46,7 @@ AgencyCallbackRegistry::~AgencyCallbackRegistry() {}
 bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb) {
   uint32_t rand;
   {
-    WRITE_LOCKER(locker, _lock);
+    WRITE_LOCKER(locker, _lock, this);
     while (true) {
       rand = RandomGenerator::interval(UINT32_MAX);
       if (_endpoints.emplace(rand, cb).second) {
@@ -68,7 +68,7 @@ bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb
         << "Couldn't register callback. Unknown exception";
   }
   if (!ok) {
-    WRITE_LOCKER(locker, _lock);
+    WRITE_LOCKER(locker, _lock, this);
     _endpoints.erase(rand);
   }
   return ok;
@@ -85,7 +85,7 @@ std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint32_t id)
 }
 
 bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> cb) {
-  WRITE_LOCKER(locker, _lock);
+  WRITE_LOCKER(locker, _lock, this);
 
   for (auto const& it : _endpoints) {
     if (it.second.get() == cb.get()) {

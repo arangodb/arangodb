@@ -179,7 +179,7 @@ std::shared_ptr<arangodb::LogicalCollection> CollectionNameResolver::getCollecti
   auto collection = _vocbase.lookupCollection(name);
 
   if (collection != nullptr) {
-    WRITE_LOCKER(locker, _nameLock);
+    WRITE_LOCKER(locker, _nameLock, this);
     _resolvedNames.emplace(name, collection);
   }
 
@@ -204,7 +204,7 @@ std::string CollectionNameResolver::getCollectionName(TRI_voc_cid_t cid) const {
 
   std::string name = localNameLookup(cid);
   {
-    WRITE_LOCKER(locker, _idLock);
+    WRITE_LOCKER(locker, _idLock, this);
     _resolvedIds.emplace(cid, name);
   }
 
@@ -238,7 +238,7 @@ std::string CollectionNameResolver::getCollectionNameCluster(TRI_voc_cid_t cid) 
     // This might be a local system collection:
     name = localNameLookup(cid);
     if (name != "_unknown") {
-      WRITE_LOCKER(locker, _idLock);
+      WRITE_LOCKER(locker, _idLock, this);
       _resolvedIds.emplace(cid, name);
       return name;
     }
@@ -253,7 +253,7 @@ std::string CollectionNameResolver::getCollectionNameCluster(TRI_voc_cid_t cid) 
     if (ci != nullptr) {
       name = ci->name();
       {
-        WRITE_LOCKER(locker, _idLock);
+        WRITE_LOCKER(locker, _idLock, this);
         _resolvedIds.emplace(cid, name);
       }
 

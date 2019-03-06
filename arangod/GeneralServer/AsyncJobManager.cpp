@@ -77,7 +77,7 @@ AsyncJobManager::~AsyncJobManager() {
 GeneralResponse* AsyncJobManager::getJobResult(AsyncJobResult::IdType jobId,
                                                AsyncJobResult::Status& status,
                                                bool removeFromList) {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   auto it = _jobs.find(jobId);
 
@@ -107,7 +107,7 @@ GeneralResponse* AsyncJobManager::getJobResult(AsyncJobResult::IdType jobId,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AsyncJobManager::deleteJobResult(AsyncJobResult::IdType jobId) {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   auto it = _jobs.find(jobId);
 
@@ -131,7 +131,7 @@ bool AsyncJobManager::deleteJobResult(AsyncJobResult::IdType jobId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AsyncJobManager::deleteJobs() {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   auto it = _jobs.begin();
 
@@ -149,7 +149,7 @@ void AsyncJobManager::deleteJobs() {
 }
 
 void AsyncJobManager::deleteExpiredJobResults(double stamp) {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   auto it = _jobs.begin();
 
@@ -176,7 +176,7 @@ void AsyncJobManager::deleteExpiredJobResults(double stamp) {
 
 Result AsyncJobManager::cancelJob(AsyncJobResult::IdType jobId) {
   Result rv;
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   auto it = _jobs.find(jobId);
 
@@ -206,7 +206,7 @@ Result AsyncJobManager::cancelJob(AsyncJobResult::IdType jobId) {
 /// @brief cancel and delete all pending / done jobs
 Result AsyncJobManager::clearAllJobs() {
   Result rv;
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   for (auto& it : _jobs) {
     bool ok = true;
@@ -283,7 +283,7 @@ void AsyncJobManager::initAsyncJob(std::shared_ptr<RestHandler> handler) {
   std::string user = handler->request()->user();
   AsyncJobResult ajr(jobId, AsyncJobResult::JOB_PENDING, std::move(handler));
 
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   _jobs.emplace(jobId, std::make_pair(std::move(user), ajr));
 }
@@ -297,7 +297,7 @@ void AsyncJobManager::finishAsyncJob(RestHandler* handler) {
   std::unique_ptr<GeneralResponse> response = handler->stealResponse();
 
   {
-    WRITE_LOCKER(writeLocker, _lock);
+    WRITE_LOCKER(writeLocker, _lock, this);
     auto it = _jobs.find(jobId);
 
     if (it == _jobs.end()) {

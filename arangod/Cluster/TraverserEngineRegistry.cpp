@@ -50,7 +50,7 @@ TraverserEngineRegistry::EngineInfo::EngineInfo(TRI_vocbase_t& vocbase,
 TraverserEngineRegistry::EngineInfo::~EngineInfo() {}
 
 TraverserEngineRegistry::~TraverserEngineRegistry() {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
   for (auto const& it : _engines) {
     destroy(it.first, false);
   }
@@ -68,7 +68,7 @@ TraverserEngineID TraverserEngineRegistry::createNew(
   info->_timeToLive = ttl;
   info->_expires = TRI_microtime() + ttl;
 
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
   TRI_ASSERT(_engines.find(id) == _engines.end());
   _engines.emplace(id, info.get());
   info.release();
@@ -85,7 +85,7 @@ BaseEngine* TraverserEngineRegistry::get(TraverserEngineID id) {
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Load TraverserEngine with id " << id;
   while (true) {
     {
-      WRITE_LOCKER(writeLocker, _lock);
+      WRITE_LOCKER(writeLocker, _lock, this);
       auto e = _engines.find(id);
       if (e == _engines.end()) {
         LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
@@ -116,7 +116,7 @@ BaseEngine* TraverserEngineRegistry::get(TraverserEngineID id) {
 void TraverserEngineRegistry::returnEngine(TraverserEngineID id, double ttl) {
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL)
       << "Returning TraverserEngine with id " << id;
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
   auto e = _engines.find(id);
   if (e == _engines.end()) {
     // Nothing to return
@@ -153,7 +153,7 @@ void TraverserEngineRegistry::destroy(TraverserEngineID id, bool doLock) {
   EngineInfo* engine = nullptr;
 
   {
-    CONDITIONAL_WRITE_LOCKER(writeLocker, _lock, doLock);
+    CONDITIONAL_WRITE_LOCKER(writeLocker, _lock, doLock, this);
     auto e = _engines.find(id);
     if (e == _engines.end()) {
       // Nothing to destroy
@@ -184,7 +184,7 @@ void TraverserEngineRegistry::expireEngines() {
   std::vector<TraverserEngineID> toDelete;
 
   {
-    WRITE_LOCKER(writeLocker, _lock);
+    WRITE_LOCKER(writeLocker, _lock, this);
     for (auto& y : _engines) {
       // y.first is an TraverserEngineID and
       // y.second is an EngineInfo*

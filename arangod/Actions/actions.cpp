@@ -62,7 +62,7 @@ std::shared_ptr<TRI_action_t> TRI_DefineActionVocBase(std::string const& name,
     which = &Actions;
   }
 
-  WRITE_LOCKER(writeLocker, ActionsLock);
+  WRITE_LOCKER(writeLocker, ActionsLock, which);
 
   // create a new action and store the callback function
   auto it = which->emplace(url, action);
@@ -127,7 +127,7 @@ std::shared_ptr<TRI_action_t> TRI_LookupActionVocBase(arangodb::GeneralRequest* 
 
 /// @brief deletes all defined actions
 void TRI_CleanupActions() {
-  WRITE_LOCKER(writeLocker, ActionsLock);
+  WRITE_LOCKER(writeLocker, ActionsLock, (void*) 0x567);
 
   Actions.clear();
   PrefixActions.clear();

@@ -86,7 +86,7 @@ RocksDBCollectionMeta::RocksDBCollectionMeta() : _count(0, 0, 0, 0) {}
 Result RocksDBCollectionMeta::placeBlocker(uint64_t trxId, rocksdb::SequenceNumber seq) {
   return basics::catchToResult([&]() -> Result {
     Result res;
-    WRITE_LOCKER(locker, _blockerLock);
+    WRITE_LOCKER(locker, _blockerLock, this);
 
     TRI_ASSERT(_blockers.end() == _blockers.find(trxId));
     TRI_ASSERT(_blockersBySeq.end() == _blockersBySeq.find(std::make_pair(seq, trxId)));
@@ -111,7 +111,7 @@ Result RocksDBCollectionMeta::placeBlocker(uint64_t trxId, rocksdb::SequenceNumb
  *              earlier `placeBlocker` call)
  */
 void RocksDBCollectionMeta::removeBlocker(uint64_t trxId) {
-  WRITE_LOCKER(locker, _blockerLock);
+  WRITE_LOCKER(locker, _blockerLock, this);
   auto it = _blockers.find(trxId);
   if (ADB_LIKELY(_blockers.end() != it)) {
     auto cross = _blockersBySeq.find(std::make_pair(it->second, it->first));

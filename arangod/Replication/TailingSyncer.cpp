@@ -1079,7 +1079,7 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
     }
 
     // update tick value
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, this);
 
     if (markerTick > firstRegularTick &&
         markerTick > _applier->_state._lastProcessedContinuousTick) {
@@ -1143,7 +1143,7 @@ retry:
 
   // reset failed connects
   {
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, this);
     _applier->_state._failedConnects = 0;
   }
 
@@ -1155,7 +1155,7 @@ retry:
       // master error. try again after a sleep period
       connectRetries++;
       {
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, this);
         _applier->_state._failedConnects = connectRetries;
         _applier->_state._totalRequests++;
         _applier->_state._totalFailedConnects++;
@@ -1181,7 +1181,7 @@ retry:
   }
 
   if (res.ok()) {
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, this);
     try {
       getLocalState();
       _applier->_state._failedConnects = 0;
@@ -1199,7 +1199,7 @@ retry:
     // stop ourselves
     LOG_TOPIC(INFO, Logger::REPLICATION) << "stopping applier: " << res.errorMessage();
     try {
-      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, this);
       _applier->_state._totalRequests++;
       getLocalState();
     } catch (basics::Exception const& ex) {
@@ -1283,7 +1283,7 @@ retry:
 
       {
         // increase number of syncs counter
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, this);
         ++_applier->_state._totalResyncs;
 
         // necessary to reset the state here, because otherwise running the
@@ -1376,7 +1376,7 @@ Result TailingSyncer::runContinuousSync() {
   TRI_voc_tick_t safeResumeTick = 0;
 
   {
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, this);
 
     if (_useTick) {
       // use user-defined tick
@@ -1476,7 +1476,7 @@ Result TailingSyncer::runContinuousSync() {
       connectRetries++;
 
       {
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, this);
 
         _applier->_state._failedConnects = connectRetries;
         _applier->_state._totalRequests++;
@@ -1491,7 +1491,7 @@ Result TailingSyncer::runContinuousSync() {
       connectRetries = 0;
 
       {
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, this);
 
         _applier->_state._failedConnects = connectRetries;
         _applier->_state._totalRequests++;
@@ -1834,7 +1834,7 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
 
   TRI_voc_tick_t lastAppliedTick;
   {
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, this);
     _applier->_state._lastAvailableContinuousTick = tick;
 
     lastAppliedTick = _applier->_state._lastAppliedContinuousTick;
@@ -1882,7 +1882,7 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
   if (processedMarkers > 0) {
     worked = true;
 
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, this);
 
     _applier->_state._totalEvents += processedMarkers;
 
@@ -1891,7 +1891,7 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
       saveApplierState();
     }
   } else if (bumpTick) {
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, this);
 
     if (_applier->_state._lastProcessedContinuousTick < tick) {
       _applier->_state._lastProcessedContinuousTick = tick;
@@ -1915,7 +1915,7 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
     // write state at least once so the start tick gets saved
     _hasWrittenState = true;
 
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock, this);
 
     _applier->_state._lastAppliedContinuousTick = firstRegularTick;
     _applier->_state._lastProcessedContinuousTick = firstRegularTick;

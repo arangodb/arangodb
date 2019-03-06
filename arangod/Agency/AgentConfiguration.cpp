@@ -186,7 +186,7 @@ int64_t config_t::timeoutMult() const {
 }
 
 void config_t::pingTimes(double minPing, double maxPing) {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
   if (_minPing != minPing || _maxPing != maxPing) {
     _minPing = minPing;
     _maxPing = maxPing;
@@ -195,7 +195,7 @@ void config_t::pingTimes(double minPing, double maxPing) {
 }
 
 void config_t::setTimeoutMult(int64_t m) {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
   if (_timeoutMult != m) {
     _timeoutMult = m;
     // this is called during election, do NOT update ++_version
@@ -238,7 +238,7 @@ bool config_t::activeEmpty() const {
 }
 
 void config_t::activate() {
-  WRITE_LOCKER(readLocker, _lock);
+  WRITE_LOCKER(readLocker, _lock, this);
   _active.clear();
   for (auto const& pair : _pool) {
     _active.push_back(pair.first);
@@ -261,7 +261,7 @@ double config_t::supervisionFrequency() const {
 }
 
 bool config_t::activePushBack(std::string const& id) {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
   if (_active.size() < _agencySize &&
       std::find(_active.begin(), _active.end(), id) == _active.end()) {
     _active.push_back(id);
@@ -277,21 +277,21 @@ std::unordered_set<std::string> config_t::gossipPeers() const {
 }
 
 size_t config_t::eraseGossipPeer(std::string const& endpoint) {
-  WRITE_LOCKER(lock, _lock);
+  WRITE_LOCKER(lock, _lock, this);
   auto ret = _gossipPeers.erase(endpoint);
   ++_version;
   return ret;
 }
 
 bool config_t::addGossipPeer(std::string const& endpoint) {
-  WRITE_LOCKER(lock, _lock);
+  WRITE_LOCKER(lock, _lock, this);
   ++_version;
   return _gossipPeers.emplace(endpoint).second;
 }
 
 config_t::upsert_t config_t::upsertPool(VPackSlice const& otherPool,
                                         std::string const& otherId) {
-  WRITE_LOCKER(lock, _lock);
+  WRITE_LOCKER(lock, _lock, this);
   for (auto const& entry : VPackObjectIterator(otherPool)) {
     auto const id = entry.key.copyString();
     auto const endpoint = entry.value.copyString();
@@ -380,7 +380,7 @@ query_t config_t::poolToBuilder() const {
 }
 
 bool config_t::updateEndpoint(std::string const& id, std::string const& ep) {
-  WRITE_LOCKER(readLocker, _lock);
+  WRITE_LOCKER(readLocker, _lock, this);
   if (_pool[id] != ep) {
     _pool[id] = ep;
     ++_version;
@@ -408,7 +408,7 @@ void config_t::update(query_t const& message) {
   double minPing = slice.get(minPingStr).getNumber<double>();
   double maxPing = slice.get(maxPingStr).getNumber<double>();
   int64_t timeoutMult = slice.get(timeoutMultStr).getNumber<int64_t>();
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
   if (pool != _pool) {
     _pool = pool;
     changed = true;
@@ -482,7 +482,7 @@ query_t config_t::toBuilder() const {
 
 // Set my id
 bool config_t::setId(std::string const& i) {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
   if (_id.empty()) {
     _id = i;
     _pool[_id] = _endpoint;  // Register my endpoint with it
@@ -515,7 +515,7 @@ bool config_t::findInPool(std::string const& id) const {
 /// @brief merge from persisted configuration
 bool config_t::merge(VPackSlice const& conf) {
   WRITE_LOCKER(writeLocker,
-               _lock);  // All must happen under the lock or else ...
+               _lock, this);  // All must happen under the lock or else ...
 
   // FIXME: All these "command line beats persistence" are wrong, since
   // the given default values never happen. Only fixed _supervision with
@@ -687,7 +687,7 @@ bool config_t::merge(VPackSlice const& conf) {
 }
 
 void config_t::updateConfiguration(VPackSlice const& other) {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   auto pool = other.get(poolStr);
   TRI_ASSERT(pool.isObject());

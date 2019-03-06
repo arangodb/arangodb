@@ -312,7 +312,7 @@ class RocksDBCuckooIndexEstimator {
 
   /// @brief only call directly during startup/recovery; otherwise buffer
   void clear() {
-    WRITE_LOCKER(locker, _lock);
+    WRITE_LOCKER(locker, _lock, this);
     // Reset Stats
     _nrTotal = 0;
     _nrCuckood = 0;
@@ -333,7 +333,7 @@ class RocksDBCuckooIndexEstimator {
 
   Result bufferTruncate(rocksdb::SequenceNumber seq) {
     Result res = basics::catchVoidToResult([&]() -> void {
-      WRITE_LOCKER(locker, _lock);
+      WRITE_LOCKER(locker, _lock, this);
       _truncateBuffer.emplace(seq);
       _needToPersist.store(true);
     });
@@ -394,7 +394,7 @@ class RocksDBCuckooIndexEstimator {
     uint64_t pos2 = hashToPos(hash2);
 
     {
-      WRITE_LOCKER(guard, _lock);
+      WRITE_LOCKER(guard, _lock, this);
       Slot slot = findSlotCuckoo(pos1, pos2, fingerprint);
       if (slot.isEmpty()) {
         // Free slot insert ourself.
@@ -428,7 +428,7 @@ class RocksDBCuckooIndexEstimator {
 
     bool found = false;
     {
-      WRITE_LOCKER(guard, _lock);
+      WRITE_LOCKER(guard, _lock, this);
       Slot slot = findSlotNoCuckoo(pos1, pos2, fingerprint, found);
       if (found) {
         // only decrease the total if we actually found it
@@ -485,7 +485,7 @@ class RocksDBCuckooIndexEstimator {
                        std::vector<Key>&& removals) {
     TRI_ASSERT(!inserts.empty() || !removals.empty());
     Result res = basics::catchVoidToResult([&]() -> void {
-      WRITE_LOCKER(locker, _lock);
+      WRITE_LOCKER(locker, _lock, this);
       bool foundSomething = false;
       if (!inserts.empty()) {
         _insertBuffers.emplace(seq, std::move(inserts));
@@ -534,7 +534,7 @@ class RocksDBCuckooIndexEstimator {
         bool foundTruncate = false;
         // find out if we have buffers to apply
         {
-          WRITE_LOCKER(locker, _lock);
+          WRITE_LOCKER(locker, _lock, this);
 
           // check for a truncate marker
           auto it = _truncateBuffer.begin();  // sorted ASC

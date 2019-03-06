@@ -38,7 +38,7 @@ QueryRegistry::~QueryRegistry() {
   std::vector<std::pair<std::string, QueryId>> toDelete;
 
   {
-    WRITE_LOCKER(writeLocker, _lock);
+    WRITE_LOCKER(writeLocker, _lock, this);
 
     try {
       for (auto& x : _queries) {
@@ -81,7 +81,7 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl,
 
   // now insert into table of running queries
   {
-    WRITE_LOCKER(writeLocker, _lock);
+    WRITE_LOCKER(writeLocker, _lock, this);
 
     auto result = _queries[vocbase.name()].emplace(id, std::move(p));
     if (!result.second) {
@@ -95,7 +95,7 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl,
 Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Open query with id " << id;
   // std::cout << "Taking out query with ID " << id << std::endl;
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   auto m = _queries.find(vocbase->name());
   if (m == _queries.end()) {
@@ -130,7 +130,7 @@ Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
 /// @brief close
 void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "returning query with id " << id;
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   auto m = _queries.find(vocbase->name());
   if (m == _queries.end()) {
@@ -165,7 +165,7 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id, int errorCod
   std::unique_ptr<QueryInfo> queryInfo;
 
   {
-    WRITE_LOCKER(writeLocker, _lock);
+    WRITE_LOCKER(writeLocker, _lock, this);
 
     auto m = _queries.find(vocbase);
 
@@ -244,7 +244,7 @@ void QueryRegistry::expireQueries() {
   std::vector<QueryId> queriesLeft;
 
   {
-    WRITE_LOCKER(writeLocker, _lock);
+    WRITE_LOCKER(writeLocker, _lock, this);
     for (auto& x : _queries) {
       // x.first is a TRI_vocbase_t* and
       // x.second is a std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>

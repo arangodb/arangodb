@@ -36,21 +36,21 @@
 #include <thread>
 
 /// @brief construct locker with file and line information
-#define WRITE_LOCKER(obj, lock)                                                 \
+#define WRITE_LOCKER(obj, lock, ptr)                                        \
   arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
+      &lock, arangodb::basics::LockerType::BLOCKING, true, ptr, __FILE__, __LINE__)
 
-#define WRITE_LOCKER_EVENTUAL(obj, lock)                                        \
+#define WRITE_LOCKER_EVENTUAL(obj, lock, ptr)                                   \
   arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &lock, arangodb::basics::LockerType::EVENTUAL, true, __FILE__, __LINE__)
+      &lock, arangodb::basics::LockerType::EVENTUAL, true, ptr, __FILE__, __LINE__)
 
-#define TRY_WRITE_LOCKER(obj, lock)                                             \
+#define TRY_WRITE_LOCKER(obj, lock, ptr)                                        \
   arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &lock, arangodb::basics::LockerType::TRY, true, __FILE__, __LINE__)
+      &lock, arangodb::basics::LockerType::TRY, true, ptr, __FILE__, __LINE__)
 
-#define CONDITIONAL_WRITE_LOCKER(obj, lock, condition)                          \
+#define CONDITIONAL_WRITE_LOCKER(obj, lock, condition, ptr)                     \
   arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &lock, arangodb::basics::LockerType::BLOCKING, (condition), __FILE__, __LINE__)
+      &lock, arangodb::basics::LockerType::BLOCKING, (condition), ptr, __FILE__, __LINE__)
 
 namespace arangodb {
 namespace basics {
@@ -67,8 +67,9 @@ class WriteLocker {
   /// @brief acquires a write-lock
   /// The constructors acquire a write lock, the destructor unlocks the lock.
   WriteLocker(LockType* readWriteLock, LockerType type, bool condition,
-              char const* file, int line)
+              void const* ptr, char const* file, int line)
       : _readWriteLock(readWriteLock),
+        _customPtr(ptr),
         _file(file),
         _line(line),
 #ifdef TRI_SHOW_LOCK_TIME
@@ -164,6 +165,9 @@ class WriteLocker {
   /// @brief the read-write lock
   LockType* _readWriteLock;
 
+  /// @brief if you want to plant a tree for the debugger...
+  void const* _customPtr;
+  
   /// @brief file
   char const* _file;
 

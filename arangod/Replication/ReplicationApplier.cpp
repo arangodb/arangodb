@@ -172,7 +172,7 @@ bool ReplicationApplier::isShuttingDown() const {
 
 /// @brief block the replication applier from starting
 Result ReplicationApplier::preventStart() {
-  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
+  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock, this);
 
   if (_state.isTailing()) {
     // already running
@@ -192,7 +192,7 @@ Result ReplicationApplier::preventStart() {
 
 /// @brief unblock the replication applier from starting
 void ReplicationApplier::allowStart() {
-  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
+  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock, this);
 
   if (!_state._preventStart) {
     return;
@@ -223,7 +223,7 @@ bool ReplicationApplier::stopInitialSynchronization() const {
 
 /// @brief set the applier state to tailing
 void ReplicationApplier::markThreadTailing() {
-  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
+  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock, this);
   _state._phase = ReplicationApplierState::ActivityPhase::TAILING;
   setProgressNoLock("applier started tailing");
 
@@ -232,7 +232,7 @@ void ReplicationApplier::markThreadTailing() {
 }
 
 void ReplicationApplier::markThreadStopped() {
-  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
+  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock, this);
   _state._phase = ReplicationApplierState::ActivityPhase::INACTIVE;
   setProgressNoLock("applier shut down");
 
@@ -242,7 +242,7 @@ void ReplicationApplier::markThreadStopped() {
 /// Perform some common ops for startReplication / startTailing
 void ReplicationApplier::doStart(std::function<void()>&& cb,
                                  ReplicationApplierState::ActivityPhase activity) {
-  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
+  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock, this);
 
   if (_state._preventStart) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -390,7 +390,7 @@ void ReplicationApplier::removeState() {
     return;
   }
 
-  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
+  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock, this);
   _state.reset(false);
 
   if (TRI_ExistsFile(filename.c_str())) {
@@ -416,7 +416,7 @@ Result ReplicationApplier::resetState(bool reducedSet) {
   }
   std::string const filename = getStateFilename();
 
-  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
+  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock, this);
   _state.reset(resetPhase, reducedSet);
 
   if (!filename.empty() && TRI_ExistsFile(filename.c_str())) {
@@ -450,7 +450,7 @@ void ReplicationApplier::reconfigure(ReplicationApplierConfiguration const& conf
                                    "no endpoint configured");
   }
 
-  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
+  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock, this);
 
   if (_state.isActive()) {
     // cannot change the configuration while the replication is still running
@@ -632,12 +632,12 @@ TRI_voc_tick_t ReplicationApplier::lastTick() const {
 
 /// @brief register an applier error
 void ReplicationApplier::setError(arangodb::Result const& r) {
-  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
+  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock, this);
   setErrorNoLock(r);
 }
 
 Result ReplicationApplier::lastError() const {
-  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
+  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock, (void*) this);
   return Result(_state._lastError.code, _state._lastError.message);
 }
 
@@ -647,7 +647,7 @@ void ReplicationApplier::setProgress(char const* msg) {
 }
 
 void ReplicationApplier::setProgress(std::string const& msg) {
-  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
+  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock, this);
   setProgressNoLock(msg);
 }
 
@@ -675,7 +675,7 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
     return;
   }
 
-  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
+  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock, this);
 
   // always stop initial synchronization
   _state._stopInitialSynchronization = true;

@@ -202,7 +202,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   }
 
   if (!didWork) {
-    WRITE_LOCKER(guard, _rwLock);
+    WRITE_LOCKER(guard, _rwLock, this);
     _lastSync = minSeqNr;
     return Result();  // nothing was written
   }
@@ -218,7 +218,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   // we have to commit all counters in one batch
   auto s = _db->Write(wo, &batch);
   if (s.ok()) {
-    WRITE_LOCKER(guard, _rwLock);
+    WRITE_LOCKER(guard, _rwLock, this);
     _lastSync = minSeqNr;
   }
 
@@ -240,7 +240,7 @@ void RocksDBSettingsManager::loadSettings() {
     LOG_TOPIC(TRACE, Logger::ENGINES) << "read initial settings: " << slice.toJson();
 
     if (!result.empty()) {
-      WRITE_LOCKER(guard, _rwLock);
+      WRITE_LOCKER(guard, _rwLock, this);
       try {
         if (slice.hasKey("tick")) {
           uint64_t lastTick =

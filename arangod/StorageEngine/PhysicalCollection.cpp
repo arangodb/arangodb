@@ -76,7 +76,7 @@ void PhysicalCollection::flushClusterIndexEstimates() {
 
 void PhysicalCollection::drop() {
   {
-    WRITE_LOCKER(guard, _indexesLock);
+    WRITE_LOCKER(guard, _indexesLock, this);
     _indexes.clear();
   }
   try {

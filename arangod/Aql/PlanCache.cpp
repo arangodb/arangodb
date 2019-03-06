@@ -72,7 +72,7 @@ void PlanCache::store(TRI_vocbase_t* vocbase, uint64_t hash,
   auto entry = std::make_unique<PlanCacheEntry>(queryString.extract(SIZE_MAX),
                                                 plan->toVelocyPack(plan->getAst(), true));
 
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   // store cache entry
   _plans[vocbase].insert({hash, std::move(entry)});
@@ -80,7 +80,7 @@ void PlanCache::store(TRI_vocbase_t* vocbase, uint64_t hash,
 
 /// @brief invalidate all queries for a particular database
 void PlanCache::invalidate(TRI_vocbase_t* vocbase) {
-  WRITE_LOCKER(writeLocker, _lock);
+  WRITE_LOCKER(writeLocker, _lock, this);
 
   _plans.erase(vocbase);
 }

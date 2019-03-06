@@ -755,7 +755,7 @@ void FlushFeature::prepare() {
 
 void FlushFeature::start() {
   {
-    WRITE_LOCKER(lock, _threadLock);
+    WRITE_LOCKER(lock, _threadLock, this);
     _flushThread.reset(new FlushThread(_flushInterval));
   }
   DatabaseFeature* dbFeature = DatabaseFeature::DATABASE;
@@ -797,7 +797,7 @@ void FlushFeature::stop() {
     }
 
     {
-      WRITE_LOCKER(wlock, _threadLock);
+      WRITE_LOCKER(wlock, _threadLock, this);
       _isRunning.store(false);
       _flushThread.reset();
     }

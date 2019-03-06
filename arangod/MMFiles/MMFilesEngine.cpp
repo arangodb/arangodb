@@ -205,7 +205,7 @@ Result MMFilesEngine::dropDatabase(TRI_vocbase_t& database) {
   shutdownDatabase(database);
 
   {
-    WRITE_LOCKER(locker, _pathsLock);
+    WRITE_LOCKER(locker, _pathsLock, this);
     _collectionPaths.erase(database.id());
   }
 
@@ -1582,7 +1582,7 @@ void MMFilesEngine::dropIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t col
 static bool UnloadCollectionCallback(LogicalCollection* collection) {
   TRI_ASSERT(collection != nullptr);
 
-  WRITE_LOCKER_EVENTUAL(locker, collection->lock());
+  WRITE_LOCKER_EVENTUAL(locker, collection->lock(), collection);
 
   if (collection->status() != TRI_VOC_COL_STATUS_UNLOADING) {
     return false;
@@ -2207,7 +2207,7 @@ std::string MMFilesEngine::createCollectionDirectoryName(std::string const& base
 
 void MMFilesEngine::registerCollectionPath(TRI_voc_tick_t databaseId,
                                            TRI_voc_cid_t id, std::string const& path) {
-  WRITE_LOCKER(locker, _pathsLock);
+  WRITE_LOCKER(locker, _pathsLock, this);
   _collectionPaths[databaseId][id] = path;
 }
 
@@ -2226,7 +2226,7 @@ void MMFilesEngine::unregisterCollectionPath(TRI_voc_tick_t databaseId, TRI_voc_
 
 void MMFilesEngine::registerViewPath(TRI_voc_tick_t databaseId,
                                      TRI_voc_cid_t id, std::string const& path) {
-  WRITE_LOCKER(locker, _pathsLock);
+  WRITE_LOCKER(locker, _pathsLock, this);
   _viewPaths[databaseId][id] = path;
 }
 
@@ -2422,7 +2422,7 @@ VPackBuilder MMFilesEngine::loadViewInfo(TRI_vocbase_t* vocbase, std::string con
 /// @brief remove data of expired compaction blockers
 bool MMFilesEngine::cleanupCompactionBlockers(TRI_vocbase_t* vocbase) {
   // check if we can instantly acquire the lock
-  TRY_WRITE_LOCKER(locker, _compactionBlockersLock);
+  TRY_WRITE_LOCKER(locker, _compactionBlockersLock, this);
 
   if (!locker.isLocked()) {
     // couldn't acquire lock
@@ -2472,7 +2472,7 @@ int MMFilesEngine::insertCompactionBlocker(TRI_vocbase_t* vocbase, double ttl,
   CompactionBlocker blocker(TRI_NewTickServer(), TRI_microtime() + ttl);
 
   {
-    WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock);
+    WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, this);
     _compactionBlockers[vocbase].emplace_back(blocker);
   }
 
@@ -2488,7 +2488,7 @@ int MMFilesEngine::extendCompactionBlocker(TRI_vocbase_t* vocbase,
     return TRI_ERROR_BAD_PARAMETER;
   }
 
-  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock);
+  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, this);
 
   auto it = _compactionBlockers.find(vocbase);
 
@@ -2508,7 +2508,7 @@ int MMFilesEngine::extendCompactionBlocker(TRI_vocbase_t* vocbase,
 
 /// @brief remove an existing compaction blocker
 int MMFilesEngine::removeCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_t id) {
-  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock);
+  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, this);
 
   auto it = _compactionBlockers.find(vocbase);
 
@@ -2536,14 +2536,14 @@ int MMFilesEngine::removeCompactionBlocker(TRI_vocbase_t* vocbase, TRI_voc_tick_
 
 void MMFilesEngine::preventCompaction(TRI_vocbase_t* vocbase,
                                       std::function<void(TRI_vocbase_t*)> const& callback) {
-  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock);
+  WRITE_LOCKER_EVENTUAL(locker, _compactionBlockersLock, this);
   callback(vocbase);
 }
 
 bool MMFilesEngine::tryPreventCompaction(TRI_vocbase_t* vocbase,
                                          std::function<void(TRI_vocbase_t*)> const& callback,
                                          bool checkForActiveBlockers) {
-  TRY_WRITE_LOCKER(locker, _compactionBlockersLock);
+  TRY_WRITE_LOCKER(locker, _compactionBlockersLock, this);
 
   if (locker.isLocked()) {
     if (checkForActiveBlockers) {
@@ -3504,7 +3504,7 @@ TRI_voc_tick_t MMFilesEngine::releasedTick() const {
 }
 
 void MMFilesEngine::releaseTick(TRI_voc_tick_t tick) {
-  WRITE_LOCKER(lock, _releaseLock);
+  WRITE_LOCKER(lock, _releaseLock, this);
   if (tick > _releasedTick) {
     _releasedTick = tick;
   }

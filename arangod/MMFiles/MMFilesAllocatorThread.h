@@ -54,7 +54,7 @@ class MMFilesAllocatorThread final : public Thread {
 
   /// @brief tell the thread that the recovery phase is over
   void recoveryDone() {
-    WRITE_LOCKER(writeLocker, _recoveryLock);
+    WRITE_LOCKER(writeLocker, _recoveryLock, this);
     _inRecovery = false;
   }
 

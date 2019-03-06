@@ -306,7 +306,7 @@ size_t ClusterCollection::memory() const { return 0; }
 void ClusterCollection::open(bool ignoreErrors) {}
 
 void ClusterCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice) {
-  WRITE_LOCKER(guard, _indexesLock);
+  WRITE_LOCKER(guard, _indexesLock, this);
   TRI_ASSERT(indexesSlice.isArray());
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -348,10 +348,10 @@ std::shared_ptr<Index> ClusterCollection::createIndex(arangodb::velocypack::Slic
                                                       bool restore, bool& created) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   // prevent concurrent dropping
-  WRITE_LOCKER(guard, _exclusiveLock);
+  WRITE_LOCKER(guard, _exclusiveLock, this);
   std::shared_ptr<Index> idx;
 
-  WRITE_LOCKER(guard2, _indexesLock);
+  WRITE_LOCKER(guard2, _indexesLock, this);
   idx = lookupIndex(info);
   if (idx) {
     created = false;
@@ -383,7 +383,7 @@ bool ClusterCollection::dropIndex(TRI_idx_iid_t iid) {
   }
 
   size_t i = 0;
-  WRITE_LOCKER(guard, _indexesLock);
+  WRITE_LOCKER(guard, _indexesLock, this);
   for (std::shared_ptr<Index> index : _indexes) {
     if (iid == index->id()) {
       _indexes.erase(_indexes.begin() + i);

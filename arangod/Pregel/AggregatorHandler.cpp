@@ -30,7 +30,7 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 AggregatorHandler::~AggregatorHandler() {
-  WRITE_LOCKER(guard, _lock);
+  WRITE_LOCKER(guard, _lock, this);
   for (auto const& it : _values) {
     delete it.second;
   }
@@ -48,7 +48,7 @@ IAggregator* AggregatorHandler::getAggregator(AggregatorID const& name) {
   // aggregator doesn't exists, create it
   std::unique_ptr<IAggregator> agg(_algorithm->aggregator(name));
   if (agg) {
-    WRITE_LOCKER(guard, _lock);
+    WRITE_LOCKER(guard, _lock, this);
     auto result = _values.insert({name, agg.get()});
     if (result.second) {
       return agg.release();

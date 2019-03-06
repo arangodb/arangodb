@@ -205,7 +205,7 @@ void auth::UserManager::loadFromDB() {
         UserMap usermap = ParseUsers(usersSlice);
 
         {  // cannot invalidate token cache while holding _userCache write lock
-          WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
+          WRITE_LOCKER(writeGuard, _userCacheLock, this);  // must be second
           // never delete non-local users
           for (auto pair = _userCache.cbegin(); pair != _userCache.cend();) {
             if (pair->second.source() == auth::Source::Local) {
@@ -342,7 +342,7 @@ void auth::UserManager::createRootUser() {
   loadFromDB();
 
   MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first
-  WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
+  WRITE_LOCKER(writeGuard, _userCacheLock, this);  // must be second
   UserMap::iterator const& it = _userCache.find("root");
   if (it != _userCache.end()) {
     LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "\"root\" already exists";
@@ -432,7 +432,7 @@ Result auth::UserManager::storeUser(bool replace, std::string const& username,
   }
 
   loadFromDB();
-  WRITE_LOCKER(writeGuard, _userCacheLock);
+  WRITE_LOCKER(writeGuard, _userCacheLock, this);
   UserMap::iterator const& it = _userCache.find(username);
 
   if (replace && it == _userCache.end()) {
@@ -490,7 +490,7 @@ Result auth::UserManager::enumerateUsers(std::function<bool(auth::User&)>&& func
   }
   Result res;
   {
-    WRITE_LOCKER(writeGuard, _userCacheLock);
+    WRITE_LOCKER(writeGuard, _userCacheLock, this);
     for (auth::User const& u : toUpdate) {
       res = storeUserInternal(u, true);
       if (res.fail()) {
@@ -514,7 +514,7 @@ Result auth::UserManager::updateUser(std::string const& name, UserCallback&& fun
   loadFromDB();
 
   // we require a consistent view on the user object
-  WRITE_LOCKER(writeGuard, _userCacheLock);
+  WRITE_LOCKER(writeGuard, _userCacheLock, this);
 
   UserMap::iterator it = _userCache.find(name);
   if (it == _userCache.end()) {
@@ -630,7 +630,7 @@ Result auth::UserManager::removeUser(std::string const& user) {
 
   loadFromDB();
 
-  WRITE_LOCKER(writeGuard, _userCacheLock);
+  WRITE_LOCKER(writeGuard, _userCacheLock, this);
   UserMap::iterator const& it = _userCache.find(user);
   if (it == _userCache.end()) {
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User not found: " << user;
@@ -660,7 +660,7 @@ Result auth::UserManager::removeAllUsers() {
   {
     // do not get into race conditions with loadFromDB
     MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first
-    WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
+    WRITE_LOCKER(writeGuard, _userCacheLock, this);  // must be second
 
     for (auto pair = _userCache.cbegin(); pair != _userCache.cend();) {
       auto const& oldEntry = pair->second;
@@ -780,7 +780,7 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
 /// Only used for testing
 void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first
-  WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
+  WRITE_LOCKER(writeGuard, _userCacheLock, this);  // must be second
   _userCache = newMap;
   _internalVersion.store(_globalVersion.load());
 }
