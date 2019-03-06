@@ -25,6 +25,7 @@ v3.3.23 (XXXX-XX-XX)
 * fix supervision's failed server handling to transactionally create
   all failed leader/followers along
 
+* agents need to be able to overwrite a compacted state with same _key
 
 v3.3.22 (2019-02-01)
 --------------------
