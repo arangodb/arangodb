@@ -1255,7 +1255,7 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
           LOG_TOPIC(DEBUG, Logger::AGENCY)
             << "Failed to insert compacted agency state, will attempt to update: "
             << result.errorMessage();
-          result = trx.update("compact", store.slice(), _options);
+          result = trx.replace("compact", store.slice(), _options);
         } else {
           LOG_TOPIC(FATAL, Logger::AGENCY)
             << "Failed to persist compacted agency state" << result.errorMessage();
