@@ -729,6 +729,8 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
 
   _options.waitForSync = waitForSync;
   _options.silent = true;
+  _overwrite = _options;
+  _overwrite.overwrite = true;
 
   if (loadPersisted()) {
     MUTEX_LOCKER(logLock, _logLock);
@@ -1245,7 +1247,26 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    auto result = trx.insert("compact", store.slice(), _options);
+    OperationResult result;
+    try {
+      result = trx.insert("compact", store.slice(), _options);
+      if (!result.ok()) {
+        if (result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
+          LOG_TOPIC(DEBUG, Logger::AGENCY)
+            << "Failed to insert compacted agency state, will attempt to update: "
+            << result.errorMessage();
+          result = trx.update("compact", store.slice(), _options);
+        } else {
+          LOG_TOPIC(FATAL, Logger::AGENCY)
+            << "Failed to persist compacted agency state" << result.errorMessage();
+          FATAL_ERROR_EXIT();
+        }
+      }
+    } catch (std::exception const& e) {
+      LOG_TOPIC(FATAL, Logger::AGENCY)
+        << "Failed to persist compacted agency state: " << e.what();
+      FATAL_ERROR_EXIT();
+    }
 
     res = trx.finish(result.result);
 
