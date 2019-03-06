@@ -1294,7 +1294,7 @@ static void ClientConnection_getRole(v8::FunctionCallbackInfo<v8::Value> const& 
 
   // get the connection
   V8ClientConnection* v8connection =
-      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION);
+      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
