@@ -119,7 +119,7 @@ void TRI_RemoveFailurePointDebugging(char const* value) {
 
 /// @brief clear all failure points
 void TRI_ClearFailurePointsDebugging() {
-  WRITE_LOCKER(writeLocker, ::failurePointsLock, value);
+  WRITE_LOCKER(writeLocker, ::failurePointsLock, (void*) 0x890);
 
   ::failurePoints.clear();
 }
