@@ -60,6 +60,7 @@ V8ClientConnection::V8ClientConnection()
       _lastErrorMessage(""),
       _version("arango"),
       _mode("unknown mode"),
+      _role("UNKNOWN"),
       _loop(1),
       _vpackOptions(VPackOptions::Defaults) {
   _vpackOptions.buildUnindexedObjects = true;
@@ -122,6 +123,10 @@ void V8ClientConnection::createConnection() {
           VPackSlice const mode = details.get("mode");
           if (mode.isString()) {
             _mode = mode.copyString();
+          }
+          VPackSlice role = details.get("role");
+          if (role.isString()) {
+            _role = role.copyString();
           }
         }
         std::string const versionString =
@@ -227,7 +232,7 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
     LOG_TOPIC(INFO, arangodb::Logger::FIXME)
         << "Connected to ArangoDB "
         << "'" << endpointSpecification() << "', "
-        << "version " << _version << " [" << _mode << "], "
+        << "version " << _version << " [" << _role << ", " << _mode << "], "
         << "database '" << _databaseName << "', "
         << "username: '" << client->username() << "'";
   } else {
@@ -353,7 +358,7 @@ static void ClientConnection_ConstructorCallback(v8::FunctionCallbackInfo<v8::Va
     LOG_TOPIC(INFO, arangodb::Logger::FIXME)
         << "Connected to ArangoDB "
         << "'" << v8connection->endpointSpecification() << "', "
-        << "version " << v8connection->version() << " [" << v8connection->mode() << "], "
+        << "version " << v8connection->version() << " [" << v8connection->role() << ", " << v8connection->mode() << "], "
         << "database '" << v8connection->databaseName() << "', "
         << "username: '" << v8connection->username() << "'";
 
@@ -1277,6 +1282,30 @@ static void ClientConnection_getMode(v8::FunctionCallbackInfo<v8::Value> const& 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "getRole"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_getRole(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // get the connection
+  V8ClientConnection* v8connection =
+      TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION);
+
+  if (v8connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+  }
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getRole()");
+  }
+
+  TRI_V8_RETURN_STD_STRING(v8connection->role());
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "getDatabaseName"
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1752,6 +1781,9 @@ void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Local<v8::Context>
 
   connection_proto->Set(isolate, "getMode",
                         v8::FunctionTemplate::New(isolate, ClientConnection_getMode));
+  
+  connection_proto->Set(isolate, "getRole",
+                        v8::FunctionTemplate::New(isolate, ClientConnection_getRole));
 
   connection_proto->Set(isolate, "getDatabaseName",
                         v8::FunctionTemplate::New(isolate, ClientConnection_getDatabaseName));
