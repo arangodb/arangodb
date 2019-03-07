@@ -112,9 +112,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
         _lastWrittenSequence(0) {}
       
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  void disableTickCheck() {
-    _checkTick = false;
-  }
+  void disableTickCheck() { _checkTick = false; }
 #endif
 
   bool Continue() override {
@@ -407,7 +405,9 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
       case RocksDBLogType::DocumentOperationsPrologue:
       case RocksDBLogType::DocumentRemove:
       case RocksDBLogType::DocumentRemoveAsPartOfUpdate:
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         _checkTick = false;
+#endif
         break;  // ignore deprecated markers
 
       default:
@@ -680,7 +680,9 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     _currentTrxId = 0;
     _trxDbId = 0;
     _removedDocRid = 0;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _checkTick = true;
+#endif
   }
 
   uint64_t endBatch() {
