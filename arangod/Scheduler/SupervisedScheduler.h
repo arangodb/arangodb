@@ -88,7 +88,7 @@ class SupervisedScheduler : public Scheduler {
   std::atomic<uint64_t> _jobsDequeued;
   char _padding3[64];
   std::atomic<uint64_t> _jobsDone;
-  char _padding5[64];
+  char _padding4[64];
 
   // During a queue operation there a two reasons to manually wake up a worker
   //  1. the queue length is bigger than _wakeupQueueLength and the last submit time
