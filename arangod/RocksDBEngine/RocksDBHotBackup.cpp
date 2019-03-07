@@ -837,10 +837,21 @@ void RocksDBHotBackupList::execute() {
     hotbackups.erase(found);
   }
 
-  // add two failsafe directory names
+  // add two failsafe directory name string variables (from different branch)
+  found = std::find(hotbackups.begin(), hotbackups.end(), "FAILSAFE");
+  if (hotbackups.end() != found) {
+    hotbackups.erase(found);
+  }
+
+  found = std::find(hotbackups.begin(), hotbackups.end(), "FAILSAFE.1");
+  if (hotbackups.end() != found) {
+    hotbackups.erase(found);
+  }
+
 
   try {
     _result.add(VPackValue(VPackValueType::Object));
+    _result.add("server", VPackValue(getPersistedId()));
     _result.add("hotbackups", VPackValue(VPackValueType::Array));  // open
     for (auto dir : hotbackups) {
       _result.add(VPackValue(dir.c_str()));
