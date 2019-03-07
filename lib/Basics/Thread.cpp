@@ -228,7 +228,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
 
   if (state != ThreadState::CREATED) {
     LOG_TOPIC(FATAL, Logger::THREADS)
-        << "called started on an already started thread, thread is in state "
+        << "called started on an already started thread '" << _name << "', thread is in state "
         << stringify(state);
     FATAL_ERROR_ABORT();
   }
@@ -237,7 +237,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
   if (!_state.compare_exchange_strong(expected, ThreadState::STARTING)) {
     // This should never happen! If it does, it means we have multiple calls to start().
     LOG_TOPIC(WARN, Logger::THREADS)
-        << "failed to set thread to state 'starting'; thread is in unexpected state "
+        << "failed to set thread '" << _name << "' to state 'starting'; thread is in unexpected state "
         << stringify(expected);
     FATAL_ERROR_ABORT();
   }
