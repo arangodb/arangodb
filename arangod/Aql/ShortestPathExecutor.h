@@ -150,7 +150,7 @@ class ShortestPathExecutor {
 
   ShortestPathExecutor() = delete;
   ShortestPathExecutor(ShortestPathExecutor&&) = default;
-  ShortestPathExecutor(ShortestPathExecutor const&) = default;
+
   ShortestPathExecutor(Fetcher& fetcher, Infos&);
   ~ShortestPathExecutor();
 
