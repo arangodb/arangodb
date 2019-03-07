@@ -43,7 +43,8 @@ enum QueryCacheMode { CACHE_ALWAYS_OFF, CACHE_ALWAYS_ON, CACHE_ON_DEMAND };
 struct QueryCacheResultEntry {
   QueryCacheResultEntry() = delete;
 
-  QueryCacheResultEntry(uint64_t, QueryString const&, std::shared_ptr<arangodb::velocypack::Builder>,
+  QueryCacheResultEntry(uint64_t, QueryString const&,
+                        std::shared_ptr<arangodb::velocypack::Builder>,
                         std::vector<std::string> const&);
 
   ~QueryCacheResultEntry() = default;
@@ -69,8 +70,7 @@ struct QueryCacheResultEntry {
 
 class QueryCacheResultEntryGuard {
   QueryCacheResultEntryGuard(QueryCacheResultEntryGuard const&) = delete;
-  QueryCacheResultEntryGuard& operator=(QueryCacheResultEntryGuard const&) =
-      delete;
+  QueryCacheResultEntryGuard& operator=(QueryCacheResultEntryGuard const&) = delete;
   QueryCacheResultEntryGuard() = delete;
 
  public:
@@ -131,8 +131,7 @@ struct QueryCacheDatabaseEntry {
   /// @brief hash table that contains all collection-specific query results
   /// maps from collection names to a set of query results as defined in
   /// _entriesByHash
-  std::unordered_map<std::string, std::unordered_set<uint64_t>>
-      _entriesByCollection;
+  std::unordered_map<std::string, std::unordered_set<uint64_t>> _entriesByCollection;
 
   /// @brief beginning of linked list of result entries
   QueryCacheResultEntry* _head;
@@ -231,10 +230,9 @@ class QueryCache {
   arangodb::basics::ReadWriteLock _entriesLock[NumberOfParts];
 
   /// @brief cached query entries, organized per database
-  std::unordered_map<TRI_vocbase_t*, QueryCacheDatabaseEntry*>
-      _entries[NumberOfParts];
+  std::unordered_map<TRI_vocbase_t*, QueryCacheDatabaseEntry*> _entries[NumberOfParts];
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

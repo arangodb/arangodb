@@ -39,9 +39,8 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
-                         char const* header, size_t length,
-                         bool allowMethodOverride)
+HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo, char const* header,
+                         size_t length, bool allowMethodOverride)
     : GeneralRequest(connectionInfo),
       _contentLength(0),
       _header(nullptr),
@@ -58,9 +57,8 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
   }
 }
 
-HttpRequest::HttpRequest(
-    ContentType contentType, char const* body, int64_t contentLength,
-    std::unordered_map<std::string, std::string> const& headers)
+HttpRequest::HttpRequest(ContentType contentType, char const* body, int64_t contentLength,
+                         std::unordered_map<std::string, std::string> const& headers)
     : GeneralRequest(ConnectionInfo()),
       _contentLength(contentLength),
       _header(nullptr),
@@ -161,11 +159,9 @@ void HttpRequest::parseHeader(size_t length) {
               }
 
               if ((size_t)(end - e) > versionLength) {
-                if ((e[0] == 'h' || e[0] == 'H') &&
-                    (e[1] == 't' || e[1] == 'T') &&
-                    (e[2] == 't' || e[2] == 'T') &&
-                    (e[3] == 'p' || e[3] == 'P') && e[4] == '/' &&
-                    e[5] == '1' && e[6] == '.') {
+                if ((e[0] == 'h' || e[0] == 'H') && (e[1] == 't' || e[1] == 'T') &&
+                    (e[2] == 't' || e[2] == 'T') && (e[3] == 'p' || e[3] == 'P') &&
+                    e[4] == '/' && e[5] == '1' && e[6] == '.') {
                   if (e[7] == '1') {
                     _version = ProtocolVersion::HTTP_1_1;
                   } else if (e[7] == '0') {
@@ -233,16 +229,14 @@ void HttpRequest::parseHeader(size_t length) {
             char* q = pathBegin;
 
             // check if the prefix is "_db"
-            if (q[0] == '/' && q[1] == '_' && q[2] == 'd' && q[3] == 'b' &&
-                q[4] == '/') {
+            if (q[0] == '/' && q[1] == '_' && q[2] == 'd' && q[3] == 'b' && q[4] == '/') {
               // request contains database name
               q += 5;
               pathBegin = q;
 
               // read until end of database name
               while (*q != '\0') {
-                if (*q == '/' || *q == '?' || *q == ' ' || *q == '\n' ||
-                    *q == '\r') {
+                if (*q == '/' || *q == '?' || *q == ' ' || *q == '\n' || *q == '\r') {
                   break;
                 }
                 ++q;
@@ -280,8 +274,7 @@ void HttpRequest::parseHeader(size_t length) {
 
             *g++ = '?';
 
-            while (paramEnd < valueEnd && *paramEnd != ' ' &&
-                   *paramEnd != '\n') {
+            while (paramEnd < valueEnd && *paramEnd != ' ' && *paramEnd != '\n') {
               *g++ = *paramEnd++;
             }
 
@@ -392,8 +385,7 @@ void HttpRequest::parseHeader(size_t length) {
         }
 
         if (keyBegin < keyEnd) {
-          setHeader(keyBegin, keyEnd - keyBegin, valueBegin,
-                    valueEnd - valueBegin);
+          setHeader(keyBegin, keyEnd - keyBegin, valueBegin, valueEnd - valueBegin);
         }
       }
 
@@ -422,8 +414,7 @@ void HttpRequest::parseHeader(size_t length) {
   }
 }
 
-void HttpRequest::setArrayValue(std::string const&& key,
-                                std::string const&& value) {
+void HttpRequest::setArrayValue(std::string const&& key, std::string const&& value) {
   _arrayValues[key].emplace_back(value);
 }
 
@@ -476,7 +467,8 @@ void HttpRequest::setValues(char* buffer, char* end) {
         *(key - 2) = '\0';
         setArrayValue(keyBegin, key - keyBegin - 2, valueBegin);
       } else {
-        _values[std::string(keyBegin, key - keyBegin)] = std::string(valueBegin, value - valueBegin);
+        _values[std::string(keyBegin, key - keyBegin)] =
+            std::string(valueBegin, value - valueBegin);
       }
 
       keyBegin = key = buffer + 1;
@@ -535,7 +527,8 @@ void HttpRequest::setValues(char* buffer, char* end) {
       *(key - 2) = '\0';
       setArrayValue(keyBegin, key - keyBegin - 2, valueBegin);
     } else {
-      _values[std::string(keyBegin, key - keyBegin)] = std::string(valueBegin, value - valueBegin);
+      _values[std::string(keyBegin, key - keyBegin)] =
+          std::string(valueBegin, value - valueBegin);
     }
   }
 }
@@ -547,41 +540,37 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
   TRI_ASSERT(value != nullptr);
 
   if (keyLength == StaticStrings::ContentLength.size() &&
-      memcmp(key, StaticStrings::ContentLength.c_str(), keyLength) ==
-          0) {  // 14 = strlen("content-length")
+      memcmp(key, StaticStrings::ContentLength.c_str(), keyLength) == 0) {  // 14 = strlen("content-length")
     _contentLength = StringUtils::int64(value, valueLength);
     // do not store this header
     return;
   }
 
-  if (keyLength == StaticStrings::Accept.size() && 
+  if (keyLength == StaticStrings::Accept.size() &&
       valueLength == StaticStrings::MimeTypeVPack.size() &&
       memcmp(key, StaticStrings::Accept.c_str(), keyLength) == 0 &&
       memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
     _contentTypeResponse = ContentType::VPACK;
-  } else if (keyLength == StaticStrings::ContentTypeHeader.size() && 
-      valueLength == StaticStrings::MimeTypeVPack.size() &&
-      memcmp(key, StaticStrings::ContentTypeHeader.c_str(), keyLength) == 0 &&
-      memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
+  } else if (keyLength == StaticStrings::ContentTypeHeader.size() &&
+             valueLength == StaticStrings::MimeTypeVPack.size() &&
+             memcmp(key, StaticStrings::ContentTypeHeader.c_str(), keyLength) == 0 &&
+             memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
     _contentType = ContentType::VPACK;
     return;
   }
 
-  if (keyLength == 6 &&
-      memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
+  if (keyLength == 6 && memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
     parseCookies(value, valueLength);
     return;
   }
 
-  if (_allowMethodOverride && keyLength >= 13 && *key == 'x' &&
-      *(key + 1) == '-') {
+  if (_allowMethodOverride && keyLength >= 13 && *key == 'x' && *(key + 1) == '-') {
     // handle x-... headers
 
     // override HTTP method?
     if ((keyLength == 13 && memcmp(key, "x-http-method", keyLength) == 0) ||
         (keyLength == 17 && memcmp(key, "x-method-override", keyLength) == 0) ||
-        (keyLength == 22 &&
-         memcmp(key, "x-http-method-override", keyLength) == 0)) {
+        (keyLength == 22 && memcmp(key, "x-http-method-override", keyLength) == 0)) {
       std::string overriddenType(value, valueLength);
       StringUtils::tolowerInPlace(&overriddenType);
 
@@ -713,8 +702,7 @@ std::string const& HttpRequest::cookieValue(std::string const& key) const {
   return it->second;
 }
 
-std::string const& HttpRequest::cookieValue(std::string const& key,
-                                            bool& found) const {
+std::string const& HttpRequest::cookieValue(std::string const& key, bool& found) const {
   auto it = _cookies.find(key);
 
   if (it == _cookies.end()) {
@@ -750,16 +738,18 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
     }
     return VPackSlice::noneSlice();  // no body
   } else /*VPACK*/ {
-    VPackOptions validationOptions = *options; // intentional copy
+    VPackOptions validationOptions = *options;  // intentional copy
     validationOptions.validateUtf8Strings = true;
+    validationOptions.checkAttributeUniqueness = true;
+    validationOptions.disallowExternals = true;
+    validationOptions.disallowCustom = true;
     VPackValidator validator(&validationOptions);
-    validator.validate(_body.c_str(), _body.length());
-    return VPackSlice(_body.c_str());
+    validator.validate(_body.data(), _body.size());
+    return VPackSlice(_body.data());
   }
 }
 
-std::string const& HttpRequest::header(std::string const& key,
-                                       bool& found) const {
+std::string const& HttpRequest::header(std::string const& key, bool& found) const {
   auto it = _headers.find(key);
 
   if (it == _headers.end()) {
@@ -776,8 +766,7 @@ std::string const& HttpRequest::header(std::string const& key) const {
   return header(key, unused);
 }
 
-std::string const& HttpRequest::value(std::string const& key,
-                                      bool& found) const {
+std::string const& HttpRequest::value(std::string const& key, bool& found) const {
   if (!_values.empty()) {
     auto it = _values.find(key);
 

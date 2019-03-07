@@ -77,7 +77,7 @@ class SocketTask : virtual public Task {
 
     WriteBuffer(basics::StringBuffer* buffer, RequestStatistics* statistics)
         : _buffer(buffer), _statistics(statistics) {}
-    
+
     WriteBuffer(WriteBuffer const&) = delete;
     WriteBuffer& operator=(WriteBuffer const&) = delete;
 
@@ -104,10 +104,8 @@ class SocketTask : virtual public Task {
 
     ~WriteBuffer() { release(); }
 
-    bool empty() const noexcept {
-      return _buffer == nullptr;
-    }
-    
+    bool empty() const noexcept { return _buffer == nullptr; }
+
     void clear() noexcept {
       _buffer = nullptr;
       _statistics = nullptr;
@@ -124,7 +122,7 @@ class SocketTask : virtual public Task {
         _statistics = nullptr;
       }
     }
-    
+
     void release(SocketTask* task) {
       if (_buffer != nullptr) {
         task->returnStringBuffer(_buffer);
@@ -143,7 +141,7 @@ class SocketTask : virtual public Task {
 
   // will acquire the _lock
   void closeStream();
-  
+
   // caller must hold the _lock
   void closeStreamNoLock();
 
@@ -152,10 +150,10 @@ class SocketTask : virtual public Task {
 
   // caller must hold the _lock
   void cancelKeepAlive();
-      
+
   basics::StringBuffer* leaseStringBuffer(size_t length);
   void returnStringBuffer(basics::StringBuffer*);
- 
+
  private:
   void writeWriteBuffer();
   bool completedWriteBuffer();
@@ -165,16 +163,16 @@ class SocketTask : virtual public Task {
   bool processAll();
   void asyncReadSome();
   bool abandon();
-  
+
  protected:
   Mutex _lock;
   ConnectionStatistics* _connectionStatistics;
   ConnectionInfo _connectionInfo;
-  basics::StringBuffer _readBuffer; // needs _lock
-  
+  basics::StringBuffer _readBuffer;  // needs _lock
+
  private:
   SmallVector<basics::StringBuffer*, 32>::allocator_type::arena_type _stringBuffersArena;
-  SmallVector<basics::StringBuffer*, 32> _stringBuffers; // needs _lock
+  SmallVector<basics::StringBuffer*, 32> _stringBuffers;  // needs _lock
 
   WriteBuffer _writeBuffer;
   std::list<WriteBuffer> _writeBuffers;
@@ -189,7 +187,7 @@ class SocketTask : virtual public Task {
   bool _closedSend;
   bool _closedReceive;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

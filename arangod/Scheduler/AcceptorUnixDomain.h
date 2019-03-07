@@ -27,19 +27,17 @@
 
 namespace arangodb {
 class AcceptorUnixDomain final : public Acceptor {
-  public:
-    AcceptorUnixDomain(boost::asio::io_service& ioService, Endpoint* endpoint)
-    : Acceptor(ioService, endpoint),
-      _acceptor(ioService) {
-    }
-    void open() override;
-    void close() override;
-    void asyncAccept(AcceptHandler const& handler) override;
-    void createPeer() override;
+ public:
+  AcceptorUnixDomain(boost::asio::io_service& ioService, Endpoint* endpoint)
+      : Acceptor(ioService, endpoint), _acceptor(ioService) {}
+  void open() override;
+  void close() override;
+  void asyncAccept(AcceptHandler const& handler) override;
+  void createPeer() override;
 
-  private:
-    boost::asio::local::stream_protocol::acceptor _acceptor;
+ private:
+  boost::asio::local::stream_protocol::acceptor _acceptor;
 };
-}
+}  // namespace arangodb
 
 #endif

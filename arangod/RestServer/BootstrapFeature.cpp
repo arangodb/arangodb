@@ -40,8 +40,7 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
-BootstrapFeature::BootstrapFeature(
-    application_features::ApplicationServer* server)
+BootstrapFeature::BootstrapFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Bootstrap"), _isReady(false), _bark(false) {
   startsAfter("Endpoint");
   startsAfter("Scheduler");
@@ -61,7 +60,7 @@ void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 static void raceForClusterBootstrap() {
   AgencyComm agency;
   auto ci = ClusterInfo::instance();
-  
+
   while (true) {
     AgencyCommResult result = agency.getValues("Bootstrap");
     if (!result.successful()) {
@@ -103,7 +102,7 @@ static void raceForClusterBootstrap() {
     // OK, we handle things now, let's see whether a DBserver is there:
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: race won, we do the bootstrap";
-    
+
     // let's see whether a DBserver is there:
     ci->loadCurrentDBServers();
     auto dbservers = ci->getCurrentDBServers();
@@ -125,10 +124,9 @@ static void raceForClusterBootstrap() {
     VPackSlice jsresult = builder.slice();
     if (!jsresult.isTrue()) {
       LOG_TOPIC(ERR, Logger::STARTUP) << "Problems with cluster bootstrap, "
-        << "marking as not successful.";
+                                      << "marking as not successful.";
       if (!jsresult.isNone()) {
-        LOG_TOPIC(ERR, Logger::STARTUP) << "Returned value: "
-          << jsresult.toJson();
+        LOG_TOPIC(ERR, Logger::STARTUP) << "Returned value: " << jsresult.toJson();
       } else {
         LOG_TOPIC(ERR, Logger::STARTUP) << "Empty returned value.";
       }
@@ -136,7 +134,7 @@ static void raceForClusterBootstrap() {
       sleep(1);
       continue;
     }
-    
+
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Creating the root user";
     AuthenticationFeature::INSTANCE->authInfo()->createRootUser();
 
@@ -164,7 +162,8 @@ void BootstrapFeature::start() {
 
   if (!ss->isRunningInCluster()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
-    V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase, "server/server.js", nullptr);
+    V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase,
+                                                             "server/server.js", nullptr);
     // Agency is not allowed to call this
     if (ServerState::instance()->isSingleServer()) {
       // only creates root user if it does not exist
@@ -177,30 +176,33 @@ void BootstrapFeature::start() {
     while (!success) {
       LOG_TOPIC(DEBUG, Logger::STARTUP)
           << "Running server/bootstrap/coordinator.js";
-      
-      VPackBuilder builder;      
-      V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase,
-          "server/bootstrap/coordinator.js", &builder);
-      
+
+      VPackBuilder builder;
+      V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(
+          vocbase, "server/bootstrap/coordinator.js", &builder);
+
       auto slice = builder.slice();
       if (slice.isArray()) {
         if (slice.length() > 0) {
           bool newResult = true;
-          for (auto const& val: VPackArrayIterator(slice)) {
+          for (auto const& val : VPackArrayIterator(slice)) {
             newResult = newResult && val.isTrue();
           }
           if (!newResult) {
             LOG_TOPIC(ERR, Logger::STARTUP)
-              << "result of bootstrap was: " << builder.toJson() << ". retrying bootstrap in 1s.";
+                << "result of bootstrap was: " << builder.toJson()
+                << ". retrying bootstrap in 1s.";
           }
           success = newResult;
         } else {
           LOG_TOPIC(ERR, Logger::STARTUP)
-            << "bootstrap wasn't executed in a single context! retrying bootstrap in 1s.";
+              << "bootstrap wasn't executed in a single context! retrying "
+                 "bootstrap in 1s.";
         }
       } else {
         LOG_TOPIC(ERR, Logger::STARTUP)
-          << "result of bootstrap was not an array: " << slice.typeName() << ". retrying bootstrap in 1s.";
+            << "result of bootstrap was not an array: " << slice.typeName()
+            << ". retrying bootstrap in 1s.";
       }
       if (!success) {
         sleep(1);
@@ -209,15 +211,16 @@ void BootstrapFeature::start() {
   } else if (ss->isDBServer()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "Running server/bootstrap/db-server.js";
-    V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase,
-        "server/bootstrap/db-server.js", nullptr);
+    V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(
+        vocbase, "server/bootstrap/db-server.js", nullptr);
   }
 
   // Start service properly:
   rest::RestHandlerFactory::setMaintenance(false);
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ArangoDB (version " << ARANGODB_VERSION_FULL
-            << ") is ready for business. Have fun!";
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+      << "ArangoDB (version " << ARANGODB_VERSION_FULL
+      << ") is ready for business. Have fun!";
 
   if (_bark) {
     LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "The dog says: wau wau!";

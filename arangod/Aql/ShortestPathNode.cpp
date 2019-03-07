@@ -43,8 +43,7 @@ using namespace arangodb::basics;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
 
-static void parseNodeInput(AstNode const* node, std::string& id,
-                           Variable const*& variable) {
+static void parseNodeInput(AstNode const* node, std::string& id, Variable const*& variable) {
   switch (node->type) {
     case NODE_TYPE_REFERENCE:
       variable = static_cast<Variable*>(node->getData());
@@ -66,10 +65,9 @@ static void parseNodeInput(AstNode const* node, std::string& id,
   }
 }
 
-ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
-                                   TRI_vocbase_t* vocbase, AstNode const* direction,
-                                   AstNode const* start, AstNode const* target,
-                                   AstNode const* graph,
+ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+                                   AstNode const* direction, AstNode const* start,
+                                   AstNode const* target, AstNode const* graph,
                                    std::unique_ptr<BaseOptions>& options)
     : GraphNode(plan, id, vocbase, direction, graph, options),
       _inStartVariable(nullptr),
@@ -83,22 +81,24 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
   auto ast = _plan->getAst();
   // Let us build the conditions on _from and _to. Just in case we need them.
   {
-    auto const* access = ast->createNodeAttributeAccess(
-        getTemporaryRefNode(), StaticStrings::FromString.c_str(),
-        StaticStrings::FromString.length());
-    auto const* cond = ast->createNodeBinaryOperator(
-        NODE_TYPE_OPERATOR_BINARY_EQ, access, _tmpIdNode);
+    auto const* access =
+        ast->createNodeAttributeAccess(getTemporaryRefNode(),
+                                       StaticStrings::FromString.c_str(),
+                                       StaticStrings::FromString.length());
+    auto const* cond =
+        ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, _tmpIdNode);
     _fromCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
     _fromCondition->addMember(cond);
   }
   TRI_ASSERT(_fromCondition != nullptr);
 
   {
-    auto const* access = ast->createNodeAttributeAccess(
-        getTemporaryRefNode(), StaticStrings::ToString.c_str(),
-        StaticStrings::ToString.length());
-    auto const* cond = ast->createNodeBinaryOperator(
-        NODE_TYPE_OPERATOR_BINARY_EQ, access, _tmpIdNode);
+    auto const* access =
+        ast->createNodeAttributeAccess(getTemporaryRefNode(),
+                                       StaticStrings::ToString.c_str(),
+                                       StaticStrings::ToString.length());
+    auto const* cond =
+        ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, _tmpIdNode);
     _toCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
     _toCondition->addMember(cond);
   }
@@ -113,10 +113,9 @@ ShortestPathNode::ShortestPathNode(
     ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
     std::vector<std::unique_ptr<Collection>> const& edgeColls,
     std::vector<std::unique_ptr<Collection>> const& vertexColls,
-    std::vector<TRI_edge_direction_e> const& directions,
-    Variable const* inStartVariable, std::string const& startVertexId,
-    Variable const* inTargetVariable, std::string const& targetVertexId,
-    std::unique_ptr<BaseOptions>& options)
+    std::vector<TRI_edge_direction_e> const& directions, Variable const* inStartVariable,
+    std::string const& startVertexId, Variable const* inTargetVariable,
+    std::string const& targetVertexId, std::unique_ptr<BaseOptions>& options)
     : GraphNode(plan, id, vocbase, edgeColls, vertexColls, directions, options),
       _inStartVariable(inStartVariable),
       _startVertexId(startVertexId),
@@ -127,8 +126,7 @@ ShortestPathNode::ShortestPathNode(
 
 ShortestPathNode::~ShortestPathNode() {}
 
-ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
-                                   arangodb::velocypack::Slice const& base)
+ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : GraphNode(plan, base),
       _inStartVariable(nullptr),
       _inTargetVariable(nullptr),
@@ -136,7 +134,8 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
       _toCondition(nullptr) {
   // Start Vertex
   if (base.hasKey("startInVariable")) {
-    _inStartVariable = Variable::varFromVPack(plan->getAst(), base, "startInVariable");
+    _inStartVariable =
+        Variable::varFromVPack(plan->getAst(), base, "startInVariable");
   } else {
     VPackSlice v = base.get("startVertexId");
     if (!v.isString()) {
@@ -153,7 +152,8 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
 
   // Target Vertex
   if (base.hasKey("targetInVariable")) {
-    _inTargetVariable = Variable::varFromVPack(plan->getAst(), base, "targetInVariable");
+    _inTargetVariable =
+        Variable::varFromVPack(plan->getAst(), base, "targetInVariable");
   } else {
     VPackSlice v = base.get("targetVertexId");
     if (!v.isString()) {
@@ -225,8 +225,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
   _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
 }
 
-void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes,
-                                          bool verbose) const {
+void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   GraphNode::toVelocyPackHelper(nodes, verbose);  // call base class method
   // In variables
   if (usesStartInVariable()) {
@@ -256,21 +255,18 @@ void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes,
   nodes.close();
 }
 
-ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
-                                       bool withDependencies,
+ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan, bool withDependencies,
                                        bool withProperties) const {
   TRI_ASSERT(!_optionsBuilt);
   auto oldOpts = static_cast<ShortestPathOptions*>(options());
-  std::unique_ptr<BaseOptions> tmp =
-      std::make_unique<ShortestPathOptions>(*oldOpts);
+  std::unique_ptr<BaseOptions> tmp = std::make_unique<ShortestPathOptions>(*oldOpts);
   auto c = new ShortestPathNode(plan, _id, _vocbase, _edgeColls, _vertexColls,
                                 _directions, _inStartVariable, _startVertexId,
                                 _inTargetVariable, _targetVertexId, tmp);
   if (usesVertexOutVariable()) {
     auto vertexOutVariable = _vertexOutVariable;
     if (withProperties) {
-      vertexOutVariable =
-          plan->getAst()->variables()->createVariable(vertexOutVariable);
+      vertexOutVariable = plan->getAst()->variables()->createVariable(vertexOutVariable);
     }
     TRI_ASSERT(vertexOutVariable != nullptr);
     c->setVertexOutput(vertexOutVariable);
@@ -279,8 +275,7 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
   if (usesEdgeOutVariable()) {
     auto edgeOutVariable = _edgeOutVariable;
     if (withProperties) {
-      edgeOutVariable =
-          plan->getAst()->variables()->createVariable(edgeOutVariable);
+      edgeOutVariable = plan->getAst()->variables()->createVariable(edgeOutVariable);
     }
     TRI_ASSERT(edgeOutVariable != nullptr);
     c->setEdgeOutput(edgeOutVariable);
@@ -324,17 +319,14 @@ void ShortestPathNode::prepareOptions() {
       case TRI_EDGE_IN:
         opts->addLookupInfo(_plan, _edgeColls[i]->getName(),
                             StaticStrings::ToString, _toCondition->clone(ast));
-        opts->addReverseLookupInfo(_plan, _edgeColls[i]->getName(),
-                                   StaticStrings::FromString,
+        opts->addReverseLookupInfo(_plan, _edgeColls[i]->getName(), StaticStrings::FromString,
                                    _fromCondition->clone(ast));
         break;
       case TRI_EDGE_OUT:
         opts->addLookupInfo(_plan, _edgeColls[i]->getName(),
-                            StaticStrings::FromString,
-                            _fromCondition->clone(ast));
+                            StaticStrings::FromString, _fromCondition->clone(ast));
         opts->addReverseLookupInfo(_plan, _edgeColls[i]->getName(),
-                                   StaticStrings::ToString,
-                                   _toCondition->clone(ast));
+                                   StaticStrings::ToString, _toCondition->clone(ast));
         break;
       case TRI_EDGE_ANY:
         TRI_ASSERT(false);

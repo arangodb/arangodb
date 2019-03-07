@@ -35,10 +35,10 @@ class RestDemoHandler : public arangodb::RestBaseHandler {
   bool isDirect() const override { return true; }
   RestStatus execute() override;
 
-private:
+ private:
   void doSomeMoreWork();
   RestStatus evenMoreWork();
 };
-}
+}  // namespace arangodb
 
 #endif

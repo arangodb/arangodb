@@ -260,12 +260,12 @@ class Node {
 
   void rebuildVecBuf() const;
 
-  std::string _nodeName;  ///< @brief my name
-  Node* _parent;           ///< @brief parent
-  Store* _store;           ///< @brief Store
-  Children _children;      ///< @brief child nodes
-  TimePoint _ttl;          ///< @brief my expiry
-  std::vector<Buffer<uint8_t>> _value; ///< @brief my value
+  std::string _nodeName;                ///< @brief my name
+  Node* _parent;                        ///< @brief parent
+  Store* _store;                        ///< @brief Store
+  Children _children;                   ///< @brief child nodes
+  TimePoint _ttl;                       ///< @brief my expiry
+  std::vector<Buffer<uint8_t>> _value;  ///< @brief my value
   mutable Buffer<uint8_t> _vecBuf;
   mutable bool _vecBufDirty;
   bool _isArray;
@@ -274,7 +274,7 @@ class Node {
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {
   return n.print(o);
 }
-}
-}  // namespaces
+}  // namespace consensus
+}  // namespace arangodb
 
 #endif

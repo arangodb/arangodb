@@ -40,15 +40,15 @@ using namespace arangodb;
 /// @brief walk over the attribute. Also Extract sub-attributes and elements in
 ///        list.
 void MMFilesFulltextIndex::extractWords(std::set<std::string>& words,
-                                        VPackSlice value,
-                                        int level) const {
+                                        VPackSlice value, int level) const {
   if (value.isString()) {
     // extract the string value for the indexed attribute
     std::string text = value.copyString();
 
     // parse the document text
-    arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(
-        words, text, _minWordLength, TRI_FULLTEXT_MAX_WORD_LENGTH, true);
+    arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, text, _minWordLength,
+                                                             TRI_FULLTEXT_MAX_WORD_LENGTH,
+                                                             true);
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed
   } else if (value.isArray() && level == 0) {
@@ -62,20 +62,18 @@ void MMFilesFulltextIndex::extractWords(std::set<std::string>& words,
   }
 }
 
-TRI_voc_rid_t MMFilesFulltextIndex::fromDocumentIdentifierToken(
-    DocumentIdentifierToken const& token) {
+TRI_voc_rid_t MMFilesFulltextIndex::fromDocumentIdentifierToken(DocumentIdentifierToken const& token) {
   auto tkn = static_cast<MMFilesToken const*>(&token);
   return tkn->revisionId();
 }
 
-DocumentIdentifierToken MMFilesFulltextIndex::toDocumentIdentifierToken(
-    TRI_voc_rid_t revisionId) {
+DocumentIdentifierToken MMFilesFulltextIndex::toDocumentIdentifierToken(TRI_voc_rid_t revisionId) {
   return MMFilesToken{revisionId};
 }
 
 MMFilesFulltextIndex::MMFilesFulltextIndex(TRI_idx_iid_t iid,
-                             arangodb::LogicalCollection* collection,
-                             VPackSlice const& info)
+                                           arangodb::LogicalCollection* collection,
+                                           VPackSlice const& info)
     : Index(iid, collection, info),
       _fulltextIndex(nullptr),
       _minWordLength(TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT) {
@@ -98,7 +96,9 @@ MMFilesFulltextIndex::MMFilesFulltextIndex(TRI_idx_iid_t iid,
   _sparse = true;
   if (_fields.size() != 1) {
     // We need exactly 1 attribute
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "fulltext index definition should have exactly one attribute");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "fulltext index definition should have exactly one attribute");
   }
   auto& attribute = _fields[0];
   _attr.reserve(attribute.size());
@@ -125,8 +125,8 @@ size_t MMFilesFulltextIndex::memory() const {
 }
 
 /// @brief return a VelocyPack representation of the index
-void MMFilesFulltextIndex::toVelocyPack(VPackBuilder& builder,
-                                 bool withFigures, bool forPersistence) const {
+void MMFilesFulltextIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
+                                        bool forPersistence) const {
   builder.openObject();
   Index::toVelocyPack(builder, withFigures, forPersistence);
   builder.add("unique", VPackValue(false));
@@ -147,7 +147,7 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   auto value = info.get("id");
   if (!value.isNone()) {
     // We already have an id.
-    if(!value.isString()) {
+    if (!value.isString()) {
       // Invalid ID
       return false;
     }
@@ -173,7 +173,6 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
     return false;
   }
 
-
   value = info.get("fields");
   if (!value.isArray()) {
     return false;
@@ -183,12 +182,12 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   if (n != _fields.size()) {
     return false;
   }
-  if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "unique", false)) {
+  if (_unique !=
+      arangodb::basics::VelocyPackHelper::getBooleanValue(info, "unique", false)) {
     return false;
   }
-  if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "sparse", true)) {
+  if (_sparse !=
+      arangodb::basics::VelocyPackHelper::getBooleanValue(info, "sparse", true)) {
     return false;
   }
 
@@ -203,16 +202,14 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
     }
     arangodb::StringRef in(f);
     TRI_ParseAttributeString(in, translate, true);
-    if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate,
-                                                      false)) {
+    if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate, false)) {
       return false;
     }
   }
   return true;
 }
 
-Result MMFilesFulltextIndex::insert(transaction::Methods*,
-                                    TRI_voc_rid_t revisionId,
+Result MMFilesFulltextIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId,
                                     VPackSlice const& doc, bool isRollback) {
   int res = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
@@ -223,8 +220,7 @@ Result MMFilesFulltextIndex::insert(transaction::Methods*,
   return IndexResult(res, this);
 }
 
-Result MMFilesFulltextIndex::remove(transaction::Methods*,
-                                    TRI_voc_rid_t revisionId,
+Result MMFilesFulltextIndex::remove(transaction::Methods*, TRI_voc_rid_t revisionId,
                                     VPackSlice const& doc, bool isRollback) {
   int res = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);

@@ -23,10 +23,10 @@
 
 #include "RestReplicationHandler.h"
 
-#include "Basics/Result.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/Result.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterMethods.h"
@@ -41,12 +41,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-
 static Result restoreDataParser(char const* ptr, char const* pos,
-                                std::string const& collectionName,
-                                bool useRevision, std::string& key,
-                                VPackBuilder& builder, VPackSlice& doc,
-                                TRI_replication_operation_e& type) {
+                                std::string const& collectionName, bool useRevision,
+                                std::string& key, VPackBuilder& builder,
+                                VPackSlice& doc, TRI_replication_operation_e& type) {
   builder.clear();
 
   try {
@@ -54,16 +52,12 @@ static Result restoreDataParser(char const* ptr, char const* pos,
     parser.parse(ptr, static_cast<size_t>(pos - ptr));
   } catch (VPackException const&) {
     // Could not parse the given string
-    return Result{
-      TRI_ERROR_HTTP_CORRUPTED_JSON,
-      "received invalid JSON data for collection " + collectionName
-    };
+    return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
+                  "received invalid JSON data for collection " + collectionName};
   } catch (std::exception const&) {
     // Could not even build the string
-    return Result{
-      TRI_ERROR_HTTP_CORRUPTED_JSON,
-      "received invalid JSON data for collection " + collectionName
-    };
+    return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
+                  "received invalid JSON data for collection " + collectionName};
   } catch (...) {
     return Result{TRI_ERROR_INTERNAL};
   }
@@ -71,20 +65,16 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   VPackSlice const slice = builder.slice();
 
   if (!slice.isObject()) {
-    return Result{
-      TRI_ERROR_HTTP_CORRUPTED_JSON,
-      "received invalid JSON data for collection " + collectionName
-    };
+    return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
+                  "received invalid JSON data for collection " + collectionName};
   }
 
   type = REPLICATION_INVALID;
 
   for (auto const& pair : VPackObjectIterator(slice, true)) {
     if (!pair.key.isString()) {
-      return Result{
-        TRI_ERROR_HTTP_CORRUPTED_JSON,
-        "received invalid JSON data for collection " + collectionName
-      };
+      return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
+                    "received invalid JSON data for collection " + collectionName};
     }
 
     std::string const attributeName = pair.key.copyString();
@@ -119,24 +109,19 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   }
 
   if (type == REPLICATION_MARKER_DOCUMENT && !doc.isObject()) {
-    return Result{
-      TRI_ERROR_HTTP_BAD_PARAMETER,
-      "got document marker without contents"
-    };
+    return Result{TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "got document marker without contents"};
   }
 
   if (key.empty()) {
-    return Result{
-      TRI_ERROR_HTTP_BAD_PARAMETER,
-      "received invalid JSON data for collection " + collectionName
-    };
+    return Result{TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "received invalid JSON data for collection " + collectionName};
   }
 
   return Result{TRI_ERROR_NO_ERROR};
 }
 
-RestReplicationHandler::RestReplicationHandler(
-    GeneralRequest* request, GeneralResponse* response)
+RestReplicationHandler::RestReplicationHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 RestReplicationHandler::~RestReplicationHandler() {}
@@ -147,8 +132,7 @@ RestReplicationHandler::~RestReplicationHandler() {}
 
 bool RestReplicationHandler::isCoordinatorError() {
   if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                  TRI_ERROR_CLUSTER_UNSUPPORTED,
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "replication API is not supported on a coordinator");
     return true;
   }
@@ -177,7 +161,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
                   "<endpoint> must be a valid endpoint");
     return;
   }
-  
+
   std::string const database =
       VelocyPackHelper::getStringValue(body, "database", _vocbase->name());
   std::string const username =
@@ -201,59 +185,59 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   config._jwt = jwt;
   config._includeSystem =
       VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
-  config._requestTimeout = VelocyPackHelper::getNumericValue<double>(
-      body, "requestTimeout", defaults._requestTimeout);
-  config._connectTimeout = VelocyPackHelper::getNumericValue<double>(
-      body, "connectTimeout", defaults._connectTimeout);
-  config._ignoreErrors = VelocyPackHelper::getNumericValue<uint64_t>(
-      body, "ignoreErrors", defaults._ignoreErrors);
-  config._maxConnectRetries = VelocyPackHelper::getNumericValue<uint64_t>(
-      body, "maxConnectRetries", defaults._maxConnectRetries);
-  config._lockTimeoutRetries = VelocyPackHelper::getNumericValue<uint64_t>(
-      body, "lockTimeoutRetries", defaults._lockTimeoutRetries);
-  config._sslProtocol = VelocyPackHelper::getNumericValue<uint32_t>(
-      body, "sslProtocol", defaults._sslProtocol);
-  config._chunkSize = VelocyPackHelper::getNumericValue<uint64_t>(
-      body, "chunkSize", defaults._chunkSize);
+  config._requestTimeout =
+      VelocyPackHelper::getNumericValue<double>(body, "requestTimeout", defaults._requestTimeout);
+  config._connectTimeout =
+      VelocyPackHelper::getNumericValue<double>(body, "connectTimeout", defaults._connectTimeout);
+  config._ignoreErrors =
+      VelocyPackHelper::getNumericValue<uint64_t>(body, "ignoreErrors", defaults._ignoreErrors);
+  config._maxConnectRetries =
+      VelocyPackHelper::getNumericValue<uint64_t>(body, "maxConnectRetries",
+                                                  defaults._maxConnectRetries);
+  config._lockTimeoutRetries =
+      VelocyPackHelper::getNumericValue<uint64_t>(body, "lockTimeoutRetries",
+                                                  defaults._lockTimeoutRetries);
+  config._sslProtocol =
+      VelocyPackHelper::getNumericValue<uint32_t>(body, "sslProtocol", defaults._sslProtocol);
+  config._chunkSize =
+      VelocyPackHelper::getNumericValue<uint64_t>(body, "chunkSize", defaults._chunkSize);
   config._autoStart = true;
-  config._adaptivePolling = VelocyPackHelper::getBooleanValue(
-      body, "adaptivePolling", defaults._adaptivePolling);
-  config._autoResync = VelocyPackHelper::getBooleanValue(body, "autoResync",
-                                                         defaults._autoResync);
-  config._verbose =
-      VelocyPackHelper::getBooleanValue(body, "verbose", defaults._verbose);
-  config._incremental = VelocyPackHelper::getBooleanValue(
-      body, "incremental", defaults._incremental);
-  config._useCollectionId = VelocyPackHelper::getBooleanValue(
-      body, "useCollectionId", defaults._useCollectionId);
-  config._requireFromPresent = VelocyPackHelper::getBooleanValue(
-      body, "requireFromPresent", defaults._requireFromPresent);
-  config._restrictType = VelocyPackHelper::getStringValue(
-      body, "restrictType", defaults._restrictType);
+  config._adaptivePolling =
+      VelocyPackHelper::getBooleanValue(body, "adaptivePolling", defaults._adaptivePolling);
+  config._autoResync =
+      VelocyPackHelper::getBooleanValue(body, "autoResync", defaults._autoResync);
+  config._verbose = VelocyPackHelper::getBooleanValue(body, "verbose", defaults._verbose);
+  config._incremental =
+      VelocyPackHelper::getBooleanValue(body, "incremental", defaults._incremental);
+  config._useCollectionId =
+      VelocyPackHelper::getBooleanValue(body, "useCollectionId", defaults._useCollectionId);
+  config._requireFromPresent =
+      VelocyPackHelper::getBooleanValue(body, "requireFromPresent", defaults._requireFromPresent);
+  config._restrictType =
+      VelocyPackHelper::getStringValue(body, "restrictType", defaults._restrictType);
   config._connectionRetryWaitTime = static_cast<uint64_t>(
       1000.0 * 1000.0 *
-      VelocyPackHelper::getNumericValue<double>(
-          body, "connectionRetryWaitTime",
-          static_cast<double>(defaults._connectionRetryWaitTime) /
-              (1000.0 * 1000.0)));
+      VelocyPackHelper::getNumericValue<double>(body, "connectionRetryWaitTime",
+                                                static_cast<double>(defaults._connectionRetryWaitTime) /
+                                                    (1000.0 * 1000.0)));
   config._initialSyncMaxWaitTime = static_cast<uint64_t>(
       1000.0 * 1000.0 *
-      VelocyPackHelper::getNumericValue<double>(
-          body, "initialSyncMaxWaitTime",
-          static_cast<double>(defaults._initialSyncMaxWaitTime) /
-              (1000.0 * 1000.0)));
+      VelocyPackHelper::getNumericValue<double>(body, "initialSyncMaxWaitTime",
+                                                static_cast<double>(defaults._initialSyncMaxWaitTime) /
+                                                    (1000.0 * 1000.0)));
   config._idleMinWaitTime = static_cast<uint64_t>(
       1000.0 * 1000.0 *
-      VelocyPackHelper::getNumericValue<double>(
-          body, "idleMinWaitTime",
-          static_cast<double>(defaults._idleMinWaitTime) / (1000.0 * 1000.0)));
+      VelocyPackHelper::getNumericValue<double>(body, "idleMinWaitTime",
+                                                static_cast<double>(defaults._idleMinWaitTime) /
+                                                    (1000.0 * 1000.0)));
   config._idleMaxWaitTime = static_cast<uint64_t>(
       1000.0 * 1000.0 *
-      VelocyPackHelper::getNumericValue<double>(
-          body, "idleMaxWaitTime",
-          static_cast<double>(defaults._idleMaxWaitTime) / (1000.0 * 1000.0)));
-  config._autoResyncRetries = VelocyPackHelper::getNumericValue<uint64_t>(
-      body, "autoResyncRetries", defaults._autoResyncRetries);
+      VelocyPackHelper::getNumericValue<double>(body, "idleMaxWaitTime",
+                                                static_cast<double>(defaults._idleMaxWaitTime) /
+                                                    (1000.0 * 1000.0)));
+  config._autoResyncRetries =
+      VelocyPackHelper::getNumericValue<uint64_t>(body, "autoResyncRetries",
+                                                  defaults._autoResyncRetries);
 
   VPackSlice const restriction = body.get("restrictCollections");
 
@@ -272,8 +256,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 
   if ((restrictType.empty() && !config._restrictCollections.empty()) ||
       (!restrictType.empty() && config._restrictCollections.empty()) ||
-      (!restrictType.empty() && restrictType != "include" &&
-       restrictType != "exclude")) {
+      (!restrictType.empty() && restrictType != "include" && restrictType != "exclude")) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid value for <restrictCollections> or <restrictType>");
     return;
@@ -285,7 +268,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  
+
   grantTemporaryRights();
 
   // start initial synchronization
@@ -316,8 +299,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     return;
   }
 
-  res =
-      TRI_ConfigureReplicationApplier(_vocbase->replicationApplier(), &config);
+  res = TRI_ConfigureReplicationApplier(_vocbase->replicationApplier(), &config);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -331,8 +313,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     return;
   }
 
-  std::shared_ptr<VPackBuilder> result =
-      _vocbase->replicationApplier()->toVelocyPack();
+  std::shared_ptr<VPackBuilder> result = _vocbase->replicationApplier()->toVelocyPack();
   generateResult(rest::ResponseCode::OK, result->slice());
 }
 
@@ -433,8 +414,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   }
 
   bool dummy;
-  resetResponse(
-      static_cast<rest::ResponseCode>(res->result->getHttpReturnCode()));
+  resetResponse(static_cast<rest::ResponseCode>(res->result->getHttpReturnCode()));
 
   _response->setContentType(
       res->result->getHeaderField(StaticStrings::ContentTypeHeader, dummy));
@@ -474,8 +454,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   }
 
   ClusterInfo* ci = ClusterInfo::instance();
-  std::vector<std::shared_ptr<LogicalCollection>> cols =
-      ci->getCollections(dbName);
+  std::vector<std::shared_ptr<LogicalCollection>> cols = ci->getCollections(dbName);
 
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
@@ -485,14 +464,13 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     // We want to check if the collection is usable and all followers
     // are in sync:
     auto shardMap = c->shardIds();
-      // shardMap is an unordered_map from ShardId (string) to a vector of
-      // servers (strings), wrapped in a shared_ptr
-    auto cic = ci->getCollectionCurrent(dbName,
-                                        basics::StringUtils::itoa(c->cid()));
+    // shardMap is an unordered_map from ShardId (string) to a vector of
+    // servers (strings), wrapped in a shared_ptr
+    auto cic = ci->getCollectionCurrent(dbName, basics::StringUtils::itoa(c->cid()));
     // Check all shards:
     bool isReady = true;
     for (auto const& p : *shardMap) {
-      auto currentServerList = cic->servers(p.first  /* shardId */);
+      auto currentServerList = cic->servers(p.first /* shardId */);
       if (!ClusterHelpers::compareServerLists(p.second, currentServerList)) {
         isReady = false;
       }
@@ -578,7 +556,8 @@ void RestReplicationHandler::handleCommandRestoreData() {
       generateError(GeneralResponse::responseCode(res.errorNumber()), res.errorNumber());
     } else {
       generateError(GeneralResponse::responseCode(res.errorNumber()), res.errorNumber(),
-                    std::string(TRI_errno_string(res.errorNumber())) + ": " + res.errorMessage());
+                    std::string(TRI_errno_string(res.errorNumber())) + ": " +
+                        res.errorMessage());
     }
   } else {
     VPackBuilder result;
@@ -589,31 +568,28 @@ void RestReplicationHandler::handleCommandRestoreData() {
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restores the data of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-Result RestReplicationHandler::processRestoreData(
-    std::string const& colName, bool useRevision) {
-
+Result RestReplicationHandler::processRestoreData(std::string const& colName, bool useRevision) {
   grantTemporaryRights();
 
   if (colName == "_users") {
     // We need to handle the _users in a special way
     return processRestoreUsersBatch(colName, useRevision);
   }
-  SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(_vocbase), colName,
-      AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase),
+                                  colName, AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
   Result res = trx.begin();
 
   if (!res.ok()) {
-    res.reset(res.errorNumber(), std::string("unable to start transaction (")
-        + std::string(__FILE__) + std::string(":") + std::to_string(__LINE__)
-        + std::string("): ") + res.errorMessage());
+    res.reset(res.errorNumber(), std::string("unable to start transaction (") +
+                                     std::string(__FILE__) + std::string(":") +
+                                     std::to_string(__LINE__) +
+                                     std::string("): ") + res.errorMessage());
     return res;
   }
 
@@ -623,12 +599,9 @@ Result RestReplicationHandler::processRestoreData(
   return res;
 }
 
-Result RestReplicationHandler::parseBatch(
-    std::string const& collectionName,
-    bool useRevision,
-    std::unordered_map<std::string, VPackValueLength>& latest,
-    VPackBuilder& allMarkers) {
-
+Result RestReplicationHandler::parseBatch(std::string const& collectionName, bool useRevision,
+                                          std::unordered_map<std::string, VPackValueLength>& latest,
+                                          VPackBuilder& allMarkers) {
   VPackBuilder builder;
   allMarkers.clear();
 
@@ -665,8 +638,8 @@ Result RestReplicationHandler::parseBatch(
         VPackSlice doc;
         TRI_replication_operation_e type = REPLICATION_INVALID;
 
-        Result res = restoreDataParser(ptr, pos, collectionName,
-                                       useRevision, key, builder, doc, type);
+        Result res = restoreDataParser(ptr, pos, collectionName, useRevision,
+                                       key, builder, doc, type);
         if (res.fail()) {
           return res;
         }
@@ -696,9 +669,8 @@ Result RestReplicationHandler::parseBatch(
 /// however it is not sharded by key and we need to replace by name instead of by key
 ////////////////////////////////////////////////////////////////////////////////
 
-Result RestReplicationHandler::processRestoreUsersBatch(
-    std::string const& collectionName, 
-    bool useRevision) {
+Result RestReplicationHandler::processRestoreUsersBatch(std::string const& collectionName,
+                                                        bool useRevision) {
   std::unordered_map<std::string, VPackValueLength> latest;
   VPackBuilder allMarkers;
 
@@ -706,10 +678,13 @@ Result RestReplicationHandler::processRestoreUsersBatch(
 
   VPackSlice allMarkersSlice = allMarkers.slice();
 
-  std::string aql("FOR u IN @restored UPSERT {name: u.name} INSERT u REPLACE u INTO @@collection OPTIONS {ignoreErrors: true, silent: true, waitForSync: false, isRestore: true}");
+  std::string aql(
+      "FOR u IN @restored UPSERT {name: u.name} INSERT u REPLACE u INTO "
+      "@@collection OPTIONS {ignoreErrors: true, silent: true, waitForSync: "
+      "false, isRestore: true}");
 
   auto bindVars = std::make_shared<VPackBuilder>();
-  bindVars->openObject(); 
+  bindVars->openObject();
   bindVars->add("@collection", VPackValue(collectionName));
   bindVars->add(VPackValue("restored"));
   bindVars->openArray();
@@ -733,7 +708,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(
       // In the _users case we silently remove the _key value.
       bindVars->openObject();
       for (auto const& it : VPackObjectIterator(doc)) {
-        if (StringRef(it.key) != StaticStrings::KeyString && 
+        if (StringRef(it.key) != StaticStrings::KeyString &&
             StringRef(it.key) != StaticStrings::IdString) {
           bindVars->add(it.key);
           bindVars->add(it.value);
@@ -743,8 +718,8 @@ Result RestReplicationHandler::processRestoreUsersBatch(
     }
   }
 
-  bindVars->close(); // restored
-  bindVars->close(); // bindVars
+  bindVars->close();  // restored
+  bindVars->close();  // bindVars
 
   arangodb::aql::Query query(false, _vocbase, arangodb::aql::QueryString(aql),
                              bindVars, nullptr, arangodb::aql::PART_MAIN);
@@ -760,10 +735,9 @@ Result RestReplicationHandler::processRestoreUsersBatch(
 /// @brief restores the data of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-Result RestReplicationHandler::processRestoreDataBatch(
-    transaction::Methods& trx, std::string const& collectionName,
-    bool useRevision) {
-
+Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx,
+                                                       std::string const& collectionName,
+                                                       bool useRevision) {
   VPackBuilder builder;
 
   std::unordered_map<std::string, VPackValueLength> latest;
@@ -794,14 +768,12 @@ Result RestReplicationHandler::processRestoreDataBatch(
       if (type == REPLICATION_MARKER_REMOVE) {
         oldBuilder.add(VPackValue(p.first));  // Add _key
       } else if (type != REPLICATION_MARKER_DOCUMENT) {
-        return Result{
-          TRI_ERROR_REPLICATION_UNEXPECTED_MARKER,
-          "unexpected marker type " + StringUtils::itoa(type)
-        };
+        return Result{TRI_ERROR_REPLICATION_UNEXPECTED_MARKER,
+                      "unexpected marker type " + StringUtils::itoa(type)};
       }
     }
   }
-  
+
   // Note that we ignore individual errors here, as long as the main
   // operation did not fail. In particular, we intentionally ignore
   // individual "DOCUMENT NOT FOUND" errors, because they can happen!
@@ -811,8 +783,7 @@ Result RestReplicationHandler::processRestoreDataBatch(
     options.ignoreRevs = true;
     options.isRestore = true;
     options.waitForSync = false;
-    OperationResult opRes =
-        trx.remove(collectionName, oldBuilder.slice(), options);
+    OperationResult opRes = trx.remove(collectionName, oldBuilder.slice(), options);
     if (!opRes.successful()) {
       return opRes.code;
     }
@@ -825,8 +796,7 @@ Result RestReplicationHandler::processRestoreDataBatch(
   // Now try to insert all keys for which the last marker was a document
   // marker, note that these could still be replace markers!
   builder.clear();
-  if (ServerState::instance()->isCoordinator() &&
-     collectionName == "_users") {
+  if (ServerState::instance()->isCoordinator() && collectionName == "_users") {
     // Special-case for _users, we need to remove the _key and _id from the marker
     VPackArrayBuilder guard(&builder);
 
@@ -848,7 +818,7 @@ Result RestReplicationHandler::processRestoreDataBatch(
         // In the _users case we silently remove the _key value.
         builder.openObject();
         for (auto const& it : VPackObjectIterator(doc)) {
-          if (StringRef(it.key) != StaticStrings::KeyString && 
+          if (StringRef(it.key) != StaticStrings::KeyString &&
               StringRef(it.key) != StaticStrings::IdString) {
             builder.add(it.key);
             builder.add(it.value);
@@ -950,10 +920,10 @@ Result RestReplicationHandler::processRestoreDataBatch(
 }
 
 void RestReplicationHandler::grantTemporaryRights() {
-  AuthenticationFeature* auth =
-      FeatureCacheFeature::instance()->authenticationFeature();
+  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
   if (auth->isActive() && ExecContext::CURRENT != nullptr) {
-    AuthLevel level = auth->canUseDatabase(ExecContext::CURRENT->user(), _vocbase->name());
+    AuthLevel level =
+        auth->canUseDatabase(ExecContext::CURRENT->user(), _vocbase->name());
     if (level == AuthLevel::RW) {
       // If you have administrative access on this database,
       // we grant you everything for restore.

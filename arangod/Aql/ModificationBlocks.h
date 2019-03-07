@@ -24,10 +24,10 @@
 #ifndef ARANGOD_AQL_MODIFICATION_BLOCKS_H
 #define ARANGOD_AQL_MODIFICATION_BLOCKS_H 1
 
-#include "Basics/Common.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ModificationNodes.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
@@ -55,8 +55,7 @@ class ModificationBlock : public ExecutionBlock {
   void handleResult(int, bool, std::string const* errorMessage = nullptr);
 
   void handleBabyResult(std::unordered_map<int, size_t> const&, size_t,
-                        bool ignoreAllErrors,
-                        bool ignoreDocumentNotFound = false);
+                        bool ignoreAllErrors, bool ignoreDocumentNotFound = false);
 
  protected:
   /// @brief output register ($OLD)
@@ -125,7 +124,7 @@ class UpsertBlock : public ModificationBlock {
   AqlItemBlock* work(std::vector<AqlItemBlock*>&) override final;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

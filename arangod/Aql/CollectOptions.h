@@ -62,7 +62,7 @@ struct CollectOptions {
   CollectMethod method;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

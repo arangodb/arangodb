@@ -40,12 +40,11 @@ std::vector<std::tuple<int, std::string, LogAppenderFile*>> LogAppenderFile::_fd
 LogAppenderStream::LogAppenderStream(std::string const& filename,
                                      std::string const& filter, int fd)
     : LogAppender(filter), _bufferSize(0), _fd(fd), _isTty(false) {}
-  
-bool LogAppenderStream::logMessage(LogLevel level, std::string const& message,
-                                   size_t offset) {
+
+bool LogAppenderStream::logMessage(LogLevel level, std::string const& message, size_t offset) {
   // check max. required output length
   size_t const neededBufferSize = TRI_MaxLengthEscapeControlsCString(message.size());
-  
+
   // check if we can re-use our already existing buffer
   if (neededBufferSize > _bufferSize) {
     _buffer.reset();
@@ -63,12 +62,13 @@ bool LogAppenderStream::logMessage(LogLevel level, std::string const& message,
       return false;
     }
   }
-  
+
   TRI_ASSERT(_buffer != nullptr);
-  
+
   size_t escapedLength;
   // this is guaranteed to succeed given that we already have a buffer
-  TRI_EscapeControlsCString(message.c_str(), message.size(), _buffer.get(), &escapedLength, true);
+  TRI_EscapeControlsCString(message.c_str(), message.size(), _buffer.get(),
+                            &escapedLength, true);
   TRI_ASSERT(escapedLength <= neededBufferSize);
 
   this->writeLogMessage(level, _buffer.get(), escapedLength);
@@ -84,7 +84,6 @@ bool LogAppenderStream::logMessage(LogLevel level, std::string const& message,
 
 LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const& filter)
     : LogAppenderStream(filename, filter, -1), _filename(filename) {
-
   if (_filename != "+" && _filename != "-") {
     // logging to an actual file
     size_t pos = 0;
@@ -100,13 +99,14 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const&
     if (_fd == -1) {
       // no existing appender found yet
       int fd = TRI_TRACKED_CREATE_FILE(_filename.c_str(),
-                          O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC,
-                          S_IRUSR | S_IWUSR | S_IRGRP);
+                                       O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC,
+                                       S_IRUSR | S_IWUSR | S_IRGRP);
 
       if (fd < 0) {
         TRI_ERRORBUF;
         TRI_SYSTEM_ERROR();
-        std::cerr << "cannot write to file '" << _filename << "': " << TRI_GET_ERRORBUF << std::endl;
+        std::cerr << "cannot write to file '" << _filename
+                  << "': " << TRI_GET_ERRORBUF << std::endl;
 
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CANNOT_WRITE_FILE);
       }
@@ -115,7 +115,7 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const&
       _fd = fd;
     }
   }
-  
+
   _isTty = (isatty(_fd) == 1);
 }
 
@@ -182,8 +182,8 @@ void LogAppenderFile::reopenAll() {
 
     // open new log file
     int fd = TRI_TRACKED_CREATE_FILE(filename.c_str(),
-                        O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC,
-                        S_IRUSR | S_IWUSR | S_IRGRP);
+                                     O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC,
+                                     S_IRUSR | S_IWUSR | S_IRGRP);
 
     if (fd < 0) {
       FileUtils::rename(backup, filename);
@@ -218,8 +218,9 @@ void LogAppenderFile::closeAll() {
     }
   }
 }
-  
-LogAppenderStdStream::LogAppenderStdStream(std::string const& filename, std::string const& filter, int fd)
+
+LogAppenderStdStream::LogAppenderStdStream(std::string const& filename,
+                                           std::string const& filter, int fd)
     : LogAppenderStream(filename, filter, fd) {
   _isTty = (isatty(_fd) == 1);
 }
@@ -231,12 +232,14 @@ LogAppenderStdStream::~LogAppenderStdStream() {
     fflush(fp);
   }
 }
-  
+
 void LogAppenderStdStream::writeLogMessage(LogLevel level, char const* buffer, size_t len) {
   writeLogMessage(_fd, _isTty, level, buffer, len, false);
 }
 
-void LogAppenderStdStream::writeLogMessage(int fd, bool isTty, LogLevel level, char const* buffer, size_t len, bool appendNewline) {
+void LogAppenderStdStream::writeLogMessage(int fd, bool isTty, LogLevel level,
+                                           char const* buffer, size_t len,
+                                           bool appendNewline) {
   if (!allowStdLogging()) {
     return;
   }
@@ -247,11 +250,14 @@ void LogAppenderStdStream::writeLogMessage(int fd, bool isTty, LogLevel level, c
   if (isTty) {
     // joyful color output
     if (level == LogLevel::FATAL || level == LogLevel::ERR) {
-      fprintf(fp, "%s%s%s%s", ShellColorsFeature::SHELL_COLOR_RED, buffer, ShellColorsFeature::SHELL_COLOR_RESET, nl);
+      fprintf(fp, "%s%s%s%s", ShellColorsFeature::SHELL_COLOR_RED, buffer,
+              ShellColorsFeature::SHELL_COLOR_RESET, nl);
     } else if (level == LogLevel::WARN) {
-      fprintf(fp, "%s%s%s%s", ShellColorsFeature::SHELL_COLOR_YELLOW, buffer, ShellColorsFeature::SHELL_COLOR_RESET, nl);
+      fprintf(fp, "%s%s%s%s", ShellColorsFeature::SHELL_COLOR_YELLOW, buffer,
+              ShellColorsFeature::SHELL_COLOR_RESET, nl);
     } else {
-      fprintf(fp, "%s%s%s%s", ShellColorsFeature::SHELL_COLOR_RESET, buffer, ShellColorsFeature::SHELL_COLOR_RESET, nl);
+      fprintf(fp, "%s%s%s%s", ShellColorsFeature::SHELL_COLOR_RESET, buffer,
+              ShellColorsFeature::SHELL_COLOR_RESET, nl);
     }
   } else {
     // non-colored output

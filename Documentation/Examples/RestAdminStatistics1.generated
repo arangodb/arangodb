@@ -122,7 +122,7 @@ x-content-type-options: nosniff
     <span class="hljs-string">"uptime"</span> : <span class="hljs-number">7.339090347290039</span>, 
     <span class="hljs-string">"physicalMemory"</span> : <span class="hljs-number">67513802752</span>, 
     <span class="hljs-string">"v8Context"</span> : { 
-      <span class="hljs-string">"available"</span> : <span class="hljs-number">4</span>, 
+      <span class="hljs-string">"available"</span> : <span class="hljs-number">5</span>, 
       <span class="hljs-string">"busy"</span> : <span class="hljs-number">4</span>, 
       <span class="hljs-string">"dirty"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"free"</span> : <span class="hljs-number">0</span>, 

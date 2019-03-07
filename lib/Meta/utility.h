@@ -35,6 +35,6 @@ T exchange(T& obj, U&& new_value) {
   obj = std::forward<U>(new_value);
   return old_value;
 }
-}
-}
+}  // namespace meta
+}  // namespace arangodb
 #endif

@@ -35,7 +35,7 @@ class RestBatchHandler;
 namespace rest {
 class HttpCommTask;
 class GeneralCommTask;
-}
+}  // namespace rest
 
 class HttpResponse : public GeneralResponse {
   friend class rest::HttpCommTask;
@@ -74,8 +74,7 @@ class HttpResponse : public GeneralResponse {
  public:
   void reset(ResponseCode code) override final;
 
-  void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals,
-                         bool& skipBody) override {
+  void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals, bool& skipBody) override {
     if (_contentType == ContentType::JSON) {
       skipBody = true;
     }
@@ -102,6 +101,6 @@ class HttpResponse : public GeneralResponse {
   basics::StringBuffer _body;
   size_t _bodySize;
 };
-}
+}  // namespace arangodb
 
 #endif

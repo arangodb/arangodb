@@ -29,7 +29,7 @@
 using namespace arangodb::aql;
 
 /// @brief constructor
-CollectOptions::CollectOptions(VPackSlice const& slice) 
+CollectOptions::CollectOptions(VPackSlice const& slice)
     : method(COLLECT_METHOD_UNDEFINED) {
   VPackSlice v = slice.get("collectOptions");
   if (v.isObject()) {
@@ -56,8 +56,7 @@ void CollectOptions::toVelocyPack(VPackBuilder& builder) const {
 }
 
 /// @brief get the aggregation method from a string
-CollectOptions::CollectMethod CollectOptions::methodFromString(
-    std::string const& method) {
+CollectOptions::CollectMethod CollectOptions::methodFromString(std::string const& method) {
   if (method == "hash") {
     return CollectMethod::COLLECT_METHOD_HASH;
   }
@@ -69,8 +68,7 @@ CollectOptions::CollectMethod CollectOptions::methodFromString(
 }
 
 /// @brief stringify the aggregation method
-std::string CollectOptions::methodToString(
-    CollectOptions::CollectMethod method) {
+std::string CollectOptions::methodToString(CollectOptions::CollectMethod method) {
   if (method == CollectMethod::COLLECT_METHOD_HASH) {
     return std::string("hash");
   }

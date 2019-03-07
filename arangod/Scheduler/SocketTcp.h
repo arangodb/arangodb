@@ -31,8 +31,7 @@
 namespace arangodb {
 class SocketTcp final : public Socket {
  public:
-  SocketTcp(boost::asio::io_service& ioService,
-            boost::asio::ssl::context&& context, bool encrypted)
+  SocketTcp(boost::asio::io_service& ioService, boost::asio::ssl::context&& context, bool encrypted)
       : Socket(ioService, std::move(context), encrypted),
         _sslSocket(ioService, _context),
         _socket(_sslSocket.next_layer()),
@@ -40,7 +39,7 @@ class SocketTcp final : public Socket {
 
   SocketTcp(SocketTcp const& that) = delete;
   SocketTcp(SocketTcp&& that) = delete;
-  
+
   void setNonBlocking(bool v) override {
     MUTEX_LOCKER(guard, _lock);
     _socket.non_blocking(v);
@@ -57,8 +56,7 @@ class SocketTcp final : public Socket {
     return socketcommon::doSslHandshake(_sslSocket);
   }
 
-  size_t write(basics::StringBuffer* buffer,
-               boost::system::error_code& ec) override;
+  size_t write(basics::StringBuffer* buffer, boost::system::error_code& ec) override;
 
   void asyncWrite(boost::asio::mutable_buffers_1 const& buffer,
                   AsyncHandler const& handler) override;
@@ -70,9 +68,9 @@ class SocketTcp final : public Socket {
                  AsyncHandler const& handler) override;
 
   // mop: these functions actually only access the underlying socket. The
-  // _sslSocket is actually just an additional layer around the socket. These low level
-  // functions access the _socket only and it is ok that they are not implemented for
-  // _sslSocket in the children
+  // _sslSocket is actually just an additional layer around the socket. These
+  // low level functions access the _socket only and it is ok that they are not
+  // implemented for _sslSocket in the children
 
   void shutdown(boost::system::error_code& ec, bool closeSend, bool closeReceive) override;
   void close(boost::system::error_code& ec) override;
@@ -90,6 +88,6 @@ class SocketTcp final : public Socket {
 
   boost::asio::ip::tcp::acceptor::endpoint_type _peerEndpoint;
 };
-}
+}  // namespace arangodb
 
 #endif

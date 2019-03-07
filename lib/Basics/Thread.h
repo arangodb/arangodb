@@ -34,7 +34,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 }
-}
+}  // namespace arangodb
 
 namespace arangodb {
 namespace basics {
@@ -105,8 +105,7 @@ class Thread {
 
   // returns the current work description or nullptr
   static WorkDescription* currentWorkDescription() {
-    return CURRENT_THREAD == nullptr ? nullptr
-                                     : CURRENT_THREAD->workDescription();
+    return CURRENT_THREAD == nullptr ? nullptr : CURRENT_THREAD->workDescription();
   }
 
   // returns the current work context or nullptr
@@ -280,6 +279,6 @@ class Thread {
 
   std::atomic<WorkDescription*> _workDescription;
 };
-}
+}  // namespace arangodb
 
 #endif

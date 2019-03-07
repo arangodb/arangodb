@@ -115,6 +115,10 @@ struct Options {
   // values as a security precaution)
   bool disallowExternals = false;
 
+  // disallow using type Custom (to prevent injection of arbitrary opaque
+  // values as a security precaution)
+  bool disallowCustom = false;
+
   // default options with the above settings
   static Options Defaults;
 };

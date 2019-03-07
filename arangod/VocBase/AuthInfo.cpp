@@ -99,8 +99,7 @@ bool AuthInfo::parseUsers(VPackSlice const& slice) {
     if (s.hasKey("source") && s.get("source").isString() &&
         s.get("source").copyString() == "LDAP") {
       LOG_TOPIC(TRACE, arangodb::Logger::CONFIG)
-          << "LDAP: skip user in collection _users: "
-          << s.get("user").copyString();
+          << "LDAP: skip user in collection _users: " << s.get("user").copyString();
       continue;
     }
     AuthUserEntry auth = AuthUserEntry::fromDocument(s);
@@ -114,14 +113,13 @@ bool AuthInfo::parseUsers(VPackSlice const& slice) {
   return true;
 }
 
-static std::shared_ptr<VPackBuilder> QueryAllUsers(
-    aql::QueryRegistry* queryRegistry) {
+static std::shared_ptr<VPackBuilder> QueryAllUsers(aql::QueryRegistry* queryRegistry) {
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
   if (vocbase == nullptr) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
-  
+
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContext* oldExe = ExecContext::CURRENT;
@@ -130,9 +128,8 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
 
   std::string const queryStr("FOR user IN _users RETURN user");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
-  arangodb::aql::Query query(false, vocbase,
-                             arangodb::aql::QueryString(queryStr), emptyBuilder,
-                             emptyBuilder, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryStr),
+                             emptyBuilder, emptyBuilder, arangodb::aql::PART_MAIN);
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
       << "starting to load authentication and authorization information";
@@ -145,7 +142,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code,
                                    "Error executing user query");
-    //return std::shared_ptr<VPackBuilder>();
+    // return std::shared_ptr<VPackBuilder>();
   }
 
   VPackSlice usersSlice = queryResult.result->slice();
@@ -160,8 +157,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
   return queryResult.result;
 }
 
-static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
-                              std::string const& user) {
+static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry, std::string const& user) {
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
   if (vocbase == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "_system db is unknown");
@@ -172,7 +168,7 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
   ExecContext* oldExe = ExecContext::CURRENT;
   ExecContext::CURRENT = nullptr;
   TRI_DEFER(ExecContext::CURRENT = oldExe);
-  
+
   std::string const queryStr("FOR u IN _users FILTER u.user == @name RETURN u");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
 
@@ -180,8 +176,7 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
   binds.openObject();
   binds.add("name", VPackValue(user));
   binds.close();  // obj
-  arangodb::aql::Query query(false, vocbase,
-                             arangodb::aql::QueryString(queryStr),
+  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryStr),
                              std::make_shared<VPackBuilder>(binds),
                              emptyBuilder, arangodb::aql::PART_MAIN);
 
@@ -228,8 +223,7 @@ void AuthInfo::loadFromDB() {
   TRI_ASSERT(_queryRegistry != nullptr);
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
   auto role = ServerState::instance()->getRole();
-  if (role != ServerState::ROLE_SINGLE &&
-      role != ServerState::ROLE_COORDINATOR) {
+  if (role != ServerState::ROLE_SINGLE && role != ServerState::ROLE_COORDINATOR) {
     _outdated = false;
     return;
   }
@@ -258,7 +252,7 @@ void AuthInfo::loadFromDB() {
     _outdated = _authInfo.empty() == true;
   } catch (...) {
     LOG_TOPIC(WARN, Logger::AUTHENTICATION)
-      << "Exception when loading users from db";
+        << "Exception when loading users from db";
     _outdated = true;
   }
 }
@@ -266,7 +260,7 @@ void AuthInfo::loadFromDB() {
 // only call from the boostrap feature, must be sure to be the only one
 void AuthInfo::createRootUser() {
   loadFromDB();
-  
+
   MUTEX_LOCKER(locker, _loadFromDBLock);
   WRITE_LOCKER(writeLocker, _authInfoLock);
   auto it = _authInfo.find("root");
@@ -275,18 +269,19 @@ void AuthInfo::createRootUser() {
     return;
   }
   TRI_ASSERT(_authInfo.empty());
-  
+
   try {
     // Attention:
     // the root user needs to have a specific rights grant
     // to the "_system" database, otherwise things break
     auto initDatabaseFeature =
-        application_features::ApplicationServer::getFeature<
-            InitDatabaseFeature>("InitDatabase");
+        application_features::ApplicationServer::getFeature<InitDatabaseFeature>(
+            "InitDatabase");
     TRI_ASSERT(initDatabaseFeature != nullptr);
 
-    AuthUserEntry entry = AuthUserEntry::newUser(
-        "root", initDatabaseFeature->defaultPassword(), AuthSource::COLLECTION);
+    AuthUserEntry entry =
+        AuthUserEntry::newUser("root", initDatabaseFeature->defaultPassword(),
+                               AuthSource::COLLECTION);
     entry.setActive(true);
     entry.grantDatabase(StaticStrings::SystemDatabase, AuthLevel::RW);
     entry.grantDatabase("*", AuthLevel::RW);
@@ -308,7 +303,7 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
-  
+
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContext* oldExe = ExecContext::CURRENT;
@@ -316,8 +311,7 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
   TRI_DEFER(ExecContext::CURRENT = oldExe);
 
   auto ctx = transaction::StandaloneContext::Create(vocbase);
-  SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
-                                  AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS, AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
@@ -347,8 +341,7 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
       if (!_authInfo.emplace(entry.username(), std::move(created)).second) {
         // insertion should always succeed, but...
         _authInfo.erase(entry.username());
-        _authInfo.emplace(entry.username(),
-                          AuthUserEntry::fromDocument(userDoc));
+        _authInfo.emplace(entry.username(), AuthUserEntry::fromDocument(userDoc));
       }
     }
   }
@@ -385,13 +378,11 @@ void AuthInfo::reloadAllUsers() {
   // tell other coordinators to reload as well
   AgencyComm agency;
 
-  AgencyWriteTransaction incrementVersion({
-    AgencyOperation("Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP)
-  });
+  AgencyWriteTransaction incrementVersion(
+      {AgencyOperation("Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP)});
 
   int maxTries = 10;
   while (maxTries-- > 0) {
-
     AgencyCommResult result = agency.sendTransactionWithFailover(incrementVersion);
     if (result.successful()) {
       return;
@@ -416,8 +407,7 @@ Result AuthInfo::storeUser(bool replace, std::string const& user,
     return TRI_ERROR_USER_DUPLICATE;
   }
 
-  AuthUserEntry entry =
-      AuthUserEntry::newUser(user, pass, AuthSource::COLLECTION);
+  AuthUserEntry entry = AuthUserEntry::newUser(user, pass, AuthSource::COLLECTION);
   entry.setActive(active);
   if (replace) {
     TRI_ASSERT(!(it->second.key().empty()));
@@ -437,7 +427,7 @@ static Result UpdateUser(VPackSlice const& user) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
-  
+
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContext* oldExe = ExecContext::CURRENT;
@@ -445,21 +435,18 @@ static Result UpdateUser(VPackSlice const& user) {
   TRI_DEFER(ExecContext::CURRENT = oldExe);
 
   auto ctx = transaction::StandaloneContext::Create(vocbase);
-  SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
-                                  AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS, AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
   if (res.ok()) {
-    OperationResult result =
-        trx.update(TRI_COL_NAME_USERS, user, OperationOptions());
+    OperationResult result = trx.update(TRI_COL_NAME_USERS, user, OperationOptions());
     res = trx.finish(result.code);
   }
   return res;
 }
 
-Result AuthInfo::enumerateUsers(
-    std::function<void(AuthUserEntry&)> const& func) {
+Result AuthInfo::enumerateUsers(std::function<void(AuthUserEntry&)> const& func) {
   loadFromDB();
   // we require an consisten view on the user object
   {
@@ -509,9 +496,8 @@ Result AuthInfo::updateUser(std::string const& user,
   return r;
 }
 
-Result AuthInfo::accessUser(
-    std::string const& user,
-    std::function<void(AuthUserEntry const&)> const& func) {
+Result AuthInfo::accessUser(std::string const& user,
+                            std::function<void(AuthUserEntry const&)> const& func) {
   loadFromDB();
   READ_LOCKER(guard, _authInfoLock);
   auto it = _authInfo.find(user);
@@ -539,7 +525,7 @@ static Result RemoveUserInternal(AuthUserEntry const& entry) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
-  
+
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContext* oldExe = ExecContext::CURRENT;
@@ -547,8 +533,7 @@ static Result RemoveUserInternal(AuthUserEntry const& entry) {
   TRI_DEFER(ExecContext::CURRENT = oldExe);
 
   auto ctx = transaction::StandaloneContext::Create(vocbase);
-  SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
-                                  AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS, AccessMode::Type::WRITE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -623,8 +608,7 @@ VPackBuilder AuthInfo::getConfigData(std::string const& username) {
   return bb.isEmpty() ? bb : VPackBuilder(bb.slice().get("configData"));
 }
 
-Result AuthInfo::setConfigData(std::string const& user,
-                               velocypack::Slice const& data) {
+Result AuthInfo::setConfigData(std::string const& user, velocypack::Slice const& data) {
   loadFromDB();
 
   READ_LOCKER(guard, _authInfoLock);
@@ -649,8 +633,7 @@ VPackBuilder AuthInfo::getUserData(std::string const& username) {
   return bb.isEmpty() ? bb : VPackBuilder(bb.slice().get("userData"));
 }
 
-Result AuthInfo::setUserData(std::string const& user,
-                             velocypack::Slice const& data) {
+Result AuthInfo::setUserData(std::string const& user, velocypack::Slice const& data) {
   loadFromDB();
 
   READ_LOCKER(guard, _authInfoLock);
@@ -669,8 +652,7 @@ Result AuthInfo::setUserData(std::string const& user,
   return UpdateUser(partial.slice());
 }
 
-AuthResult AuthInfo::checkPassword(std::string const& username,
-                                   std::string const& password) {
+AuthResult AuthInfo::checkPassword(std::string const& username, std::string const& password) {
   loadFromDB();
 
   READ_LOCKER(readLocker, _authInfoLock);
@@ -687,8 +669,7 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
 
     // user authed, add to _authInfo and _users
     if (authResult.source() == AuthSource::LDAP) {
-      AuthUserEntry entry =
-          AuthUserEntry::newUser(username, password, AuthSource::LDAP);
+      AuthUserEntry entry = AuthUserEntry::newUser(username, password, AuthSource::LDAP);
 
       // upgrade read-lock to a write-lock
       readLocker.unlock();
@@ -722,8 +703,7 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
 }
 
 // public
-AuthLevel AuthInfo::canUseDatabase(std::string const& username,
-                                   std::string const& dbname) {
+AuthLevel AuthInfo::canUseDatabase(std::string const& username, std::string const& dbname) {
   loadFromDB();
   READ_LOCKER(guard, _authInfoLock);
   auto it = _authInfo.find(username);
@@ -742,10 +722,8 @@ AuthLevel AuthInfo::canUseDatabaseNoLock(std::string const& username,
   return AuthLevel::NONE;
 }
 
-
 AuthLevel AuthInfo::canUseCollection(std::string const& username,
-                                     std::string const& dbname,
-                                     std::string const& coll) {
+                                     std::string const& dbname, std::string const& coll) {
   if (coll.empty()) {
     // no collection name given
     return AuthLevel::NONE;
@@ -759,7 +737,7 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
       // no collection name given
       return AuthLevel::NONE;
     }
- 
+
     loadFromDB();
     READ_LOCKER(guard, _authInfoLock);
     return canUseCollectionInternal(username, dbname, tmpCol);
@@ -787,7 +765,7 @@ AuthLevel AuthInfo::canUseCollectionNoLock(std::string const& username,
       // no collection name given
       return AuthLevel::NONE;
     }
- 
+
     return canUseCollectionInternal(username, dbname, tmpCol);
   }
 
@@ -795,14 +773,13 @@ AuthLevel AuthInfo::canUseCollectionNoLock(std::string const& username,
   return canUseCollectionInternal(username, dbname, coll);
 }
 
-
 // internal method called by canUseCollection
 // asserts that collection name is non-empty and already translated
 // from collection id to name
 AuthLevel AuthInfo::canUseCollectionInternal(std::string const& username,
                                              std::string const& dbname,
                                              std::string const& coll) {
- // we must have got a non-empty collection name when we get here
+  // we must have got a non-empty collection name when we get here
   TRI_ASSERT(coll[0] < '0' || coll[0] > '9');
 
   auto it = _authInfo.find(username);
@@ -832,8 +809,7 @@ AuthResult AuthInfo::checkAuthentication(AuthenticationMethod authType,
 // private
 AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
   auto role = ServerState::instance()->getRole();
-  if (role != ServerState::ROLE_SINGLE &&
-      role != ServerState::ROLE_COORDINATOR) {
+  if (role != ServerState::ROLE_SINGLE && role != ServerState::ROLE_COORDINATOR) {
     return AuthResult();
   }
 
@@ -888,8 +864,7 @@ AuthResult AuthInfo::checkAuthenticationJWT(std::string const& jwt) {
     AuthJwtResult result = _authJwtCache.get(jwt);
 
     if (result._expires) {
-      std::chrono::system_clock::time_point now =
-          std::chrono::system_clock::now();
+      std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
 
       if (now >= result._expireTime) {
         try {
@@ -907,8 +882,8 @@ AuthResult AuthInfo::checkAuthenticationJWT(std::string const& jwt) {
   std::vector<std::string> const parts = StringUtils::split(jwt, '.');
 
   if (parts.size() != 3) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Secret contains "
-                                              << parts.size() << " parts";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "Secret contains " << parts.size() << " parts";
     return AuthResult();
   }
 
@@ -950,11 +925,10 @@ std::shared_ptr<VPackBuilder> AuthInfo::parseJson(std::string const& str,
     parser.parse(str);
     result = parser.steal();
   } catch (std::bad_alloc const&) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Out of memory parsing " << hint
-                                            << "!";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Out of memory parsing " << hint << "!";
   } catch (VPackException const& ex) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Couldn't parse " << hint
-                                              << ": " << ex.what();
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+        << "Couldn't parse " << hint << ": " << ex.what();
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "Got unknown exception trying to parse " << hint;
@@ -1043,8 +1017,7 @@ AuthJwtResult AuthInfo::validateJwtBody(std::string const& body) {
 
     std::chrono::system_clock::time_point expires(
         std::chrono::seconds(expSlice.getNumber<uint64_t>()));
-    std::chrono::system_clock::time_point now =
-        std::chrono::system_clock::now();
+    std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
 
     if (now >= expires) {
       return authResult;
@@ -1063,8 +1036,7 @@ bool AuthInfo::validateJwtHMAC256Signature(std::string const& message,
 
   return verifyHMAC(_jwtSecret.c_str(), _jwtSecret.length(), message.c_str(),
                     message.length(), decodedSignature.c_str(),
-                    decodedSignature.length(),
-                    SslInterface::Algorithm::ALGORITHM_SHA256);
+                    decodedSignature.length(), SslInterface::Algorithm::ALGORITHM_SHA256);
 }
 
 std::string AuthInfo::generateRawJwt(VPackBuilder const& bodyBuilder) {
@@ -1076,8 +1048,7 @@ std::string AuthInfo::generateRawJwt(VPackBuilder const& bodyBuilder) {
   }
 
   std::string fullMessage(StringUtils::encodeBase64(headerBuilder.toJson()) +
-                          "." +
-                          StringUtils::encodeBase64(bodyBuilder.toJson()));
+                          "." + StringUtils::encodeBase64(bodyBuilder.toJson()));
 
   std::string signature =
       sslHMAC(_jwtSecret.c_str(), _jwtSecret.length(), fullMessage.c_str(),

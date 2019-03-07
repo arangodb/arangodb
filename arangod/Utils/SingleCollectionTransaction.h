@@ -35,7 +35,6 @@ class Context;
 }
 
 class SingleCollectionTransaction final : public transaction::Methods {
-
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction, using a collection id
@@ -76,9 +75,9 @@ class SingleCollectionTransaction final : public transaction::Methods {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the underlying collection's id
   //////////////////////////////////////////////////////////////////////////////
-  
+
   inline TRI_voc_cid_t cid() const { return _cid; }
-  
+
 #ifdef USE_ENTERPRISE
   using transaction::Methods::addCollectionAtRuntime;
 #endif
@@ -119,6 +118,6 @@ class SingleCollectionTransaction final : public transaction::Methods {
 
   AccessMode::Type _accessType;
 };
-}
+}  // namespace arangodb
 
 #endif

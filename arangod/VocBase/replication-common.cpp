@@ -40,8 +40,7 @@ void TRI_GetTimeStampReplication(char* dst, size_t maxLength) {
 /// @brief generate a timestamp string in a target buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_GetTimeStampReplication(double timeStamp, char* dst,
-                                 size_t maxLength) {
+void TRI_GetTimeStampReplication(double timeStamp, char* dst, size_t maxLength) {
   struct tm tb;
   time_t tt = static_cast<time_t>(timeStamp);
   TRI_gmtime(tt, &tb);

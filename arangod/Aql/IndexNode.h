@@ -24,15 +24,15 @@
 #ifndef ARANGOD_AQL_INDEX_NODE_H
 #define ARANGOD_AQL_INDEX_NODE_H 1
 
-#include "Basics/Common.h"
 #include "Aql/Ast.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/types.h"
 #include "Aql/Variable.h"
+#include "Aql/types.h"
+#include "Basics/Common.h"
+#include "Transaction/Methods.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-#include "Transaction/Methods.h"
 
 #include <velocypack/Slice.h>
 
@@ -74,13 +74,12 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
 
   /// @brief whether or not all indexes are accessed in reverse order
   bool reverse() const { return _reverse; }
- 
-  /// @brief set reverse mode  
+
+  /// @brief set reverse mode
   void reverse(bool value) { _reverse = value; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -95,14 +94,15 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
   std::vector<Variable const*> getVariablesUsedHere() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(
-      std::unordered_set<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final;
 
   /// @brief estimateCost
   double estimateCost(size_t&) const override final;
 
   /// @brief getIndexes, hand out the indexes used
-  std::vector<transaction::Methods::IndexHandle> const& getIndexes() const { return _indexes; }
+  std::vector<transaction::Methods::IndexHandle> const& getIndexes() const {
+    return _indexes;
+  }
 
  private:
   /// @brief the database
@@ -121,7 +121,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
   bool _reverse;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

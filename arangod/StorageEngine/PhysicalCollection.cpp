@@ -23,8 +23,8 @@
 
 #include "PhysicalCollection.h"
 
-#include "Basics/StaticStrings.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -45,12 +45,10 @@
 
 using namespace arangodb;
 
-PhysicalCollection::PhysicalCollection(LogicalCollection* collection,
-                                       VPackSlice const& info)
+PhysicalCollection::PhysicalCollection(LogicalCollection* collection, VPackSlice const& info)
     : _logicalCollection(collection), _indexes() {}
 
-void PhysicalCollection::figures(
-    std::shared_ptr<arangodb::velocypack::Builder>& builder) {
+void PhysicalCollection::figures(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
   this->figuresSpecific(builder);
 };
 
@@ -77,8 +75,7 @@ bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
   return false;
 }
 
-std::shared_ptr<Index> PhysicalCollection::lookupIndex(
-    TRI_idx_iid_t idxId) const {
+std::shared_ptr<Index> PhysicalCollection::lookupIndex(TRI_idx_iid_t idxId) const {
   READ_LOCKER(guard, _indexesLock);
   for (auto const& idx : _indexes) {
     if (idx->id() == idxId) {
@@ -91,10 +88,11 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(
 /// @brief merge two objects for update, oldValue must have correctly set
 /// _key and _id attributes
 
-void PhysicalCollection::mergeObjectsForUpdate(
-    transaction::Methods* trx, VPackSlice const& oldValue,
-    VPackSlice const& newValue, bool isEdgeCollection, std::string const& rev,
-    bool mergeObjects, bool keepNull, VPackBuilder& b) const {
+void PhysicalCollection::mergeObjectsForUpdate(transaction::Methods* trx,
+                                               VPackSlice const& oldValue,
+                                               VPackSlice const& newValue, bool isEdgeCollection,
+                                               std::string const& rev, bool mergeObjects,
+                                               bool keepNull, VPackBuilder& b) const {
   b.openObject();
 
   VPackSlice keySlice = oldValue.get(StaticStrings::KeyString);
@@ -114,8 +112,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
       if (!key.empty() && key[0] == '_' &&
           (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
            key == StaticStrings::RevString ||
-           key == StaticStrings::FromString ||
-           key == StaticStrings::ToString)) {
+           key == StaticStrings::FromString || key == StaticStrings::ToString)) {
         // note _from and _to and ignore _id, _key and _rev
         if (key == StaticStrings::FromString) {
           fromSlice = it.value();
@@ -169,8 +166,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
       if (!key.empty() && key[0] == '_' &&
           (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
            key == StaticStrings::RevString ||
-           key == StaticStrings::FromString ||
-           key == StaticStrings::ToString)) {
+           key == StaticStrings::FromString || key == StaticStrings::ToString)) {
         it.next();
         continue;
       }
@@ -180,13 +176,11 @@ void PhysicalCollection::mergeObjectsForUpdate(
       if (found == newValues.end()) {
         // use old value
         b.add(key.data(), key.size(), it.value());
-      } else if (mergeObjects && it.value().isObject() &&
-                 (*found).second.isObject()) {
+      } else if (mergeObjects && it.value().isObject() && (*found).second.isObject()) {
         // merge both values
         auto& value = (*found).second;
         if (keepNull || (!value.isNone() && !value.isNull())) {
-          VPackBuilder sub =
-              VPackCollection::merge(it.value(), value, true, !keepNull);
+          VPackBuilder sub = VPackCollection::merge(it.value(), value, true, !keepNull);
           b.add(key.data(), key.size(), sub.slice());
         }
         // clear the value in the map so its not added again
@@ -220,10 +214,10 @@ void PhysicalCollection::mergeObjectsForUpdate(
 }
 
 /// @brief new object for insert, computes the hash of the key
-int PhysicalCollection::newObjectForInsert(
-    transaction::Methods* trx, VPackSlice const& value,
-    VPackSlice const& fromSlice, VPackSlice const& toSlice,
-    bool isEdgeCollection, VPackBuilder& builder, bool isRestore) const {
+int PhysicalCollection::newObjectForInsert(transaction::Methods* trx,
+                                           VPackSlice const& value, VPackSlice const& fromSlice,
+                                           VPackSlice const& toSlice, bool isEdgeCollection,
+                                           VPackBuilder& builder, bool isRestore) const {
   TRI_voc_tick_t newRev = 0;
   builder.openObject();
 
@@ -235,8 +229,7 @@ int PhysicalCollection::newObjectForInsert(
   if (s.isNone()) {
     TRI_ASSERT(!isRestore);  // need key in case of restore
     newRev = TRI_HybridLogicalClock();
-    std::string keyString =
-        _logicalCollection->keyGenerator()->generate();
+    std::string keyString = _logicalCollection->keyGenerator()->generate();
     if (keyString.empty()) {
       return TRI_ERROR_ARANGO_OUT_OF_KEYS;
     }
@@ -247,8 +240,7 @@ int PhysicalCollection::newObjectForInsert(
     VPackValueLength l;
     char const* p = s.getString(l);
     // validate and track the key just used
-    int res =
-        _logicalCollection->keyGenerator()->validate(p, l, isRestore);
+    int res = _logicalCollection->keyGenerator()->validate(p, l, isRestore);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -264,12 +256,10 @@ int PhysicalCollection::newObjectForInsert(
     // _statisticsRaw and _statistics15 (which are the only system
     // collections)
     // must not be treated as shards but as local collections
-    encoding::storeNumber<uint64_t>(p, _logicalCollection->planId(),
-                                    sizeof(uint64_t));
+    encoding::storeNumber<uint64_t>(p, _logicalCollection->planId(), sizeof(uint64_t));
   } else {
     // local server
-    encoding::storeNumber<uint64_t>(p, _logicalCollection->cid(),
-                                    sizeof(uint64_t));
+    encoding::storeNumber<uint64_t>(p, _logicalCollection->cid(), sizeof(uint64_t));
   }
 
   // _from and _to
@@ -331,10 +321,9 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
 /// @brief new object for replace, oldValue must have _key and _id correctly
 /// set
 void PhysicalCollection::newObjectForReplace(
-    transaction::Methods* trx, VPackSlice const& oldValue,
-    VPackSlice const& newValue, VPackSlice const& fromSlice,
-    VPackSlice const& toSlice, bool isEdgeCollection, std::string const& rev,
-    VPackBuilder& builder) const {
+    transaction::Methods* trx, VPackSlice const& oldValue, VPackSlice const& newValue,
+    VPackSlice const& fromSlice, VPackSlice const& toSlice,
+    bool isEdgeCollection, std::string const& rev, VPackBuilder& builder) const {
   builder.openObject();
 
   // add system attributes first, in this order:
@@ -368,8 +357,7 @@ void PhysicalCollection::newObjectForReplace(
 }
 
 /// @brief checks the revision of a document
-int PhysicalCollection::checkRevision(transaction::Methods* trx,
-                                      TRI_voc_rid_t expected,
+int PhysicalCollection::checkRevision(transaction::Methods* trx, TRI_voc_rid_t expected,
                                       TRI_voc_rid_t found) const {
   if (expected != 0 && found != expected) {
     return TRI_ERROR_ARANGO_CONFLICT;
@@ -378,14 +366,14 @@ int PhysicalCollection::checkRevision(transaction::Methods* trx,
 }
 
 /// @brief hands out a list of indexes
-std::vector<std::shared_ptr<arangodb::Index>>
-PhysicalCollection::getIndexes() const {
+std::vector<std::shared_ptr<arangodb::Index>> PhysicalCollection::getIndexes() const {
   READ_LOCKER(guard, _indexesLock);
   return _indexes;
 }
 
-void PhysicalCollection::getIndexesVPack(VPackBuilder& result, bool withFigures, bool forPersistence, 
-                                         std::function<bool(arangodb::Index const*)> const& filter) const {
+void PhysicalCollection::getIndexesVPack(
+    VPackBuilder& result, bool withFigures, bool forPersistence,
+    std::function<bool(arangodb::Index const*)> const& filter) const {
   READ_LOCKER(guard, _indexesLock);
   result.openArray();
   for (auto const& idx : _indexes) {
@@ -405,7 +393,7 @@ std::shared_ptr<arangodb::velocypack::Builder> PhysicalCollection::figures() {
   // add index information
   size_t sizeIndexes = memory();
   size_t numIndexes = 0;
-  
+
   {
     bool seenEdgeIndex = false;
     READ_LOCKER(guard, _indexesLock);

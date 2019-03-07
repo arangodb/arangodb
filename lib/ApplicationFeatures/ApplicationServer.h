@@ -143,8 +143,8 @@ class ApplicationServer {
   // throws otherwise
   template <typename T>
   static T* getFeature(std::string const& name) {
-    T* feature = dynamic_cast<T*>(
-        application_features::ApplicationServer::lookupFeature(name));
+    T* feature =
+        dynamic_cast<T*>(application_features::ApplicationServer::lookupFeature(name));
     if (feature == nullptr) {
       throwFeatureNotFoundException(name);
     }
@@ -166,8 +166,7 @@ class ApplicationServer {
   static void forceDisableFeatures(std::vector<std::string> const&);
 
  public:
-  ApplicationServer(std::shared_ptr<options::ProgramOptions>,
-                    char const* binaryPath);
+  ApplicationServer(std::shared_ptr<options::ProgramOptions>, char const* binaryPath);
 
   ~ApplicationServer();
 
@@ -222,9 +221,9 @@ class ApplicationServer {
 
   // look up a feature and return a pointer to it. may be nullptr
   static ApplicationFeature* lookupFeature(std::string const&);
-  
-  char const* getBinaryPath() { return _binaryPath;}
-  
+
+  char const* getBinaryPath() { return _binaryPath; }
+
   void registerStartupCallback(std::function<void()> const& callback) {
     _startupCallbacks.emplace_back(callback);
   }
@@ -232,7 +231,7 @@ class ApplicationServer {
   void registerFailCallback(std::function<void(std::string const&)> const& callback) {
     fail = callback;
   }
-  
+
   // setup and validate all feature dependencies, determine feature order
   void setupDependencies(bool failOnMissing);
 
@@ -243,8 +242,7 @@ class ApplicationServer {
   // throws an exception that a requested feature is not enabled
   static void throwFeatureNotEnabledException(std::string const& name);
 
-  static void disableFeatures(std::vector<std::string> const& names,
-                              bool force);
+  static void disableFeatures(std::vector<std::string> const& names, bool force);
 
   // walks over all features and runs a callback function for them
   void apply(std::function<void(ApplicationFeature*)>, bool enabledOnly);
@@ -301,7 +299,7 @@ class ApplicationServer {
 
   // features order for prepare/start
   std::vector<ApplicationFeature*> _orderedFeatures;
-  
+
   // will be signalled when the application server is asked to shut down
   basics::ConditionVariable _shutdownCondition;
 
@@ -329,7 +327,7 @@ class ApplicationServer {
   // fail callback
   std::function<void(std::string const&)> fail;
 };
-}
-}
+}  // namespace application_features
+}  // namespace arangodb
 
 #endif

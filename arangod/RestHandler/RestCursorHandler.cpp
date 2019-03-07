@@ -28,9 +28,9 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Transaction/Context.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
-#include "Transaction/Context.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
@@ -39,9 +39,8 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestCursorHandler::RestCursorHandler(
-    GeneralRequest* request, GeneralResponse* response,
-    arangodb::aql::QueryRegistry* queryRegistry)
+RestCursorHandler::RestCursorHandler(GeneralRequest* request, GeneralResponse* response,
+                                     arangodb::aql::QueryRegistry* queryRegistry)
     : RestVocbaseBaseHandler(request, response),
       _queryRegistry(queryRegistry),
       _queryLock(),
@@ -68,8 +67,7 @@ RestStatus RestCursorHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -112,14 +110,14 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   auto options = std::make_shared<VPackBuilder>(buildOptions(slice));
   VPackValueLength l;
   char const* queryString = querySlice.getString(l);
-  
+
   if (l == 0) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_EMPTY);
   }
 
-  arangodb::aql::Query query(false, _vocbase, arangodb::aql::QueryString(queryString, static_cast<size_t>(l)),
-                             bindVarsBuilder, options,
-                             arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(false, _vocbase,
+                             arangodb::aql::QueryString(queryString, static_cast<size_t>(l)),
+                             bindVarsBuilder, options, arangodb::aql::PART_MAIN);
 
   registerQuery(&query);
   auto queryResult = query.execute(_queryRegistry);
@@ -149,8 +147,8 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     VPackSlice opts = options->slice();
 
     size_t batchSize =
-        arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
-            opts, "batchSize", 1000);
+        arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(opts,
+                                                                    "batchSize", 1000);
     size_t const n = static_cast<size_t>(qResult.length());
 
     if (n <= batchSize) {
@@ -181,8 +179,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
         result.add(VPackValue("result"));
         result.add(VPackValue(qResult.begin(), VPackValueType::External));
         result.add("hasMore", VPackValue(false));
-        if (arangodb::basics::VelocyPackHelper::getBooleanValue(opts, "count",
-                                                                false)) {
+        if (arangodb::basics::VelocyPackHelper::getBooleanValue(opts, "count", false)) {
           result.add("count", VPackValue(n));
         }
         result.add("cached", VPackValue(queryResult.cached));
@@ -197,8 +194,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       } catch (...) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
-      generateResult(rest::ResponseCode::CREATED, result.slice(),
-                     queryResult.context);
+      generateResult(rest::ResponseCode::CREATED, result.slice(), queryResult.context);
       return;
     }
 
@@ -206,16 +202,16 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     auto cursors = _vocbase->cursorRepository();
     TRI_ASSERT(cursors != nullptr);
 
-    double ttl = arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-        opts, "ttl", 30);
-    bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
-        opts, "count", false);
+    double ttl =
+        arangodb::basics::VelocyPackHelper::getNumericValue<double>(opts, "ttl", 30);
+    bool count =
+        arangodb::basics::VelocyPackHelper::getBooleanValue(opts, "count", false);
 
     TRI_ASSERT(queryResult.result.get() != nullptr);
 
     // steal the query result, cursor will take over the ownership
-    Cursor* cursor = cursors->createFromQueryResult(
-        std::move(queryResult), batchSize, extra, ttl, count);
+    Cursor* cursor = cursors->createFromQueryResult(std::move(queryResult),
+                                                    batchSize, extra, ttl, count);
 
     try {
       VPackBuilder result;
@@ -364,8 +360,7 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
 /// several values
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> RestCursorHandler::buildExtra(
-    arangodb::aql::QueryResult& queryResult) const {
+std::shared_ptr<VPackBuilder> RestCursorHandler::buildExtra(arangodb::aql::QueryResult& queryResult) const {
   // build "extra" attribute
   auto extra = std::make_shared<VPackBuilder>();
   try {
@@ -414,8 +409,7 @@ void RestCursorHandler::createCursor() {
 
   try {
     bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody =
-        parseVelocyPackBody(parseSuccess);
+    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
 
     if (!parseSuccess) {
       return;
@@ -447,15 +441,14 @@ void RestCursorHandler::modifyCursor() {
   auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
-  auto cursorId = static_cast<arangodb::CursorId>(
-      arangodb::basics::StringUtils::uint64(id));
+  auto cursorId =
+      static_cast<arangodb::CursorId>(arangodb::basics::StringUtils::uint64(id));
   bool busy;
   auto cursor = cursors->find(cursorId, Cursor::CURSOR_VPACK, busy);
 
   if (cursor == nullptr) {
     if (busy) {
-      generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_BUSY),
-                    TRI_ERROR_CURSOR_BUSY);
+      generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_BUSY), TRI_ERROR_CURSOR_BUSY);
     } else {
       generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
                     TRI_ERROR_CURSOR_NOT_FOUND);
@@ -473,7 +466,7 @@ void RestCursorHandler::modifyCursor() {
 
     _response->setContentType(rest::ContentType::JSON);
     generateResult(rest::ResponseCode::OK, builder.slice(),
-                     static_cast<VelocyPackCursor*>(cursor)->result()->context);
+                   static_cast<VelocyPackCursor*>(cursor)->result()->context);
 
     cursors->release(cursor);
   } catch (...) {
@@ -500,8 +493,8 @@ void RestCursorHandler::deleteCursor() {
   auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
-  auto cursorId = static_cast<arangodb::CursorId>(
-      arangodb::basics::StringUtils::uint64(id));
+  auto cursorId =
+      static_cast<arangodb::CursorId>(arangodb::basics::StringUtils::uint64(id));
   bool found = cursors->remove(cursorId, Cursor::CURSOR_VPACK);
 
   if (!found) {
@@ -513,8 +506,7 @@ void RestCursorHandler::deleteCursor() {
   builder.openObject();
   builder.add("id", VPackValue(id));
   builder.add("error", VPackValue(false));
-  builder.add("code",
-              VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
+  builder.add("code", VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
   builder.close();
 
   generateResult(rest::ResponseCode::ACCEPTED, builder.slice());

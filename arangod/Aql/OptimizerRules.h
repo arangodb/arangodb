@@ -25,8 +25,8 @@
 #ifndef ARANGOD_AQL_OPTIMIZER_RULES_H
 #define ARANGOD_AQL_OPTIMIZER_RULES_H 1
 
-#include "Basics/Common.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
@@ -109,10 +109,12 @@ void interchangeAdjacentEnumerationsRule(Optimizer*, std::unique_ptr<ExecutionPl
                                          OptimizerRule const*);
 
 /// @brief optimize queries in the cluster so that the entire query gets pushed to a single server
-void optimizeClusterSingleShardRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
+void optimizeClusterSingleShardRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                    OptimizerRule const*);
 
 /// @brief try to find candidates for shard-local joins in the cluster
-void optimizeClusterJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
+void optimizeClusterJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                              OptimizerRule const*);
 
 /// @brief scatter operations in cluster - send all incoming rows to all remote
 /// clients
@@ -129,15 +131,14 @@ void distributeInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                              OptimizerRule const*);
 
 #ifdef USE_ENTERPRISE
-void distributeInClusterRuleSmartEdgeCollection(
-    ExecutionPlan*,
-    SubqueryNode* snode,
-    ExecutionNode* node,
-    ExecutionNode* originalParent,
-    bool& wasModified);
+void distributeInClusterRuleSmartEdgeCollection(ExecutionPlan*, SubqueryNode* snode,
+                                                ExecutionNode* node,
+                                                ExecutionNode* originalParent,
+                                                bool& wasModified);
 
 /// @brief remove scatter/gather and remote nodes for satellite collections
-void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
+void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                              OptimizerRule const*);
 #endif
 
 void distributeFilternCalcToClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
@@ -203,7 +204,7 @@ void patchUpdateStatementsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// merges filter nodes into graph traversal nodes
 void optimizeTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                             OptimizerRule const* rule);
-  
+
 /// @brief removes filter nodes already covered by the traversal and removes unused variables
 void removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                      OptimizerRule const* rule);
@@ -219,8 +220,9 @@ void prepareTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
 /// @brief moves simple subqueries one level higher
 void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
-  
-void geoIndexRule(aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan, aql::OptimizerRule const* rule);
+
+void geoIndexRule(aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan,
+                  aql::OptimizerRule const* rule);
 
 }  // namespace aql
 }  // namespace arangodb

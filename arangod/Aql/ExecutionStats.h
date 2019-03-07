@@ -46,7 +46,7 @@ struct ExecutionStats {
 
   /// @brief create empty statistics for VelocyPack
   static void toVelocyPackStatic(arangodb::velocypack::Builder&);
-  
+
   /// @brief sets query execution time from the outside
   void setExecutionTime(double value) { executionTime = value; }
 
@@ -96,12 +96,12 @@ struct ExecutionStats {
 
   /// @brief total number of results, before applying last limit
   int64_t fullCount;
-  
-  /// @brief query execution time (wall-clock time). value will be set from 
+
+  /// @brief query execution time (wall-clock time). value will be set from
   /// the outside
   double executionTime;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

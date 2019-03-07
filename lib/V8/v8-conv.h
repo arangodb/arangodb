@@ -28,7 +28,7 @@
 #include "Basics/conversions.h"
 #include "V8/v8-globals.h"
 
-template<typename T>
+template <typename T>
 static inline v8::Handle<v8::Value> TRI_V8UInt64String(v8::Isolate* isolate, T value) {
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace(static_cast<uint64_t>(value), &buffer[0]);

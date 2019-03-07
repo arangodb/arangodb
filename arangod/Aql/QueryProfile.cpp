@@ -37,9 +37,8 @@ using namespace arangodb::aql;
 /// @brief create a profile
 QueryProfile::QueryProfile(Query* query)
     : query(query), stamp(query->startTime()), tracked(false) {
-
   for (auto& it : timers) {
-    it = 0.0; // reset timers
+    it = 0.0;  // reset timers
   }
   auto queryList = query->vocbase()->queryList();
 
@@ -57,7 +56,7 @@ QueryProfile::~QueryProfile() {
 
     try {
       queryList->remove(query);
-     } catch (...) {
+    } catch (...) {
     }
   }
 }
@@ -84,7 +83,7 @@ void QueryProfile::setEnd(QueryExecutionState::ValueType state, double time) {
 /// @brief convert the profile to VelocyPack
 std::shared_ptr<VPackBuilder> QueryProfile::toVelocyPack() {
   auto result = std::make_shared<VPackBuilder>();
-  
+
   result->openObject(true);
   for (auto state : ENUM_ITERATOR(QueryExecutionState::ValueType, INITIALIZATION, FINALIZATION)) {
     double const value = timers[static_cast<size_t>(state)];
@@ -94,6 +93,6 @@ std::shared_ptr<VPackBuilder> QueryProfile::toVelocyPack() {
     }
   }
   result->close();
-  
+
   return result;
 }

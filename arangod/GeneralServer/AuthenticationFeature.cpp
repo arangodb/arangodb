@@ -39,8 +39,7 @@ using namespace arangodb::options;
 
 AuthenticationFeature* AuthenticationFeature::INSTANCE = nullptr;
 
-AuthenticationFeature::AuthenticationFeature(
-    application_features::ApplicationServer* server)
+AuthenticationFeature::AuthenticationFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Authentication"),
       _authInfo(nullptr),
       _authenticationUnixSockets(true),
@@ -57,8 +56,7 @@ AuthenticationFeature::AuthenticationFeature(
 
 AuthenticationFeature::~AuthenticationFeature() { delete _authInfo; }
 
-void AuthenticationFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
+void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
 
   options->addOldOption("server.disable-authentication",
@@ -119,8 +117,7 @@ void AuthenticationFeature::prepare() {
   if (isEnabled()) {
     std::unique_ptr<AuthenticationHandler> handler;
 #if USE_ENTERPRISE
-    if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")
-            ->isEnabled()) {
+    if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")->isEnabled()) {
       handler.reset(new LdapAuthenticationHandler());
     } else {
       handler.reset(new DefaultAuthenticationHandler());
@@ -147,8 +144,8 @@ void AuthenticationFeature::start() {
 
   if (isEnabled()) {
     auto queryRegistryFeature =
-        application_features::ApplicationServer::getFeature<
-            QueryRegistryFeature>("QueryRegistry");
+        application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
+            "QueryRegistry");
     _authInfo->setQueryRegistry(queryRegistryFeature->queryRegistry());
 
     if (_active && _authenticationSystemOnly) {
@@ -184,9 +181,8 @@ AuthLevel AuthenticationFeature::canUseCollection(std::string const& username,
 }
 
 AuthInfo* AuthenticationFeature::authInfo() {
-  TRI_ASSERT(_authInfo != nullptr);  
+  TRI_ASSERT(_authInfo != nullptr);
   return _authInfo;
 }
 
 void AuthenticationFeature::unprepare() { INSTANCE = nullptr; }
-

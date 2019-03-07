@@ -33,7 +33,7 @@ x-content-type-options: nosniff
     <span class="hljs-string">"platform"</span> : <span class="hljs-string">"linux"</span>, 
     <span class="hljs-string">"reactor-type"</span> : <span class="hljs-string">"epoll"</span>, 
     <span class="hljs-string">"rocksdb-version"</span> : <span class="hljs-string">"5.6.0"</span>, 
-    <span class="hljs-string">"server-version"</span> : <span class="hljs-string">"3.2.17"</span>, 
+    <span class="hljs-string">"server-version"</span> : <span class="hljs-string">"3.2.18"</span>, 
     <span class="hljs-string">"sizeof int"</span> : <span class="hljs-string">"4"</span>, 
     <span class="hljs-string">"sizeof void*"</span> : <span class="hljs-string">"8"</span>, 
     <span class="hljs-string">"sse42"</span> : <span class="hljs-string">"false"</span>, 

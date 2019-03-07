@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_TRAVERSAL_NODE_H
 #define ARANGOD_AQL_TRAVERSAL_NODE_H 1
 
-#include "Aql/GraphNode.h"
 #include "Aql/Condition.h"
+#include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -62,11 +62,9 @@ class TraversalNode : public GraphNode {
    public:
     explicit TraversalEdgeConditionBuilder(TraversalNode const*);
 
-    TraversalEdgeConditionBuilder(TraversalNode const*,
-                                  arangodb::velocypack::Slice const&);
+    TraversalEdgeConditionBuilder(TraversalNode const*, arangodb::velocypack::Slice const&);
 
-    TraversalEdgeConditionBuilder(TraversalNode const*,
-                                  TraversalEdgeConditionBuilder const*);
+    TraversalEdgeConditionBuilder(TraversalNode const*, TraversalEdgeConditionBuilder const*);
 
     ~TraversalEdgeConditionBuilder() {}
 
@@ -81,8 +79,7 @@ class TraversalNode : public GraphNode {
  public:
   TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                 AstNode const* direction, AstNode const* start,
-                AstNode const* graph,
-                std::unique_ptr<graph::BaseOptions>& options);
+                AstNode const* graph, std::unique_ptr<graph::BaseOptions>& options);
 
   TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
@@ -102,8 +99,7 @@ class TraversalNode : public GraphNode {
   NodeType getType() const override final { return TRAVERSAL; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -130,8 +126,7 @@ class TraversalNode : public GraphNode {
   }
 
   /// @brief getVariablesUsedHere
-  void getVariablesUsedHere(
-      std::unordered_set<Variable const*>& result) const override final {
+  void getVariablesUsedHere(std::unordered_set<Variable const*>& result) const override final {
     for (auto const& condVar : _conditionVariables) {
       if (condVar != getTemporaryVariable()) {
         result.emplace(condVar);
@@ -157,7 +152,7 @@ class TraversalNode : public GraphNode {
     return vars;
   }
 
- /// @brief checks if the path out variable is used
+  /// @brief checks if the path out variable is used
   bool usesPathOutVariable() const { return _pathOutVariable != nullptr; }
 
   /// @brief return the path out variable
@@ -181,7 +176,7 @@ class TraversalNode : public GraphNode {
   int checkIsOutVariable(size_t variableId) const;
 
   /// @brief check whether an access is inside the specified range
-  bool isInRange(uint64_t,  bool) const;
+  bool isInRange(uint64_t, bool) const;
 
   /// @brief register a filter condition on a given search depth.
   ///        If this condition is not fulfilled a traversal will abort.
@@ -197,21 +192,17 @@ class TraversalNode : public GraphNode {
 
   void getConditionVariables(std::vector<Variable const*>&) const override;
 
-
   /// @brief Compute the traversal options containing the expressions
   ///        MUST! be called after optimization and before creation
   ///        of blocks.
   void prepareOptions() override;
 
  private:
-
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   void checkConditionsDefined() const;
 #endif
 
-
  private:
-
   /// @brief vertex output variable
   Variable const* _pathOutVariable;
 
@@ -241,15 +232,13 @@ class TraversalNode : public GraphNode {
   std::vector<AstNode const*> _globalVertexConditions;
 
   /// @brief List of all depth specific conditions for edges
-  std::unordered_map<uint64_t, std::unique_ptr<TraversalEdgeConditionBuilder>>
-      _edgeConditions;
+  std::unordered_map<uint64_t, std::unique_ptr<TraversalEdgeConditionBuilder>> _edgeConditions;
 
   /// @brief List of all depth specific conditions for vertices
   std::unordered_map<uint64_t, AstNode*> _vertexConditions;
-
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

@@ -24,8 +24,8 @@
 #ifndef ARANGOD_TRANSACTION_V8_CONTEXT_H
 #define ARANGOD_TRANSACTION_V8_CONTEXT_H 1
 
-#include "Context.h"
 #include "Basics/Common.h"
+#include "Context.h"
 
 struct TRI_vocbase_t;
 
@@ -35,22 +35,19 @@ class TransactionState;
 namespace transaction {
 
 class V8Context final : public Context {
-
  public:
-
   /// @brief create the context
   V8Context(TRI_vocbase_t*, bool);
 
   /// @brief destroy the context
   ~V8Context() = default;
-  
+
   /// @brief order a custom type handler
-  std::shared_ptr<arangodb::velocypack::CustomTypeHandler>
-  orderCustomTypeHandler() override final;
+  std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() override final;
 
   /// @brief return the resolver
   CollectionNameResolver const* getResolver() override final;
-  
+
   /// @brief get parent transaction (if any)
   TransactionState* getParentTransaction() const override;
 
@@ -65,7 +62,7 @@ class V8Context final : public Context {
 
   /// @brief make this transaction context a global context
   void makeGlobal();
-  
+
   /// @brief whether or not the transaction context is a global one
   bool isGlobal() const;
 
@@ -74,16 +71,15 @@ class V8Context final : public Context {
 
   /// @brief check whether the transaction is embedded
   static bool isEmbedded();
-  
+
   /// @brief create a context
   static std::shared_ptr<transaction::V8Context> Create(TRI_vocbase_t*, bool embeddable);
 
-  /// @brief create a V8 transaction context if we are in a V8 isolate, and a standlone
-  /// transaction context otherwise
+  /// @brief create a V8 transaction context if we are in a V8 isolate, and a
+  /// standlone transaction context otherwise
   static std::shared_ptr<transaction::Context> CreateWhenRequired(TRI_vocbase_t*, bool embeddable);
 
  private:
-
   /// @brief the v8 thread-local "global" transaction context
   transaction::V8Context* _sharedTransactionContext;
 
@@ -96,7 +92,7 @@ class V8Context final : public Context {
   bool const _embeddable;
 };
 
-}
-}
+}  // namespace transaction
+}  // namespace arangodb
 
 #endif

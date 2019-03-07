@@ -24,8 +24,8 @@
 #include "ClientConnection.h"
 
 #ifdef TRI_HAVE_WINSOCK2_H
-#include <WinSock2.h>
 #include <WS2tcpip.h>
+#include <WinSock2.h>
 #endif
 
 #include <sys/types.h>
@@ -54,16 +54,13 @@ using namespace arangodb::httpclient;
 
 ClientConnection::ClientConnection(Endpoint* endpoint, double requestTimeout,
                                    double connectTimeout, size_t connectRetries)
-    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout,
-                              connectRetries) {
+    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries) {
   TRI_invalidatesocket(&_socket);
 }
 
-ClientConnection::ClientConnection(std::unique_ptr<Endpoint>& endpoint,
-                                   double requestTimeout, double connectTimeout,
-                                   size_t connectRetries)
-    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout,
-                              connectRetries) {
+ClientConnection::ClientConnection(std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
+                                   double connectTimeout, size_t connectRetries)
+    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries) {
   TRI_invalidatesocket(&_socket);
 }
 
@@ -83,8 +80,7 @@ bool ClientConnection::checkSocket() {
 
   TRI_ASSERT(TRI_isvalidsocket(_socket));
 
-  int res =
-      TRI_getsockopt(_socket, SOL_SOCKET, SO_ERROR, (void*)&so_error, &len);
+  int res = TRI_getsockopt(_socket, SOL_SOCKET, SO_ERROR, (void*)&so_error, &len);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(errno);
@@ -179,9 +175,10 @@ bool ClientConnection::prepare(double timeout, bool isWrite) {
   poller.events = (isWrite ? POLLOUT : POLLIN);
 
   while (true) {  // will be left by break
-    res = poll(&poller, 1, towait > static_cast<int>(POLL_DURATION * 1000.0)
-                               ? static_cast<int>(POLL_DURATION * 1000.0)
-                               : towait);
+    res = poll(&poller, 1,
+               towait > static_cast<int>(POLL_DURATION * 1000.0)
+                   ? static_cast<int>(POLL_DURATION * 1000.0)
+                   : towait);
     if (res == -1 && errno == EINTR) {
       if (!nowait) {
         double end = TRI_microtime();
@@ -366,13 +363,12 @@ bool ClientConnection::writeClientConnection(void const* buffer, size_t length,
 /// @brief read data from the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ClientConnection::readClientConnection(StringBuffer& stringBuffer,
-                                            bool& connectionClosed) {
+bool ClientConnection::readClientConnection(StringBuffer& stringBuffer, bool& connectionClosed) {
   if (!checkSocket()) {
     connectionClosed = true;
     return false;
   }
-  
+
   TRI_ASSERT(TRI_isvalidsocket(_socket));
 
   connectionClosed = false;
@@ -385,8 +381,7 @@ bool ClientConnection::readClientConnection(StringBuffer& stringBuffer,
       return false;
     }
 
-    int lenRead =
-        TRI_READ_SOCKET(_socket, stringBuffer.end(), READBUFFER_SIZE - 1, 0);
+    int lenRead = TRI_READ_SOCKET(_socket, stringBuffer.end(), READBUFFER_SIZE - 1, 0);
 
     if (lenRead == -1) {
       // error occurred

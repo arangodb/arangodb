@@ -62,6 +62,6 @@ class RestAgencyHandler : public RestBaseHandler {
   void redirectRequest(std::string const& leaderId);
   consensus::Agent* _agent;
 };
-}
+}  // namespace arangodb
 
 #endif

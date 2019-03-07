@@ -29,10 +29,16 @@
 namespace arangodb {
 // a struct for keeping document modification operations in transactions
 struct OperationOptions {
-  OperationOptions() 
-      : recoveryData(nullptr), waitForSync(false), keepNull(true),
-        mergeObjects(true), silent(false), ignoreRevs(true),
-        returnOld(false), returnNew(false), isRestore(false) {}
+  OperationOptions()
+      : recoveryData(nullptr),
+        waitForSync(false),
+        keepNull(true),
+        mergeObjects(true),
+        silent(false),
+        ignoreRevs(true),
+        returnOld(false),
+        returnNew(false),
+        isRestore(false) {}
 
   // original marker, set by an engine's recovery procedure only!
   void* recoveryData;
@@ -69,6 +75,6 @@ struct OperationOptions {
   std::string isSynchronousReplicationFrom;
 };
 
-}
+}  // namespace arangodb
 
 #endif

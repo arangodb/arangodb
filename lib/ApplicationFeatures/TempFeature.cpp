@@ -23,8 +23,8 @@
 #include "ApplicationFeatures/TempFeature.h"
 
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/files.h"
 #include "Basics/FileUtils.h"
+#include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -51,14 +51,12 @@ void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void TempFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_path.length() > 0 ) {
+  if (_path.length() > 0) {
     basics::FileUtils::makePathAbsolute(_path);
   }
 }
 
-void TempFeature::prepare() {
-  TRI_SetApplicationName(_appname.c_str());
-}
+void TempFeature::prepare() { TRI_SetApplicationName(_appname.c_str()); }
 
 void TempFeature::start() {
   if (!_path.empty()) {

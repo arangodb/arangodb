@@ -30,7 +30,7 @@
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
-/// @brief constructor for RemoteNode 
+/// @brief constructor for RemoteNode
 RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
@@ -39,7 +39,8 @@ RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
       _server(base.get("server").copyString()),
       _ownName(base.get("ownName").copyString()),
       _queryId(base.get("queryId").copyString()),
-      _isResponsibleForInitializeCursor(base.get("isResponsibleForInitializeCursor").getBoolean()) {}
+      _isResponsibleForInitializeCursor(
+          base.get("isResponsibleForInitializeCursor").getBoolean()) {}
 
 /// @brief toVelocyPack, for RemoteNode
 void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
@@ -51,13 +52,11 @@ void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.add("server", VPackValue(_server));
   nodes.add("ownName", VPackValue(_ownName));
   nodes.add("queryId", VPackValue(_queryId));
-  nodes.add("isResponsibleForInitializeCursor",
-            VPackValue(_isResponsibleForInitializeCursor));
+  nodes.add("isResponsibleForInitializeCursor", VPackValue(_isResponsibleForInitializeCursor));
 
   // And close it:
   nodes.close();
 }
-
 
 /// @brief estimateCost
 double RemoteNode::estimateCost(size_t& nrItems) const {
@@ -74,8 +73,7 @@ double RemoteNode::estimateCost(size_t& nrItems) const {
 }
 
 /// @brief construct a scatter node
-ScatterNode::ScatterNode(ExecutionPlan* plan,
-                         arangodb::velocypack::Slice const& base)
+ScatterNode::ScatterNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
@@ -101,8 +99,7 @@ double ScatterNode::estimateCost(size_t& nrItems) const {
 }
 
 /// @brief construct a distribute node
-DistributeNode::DistributeNode(ExecutionPlan* plan,
-                               arangodb::velocypack::Slice const& base)
+DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
@@ -114,19 +111,16 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
       _allowSpecifiedKeys(false) {}
 
 /// @brief toVelocyPack, for DistributedNode
-void DistributeNode::toVelocyPackHelper(VPackBuilder& nodes,
-                                        bool verbose) const {
+void DistributeNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
 
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
   nodes.add("varId", VPackValue(static_cast<int>(_varId)));
-  nodes.add("alternativeVarId",
-            VPackValue(static_cast<int>(_alternativeVarId)));
+  nodes.add("alternativeVarId", VPackValue(static_cast<int>(_alternativeVarId)));
   nodes.add("createKeys", VPackValue(_createKeys));
-  nodes.add("allowKeyConversionToObject",
-            VPackValue(_allowKeyConversionToObject));
+  nodes.add("allowKeyConversionToObject", VPackValue(_allowKeyConversionToObject));
 
   // And close it:
   nodes.close();

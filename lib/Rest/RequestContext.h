@@ -44,6 +44,6 @@ class RequestContext {
   GeneralRequest* _request;
 };
 
-}
+}  // namespace arangodb
 
 #endif

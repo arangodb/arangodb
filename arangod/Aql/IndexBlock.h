@@ -137,7 +137,7 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
   /// createCursor (if any) so that it can be read in chunks and not
   /// necessarily all at once.
   arangodb::OperationCursor* _cursor;
-  
+
   /// @brief a vector of cursors for the index block. cursors can be
   /// reused
   std::vector<std::unique_ptr<OperationCursor>> _cursors;
@@ -150,7 +150,7 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
 
   /// @brief whether or not at least one expression uses v8
   bool _hasV8Expression;
-  
+
   /// @brief A managed document result to temporary hold one document
   std::unique_ptr<ManagedDocumentResult> _mmdr;
 
@@ -166,7 +166,7 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
   size_t _returned;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

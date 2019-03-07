@@ -33,10 +33,8 @@ using namespace arangodb::httpclient;
 /// @brief creates a new client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralClientConnection::GeneralClientConnection(Endpoint* endpoint,
-                                                 double requestTimeout,
-                                                 double connectTimeout,
-                                                 size_t connectRetries)
+GeneralClientConnection::GeneralClientConnection(Endpoint* endpoint, double requestTimeout,
+                                                 double connectTimeout, size_t connectRetries)
     : _endpoint(endpoint),
       _freeEndpointOnDestruction(false),
       _requestTimeout(requestTimeout),
@@ -44,12 +42,11 @@ GeneralClientConnection::GeneralClientConnection(Endpoint* endpoint,
       _connectRetries(connectRetries),
       _numConnectRetries(0),
       _isConnected(false),
-      _isInterrupted(false) {
-}
+      _isInterrupted(false) {}
 
-GeneralClientConnection::GeneralClientConnection(
-    std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
-    double connectTimeout, size_t connectRetries)
+GeneralClientConnection::GeneralClientConnection(std::unique_ptr<Endpoint>& endpoint,
+                                                 double requestTimeout,
+                                                 double connectTimeout, size_t connectRetries)
     : _endpoint(endpoint.release()),
       _freeEndpointOnDestruction(true),
       _requestTimeout(requestTimeout),
@@ -73,12 +70,13 @@ GeneralClientConnection::~GeneralClientConnection() {
 /// @brief create a new connection from an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralClientConnection* GeneralClientConnection::factory(
-    Endpoint* endpoint, double requestTimeout, double connectTimeout,
-    size_t numRetries, uint64_t sslProtocol) {
+GeneralClientConnection* GeneralClientConnection::factory(Endpoint* endpoint,
+                                                          double requestTimeout,
+                                                          double connectTimeout,
+                                                          size_t numRetries,
+                                                          uint64_t sslProtocol) {
   if (endpoint->encryption() == Endpoint::EncryptionType::NONE) {
-    return new ClientConnection(endpoint, requestTimeout, connectTimeout,
-                                numRetries);
+    return new ClientConnection(endpoint, requestTimeout, connectTimeout, numRetries);
   } else if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
     return new SslClientConnection(endpoint, requestTimeout, connectTimeout,
                                    numRetries, sslProtocol);
@@ -88,11 +86,10 @@ GeneralClientConnection* GeneralClientConnection::factory(
 }
 
 GeneralClientConnection* GeneralClientConnection::factory(
-    std::unique_ptr<Endpoint>& endpoint, double requestTimeout, double connectTimeout,
-    size_t numRetries, uint64_t sslProtocol) {
+    std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
+    double connectTimeout, size_t numRetries, uint64_t sslProtocol) {
   if (endpoint->encryption() == Endpoint::EncryptionType::NONE) {
-    return new ClientConnection(endpoint, requestTimeout, connectTimeout,
-                                numRetries);
+    return new ClientConnection(endpoint, requestTimeout, connectTimeout, numRetries);
   } else if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
     return new SslClientConnection(endpoint, requestTimeout, connectTimeout,
                                    numRetries, sslProtocol);

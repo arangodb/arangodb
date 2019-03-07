@@ -22,12 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "QueryCache.h"
-#include "Basics/fasthash.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/tri-strings.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/fasthash.h"
+#include "Basics/tri-strings.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -45,9 +45,9 @@ static size_t MaxResults = 128;  // default value. can be changed later
 static std::atomic<arangodb::aql::QueryCacheMode> Mode(CACHE_ON_DEMAND);
 
 /// @brief create a cache entry
-QueryCacheResultEntry::QueryCacheResultEntry(
-    uint64_t hash, QueryString const& queryString,
-    std::shared_ptr<VPackBuilder> queryResult, std::vector<std::string> const& collections)
+QueryCacheResultEntry::QueryCacheResultEntry(uint64_t hash, QueryString const& queryString,
+                                             std::shared_ptr<VPackBuilder> queryResult,
+                                             std::vector<std::string> const& collections)
     : _hash(hash),
       _queryString(queryString.data(), queryString.size()),
       _queryResult(queryResult),
@@ -55,8 +55,7 @@ QueryCacheResultEntry::QueryCacheResultEntry(
       _prev(nullptr),
       _next(nullptr),
       _refCount(0),
-      _deletionRequested(0) {
-}
+      _deletionRequested(0) {}
 
 /// @brief check whether the element can be destroyed, and delete it if yes
 void QueryCacheResultEntry::tryDelete() {
@@ -84,11 +83,7 @@ void QueryCacheResultEntry::unuse() {
 
 /// @brief create a database-specific cache
 QueryCacheDatabaseEntry::QueryCacheDatabaseEntry()
-    : _entriesByHash(),
-      _entriesByCollection(),
-      _head(nullptr),
-      _tail(nullptr),
-      _numElements(0) {
+    : _entriesByHash(), _entriesByCollection(), _head(nullptr), _tail(nullptr), _numElements(0) {
   _entriesByHash.reserve(128);
   _entriesByCollection.reserve(16);
 }
@@ -104,8 +99,8 @@ QueryCacheDatabaseEntry::~QueryCacheDatabaseEntry() {
 }
 
 /// @brief lookup a query result in the database-specific cache
-QueryCacheResultEntry* QueryCacheDatabaseEntry::lookup(
-    uint64_t hash, QueryString const& queryString) {
+QueryCacheResultEntry* QueryCacheDatabaseEntry::lookup(uint64_t hash,
+                                                       QueryString const& queryString) {
   auto it = _entriesByHash.find(hash);
 
   if (it == _entriesByHash.end()) {
@@ -116,7 +111,8 @@ QueryCacheResultEntry* QueryCacheDatabaseEntry::lookup(
   // found some result in cache
 
   if (queryString.size() != (*it).second->_queryString.size() ||
-      memcmp(queryString.data(), (*it).second->_queryString.c_str(), queryString.size()) != 0) {
+      memcmp(queryString.data(), (*it).second->_queryString.c_str(),
+             queryString.size()) != 0) {
     // found something, but obviously the result of a different query with the
     // same hash
     return nullptr;
@@ -132,8 +128,7 @@ QueryCacheResultEntry* QueryCacheDatabaseEntry::lookup(
 }
 
 /// @brief store a query result in the database-specific cache
-void QueryCacheDatabaseEntry::store(uint64_t hash,
-                                    QueryCacheResultEntry* entry) {
+void QueryCacheDatabaseEntry::store(uint64_t hash, QueryCacheResultEntry* entry) {
   // insert entry into the cache
   if (!_entriesByHash.emplace(hash, entry).second) {
     // remove previous entry
@@ -195,8 +190,7 @@ void QueryCacheDatabaseEntry::store(uint64_t hash,
 
 /// @brief invalidate all entries for the given collections in the
 /// database-specific cache
-void QueryCacheDatabaseEntry::invalidate(
-    std::vector<std::string> const& collections) {
+void QueryCacheDatabaseEntry::invalidate(std::vector<std::string> const& collections) {
   for (auto const& it : collections) {
     invalidate(it);
   }
@@ -299,7 +293,7 @@ void QueryCacheDatabaseEntry::link(QueryCacheResultEntry* e) {
 QueryCache::QueryCache() : _propertiesLock(), _entriesLock(), _entries() {}
 
 /// @brief destroy the query cache
-QueryCache::~QueryCache() { 
+QueryCache::~QueryCache() {
   for (unsigned int i = 0; i < NumberOfParts; ++i) {
     invalidate(i);
   }
@@ -327,8 +321,7 @@ void QueryCache::properties(std::pair<std::string, size_t>& result) {
 }
 
 /// @brief set the cache properties
-void QueryCache::setProperties(
-    std::pair<std::string, size_t> const& properties) {
+void QueryCache::setProperties(std::pair<std::string, size_t> const& properties) {
   MUTEX_LOCKER(mutexLocker, _propertiesLock);
 
   setMode(properties.first);
@@ -379,11 +372,10 @@ QueryCacheResultEntry* QueryCache::lookup(TRI_vocbase_t* vocbase, uint64_t hash,
 /// @brief store a query in the cache
 /// if the call is successful, the cache has taken over ownership for the
 /// query result!
-QueryCacheResultEntry* QueryCache::store(
-    TRI_vocbase_t* vocbase, uint64_t hash, QueryString const& queryString,
-    std::shared_ptr<VPackBuilder> result,
-    std::vector<std::string> const& collections) {
-
+QueryCacheResultEntry* QueryCache::store(TRI_vocbase_t* vocbase, uint64_t hash,
+                                         QueryString const& queryString,
+                                         std::shared_ptr<VPackBuilder> result,
+                                         std::vector<std::string> const& collections) {
   if (!result->slice().isArray()) {
     return nullptr;
   }
@@ -392,8 +384,7 @@ QueryCacheResultEntry* QueryCache::store(
   auto const part = getPart(vocbase);
 
   // create the cache entry outside the lock
-  auto entry = std::make_unique<QueryCacheResultEntry>(
-      hash, queryString, result, collections);
+  auto entry = std::make_unique<QueryCacheResultEntry>(hash, queryString, result, collections);
 
   WRITE_LOCKER(writeLocker, _entriesLock[part]);
 
@@ -412,8 +403,7 @@ QueryCacheResultEntry* QueryCache::store(
 }
 
 /// @brief invalidate all queries for the given collections
-void QueryCache::invalidate(TRI_vocbase_t* vocbase,
-                            std::vector<std::string> const& collections) {
+void QueryCache::invalidate(TRI_vocbase_t* vocbase, std::vector<std::string> const& collections) {
   auto const part = getPart(vocbase);
   WRITE_LOCKER(writeLocker, _entriesLock[part]);
 
@@ -497,8 +487,7 @@ void QueryCache::enforceMaxResults(size_t value) {
 /// @brief determine which lock to use for the cache entries
 unsigned int QueryCache::getPart(TRI_vocbase_t const* vocbase) const {
   return static_cast<int>(
-      fasthash64(&vocbase, sizeof(TRI_vocbase_t const*), 0xf12345678abcdef) %
-      NumberOfParts);
+      fasthash64(&vocbase, sizeof(TRI_vocbase_t const*), 0xf12345678abcdef) % NumberOfParts);
 }
 
 /// @brief invalidate all entries in the cache part

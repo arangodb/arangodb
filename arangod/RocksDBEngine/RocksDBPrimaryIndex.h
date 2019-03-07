@@ -40,7 +40,7 @@
 namespace rocksdb {
 class Iterator;
 class Comparator;
-}
+}  // namespace rocksdb
 
 namespace arangodb {
 
@@ -51,10 +51,8 @@ class Methods;
 
 class RocksDBPrimaryIndexIterator final : public IndexIterator {
  public:
-  RocksDBPrimaryIndexIterator(LogicalCollection* collection,
-                              transaction::Methods* trx,
-                              ManagedDocumentResult* mmdr,
-                              RocksDBPrimaryIndex* index,
+  RocksDBPrimaryIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
+                              ManagedDocumentResult* mmdr, RocksDBPrimaryIndex* index,
                               std::unique_ptr<VPackBuilder>& keys);
 
   ~RocksDBPrimaryIndexIterator();
@@ -79,8 +77,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
  public:
   RocksDBPrimaryIndex() = delete;
 
-  RocksDBPrimaryIndex(arangodb::LogicalCollection*,
-                      VPackSlice const& info);
+  RocksDBPrimaryIndex(arangodb::LogicalCollection*, VPackSlice const& info);
 
   ~RocksDBPrimaryIndex();
 
@@ -97,44 +94,36 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimateLocal(
-      arangodb::StringRef const* = nullptr) const override {
+  double selectivityEstimateLocal(arangodb::StringRef const* = nullptr) const override {
     return 1.0;
   }
-  
+
   void load() override;
 
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
-  RocksDBToken lookupKey(transaction::Methods* trx,
-                         arangodb::StringRef key) const;
+  RocksDBToken lookupKey(transaction::Methods* trx, arangodb::StringRef key) const;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*,
-                                      ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      bool) override;
+                                      arangodb::aql::Variable const*, bool) override;
 
-  arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
+                                              arangodb::aql::Variable const*) const override;
 
-  void invokeOnAllElements(
-      transaction::Methods* trx,
-      std::function<bool(DocumentIdentifierToken const&)> callback) const;
+  void invokeOnAllElements(transaction::Methods* trx,
+                           std::function<bool(DocumentIdentifierToken const&)> callback) const;
 
   /// insert index elements into the specified write batch.
-  Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
-                        TRI_voc_rid_t,
+  Result insertInternal(transaction::Methods* trx, RocksDBMethods*, TRI_voc_rid_t,
                         arangodb::velocypack::Slice const&) override;
-  
-  Result updateInternal(transaction::Methods* trx, RocksDBMethods*,
-                        TRI_voc_rid_t oldRevision,
-                        arangodb::velocypack::Slice const& oldDoc,
-                        TRI_voc_rid_t newRevision,
+
+  Result updateInternal(transaction::Methods* trx, RocksDBMethods*, TRI_voc_rid_t oldRevision,
+                        arangodb::velocypack::Slice const& oldDoc, TRI_voc_rid_t newRevision,
                         velocypack::Slice const& newDoc) override;
 
   /// remove index elements and put it in the specified write batch.

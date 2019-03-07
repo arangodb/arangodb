@@ -241,14 +241,12 @@ class TRI_replication_applier_t {
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack() const;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief increase the starts counter
   //////////////////////////////////////////////////////////////////////////////
 
-  void started() {
-    ++_starts;
-  }
+  void started() { ++_starts; }
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -280,8 +278,8 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier(TRI_vocbase_t*);
 /// @brief configure the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ConfigureReplicationApplier(
-    TRI_replication_applier_t*, TRI_replication_applier_configuration_t const*);
+int TRI_ConfigureReplicationApplier(TRI_replication_applier_t*,
+                                    TRI_replication_applier_configuration_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the current replication apply state
@@ -307,8 +305,7 @@ void TRI_DestroyStateReplicationApplier(TRI_replication_applier_state_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_SaveStateReplicationApplier(TRI_vocbase_t*,
-                                    TRI_replication_applier_state_t const*,
-                                    bool);
+                                    TRI_replication_applier_state_t const*, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove the replication application state file
@@ -320,14 +317,14 @@ int TRI_RemoveStateReplicationApplier(TRI_vocbase_t*);
 /// @brief load the replication application state from a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_LoadStateReplicationApplier(TRI_vocbase_t*,
-                                    TRI_replication_applier_state_t*);
+int TRI_LoadStateReplicationApplier(TRI_vocbase_t*, TRI_replication_applier_state_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief save the replication application configuration to a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveConfigurationReplicationApplier(
-    TRI_vocbase_t*, TRI_replication_applier_configuration_t const*, bool);
+int TRI_SaveConfigurationReplicationApplier(TRI_vocbase_t*,
+                                            TRI_replication_applier_configuration_t const*,
+                                            bool);
 
 #endif

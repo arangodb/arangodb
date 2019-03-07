@@ -63,8 +63,7 @@ VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {
   builder.openArray();
   builder.add(VPackValue(int(1)));
   builder.add(VPackValue(int(2)));  // 2 == response
-  builder.add(
-      VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));
+  builder.add(VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));
   builder.close();
   _header = builder.steal();
   if (_vpackPayloads.empty()) {
@@ -74,15 +73,13 @@ VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {
       _generateBody = false;  // no body availalbe
     }
     return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
-                                   VPackSlice::noneSlice(), _messageId,
-                                   _generateBody);
+                                   VPackSlice::noneSlice(), _messageId, _generateBody);
   } else {
     std::vector<VPackSlice> slices;
     for (auto const& buffer : _vpackPayloads) {
       slices.emplace_back(buffer.data());
     }
     return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
-                                   std::move(slices), _messageId,
-                                   _generateBody);
+                                   std::move(slices), _messageId, _generateBody);
   }
 }

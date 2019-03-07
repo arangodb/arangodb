@@ -153,6 +153,6 @@ class V8ContextGuard {
   V8Context* _context;
 };
 
-}
+}  // namespace arangodb
 
 #endif

@@ -39,6 +39,8 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
+#include "Pregel/PregelFeature.h"
+#include "Pregel/Recovery.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
@@ -46,8 +48,6 @@
 #include "V8/v8-globals.h"
 #include "VocBase/AuthInfo.h"
 #include "VocBase/vocbase.h"
-#include "Pregel/PregelFeature.h"
-#include "Pregel/Recovery.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -59,8 +59,7 @@ std::atomic<bool> HeartbeatThread::HasRunOnce(false);
 ////////////////////////////////////////////////////////////////////////////////
 
 HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
-                                 uint64_t interval,
-                                 uint64_t maxFailsBeforeWarning) 
+                                 uint64_t interval, uint64_t maxFailsBeforeWarning)
     : Thread("Heartbeat"),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(std::make_shared<Mutex>()),
@@ -80,8 +79,7 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
       _backgroundJobsLaunched(0),
       _backgroundJobScheduledOrRunning(false),
       _launchAnotherBackgroundJob(false),
-      _lastSyncTime(0) {
-}
+      _lastSyncTime(0) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a heartbeat thread
@@ -108,11 +106,12 @@ class HeartbeatBackgroundJob {
   std::shared_ptr<HeartbeatThread> _heartbeatThread;
   double _startTime;
   std::string _schedulerInfo;
+
  public:
-  explicit HeartbeatBackgroundJob(std::shared_ptr<HeartbeatThread> hbt,
-                                  double startTime)
-    : _heartbeatThread(hbt), _startTime(startTime),_schedulerInfo(SchedulerFeature::SCHEDULER->infoStatus()) {
-  }
+  explicit HeartbeatBackgroundJob(std::shared_ptr<HeartbeatThread> hbt, double startTime)
+      : _heartbeatThread(hbt),
+        _startTime(startTime),
+        _schedulerInfo(SchedulerFeature::SCHEDULER->infoStatus()) {}
 
   void operator()() {
     // first tell the scheduler that this thread is working:
@@ -121,11 +120,11 @@ class HeartbeatBackgroundJob {
 
     double now = TRI_microtime();
     if (now > _startTime + 5.0) {
-      LOG_TOPIC(ERR, Logger::HEARTBEAT) << "ALARM: Scheduling background job "
-        "took " << now - _startTime
-        << " seconds, scheduler info at schedule time: " << _schedulerInfo
-        << ", scheduler info now: "
-        << SchedulerFeature::SCHEDULER->infoStatus();
+      LOG_TOPIC(ERR, Logger::HEARTBEAT)
+          << "ALARM: Scheduling background job "
+             "took "
+          << now - _startTime << " seconds, scheduler info at schedule time: " << _schedulerInfo
+          << ", scheduler info now: " << SchedulerFeature::SCHEDULER->infoStatus();
     }
     _heartbeatThread->runBackgroundJob();
   }
@@ -153,7 +152,8 @@ void HeartbeatThread::runBackgroundJob() {
       _launchAnotherBackgroundJob = false;
 
       // the JobGuard is in the operator() of HeartbeatBackgroundJob
-      SchedulerFeature::SCHEDULER->post(HeartbeatBackgroundJob(shared_from_this(), TRI_microtime()));
+      SchedulerFeature::SCHEDULER->post(
+          HeartbeatBackgroundJob(shared_from_this(), TRI_microtime()));
     } else {
       _backgroundJobScheduledOrRunning = false;
       _launchAnotherBackgroundJob = false;
@@ -204,44 +204,39 @@ void HeartbeatThread::runDBServer() {
   // convert timeout to seconds
   double const interval = (double)_interval / 1000.0 / 1000.0;
 
-  
-
-  std::function<bool(VPackSlice const& result)> updatePlan =
-    [=](VPackSlice const& result) {
-
+  std::function<bool(VPackSlice const& result)> updatePlan = [=](VPackSlice const& result) {
     if (!result.isNumber()) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
-      << "Plan Version is not a number! " << result.toJson();
+          << "Plan Version is not a number! " << result.toJson();
       return false;
     }
-    
+
     uint64_t version = result.getNumber<uint64_t>();
     bool doSync = false;
-    
+
     {
       MUTEX_LOCKER(mutexLocker, *_statusLock);
       if (version > _desiredVersions->plan) {
         _desiredVersions->plan = version;
         LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
-          << "Desired Current Version is now " << _desiredVersions->plan;
+            << "Desired Current Version is now " << _desiredVersions->plan;
         doSync = true;
       }
     }
-    
+
     if (doSync) {
       syncDBServerStatusQuo();
     }
-    
+
     return true;
   };
 
-  auto planAgencyCallback = std::make_shared<AgencyCallback>(
-      _agency, "Plan/Version", updatePlan, true);
+  auto planAgencyCallback =
+      std::make_shared<AgencyCallback>(_agency, "Plan/Version", updatePlan, true);
 
   bool registered = false;
   while (!registered) {
-    registered =
-      _agencyCallbackRegistry->registerCallback(planAgencyCallback);
+    registered = _agencyCallbackRegistry->registerCallback(planAgencyCallback);
     if (!registered) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "Couldn't register plan change in agency!";
@@ -253,9 +248,7 @@ void HeartbeatThread::runDBServer() {
   int const currentCountStart = 1;  // set to 1 by Max to speed up discovery
   int currentCount = currentCountStart;
 
-
   while (!isStopping()) {
-
     try {
       LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "sending heartbeat to agency";
 
@@ -272,46 +265,38 @@ void HeartbeatThread::runDBServer() {
         currentCount = currentCountStart;
 
         // send an initial GET request to Sync/Commands/my-id
-        LOG_TOPIC(TRACE, Logger::HEARTBEAT)
-            << "Looking at Sync/Commands/" + _myId;
+        LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Looking at Sync/Commands/" + _myId;
 
-        AgencyReadTransaction trx(
-          std::vector<std::string>({
-              AgencyCommManager::path("Shutdown"),
-                AgencyCommManager::path("Current/Version"),
-                AgencyCommManager::path("Sync/Commands", _myId),
-                "/.agency"}));
-        
+        AgencyReadTransaction trx(std::vector<std::string>(
+            {AgencyCommManager::path("Shutdown"), AgencyCommManager::path("Current/Version"),
+             AgencyCommManager::path("Sync/Commands", _myId), "/.agency"}));
+
         AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
         if (!result.successful()) {
           LOG_TOPIC(WARN, Logger::HEARTBEAT)
               << "Heartbeat: Could not read from agency!";
         } else {
-
           VPackSlice agentPool = result.slice()[0].get(".agency");
           if (agentPool.isObject() && agentPool.hasKey("size") &&
-              agentPool.get("size").getUInt() > 0 &&
-              agentPool.get("pool").isObject()) {
+              agentPool.get("size").getUInt() > 0 && agentPool.get("pool").isObject()) {
             _agency.updateEndpoints(agentPool.get("pool"));
           } else {
-            LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Cannot find an agency persisted in RAFT 8|";
+            LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+                << "Cannot find an agency persisted in RAFT 8|";
           }
-          
-          VPackSlice shutdownSlice =
-              result.slice()[0].get(std::vector<std::string>(
-                  {AgencyCommManager::path(), "Shutdown"}));
+
+          VPackSlice shutdownSlice = result.slice()[0].get(std::vector<std::string>(
+              {AgencyCommManager::path(), "Shutdown"}));
 
           if (shutdownSlice.isBool() && shutdownSlice.getBool()) {
             ApplicationServer::server->beginShutdown();
             break;
           }
-          LOG_TOPIC(TRACE, Logger::HEARTBEAT)
-              << "Looking at Sync/Commands/" + _myId;
+          LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Looking at Sync/Commands/" + _myId;
           handleStateChange(result);
 
           VPackSlice s = result.slice()[0].get(std::vector<std::string>(
-              {AgencyCommManager::path(), std::string("Current"),
-               std::string("Version")}));
+              {AgencyCommManager::path(), std::string("Current"), std::string("Version")}));
           if (!s.isInteger()) {
             LOG_TOPIC(ERR, Logger::HEARTBEAT)
                 << "Current/Version in agency is not an integer.";
@@ -346,11 +331,10 @@ void HeartbeatThread::runDBServer() {
       double remain = interval - (TRI_microtime() - start);
       // mop: execute at least once
       do {
-        
         if (isStopping()) {
           break;
         }
-        
+
         LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Entering update loop";
 
         bool wasNotified;
@@ -388,9 +372,9 @@ void HeartbeatThread::runDBServer() {
   }
 
   _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
-  
+
   LOG_TOPIC(TRACE, Logger::HEARTBEAT)
-    << "stopped heartbeat thread (DBServer version)";
+      << "stopped heartbeat thread (DBServer version)";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -399,8 +383,8 @@ void HeartbeatThread::runDBServer() {
 
 void HeartbeatThread::runCoordinator() {
   AuthenticationFeature* authentication =
-      application_features::ApplicationServer::getFeature<
-          AuthenticationFeature>("Authentication");
+      application_features::ApplicationServer::getFeature<AuthenticationFeature>(
+          "Authentication");
   TRI_ASSERT(authentication != nullptr);
   LOG_TOPIC(TRACE, Logger::HEARTBEAT)
       << "starting heartbeat thread (coordinator version)";
@@ -434,15 +418,11 @@ void HeartbeatThread::runCoordinator() {
         break;
       }
 
-      AgencyReadTransaction trx
-        (std::vector<std::string>(
-          {AgencyCommManager::path("Current/Version"),
-           AgencyCommManager::path("Current/Foxxmaster"),
+      AgencyReadTransaction trx(std::vector<std::string>(
+          {AgencyCommManager::path("Current/Version"), AgencyCommManager::path("Current/Foxxmaster"),
            AgencyCommManager::path("Current/FoxxmasterQueueupdate"),
-           AgencyCommManager::path("Plan/Version"),
-           AgencyCommManager::path("Shutdown"),
-           AgencyCommManager::path("Sync/Commands", _myId),
-           AgencyCommManager::path("Sync/UserVersion"),
+           AgencyCommManager::path("Plan/Version"), AgencyCommManager::path("Shutdown"),
+           AgencyCommManager::path("Sync/Commands", _myId), AgencyCommManager::path("Sync/UserVersion"),
            AgencyCommManager::path("Target/FailedServers"), "/.agency"}));
       AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
 
@@ -450,16 +430,15 @@ void HeartbeatThread::runCoordinator() {
         LOG_TOPIC(WARN, Logger::HEARTBEAT)
             << "Heartbeat: Could not read from agency!";
       } else {
+        VPackSlice agentPool = result.slice()[0].get(".agency");
+        if (agentPool.isObject() && agentPool.hasKey("size") &&
+            agentPool.get("size").getUInt() > 0 && agentPool.get("pool").isObject()) {
+          _agency.updateEndpoints(agentPool.get("pool"));
+        } else {
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+              << "Cannot find an agency persisted in RAFT 8|";
+        }
 
-          VPackSlice agentPool = result.slice()[0].get(".agency");
-          if (agentPool.isObject() && agentPool.hasKey("size") &&
-              agentPool.get("size").getUInt() > 0 &&
-              agentPool.get("pool").isObject()) {
-            _agency.updateEndpoints(agentPool.get("pool"));
-          } else {
-            LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Cannot find an agency persisted in RAFT 8|";
-          }
-        
         VPackSlice shutdownSlice = result.slice()[0].get(
             std::vector<std::string>({AgencyCommManager::path(), "Shutdown"}));
 
@@ -468,8 +447,7 @@ void HeartbeatThread::runCoordinator() {
           break;
         }
 
-        LOG_TOPIC(TRACE, Logger::HEARTBEAT)
-            << "Looking at Sync/Commands/" + _myId;
+        LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Looking at Sync/Commands/" + _myId;
 
         handleStateChange(result);
 
@@ -479,18 +457,16 @@ void HeartbeatThread::runCoordinator() {
         // about to become the new foxxmaster we must immediately refresh our
         // queues this is done in ServerState...if queueupdate is set after
         // foxxmaster the change will be reset again
-        VPackSlice foxxmasterQueueupdateSlice = result.slice()[0].get(
-            std::vector<std::string>({AgencyCommManager::path(), "Current",
-                                      "FoxxmasterQueueupdate"}));
+        VPackSlice foxxmasterQueueupdateSlice = result.slice()[0].get(std::vector<std::string>(
+            {AgencyCommManager::path(), "Current", "FoxxmasterQueueupdate"}));
 
         if (foxxmasterQueueupdateSlice.isBool()) {
           ServerState::instance()->setFoxxmasterQueueupdate(
               foxxmasterQueueupdateSlice.getBool());
         }
 
-        VPackSlice foxxmasterSlice =
-            result.slice()[0].get(std::vector<std::string>(
-                {AgencyCommManager::path(), "Current", "Foxxmaster"}));
+        VPackSlice foxxmasterSlice = result.slice()[0].get(std::vector<std::string>(
+            {AgencyCommManager::path(), "Current", "Foxxmaster"}));
 
         if (foxxmasterSlice.isString() && foxxmasterSlice.getStringLength() != 0) {
           ServerState::instance()->setFoxxmaster(foxxmasterSlice.copyString());
@@ -499,19 +475,16 @@ void HeartbeatThread::runCoordinator() {
           VPackBuilder myIdBuilder;
           myIdBuilder.add(VPackValue(state->getId()));
 
-          auto updateMaster =
-              _agency.casValue("/Current/Foxxmaster", foxxmasterSlice,
-                               myIdBuilder.slice(), 0, 1.0);
+          auto updateMaster = _agency.casValue("/Current/Foxxmaster", foxxmasterSlice,
+                                               myIdBuilder.slice(), 0, 1.0);
           if (updateMaster.successful()) {
             // We won the race we are the master
             ServerState::instance()->setFoxxmaster(state->getId());
           }
-
         }
 
-        VPackSlice versionSlice =
-            result.slice()[0].get(std::vector<std::string>(
-                {AgencyCommManager::path(), "Plan", "Version"}));
+        VPackSlice versionSlice = result.slice()[0].get(std::vector<std::string>(
+            {AgencyCommManager::path(), "Plan", "Version"}));
 
         if (versionSlice.isInteger()) {
           // there is a plan version
@@ -573,9 +546,8 @@ void HeartbeatThread::runCoordinator() {
           }
         }
 
-        VPackSlice failedServersSlice =
-            result.slice()[0].get(std::vector<std::string>(
-                {AgencyCommManager::path(), "Target", "FailedServers"}));
+        VPackSlice failedServersSlice = result.slice()[0].get(std::vector<std::string>(
+            {AgencyCommManager::path(), "Target", "FailedServers"}));
 
         if (failedServersSlice.isObject()) {
           std::vector<std::string> failedServers = {};
@@ -586,8 +558,8 @@ void HeartbeatThread::runCoordinator() {
           }
           // calling pregel code
           ClusterInfo::instance()->setFailedServers(failedServers);
-          
-          pregel::PregelFeature *prgl = pregel::PregelFeature::instance();
+
+          pregel::PregelFeature* prgl = pregel::PregelFeature::instance();
           if (prgl != nullptr && failedServers.size() > 0) {
             pregel::RecoveryManager* mngr = prgl->recoveryManager();
             if (mngr != nullptr) {
@@ -595,7 +567,7 @@ void HeartbeatThread::runCoordinator() {
                 mngr->updatedFailedServers();
               } catch (std::exception const& e) {
                 LOG_TOPIC(ERR, Logger::HEARTBEAT)
-                << "Got an exception in coordinator heartbeat: " << e.what();
+                    << "Got an exception in coordinator heartbeat: " << e.what();
               }
             }
           }
@@ -704,9 +676,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
   if (result.successful()) {
     std::vector<TRI_voc_tick_t> ids;
-    velocypack::Slice databases =
-        result.slice()[0].get(std::vector<std::string>(
-            {AgencyCommManager::path(), "Plan", "Databases"}));
+    velocypack::Slice databases = result.slice()[0].get(std::vector<std::string>(
+        {AgencyCommManager::path(), "Plan", "Databases"}));
 
     if (!databases.isObject()) {
       return false;
@@ -760,8 +731,9 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         int res = databaseFeature->createDatabaseCoordinator(id, name, vocbase);
 
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "creating local database '" << name
-                   << "' failed: " << TRI_errno_string(res);
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+              << "creating local database '" << name
+              << "' failed: " << TRI_errno_string(res);
         } else {
           HasRunOnce = true;
         }
@@ -859,7 +831,6 @@ void HeartbeatThread::syncDBServerStatusQuo() {
   // the JobGuard is in the operator() of HeartbeatBackgroundJob
   _lastSyncTime = TRI_microtime();
   SchedulerFeature::SCHEDULER->post(HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime));
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////

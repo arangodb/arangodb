@@ -81,7 +81,7 @@ void RocksDBCounterManager::CMValue::serialize(VPackBuilder& b) const {
 /// Constructor needs to be called synchrunously,
 /// will load counts from the db and scan the WAL
 RocksDBCounterManager::RocksDBCounterManager(rocksdb::DB* db)
-    : _lastSync(0),_syncing(false), _db(db) {
+    : _lastSync(0), _syncing(false), _db(db) {
   readSettings();
   readIndexEstimates();
   readCounterValues();
@@ -99,8 +99,7 @@ void RocksDBCounterManager::runRecovery() {
   }
 }
 
-RocksDBCounterManager::CounterAdjustment RocksDBCounterManager::loadCounter(
-    uint64_t objectId) const {
+RocksDBCounterManager::CounterAdjustment RocksDBCounterManager::loadCounter(uint64_t objectId) const {
   TRI_ASSERT(objectId != 0);  // TODO fix this
 
   READ_LOCKER(guard, _rwLock);
@@ -115,8 +114,7 @@ RocksDBCounterManager::CounterAdjustment RocksDBCounterManager::loadCounter(
 /// collections / views / indexes can call this method to update
 /// their total counts. Thread-Safe needs the snapshot so we know
 /// the sequence number used
-void RocksDBCounterManager::updateCounter(uint64_t objectId,
-                                          CounterAdjustment const& update) {
+void RocksDBCounterManager::updateCounter(uint64_t objectId, CounterAdjustment const& update) {
   // From write_batch.cc in rocksdb: first 64 bits in the internal rep_
   // buffer are the sequence number
   /*TRI_ASSERT(trx->GetState() == rocksdb::Transaction::COMMITED);
@@ -139,10 +137,9 @@ void RocksDBCounterManager::updateCounter(uint64_t objectId,
       }
     } else {
       // insert new counter
-      _counters.emplace(std::make_pair(
-          objectId,
-          CMValue(update.sequenceNumber(), update.added() - update.removed(),
-                  update.revisionId())));
+      _counters.emplace(std::make_pair(objectId, CMValue(update.sequenceNumber(),
+                                                         update.added() - update.removed(),
+                                                         update.revisionId())));
       needsSync = true;  // only count values from WAL if they are in the DB
     }
   }
@@ -151,8 +148,7 @@ void RocksDBCounterManager::updateCounter(uint64_t objectId,
   }
 }
 
-arangodb::Result RocksDBCounterManager::setAbsoluteCounter(uint64_t objectId,
-                                                           uint64_t value) {
+arangodb::Result RocksDBCounterManager::setAbsoluteCounter(uint64_t objectId, uint64_t value) {
   arangodb::Result res;
   WRITE_LOCKER(guard, _rwLock);
   auto it = _counters.find(objectId);
@@ -176,7 +172,8 @@ void RocksDBCounterManager::removeCounter(uint64_t objectId) {
     RocksDBKey key;
     key.constructCounterValue(it->first);
     rocksdb::WriteOptions options;
-    rocksdb::Status s = _db->Delete(options, RocksDBColumnFamily::definitions(), key.string());
+    rocksdb::Status s =
+        _db->Delete(options, RocksDBColumnFamily::definitions(), key.string());
     if (!s.ok()) {
       LOG_TOPIC(ERR, Logger::ENGINES) << "deleting counter failed";
     }
@@ -186,15 +183,13 @@ void RocksDBCounterManager::removeCounter(uint64_t objectId) {
 
 /// Thread-Safe force sync
 Result RocksDBCounterManager::sync(bool force) {
-  TRI_IF_FAILURE("RocksDBCounterManagerSync") {
-    return Result();
-  }
+  TRI_IF_FAILURE("RocksDBCounterManagerSync") { return Result(); }
 
   if (force) {
     while (true) {
       bool expected = false;
-      bool res = _syncing.compare_exchange_strong(
-          expected, true, std::memory_order_acquire, std::memory_order_relaxed);
+      bool res = _syncing.compare_exchange_strong(expected, true, std::memory_order_acquire,
+                                                  std::memory_order_relaxed);
       if (res) {
         break;
       }
@@ -203,8 +198,7 @@ Result RocksDBCounterManager::sync(bool force) {
   } else {
     bool expected = false;
 
-    if (!_syncing.compare_exchange_strong(expected, true,
-                                          std::memory_order_acquire,
+    if (!_syncing.compare_exchange_strong(expected, true, std::memory_order_acquire,
                                           std::memory_order_relaxed)) {
       return Result();
     }
@@ -221,8 +215,7 @@ Result RocksDBCounterManager::sync(bool force) {
   rocksdb::WriteOptions writeOptions;
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   auto seqNumber = db->GetLatestSequenceNumber();
-  std::unique_ptr<rocksdb::Transaction> rtrx(
-      db->BeginTransaction(writeOptions));
+  std::unique_ptr<rocksdb::Transaction> rtrx(db->BeginTransaction(writeOptions));
 
   VPackBuilder b;
   for (std::pair<uint64_t, CMValue> const& pair : copy) {
@@ -238,12 +231,12 @@ Result RocksDBCounterManager::sync(bool force) {
     RocksDBKey key;
     key.constructCounterValue(pair.first);
     rocksdb::Slice value((char*)b.start(), b.size());
-    rocksdb::Status s = rtrx->Put(RocksDBColumnFamily::definitions(),
-                                  key.string(), value);
+    rocksdb::Status s = rtrx->Put(RocksDBColumnFamily::definitions(), key.string(), value);
     if (!s.ok()) {
       rtrx->Rollback();
       auto rStatus = rocksutils::convertStatus(s);
-      LOG_TOPIC(WARN, Logger::ENGINES) << "writing counters failed: " << rStatus.errorMessage();
+      LOG_TOPIC(WARN, Logger::ENGINES)
+          << "writing counters failed: " << rStatus.errorMessage();
       return rStatus;
     }
   }
@@ -263,12 +256,12 @@ Result RocksDBCounterManager::sync(bool force) {
   key.constructSettingsValue(RocksDBSettingsType::ServerTick);
   rocksdb::Slice value(slice.startAs<char>(), slice.byteSize());
 
-  rocksdb::Status s = rtrx->Put(RocksDBColumnFamily::definitions(),
-                                key.string(), value);
+  rocksdb::Status s = rtrx->Put(RocksDBColumnFamily::definitions(), key.string(), value);
 
   if (!s.ok()) {
     auto rStatus = rocksutils::convertStatus(s);
-    LOG_TOPIC(WARN, Logger::ENGINES) << "writing settings failed: " << rStatus.errorMessage();
+    LOG_TOPIC(WARN, Logger::ENGINES)
+        << "writing settings failed: " << rStatus.errorMessage();
     rtrx->Rollback();
     return rStatus;
   }
@@ -304,18 +297,19 @@ Result RocksDBCounterManager::sync(bool force) {
         // or start fresh.
         continue;
       }
-      auto rocksCollection =
-          static_cast<RocksDBCollection*>(collection->getPhysical());
+      auto rocksCollection = static_cast<RocksDBCollection*>(collection->getPhysical());
       TRI_ASSERT(rocksCollection != nullptr);
       Result res = rocksCollection->serializeIndexEstimates(rtrx.get());
       if (!res.ok()) {
-        LOG_TOPIC(WARN, Logger::ENGINES) << "writing index estimates failed: " << res.errorMessage();
+        LOG_TOPIC(WARN, Logger::ENGINES)
+            << "writing index estimates failed: " << res.errorMessage();
         return res;
       }
 
       res = rocksCollection->serializeKeyGenerator(rtrx.get());
       if (!res.ok()) {
-        LOG_TOPIC(WARN, Logger::ENGINES) << "writing key generators failed: " << res.errorMessage();
+        LOG_TOPIC(WARN, Logger::ENGINES)
+            << "writing key generators failed: " << res.errorMessage();
         return res;
       }
     }
@@ -348,8 +342,7 @@ void RocksDBCounterManager::readSettings() {
     // key may not be there, so don't fail when not found
     VPackSlice slice = VPackSlice(result.data());
     TRI_ASSERT(slice.isObject());
-    LOG_TOPIC(TRACE, Logger::ENGINES) << "read initial settings: "
-                                      << slice.toJson();
+    LOG_TOPIC(TRACE, Logger::ENGINES) << "read initial settings: " << slice.toJson();
 
     if (!result.empty()) {
       try {
@@ -365,9 +358,9 @@ void RocksDBCounterManager::readSettings() {
           TRI_HybridLogicalClock(lastHlc);
         }
 
-        _lastSync = basics::VelocyPackHelper::stringUInt64(slice.get("lastSync"));
-        LOG_TOPIC(TRACE, Logger::ENGINES) << "last background settings sync: "
-                                          << _lastSync;
+        _lastSync =
+            basics::VelocyPackHelper::stringUInt64(slice.get("lastSync"));
+        LOG_TOPIC(TRACE, Logger::ENGINES) << "last background settings sync: " << _lastSync;
       } catch (...) {
         LOG_TOPIC(WARN, Logger::ENGINES)
             << "unable to read initial settings: invalid data";
@@ -383,29 +376,23 @@ void RocksDBCounterManager::readIndexEstimates() {
   auto cf = RocksDBColumnFamily::definitions();
   rocksdb::Comparator const* cmp = cf->GetComparator();
   rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(
-      _db->NewIterator(readOptions, cf));
+  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions, cf));
   iter->Seek(bounds.start());
 
-  for (; iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0;
-       iter->Next()) {
+  for (; iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0; iter->Next()) {
     uint64_t objectId = RocksDBKey::definitionsObjectId(iter->key());
-    uint64_t lastSeqNumber =
-        rocksutils::uint64FromPersistent(iter->value().data());
+    uint64_t lastSeqNumber = rocksutils::uint64FromPersistent(iter->value().data());
 
     StringRef estimateSerialisation(iter->value().data() + sizeof(uint64_t),
                                     iter->value().size() - sizeof(uint64_t));
     // If this hits we have two estimates for the same index
     TRI_ASSERT(_estimators.find(objectId) == _estimators.end());
     try {
-      if (RocksDBCuckooIndexEstimator<uint64_t>::isFormatSupported(
-              estimateSerialisation)) {
-        _estimators.emplace(
-            objectId,
-            std::make_pair(
-                lastSeqNumber,
-                std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(
-                    estimateSerialisation)));
+      if (RocksDBCuckooIndexEstimator<uint64_t>::isFormatSupported(estimateSerialisation)) {
+        _estimators.emplace(objectId,
+                            std::make_pair(lastSeqNumber,
+                                           std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(
+                                               estimateSerialisation)));
       }
     } catch (...) {
       // Nothing to do, if the estimator fails to create we let it be recreated.
@@ -422,12 +409,10 @@ void RocksDBCounterManager::readKeyGenerators() {
   auto cf = RocksDBColumnFamily::definitions();
   rocksdb::Comparator const* cmp = cf->GetComparator();
   rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(
-      _db->NewIterator(readOptions, cf));
+  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions, cf));
   iter->Seek(bounds.start());
 
-  for (; iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0;
-       iter->Next()) {
+  for (; iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0; iter->Next()) {
     uint64_t objectId = RocksDBKey::definitionsObjectId(iter->key());
     auto properties = RocksDBValue::data(iter->value());
     uint64_t lastValue = properties.get("lastValue").getUInt();
@@ -443,8 +428,7 @@ void RocksDBCounterManager::readKeyGenerators() {
   }
 }
 
-std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>
-RocksDBCounterManager::stealIndexEstimator(uint64_t objectId) {
+std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> RocksDBCounterManager::stealIndexEstimator(uint64_t objectId) {
   std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> res(nullptr);
   auto it = _estimators.find(objectId);
   if (it != _estimators.end()) {
@@ -487,8 +471,7 @@ void RocksDBCounterManager::readCounterValues() {
   auto cf = RocksDBColumnFamily::definitions();
   rocksdb::Comparator const* cmp = cf->GetComparator();
   rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(
-      _db->NewIterator(readOptions, cf));
+  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(readOptions, cf));
   iter->Seek(bounds.start());
 
   while (iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0) {
@@ -508,23 +491,14 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   // must be set by the counter manager
   std::unordered_map<uint64_t, rocksdb::SequenceNumber> seqStart;
   std::unordered_map<uint64_t, RocksDBCounterManager::CounterAdjustment> deltas;
-  std::unordered_map<
-      uint64_t,
-      std::pair<uint64_t,
-                std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>>*
-      _estimators;
+  std::unordered_map<uint64_t, std::pair<uint64_t, std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>>* _estimators;
   std::unordered_map<uint64_t, uint64_t>* _generators;
   rocksdb::SequenceNumber currentSeqNum;
   uint64_t _maxTick = 0;
   uint64_t _maxHLC = 0;
 
-  explicit WBReader(
-      std::unordered_map<
-          uint64_t,
-          std::pair<uint64_t,
-                    std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>>*
-          estimators,
-      std::unordered_map<uint64_t, uint64_t>* generators)
+  explicit WBReader(std::unordered_map<uint64_t, std::pair<uint64_t, std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>>* estimators,
+                    std::unordered_map<uint64_t, uint64_t>* generators)
       : _estimators(estimators), _generators(generators), currentSeqNum(0) {}
 
   ~WBReader() {
@@ -536,8 +510,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     TRI_HybridLogicalClock(_maxHLC);
   }
 
-  bool shouldHandleDocument(uint32_t column_family_id,
-                            const rocksdb::Slice& key) {
+  bool shouldHandleDocument(uint32_t column_family_id, const rocksdb::Slice& key) {
     if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
       uint64_t objectId = RocksDBKey::objectId(key);
       auto const& it = seqStart.find(objectId);
@@ -597,8 +570,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
     if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
       storeMaxHLC(RocksDBKey::revisionId(RocksDBEntryType::Document, key));
-      storeLastKeyValue(RocksDBKey::objectId(key),
-                        RocksDBValue::keyValue(value));
+      storeLastKeyValue(RocksDBKey::objectId(key), RocksDBValue::keyValue(value));
     } else if (column_family_id == RocksDBColumnFamily::primary()->GetID()) {
       // document key
       StringRef ref = RocksDBKey::primaryKey(key);
@@ -609,8 +581,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         try {
           // extract uint64_t value from key. this will throw if the key
           // is non-numeric
-          uint64_t tick =
-              basics::StringUtils::uint64_check(ref.data(), ref.size());
+          uint64_t tick = basics::StringUtils::uint64_check(ref.data(), ref.size());
           // if no previous _maxTick set or the numeric value found is
           // "near" our previous _maxTick, then we update it
           if (tick > _maxTick && (_maxTick == 0 || tick - _maxTick < 2048)) {
@@ -620,8 +591,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
           // non-numeric key. simply ignore it
         }
       }
-    } else if (column_family_id ==
-               RocksDBColumnFamily::definitions()->GetID()) {
+    } else if (column_family_id == RocksDBColumnFamily::definitions()->GetID()) {
       auto const type = RocksDBKey::type(key);
 
       if (type == RocksDBEntryType::Collection) {
@@ -637,8 +607,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       } else if (type == RocksDBEntryType::Database) {
         storeMaxTick(RocksDBKey::databaseId(key));
       } else if (type == RocksDBEntryType::View) {
-        storeMaxTick(std::max(RocksDBKey::databaseId(key),
-                              RocksDBKey::viewId(key)));
+        storeMaxTick(std::max(RocksDBKey::databaseId(key), RocksDBKey::viewId(key)));
       }
     }
   }
@@ -648,8 +617,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     updateMaxTick(column_family_id, key, value);
     if (shouldHandleDocument(column_family_id, key)) {
       uint64_t objectId = RocksDBKey::objectId(key);
-      uint64_t revisionId =
-          RocksDBKey::revisionId(RocksDBEntryType::Document, key);
+      uint64_t revisionId = RocksDBKey::revisionId(RocksDBEntryType::Document, key);
 
       auto const& it = deltas.find(objectId);
       if (it != deltas.end()) {
@@ -680,12 +648,10 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     return rocksdb::Status();
   }
 
-  rocksdb::Status DeleteCF(uint32_t column_family_id,
-                           const rocksdb::Slice& key) override {
+  rocksdb::Status DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
     if (shouldHandleDocument(column_family_id, key)) {
       uint64_t objectId = RocksDBKey::objectId(key);
-      uint64_t revisionId =
-          RocksDBKey::revisionId(RocksDBEntryType::Document, key);
+      uint64_t revisionId = RocksDBKey::revisionId(RocksDBEntryType::Document, key);
 
       auto const& it = deltas.find(objectId);
       if (it != deltas.end()) {
@@ -758,8 +724,8 @@ bool RocksDBCounterManager::parseRocksWAL() {
     iterator->Next();
   }
 
-  LOG_TOPIC(TRACE, Logger::ENGINES) << "finished WAL scan with "
-                                    << handler->deltas.size();
+  LOG_TOPIC(TRACE, Logger::ENGINES)
+      << "finished WAL scan with " << handler->deltas.size();
   for (std::pair<uint64_t, RocksDBCounterManager::CounterAdjustment> pair :
        handler->deltas) {
     auto const& it = _counters.find(pair.first);
@@ -770,8 +736,7 @@ bool RocksDBCounterManager::parseRocksWAL() {
       it->second._revisionId = pair.second._revisionId;
       LOG_TOPIC(TRACE, Logger::ENGINES)
           << "WAL recovered " << pair.second.added() << " PUTs and "
-          << pair.second.removed() << " DELETEs for a total of "
-          << it->second._count;
+          << pair.second.removed() << " DELETEs for a total of " << it->second._count;
     }
   }
   return handler->deltas.size() > 0;

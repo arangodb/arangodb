@@ -38,7 +38,8 @@ template <uint64_t stripes = 64>
 struct ReadWriteSpinLock {
   typedef std::function<uint64_t()> IdFunc;
 
-  ReadWriteSpinLock() : _writer(false), _readers(SharedCounter<stripes>::DefaultIdFunc) {}
+  ReadWriteSpinLock()
+      : _writer(false), _readers(SharedCounter<stripes>::DefaultIdFunc) {}
   ReadWriteSpinLock(IdFunc f) : _writer(false), _readers(f) {}
   ReadWriteSpinLock(ReadWriteSpinLock const& other) {
     if (this != &other) {
@@ -54,8 +55,7 @@ struct ReadWriteSpinLock {
       if (!_writer.load(std::memory_order_relaxed)) {
         // attempt to get read lock
         bool expected = false;
-        bool success = _writer.compare_exchange_weak(expected, true,
-                                                     std::memory_order_acq_rel,
+        bool success = _writer.compare_exchange_weak(expected, true, std::memory_order_acq_rel,
                                                      std::memory_order_relaxed);
 
         if (success) {
@@ -75,7 +75,7 @@ struct ReadWriteSpinLock {
 
       attempts++;
       cpu_relax();
-    } // too many attempts
+    }  // too many attempts
 
     return false;
   }
@@ -87,7 +87,7 @@ struct ReadWriteSpinLock {
 
     while (attempts++ < maxTries) {
       if (!_writer.load(std::memory_order_relaxed)) {
-        _readers.add(1, std::memory_order_acq_rel); // read locked
+        _readers.add(1, std::memory_order_acq_rel);  // read locked
 
         // double check writer hasn't stepped in
         if (_writer.load(std::memory_order_acquire)) {
@@ -100,16 +100,14 @@ struct ReadWriteSpinLock {
       }
 
       cpu_relax();
-    } // too many attempts
+    }  // too many attempts
 
     return false;
   }
 
   void readUnlock() { _readers.sub(1, std::memory_order_release); }
 
-  bool isLocked() const {
-    return (_readers.nonZero() || _writer.load());
-  }
+  bool isLocked() const { return (_readers.nonZero() || _writer.load()); }
 
   bool isWriteLocked() const { return _writer.load(); }
 

@@ -52,9 +52,7 @@ class MMFilesCollectionKeys final : public CollectionKeys {
   ~MMFilesCollectionKeys();
 
  public:
-  size_t count() const override {
-    return _vpack.size();
-  }
+  size_t count() const override { return _vpack.size(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initially creates the list of keys
@@ -66,8 +64,7 @@ class MMFilesCollectionKeys final : public CollectionKeys {
   /// @brief hashes a chunk of keys
   //////////////////////////////////////////////////////////////////////////////
 
-  std::tuple<std::string, std::string, uint64_t> hashChunk(size_t,
-                                                           size_t) const override;
+  std::tuple<std::string, std::string, uint64_t> hashChunk(size_t, size_t) const override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dumps keys into the result
@@ -89,6 +86,6 @@ class MMFilesCollectionKeys final : public CollectionKeys {
   TRI_voc_tick_t _blockerId;
   std::vector<uint8_t const*> _vpack;
 };
-}
+}  // namespace arangodb
 
 #endif

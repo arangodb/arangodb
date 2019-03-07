@@ -38,14 +38,13 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 GeneralListenTask::GeneralListenTask(EventLoop loop, GeneralServer* server,
-                                     Endpoint* endpoint,
-                                     ProtocolType connectionType)
+                                     Endpoint* endpoint, ProtocolType connectionType)
     : Task(loop, "GeneralListenTask"),
       ListenTask(loop, endpoint),
       _server(server),
       _connectionType(connectionType) {
   _keepAliveTimeout = GeneralServerFeature::keepAliveTimeout();
-  
+
   TRI_ASSERT(_connectionType == ProtocolType::HTTP || _connectionType == ProtocolType::HTTPS);
 }
 

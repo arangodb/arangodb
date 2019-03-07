@@ -89,8 +89,7 @@ class CollectionKeys {
   /// @brief hashes a chunk of keys
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::tuple<std::string, std::string, uint64_t> hashChunk(size_t,
-                                                           size_t) const = 0;
+  virtual std::tuple<std::string, std::string, uint64_t> hashChunk(size_t, size_t) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dumps keys into the result
@@ -114,6 +113,6 @@ class CollectionKeys {
   bool _isDeleted;
   bool _isUsed;
 };
-}
+}  // namespace arangodb
 
 #endif

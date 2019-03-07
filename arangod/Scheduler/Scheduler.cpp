@@ -45,7 +45,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-namespace {    
+namespace {
 constexpr double MIN_SECONDS = 30.0;
 }
 
@@ -77,7 +77,7 @@ class SchedulerManagerThread : public Thread {
   Scheduler* _scheduler;
   boost::asio::io_service* _service;
 };
-}
+}  // namespace
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   SchedulerThread
@@ -87,23 +87,23 @@ namespace {
 class SchedulerThread : public Thread {
  public:
   SchedulerThread(Scheduler* scheduler, boost::asio::io_service* service)
-    : Thread("Scheduler", true), _scheduler(scheduler), _service(service) {}
+      : Thread("Scheduler", true), _scheduler(scheduler), _service(service) {}
 
   ~SchedulerThread() { shutdown(); }
 
  public:
   void run() {
     constexpr size_t EVERY_LOOP = size_t(MIN_SECONDS);
-    
-    // when we enter this method, 
+
+    // when we enter this method,
     // _nrRunning has already been increased for this thread
-    LOG_TOPIC(DEBUG, Logger::THREADS) << "started thread ("
-                                      << _scheduler->infoStatus() << ")";
-  
+    LOG_TOPIC(DEBUG, Logger::THREADS)
+        << "started thread (" << _scheduler->infoStatus() << ")";
+
     // some random delay value to avoid all initial threads checking for
     // their deletion at the very same time
-    double const randomWait =
-        static_cast<double>(RandomGenerator::interval(int64_t(0), static_cast<int64_t>(MIN_SECONDS * 0.5)));
+    double const randomWait = static_cast<double>(
+        RandomGenerator::interval(int64_t(0), static_cast<int64_t>(MIN_SECONDS * 0.5)));
 
     double start = TRI_microtime() + randomWait;
     size_t counter = 0;
@@ -119,7 +119,7 @@ class SchedulerThread : public Thread {
         LOG_TOPIC(ERR, Logger::THREADS)
             << "scheduler loop caught unknown exception";
       }
-          
+
       if (++counter > EVERY_LOOP) {
         counter = 0;
 
@@ -135,15 +135,14 @@ class SchedulerThread : public Thread {
             doDecrement = false;
             break;
           }
-         
-          // use new start time 
+
+          // use new start time
           start = now;
         }
       }
     }
 
-    LOG_TOPIC(DEBUG, Logger::THREADS) << "stopped ("
-                                      << _scheduler->infoStatus() << ")";
+    LOG_TOPIC(DEBUG, Logger::THREADS) << "stopped (" << _scheduler->infoStatus() << ")";
 
     if (doDecrement) {
       // only decrement here if this wasn't already done above
@@ -155,13 +154,13 @@ class SchedulerThread : public Thread {
   Scheduler* _scheduler;
   boost::asio::io_service* _service;
 };
-}
+}  // namespace
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         Scheduler
 // -----------------------------------------------------------------------------
 
-Scheduler::Scheduler(uint64_t nrMinimum, uint64_t /*nrDesired*/, 
+Scheduler::Scheduler(uint64_t nrMinimum, uint64_t /*nrDesired*/,
                      uint64_t nrMaximum, uint64_t maxQueueSize)
     : _maxQueueSize(maxQueueSize),
       _nrMinimum(nrMinimum),
@@ -175,7 +174,7 @@ Scheduler::Scheduler(uint64_t nrMinimum, uint64_t /*nrDesired*/,
 
 Scheduler::~Scheduler() {
   stopRebalancer();
-  
+
   _managerGuard.reset();
   _managerService.reset();
 
@@ -225,7 +224,8 @@ bool Scheduler::start() {
   _jobQueue->start();
 
   // done
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "all scheduler threads are up and running";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      << "all scheduler threads are up and running";
   return true;
 }
 
@@ -275,17 +275,19 @@ void Scheduler::stopRebalancer() noexcept {
 void Scheduler::startManagerThread() {
   auto thread = new SchedulerManagerThread(this, _managerService.get());
   if (!thread->start()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "unable to start rebalancer thread");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
+                                   "unable to start rebalancer thread");
   }
 }
 
 void Scheduler::startNewThread() {
   auto thread = new SchedulerThread(this, _ioService.get());
   if (!thread->start()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "unable to start scheduler thread");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
+                                   "unable to start scheduler thread");
   }
 }
-    
+
 void Scheduler::stopThread() {
   MUTEX_LOCKER(locker, _threadCreateLock);
   decRunning();
@@ -297,12 +299,12 @@ void Scheduler::stopThread() {
 bool Scheduler::stopThreadIfTooMany(double now) {
   // make sure no extra threads are created while we check the timestamp
   // and while we modify nrRunning
-  
+
   uint64_t const queueCap = std::max(uint64_t(1), uint64_t(_nrMaximum / 4));
   uint64_t const nrQueued = std::min(_nrQueued.load(), queueCap);
-  
+
   MUTEX_LOCKER(locker, _threadCreateLock);
-  
+
   // fetch all counters in one atomic operation
   uint64_t counters = _counters.load();
   uint64_t const nrRunning = numRunning(counters);
@@ -310,7 +312,7 @@ bool Scheduler::stopThreadIfTooMany(double now) {
   uint64_t const nrWorking = numWorking(counters);
 
   if (nrRunning <= _nrMinimum + nrBlocked) {
-    // don't stop a thread if we already reached the minimum 
+    // don't stop a thread if we already reached the minimum
     // number of threads
     _lastAllBusyStamp = now;
     return false;
@@ -319,12 +321,12 @@ bool Scheduler::stopThreadIfTooMany(double now) {
   if (nrRunning <= nrWorking + nrQueued) {
     return false;
   }
-  
+
   if (_lastAllBusyStamp + 1.25 * MIN_SECONDS >= now) {
     // last time all threads were busy is less than x seconds ago
     return false;
   }
-  
+
   // set the all busy stamp. this avoids that we shut down all threads
   // at the same time
   if (_lastAllBusyStamp < now - MIN_SECONDS / 2.0) {
@@ -371,12 +373,12 @@ std::string Scheduler::infoStatus() {
   auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();
 
   uint64_t const counters = _counters.load();
-  return "working: " + std::to_string(numWorking(counters)) + ", queued: " +
-         std::to_string(_nrQueued) + ", blocked: " +
-         std::to_string(numBlocked(counters)) + ", running: " +
-         std::to_string(numRunning(counters)) + ", outstanding: " +
-         std::to_string(queueSize) + ", min/max: " +
-         std::to_string(_nrMinimum) + "/" + std::to_string(_nrMaximum);
+  return "working: " + std::to_string(numWorking(counters)) +
+         ", queued: " + std::to_string(_nrQueued) +
+         ", blocked: " + std::to_string(numBlocked(counters)) +
+         ", running: " + std::to_string(numRunning(counters)) +
+         ", outstanding: " + std::to_string(queueSize) +
+         ", min/max: " + std::to_string(_nrMinimum) + "/" + std::to_string(_nrMaximum);
 }
 
 void Scheduler::rebalanceThreads() {
@@ -389,13 +391,13 @@ void Scheduler::rebalanceThreads() {
   } else if (count % 5 == 0) {
     LOG_TOPIC(TRACE, Logger::THREADS) << "rebalancing threads: " << infoStatus();
   }
-      
+
   uint64_t const queueCap = std::max(uint64_t(1), uint64_t(_nrMaximum / 4));
 
   while (true) {
     {
       double const now = TRI_microtime();
-      
+
       uint64_t const nrQueued = std::min(_nrQueued.load(), queueCap);
 
       MUTEX_LOCKER(locker, _threadCreateLock);
@@ -405,7 +407,7 @@ void Scheduler::rebalanceThreads() {
       uint64_t const nrWorking = numWorking(counters);
       uint64_t const nrBlocked = numBlocked(counters);
 
-      if (nrRunning >= std::max(_nrMinimum, nrWorking + nrQueued)) { 
+      if (nrRunning >= std::max(_nrMinimum, nrWorking + nrQueued)) {
         // all threads are working, and none are blocked. so there is no
         // need to start a new thread now
         if (nrWorking == nrRunning) {
@@ -419,12 +421,12 @@ void Scheduler::rebalanceThreads() {
         // reached the maximum now
         break;
       }
-    
+
       if (isStopping(counters)) {
         // do not start any new threads in case we are already shutting down
         break;
       }
-      
+
       // LOG_TOPIC(ERR, Logger::THREADS) << "starting new thread. nrRunning: " << nrRunning << ", nrWorking: " << nrWorking << ", nrBlocked: " << nrBlocked << ", nrQueued: " << nrQueued;
 
       // all threads are maxed out
@@ -457,7 +459,7 @@ void Scheduler::beginShutdown() {
   if (isStopping()) {
     return;
   }
-  
+
   _jobQueue->beginShutdown();
 
   stopRebalancer();
@@ -476,16 +478,16 @@ void Scheduler::beginShutdown() {
 void Scheduler::shutdown() {
   while (true) {
     uint64_t const counters = _counters.load();
-    
+
     if (numRunning(counters) == 0 && numWorking(counters) == 0) {
       break;
     }
 
     std::this_thread::yield();
     // we can be quite generous here with waiting...
-    // as we are in the shutdown already, we do not care if we need to wait for a
-    // bit longer
-    usleep(20000); 
+    // as we are in the shutdown already, we do not care if we need to wait for
+    // a bit longer
+    usleep(20000);
   }
 
   // remove all queued work descriptions in the work monitor first
@@ -518,7 +520,8 @@ void Scheduler::initializeSignalHandlers() {
   int res = sigaction(SIGPIPE, &action, 0);
 
   if (res < 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot initialize signal handlers for pipe";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "cannot initialize signal handlers for pipe";
   }
 #endif
 }

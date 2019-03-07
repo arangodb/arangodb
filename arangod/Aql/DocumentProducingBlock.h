@@ -39,7 +39,7 @@ namespace aql {
 class AqlItemBlock;
 class DocumentProducingNode;
 struct Variable;
-  
+
 class DocumentProducingBlock {
  public:
   typedef std::function<void(AqlItemBlock*, arangodb::velocypack::Slice, size_t, size_t&, size_t)> DocumentProducingFunction;
@@ -55,7 +55,7 @@ class DocumentProducingBlock {
 
  private:
   transaction::Methods* _trxPtr;
-  
+
   DocumentProducingNode const* _node;
 
   /// @brief hether or not we want to build a result
@@ -64,11 +64,11 @@ class DocumentProducingBlock {
   /// @brief whether or not we are allowed to pass documents via raw pointers only
   bool const _useRawDocumentPointers;
 
- protected:  
+ protected:
   DocumentProducingFunction const _documentProducer;
 };
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

@@ -99,7 +99,7 @@ class ConditionVariable {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief waits for an event with timeout in micro seconds
-  /// returns true when the condition was signaled, false on timeout 
+  /// returns true when the condition was signaled, false on timeout
   //////////////////////////////////////////////////////////////////////////////
 
   bool wait(uint64_t);
@@ -123,7 +123,7 @@ class ConditionVariable {
 
   TRI_condition_t _condition;
 };
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

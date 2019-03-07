@@ -43,12 +43,11 @@ namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
 class SimpleHttpResult;
-}
+}  // namespace httpclient
 
 namespace transaction {
 class Methods;
-}
-;
+};
 
 class Syncer {
  public:
@@ -58,13 +57,11 @@ class Syncer {
   Syncer(TRI_vocbase_t*, TRI_replication_applier_configuration_t const*);
 
   virtual ~Syncer();
-  
+
   TRI_vocbase_t* vocbase() { return _vocbase; }
 
   /// @brief sleeps (nanoseconds)
-  void sleep(uint64_t time) {
-    usleep(static_cast<TRI_usleep_t>(time));
-  }
+  void sleep(uint64_t time) { usleep(static_cast<TRI_usleep_t>(time)); }
 
   /// @brief parse a velocypack response
   int parseResponse(std::shared_ptr<arangodb::velocypack::Builder>,
@@ -73,19 +70,14 @@ class Syncer {
   /// @brief request location rewriter (injects database name)
   static std::string rewriteLocation(void*, std::string const&);
 
-/// @brief steal the barrier id from the syncer
+  /// @brief steal the barrier id from the syncer
   TRI_voc_tick_t stealBarrier();
- 
-  void setLeaderId(std::string const& leaderId) {
-    _leaderId = leaderId;
-  }
-  
-  std::string const& databaseName() const {
-    return _databaseName;
-  }
+
+  void setLeaderId(std::string const& leaderId) { _leaderId = leaderId; }
+
+  std::string const& databaseName() const { return _databaseName; }
 
  protected:
-
   /// @brief send a "create barrier" command
   int sendCreateBarrier(std::string&, TRI_voc_tick_t);
 
@@ -106,16 +98,13 @@ class Syncer {
                                                        std::string const& name);
 
   /// @brief apply a single marker from the collection dump
-  int applyCollectionDumpMarker(transaction::Methods&,
-                                LogicalCollection*,
+  int applyCollectionDumpMarker(transaction::Methods&, LogicalCollection*,
                                 TRI_replication_operation_e,
-                                arangodb::velocypack::Slice const&, 
-                                arangodb::velocypack::Slice const&, 
-                                std::string&);
+                                arangodb::velocypack::Slice const&,
+                                arangodb::velocypack::Slice const&, std::string&);
 
   /// @brief creates a collection, based on the VelocyPack provided
-  int createCollection(arangodb::velocypack::Slice const&,
-                       arangodb::LogicalCollection**);
+  int createCollection(arangodb::velocypack::Slice const&, arangodb::LogicalCollection**);
 
   /// @brief drops a collection, based on the VelocyPack provided
   int dropCollection(arangodb::velocypack::Slice const&, bool);
@@ -135,12 +124,10 @@ class Syncer {
   /// @brief set leader ID for synchronous replication in cluster
  private:
   /// @brief apply a single marker from the collection dump
-  int applyCollectionDumpMarkerInternal(transaction::Methods&,
-                                        LogicalCollection*,
+  int applyCollectionDumpMarkerInternal(transaction::Methods&, LogicalCollection*,
                                         TRI_replication_operation_e,
-                                        arangodb::velocypack::Slice const&, 
-                                        arangodb::velocypack::Slice const&, 
-                                        std::string&);
+                                        arangodb::velocypack::Slice const&,
+                                        arangodb::velocypack::Slice const&, std::string&);
 
  protected:
   /// @brief vocbase base pointer
@@ -157,8 +144,7 @@ class Syncer {
     int _minorVersion;
     TRI_voc_tick_t _lastLogTick;
     bool _active;
-  }
-  _masterInfo;
+  } _masterInfo;
 
   /// @brief the endpoint (master) we're connected to
   Endpoint* _endpoint;
@@ -177,7 +163,7 @@ class Syncer {
 
   /// @brief local server id
   TRI_server_id_t _localServerId;
-  
+
   /// @brief WAL barrier id
   uint64_t _barrierId;
 
@@ -186,7 +172,7 @@ class Syncer {
 
   /// @brief ttl for WAL barrier
   int _barrierTtl;
-  
+
   /// @brief whether or not to use collection ids in replication
   bool _useCollectionId;
 
@@ -199,8 +185,7 @@ class Syncer {
   /// follower and thus only accepts modifications that are replications
   /// from the leader. Leave empty if there is no concept of a "leader".
   std::string _leaderId;
-
 };
-}
+}  // namespace arangodb
 
 #endif

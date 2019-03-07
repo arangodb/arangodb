@@ -38,7 +38,9 @@ class RocksDBReplicationResult : public Result {
 
   void includeFromTick();
   uint64_t lastScannedTick() const { return _lastScannedTick; }
-  void lastScannedTick(uint64_t lastScannedTick) { _lastScannedTick = lastScannedTick; }
+  void lastScannedTick(uint64_t lastScannedTick) {
+    _lastScannedTick = lastScannedTick;
+  }
 
  private:
   uint64_t _maxTick;

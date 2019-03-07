@@ -78,15 +78,14 @@ class GeneralServer;
 //     called. This will call `addResponse()` with an error indicator, which in
 //     turn will end the responding request.
 //
-  
+
 class GeneralCommTask : public SocketTask {
   GeneralCommTask(GeneralCommTask const&) = delete;
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
 
  public:
-  GeneralCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket>,
-                  ConnectionInfo&&, double keepAliveTimeout,
-                  bool skipSocketInit = false);
+  GeneralCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket>, ConnectionInfo&&,
+                  double keepAliveTimeout, bool skipSocketInit = false);
 
   ~GeneralCommTask();
 
@@ -95,22 +94,22 @@ class GeneralCommTask : public SocketTask {
   void setStatistics(uint64_t, RequestStatistics*);
 
  protected:
-  virtual std::unique_ptr<GeneralResponse> createResponse(
-      rest::ResponseCode, uint64_t messageId) = 0;
+  virtual std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
+                                                          uint64_t messageId) = 0;
 
   virtual void addResponse(GeneralResponse*, RequestStatistics*) = 0;
 
-  virtual void handleSimpleError(rest::ResponseCode, GeneralRequest const&, uint64_t messageId) = 0;
+  virtual void handleSimpleError(rest::ResponseCode, GeneralRequest const&,
+                                 uint64_t messageId) = 0;
 
-  virtual void handleSimpleError(rest::ResponseCode, GeneralRequest const&, int code,
-                                 std::string const& errorMessage,
+  virtual void handleSimpleError(rest::ResponseCode, GeneralRequest const&,
+                                 int code, std::string const& errorMessage,
                                  uint64_t messageId) = 0;
 
   virtual bool allowDirectHandling() const = 0;
 
  protected:
-  void executeRequest(std::unique_ptr<GeneralRequest>&&,
-                      std::unique_ptr<GeneralResponse>&&);
+  void executeRequest(std::unique_ptr<GeneralRequest>&&, std::unique_ptr<GeneralResponse>&&);
 
   void processResponse(GeneralResponse*);
 
@@ -129,7 +128,7 @@ class GeneralCommTask : public SocketTask {
 
   arangodb::Mutex _statisticsMutex;
   std::unordered_map<uint64_t, RequestStatistics*> _statisticsMap;
-  
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks the access rights for a specified path, includes automatic
   ///        exceptions for /_api/users to allow logins without authorization
@@ -139,10 +138,9 @@ class GeneralCommTask : public SocketTask {
  private:
   bool handleRequest(std::shared_ptr<RestHandler>);
   void handleRequestDirectly(bool doLock, std::shared_ptr<RestHandler>);
-  bool handleRequestAsync(std::shared_ptr<RestHandler>,
-                          uint64_t* jobId = nullptr);
+  bool handleRequestAsync(std::shared_ptr<RestHandler>, uint64_t* jobId = nullptr);
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

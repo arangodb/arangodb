@@ -32,7 +32,7 @@ bool Socket::handshake() {
   if (_handshakeDone) {
     return true;
   }
-  
+
   bool ok = sslHandshake();
 
   if (ok) {

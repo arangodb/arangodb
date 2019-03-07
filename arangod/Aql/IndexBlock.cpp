@@ -92,8 +92,7 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
 IndexBlock::~IndexBlock() { cleanupNonConstExpressions(); }
 
 /// @brief adds a UNIQUE() to a dynamic IN condition
-arangodb::aql::AstNode* IndexBlock::makeUnique(
-    arangodb::aql::AstNode* node) const {
+arangodb::aql::AstNode* IndexBlock::makeUnique(arangodb::aql::AstNode* node) const {
   if (node->type != arangodb::aql::NODE_TYPE_ARRAY || node->numMembers() >= 2) {
     // an non-array or an array with more than 1 member
     auto en = static_cast<IndexNode const*>(getPlanNode());
@@ -103,8 +102,7 @@ arangodb::aql::AstNode* IndexBlock::makeUnique(
     auto trx = transaction();
     bool isSorted = false;
     bool isSparse = false;
-    auto unused =
-        trx->getIndexFeatures(_indexes[_currentIndex], isSorted, isSparse);
+    auto unused = trx->getIndexFeatures(_indexes[_currentIndex], isSorted, isSparse);
     if (isSparse) {
       // the index is sorted. we need to use SORTED_UNIQUE to get the
       // result back in index order
@@ -160,8 +158,7 @@ int IndexBlock::initialize() {
   auto ast = en->_plan->getAst();
 
   // instantiate expressions:
-  auto instantiateExpression = [&](size_t i, size_t j, size_t k,
-                                   AstNode* a) -> void {
+  auto instantiateExpression = [&](size_t i, size_t j, size_t k, AstNode* a) -> void {
     // all new AstNodes are registered with the Ast in the Query
     auto e = std::make_unique<Expression>(en->_plan, ast, a);
 
@@ -278,19 +275,20 @@ bool IndexBlock::initIndexes() {
 
       // must have a V8 context here to protect Expression::execute()
       auto engine = _engine;
-      arangodb::basics::ScopeGuard guard{
-          [&engine]() -> void { engine->getQuery()->enterContext(); },
-          [&]() -> void {
-            if (isRunningInCluster) {
-              // must invalidate the expression now as we might be called from
-              // different threads
-              for (auto const& e : _nonConstExpressions) {
-                e->expression->invalidate();
-              }
+      arangodb::basics::ScopeGuard guard{[&engine]() -> void {
+                                           engine->getQuery()->enterContext();
+                                         },
+                                         [&]() -> void {
+                                           if (isRunningInCluster) {
+                                             // must invalidate the expression now as we might be called from
+                                             // different threads
+                                             for (auto const& e : _nonConstExpressions) {
+                                               e->expression->invalidate();
+                                             }
 
-              engine->getQuery()->exitContext();
-            }
-          }};
+                                             engine->getQuery()->exitContext();
+                                           }
+                                         }};
 
       ISOLATE;
       v8::HandleScope scope(isolate);  // do not delete this!
@@ -409,15 +407,13 @@ bool IndexBlock::skipIndex(size_t atMost) {
     }
   }
   return false;
-  
+
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
 // this is called every time we need to fetch data from the indexes
-bool IndexBlock::readIndex(
-    size_t atMost,
-    IndexIterator::DocumentCallback const& callback) {
+bool IndexBlock::readIndex(size_t atMost, IndexIterator::DocumentCallback const& callback) {
   DEBUG_BEGIN_BLOCK();
   // this is called every time we want to read the index.
   // For the primary key index, this only reads the index once, and never
@@ -431,7 +427,7 @@ bool IndexBlock::readIndex(
     // All indexes exhausted
     return false;
   }
-    
+
   while (_cursor != nullptr) {
     if (!_cursor->hasMore()) {
       startNextCursor();
@@ -450,7 +446,7 @@ bool IndexBlock::readIndex(
     }
 
     TRI_ASSERT(atMost >= _returned);
-  
+
     if (_cursor->nextDocument(callback, atMost - _returned)) {
       // We have returned enough.
       // And this index could return more.
@@ -496,11 +492,10 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   TRI_ASSERT(atMost > 0);
   size_t curRegs;
 
-  std::unique_ptr<AqlItemBlock> res(
-      requestBlock(atMost,
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
-  _returned = 0;   // here we count how many of this AqlItemBlock we have
-                   // already filled
+  std::unique_ptr<AqlItemBlock> res(requestBlock(
+      atMost, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  _returned = 0;       // here we count how many of this AqlItemBlock we have
+                       // already filled
   size_t copyFromRow;  // The row to copy values from
 
   // The following callbacks write one index lookup result into res at
@@ -524,7 +519,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
           return;
         }
       }
-      
+
       _documentProducer(res.get(), slice, curRegs, _returned, copyFromRow);
     };
   } else {
@@ -570,7 +565,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     TRI_ASSERT(!_indexesExhausted);
     AqlItemBlock* cur = _buffer.front();
     curRegs = cur->getNrRegs();
-   
+
     TRI_ASSERT(curRegs <= res->getNrRegs());
 
     // only copy 1st row of registers inherited from previous frame(s)

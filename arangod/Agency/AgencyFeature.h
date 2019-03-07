@@ -33,7 +33,7 @@ class Agent;
 class AgencyFeature : virtual public application_features::ApplicationFeature {
  public:
   static consensus::Agent* AGENT;
-  
+
  public:
   explicit AgencyFeature(application_features::ApplicationServer* server);
   ~AgencyFeature();
@@ -72,6 +72,6 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
  private:
   std::unique_ptr<consensus::Agent> _agent;
 };
-}
+}  // namespace arangodb
 
 #endif

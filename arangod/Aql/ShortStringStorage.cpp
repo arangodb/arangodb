@@ -32,7 +32,11 @@ size_t const ShortStringStorage::MaxStringLength = 127;
 
 /// @brief create a short string storage instance
 ShortStringStorage::ShortStringStorage(ResourceMonitor* resourceMonitor, size_t blockSize)
-    : _resourceMonitor(resourceMonitor), _blocks(), _blockSize(blockSize), _current(nullptr), _end(nullptr) {
+    : _resourceMonitor(resourceMonitor),
+      _blocks(),
+      _blockSize(blockSize),
+      _current(nullptr),
+      _end(nullptr) {
   TRI_ASSERT(blockSize >= 64);
 }
 

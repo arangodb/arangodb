@@ -34,7 +34,7 @@ class LogicalCollection;
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 class IndexFactory {
  public:
@@ -44,18 +44,16 @@ class IndexFactory {
 
   virtual ~IndexFactory() = default;
 
-  virtual int enhanceIndexDefinition(
-      arangodb::velocypack::Slice const definition,
-      arangodb::velocypack::Builder& enhanced, bool isCreation,
-      bool isCoordinator) const = 0;
+  virtual int enhanceIndexDefinition(arangodb::velocypack::Slice const definition,
+                                     arangodb::velocypack::Builder& enhanced,
+                                     bool isCreation, bool isCoordinator) const = 0;
 
   virtual std::shared_ptr<arangodb::Index> prepareIndexFromSlice(
       arangodb::velocypack::Slice info, bool generateKey,
       arangodb::LogicalCollection* col, bool isClusterConstructor) const = 0;
 
-  virtual void fillSystemIndexes(
-      arangodb::LogicalCollection* col,
-      std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const = 0;
+  virtual void fillSystemIndexes(arangodb::LogicalCollection* col,
+                                 std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const = 0;
 
   virtual std::vector<std::string> supportedIndexes() const = 0;
 };

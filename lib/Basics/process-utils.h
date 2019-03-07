@@ -164,8 +164,7 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
-                                               bool wait);
+TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid, bool wait);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an external process

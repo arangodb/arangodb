@@ -37,6 +37,6 @@ class FrontendFeature final : public application_features::ApplicationFeature {
  private:
   bool _versionCheck;
 };
-}
+}  // namespace arangodb
 
 #endif

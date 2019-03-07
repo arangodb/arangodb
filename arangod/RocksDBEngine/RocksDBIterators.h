@@ -36,7 +36,7 @@
 namespace rocksdb {
 class Iterator;
 class Comparator;
-}
+}  // namespace rocksdb
 
 namespace arangodb {
 class RocksDBCollection;
@@ -46,12 +46,9 @@ class RocksDBPrimaryIndex;
 /// basically sorted after revision ID
 class RocksDBAllIndexIterator final : public IndexIterator {
  public:
-  typedef std::function<void(DocumentIdentifierToken const& token,
-                             StringRef const& key)>
-      TokenKeyCallback;
+  typedef std::function<void(DocumentIdentifierToken const& token, StringRef const& key)> TokenKeyCallback;
   RocksDBAllIndexIterator(LogicalCollection* collection,
-                          transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
+                          transaction::Methods* trx, ManagedDocumentResult* mmdr,
                           RocksDBPrimaryIndex const* index, bool reverse);
 
   ~RocksDBAllIndexIterator() {}
@@ -75,10 +72,8 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 
 class RocksDBAnyIndexIterator final : public IndexIterator {
  public:
-  RocksDBAnyIndexIterator(LogicalCollection* collection,
-                          transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
-                          RocksDBPrimaryIndex const* index);
+  RocksDBAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
+                          ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index);
 
   ~RocksDBAnyIndexIterator() {}
 
@@ -91,8 +86,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
  private:
   bool outOfRange() const;
-  static uint64_t newOffset(LogicalCollection* collection,
-                            transaction::Methods* trx);
+  static uint64_t newOffset(LogicalCollection* collection, transaction::Methods* trx);
 
   rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
@@ -105,13 +99,9 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 /// into the document store. E.g. used for incremental sync
 class RocksDBSortedAllIterator final : public IndexIterator {
  public:
-  typedef std::function<void(DocumentIdentifierToken const& token,
-                             StringRef const& key)>
-      TokenKeyCallback;
-  RocksDBSortedAllIterator(LogicalCollection* collection,
-                           transaction::Methods* trx,
-                           ManagedDocumentResult* mmdr,
-                           RocksDBPrimaryIndex const* index);
+  typedef std::function<void(DocumentIdentifierToken const& token, StringRef const& key)> TokenKeyCallback;
+  RocksDBSortedAllIterator(LogicalCollection* collection, transaction::Methods* trx,
+                           ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index);
 
   ~RocksDBSortedAllIterator() {}
 
@@ -135,6 +125,6 @@ class RocksDBSortedAllIterator final : public IndexIterator {
 #endif
   rocksdb::Comparator const* _cmp;
 };
-}
+}  // namespace arangodb
 
 #endif

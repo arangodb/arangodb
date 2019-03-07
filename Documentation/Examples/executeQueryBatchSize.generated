@@ -17,14 +17,14 @@ arangosh&gt; q = db.users.all(); q.setBatchSize(<span class="hljs-number">20</sp
   <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YTVPgNG---"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Gerhard"</span> 
 }
-SimpleQueryAll(users)
-arangosh&gt; q = db.users.all(); q.execute(<span class="hljs-number">20</span>); <span class="hljs-keyword">while</span> (q.hasNext()) { print(q.next()); }
 { 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17718"</span>, 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/17718"</span>, 
   <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YTVPgNG--_"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Helmut"</span> 
 }
+SimpleQueryAll(users)
+arangosh&gt; q = db.users.all(); q.execute(<span class="hljs-number">20</span>); <span class="hljs-keyword">while</span> (q.hasNext()) { print(q.next()); }
 { 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17721"</span>, 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/17721"</span>, 
@@ -36,5 +36,11 @@ arangosh&gt; q = db.users.all(); q.execute(<span class="hljs-number">20</span>);
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/17714"</span>, 
   <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YTVPgNG---"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Gerhard"</span> 
+}
+{ 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17722"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/17722"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YISCySi---"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"Angela"</span> 
 }
 SimpleQueryAll(users)

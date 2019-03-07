@@ -56,7 +56,8 @@ class RocksDBReplicationManager {
   /// there are active contexts
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBReplicationContext* createContext(TRI_vocbase_t* vocbase, double ttl, TRI_server_id_t serverId);
+  RocksDBReplicationContext* createContext(TRI_vocbase_t* vocbase, double ttl,
+                                           TRI_server_id_t serverId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a context by id
@@ -72,9 +73,8 @@ class RocksDBReplicationManager {
   /// not
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBReplicationContext* find(
-      RocksDBReplicationId, bool& isBusy,
-      double ttl = TRI_REPLICATION_BATCH_DEFAULT_TIMEOUT);
+  RocksDBReplicationContext* find(RocksDBReplicationId, bool& isBusy,
+                                  double ttl = TRI_REPLICATION_BATCH_DEFAULT_TIMEOUT);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a context for later use
@@ -111,12 +111,12 @@ class RocksDBReplicationManager {
   //////////////////////////////////////////////////////////////////////////////
 
   bool garbageCollect(bool);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief tell the replication manager that a shutdown is in progress
   /// effectively this will block the creation of new contexts
   //////////////////////////////////////////////////////////////////////////////
-    
+
   void beginShutdown();
 
  private:
@@ -130,8 +130,7 @@ class RocksDBReplicationManager {
   /// @brief list of current contexts
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<RocksDBReplicationId, RocksDBReplicationContext*>
-      _contexts;
+  std::unordered_map<RocksDBReplicationId, RocksDBReplicationContext*> _contexts;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not a shutdown is in progress
@@ -148,14 +147,13 @@ class RocksDBReplicationManager {
 
 class RocksDBReplicationContextGuard {
  public:
-  RocksDBReplicationContextGuard(RocksDBReplicationManager*,
-                                 RocksDBReplicationContext*);
+  RocksDBReplicationContextGuard(RocksDBReplicationManager*, RocksDBReplicationContext*);
   ~RocksDBReplicationContextGuard();
 
  private:
   RocksDBReplicationManager* _manager;
   RocksDBReplicationContext* _ctx;
 };
-}
+}  // namespace arangodb
 
 #endif

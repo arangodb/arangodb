@@ -24,8 +24,7 @@
 
 using namespace arangodb;
 
-size_t SocketTcp::write(basics::StringBuffer* buffer,
-                        boost::system::error_code& ec) {
+size_t SocketTcp::write(basics::StringBuffer* buffer, boost::system::error_code& ec) {
   MUTEX_LOCKER(guard, _lock);
   if (_encrypted) {
     return socketcommon::doWrite(_sslSocket, buffer, ec);

@@ -24,12 +24,12 @@
 #ifndef ARANGOD_AQL_AST_H
 #define ARANGOD_AQL_AST_H 1
 
-#include "Basics/Common.h"
 #include "Aql/AstNode.h"
 #include "Aql/BindParameters.h"
 #include "Aql/Scopes.h"
 #include "Aql/Variable.h"
 #include "Aql/VariableGenerator.h"
+#include "Basics/Common.h"
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
 
@@ -45,8 +45,7 @@ namespace aql {
 class Query;
 class VariableGenerator;
 
-typedef std::unordered_map<Variable const*, std::unordered_set<std::string>>
-    TopLevelAttributes;
+typedef std::unordered_map<Variable const*, std::unordered_set<std::string>> TopLevelAttributes;
 
 /// @brief the AST
 class Ast {
@@ -65,7 +64,7 @@ class Ast {
 
   /// @brief return the variable generator
   inline VariableGenerator* variables() { return &_variables; }
-  
+
   /// @brief return the root of the AST
   inline AstNode const* root() const { return _root; }
 
@@ -118,8 +117,7 @@ class Ast {
 
   /// @brief track the write collection
   inline void addWriteCollection(AstNode const* node) {
-    TRI_ASSERT(node->type == NODE_TYPE_COLLECTION ||
-               node->type == NODE_TYPE_PARAMETER);
+    TRI_ASSERT(node->type == NODE_TYPE_COLLECTION || node->type == NODE_TYPE_PARAMETER);
 
     _writeCollections.emplace_back(node);
   }
@@ -177,12 +175,10 @@ class Ast {
   AstNode* createNodeInsert(AstNode const*, AstNode const*, AstNode const*);
 
   /// @brief create an AST update node
-  AstNode* createNodeUpdate(AstNode const*, AstNode const*, AstNode const*,
-                            AstNode const*);
+  AstNode* createNodeUpdate(AstNode const*, AstNode const*, AstNode const*, AstNode const*);
 
   /// @brief create an AST replace node
-  AstNode* createNodeReplace(AstNode const*, AstNode const*, AstNode const*,
-                             AstNode const*);
+  AstNode* createNodeReplace(AstNode const*, AstNode const*, AstNode const*, AstNode const*);
 
   /// @brief create an AST upsert node
   AstNode* createNodeUpsert(AstNodeType, AstNode const*, AstNode const*,
@@ -196,8 +192,7 @@ class Ast {
                              AstNode const*, AstNode const*, AstNode const*);
 
   /// @brief create an AST collect node, COUNT INTO
-  AstNode* createNodeCollectCount(AstNode const*, char const*, size_t length,
-                                  AstNode const*);
+  AstNode* createNodeCollectCount(AstNode const*, char const*, size_t length, AstNode const*);
 
   /// @brief create an AST sort node
   AstNode* createNodeSort(AstNode const*);
@@ -236,16 +231,14 @@ class Ast {
   AstNode* createNodeUnaryOperator(AstNodeType, AstNode const*);
 
   /// @brief create an AST binary operator
-  AstNode* createNodeBinaryOperator(AstNodeType, AstNode const*,
-                                    AstNode const*);
+  AstNode* createNodeBinaryOperator(AstNodeType, AstNode const*, AstNode const*);
 
   /// @brief create an AST binary array operator
   AstNode* createNodeBinaryArrayOperator(AstNodeType, AstNode const*,
                                          AstNode const*, AstNode const*);
 
   /// @brief create an AST ternary operator
-  AstNode* createNodeTernaryOperator(AstNode const*, AstNode const*,
-                                     AstNode const*);
+  AstNode* createNodeTernaryOperator(AstNode const*, AstNode const*, AstNode const*);
 
   /// @brief create an AST attribute access node
   AstNode* createNodeAttributeAccess(AstNode const*, char const*, size_t);
@@ -303,9 +296,9 @@ class Ast {
 
   /// @brief create an AST collection pair node
   AstNode* createNodeCollectionPair(AstNode const*, AstNode const*);
- 
+
   /// @brief create an AST with collections node
-  AstNode* createNodeWithCollections (AstNode const*);
+  AstNode* createNodeWithCollections(AstNode const*);
 
   /// @brief create an AST collection list node
   AstNode* createNodeCollectionList(AstNode const*);
@@ -324,9 +317,8 @@ class Ast {
                                AstNode const*, AstNode const*, AstNode const*);
 
   /// @brief create an AST traversal node with vertex and edge variable
-  AstNode* createNodeTraversal(char const*, size_t, char const*, size_t,
-                               AstNode const*, AstNode const*, AstNode const*,
-                               AstNode const*);
+  AstNode* createNodeTraversal(char const*, size_t, char const*, size_t, AstNode const*,
+                               AstNode const*, AstNode const*, AstNode const*);
 
   /// @brief create an AST traversal node with vertex, edge and path variable
   AstNode* createNodeTraversal(char const*, size_t, char const*, size_t,
@@ -335,8 +327,7 @@ class Ast {
 
   /// @brief create an AST shortest path node with only vertex variable
   AstNode* createNodeShortestPath(char const*, size_t, uint64_t, AstNode const*,
-                                  AstNode const*, AstNode const*,
-                                  AstNode const*);
+                                  AstNode const*, AstNode const*, AstNode const*);
 
   /// @brief create an AST shortest path node with vertex and edge variable
   AstNode* createNodeShortestPath(char const*, size_t, char const*, size_t,
@@ -365,8 +356,7 @@ class Ast {
   void injectBindParameters(BindParameters&);
 
   /// @brief replace variables
-  AstNode* replaceVariables(
-      AstNode*, std::unordered_map<VariableId, Variable const*> const&);
+  AstNode* replaceVariables(AstNode*, std::unordered_map<VariableId, Variable const*> const&);
 
   /// @brief replace a variable reference in the expression with another
   /// expression (e.g. inserting c = `a + b` into expression `c + 1` so the
@@ -378,8 +368,7 @@ class Ast {
   void validateAndOptimize();
 
   /// @brief determines the variables referenced in an expression
-  static void getReferencedVariables(AstNode const*,
-                                     std::unordered_set<Variable const*>&);
+  static void getReferencedVariables(AstNode const*, std::unordered_set<Variable const*>&);
 
   /// @brief count how many times a variable is referenced in an expression
   static size_t countReferences(AstNode const*, Variable const*);
@@ -387,18 +376,16 @@ class Ast {
   /// @brief determines the top-level attributes in an expression, grouped by
   /// variable
   static TopLevelAttributes getReferencedAttributes(AstNode const*, bool&);
-  
-  static bool populateSingleAttributeAccess(AstNode const* node,
-                                            Variable const* variable,
+
+  static bool populateSingleAttributeAccess(AstNode const* node, Variable const* variable,
                                             std::vector<std::string>& attributeName);
 
   static bool variableOnlyUsedForSingleAttributeAccess(AstNode const* node,
                                                        Variable const* variable,
                                                        std::vector<std::string> const& attributeName);
-  
+
   /// @brief replace an attribute access with just the variable
-  static AstNode* replaceAttributeAccess(AstNode* node,
-                                         Variable const* variable,
+  static AstNode* replaceAttributeAccess(AstNode* node, Variable const* variable,
                                          std::vector<std::string> const& attributeName);
 
   /// @brief recursively clone a node
@@ -420,14 +407,13 @@ class Ast {
 
   /// @brief create an AST node from vpack
   AstNode* nodeFromVPack(arangodb::velocypack::Slice const&, bool);
-  
+
   /// @brief resolve an attribute access
   static AstNode const* resolveConstAttributeAccess(AstNode const*);
 
   /// @brief traverse the AST using a depth-first visitor
   static AstNode* traverseAndModify(AstNode*,
-                                    std::function<AstNode*(AstNode*, void*)>,
-                                    void*);
+                                    std::function<AstNode*(AstNode*, void*)>, void*);
 
  private:
   /// @brief make condition from example
@@ -468,7 +454,8 @@ class Ast {
   AstNode* optimizeTernaryOperator(AstNode*);
 
   /// @brief optimizes an attribute access
-  AstNode* optimizeAttributeAccess(AstNode*, std::unordered_map<Variable const*, AstNode const*> const&);
+  AstNode* optimizeAttributeAccess(AstNode*,
+                                   std::unordered_map<Variable const*, AstNode const*> const&);
 
   /// @brief optimizes a call to a built-in function
   AstNode* optimizeFunctionCall(AstNode*);
@@ -493,26 +480,22 @@ class Ast {
   /// @brief optimizes an object literal or an object expression
   AstNode* optimizeObject(AstNode*);
 
-public:
+ public:
   /// @brief traverse the AST, using pre- and post-order visitors
-  static AstNode* traverseAndModify(AstNode*,
-                                    std::function<bool(AstNode const*, void*)>,
+  static AstNode* traverseAndModify(AstNode*, std::function<bool(AstNode const*, void*)>,
                                     std::function<AstNode*(AstNode*, void*)>,
-                                    std::function<void(AstNode const*, void*)>,
-                                    void*);
+                                    std::function<void(AstNode const*, void*)>, void*);
 
   /// @brief traverse the AST, using pre- and post-order visitors
-  static void traverseReadOnly(AstNode const*,
+  static void traverseReadOnly(AstNode const*, std::function<void(AstNode const*, void*)>,
                                std::function<void(AstNode const*, void*)>,
-                               std::function<void(AstNode const*, void*)>,
-                               std::function<void(AstNode const*, void*)>,
-                               void*);
+                               std::function<void(AstNode const*, void*)>, void*);
 
   /// @brief traverse the AST using a depth-first visitor, with const nodes
   static void traverseReadOnly(AstNode const*,
-                               std::function<void(AstNode const*, void*)>,
-                               void*);
-private:
+                               std::function<void(AstNode const*, void*)>, void*);
+
+ private:
   /// @brief normalize a function name
   std::pair<std::string, bool> normalizeFunctionName(char const*);
 
@@ -572,7 +555,7 @@ private:
   /// @brief a singleton empty string node instance
   static AstNode const EmptyStringNode;
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

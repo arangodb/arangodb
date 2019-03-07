@@ -36,8 +36,7 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RocksDBRestWalHandler::RocksDBRestWalHandler(GeneralRequest* request,
-                                             GeneralResponse* response)
+RocksDBRestWalHandler::RocksDBRestWalHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RocksDBRestWalHandler::execute() {
@@ -75,8 +74,7 @@ RestStatus RocksDBRestWalHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -149,16 +147,14 @@ void RocksDBRestWalHandler::flush() {
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  generateResult(rest::ResponseCode::OK,
-                 basics::VelocyPackHelper::EmptyObjectValue());
+  generateResult(rest::ResponseCode::OK, basics::VelocyPackHelper::EmptyObjectValue());
 }
 
 void RocksDBRestWalHandler::transactions() {
   TransactionManager* mngr = TransactionManagerFeature::manager();
   VPackBuilder builder;
   builder.openObject();
-  builder.add("runningTransactions",
-              VPackValue(mngr->getActiveTransactionCount()));
+  builder.add("runningTransactions", VPackValue(mngr->getActiveTransactionCount()));
 
   // lastCollectedId
   /*{

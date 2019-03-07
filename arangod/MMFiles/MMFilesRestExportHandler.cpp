@@ -42,13 +42,12 @@ using namespace arangodb;
 using namespace arangodb::rest;
 
 MMFilesRestExportHandler::MMFilesRestExportHandler(GeneralRequest* request,
-                                     GeneralResponse* response)
+                                                   GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response), _restrictions() {}
 
 RestStatus MMFilesRestExportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                  TRI_ERROR_CLUSTER_UNSUPPORTED,
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "'/_api/export' is not yet supported in a cluster");
     return RestStatus::DONE;
   }
@@ -71,8 +70,7 @@ RestStatus MMFilesRestExportHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -190,15 +188,14 @@ void MMFilesRestExportHandler::createCursor() {
   std::string const& name = _request->value("collection", found);
 
   if (!found || name.empty()) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
-                  "'collection' is missing, expecting /_api/export?collection=<identifier>");
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
+                  "'collection' is missing, expecting "
+                  "/_api/export?collection=<identifier>");
     return;
   }
 
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
 
   if (!parseSuccess) {
     return;
@@ -222,29 +219,27 @@ void MMFilesRestExportHandler::createCursor() {
   VPackSlice options = optionsBuilder.slice();
 
   uint64_t waitTime = 0;
-  bool flush = arangodb::basics::VelocyPackHelper::getBooleanValue(
-      options, "flush", false);
+  bool flush =
+      arangodb::basics::VelocyPackHelper::getBooleanValue(options, "flush", false);
 
   if (flush) {
     // flush the logfiles so the export can fetch all documents
-    int res =
-        MMFilesLogfileManager::instance()->flush(true, true, false);
+    int res = MMFilesLogfileManager::instance()->flush(true, true, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
     double flushWait =
-        arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-            options, "flushWait", 10.0);
+        arangodb::basics::VelocyPackHelper::getNumericValue<double>(options,
+                                                                    "flushWait", 10.0);
 
-    waitTime = static_cast<uint64_t>(
-        flushWait * 1000 *
-        1000);  // flushWait is specified in s, but we need ns
+    waitTime = static_cast<uint64_t>(flushWait * 1000 * 1000);  // flushWait is specified in s, but we need ns
   }
 
-  size_t limit = arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
-      options, "limit", 0);
+  size_t limit =
+      arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(options,
+                                                                  "limit", 0);
 
   // this may throw!
   auto collectionExport =
@@ -252,21 +247,23 @@ void MMFilesRestExportHandler::createCursor() {
   collectionExport->run(waitTime, limit);
 
   size_t batchSize =
-      arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
-          options, "batchSize", 1000);
-  double ttl = arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-      options, "ttl", 30);
-  bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
-      options, "count", false);
+      arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(options,
+                                                                  "batchSize", 1000);
+  double ttl =
+      arangodb::basics::VelocyPackHelper::getNumericValue<double>(options, "ttl", 30);
+  bool count =
+      arangodb::basics::VelocyPackHelper::getBooleanValue(options, "count", false);
 
   auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   Cursor* c = nullptr;
   {
-    auto cursor = std::make_unique<MMFilesExportCursor>(_vocbase, TRI_NewTickServer(), collectionExport.get(), batchSize, ttl, count);
+    auto cursor = std::make_unique<MMFilesExportCursor>(_vocbase, TRI_NewTickServer(),
+                                                        collectionExport.get(),
+                                                        batchSize, ttl, count);
     collectionExport.release();
- 
+
     cursor->use();
     c = cursors->addCursor(std::move(cursor));
   }
@@ -308,15 +305,14 @@ void MMFilesRestExportHandler::modifyCursor() {
   auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
-  auto cursorId = static_cast<arangodb::CursorId>(
-      arangodb::basics::StringUtils::uint64(id));
+  auto cursorId =
+      static_cast<arangodb::CursorId>(arangodb::basics::StringUtils::uint64(id));
   bool busy;
   auto cursor = cursors->find(cursorId, Cursor::CURSOR_EXPORT, busy);
 
   if (cursor == nullptr) {
     if (busy) {
-      generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_BUSY),
-                    TRI_ERROR_CURSOR_BUSY);
+      generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_BUSY), TRI_ERROR_CURSOR_BUSY);
     } else {
       generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
                     TRI_ERROR_CURSOR_NOT_FOUND);
@@ -359,8 +355,8 @@ void MMFilesRestExportHandler::deleteCursor() {
   auto cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
-  auto cursorId = static_cast<arangodb::CursorId>(
-      arangodb::basics::StringUtils::uint64(id));
+  auto cursorId =
+      static_cast<arangodb::CursorId>(arangodb::basics::StringUtils::uint64(id));
   bool found = cursors->remove(cursorId, Cursor::CURSOR_EXPORT);
 
   if (!found) {
@@ -372,8 +368,7 @@ void MMFilesRestExportHandler::deleteCursor() {
   result.openObject();
   result.add("id", VPackValue(id));
   result.add("error", VPackValue(false));
-  result.add("code",
-             VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
+  result.add("code", VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
   result.close();
 
   generateResult(rest::ResponseCode::ACCEPTED, result.slice());

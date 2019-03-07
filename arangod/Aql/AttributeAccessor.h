@@ -24,15 +24,14 @@
 #ifndef ARANGOD_AQL_ATTRIBUTE_ACCESSOR_H
 #define ARANGOD_AQL_ATTRIBUTE_ACCESSOR_H 1
 
-#include "Basics/Common.h"
 #include "Aql/AqlValue.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace transaction {
 class Methods;
-}
-;
+};
 
 namespace aql {
 
@@ -49,17 +48,16 @@ class AttributeAccessor {
   /// @brief execute the accessor
   AqlValue getSystem(transaction::Methods* trx, ExpressionContext* context, bool& mustDestroy);
   AqlValue getDynamic(transaction::Methods* trx, ExpressionContext* context, bool& mustDestroy);
-    
+
  public:
   void replaceVariable(std::unordered_map<VariableId, Variable const*> const& replacements);
- 
+
   bool isSystem() const {
-    return (_type == EXTRACT_KEY || _type == EXTRACT_ID || _type == EXTRACT_FROM || _type == EXTRACT_TO);
+    return (_type == EXTRACT_KEY || _type == EXTRACT_ID ||
+            _type == EXTRACT_FROM || _type == EXTRACT_TO);
   }
 
-  bool isDynamic() const {
-    return !isSystem();
-  }
+  bool isDynamic() const { return !isSystem(); }
 
  private:
   enum AccessorType {
@@ -81,7 +79,7 @@ class AttributeAccessor {
   AccessorType _type;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

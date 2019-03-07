@@ -40,13 +40,11 @@ namespace transaction {
 class Methods;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication request handler
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestReplicationHandler : public RestVocbaseBaseHandler {
-
   // Never instantiate this.
   // Only specific implementations allowed
  protected:
@@ -97,7 +95,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   void grantTemporaryRights();
 
  private:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of the _users collection
   //////////////////////////////////////////////////////////////////////////////
@@ -109,7 +106,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   Result processRestoreDataBatch(transaction::Methods& trx,
-      std::string const& colName, bool useRevision);
+                                 std::string const& colName, bool useRevision);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of a collection
@@ -121,11 +118,9 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief parse an input batch
   //////////////////////////////////////////////////////////////////////////////
 
-  Result parseBatch(
-    std::string const& collectionName,
-    bool useRevision,
-    std::unordered_map<std::string, VPackValueLength>& latest,
-    VPackBuilder& allMarkers);
+  Result parseBatch(std::string const& collectionName, bool useRevision,
+                    std::unordered_map<std::string, VPackValueLength>& latest,
+                    VPackBuilder& allMarkers);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -187,8 +182,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual int processRestoreIndexesCoordinator(VPackSlice const&, bool, std::string&) = 0;
-
 };
 
-}
+}  // namespace arangodb
 #endif

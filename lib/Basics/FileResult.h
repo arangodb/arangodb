@@ -40,6 +40,6 @@ class FileResult : public Result {
  protected:
   int const _sysErrorNumber;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -67,8 +67,7 @@ struct WorkDescription {
     }
   }
 
-  WorkDescription(WorkType type, std::shared_ptr<WorkContext> context,
-                  WorkDescription* prev)
+  WorkDescription(WorkType type, std::shared_ptr<WorkContext> context, WorkDescription* prev)
       : _type(type), _id(0), _context(context), _prev(prev) {}
 
   WorkType _type;
@@ -111,6 +110,6 @@ struct WorkDescription {
     } _custom;
   } _data;
 };
-}
+}  // namespace arangodb
 
 #endif

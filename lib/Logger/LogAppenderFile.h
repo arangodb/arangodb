@@ -32,8 +32,7 @@ class LogAppenderStream : public LogAppender {
   LogAppenderStream(std::string const& filename, std::string const& filter, int fd);
   ~LogAppenderStream() {}
 
-  bool logMessage(LogLevel, std::string const& message,
-                  size_t offset) override final;
+  bool logMessage(LogLevel, std::string const& message, size_t offset) override final;
 
   virtual std::string details() override = 0;
 
@@ -45,8 +44,8 @@ class LogAppenderStream : public LogAppender {
   /// @brief maximum size for reusable log buffer
   /// if the buffer exceeds this size, it will be freed after the log
   /// message was produced. otherwise it will be kept for recycling
-  static constexpr size_t maxBufferSize = 64 * 1024; 
-  
+  static constexpr size_t maxBufferSize = 64 * 1024;
+
  private:
   /// @brief a reusable buffer for log messages
   std::unique_ptr<char[]> _buffer;
@@ -55,10 +54,10 @@ class LogAppenderStream : public LogAppender {
   size_t _bufferSize;
 
  protected:
-  /// @brief file descriptor 
+  /// @brief file descriptor
   int _fd;
-  
-  /// @brief whether or not the outfile is a tty 
+
+  /// @brief whether or not the outfile is a tty
   bool _isTty;
 };
 
@@ -67,9 +66,9 @@ class LogAppenderFile : public LogAppenderStream {
   LogAppenderFile(std::string const& filename, std::string const& filter);
 
   void writeLogMessage(LogLevel, char const*, size_t) override final;
-  
+
   std::string details() override final;
- 
+
  public:
   static void reopenAll();
   static void closeAll();
@@ -86,8 +85,9 @@ class LogAppenderStdStream : public LogAppenderStream {
   ~LogAppenderStdStream();
 
   std::string details() override final { return std::string(); }
-  
-  static void writeLogMessage(int fd, bool isTty, LogLevel, char const* p, size_t length, bool appendNewline);
+
+  static void writeLogMessage(int fd, bool isTty, LogLevel, char const* p,
+                              size_t length, bool appendNewline);
 
  private:
   void writeLogMessage(LogLevel, char const*, size_t) override final;
@@ -105,6 +105,6 @@ class LogAppenderStdout : public LogAppenderStdStream {
       : LogAppenderStdStream("-", filter, STDOUT_FILENO) {}
 };
 
-}
+}  // namespace arangodb
 
 #endif

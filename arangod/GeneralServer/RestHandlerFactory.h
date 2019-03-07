@@ -40,8 +40,7 @@ class RestHandlerFactory {
 
  public:
   // handler creator
-  typedef RestHandler* (*create_fptr)(GeneralRequest*, GeneralResponse*,
-                                      void* data);
+  typedef RestHandler* (*create_fptr)(GeneralRequest*, GeneralResponse*, void* data);
 
   // context handler
   typedef bool (*context_fptr)(GeneralRequest*, void*);
@@ -69,8 +68,7 @@ class RestHandlerFactory {
   void addHandler(std::string const& path, create_fptr, void* data = nullptr);
 
   // adds a prefix path and constructor to the factory
-  void addPrefixHandler(std::string const& path, create_fptr,
-                        void* data = nullptr);
+  void addPrefixHandler(std::string const& path, create_fptr, void* data = nullptr);
 
   // adds a path and constructor to the factory
   void addNotFoundHandler(create_fptr);
@@ -94,7 +92,7 @@ class RestHandlerFactory {
  private:
   static std::atomic<bool> _maintenanceMode;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 
 #endif

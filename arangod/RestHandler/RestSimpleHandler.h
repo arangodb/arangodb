@@ -24,16 +24,16 @@
 #ifndef ARANGOD_REST_HANDLER_REST_SIMPLE_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_SIMPLE_HANDLER_H 1
 
+#include "Aql/QueryResult.h"
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
-#include "Aql/QueryResult.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
 namespace aql {
 class Query;
 class QueryRegistry;
-}
+}  // namespace aql
 
 class RestSimpleHandler : public RestVocbaseBaseHandler {
  public:
@@ -106,6 +106,6 @@ class RestSimpleHandler : public RestVocbaseBaseHandler {
 
   bool _queryKilled;
 };
-}
+}  // namespace arangodb
 
 #endif

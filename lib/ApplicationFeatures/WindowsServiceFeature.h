@@ -42,27 +42,28 @@ class WindowsServiceFeature final : public application_features::ApplicationFeat
 
  private:
   void installService();
-  void StartArangoService (bool WaitForRunning);
-  void StopArangoService (bool WaitForShutdown);
-  void startupProgress ();
+  void StartArangoService(bool WaitForRunning);
+  void StopArangoService(bool WaitForShutdown);
+  void startupProgress();
 
-  void startupFinished ();
+  void startupFinished();
 
-  void shutDownBegins ();
-  void shutDownComplete ();
-  void shutDownFailure ();
+  void shutDownBegins();
+  void shutDownComplete();
+  void shutDownFailure();
   void abortFailure();
   static void abortService();
+
  public:
   bool _installService = false;
   bool _unInstallService = false;
   bool _forceUninstall = false;
-  
+
   bool _startAsService = false;
 
   bool _startService = false;
   bool _startWaitService = false;
-  
+
   bool _stopService = false;
   bool _stopWaitService = false;
 
@@ -71,6 +72,6 @@ class WindowsServiceFeature final : public application_features::ApplicationFeat
  private:
   uint16_t _progress;
 };
-};
+};  // namespace arangodb
 
 #endif

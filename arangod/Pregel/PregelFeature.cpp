@@ -69,9 +69,7 @@ PregelFeature::~PregelFeature() {
   cleanupAll();
 }
 
-PregelFeature* PregelFeature::instance() {
-  return Instance;
-}
+PregelFeature* PregelFeature::instance() { return Instance; }
 
 size_t PregelFeature::availableParallelism() {
   const size_t procNum = TRI_numberProcessors();
@@ -164,8 +162,7 @@ void PregelFeature::cleanupAll() {
   _workers.clear();
 }
 
-void PregelFeature::handleConductorRequest(std::string const& path,
-                                           VPackSlice const& body,
+void PregelFeature::handleConductorRequest(std::string const& path, VPackSlice const& body,
                                            VPackBuilder& outBuilder) {
   VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
   if (!sExecutionNum.isInteger()) {
@@ -187,10 +184,8 @@ void PregelFeature::handleConductorRequest(std::string const& path,
   }
 }
 
-void PregelFeature::handleWorkerRequest(TRI_vocbase_t* vocbase,
-                                        std::string const& path,
-                                        VPackSlice const& body,
-                                        VPackBuilder& outBuilder) {
+void PregelFeature::handleWorkerRequest(TRI_vocbase_t* vocbase, std::string const& path,
+                                        VPackSlice const& body, VPackBuilder& outBuilder) {
   VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
   if (!sExecutionNum.isInteger()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -214,12 +209,11 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t* vocbase,
   }
   std::shared_ptr<IWorker> w = Instance->worker(exeNum);
   if (!w) {
-    LOG_TOPIC(WARN, Logger::PREGEL) << "Handling " << path << "worker "
-                                    << exeNum << " does not exist";
+    LOG_TOPIC(WARN, Logger::PREGEL)
+        << "Handling " << path << "worker " << exeNum << " does not exist";
     THROW_ARANGO_EXCEPTION_FORMAT(
         TRI_ERROR_INTERNAL,
-        "Handling request %s, but worker %lld does not exist.", path.c_str(),
-        exeNum);
+        "Handling request %s, but worker %lld does not exist.", path.c_str(), exeNum);
   }
 
   if (path == Utils::prepareGSSPath) {

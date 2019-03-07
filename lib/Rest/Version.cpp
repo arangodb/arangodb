@@ -47,12 +47,12 @@
 using namespace arangodb::rest;
 
 std::map<std::string, std::string> Version::Values;
-  
+
 /// @brief parse a version string into major, minor
 /// returns -1, -1 when the version string has an invalid format
 /// returns major, -1 when only the major version can be determined
 std::pair<int, int> Version::parseVersionString(std::string const& str) {
-  std::pair<int, int> result{ -1, -1 };
+  std::pair<int, int> result{-1, -1};
 
   if (!str.empty()) {
     char const* p = str.c_str();
@@ -75,7 +75,7 @@ std::pair<int, int> Version::parseVersionString(std::string const& str) {
         result.second = std::stoi(std::string(p, q - p));
       }
     }
-  } 
+  }
 
   return result;
 }
@@ -86,7 +86,8 @@ void Version::initialize() {
     return;
   }
 
-  Values["architecture"] = (sizeof(void*) == 4 ? "32" : "64") + std::string("bit");
+  Values["architecture"] =
+      (sizeof(void*) == 4 ? "32" : "64") + std::string("bit");
 #ifdef __arm__
   Values["arm"] = "true";
 #else
@@ -119,7 +120,6 @@ void Version::initialize() {
   Values["v8-version"] = getV8Version();
   Values["vpack-version"] = getVPackVersion();
   Values["zlib-version"] = getZLibVersion();
-
 
 #if USE_ENTERPRISE
   Values["enterprise-version"] = ARANGODB_ENTERPRISE_VERSION;
@@ -178,7 +178,7 @@ void Version::initialize() {
 #else
   Values["fd-client-event-handler"] = "select";
 #endif
-  
+
   for (auto& it : Values) {
     arangodb::basics::StringUtils::trimInPlace(it.second);
   }
@@ -211,7 +211,9 @@ int32_t Version::getNumericServerVersion() {
 }
 
 /// @brief get server version
-std::string Version::getServerVersion() { return std::string(ARANGODB_VERSION); }
+std::string Version::getServerVersion() {
+  return std::string(ARANGODB_VERSION);
+}
 
 /// @brief get BOOST version
 std::string Version::getBoostVersion() {
@@ -236,10 +238,11 @@ std::string Version::getBoostReactorType() {
   return std::string("select");
 #endif
 }
-  
+
 /// @brief get RocksDB version
 std::string Version::getRocksDBVersion() {
-  return std::to_string(ROCKSDB_MAJOR) + "." + std::to_string(ROCKSDB_MINOR) + "." + std::to_string(ROCKSDB_PATCH);
+  return std::to_string(ROCKSDB_MAJOR) + "." + std::to_string(ROCKSDB_MINOR) +
+         "." + std::to_string(ROCKSDB_PATCH);
 }
 
 /// @brief get V8 version
@@ -305,11 +308,13 @@ std::string Version::getEndianness() {
   static_assert(sizeof(value) == 8, "unexpected uint64_t size");
 
   unsigned char const* p = reinterpret_cast<unsigned char const*>(&value);
-  if (p[0] == 0x12 && p[1] == 0x34 && p[2] == 0x56 && p[3] == 0x78 && p[4] == 0xab && p[5] == 0xcd && p[6] == 0xef && p[7] == 0x99) {
+  if (p[0] == 0x12 && p[1] == 0x34 && p[2] == 0x56 && p[3] == 0x78 &&
+      p[4] == 0xab && p[5] == 0xcd && p[6] == 0xef && p[7] == 0x99) {
     return "big";
   }
-  
-  if (p[0] == 0x99 && p[1] == 0xef && p[2] == 0xcd && p[3] == 0xab && p[4] == 0x78 && p[5] == 0x56 && p[6] == 0x34 && p[7] == 0x12) {
+
+  if (p[0] == 0x99 && p[1] == 0xef && p[2] == 0xcd && p[3] == 0xab &&
+      p[4] == 0x78 && p[5] == 0x56 && p[6] == 0x34 && p[7] == 0x12) {
     return "little";
   }
   return "unknown";
@@ -392,4 +397,3 @@ void Version::getVPack(VPackBuilder& dst) {
     }
   }
 }
-

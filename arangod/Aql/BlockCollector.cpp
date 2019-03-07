@@ -30,7 +30,7 @@
 
 using namespace arangodb::aql;
 
-BlockCollector::BlockCollector(AqlItemBlockManager* blockManager) 
+BlockCollector::BlockCollector(AqlItemBlockManager* blockManager)
     : _blockManager(blockManager), _blocks{_arena}, _totalSize(0) {}
 
 BlockCollector::~BlockCollector() { clear(); }
@@ -45,13 +45,13 @@ RegisterId BlockCollector::nrRegs() const {
 
 void BlockCollector::clear() {
   for (auto& it : _blocks) {
-    it->destroy(); // overkill?
+    it->destroy();  // overkill?
     _blockManager->returnBlock(it);
   }
   _blocks.clear();
   _totalSize = 0;
 }
-  
+
 void BlockCollector::add(std::unique_ptr<AqlItemBlock> block) {
   TRI_ASSERT(block->size() > 0);
 
@@ -75,7 +75,7 @@ AqlItemBlock* BlockCollector::steal() {
 
   TRI_ASSERT(_totalSize > 0);
   AqlItemBlock* result = nullptr;
-        
+
   TRI_IF_FAILURE("BlockCollector::getOrSkipSomeConcatenate") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -96,4 +96,3 @@ AqlItemBlock* BlockCollector::steal() {
   _blocks.clear();
   return result;
 }
-

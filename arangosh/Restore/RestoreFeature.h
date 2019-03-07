@@ -34,17 +34,14 @@ namespace httpclient {
 class SimpleHttpResult;
 }
 
-class RestoreFeature final
-    : public application_features::ApplicationFeature,
-      public ArangoClientHelper {
+class RestoreFeature final : public application_features::ApplicationFeature,
+                             public ArangoClientHelper {
  public:
-  RestoreFeature(application_features::ApplicationServer* server,
-                       int* result);
+  RestoreFeature(application_features::ApplicationServer* server, int* result);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> options) override;
   void prepare() override;
   void start() override;
 
@@ -84,6 +81,6 @@ class RestoreFeature final
     uint64_t _totalRead;
   } _stats;
 };
-}
+}  // namespace arangodb
 
 #endif

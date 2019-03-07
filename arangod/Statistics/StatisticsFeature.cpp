@@ -22,7 +22,6 @@
 
 #include "StatisticsFeature.h"
 
-
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -56,8 +55,8 @@ StatisticsVector TRI_BytesSentDistributionVectorStatistics;
 StatisticsVector TRI_ConnectionTimeDistributionVectorStatistics;
 StatisticsVector TRI_RequestTimeDistributionVectorStatistics;
 std::vector<StatisticsCounter> TRI_MethodRequestsStatistics;
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  StatisticsThread
@@ -113,15 +112,13 @@ class arangodb::StatisticsThread final : public Thread {
 
 StatisticsFeature* StatisticsFeature::STATISTICS = nullptr;
 
-StatisticsFeature::StatisticsFeature(
-    application_features::ApplicationServer* server)
+StatisticsFeature::StatisticsFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Statistics"), _statistics(true) {
   startsAfter("Logger");
   startsAfter("Aql");
 }
 
-void StatisticsFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
+void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("server.disable-statistics", "server.statistics");
 
   options->addSection("server", "Server features");
@@ -149,8 +146,8 @@ void StatisticsFeature::prepare() {
   TRI_RequestTimeDistributionVectorStatistics << (0.01) << (0.05) << (0.1)
                                               << (0.2) << (0.5) << (1.0);
 
-  TRI_ConnectionTimeDistributionStatistics = new StatisticsDistribution(
-      TRI_ConnectionTimeDistributionVectorStatistics);
+  TRI_ConnectionTimeDistributionStatistics =
+      new StatisticsDistribution(TRI_ConnectionTimeDistributionVectorStatistics);
   TRI_TotalTimeDistributionStatistics =
       new StatisticsDistribution(TRI_RequestTimeDistributionVectorStatistics);
   TRI_RequestTimeDistributionStatistics =
@@ -172,7 +169,6 @@ void StatisticsFeature::prepare() {
 }
 
 void StatisticsFeature::start() {
-
   if (!_statistics) {
     return;
   }
@@ -180,7 +176,8 @@ void StatisticsFeature::start() {
   _statisticsThread.reset(new StatisticsThread);
 
   if (!_statisticsThread->start()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not start statistics thread";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "could not start statistics thread";
     FATAL_ERROR_EXIT();
   }
 }

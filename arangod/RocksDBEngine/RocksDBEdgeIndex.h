@@ -50,8 +50,7 @@ class RocksDBEdgeIndex;
 class RocksDBEdgeIndexIterator final : public IndexIterator {
  public:
   RocksDBEdgeIndexIterator(LogicalCollection* collection,
-                           transaction::Methods* trx,
-                           ManagedDocumentResult* mmdr,
+                           transaction::Methods* trx, ManagedDocumentResult* mmdr,
                            arangodb::RocksDBEdgeIndex const* index,
                            std::unique_ptr<VPackBuilder>& keys,
                            std::shared_ptr<cache::Cache>);
@@ -64,8 +63,7 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
 
  private:
   void resetInplaceMemory();
-  arangodb::StringRef getFromToFromIterator(
-      arangodb::velocypack::ArrayIterator const&);
+  arangodb::StringRef getFromToFromIterator(arangodb::velocypack::ArrayIterator const&);
   void lookupInRocksDB(StringRef edgeKey);
 
   std::unique_ptr<arangodb::velocypack::Builder> _keys;
@@ -88,12 +86,9 @@ class RocksDBEdgeIndexWarmupTask : public basics::LocalTask {
   std::string const _upper;
 
  public:
-  RocksDBEdgeIndexWarmupTask(
-      std::shared_ptr<basics::LocalTaskQueue> queue,
-      RocksDBEdgeIndex* index,
-      transaction::Methods* trx,
-      rocksdb::Slice const& lower,
-      rocksdb::Slice const& upper);
+  RocksDBEdgeIndexWarmupTask(std::shared_ptr<basics::LocalTaskQueue> queue,
+                             RocksDBEdgeIndex* index, transaction::Methods* trx,
+                             rocksdb::Slice const& lower, rocksdb::Slice const& upper);
   void run();
 };
 
@@ -123,15 +118,13 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimateLocal(
-      arangodb::StringRef const* = nullptr) const override;
+  double selectivityEstimateLocal(arangodb::StringRef const* = nullptr) const override;
 
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
-  void batchInsert(
-      transaction::Methods*,
-      std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
-      std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override;
+  void batchInsert(transaction::Methods*,
+                   std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
+                   std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override;
 
   bool hasBatchInsert() const override { return false; }
 
@@ -139,14 +132,12 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*,
-                                      ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      bool) override;
+                                      arangodb::aql::Variable const*, bool) override;
 
-  arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
+                                              arangodb::aql::Variable const*) const override;
 
   /// @brief Transform the list of search slices to search values.
   ///        This will multiply all IN entries and simply return all other
@@ -184,14 +175,12 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                                   arangodb::aql::AstNode const*) const;
 
   /// @brief add a single value node to the iterator's keys
-  void handleValNode(VPackBuilder* keys,
-                     arangodb::aql::AstNode const* valNode) const;
-  
-  void warmupInternal(transaction::Methods* trx,
-                      rocksdb::Slice const& lower, rocksdb::Slice const& upper);
-  
- private:
+  void handleValNode(VPackBuilder* keys, arangodb::aql::AstNode const* valNode) const;
 
+  void warmupInternal(transaction::Methods* trx, rocksdb::Slice const& lower,
+                      rocksdb::Slice const& upper);
+
+ private:
   std::string _directionAttr;
   bool _isFromIndex;
 

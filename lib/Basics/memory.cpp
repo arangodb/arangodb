@@ -251,7 +251,7 @@ void operator delete(void* pointer) noexcept {
 }
 
 /// @brief overloaded operator delete
-void operator delete(void* pointer, std::nothrow_t const&) noexcept {
+void operator delete(void* pointer, std::nothrow_t const&)noexcept {
   if (pointer) {
     free(pointer);
   }
@@ -295,8 +295,7 @@ void* TRI_SystemAllocate(uint64_t n, bool set) {
 
 /// @brief basic memory management for allocate
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void* TRI_AllocateZ(uint64_t n,
-                    char const* file, int line) {
+void* TRI_AllocateZ(uint64_t n, char const* file, int line) {
 #else
 void* TRI_Allocate(uint64_t n) {
 #endif
@@ -321,8 +320,7 @@ void* TRI_Allocate(uint64_t n) {
 
 /// @brief basic memory management for reallocate
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void* TRI_ReallocateZ(void* m, uint64_t n,
-                      char const* file, int line) {
+void* TRI_ReallocateZ(void* m, uint64_t n, char const* file, int line) {
 #else
 void* TRI_Reallocate(void* m, uint64_t n) {
 #endif
@@ -390,15 +388,11 @@ void TRI_SystemFree(void* p) {
 }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_AllowMemoryFailures() {
-  AllowMemoryFailures = 1;
-}
+void TRI_AllowMemoryFailures() { AllowMemoryFailures = 1; }
 #endif
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_DisallowMemoryFailures() {
-  AllowMemoryFailures = 0;
-}
+void TRI_DisallowMemoryFailures() { AllowMemoryFailures = 0; }
 #endif
 
 /// @brief securely zero memory

@@ -91,8 +91,7 @@ int TRI_CreateRecursiveDirectory(char const* path, long& systemError,
 /// @brief creates a directory
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateDirectory(char const* path, long& systemError,
-                        std::string& systemErrorStr);
+int TRI_CreateDirectory(char const* path, long& systemError, std::string& systemErrorStr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an empty directory
@@ -141,8 +140,7 @@ std::vector<std::string> TRI_FullTreeDirectory(char const* path);
 /// @brief renames a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameFile(char const* old, char const* filename,
-                   long* systemError = nullptr,
+int TRI_RenameFile(char const* old, char const* filename, long* systemError = nullptr,
                    std::string* systemErrorStr = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,7 +256,7 @@ std::string TRI_LocateBinaryPath(char const* argv0);
 ///    /opt/usr/bin /usr/bin/ => /opt/
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string TRI_GetInstallRoot(std::string const& binaryPath, char const *installBinaryPath);
+std::string TRI_GetInstallRoot(std::string const& binaryPath, char const* installBinaryPath);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates the home directory
@@ -308,8 +306,7 @@ void TRI_SetUserTempPath(std::string const&);
 /// @brief copies a file from source to dest.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CopyFile(std::string const& src, std::string const& dst,
-                  std::string& error);
+bool TRI_CopyFile(std::string const& src, std::string const& dst, std::string& error);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies the file Attributes from source to dest.
@@ -357,7 +354,7 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize);
 /// @brief checks whether path is full qualified or relative
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_PathIsAbsolute(const std::string &path);
+bool TRI_PathIsAbsolute(const std::string& path);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize the files subsystem

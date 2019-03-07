@@ -31,7 +31,7 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
-  
+
 std::unique_ptr<TransactionManager> TransactionManagerFeature::MANAGER;
 
 TransactionManagerFeature::TransactionManagerFeature(ApplicationServer* server)
@@ -48,6 +48,4 @@ void TransactionManagerFeature::prepare() {
   MANAGER.reset(EngineSelectorFeature::ENGINE->createTransactionManager());
 }
 
-void TransactionManagerFeature::unprepare() {
-  MANAGER.reset();
-}
+void TransactionManagerFeature::unprepare() { MANAGER.reset(); }

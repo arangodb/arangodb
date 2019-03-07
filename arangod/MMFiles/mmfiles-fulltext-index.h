@@ -61,19 +61,17 @@ void TRI_FreeFtsIndex(TRI_fts_index_t*);
 void TRI_TruncateMMFilesFulltextIndex(TRI_fts_index_t*);
 
 /// @brief insert a list of words to the index
-int TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t*,
-                                        TRI_voc_rid_t,
+int TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t*, TRI_voc_rid_t,
                                         std::set<std::string> const&);
 
 /// @brief insert a list of words to the index
-int TRI_RemoveWordsMMFilesFulltextIndex(TRI_fts_index_t*,
-                                        TRI_voc_rid_t,
+int TRI_RemoveWordsMMFilesFulltextIndex(TRI_fts_index_t*, TRI_voc_rid_t,
                                         std::set<std::string> const&);
 
 /// @brief execute a query on the fulltext index
 /// note: this will free the query
-std::set<TRI_voc_rid_t> TRI_QueryMMFilesFulltextIndex(
-    TRI_fts_index_t* const, struct TRI_fulltext_query_s*);
+std::set<TRI_voc_rid_t> TRI_QueryMMFilesFulltextIndex(TRI_fts_index_t* const,
+                                                      struct TRI_fulltext_query_s*);
 
 /// @brief return stats about the index
 TRI_fulltext_stats_t TRI_StatsMMFilesFulltextIndex(TRI_fts_index_t*);

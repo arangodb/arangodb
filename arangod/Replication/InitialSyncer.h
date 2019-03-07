@@ -41,20 +41,15 @@ namespace arangodb {
 class LogicalCollection;
 class InitialSyncer;
 
-int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
-                          arangodb::LogicalCollection* col,
-                          std::string const& keysId,
-                          std::string& errorMsg);
+int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer, arangodb::LogicalCollection* col,
+                          std::string const& keysId, std::string& errorMsg);
 
-int handleSyncKeysRocksDB(InitialSyncer& syncer,
-                          arangodb::LogicalCollection* col,
-                          std::string const& keysId,
-                          std::string& errorMsg);
+int handleSyncKeysRocksDB(InitialSyncer& syncer, arangodb::LogicalCollection* col,
+                          std::string const& keysId, std::string& errorMsg);
 
 int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
                      std::string const& keysId, uint64_t chunkId,
-                     std::string const& lowString,
-                     std::string const& highString,
+                     std::string const& lowString, std::string const& highString,
                      std::vector<std::pair<std::string, uint64_t>> const& markers,
                      std::string& errorMsg);
 namespace httpclient {
@@ -62,20 +57,21 @@ class SimpleHttpResult;
 }
 
 class InitialSyncer : public Syncer {
-  friend int ::arangodb::handleSyncKeysMMFiles(
-      arangodb::InitialSyncer& syncer, arangodb::LogicalCollection* col,
-      std::string const& keysId, std::string& errorMsg);
+  friend int ::arangodb::handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
+                                               arangodb::LogicalCollection* col,
+                                               std::string const& keysId,
+                                               std::string& errorMsg);
 
-  friend int ::arangodb::handleSyncKeysRocksDB(
-      InitialSyncer& syncer, arangodb::LogicalCollection* col,
-      std::string const& keysId, std::string& errorMsg);
+  friend int ::arangodb::handleSyncKeysRocksDB(InitialSyncer& syncer,
+                                               arangodb::LogicalCollection* col,
+                                               std::string const& keysId,
+                                               std::string& errorMsg);
 
   friend int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
-                     std::string const& keysId, uint64_t chunkId,
-                     std::string const& lowString,
-                     std::string const& highString,
-                     std::vector<std::pair<std::string, uint64_t>> const& markers,
-                     std::string& errorMsg);
+                              std::string const& keysId, uint64_t chunkId,
+                              std::string const& lowString, std::string const& highString,
+                              std::vector<std::pair<std::string, uint64_t>> const& markers,
+                              std::string& errorMsg);
 
  private:
   /// @brief apply phases
@@ -158,8 +154,7 @@ class InitialSyncer : public Syncer {
 
   /// @brief apply the data from a collection dump
   int applyCollectionDump(SingleCollectionTransaction&, LogicalCollection*,
-                          httpclient::SimpleHttpResult*, uint64_t&,
-                          std::string&);
+                          httpclient::SimpleHttpResult*, uint64_t&, std::string&);
 
   /// @brief determine the number of documents in a collection
   int64_t getSize(arangodb::LogicalCollection*);
@@ -174,26 +169,22 @@ class InitialSyncer : public Syncer {
 
   /// @brief changes the properties of a collection, based on the VelocyPack
   /// provided
-  int changeCollection(arangodb::LogicalCollection*,
-                       arangodb::velocypack::Slice const&);
+  int changeCollection(arangodb::LogicalCollection*, arangodb::velocypack::Slice const&);
 
   /// @brief handle the information about a collection
   int handleCollection(arangodb::velocypack::Slice const&,
-                       arangodb::velocypack::Slice const&, bool, std::string&,
-                       sync_phase_e);
+                       arangodb::velocypack::Slice const&, bool, std::string&, sync_phase_e);
 
   /// @brief handle the inventory response of the master
-  int handleInventoryResponse(arangodb::velocypack::Slice const&, bool,
-                              std::string&);
+  int handleInventoryResponse(arangodb::velocypack::Slice const&, bool, std::string&);
 
   /// @brief iterate over all collections from an array and apply an action
   int iterateCollections(
-      std::vector<std::pair<arangodb::velocypack::Slice,
-                            arangodb::velocypack::Slice>> const&,
+      std::vector<std::pair<arangodb::velocypack::Slice, arangodb::velocypack::Slice>> const&,
       bool, std::string&, sync_phase_e);
 
   std::unordered_map<std::string, std::string> createHeaders() {
-    return { {StaticStrings::ClusterCommSource, ServerState::instance()->getId()} };
+    return {{StaticStrings::ClusterCommSource, ServerState::instance()->getId()}};
   }
 
  private:
@@ -240,6 +231,6 @@ class InitialSyncer : public Syncer {
 
   std::shared_ptr<velocypack::Builder> _sharedBuilder;
 };
-}
+}  // namespace arangodb
 
 #endif

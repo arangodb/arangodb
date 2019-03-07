@@ -32,20 +32,17 @@
 using namespace arangodb;
 
 /// @brief create the context
-transaction::V8Context::V8Context(TRI_vocbase_t* vocbase,
-                                           bool embeddable)
+transaction::V8Context::V8Context(TRI_vocbase_t* vocbase, bool embeddable)
     : Context(vocbase),
       _sharedTransactionContext(static_cast<transaction::V8Context*>(
-          static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData(
-                                            V8PlatformFeature::V8_DATA_SLOT))
+          static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData(V8PlatformFeature::V8_DATA_SLOT))
               ->_transactionContext)),
       _mainScope(nullptr),
       _currentTransaction(nullptr),
       _embeddable(embeddable) {}
 
 /// @brief order a custom type handler for the collection
-std::shared_ptr<VPackCustomTypeHandler>
-transaction::V8Context::orderCustomTypeHandler() {
+std::shared_ptr<VPackCustomTypeHandler> transaction::V8Context::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
     transaction::V8Context* main = _sharedTransactionContext->_mainScope;
 
@@ -120,12 +117,10 @@ bool transaction::V8Context::isGlobal() const {
 TransactionState* transaction::V8Context::getParentState() {
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
       v8::Isolate::GetCurrent()->GetData(V8PlatformFeature::V8_DATA_SLOT));
-  if (v8g == nullptr ||
-      v8g->_transactionContext == nullptr) {
+  if (v8g == nullptr || v8g->_transactionContext == nullptr) {
     return nullptr;
   }
-  return static_cast<transaction::V8Context*>(v8g->_transactionContext)
-             ->_currentTransaction;
+  return static_cast<transaction::V8Context*>(v8g->_transactionContext)->_currentTransaction;
 }
 
 /// @brief check whether the transaction is embedded
@@ -134,11 +129,11 @@ bool transaction::V8Context::isEmbedded() {
 }
 
 /// @brief create a context, returned in a shared ptr
-std::shared_ptr<transaction::V8Context> transaction::V8Context::Create(
-    TRI_vocbase_t* vocbase, bool embeddable) {
+std::shared_ptr<transaction::V8Context> transaction::V8Context::Create(TRI_vocbase_t* vocbase,
+                                                                       bool embeddable) {
   return std::make_shared<transaction::V8Context>(vocbase, embeddable);
 }
-      
+
 std::shared_ptr<transaction::Context> transaction::V8Context::CreateWhenRequired(
     TRI_vocbase_t* vocbase, bool embeddable) {
   if (v8::Isolate::GetCurrent() != nullptr) {

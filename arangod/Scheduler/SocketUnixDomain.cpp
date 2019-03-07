@@ -29,16 +29,19 @@ using namespace arangodb;
 size_t SocketUnixDomain::write(basics::StringBuffer* buffer, boost::system::error_code& ec) {
   return socketcommon::doWrite(_socket, buffer, ec);
 }
-void SocketUnixDomain::asyncWrite(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) {
+void SocketUnixDomain::asyncWrite(boost::asio::mutable_buffers_1 const& buffer,
+                                  AsyncHandler const& handler) {
   return socketcommon::doAsyncWrite(_socket, buffer, handler);
 }
-size_t SocketUnixDomain::read(boost::asio::mutable_buffers_1 const& buffer, boost::system::error_code& ec) {
+size_t SocketUnixDomain::read(boost::asio::mutable_buffers_1 const& buffer,
+                              boost::system::error_code& ec) {
   return socketcommon::doRead(_socket, buffer, ec);
 }
 std::size_t SocketUnixDomain::available(boost::system::error_code& ec) {
   return _socket.available(ec);
 }
-void SocketUnixDomain::asyncRead(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) {
+void SocketUnixDomain::asyncRead(boost::asio::mutable_buffers_1 const& buffer,
+                                 AsyncHandler const& handler) {
   return socketcommon::doAsyncRead(_socket, buffer, handler);
 }
 void SocketUnixDomain::shutdownReceive(boost::system::error_code& ec) {
@@ -49,7 +52,7 @@ void SocketUnixDomain::shutdownSend(boost::system::error_code& ec) {
 }
 void SocketUnixDomain::close(boost::system::error_code& ec) {
   if (_socket.is_open()) {
-    _socket.close(ec); 
+    _socket.close(ec);
     if (ec && ec != boost::asio::error::not_connected) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
           << "closing socket failed with: " << ec.message();

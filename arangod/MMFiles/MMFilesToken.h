@@ -40,8 +40,9 @@ struct MMFilesToken : public DocumentIdentifierToken {
     return static_cast<TRI_voc_rid_t>(_data);
   }
 };
-static_assert(sizeof(MMFilesToken) == sizeof(uint64_t), "invalid MMFilesToken size");
+static_assert(sizeof(MMFilesToken) == sizeof(uint64_t),
+              "invalid MMFilesToken size");
 
-}
+}  // namespace arangodb
 
 #endif

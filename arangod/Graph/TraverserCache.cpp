@@ -43,7 +43,8 @@ using namespace arangodb::graph;
 
 TraverserCache::TraverserCache(transaction::Methods* trx)
     : _mmdr(new ManagedDocumentResult{}),
-      _trx(trx), _insertedDocuments(0),
+      _trx(trx),
+      _insertedDocuments(0),
       _filteredDocuments(0),
       _stringHeap(new StringHeap{4096}) /* arbitrary block-size may be adjusted for performance */ {
 }
@@ -57,20 +58,21 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
   if (!col->readDocument(_trx, idToken.token(), *_mmdr.get())) {
     TRI_ASSERT(false);
     // We already had this token, inconsistent state. Return NULL in Production
-    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS) << "Could not extract indexed Edge Document, return 'null' instead. "
-      << "This is most likely a caching issue. Try: '"
-      << col->name() <<".unload(); " << col->name() << ".load()' in arangosh to fix this.";
+    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS)
+        << "Could not extract indexed Edge Document, return 'null' instead. "
+        << "This is most likely a caching issue. Try: '" << col->name()
+        << ".unload(); " << col->name() << ".load()' in arangosh to fix this.";
     return basics::VelocyPackHelper::NullValue();
   }
   return VPackSlice(_mmdr->vpack());
 }
 
 VPackSlice TraverserCache::lookupInCollection(StringRef id) {
-  //TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  // TRI_ASSERT(!ServerState::instance()->isCoordinator());
   size_t pos = id.find('/');
   if (pos == std::string::npos || pos + 1 == id.size()) {
-    // Invalid input. If we get here somehow we managed to store invalid _from/_to
-    // values or the traverser did a let an illegal start through
+    // Invalid input. If we get here somehow we managed to store invalid
+    // _from/_to values or the traverser did a let an illegal start through
     TRI_ASSERT(false);
     return basics::VelocyPackHelper::NullValue();
   }
@@ -90,13 +92,12 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
 }
 
 void TraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
-                                      VPackBuilder& builder) {
+                                          VPackBuilder& builder) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   builder.add(lookupToken(idToken));
 }
 
-void TraverserCache::insertVertexIntoResult(StringRef idString,
-                                      VPackBuilder& builder) {
+void TraverserCache::insertVertexIntoResult(StringRef idString, VPackBuilder& builder) {
   builder.add(lookupInCollection(idString));
 }
 
@@ -109,8 +110,7 @@ aql::AqlValue TraverserCache::fetchVertexAqlResult(StringRef idString) {
   return aql::AqlValue(lookupInCollection(idString));
 }
 
-StringRef TraverserCache::persistString(
-    StringRef const idString) {
+StringRef TraverserCache::persistString(StringRef const idString) {
   auto it = _persistedStrings.find(idString);
   if (it != _persistedStrings.end()) {
     return *it;

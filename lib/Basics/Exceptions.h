@@ -39,19 +39,18 @@
 
 /// @brief throws an arango exception with an error code and arbitrary
 /// arguments (to be inserted in printf-style manner)
-#define THROW_ARANGO_EXCEPTION_PARAMS(code, ...)                           \
-  throw arangodb::basics::Exception(                                       \
-      code,                                                                \
-      arangodb::basics::Exception::FillExceptionString(code, __VA_ARGS__), \
-      __FILE__, __LINE__)
+#define THROW_ARANGO_EXCEPTION_PARAMS(code, ...)                                                         \
+  throw arangodb::basics::Exception(code,                                                                \
+                                    arangodb::basics::Exception::FillExceptionString(code, __VA_ARGS__), \
+                                    __FILE__, __LINE__)
 
 /// @brief throws an arango exception with an error code and arbitrary
 /// arguments (to be inserted in printf-style manner)
-#define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...)             \
-  throw arangodb::basics::Exception(                                 \
-      code, arangodb::basics::Exception::FillFormatExceptionString(  \
-                "%s: " format, TRI_errno_string(code), __VA_ARGS__), \
-      __FILE__, __LINE__)
+#define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...)                                     \
+  throw arangodb::basics::Exception(code,                                                    \
+                                    arangodb::basics::Exception::FillFormatExceptionString(  \
+                                        "%s: " format, TRI_errno_string(code), __VA_ARGS__), \
+                                    __FILE__, __LINE__)
 
 /// @brief throws an arango exception with an error code and an already-built
 /// error message
@@ -73,11 +72,9 @@ class Exception : public virtual std::exception {
   Exception(Result const&, char const* file, int line);
   Exception(Result&&, char const* file, int line);
 
-  Exception(int code, std::string const& errorMessage, char const* file,
-            int line);
+  Exception(int code, std::string const& errorMessage, char const* file, int line);
 
-  Exception(int code, std::string&& errorMessage, char const* file,
-            int line);
+  Exception(int code, std::string&& errorMessage, char const* file, int line);
 
   Exception(int code, char const* errorMessage, char const* file, int line);
 
@@ -88,6 +85,7 @@ class Exception : public virtual std::exception {
   std::string message() const;
   int code() const noexcept;
   void addToMessage(std::string const&);
+
  private:
   void appendLocation();
 
@@ -97,7 +95,7 @@ class Exception : public virtual std::exception {
   int const _line;
   int const _code;
 };
-}
-}
+}  // namespace basics
+}  // namespace arangodb
 
 #endif

@@ -46,7 +46,7 @@ class Mutex {
   void lock();
   bool tryLock();
   void unlock();
-  
+
   // assert that the mutex is locked by the current thread. will do
   // nothing in non-maintainer mode and will do nothing for non-posix locks
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -72,6 +72,6 @@ class Mutex {
   TRI_tid_t _holder;
 #endif
 };
-}
+}  // namespace arangodb
 
 #endif

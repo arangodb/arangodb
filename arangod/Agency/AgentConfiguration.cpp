@@ -29,53 +29,51 @@
 using namespace arangodb::consensus;
 
 config_t::config_t()
-  : _agencySize(0),
-    _poolSize(0),
-    _minPing(0.0),
-    _maxPing(0.0),
-    _timeoutMult(1),
-    _endpoint(defaultEndpointStr),
-    _supervision(false),
-    _supervisionTouched(false),
-    _waitForSync(true),
-    _supervisionFrequency(5.0),
-    _compactionStepSize(2000),
-    _compactionKeepSize(500),
-    _supervisionGracePeriod(15.0),
-    _cmdLineTimings(false),
-    _version(0),
-    _startup("origin"),
-    _maxAppendSize(250),
-    _lock() {}
+    : _agencySize(0),
+      _poolSize(0),
+      _minPing(0.0),
+      _maxPing(0.0),
+      _timeoutMult(1),
+      _endpoint(defaultEndpointStr),
+      _supervision(false),
+      _supervisionTouched(false),
+      _waitForSync(true),
+      _supervisionFrequency(5.0),
+      _compactionStepSize(2000),
+      _compactionKeepSize(500),
+      _supervisionGracePeriod(15.0),
+      _cmdLineTimings(false),
+      _version(0),
+      _startup("origin"),
+      _maxAppendSize(250),
+      _lock() {}
 
-config_t::config_t(
-  std::string const& rid, size_t as, size_t ps, double minp, double maxp,
-  std::string const& e, std::vector<std::string> const& g, bool s, bool st,
-  bool w, double f, uint64_t c, uint64_t k, double p, bool t, size_t a)
-  : _recoveryId(rid),
-    _agencySize(as),
-    _poolSize(ps),
-    _minPing(minp),
-    _maxPing(maxp),
-    _timeoutMult(1),
-    _endpoint(e),
-    _gossipPeers(g),
-    _supervision(s),
-    _supervisionTouched(st),
-    _waitForSync(w),
-    _supervisionFrequency(f),
-    _compactionStepSize(c),
-    _compactionKeepSize(k),
-    _supervisionGracePeriod(p),
-    _cmdLineTimings(t),
-    _version(0),
-    _startup("origin"),
-    _maxAppendSize(a),
-    _lock() {}
+config_t::config_t(std::string const& rid, size_t as, size_t ps, double minp,
+                   double maxp, std::string const& e,
+                   std::vector<std::string> const& g, bool s, bool st, bool w,
+                   double f, uint64_t c, uint64_t k, double p, bool t, size_t a)
+    : _recoveryId(rid),
+      _agencySize(as),
+      _poolSize(ps),
+      _minPing(minp),
+      _maxPing(maxp),
+      _timeoutMult(1),
+      _endpoint(e),
+      _gossipPeers(g),
+      _supervision(s),
+      _supervisionTouched(st),
+      _waitForSync(w),
+      _supervisionFrequency(f),
+      _compactionStepSize(c),
+      _compactionKeepSize(k),
+      _supervisionGracePeriod(p),
+      _cmdLineTimings(t),
+      _version(0),
+      _startup("origin"),
+      _maxAppendSize(a),
+      _lock() {}
 
-config_t::config_t(config_t const& other) { 
-  *this = other; 
-}
+config_t::config_t(config_t const& other) { *this = other; }
 
 config_t& config_t::operator=(config_t const& other) {
   // must hold the lock of other to copy _pool, _minPing, _maxPing etc.
@@ -164,7 +162,7 @@ int64_t config_t::timeoutMult() const {
 
 void config_t::pingTimes(double minPing, double maxPing) {
   WRITE_LOCKER(writeLocker, _lock);
-  if (_minPing != minPing || _maxPing != maxPing ) {
+  if (_minPing != minPing || _maxPing != maxPing) {
     _minPing = minPing;
     _maxPing = maxPing;
     ++_version;
@@ -257,29 +255,26 @@ void config_t::eraseFromGossipPeers(std::string const& endpoint) {
   WRITE_LOCKER(readLocker, _lock);
   if (std::find(_gossipPeers.begin(), _gossipPeers.end(), endpoint) !=
       _gossipPeers.end()) {
-    _gossipPeers.erase(
-      std::remove(_gossipPeers.begin(), _gossipPeers.end(), endpoint),
-      _gossipPeers.end());
+    _gossipPeers.erase(std::remove(_gossipPeers.begin(), _gossipPeers.end(), endpoint),
+                       _gossipPeers.end());
     ++_version;
   }
 }
 
-bool config_t::upsertPool(
-  VPackSlice const& otherPool, std::string const& otherId) {
+bool config_t::upsertPool(VPackSlice const& otherPool, std::string const& otherId) {
   WRITE_LOCKER(readLocker, _lock);
   for (auto const& entry : VPackObjectIterator(otherPool)) {
     auto const id = entry.key.copyString();
     auto const endpoint = entry.value.copyString();
     if (_pool.find(id) == _pool.end()) {
-      LOG_TOPIC(INFO, Logger::AGENCY)
-        << "Adding " << id << "(" << endpoint << ") to agent pool";
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Adding " << id << "(" << endpoint << ") to agent pool";
       _pool[id] = endpoint;
       ++_version;
     } else {
-      if (_pool.at(id) != endpoint) {   
-        if (id != otherId) {          /// discrepancy!
+      if (_pool.at(id) != endpoint) {
+        if (id != otherId) {  /// discrepancy!
           return false;
-        } else {                      /// we trust the other guy on his own endpoint
+        } else {  /// we trust the other guy on his own endpoint
           _pool.at(id) = endpoint;
         }
       }
@@ -354,7 +349,6 @@ query_t config_t::poolToBuilder() const {
   return ret;
 }
 
-
 bool config_t::updateEndpoint(std::string const& id, std::string const& ep) {
   WRITE_LOCKER(readLocker, _lock);
   if (_pool[id] != ep) {
@@ -364,7 +358,6 @@ bool config_t::updateEndpoint(std::string const& id, std::string const& ep) {
   }
   return false;
 }
-
 
 void config_t::update(query_t const& message) {
   VPackSlice slice = message->slice();
@@ -388,23 +381,23 @@ void config_t::update(query_t const& message) {
   WRITE_LOCKER(writeLocker, _lock);
   if (pool != _pool) {
     _pool = pool;
-    changed=true;
+    changed = true;
   }
   if (active != _active) {
     _active = active;
-    changed=true;
+    changed = true;
   }
   if (minPing != _minPing) {
     _minPing = minPing;
-    changed=true;
+    changed = true;
   }
   if (maxPing != _maxPing) {
     _maxPing = maxPing;
-    changed=true;
+    changed = true;
   }
   if (timeoutMult != _timeoutMult) {
     _timeoutMult = timeoutMult;
-    changed=true;
+    changed = true;
   }
   if (changed) {
     ++_version;
@@ -413,7 +406,6 @@ void config_t::update(query_t const& message) {
 
 /// @brief vpack representation
 query_t config_t::toBuilder() const {
-
   query_t ret = std::make_shared<arangodb::velocypack::Builder>();
   {
     VPackObjectBuilder b(ret.get());
@@ -475,7 +467,7 @@ std::string config_t::startup() const {
 
 /// @brief merge from persisted configuration
 bool config_t::merge(VPackSlice const& conf) {
-  WRITE_LOCKER(writeLocker, _lock); // All must happen under the lock or else ...
+  WRITE_LOCKER(writeLocker, _lock);  // All must happen under the lock or else ...
 
   // FIXME: All these "command line beats persistence" are wrong, since
   // the given default values never happen. Only fixed _supervision with
@@ -635,7 +627,7 @@ bool config_t::merge(VPackSlice const& conf) {
       _compactionKeepSize = conf.get(compactionKeepSizeStr).getUInt();
       ss << _compactionKeepSize << " (persisted)";
     } else {
-      _compactionStepSize =  500;
+      _compactionStepSize = 500;
       ss << _compactionKeepSize << " (default)";
     }
   } else {

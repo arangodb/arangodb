@@ -40,7 +40,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 struct Options;
-}
+}  // namespace velocypack
 
 namespace basics {
 class StringBuffer;
@@ -48,9 +48,9 @@ class StringBuffer;
 
 class RequestContext;
 
-using rest::RequestType;
 using rest::ContentType;
 using rest::ProtocolVersion;
+using rest::RequestType;
 
 class GeneralRequest {
   GeneralRequest(GeneralRequest const&) = delete;
@@ -131,9 +131,7 @@ class GeneralRequest {
   void setRequestPath(std::string const& requestPath) {
     _requestPath = requestPath;
   }
-  void setRequestPath(char const* begin) {
-    _requestPath = std::string(begin);
-  }
+  void setRequestPath(char const* begin) { _requestPath = std::string(begin); }
   void setRequestPath(char const* begin, char const* end) {
     _requestPath = std::string(begin, end - begin);
   }
@@ -148,7 +146,7 @@ class GeneralRequest {
 
   // Returns the request path suffixes in non-URL-decoded form
   std::vector<std::string> const& suffixes() const { return _suffixes; }
-  
+
   // Returns the request path suffixes in URL-decoded form. Note: this will
   // re-compute the suffix list on every call!
   std::vector<std::string> decodedSuffixes() const;
@@ -164,27 +162,23 @@ class GeneralRequest {
   virtual int64_t contentLength() const = 0;
   // get value from headers map. The key must be lowercase.
   virtual std::string const& header(std::string const& key) const = 0;
-  virtual std::string const& header(std::string const& key,
-                                    bool& found) const = 0;
+  virtual std::string const& header(std::string const& key, bool& found) const = 0;
   // return headers map
-  virtual std::unordered_map<std::string, std::string> const& headers()
-      const = 0;
+  virtual std::unordered_map<std::string, std::string> const& headers() const = 0;
 
   // the value functions give access to to query string parameters
   virtual std::string const& value(std::string const& key) const = 0;
-  virtual std::string const& value(std::string const& key,
-                                   bool& found) const = 0;
+  virtual std::string const& value(std::string const& key, bool& found) const = 0;
   virtual std::unordered_map<std::string, std::string> values() const = 0;
-  virtual std::unordered_map<std::string, std::vector<std::string>>
-  arrayValues() const = 0;
+  virtual std::unordered_map<std::string, std::vector<std::string>> arrayValues() const = 0;
 
-  virtual VPackSlice payload(arangodb::velocypack::Options const* options =
-                             &VPackOptions::Defaults) = 0;
+  virtual VPackSlice payload(arangodb::velocypack::Options const* options = &VPackOptions::Defaults) = 0;
 
   std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr() {
     VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
     optionsWithUniquenessCheck.checkAttributeUniqueness = true;
-    return std::make_shared<VPackBuilder>(payload(&optionsWithUniquenessCheck), &optionsWithUniquenessCheck);
+    return std::make_shared<VPackBuilder>(payload(&optionsWithUniquenessCheck),
+                                          &optionsWithUniquenessCheck);
   };
 
   ContentType contentType() const { return _contentType; }
@@ -214,8 +208,7 @@ class GeneralRequest {
   ExecContext* _execContext;
 
   bool _isRequestContextOwner;
-  rest::AuthenticationMethod _authenticationMethod =
-      rest::AuthenticationMethod::NONE;
+  rest::AuthenticationMethod _authenticationMethod = rest::AuthenticationMethod::NONE;
 
   // information about the payload
   RequestType _type;  // GET, POST, ..
@@ -226,6 +219,6 @@ class GeneralRequest {
   ContentType _contentType;  // UNSET, VPACK, JSON
   ContentType _contentTypeResponse;
 };
-}
+}  // namespace arangodb
 
 #endif

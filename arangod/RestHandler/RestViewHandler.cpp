@@ -34,8 +34,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestViewHandler::RestViewHandler(GeneralRequest* request,
-                                 GeneralResponse* response)
+RestViewHandler::RestViewHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RestViewHandler::execute() {
@@ -67,8 +66,7 @@ RestStatus RestViewHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -111,8 +109,7 @@ void RestViewHandler::createView() {
   VPackSlice const nameSlice = body.get("name");
   VPackSlice const typeSlice = body.get("type");
   VPackSlice const propertiesSlice = body.get("properties");
-  if (!nameSlice.isString() || !typeSlice.isString() ||
-      !propertiesSlice.isObject()) {
+  if (!nameSlice.isString() || !typeSlice.isString() || !propertiesSlice.isObject()) {
     badParamError();
     return;
   }
@@ -152,15 +149,13 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   std::string const& name = suffixes[0];
   std::shared_ptr<LogicalView> view = _vocbase->lookupView(name);
   if (view == nullptr) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
     return;
   }
 
   try {
     bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody =
-        parseVelocyPackBody(parseSuccess);
+    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
 
     if (!parseSuccess) {
       return;
@@ -215,8 +210,7 @@ void RestViewHandler::deleteView() {
   if (res == TRI_ERROR_NO_ERROR) {
     generateOk();
   } else if (res == TRI_ERROR_ARANGO_VIEW_NOT_FOUND) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
   } else {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "problem dropping view");
@@ -283,8 +277,7 @@ void RestViewHandler::getSingleView(std::string const& name) {
     props.close();
     generateResult(rest::ResponseCode::OK, props.slice());
   } else {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
   }
 }
 
@@ -298,7 +291,6 @@ void RestViewHandler::getViewProperties(std::string const& name) {
     props.close();
     generateResult(rest::ResponseCode::OK, props.slice());
   } else {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
   }
 }

@@ -25,11 +25,9 @@
 #define ARANGOD_INDEXES_INDEX_ELEMENT_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
-namespace arangodb {
-
-}
+namespace arangodb {}
 
 #endif

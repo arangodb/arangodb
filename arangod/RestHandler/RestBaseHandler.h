@@ -37,7 +37,7 @@ namespace velocypack {
 class Builder;
 struct Options;
 class Slice;
-}
+}  // namespace velocypack
 
 class RestBaseHandler : public rest::RestHandler {
  public:
@@ -58,7 +58,7 @@ class RestBaseHandler : public rest::RestHandler {
   template <typename Payload>
   void generateResult(rest::ResponseCode, Payload&&,
                       std::shared_ptr<transaction::Context> context);
-  
+
   /// convenience function akin to generateError,
   /// renders payload in 'result' field
   void generateSuccess(rest::ResponseCode, velocypack::Slice const&);
@@ -68,7 +68,7 @@ class RestBaseHandler : public rest::RestHandler {
 
   // generates an error
   void generateError(rest::ResponseCode, int, std::string const&);
-  
+
   // generates an error
   void generateError(arangodb::Result const&);
 
@@ -82,6 +82,6 @@ class RestBaseHandler : public rest::RestHandler {
   template <typename Payload>
   void writeResult(Payload&&, arangodb::velocypack::Options const& options);
 };
-}
+}  // namespace arangodb
 
 #endif

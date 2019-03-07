@@ -40,8 +40,7 @@ struct VstInputMessage {
   VstInputMessage() : _buffer(), _id(0), _payloadAmount(0), _payload() {}
 
   // cppcheck-suppress *
-  VstInputMessage(uint64_t id, VPackBuffer<uint8_t>&& buff,
-                  std::size_t amount = 1)
+  VstInputMessage(uint64_t id, VPackBuffer<uint8_t>&& buff, std::size_t amount = 1)
       : _buffer(std::move(buff)), _id(id), _payloadAmount(amount) {
     init();
   }
@@ -50,8 +49,10 @@ struct VstInputMessage {
   VstInputMessage(VstInputMessage const& other) = delete;
 
   // just move
-  VstInputMessage(VstInputMessage&& other) 
-      : _buffer(std::move(other._buffer)), _id(other._id), _payloadAmount(other._payloadAmount) {
+  VstInputMessage(VstInputMessage&& other)
+      : _buffer(std::move(other._buffer)),
+        _id(other._id),
+        _payloadAmount(other._payloadAmount) {
     init();
   }
 
@@ -94,10 +95,7 @@ struct VPackMessageNoOwnBuffer {
   // cppcheck-suppress *
   VPackMessageNoOwnBuffer(VPackSlice head, std::vector<VPackSlice>&& payloads,
                           uint64_t id, bool generateBody = true)
-      : _header(head),
-        _payloads(std::move(payloads)),
-        _id(id),
-        _generateBody(generateBody) {}
+      : _header(head), _payloads(std::move(payloads)), _id(id), _generateBody(generateBody) {}
 
   VPackMessageNoOwnBuffer(VPackSlice head, VPackSlice payload, uint64_t id,
                           bool generateBody = true)
@@ -119,6 +117,6 @@ struct VPackMessageNoOwnBuffer {
   uint64_t _id;
   bool _generateBody;
 };
-}
-}
+}  // namespace rest
+}  // namespace arangodb
 #endif

@@ -64,14 +64,14 @@ QueryRegistry::~QueryRegistry() {
     }
   }
 }
-    
+
 /// @brief insert
 void QueryRegistry::insert(QueryId id, Query* query, double ttl) {
   TRI_ASSERT(query != nullptr);
   TRI_ASSERT(query->trx() != nullptr);
   auto vocbase = query->vocbase();
- 
-  // create the query info object outside of the lock 
+
+  // create the query info object outside of the lock
   auto p = std::make_unique<QueryInfo>(id, query, ttl);
 
   // now insert into table of running queries
@@ -80,14 +80,15 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl) {
 
     auto m = _queries.find(vocbase->name());
     if (m == _queries.end()) {
-      m = _queries.emplace(vocbase->name(),
-                          std::unordered_map<QueryId, QueryInfo*>()).first;
+      m = _queries
+              .emplace(vocbase->name(), std::unordered_map<QueryId, QueryInfo*>())
+              .first;
 
       TRI_ASSERT(_queries.find(vocbase->name()) != _queries.end());
     }
-    
+
     auto q = m->second.find(id);
-    
+
     if (q != m->second.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL, "query with given vocbase and id already there");
@@ -135,7 +136,8 @@ Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
       // std::cout << "Setting _noLockHeaders\n";
       CollectionLockState::_noLockHeaders = qi->_query->engine()->lockedShards();
     } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Found strange lockedShards in thread, not overwriting!";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "Found strange lockedShards in thread, not overwriting!";
     }
   }
 
@@ -149,8 +151,9 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
 
   auto m = _queries.find(vocbase->name());
   if (m == _queries.end()) {
-    m = _queries.emplace(vocbase->name(),
-                         std::unordered_map<QueryId, QueryInfo*>()).first;
+    m = _queries
+            .emplace(vocbase->name(), std::unordered_map<QueryId, QueryInfo*>())
+            .first;
   }
   auto q = m->second.find(id);
   if (q == m->second.end()) {
@@ -165,14 +168,12 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
 
   // If we have set _noLockHeaders, we need to unset it:
   if (CollectionLockState::_noLockHeaders != nullptr) {
-    if (CollectionLockState::_noLockHeaders ==
-        qi->_query->engine()->lockedShards()) {
+    if (CollectionLockState::_noLockHeaders == qi->_query->engine()->lockedShards()) {
       // std::cout << "Resetting _noLockHeaders to nullptr\n";
       CollectionLockState::_noLockHeaders = nullptr;
     } else {
       if (CollectionLockState::_noLockHeaders != nullptr) {
-        if (CollectionLockState::_noLockHeaders ==
-            qi->_query->engine()->lockedShards()) {
+        if (CollectionLockState::_noLockHeaders == qi->_query->engine()->lockedShards()) {
           CollectionLockState::_noLockHeaders = nullptr;
         }
         // else {
@@ -188,25 +189,24 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
 }
 
 /// @brief destroy
-void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
-                            int errorCode) {
+void QueryRegistry::destroy(std::string const& vocbase, QueryId id, int errorCode) {
   std::unique_ptr<QueryInfo> queryInfo;
- 
-  { 
+
+  {
     WRITE_LOCKER(writeLocker, _lock);
 
     auto m = _queries.find(vocbase);
 
     if (m == _queries.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                    "query with given vocbase and id not found");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER, "query with given vocbase and id not found");
     }
 
     auto q = m->second.find(id);
 
     if (q == m->second.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                    "query with given vocbase and id not found");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER, "query with given vocbase and id not found");
     }
 
     if (q->second->_isOpen) {
@@ -216,10 +216,10 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
     }
 
     // move query into our unique ptr, so we can process it outside
-    // of the lock 
+    // of the lock
     queryInfo.reset(q->second);
 
-    // remove query from the table of running queries 
+    // remove query from the table of running queries
     q->second = nullptr;
     m->second.erase(q);
   }
@@ -230,13 +230,14 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
   // If the query was open, we can delete it right away, if not, we need
   // to register the transaction with the current context and adjust
   // the debugging counters for transactions:
-    
+
   // If we had set _noLockHeaders, we need to reset it:
   if (queryInfo->_query->engine()->lockedShards() != nullptr) {
     if (CollectionLockState::_noLockHeaders == nullptr) {
       CollectionLockState::_noLockHeaders = queryInfo->_query->engine()->lockedShards();
     } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Found strange lockedShards in thread, not overwriting!";
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "Found strange lockedShards in thread, not overwriting!";
     }
   }
 
@@ -284,7 +285,7 @@ void QueryRegistry::expireQueries() {
 size_t QueryRegistry::numberRegisteredQueries() {
   READ_LOCKER(readLocker, _lock);
   size_t sum = 0;
-  for (auto const&m : _queries) {
+  for (auto const& m : _queries) {
     sum += m.second.size();
   }
   return sum;
@@ -311,13 +312,11 @@ void QueryRegistry::destroyAll() {
 }
 
 QueryRegistry::QueryInfo::QueryInfo(QueryId id, Query* query, double ttl)
-    : _vocbase(query->vocbase()), 
-      _id(id), 
-      _query(query), 
-      _isOpen(false), 
-      _timeToLive(ttl), 
+    : _vocbase(query->vocbase()),
+      _id(id),
+      _query(query),
+      _isOpen(false),
+      _timeToLive(ttl),
       _expires(TRI_microtime() + ttl) {}
 
-QueryRegistry::QueryInfo::~QueryInfo() {
-  delete _query;
-}
+QueryRegistry::QueryInfo::~QueryInfo() { delete _query; }

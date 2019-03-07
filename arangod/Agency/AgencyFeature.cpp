@@ -75,8 +75,7 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--agency.activate", "Activate agency",
                      new BooleanParameter(&_activated));
 
-  options->addOption("--agency.size", "number of agents",
-                     new UInt64Parameter(&_size));
+  options->addOption("--agency.size", "number of agents", new UInt64Parameter(&_size));
 
   options->addOption("--agency.pool-size", "number of agent pool",
                      new UInt64Parameter(&_poolSize));
@@ -124,15 +123,15 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            "(required in production)",
                            new BooleanParameter(&_waitForSync));
 
-  options->addHiddenOption("--agency.max-append-size",
-                           "maximum size of appendEntries document (# log entries)",
-                           new UInt64Parameter(&_maxAppendSize));
-
   options->addHiddenOption(
-    "--agency.disaster-recovery-id",
-    "allows for specification of the id for this agent; dangerous option for disaster recover only!",
-    new StringParameter(&_recoveryId));
+      "--agency.max-append-size",
+      "maximum size of appendEntries document (# log entries)",
+      new UInt64Parameter(&_maxAppendSize));
 
+  options->addHiddenOption("--agency.disaster-recovery-id",
+                           "allows for specification of the id for this agent; "
+                           "dangerous option for disaster recover only!",
+                           new StringParameter(&_recoveryId));
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -209,8 +208,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     std::string const unified = Endpoint::unifiedForm(_agencyMyAddress);
 
     if (unified.empty()) {
-      LOG_TOPIC(FATAL, Logger::AGENCY) << "invalid endpoint '"
-                                       << _agencyMyAddress
+      LOG_TOPIC(FATAL, Logger::AGENCY) << "invalid endpoint '" << _agencyMyAddress
                                        << "' specified for --agency.my-address";
       FATAL_ERROR_EXIT();
     }
@@ -221,8 +219,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 }
 
-void AgencyFeature::prepare() {
-}
+void AgencyFeature::prepare() {}
 
 void AgencyFeature::start() {
   if (!isEnabled()) {
@@ -232,12 +229,11 @@ void AgencyFeature::start() {
   // Find the agency prefix:
   auto feature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
   if (!feature->agencyPrefix().empty()) {
-    arangodb::consensus::Supervision::setAgencyPrefix(
-      std::string("/") + feature->agencyPrefix());
-    arangodb::consensus::Job::agencyPrefix
-      = std::string("/") + feature->agencyPrefix();
+    arangodb::consensus::Supervision::setAgencyPrefix(std::string("/") +
+                                                      feature->agencyPrefix());
+    arangodb::consensus::Job::agencyPrefix = std::string("/") + feature->agencyPrefix();
   }
-  
+
   // TODO: Port this to new options handling
   std::string endpoint;
 
@@ -267,20 +263,17 @@ void AgencyFeature::start() {
     _maxAppendSize /= 10;
   }
 
-  _agent.reset(
-    new consensus::Agent(
-      consensus::config_t(
-        _recoveryId, _size, _poolSize, _minElectionTimeout, _maxElectionTimeout,
-        endpoint, _agencyEndpoints, _supervision, _supervisionTouched,
-        _waitForSync, _supervisionFrequency, _compactionStepSize,
-        _compactionKeepSize, _supervisionGracePeriod, _cmdLineTimings,
-        _maxAppendSize)));
-  
+  _agent.reset(new consensus::Agent(consensus::config_t(
+      _recoveryId, _size, _poolSize, _minElectionTimeout, _maxElectionTimeout,
+      endpoint, _agencyEndpoints, _supervision, _supervisionTouched, _waitForSync,
+      _supervisionFrequency, _compactionStepSize, _compactionKeepSize,
+      _supervisionGracePeriod, _cmdLineTimings, _maxAppendSize)));
+
   AGENT = _agent.get();
-  
+
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";
   _agent->start();
-  
+
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading agency";
   _agent->load();
 }
@@ -289,7 +282,7 @@ void AgencyFeature::beginShutdown() {
   if (!isEnabled()) {
     return;
   }
-  
+
   // pass shutdown event to _agent so it can notify all its sub-threads
   _agent->beginShutdown();
 }
@@ -299,16 +292,17 @@ void AgencyFeature::stop() {
     return;
   }
 
-  if (_agent->inception() != nullptr) { // can only exist in resilient agents
+  if (_agent->inception() != nullptr) {  // can only exist in resilient agents
     int counter = 0;
     while (_agent->inception()->isRunning()) {
       usleep(100000);
       // emit warning after 5 seconds
       if (++counter == 10 * 5) {
-        LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for inception thread to finish";
+        LOG_TOPIC(WARN, Logger::AGENCY)
+            << "waiting for inception thread to finish";
       }
     }
-  }  
+  }
 
   if (_agent != nullptr) {
     int counter = 0;
@@ -338,4 +332,3 @@ void AgencyFeature::unprepare() {
   // shutdown
   _agent.reset();
 }
-

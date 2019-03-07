@@ -39,8 +39,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestUsersHandler::RestUsersHandler(GeneralRequest* request,
-                                   GeneralResponse* response)
+RestUsersHandler::RestUsersHandler(GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
 RestStatus RestUsersHandler::execute() {
@@ -83,11 +82,10 @@ bool RestUsersHandler::canAccessUser(std::string const& user) const {
 }
 
 /// helper to generate a compliant response for individual user requests
-void RestUsersHandler::generateUserResult(rest::ResponseCode code,
-                                          VPackBuilder const& doc) {
+void RestUsersHandler::generateUserResult(rest::ResponseCode code, VPackBuilder const& doc) {
   VPackBuilder b;
-  b(VPackValue(VPackValueType::Object))("error", VPackValue(false))(
-      "code", VPackValue((int)code))();
+  b(VPackValue(VPackValueType::Object))("error",
+                                        VPackValue(false))("code", VPackValue((int)code))();
   b = VPackCollection::merge(doc.slice(), b.slice(), false);
   generateResult(code, b.slice());
 }
@@ -135,8 +133,7 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
 
       } else if (suffixes.size() == 4) {
         //_api/user/<user>/database/<dbname>/<collection>
-        AuthLevel lvl =
-            authInfo->canUseCollection(user, suffixes[2], suffixes[3]);
+        AuthLevel lvl = authInfo->canUseCollection(user, suffixes[2], suffixes[3]);
         VPackBuilder data;
         data.add(VPackValue(convertFromAuthLevel(lvl)));
         generateSuccess(ResponseCode::OK, data.slice());
@@ -151,8 +148,7 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
       if (suffixes.size() == 3) {
         resp = data.slice().get(suffixes[2]);
       }
-      generateSuccess(ResponseCode::OK,
-                      resp.isNone() ? VPackSlice::nullSlice() : resp);
+      generateSuccess(ResponseCode::OK, resp.isNone() ? VPackSlice::nullSlice() : resp);
     } else {
       generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     }
@@ -163,14 +159,12 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
 
 /// generate response for /_api/user/database?full=true/false
 void RestUsersHandler::generateDatabaseResult(AuthInfo* authInfo,
-                                              std::string const& user,
-                                              bool full) {
+                                              std::string const& user, bool full) {
   // return list of databases
   VPackBuilder data;
   data.openObject();
   Result res = authInfo->accessUser(user, [&](AuthUserEntry const& entry) {
     DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
-
       AuthLevel lvl = entry.databaseAuthLevel(vocbase->name());
       std::string str = "undefined";
       if (entry.hasSpecificDatabase(vocbase->name())) {
@@ -181,15 +175,14 @@ void RestUsersHandler::generateDatabaseResult(AuthInfo* authInfo,
         VPackObjectBuilder b(&data, vocbase->name(), true);
         data.add("permission", VPackValue(str));
         VPackObjectBuilder b2(&data, "collections", true);
-        methods::Collections::enumerateCollections(
-            vocbase, [&](LogicalCollection* c) {
-              if (entry.hasSpecificCollection(vocbase->name(), c->name())) {
-                lvl = entry.collectionAuthLevel(vocbase->name(), c->name());
-                data.add(c->name(), VPackValue(convertFromAuthLevel(lvl)));
-              } else {
-                data.add(c->name(), VPackValue("undefined"));
-              }
-            });
+        methods::Collections::enumerateCollections(vocbase, [&](LogicalCollection* c) {
+          if (entry.hasSpecificCollection(vocbase->name(), c->name())) {
+            lvl = entry.collectionAuthLevel(vocbase->name(), c->name());
+            data.add(c->name(), VPackValue(convertFromAuthLevel(lvl)));
+          } else {
+            data.add(c->name(), VPackValue("undefined"));
+          }
+        });
         lvl = authInfo->canUseCollectionNoLock(user, vocbase->name(), "*");
         data.add("*", VPackValue(convertFromAuthLevel(lvl)));
       } else if (lvl != AuthLevel::NONE) {  // hide db's without access
@@ -198,8 +191,8 @@ void RestUsersHandler::generateDatabaseResult(AuthInfo* authInfo,
     });
     if (full) {
       AuthLevel lvl = authInfo->canUseDatabaseNoLock(user, "*");
-      data("*", VPackValue(VPackValueType::Object))(
-          "permission", VPackValue(convertFromAuthLevel(lvl)))();
+      data("*", VPackValue(VPackValueType::Object))("permission",
+                                                    VPackValue(convertFromAuthLevel(lvl)))();
     }
   });
   data.close();
@@ -211,8 +204,7 @@ void RestUsersHandler::generateDatabaseResult(AuthInfo* authInfo,
 }
 
 /// helper to create(0), replace(1), update(2) a user
-static Result StoreUser(AuthInfo* authInfo, int mode, std::string const& user,
-                        VPackSlice json) {
+static Result StoreUser(AuthInfo* authInfo, int mode, std::string const& user, VPackSlice json) {
   std::string passwd;
   bool active = true;
   VPackSlice extra;
@@ -327,8 +319,7 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
         return RestStatus::DONE;
       }
 
-      if (!parsedBody->slice().isObject() ||
-          !parsedBody->slice().get("grant").isString()) {
+      if (!parsedBody->slice().isObject() || !parsedBody->slice().get("grant").isString()) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
         return RestStatus::DONE;
       }
@@ -372,8 +363,7 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
               resetResponse(ResponseCode::OK);
               return RestStatus::DONE;
             }
-            conf = VPackCollection::remove(
-                oldConf, std::unordered_set<std::string>{key});
+            conf = VPackCollection::remove(oldConf, std::unordered_set<std::string>{key});
           } else {
             // We need to merge the new key into the config
             newVal = newVal.get("value");
@@ -381,9 +371,7 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
             b.openObject();
             b.add(key, newVal);
             b.close();
-            conf = oldConf.isObject()
-                       ? VPackCollection::merge(oldConf, b.slice(), false)
-                       : b;
+            conf = oldConf.isObject() ? VPackCollection::merge(oldConf, b.slice(), false) : b;
           }
         }
 
@@ -446,8 +434,8 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
     Result r = authInfo->removeUser(user);
     if (r.ok()) {
       VPackBuilder b;
-      b(VPackValue(VPackValueType::Object))("error", VPackValue(false))(
-          "code", VPackValue(202))();
+      b(VPackValue(VPackValueType::Object))("error",
+                                            VPackValue(false))("code", VPackValue(202))();
       generateResult(ResponseCode::ACCEPTED, b.slice());
     } else {
       generateError(r);
@@ -485,8 +473,8 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
       });
       if (r.ok()) {
         VPackBuilder b;
-        b(VPackValue(VPackValueType::Object))("error", VPackValue(false))(
-                     "code", VPackValue(202))();
+        b(VPackValue(VPackValueType::Object))("error",
+                                              VPackValue(false))("code", VPackValue(202))();
         generateResult(ResponseCode::ACCEPTED, b.slice());
       } else {
         generateError(r);
@@ -501,8 +489,7 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
         VPackBuilder b;
         b(VPackValue(VPackValueType::Object))(key, VPackSlice::nullSlice())();
         if (!config.isEmpty()) {
-          config =
-              VPackCollection::merge(config.slice(), b.slice(), false, true);
+          config = VPackCollection::merge(config.slice(), b.slice(), false, true);
           r = authInfo->setConfigData(user, config.slice());
         }
         if (r.ok()) {

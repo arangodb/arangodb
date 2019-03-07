@@ -24,8 +24,8 @@
 #include "process-utils.h"
 
 #if defined(TRI_HAVE_MACOS_MEM_STATS)
-#include <sys/types.h>
 #include <sys/sysctl.h>
+#include <sys/types.h>
 #endif
 
 #ifdef TRI_HAVE_SYS_PRCTL_H
@@ -46,12 +46,12 @@
 #include <TlHelp32.h>
 #endif
 
-#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 
@@ -282,7 +282,7 @@ static bool createPipes(HANDLE* hChildStdinRd, HANDLE* hChildStdinWr,
   // create a pipe for the child process's STDOUT
   if (!CreatePipe(hChildStdoutRd, hChildStdoutWr, &saAttr, 0)) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << ""
-             << "stdout pipe creation failed";
+                                            << "stdout pipe creation failed";
     return false;
   }
 
@@ -384,11 +384,11 @@ static bool startProcess(TRI_external_t* external, HANDLE rd, HANDLE wr) {
   STARTUPINFO siStartInfo;
   BOOL bFuncRetn = FALSE;
   TRI_ERRORBUF;
-  
+
   args = makeWindowsArgs(external);
   if (args == NULL) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "execute of '" << external->_executable
-             << "' failed making args";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "execute of '" << external->_executable << "' failed making args";
     return false;
   }
 
@@ -420,8 +420,9 @@ static bool startProcess(TRI_external_t* external, HANDLE rd, HANDLE wr) {
 
   if (bFuncRetn == FALSE) {
     TRI_SYSTEM_ERROR();
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "execute of '" << external->_executable
-             << "' failed, error: " << GetLastError() << " " << TRI_GET_ERRORBUF;
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "execute of '" << external->_executable
+        << "' failed, error: " << GetLastError() << " " << TRI_GET_ERRORBUF;
     return false;
   } else {
     external->_pid = piProcInfo.dwProcessId;
@@ -436,8 +437,7 @@ static void StartExternalProcess(TRI_external_t* external, bool usePipes) {
   HANDLE hChildStdoutRd = NULL, hChildStdoutWr = NULL;
   bool fSuccess;
   if (usePipes) {
-    fSuccess = createPipes(&hChildStdinRd, &hChildStdinWr, &hChildStdoutRd,
-                           &hChildStdoutWr);
+    fSuccess = createPipes(&hChildStdinRd, &hChildStdinWr, &hChildStdoutRd, &hChildStdoutWr);
 
     if (!fSuccess) {
       external->_status = TRI_EXT_PIPE_FAILED;
@@ -474,15 +474,17 @@ static void StartExternalProcess(TRI_external_t* external, bool usePipes) {
   external->_status = TRI_EXT_RUNNING;
 }
 #endif
-      
+
 void TRI_LogProcessInfoSelf(char const* message) {
   TRI_process_info_t info = TRI_ProcessInfoSelf();
 
   if (message == nullptr) {
     message = "";
   }
-  
-  LOG_TOPIC(TRACE, Logger::MEMORY) << message << "virtualSize: " << info._virtualSize << ", residentSize: " << info._residentSize << ", numberThreads: " << info._numberThreads;
+
+  LOG_TOPIC(TRACE, Logger::MEMORY) << message << "virtualSize: " << info._virtualSize
+                                   << ", residentSize: " << info._residentSize
+                                   << ", numberThreads: " << info._numberThreads;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -555,8 +557,7 @@ TRI_process_info_t TRI_ProcessInfoSelf() {
         mach_port_deallocate(mach_task_self(), array[i]);
       }
 
-      vm_deallocate(mach_task_self(), (vm_address_t)array,
-                    sizeof(thread_t) * count);
+      vm_deallocate(mach_task_self(), (vm_address_t)array, sizeof(thread_t) * count);
     }
   }
 
@@ -565,8 +566,7 @@ TRI_process_info_t TRI_ProcessInfoSelf() {
     struct task_basic_info t_info;
     mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
 
-    rc = task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&t_info,
-                   &t_info_count);
+    rc = task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&t_info, &t_info_count);
     if (rc == KERN_SUCCESS) {
       result._virtualSize = t_info.virtual_size;
       result._residentSize = t_info.resident_size;
@@ -615,8 +615,7 @@ TRI_process_info_t TRI_ProcessInfoSelf() {
   pmc.cb = sizeof(PROCESS_MEMORY_COUNTERS_EX);
   // compiler warning wird in kauf genommen!c
   // http://msdn.microsoft.com/en-us/library/windows/desktop/ms684874(v=vs.85).aspx
-  if (GetProcessMemoryInfo(GetCurrentProcess(), (PPROCESS_MEMORY_COUNTERS)&pmc,
-                           pmc.cb)) {
+  if (GetProcessMemoryInfo(GetCurrentProcess(), (PPROCESS_MEMORY_COUNTERS)&pmc, pmc.cb)) {
     result._majorPageFaults = pmc.PageFaultCount;
     // there is not any corresponce to minflt in linux
     result._minorPageFaults = 0;
@@ -641,8 +640,7 @@ TRI_process_info_t TRI_ProcessInfoSelf() {
   }
   /// computing times
   FILETIME creationTime, exitTime, kernelTime, userTime;
-  if (GetProcessTimes(GetCurrentProcess(), &creationTime, &exitTime,
-                      &kernelTime, &userTime)) {
+  if (GetProcessTimes(GetCurrentProcess(), &creationTime, &exitTime, &kernelTime, &userTime)) {
     // see remarks in
     // http://msdn.microsoft.com/en-us/library/windows/desktop/ms683223(v=vs.85).aspx
     // value in seconds
@@ -734,11 +732,10 @@ TRI_process_info_t TRI_ProcessInfo(TRI_pid_t pid) {
     sscanf(str,
            "%d %s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld "
            "%ld %ld %llu %lu %ld",
-           &st.pid, (char*)&st.comm, &st.state, &st.ppid, &st.pgrp, &st.session,
-           &st.tty_nr, &st.tpgid, &st.flags, &st.minflt, &st.cminflt,
-           &st.majflt, &st.cmajflt, &st.utime, &st.stime, &st.cutime,
-           &st.cstime, &st.priority, &st.nice, &st.num_threads, &st.itrealvalue,
-           &st.starttime, &st.vsize, &st.rss);
+           &st.pid, (char*)&st.comm, &st.state, &st.ppid, &st.pgrp, &st.session, &st.tty_nr,
+           &st.tpgid, &st.flags, &st.minflt, &st.cminflt, &st.majflt, &st.cmajflt,
+           &st.utime, &st.stime, &st.cutime, &st.cstime, &st.priority, &st.nice,
+           &st.num_threads, &st.itrealvalue, &st.starttime, &st.vsize, &st.rss);
 
     result._minorPageFaults = st.minflt;
     result._majorPageFaults = st.majflt;
@@ -822,11 +819,10 @@ static void FreeExternal(TRI_external_t* ext) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CreateExternalProcess(char const* executable, char const** arguments,
-                               size_t n, bool usePipes,
-                               TRI_external_id_t* pid) {
+                               size_t n, bool usePipes, TRI_external_id_t* pid) {
   // create the external structure
-  TRI_external_t* external = static_cast<TRI_external_t*>(
-      TRI_Allocate(sizeof(TRI_external_t)));
+  TRI_external_t* external =
+      static_cast<TRI_external_t*>(TRI_Allocate(sizeof(TRI_external_t)));
 
   if (external == nullptr) {
     // gracefully handle out of memory
@@ -839,8 +835,7 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
   external->_executable = TRI_DuplicateString(executable);
   external->_numberArguments = n + 1;
 
-  external->_arguments = static_cast<char**>(
-      TRI_Allocate((n + 2) * sizeof(char*)));
+  external->_arguments = static_cast<char**>(TRI_Allocate((n + 2) * sizeof(char*)));
 
   if (external->_arguments == nullptr) {
     // gracefully handle out of memory
@@ -872,7 +867,8 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
     return;
   }
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "adding process " << external->_pid << " to list";
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+      << "adding process " << external->_pid << " to list";
 
   // Note that the following deals with different types under windows,
   // however, this code here can be written in a platform-independent
@@ -896,8 +892,7 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
-                                               bool wait) {
+TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid, bool wait) {
   TRI_external_status_t status;
   status._status = TRI_EXT_NOT_FOUND;
   status._exitStatus = 0;
@@ -919,13 +914,13 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
         std::string("the pid you're looking for is not in our list: ") +
         arangodb::basics::StringUtils::itoa(static_cast<int64_t>(pid._pid));
     status._status = TRI_EXT_NOT_FOUND;
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "checkExternal: pid not found: " << pid._pid;
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "checkExternal: pid not found: " << pid._pid;
 
     return status;
   }
 
-  if (external->_status == TRI_EXT_RUNNING ||
-      external->_status == TRI_EXT_STOPPED) {
+  if (external->_status == TRI_EXT_RUNNING || external->_status == TRI_EXT_STOPPED) {
 #ifndef _WIN32
     int opts;
     int loc = 0;
@@ -962,14 +957,13 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
       }
     } else if (res == -1) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "waitpid returned error for pid " << external->_pid << " ("
-                << wait << "): " << TRI_last_error();
-      status._errorMessage =
-          std::string("waitpid returned error for pid ") +
-          arangodb::basics::StringUtils::itoa(external->_pid) +
-          std::string(": ") + std::string(TRI_last_error());
-    } else if (static_cast<TRI_pid_t>(external->_pid) ==
-               static_cast<TRI_pid_t>(res)) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "waitpid returned error for pid " << external->_pid << " (" << wait
+          << "): " << TRI_last_error();
+      status._errorMessage = std::string("waitpid returned error for pid ") +
+                             arangodb::basics::StringUtils::itoa(external->_pid) +
+                             std::string(": ") + std::string(TRI_last_error());
+    } else if (static_cast<TRI_pid_t>(external->_pid) == static_cast<TRI_pid_t>(res)) {
       if (WIFEXITED(loc)) {
         external->_status = TRI_EXT_TERMINATED;
         external->_exitStatus = WEXITSTATUS(loc);
@@ -984,12 +978,12 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
         external->_exitStatus = 0;
       }
     } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unexpected waitpid result for pid " << external->_pid
-                << ": " << res;
-      status._errorMessage =
-          std::string("unexpected waitpid result for pid ") +
-          arangodb::basics::StringUtils::itoa(external->_pid) +
-          std::string(": ") + arangodb::basics::StringUtils::itoa(res);
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "unexpected waitpid result for pid " << external->_pid << ": " << res;
+      status._errorMessage = std::string("unexpected waitpid result for pid ") +
+                             arangodb::basics::StringUtils::itoa(external->_pid) +
+                             std::string(": ") +
+                             arangodb::basics::StringUtils::itoa(res);
     }
 #else
     {
@@ -1001,12 +995,12 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
         if (result == WAIT_FAILED) {
           FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,
                         windowsErrorBuf, sizeof(windowsErrorBuf), NULL);
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not wait for subprocess with pid "
-                    << external->_pid << ": " << windowsErrorBuf;
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "could not wait for subprocess with pid " << external->_pid
+              << ": " << windowsErrorBuf;
           status._errorMessage =
               std::string("could not wait for subprocess with pid ") +
-              arangodb::basics::StringUtils::itoa(
-                  static_cast<int64_t>(external->_pid)) +
+              arangodb::basics::StringUtils::itoa(static_cast<int64_t>(external->_pid)) +
               windowsErrorBuf;
           status._exitStatus = GetLastError();
         }
@@ -1016,8 +1010,9 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
         switch (result) {
           case WAIT_ABANDONED:
             wantGetExitCode = true;
-            LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "WAIT_ABANDONED while waiting for subprocess with pid "
-                      << external->_pid;
+            LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+                << "WAIT_ABANDONED while waiting for subprocess with pid "
+                << external->_pid;
             break;
           case WAIT_OBJECT_0:
             /// this seems to be the exit case - want getExitCodeProcess here.
@@ -1030,8 +1025,9 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
           case WAIT_FAILED:
             FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,
                           windowsErrorBuf, sizeof(windowsErrorBuf), NULL);
-            LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not wait for subprocess with pid "
-                      << external->_pid << ": " << windowsErrorBuf;
+            LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+                << "could not wait for subprocess with pid " << external->_pid
+                << ": " << windowsErrorBuf;
             status._errorMessage =
                 std::string("could not wait for subprocess with PID '") +
                 arangodb::basics::StringUtils::itoa(
@@ -1048,12 +1044,11 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
       if (wantGetExitCode) {
         DWORD exitCode = STILL_ACTIVE;
         if (!GetExitCodeProcess(external->_process, &exitCode)) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "exit status could not be determined for pid "
-                    << external->_pid;
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "exit status could not be determined for pid " << external->_pid;
           status._errorMessage =
               std::string("exit status could not be determined for pid ") +
-              arangodb::basics::StringUtils::itoa(
-                  static_cast<int64_t>(external->_pid));
+              arangodb::basics::StringUtils::itoa(static_cast<int64_t>(external->_pid));
         } else {
           if (exitCode == STILL_ACTIVE) {
             external->_exitStatus = 0;
@@ -1072,25 +1067,23 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
     }
 #endif
   } else {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unexpected process status " << external->_status << ": "
-              << external->_exitStatus;
-    status._errorMessage =
-        std::string("unexpected process status ") +
-        arangodb::basics::StringUtils::itoa(external->_status) +
-        std::string(": ") +
-        arangodb::basics::StringUtils::itoa(external->_exitStatus);
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "unexpected process status " << external->_status << ": "
+        << external->_exitStatus;
+    status._errorMessage = std::string("unexpected process status ") +
+                           arangodb::basics::StringUtils::itoa(external->_status) +
+                           std::string(": ") +
+                           arangodb::basics::StringUtils::itoa(external->_exitStatus);
   }
 
   status._status = external->_status;
   status._exitStatus = external->_exitStatus;
 
   // Do we have to free our data?
-  if (external->_status != TRI_EXT_RUNNING &&
-      external->_status != TRI_EXT_STOPPED) {
+  if (external->_status != TRI_EXT_RUNNING && external->_status != TRI_EXT_STOPPED) {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
 
-    for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end();
-         ++it) {
+    for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end(); ++it) {
       if ((*it)->_pid == pid._pid) {
         ExternalProcesses.erase(it);
         break;
@@ -1134,15 +1127,18 @@ static bool OurKillProcess(TRI_external_t* pid, int signal) {
 
   // kill worker process
   if (0 != TerminateProcess(pid->_process, uExitCode)) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "kill of worker process succeeded";
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "kill of worker process succeeded";
   } else {
     DWORD e1 = GetLastError();
     BOOL ok = GetExitCodeProcess(pid->_process, &exitCode);
 
     if (ok) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "worker process already dead: " << exitCode;
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+          << "worker process already dead: " << exitCode;
     } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "kill of worker process failed: " << exitCode;
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "kill of worker process failed: " << exitCode;
       ok = false;
     }
   }
@@ -1174,8 +1170,7 @@ bool TRI_KillExternalProcess(TRI_external_id_t pid, int signal) {
   {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
 
-    for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end();
-         ++it) {
+    for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end(); ++it) {
       if ((*it)->_pid == pid._pid) {
         external = (*it);
         ExternalProcesses.erase(it);
@@ -1212,8 +1207,7 @@ bool TRI_KillExternalProcess(TRI_external_id_t pid, int signal) {
   }
 
   bool ok = true;
-  if (external->_status == TRI_EXT_RUNNING ||
-      external->_status == TRI_EXT_STOPPED) {
+  if (external->_status == TRI_EXT_RUNNING || external->_status == TRI_EXT_STOPPED) {
     ok = OurKillProcess(external, signal);
   }
 
@@ -1315,9 +1309,7 @@ static uint64_t GetPhysicalMemory() {
 /// @brief initializes the process components
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeProcess() {
-  TRI_PhysicalMemory = GetPhysicalMemory();
-}
+void TRI_InitializeProcess() { TRI_PhysicalMemory = GetPhysicalMemory(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down the process components

@@ -26,15 +26,15 @@
 #include "ExecutionNode.h"
 #include "Aql/Ast.h"
 #include "Aql/ClusterNodes.h"
-#include "Aql/Collection.h"
 #include "Aql/CollectNode.h"
+#include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
+#include "Aql/ShortestPathNode.h"
 #include "Aql/SortNode.h"
 #include "Aql/TraversalNode.h"
-#include "Aql/ShortestPathNode.h"
 #include "Aql/WalkerWorker.h"
 
 #include <velocypack/Iterator.h>
@@ -95,8 +95,7 @@ void ExecutionNode::validateType(int type) {
   }
 }
 
-void ExecutionNode::getSortElements(SortElementVector& elements,
-                                    ExecutionPlan* plan,
+void ExecutionNode::getSortElements(SortElementVector& elements, ExecutionPlan* plan,
                                     arangodb::velocypack::Slice const& slice,
                                     char const* which) {
   VPackSlice elementsSlice = slice.get("elements");
@@ -127,8 +126,7 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
   }
 }
 
-ExecutionNode* ExecutionNode::fromVPackFactory(
-    ExecutionPlan* plan, VPackSlice const& slice) {
+ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice const& slice) {
   int nodeTypeID = slice.get("typeID").getNumericValue<int>();
   validateType(nodeTypeID);
 
@@ -182,8 +180,10 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       {
         groupVariables.reserve(groupsSlice.length());
         for (auto const& it : VPackArrayIterator(groupsSlice)) {
-          Variable* outVar = Variable::varFromVPack(plan->getAst(), it, "outVariable");
-          Variable* inVar = Variable::varFromVPack(plan->getAst(), it, "inVariable");
+          Variable* outVar =
+              Variable::varFromVPack(plan->getAst(), it, "outVariable");
+          Variable* inVar =
+              Variable::varFromVPack(plan->getAst(), it, "inVariable");
 
           groupVariables.emplace_back(std::make_pair(outVar, inVar));
         }
@@ -196,14 +196,14 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
                                        "invalid \"aggregates\" definition");
       }
 
-      std::vector<
-          std::pair<Variable const*, std::pair<Variable const*, std::string>>>
-          aggregateVariables;
+      std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
       {
         aggregateVariables.reserve(aggregatesSlice.length());
         for (auto const& it : VPackArrayIterator(aggregatesSlice)) {
-          Variable* outVar = Variable::varFromVPack(plan->getAst(), it, "outVariable");
-          Variable* inVar = Variable::varFromVPack(plan->getAst(), it, "inVariable");
+          Variable* outVar =
+              Variable::varFromVPack(plan->getAst(), it, "outVariable");
+          Variable* inVar =
+              Variable::varFromVPack(plan->getAst(), it, "inVariable");
 
           std::string const type = it.get("type").copyString();
           aggregateVariables.emplace_back(
@@ -214,10 +214,9 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       bool count = slice.get("count").getBoolean();
       bool isDistinctCommand = slice.get("isDistinctCommand").getBoolean();
 
-      auto node = new CollectNode(
-          plan, slice, expressionVariable, outVariable, keepVariables,
-          plan->getAst()->variables()->variables(false), groupVariables,
-          aggregateVariables, count, isDistinctCommand);
+      auto node = new CollectNode(plan, slice, expressionVariable, outVariable, keepVariables,
+                                  plan->getAst()->variables()->variables(false), groupVariables,
+                                  aggregateVariables, count, isDistinctCommand);
 
       // specialize the node if required
       bool specialized = slice.get("specialized").getBoolean();
@@ -263,8 +262,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
 }
 
 /// @brief create an ExecutionNode from VPackSlice
-ExecutionNode::ExecutionNode(ExecutionPlan* plan,
-                             VPackSlice const& slice)
+ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
     : _id(slice.get("id").getNumericValue<size_t>()),
       _estimatedCost(0.0),
       _estimatedNrItems(0),
@@ -280,8 +278,9 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
 
   VPackSlice varInfoList = slice.get("varInfoList");
   if (!varInfoList.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "\"varInfoList\" attribute needs to be an array");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "\"varInfoList\" attribute needs to be an array");
   }
 
   _registerPlan->varInfo.reserve(varInfoList.length());
@@ -375,8 +374,8 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
 }
 
 /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
-void ExecutionNode::toVelocyPack(VPackBuilder& builder, 
-                                 bool verbose, bool keepTopLevelOpen) const {
+void ExecutionNode::toVelocyPack(VPackBuilder& builder, bool verbose,
+                                 bool keepTopLevelOpen) const {
   // default value is to NOT keep top level open
   builder.openObject();
   builder.add(VPackValue("nodes"));
@@ -391,8 +390,7 @@ void ExecutionNode::toVelocyPack(VPackBuilder& builder,
 
 /// @brief execution Node clone utility to be called by derives
 void ExecutionNode::cloneHelper(ExecutionNode* other, ExecutionPlan* plan,
-                                bool withDependencies,
-                                bool withProperties) const {
+                                bool withDependencies, bool withProperties) const {
   plan->registerNode(other);
 
   if (withProperties) {
@@ -438,8 +436,7 @@ void ExecutionNode::cloneHelper(ExecutionNode* other, ExecutionPlan* plan,
 }
 
 /// @brief helper for cloning, use virtual clone methods for dependencies
-void ExecutionNode::cloneDependencies(ExecutionPlan* plan,
-                                      ExecutionNode* theClone,
+void ExecutionNode::cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone,
                                       bool withProperties) const {
   TRI_ASSERT(theClone != nullptr);
   auto it = _dependencies.begin();
@@ -564,8 +561,7 @@ ExecutionNode const* ExecutionNode::getLoop() const {
 ///       At the end of this function the current-nodes Object is OPEN and
 ///       has to be closed. The initial caller of toVelocyPackHelper
 ///       has to close the array.
-void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes,
-                                              bool verbose) const {
+void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, bool verbose) const {
   TRI_ASSERT(nodes.isOpenArray());
   size_t const n = _dependencies.size();
   for (size_t i = 0; i < n; i++) {
@@ -576,7 +572,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes,
   if (verbose) {
     nodes.add("typeID", VPackValue(static_cast<int>(getType())));
   }
-  nodes.add(VPackValue("dependencies")); // Open Key
+  nodes.add(VPackValue("dependencies"));  // Open Key
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& it : _dependencies) {
@@ -584,7 +580,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes,
     }
   }
   if (verbose) {
-    nodes.add(VPackValue("parents")); // Open Key
+    nodes.add(VPackValue("parents"));  // Open Key
     VPackArrayBuilder guard(&nodes);
     for (auto const& it : _parents) {
       nodes.add(VPackValue(static_cast<double>(it->id())));
@@ -604,13 +600,10 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes,
         VPackArrayBuilder guard(&nodes);
         for (auto const& oneVarInfo : _registerPlan->varInfo) {
           VPackObjectBuilder guardInner(&nodes);
-          nodes.add("VariableId",
-                    VPackValue(static_cast<double>(oneVarInfo.first)));
-          nodes.add("depth",
-                    VPackValue(static_cast<double>(oneVarInfo.second.depth)));
-          nodes.add(
-              "RegisterId",
-              VPackValue(static_cast<double>(oneVarInfo.second.registerId)));
+          nodes.add("VariableId", VPackValue(static_cast<double>(oneVarInfo.first)));
+          nodes.add("depth", VPackValue(static_cast<double>(oneVarInfo.second.depth)));
+          nodes.add("RegisterId",
+                    VPackValue(static_cast<double>(oneVarInfo.second.registerId)));
         }
       }
       nodes.add(VPackValue("nrRegs"));
@@ -630,17 +623,11 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes,
       nodes.add("totalNrRegs", VPackValue(_registerPlan->totalNrRegs));
     } else {
       nodes.add(VPackValue("varInfoList"));
-      {
-        VPackArrayBuilder guard(&nodes);
-      }
+      { VPackArrayBuilder guard(&nodes); }
       nodes.add(VPackValue("nrRegs"));
-      {
-        VPackArrayBuilder guard(&nodes);
-      }
+      { VPackArrayBuilder guard(&nodes); }
       nodes.add(VPackValue("nrRegsHere"));
-      {
-        VPackArrayBuilder guard(&nodes);
-      }
+      { VPackArrayBuilder guard(&nodes); }
       nodes.add("totalNrRegs", VPackValue(0));
     }
 
@@ -747,8 +734,7 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
 }
 
 // Copy constructor used for a subquery:
-ExecutionNode::RegisterPlan::RegisterPlan(RegisterPlan const& v,
-                                          unsigned int newdepth)
+ExecutionNode::RegisterPlan::RegisterPlan(RegisterPlan const& v, unsigned int newdepth)
     : varInfo(v.varInfo),
       nrRegsHere(v.nrRegsHere),
       nrRegs(v.nrRegs),
@@ -775,8 +761,8 @@ void ExecutionNode::RegisterPlan::clear() {
   totalNrRegs = 0;
 }
 
-ExecutionNode::RegisterPlan* ExecutionNode::RegisterPlan::clone(
-    ExecutionPlan* otherPlan, ExecutionPlan* plan) {
+ExecutionNode::RegisterPlan* ExecutionNode::RegisterPlan::clone(ExecutionPlan* otherPlan,
+                                                                ExecutionPlan* plan) {
   auto other = std::make_unique<RegisterPlan>();
 
   other->nrRegsHere = nrRegsHere;
@@ -926,8 +912,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       if (ep->getOutVariableOld() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(ep->getOutVariableOld()->id,
-                        VarInfo(depth, totalNrRegs));
+        varInfo.emplace(ep->getOutVariableOld()->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       break;
@@ -946,8 +931,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       if (ep->getOutVariableNew() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(ep->getOutVariableNew()->id,
-                        VarInfo(depth, totalNrRegs));
+        varInfo.emplace(ep->getOutVariableNew()->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       break;
@@ -966,15 +950,13 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       if (ep->getOutVariableOld() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(ep->getOutVariableOld()->id,
-                        VarInfo(depth, totalNrRegs));
+        varInfo.emplace(ep->getOutVariableOld()->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       if (ep->getOutVariableNew() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(ep->getOutVariableNew()->id,
-                        VarInfo(depth, totalNrRegs));
+        varInfo.emplace(ep->getOutVariableNew()->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       break;
@@ -995,15 +977,13 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       if (ep->getOutVariableOld() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(ep->getOutVariableOld()->id,
-                        VarInfo(depth, totalNrRegs));
+        varInfo.emplace(ep->getOutVariableOld()->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       if (ep->getOutVariableNew() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(ep->getOutVariableNew()->id,
-                        VarInfo(depth, totalNrRegs));
+        varInfo.emplace(ep->getOutVariableNew()->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       break;
@@ -1022,8 +1002,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       if (ep->getOutVariableNew() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(ep->getOutVariableNew()->id,
-                        VarInfo(depth, totalNrRegs));
+        varInfo.emplace(ep->getOutVariableNew()->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       break;
@@ -1050,8 +1029,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       // create a copy of the last value here
       // this is requried because back returns a reference and emplace/push_back
       // may invalidate all references
-      RegisterId registerId =
-          static_cast<RegisterId>(vars.size() + nrRegs.back());
+      RegisterId registerId = static_cast<RegisterId>(vars.size() + nrRegs.back());
       nrRegs.emplace_back(registerId);
 
       for (auto& it : vars) {
@@ -1069,8 +1047,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       // create a copy of the last value here
       // this is requried because back returns a reference and emplace/push_back
       // may invalidate all references
-      RegisterId registerId =
-          static_cast<RegisterId>(vars.size() + nrRegs.back());
+      RegisterId registerId = static_cast<RegisterId>(vars.size() + nrRegs.back());
       nrRegs.emplace_back(registerId);
 
       for (auto& it : vars) {
@@ -1087,11 +1064,9 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
   // Now find out which registers ought to be erased after this node:
   if (en->getType() != ExecutionNode::RETURN) {
     // ReturnNodes are special, since they return a single column anyway
-    std::unordered_set<Variable const*> const& varsUsedLater =
-        en->getVarsUsedLater();
-    std::vector<Variable const*> const& varsUsedHere =
-        en->getVariablesUsedHere();
-  
+    std::unordered_set<Variable const*> const& varsUsedLater = en->getVarsUsedLater();
+    std::vector<Variable const*> const& varsUsedHere = en->getVariablesUsedHere();
+
     // We need to delete those variables that have been used here but are not
     // used any more later:
     std::unordered_set<RegisterId> regsToClear;
@@ -1104,7 +1079,12 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
 
         if (it2 == varInfo.end()) {
           // report an error here to prevent crashing
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("missing variable #") + std::to_string(v->id) + " (" + v->name + ") for node #" + std::to_string(en->id()) + " (" + en->getTypeString() + ") while planning registers"); 
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         std::string("missing variable #") +
+                                             std::to_string(v->id) + " (" + v->name +
+                                             ") for node #" + std::to_string(en->id()) +
+                                             " (" + en->getTypeString() +
+                                             ") while planning registers");
         }
 
         // finally adjust the variable inside the IN calculation
@@ -1118,8 +1098,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
 }
 
 /// @brief toVelocyPack, for SingletonNode
-void SingletonNode::toVelocyPackHelper(VPackBuilder& nodes,
-                                       bool verbose) const {
+void SingletonNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
   // This node has no own information.
@@ -1132,17 +1111,17 @@ double SingletonNode::estimateCost(size_t& nrItems) const {
   return 1.0;
 }
 
-EnumerateCollectionNode::EnumerateCollectionNode(
-    ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+EnumerateCollectionNode::EnumerateCollectionNode(ExecutionPlan* plan,
+                                                 arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      DocumentProducingNode(plan, base), 
+      DocumentProducingNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())),
       _random(base.get("random").getBoolean()) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
-  
+
   if (_collection == nullptr) {
     std::string msg("collection '");
     msg.append(base.get("collection").copyString());
@@ -1152,8 +1131,7 @@ EnumerateCollectionNode::EnumerateCollectionNode(
 }
 
 /// @brief toVelocyPack, for EnumerateCollectionNode
-void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes,
-                                                 bool verbose) const {
+void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
 
@@ -1171,8 +1149,7 @@ void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes,
 }
 
 /// @brief clone ExecutionNode recursively
-ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
-                                              bool withDependencies,
+ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan, bool withDependencies,
                                               bool withProperties) const {
   auto outVariable = _outVariable;
   if (withProperties) {
@@ -1180,8 +1157,7 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
     TRI_ASSERT(outVariable != nullptr);
   }
 
-  auto c = new EnumerateCollectionNode(plan, _id, _vocbase, _collection,
-                                       outVariable, _random);
+  auto c = new EnumerateCollectionNode(plan, _id, _vocbase, _collection, outVariable, _random);
 
   c->setProjection(_projection);
 
@@ -1213,8 +1189,7 @@ EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")) {}
 
 /// @brief toVelocyPack, for EnumerateListNode
-void EnumerateListNode::toVelocyPackHelper(VPackBuilder& nodes,
-                                           bool verbose) const {
+void EnumerateListNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
   nodes.add(VPackValue("inVariable"));
@@ -1228,8 +1203,7 @@ void EnumerateListNode::toVelocyPackHelper(VPackBuilder& nodes,
 }
 
 /// @brief clone ExecutionNode recursively
-ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
-                                        bool withDependencies,
+ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan, bool withDependencies,
                                         bool withProperties) const {
   auto outVariable = _outVariable;
   auto inVariable = _inVariable;
@@ -1277,10 +1251,8 @@ double EnumerateListNode::estimateCost(size_t& nrItems) const {
           auto high = node->getMember(1);
 
           if (low->isConstant() && high->isConstant() &&
-              (low->isValueType(VALUE_TYPE_INT) ||
-               low->isValueType(VALUE_TYPE_DOUBLE)) &&
-              (high->isValueType(VALUE_TYPE_INT) ||
-               high->isValueType(VALUE_TYPE_DOUBLE))) {
+              (low->isValueType(VALUE_TYPE_INT) || low->isValueType(VALUE_TYPE_DOUBLE)) &&
+              (high->isValueType(VALUE_TYPE_INT) || high->isValueType(VALUE_TYPE_DOUBLE))) {
             // create a temporary range to determine the size
             Range range(low->getIntValue(), high->getIntValue());
 
@@ -1290,8 +1262,7 @@ double EnumerateListNode::estimateCost(size_t& nrItems) const {
       }
     } else if (setter->getType() == ExecutionNode::SUBQUERY) {
       // length will be set by the subquery's cost estimator
-      static_cast<SubqueryNode const*>(setter)->getSubquery()->estimateCost(
-          length);
+      static_cast<SubqueryNode const*>(setter)->getSubquery()->estimateCost(length);
     }
   }
 
@@ -1321,23 +1292,21 @@ double LimitNode::estimateCost(size_t& nrItems) const {
   TRI_ASSERT(!_dependencies.empty());
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
-  nrItems = (std::min)(_limit,
-                       (std::max)(static_cast<size_t>(0), incoming - _offset));
+  nrItems = (std::min)(_limit, (std::max)(static_cast<size_t>(0), incoming - _offset));
 
   return depCost + nrItems;
 }
 
-CalculationNode::CalculationNode(ExecutionPlan* plan,
-                                 arangodb::velocypack::Slice const& base)
+CalculationNode::CalculationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _conditionVariable(Variable::varFromVPack(plan->getAst(), base, "conditionVariable", true)),
+      _conditionVariable(Variable::varFromVPack(plan->getAst(), base,
+                                                "conditionVariable", true)),
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
       _expression(new Expression(plan, plan->getAst(), base)),
       _canRemoveIfThrows(false) {}
 
 /// @brief toVelocyPack, for CalculationNode
-void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes,
-                                         bool verbose) const {
+void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
   nodes.add(VPackValue("expression"));
@@ -1359,16 +1328,14 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes,
   nodes.close();
 }
 
-ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
-                                      bool withDependencies,
+ExecutionNode* CalculationNode::clone(ExecutionPlan* plan, bool withDependencies,
                                       bool withProperties) const {
   auto conditionVariable = _conditionVariable;
   auto outVariable = _outVariable;
 
   if (withProperties) {
     if (_conditionVariable != nullptr) {
-      conditionVariable =
-          plan->getAst()->variables()->createVariable(conditionVariable);
+      conditionVariable = plan->getAst()->variables()->createVariable(conditionVariable);
     }
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
@@ -1389,8 +1356,7 @@ double CalculationNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
-SubqueryNode::SubqueryNode(ExecutionPlan* plan,
-                           arangodb::velocypack::Slice const& base)
+SubqueryNode::SubqueryNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _subquery(nullptr),
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")) {}
@@ -1410,7 +1376,7 @@ void SubqueryNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   // And add it:
   nodes.close();
 }
-  
+
 bool SubqueryNode::isConst() {
   if (isModificationQuery() || !isDeterministic()) {
     return false;
@@ -1432,7 +1398,7 @@ bool SubqueryNode::isConst() {
       return false;
     }
   }
-      
+
   return true;
 }
 
@@ -1443,8 +1409,7 @@ ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
   if (withProperties) {
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
-  auto c = new SubqueryNode(
-      plan, _id, _subquery->clone(plan, true, withProperties), outVariable);
+  auto c = new SubqueryNode(plan, _id, _subquery->clone(plan, true, withProperties), outVariable);
 
   cloneHelper(c, plan, withDependencies, withProperties);
 
@@ -1461,7 +1426,7 @@ bool SubqueryNode::isModificationQuery() const {
     if (current->isModificationNode()) {
       return true;
     }
-    
+
     stack.pop_back();
 
     current->addDependencies(stack);
@@ -1518,8 +1483,7 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
 
     // create the set difference. note: cannot use std::set_difference as our
     // sets are NOT sorted
-    for (auto it = subfinder._usedLater.begin();
-         it != subfinder._usedLater.end(); ++it) {
+    for (auto it = subfinder._usedLater.begin(); it != subfinder._usedLater.end(); ++it) {
       if (_valid.find(*it) != _valid.end()) {
         _usedLater.emplace(*it);
       }
@@ -1534,8 +1498,7 @@ std::vector<Variable const*> SubqueryNode::getVariablesUsedHere() const {
   _subquery->walk(&finder);
 
   std::vector<Variable const*> v;
-  for (auto it = finder._usedLater.begin(); it != finder._usedLater.end();
-       ++it) {
+  for (auto it = finder._usedLater.begin(); it != finder._usedLater.end(); ++it) {
     if (finder._valid.find(*it) == finder._valid.end()) {
       v.emplace_back(*it);
     }
@@ -1545,13 +1508,11 @@ std::vector<Variable const*> SubqueryNode::getVariablesUsedHere() const {
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void SubqueryNode::getVariablesUsedHere(
-    std::unordered_set<Variable const*>& vars) const {
+void SubqueryNode::getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const {
   SubqueryVarUsageFinder finder;
   _subquery->walk(&finder);
 
-  for (auto it = finder._usedLater.begin(); it != finder._usedLater.end();
-       ++it) {
+  for (auto it = finder._usedLater.begin(); it != finder._usedLater.end(); ++it) {
     if (finder._valid.find(*it) == finder._valid.end()) {
       vars.emplace(*it);
     }
@@ -1666,7 +1627,6 @@ void ReturnNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
 
-
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
 
@@ -1698,11 +1658,10 @@ double ReturnNode::estimateCost(size_t& nrItems) const {
 }
 
 /// @brief toVelocyPack, for NoResultsNode
-void NoResultsNode::toVelocyPackHelper(VPackBuilder& nodes,
-                                       bool verbose) const {
+void NoResultsNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);
 
-  //And close it
+  // And close it
   nodes.close();
 }
 
@@ -1711,4 +1670,3 @@ double NoResultsNode::estimateCost(size_t& nrItems) const {
   nrItems = 0;
   return 0.5;  // just to make it non-zero
 }
-

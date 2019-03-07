@@ -24,11 +24,11 @@
 #ifndef ARANGOD_AQL_CLUSTER_NODES_H
 #define ARANGOD_AQL_CLUSTER_NODES_H 1
 
-#include "Basics/Common.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -76,14 +76,12 @@ class RemoteNode : public ExecutionNode {
   NodeType getType() const override final { return REMOTE; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = new RemoteNode(plan, _id, _vocbase, _collection, _server, _ownName,
-                            _queryId);
+    auto c = new RemoteNode(plan, _id, _vocbase, _collection, _server, _ownName, _queryId);
 
     cloneHelper(c, plan, withDependencies, withProperties);
 
@@ -151,8 +149,7 @@ class ScatterNode : public ExecutionNode {
 
   /// @brief constructor with an id
  public:
-  ScatterNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-              Collection const* collection)
+  ScatterNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase, Collection const* collection)
       : ExecutionNode(plan, id), _vocbase(vocbase), _collection(collection) {}
 
   ScatterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
@@ -161,8 +158,7 @@ class ScatterNode : public ExecutionNode {
   NodeType getType() const override final { return SCATTER; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -203,8 +199,7 @@ class DistributeNode : public ExecutionNode {
  public:
   DistributeNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                  Collection const* collection, VariableId const varId,
-                 VariableId const alternativeVarId, bool createKeys,
-                 bool allowKeyConversionToObject)
+                 VariableId const alternativeVarId, bool createKeys, bool allowKeyConversionToObject)
       : ExecutionNode(plan, id),
         _vocbase(vocbase),
         _collection(collection),
@@ -228,15 +223,13 @@ class DistributeNode : public ExecutionNode {
   NodeType getType() const override final { return DISTRIBUTE; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = new DistributeNode(plan, _id, _vocbase, _collection, _varId,
-                                _alternativeVarId, _createKeys,
-                                _allowKeyConversionToObject);
+    auto c = new DistributeNode(plan, _id, _vocbase, _collection, _varId, _alternativeVarId,
+                                _createKeys, _allowKeyConversionToObject);
 
     cloneHelper(c, plan, withDependencies, withProperties);
 
@@ -267,7 +260,9 @@ class DistributeNode : public ExecutionNode {
   void setCreateKeys(bool b) { _createKeys = b; }
 
   /// @brief set allowKeyConversionToObject
-  void setAllowKeyConversionToObject(bool b) { _allowKeyConversionToObject = b; }
+  void setAllowKeyConversionToObject(bool b) {
+    _allowKeyConversionToObject = b;
+  }
 
   /// @brief set _allowSpecifiedKeys
   void setAllowSpecifiedKeys(bool b) { _allowSpecifiedKeys = b; }
@@ -303,9 +298,10 @@ class GatherNode : public ExecutionNode {
 
   /// @brief constructor with an id
  public:
-  GatherNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-             Collection const* collection)
-      : ExecutionNode(plan, id), _vocbase(vocbase), _collection(collection),
+  GatherNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase, Collection const* collection)
+      : ExecutionNode(plan, id),
+        _vocbase(vocbase),
+        _collection(collection),
         _auxiliaryCollections() {}
 
   GatherNode(ExecutionPlan*, arangodb::velocypack::Slice const& base,
@@ -315,8 +311,7 @@ class GatherNode : public ExecutionNode {
   NodeType getType() const override final { return GATHER; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, bool) const override final;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -343,8 +338,7 @@ class GatherNode : public ExecutionNode {
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(
-      std::unordered_set<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final {
     for (auto const& p : _elements) {
       vars.emplace(p.var);
     }
@@ -371,7 +365,9 @@ class GatherNode : public ExecutionNode {
     _auxiliaryCollections.emplace(auxiliaryCollection);
   }
 
-  bool hasAuxiliaryCollections() const { return !_auxiliaryCollections.empty(); }
+  bool hasAuxiliaryCollections() const {
+    return !_auxiliaryCollections.empty();
+  }
 
  private:
   /// @brief sort elements, variable, ascending flags and possible attribute
@@ -388,7 +384,7 @@ class GatherNode : public ExecutionNode {
   std::unordered_set<Collection const*> _auxiliaryCollections;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

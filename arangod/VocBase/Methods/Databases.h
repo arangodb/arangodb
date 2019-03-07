@@ -36,15 +36,13 @@ namespace methods {
 struct Databases {
   static TRI_vocbase_t* lookup(std::string const& dbname);
   static std::vector<std::string> list(std::string const& user = "");
-  static arangodb::Result info(TRI_vocbase_t* vocbase,
-                               arangodb::velocypack::Builder& result);
+  static arangodb::Result info(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result);
   static arangodb::Result create(std::string const& dbName,
                                  arangodb::velocypack::Slice const& users,
                                  arangodb::velocypack::Slice const& options);
-  static arangodb::Result drop(TRI_vocbase_t* systemVocbase,
-                               std::string const&);
+  static arangodb::Result drop(TRI_vocbase_t* systemVocbase, std::string const&);
 };
-}
-}
+}  // namespace methods
+}  // namespace arangodb
 
 #endif

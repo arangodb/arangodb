@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_AST_NODE_H
 #define ARANGOD_AQL_AST_NODE_H 1
 
-#include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 
 #include <velocypack/Slice.h>
@@ -36,7 +36,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 namespace basics {
 class StringBuffer;
 }
@@ -54,30 +54,25 @@ typedef uint32_t AstNodeFlagsType;
 enum AstNodeFlagType : AstNodeFlagsType {
   DETERMINED_SORTED = 1,    // node is a list and its members are sorted asc.
   DETERMINED_CONSTANT = 2,  // node value is constant (i.e. not dynamic)
-  DETERMINED_SIMPLE =
-      4,  // node value is simple (i.e. for use in a simple expression)
+  DETERMINED_SIMPLE = 4,  // node value is simple (i.e. for use in a simple expression)
   DETERMINED_THROWS = 8,  // node can throw an exception
-  DETERMINED_NONDETERMINISTIC =
-      16,  // node produces non-deterministic result (e.g. function call nodes)
-  DETERMINED_RUNONDBSERVER =
-      32,  // node can run on the DB server in a cluster setup
+  DETERMINED_NONDETERMINISTIC = 16,  // node produces non-deterministic result (e.g. function call nodes)
+  DETERMINED_RUNONDBSERVER = 32,  // node can run on the DB server in a cluster setup
   DETERMINED_CHECKUNIQUENESS = 64,  // object's keys must be checked for uniqueness
 
   VALUE_SORTED = 128,    // node is a list and its members are sorted asc.
   VALUE_CONSTANT = 256,  // node value is constant (i.e. not dynamic)
-  VALUE_SIMPLE =
-      512,  // node value is simple (i.e. for use in a simple expression)
+  VALUE_SIMPLE = 512,  // node value is simple (i.e. for use in a simple expression)
   VALUE_THROWS = 1024,            // node can throw an exception
   VALUE_NONDETERMINISTIC = 2048,  // node produces non-deterministic result
                                   // (e.g. function call nodes)
-  VALUE_RUNONDBSERVER =
-      4096,                  // node can run on the DB server in a cluster setup
+  VALUE_RUNONDBSERVER = 4096,  // node can run on the DB server in a cluster setup
   VALUE_CHECKUNIQUENESS = 8192,  // object's keys must be checked for uniqueness
 
   FLAG_KEEP_VARIABLENAME = 16384,  // node is a reference to a variable name,
                                    // not the variable value (used in KEEP
                                    // nodes)
-  FLAG_BIND_PARAMETER = 32768  // node was created from a bind parameter
+  FLAG_BIND_PARAMETER = 32768      // node was created from a bind parameter
 };
 
 /// @brief enumeration of AST node value types
@@ -229,7 +224,6 @@ struct AstNode {
   ~AstNode();
 
  public:
-
   static constexpr size_t SortNumberThreshold = 8;
 
   /// @brief return the string value of a node, as an std::string
@@ -303,7 +297,7 @@ struct AstNode {
 
   /// @brief reset flags in case a node is changed drastically
   inline void clearFlags() { flags = 0; }
-  
+
   /// @brief recursively clear flags
   void clearFlagsRecursive();
 
@@ -313,8 +307,7 @@ struct AstNode {
   }
 
   /// @brief set two flags for the node
-  inline void setFlag(AstNodeFlagType typeFlag,
-                      AstNodeFlagType valueFlag) const {
+  inline void setFlag(AstNodeFlagType typeFlag, AstNodeFlagType valueFlag) const {
     flags |= static_cast<decltype(flags)>(typeFlag | valueFlag);
   }
 
@@ -326,8 +319,7 @@ struct AstNode {
 
   /// @brief whether or not the members of a list node are sorted
   inline bool isSorted() const {
-    return ((flags &
-             static_cast<decltype(flags)>(DETERMINED_SORTED | VALUE_SORTED)) ==
+    return ((flags & static_cast<decltype(flags)>(DETERMINED_SORTED | VALUE_SORTED)) ==
             static_cast<decltype(flags)>(DETERMINED_SORTED | VALUE_SORTED));
   }
 
@@ -371,8 +363,8 @@ struct AstNode {
   /// @brief whether or not a value node is of type attribute access that
   /// refers to a variable reference
   AstNode const* getAttributeAccessForVariable(bool allowIndexedAccess) const {
-    if (type != NODE_TYPE_ATTRIBUTE_ACCESS && type != NODE_TYPE_EXPANSION
-        && !(allowIndexedAccess && type == NODE_TYPE_INDEXED_ACCESS)) {
+    if (type != NODE_TYPE_ATTRIBUTE_ACCESS && type != NODE_TYPE_EXPANSION &&
+        !(allowIndexedAccess && type == NODE_TYPE_INDEXED_ACCESS)) {
       return nullptr;
     }
 
@@ -431,8 +423,7 @@ struct AstNode {
   /// of attribute names in the parameter passed by reference
   bool isAttributeAccessForVariable(
       std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>&,
-                                    bool allowIndexedAccess = false)
-      const;
+      bool allowIndexedAccess = false) const;
 
   /// @brief locate a variable including the direct path vector leading to it.
   void findVariableAccess(std::vector<AstNode const*>& currentPath,
@@ -458,7 +449,7 @@ struct AstNode {
 
   /// @brief whether or not a node is a comparison operator
   bool isComparisonOperator() const;
-  
+
   /// @brief whether or not a node is an array comparison operator
   bool isArrayComparisonOperator() const;
 
@@ -469,7 +460,7 @@ struct AstNode {
   /// @brief whether or not a node (and its subnodes) can safely be executed on
   /// a DB server
   bool canRunOnDBServer() const;
-  
+
   /// @brief whether or not an object's keys must be checked for uniqueness
   bool mustCheckUniqueness() const;
 
@@ -482,7 +473,7 @@ struct AstNode {
   /// @brief whether or not a node (and its subnodes) may contain a call to a
   /// user-defined function
   bool callsUserDefinedFunction() const;
-  
+
   /// @brief whether or not a node (and its subnodes) may contain a call to a
   /// a function or a user-defined function
   bool callsFunction() const;
@@ -499,9 +490,7 @@ struct AstNode {
   inline size_t numMembers() const noexcept { return members.size(); }
 
   /// @brief reserve space for members
-  void reserve(size_t n) {
-    members.reserve(n);
-  }
+  void reserve(size_t n) { members.reserve(n); }
 
   /// @brief add a member to the node
   void addMember(AstNode* node) {
@@ -548,8 +537,7 @@ struct AstNode {
   }
 
   /// @brief sort members with a custom comparison function
-  void sortMembers(
-      std::function<bool(AstNode const*, AstNode const*)> const& func) {
+  void sortMembers(std::function<bool(AstNode const*, AstNode const*)> const& func) {
     std::sort(members.begin(), members.end(), func);
   }
 
@@ -560,10 +548,8 @@ struct AstNode {
     }
     members.erase(members.begin() + i, members.end());
   }
-  
-  inline void clearMembers() {
-    members.clear();
-  }
+
+  inline void clearMembers() { members.clear(); }
 
   /// @brief set the node's value type
   inline void setValueType(AstNodeValueType type) { value.type = type; }
@@ -612,7 +598,7 @@ struct AstNode {
     value.value._string = v;
     value.length = static_cast<uint32_t>(length);
   }
-  
+
   /// @brief whether or not a string is equal to another
   inline bool stringEquals(char const* other, bool caseInsensitive) const {
     if (caseInsensitive) {
@@ -620,10 +606,11 @@ struct AstNode {
     }
     return (strncmp(getStringValue(), other, getStringLength()) == 0);
   }
-  
+
   /// @brief whether or not a string is equal to another
   inline bool stringEquals(std::string const& other) const {
-    return (other.size() == getStringLength() && memcmp(other.c_str(), getStringValue(), getStringLength()) == 0);
+    return (other.size() == getStringLength() &&
+            memcmp(other.c_str(), getStringValue(), getStringLength()) == 0);
   }
 
   /// @brief return the data value of a node
@@ -642,8 +629,8 @@ struct AstNode {
 
   /// @brief append a string representation of the node into a string buffer
   /// the string representation does not need to be JavaScript-compatible
-  /// except for node types NODE_TYPE_VALUE, NODE_TYPE_ARRAY and NODE_TYPE_OBJECT
-  /// (only for objects that do not contain dynamic attributes)
+  /// except for node types NODE_TYPE_VALUE, NODE_TYPE_ARRAY and
+  /// NODE_TYPE_OBJECT (only for objects that do not contain dynamic attributes)
   /// note that this may throw and that the caller is responsible for
   /// catching the error
   void stringify(arangodb::basics::StringBuffer*, bool, bool) const;
@@ -659,7 +646,6 @@ struct AstNode {
 
   /// @brief Steals the computed value and frees it.
   void stealComputedValue();
-
 
   /// @brief Removes all members from the current node that are also
   ///        members of the other node (ignoring ording)
@@ -706,8 +692,8 @@ struct AstNodeValueEqual {
     return CompareAstNodes(lhs, rhs, false) == 0;
   }
 };
-}
-}
+}  // namespace aql
+}  // namespace arangodb
 
 /// @brief append the AstNode to an output stream
 std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const*);

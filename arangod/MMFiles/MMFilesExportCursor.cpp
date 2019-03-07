@@ -35,8 +35,8 @@
 using namespace arangodb;
 
 MMFilesExportCursor::MMFilesExportCursor(TRI_vocbase_t* vocbase, CursorId id,
-                           arangodb::MMFilesCollectionExport* ex, size_t batchSize,
-                           double ttl, bool hasCount)
+                                         arangodb::MMFilesCollectionExport* ex,
+                                         size_t batchSize, double ttl, bool hasCount)
     : Cursor(id, batchSize, nullptr, ttl, hasCount),
       _vocbaseGuard(vocbase),
       _ex(ex),
@@ -91,23 +91,21 @@ void MMFilesExportCursor::dump(VPackBuilder& builder) {
         break;
       }
 
-      VPackSlice const slice(
-          reinterpret_cast<char const*>(_ex->_vpack.at(_position++)));
+      VPackSlice const slice(reinterpret_cast<char const*>(_ex->_vpack.at(_position++)));
       builder.openObject();
       // Copy over shaped values
       for (auto const& entry : VPackObjectIterator(slice)) {
         std::string key(entry.key.copyString());
 
-        if (!CollectionExport::IncludeAttribute(restrictionType, _ex->_restrictions.fields,
-                              key)) {
+        if (!CollectionExport::IncludeAttribute(restrictionType,
+                                                _ex->_restrictions.fields, key)) {
           // Ignore everything that should be excluded or not included
           continue;
         }
         // If we get here we need this entry in the final result
         if (entry.value.isCustom()) {
-          builder.add(key,
-                      VPackValue(builder.options->customTypeHandler->toString(
-                          entry.value, builder.options, slice)));
+          builder.add(key, VPackValue(builder.options->customTypeHandler->toString(
+                               entry.value, builder.options, slice)));
         } else {
           builder.add(key, entry.value);
         }
@@ -143,7 +141,8 @@ void MMFilesExportCursor::dump(VPackBuilder& builder) {
   } catch (std::exception const& ex) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "internal error during MMFilesExportCursor::dump");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "internal error during MMFilesExportCursor::dump");
   }
   builder.options = oldOptions;
 }

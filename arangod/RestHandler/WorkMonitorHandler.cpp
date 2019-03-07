@@ -35,8 +35,7 @@ using namespace arangodb::rest;
 using arangodb::HttpRequest;
 using arangodb::rest::RestHandler;
 
-WorkMonitorHandler::WorkMonitorHandler(GeneralRequest* request,
-                                       GeneralResponse* response)
+WorkMonitorHandler::WorkMonitorHandler(GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
 bool WorkMonitorHandler::isDirect() const { return true; }
@@ -48,8 +47,7 @@ RestStatus WorkMonitorHandler::execute() {
 
   if (type == rest::RequestType::GET) {
     if (len != 0) {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting GET /_admin/work-monitor");
       return RestStatus::DONE;
     }
@@ -57,14 +55,14 @@ RestStatus WorkMonitorHandler::execute() {
     std::shared_ptr<RestHandler> self = shared_from_this();
 
     return RestStatus::WAIT_FOR([self](std::function<void()> next) {
-        WorkMonitor::requestWorkOverview(self, next);
-      }).done();
+             WorkMonitor::requestWorkOverview(self, next);
+           })
+        .done();
   }
 
   if (type == rest::RequestType::DELETE_REQ) {
     if (len != 1) {
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting DELETE /_admin/work-monitor/<id>");
 
       return RestStatus::DONE;
@@ -84,7 +82,7 @@ RestStatus WorkMonitorHandler::execute() {
     return RestStatus::DONE;
   }
 
-  generateError(rest::ResponseCode::BAD,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED, "expecting GET or DELETE");
+  generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                "expecting GET or DELETE");
   return RestStatus::DONE;
 }

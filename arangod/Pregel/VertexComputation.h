@@ -68,7 +68,7 @@ class VertexContext {
   IAggregator const* getReadAggregator(std::string const& name) {
     return _readAggregators->getAggregator(name);
   }
-  
+
   IAggregator* getWriteAggregator(std::string const& name) {
     return _writeAggregators->getAggregator(name);
   }
@@ -81,10 +81,8 @@ class VertexContext {
 
   V vertexData() { return *((V*)_graphStore->mutableVertexData(_vertexEntry)); }
 
-  size_t getEdgeCount() const {
-    return _vertexEntry->getEdgeCount();
-  }
-  
+  size_t getEdgeCount() const { return _vertexEntry->getEdgeCount(); }
+
   RangeIterator<Edge<E>> getEdges() const {
     return _graphStore->edgeIterator(_vertexEntry);
   }
@@ -154,6 +152,6 @@ class VertexCompensation : public VertexContext<V, E, M> {
   virtual ~VertexCompensation() {}
   virtual void compensate(bool inLostPartition) = 0;
 };
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 #endif

@@ -51,8 +51,7 @@ class RestStatusElement {
   RestStatusElement(State status, std::shared_ptr<RestStatusElement> previous)
       : _state(status), _previous(previous) {}
 
-  RestStatusElement(State status,
-                    std::function<void(std::function<void()>)> callback)
+  RestStatusElement(State status, std::function<void(std::function<void()>)> callback)
       : _state(status), _previous(nullptr), _callWaitFor(callback) {}
 
  public:
@@ -82,10 +81,8 @@ class RestStatus {
   static RestStatus const FAIL;
   static RestStatus const QUEUE;
 
-  static RestStatus WAIT_FOR(
-      std::function<void(std::function<void()>)> callback) {
-    return RestStatus(
-        new RestStatusElement(RestStatusElement::State::WAIT_FOR, callback));
+  static RestStatus WAIT_FOR(std::function<void(std::function<void()>)> callback) {
+    return RestStatus(new RestStatusElement(RestStatusElement::State::WAIT_FOR, callback));
   }
 
  public:
@@ -99,10 +96,9 @@ class RestStatus {
  public:
   template <typename FUNC>
   auto then(FUNC callback) const ->
-      typename std::enable_if<std::is_void<decltype(callback())>::value,
-                              RestStatus>::type {
-    return RestStatus(new RestStatusElement(
-        RestStatusElement::State::THEN, _element, [callback]() {
+      typename std::enable_if<std::is_void<decltype(callback())>::value, RestStatus>::type {
+    return RestStatus(
+        new RestStatusElement(RestStatusElement::State::THEN, _element, [callback]() {
           callback();
           return std::shared_ptr<RestStatus>(nullptr);
         }));
@@ -110,17 +106,15 @@ class RestStatus {
 
   template <typename FUNC>
   auto then(FUNC callback) const ->
-      typename std::enable_if<std::is_class<decltype(callback())>::value,
-                              RestStatus>::type {
-    return RestStatus(new RestStatusElement(
-        RestStatusElement::State::THEN, _element, [callback]() {
+      typename std::enable_if<std::is_class<decltype(callback())>::value, RestStatus>::type {
+    return RestStatus(
+        new RestStatusElement(RestStatusElement::State::THEN, _element, [callback]() {
           return std::shared_ptr<RestStatus>(new RestStatus(callback()));
         }));
   }
 
   RestStatus done() {
-    return RestStatus(
-        new RestStatusElement(RestStatusElement::State::DONE, _element));
+    return RestStatus(new RestStatusElement(RestStatusElement::State::DONE, _element));
   }
 
  public:
@@ -138,6 +132,6 @@ class RestStatus {
  private:
   std::shared_ptr<RestStatusElement> _element;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -34,6 +34,6 @@ class ShutdownFeature final : public application_features::ApplicationFeature {
  public:
   void start() override final;
 };
-}
+}  // namespace arangodb
 
 #endif

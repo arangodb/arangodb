@@ -1,5 +1,13 @@
-v3.2.18 (XXXX-XX-XX)
+v3.2.18 (2019-02-01)
 --------------------
+
+* updated velocypack library
+
+* fix thread shutdown in _WIN32 builds
+
+  Previous versions used a wrong comparison logic to determine the current
+  thread id when shutting down a thread, leading to threads hanging in their
+  destructors on thread shutdown
 
 * fixed TypeError being thrown instead of validation errors when Foxx manifest
   validation fails

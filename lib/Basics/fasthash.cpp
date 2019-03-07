@@ -24,7 +24,7 @@
 */
 
 #include "fasthash.h"
-  
+
 static constexpr uint64_t m = 0x880355f21e6d1965ULL;
 
 // Compression function for Merkle-Damgard construction.
@@ -39,13 +39,13 @@ static inline uint64_t mix(uint64_t h) {
 }
 
 uint64_t fasthash64_uint64(uint64_t value, uint64_t seed) {
-  uint64_t h = seed ^ 4619197404915747624ULL; // this is h = seed ^ (sizeof(uint64_t) * m), but prevents VS warning C4307: integral constant overflow 
+  uint64_t h = seed ^ 4619197404915747624ULL;  // this is h = seed ^ (sizeof(uint64_t) * m), but prevents VS warning C4307: integral constant overflow
   h ^= mix(value);
   h *= m;
 
   return mix(h);
 }
-  
+
 uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
 #ifndef TRI_UNALIGNED_ACCESS
   // byte-wise hashing to support platforms that don't permit
@@ -54,7 +54,7 @@ uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
   uint8_t const* pos = (uint8_t const*)buf;
   uint8_t const* end = pos + len;
   uint64_t h = seed ^ (len * m);
-  
+
   while (pos != end) {
     len = end - pos;
     if (len > 8) {
@@ -102,7 +102,7 @@ uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
     h ^= mix(v);
     h *= m;
   }
-  
+
   pos2 = (const unsigned char*)pos;
   v = 0;
 

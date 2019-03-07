@@ -69,8 +69,7 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
  public:
   RocksDBFulltextIndex() = delete;
 
-  RocksDBFulltextIndex(TRI_idx_iid_t, LogicalCollection*,
-                       arangodb::velocypack::Slice const&);
+  RocksDBFulltextIndex(TRI_idx_iid_t, LogicalCollection*, arangodb::velocypack::Slice const&);
 
   ~RocksDBFulltextIndex();
 
@@ -100,20 +99,16 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   //  TRI_fts_index_t* internals() { return _fulltextIndex; }
 
-  static TRI_voc_rid_t fromDocumentIdentifierToken(
-      DocumentIdentifierToken const& token);
-  static DocumentIdentifierToken toDocumentIdentifierToken(
-      TRI_voc_rid_t revisionId);
+  static TRI_voc_rid_t fromDocumentIdentifierToken(DocumentIdentifierToken const& token);
+  static DocumentIdentifierToken toDocumentIdentifierToken(TRI_voc_rid_t revisionId);
 
   arangodb::Result parseQueryString(std::string const&, FulltextQuery&);
   arangodb::Result executeQuery(transaction::Methods* trx, FulltextQuery const&,
-                                size_t maxResults,
-                                velocypack::Builder& builder);
+                                size_t maxResults, velocypack::Builder& builder);
 
  protected:
   /// insert index elements into the specified write batch.
-  Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
-                        TRI_voc_rid_t,
+  Result insertInternal(transaction::Methods* trx, RocksDBMethods*, TRI_voc_rid_t,
                         arangodb::velocypack::Slice const&) override;
 
   /// remove index elements and put it in the specified write batch.
@@ -129,8 +124,7 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
   /// @brief minimum word length
   int _minWordLength;
 
-  arangodb::Result applyQueryToken(transaction::Methods* trx,
-                                   FulltextQueryToken const&,
+  arangodb::Result applyQueryToken(transaction::Methods* trx, FulltextQueryToken const&,
                                    std::set<TRI_voc_rid_t>& resultSet);
 };
 }  // namespace arangodb

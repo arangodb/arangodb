@@ -32,7 +32,7 @@ namespace transaction {
 class Hints {
  public:
   typedef uint32_t ValueType;
-  
+
   /// @brief individual hint flags that can be used for transactions
   enum class Hint : ValueType {
     NONE = 0,
@@ -46,7 +46,7 @@ class Hints {
     NO_COMPACTION_LOCK = 128,
     NO_USAGE_LOCK = 256,
     RECOVERY = 512,
-    NO_DLD = 1024 // disable deadlock detection
+    NO_DLD = 1024  // disable deadlock detection
   };
 
   Hints() : _value(0) {}
@@ -56,36 +56,26 @@ class Hints {
   inline bool has(ValueType value) const noexcept {
     return (_value & value) != 0;
   }
-  
+
   inline bool has(Hint value) const noexcept {
     return has(static_cast<ValueType>(value));
   }
-  
-  inline void set(ValueType value) {
-    _value |= value;
-  }
-  
-  inline void set(Hint value) {
-    set(static_cast<ValueType>(value));
-  }
-  
-  inline void unset(ValueType value) {
-    _value &= ~value;
-  }
-  
-  inline void unset(Hint value) {
-    unset(static_cast<ValueType>(value));
-  }
-  
-  inline ValueType toInt() const {
-    return static_cast<ValueType>(_value);
-  }
+
+  inline void set(ValueType value) { _value |= value; }
+
+  inline void set(Hint value) { set(static_cast<ValueType>(value)); }
+
+  inline void unset(ValueType value) { _value &= ~value; }
+
+  inline void unset(Hint value) { unset(static_cast<ValueType>(value)); }
+
+  inline ValueType toInt() const { return static_cast<ValueType>(_value); }
 
  private:
   ValueType _value;
 };
 
-}
-}
+}  // namespace transaction
+}  // namespace arangodb
 
 #endif

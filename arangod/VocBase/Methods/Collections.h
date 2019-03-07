@@ -38,13 +38,12 @@ namespace methods {
 
 /// Common code for collection REST handler and v8-collections
 struct Collections {
-  static void enumerateCollections(
-      TRI_vocbase_t* vocbase, std::function<void(LogicalCollection*)> const&);
-  static bool lookupCollection(TRI_vocbase_t* vocbase,
-                               std::string const& collection,
+  static void enumerateCollections(TRI_vocbase_t* vocbase,
+                                   std::function<void(LogicalCollection*)> const&);
+  static bool lookupCollection(TRI_vocbase_t* vocbase, std::string const& collection,
                                std::function<void(LogicalCollection*)> const&);
 };
-}
-}
+}  // namespace methods
+}  // namespace arangodb
 
 #endif

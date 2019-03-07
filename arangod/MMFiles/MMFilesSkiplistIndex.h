@@ -41,7 +41,7 @@ namespace arangodb {
 namespace aql {
 class SortCondition;
 struct Variable;
-}
+}  // namespace aql
 
 class MMFilesSkiplistIndex;
 namespace transaction {
@@ -105,13 +105,11 @@ class MMFilesBaseSkiplistLookupBuilder {
 ///        returned in the correct ordering. And no
 ///        lookup is returned twice.
 
-class MMFilesSkiplistLookupBuilder final
-    : public MMFilesBaseSkiplistLookupBuilder {
+class MMFilesSkiplistLookupBuilder final : public MMFilesBaseSkiplistLookupBuilder {
  public:
-  MMFilesSkiplistLookupBuilder(
-      transaction::Methods* trx,
-      std::vector<std::vector<arangodb::aql::AstNode const*>>&,
-      arangodb::aql::Variable const*, bool);
+  MMFilesSkiplistLookupBuilder(transaction::Methods* trx,
+                               std::vector<std::vector<arangodb::aql::AstNode const*>>&,
+                               arangodb::aql::Variable const*, bool);
 
   ~MMFilesSkiplistLookupBuilder() {}
 
@@ -120,8 +118,7 @@ class MMFilesSkiplistLookupBuilder final
   bool next() override;
 };
 
-class MMFilesSkiplistInLookupBuilder final
-    : public MMFilesBaseSkiplistLookupBuilder {
+class MMFilesSkiplistInLookupBuilder final : public MMFilesBaseSkiplistLookupBuilder {
  private:
   struct PosStruct {
     size_t field;
@@ -139,10 +136,9 @@ class MMFilesSkiplistInLookupBuilder final
   bool _done;
 
  public:
-  MMFilesSkiplistInLookupBuilder(
-      transaction::Methods* trx,
-      std::vector<std::vector<arangodb::aql::AstNode const*>>&,
-      arangodb::aql::Variable const*, bool);
+  MMFilesSkiplistInLookupBuilder(transaction::Methods* trx,
+                                 std::vector<std::vector<arangodb::aql::AstNode const*>>&,
+                                 arangodb::aql::Variable const*, bool);
 
   ~MMFilesSkiplistInLookupBuilder() {}
 
@@ -184,9 +180,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
 
   MMFilesBaseSkiplistLookupBuilder* _builder;
 
-  std::function<int(void*, MMFilesSkiplistIndexElement const*,
-                    MMFilesSkiplistIndexElement const*, MMFilesSkiplistCmpType)>
-      _CmpElmElm;
+  std::function<int(void*, MMFilesSkiplistIndexElement const*, MMFilesSkiplistIndexElement const*, MMFilesSkiplistCmpType)> _CmpElmElm;
 
  public:
   MMFilesSkiplistIterator(
@@ -194,8 +188,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
       ManagedDocumentResult* mmdr, arangodb::MMFilesSkiplistIndex const* index,
       TRI_Skiplist const* skiplist, size_t numPaths,
       std::function<int(void*, MMFilesSkiplistIndexElement const*,
-                        MMFilesSkiplistIndexElement const*,
-                        MMFilesSkiplistCmpType)> const& CmpElmElm,
+                        MMFilesSkiplistIndexElement const*, MMFilesSkiplistCmpType)> const& CmpElmElm,
       bool reverse, MMFilesBaseSkiplistLookupBuilder* builder);
 
   ~MMFilesSkiplistIterator() { delete _builder; }
@@ -215,7 +208,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
   void reset() override;
 
   size_t numPaths() const { return _numPaths; }
-  
+
  private:
   /// @brief Initialize left and right endpoints with current lookup
   ///        value. Also points the _cursor to the border of this interval.
@@ -243,8 +236,7 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
   };
 
   struct ElementElementComparator {
-    int operator()(void* userData,
-                   MMFilesSkiplistIndexElement const* leftElement,
+    int operator()(void* userData, MMFilesSkiplistIndexElement const* leftElement,
                    MMFilesSkiplistIndexElement const* rightElement,
                    MMFilesSkiplistCmpType cmptype) const;
 
@@ -262,8 +254,7 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
  public:
   MMFilesSkiplistIndex() = delete;
 
-  MMFilesSkiplistIndex(TRI_idx_iid_t, LogicalCollection*,
-                       arangodb::velocypack::Slice const&);
+  MMFilesSkiplistIndex(TRI_idx_iid_t, LogicalCollection*, arangodb::velocypack::Slice const&);
 
   ~MMFilesSkiplistIndex();
 
@@ -281,7 +272,7 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
   bool hasSelectivityEstimate() const override { return false; }
 
   size_t memory() const override;
-  
+
   int afterTruncate() override {
     // for mmfiles, truncating the index just unloads it
     unload();
@@ -306,40 +297,34 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
                              arangodb::aql::Variable const*, size_t, double&,
                              size_t&) const override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*,
-                                      ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      bool) override;
+                                      arangodb::aql::Variable const*, bool) override;
 
-  arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
+                                              arangodb::aql::Variable const*) const override;
 
  private:
-  bool isDuplicateOperator(arangodb::aql::AstNode const*,
-                           std::unordered_set<int> const&) const;
+  bool isDuplicateOperator(arangodb::aql::AstNode const*, std::unordered_set<int> const&) const;
 
-  bool accessFitsIndex(
-      arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
-      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
-      std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
-      std::unordered_set<std::string>& nonNullAttributes, bool) const;
+  bool accessFitsIndex(arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
+                       arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
+                       std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
+                       std::unordered_set<std::string>& nonNullAttributes, bool) const;
 
-  bool accessFitsIndex(
-      arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
-      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
-      std::vector<std::vector<arangodb::aql::AstNode const*>>&,
-      std::unordered_set<std::string>& nonNullAttributes) const;
+  bool accessFitsIndex(arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
+                       arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
+                       std::vector<std::vector<arangodb::aql::AstNode const*>>&,
+                       std::unordered_set<std::string>& nonNullAttributes) const;
 
-  void matchAttributes(
-      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
-      std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
-      size_t& values, std::unordered_set<std::string>& nonNullAttributes,
-      bool) const;
+  void matchAttributes(arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
+                       std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
+                       size_t& values,
+                       std::unordered_set<std::string>& nonNullAttributes, bool) const;
 
-  bool findMatchingConditions(
-      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
-      std::vector<std::vector<arangodb::aql::AstNode const*>>&, bool&) const;
+  bool findMatchingConditions(arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
+                              std::vector<std::vector<arangodb::aql::AstNode const*>>&,
+                              bool&) const;
 
   /// @brief Checks if the interval is valid. It is declared invalid if
   ///        one border is nullptr or the right is lower than left.
@@ -356,6 +341,6 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
   /// @brief the actual skiplist index
   TRI_Skiplist* _skiplistIndex;
 };
-}
+}  // namespace arangodb
 
 #endif

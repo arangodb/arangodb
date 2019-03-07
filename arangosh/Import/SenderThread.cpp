@@ -38,9 +38,8 @@
 using namespace arangodb;
 using namespace arangodb::import;
 
-SenderThread::SenderThread(
-    std::unique_ptr<httpclient::SimpleHttpClient>&& client,
-    ImportStatistics* stats)
+SenderThread::SenderThread(std::unique_ptr<httpclient::SimpleHttpClient>&& client,
+                           ImportStatistics* stats)
     : Thread("Import Sender"),
       _client(client.release()),
       _data(false),
@@ -62,8 +61,7 @@ void SenderThread::beginShutdown() {
   guard.broadcast();
 }
 
-void SenderThread::sendData(std::string const& url,
-                            arangodb::basics::StringBuffer* data) {
+void SenderThread::sendData(std::string const& url, arangodb::basics::StringBuffer* data) {
   TRI_ASSERT(_idle && !_hasError);
   _url = url;
   _data.swap(data);
@@ -111,8 +109,7 @@ void SenderThread::run() {
         TRI_ASSERT(!_idle && !_url.empty());
 
         std::unique_ptr<httpclient::SimpleHttpResult> result(
-            _client->request(rest::RequestType::POST, _url, _data.c_str(),
-                             _data.length()));
+            _client->request(rest::RequestType::POST, _url, _data.c_str(), _data.length()));
 
         handleResult(result.get());
 
@@ -128,7 +125,7 @@ void SenderThread::run() {
       _idle = true;
     }
   }
-    
+
   CONDITION_LOCKER(guard, _condition);
   TRI_ASSERT(_idle);
 }
@@ -157,41 +154,39 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
       }
     }
   }
-  
+
   {
     // first update all the statistics
     MUTEX_LOCKER(guard, _stats->_mutex);
     // look up the "created" flag
     _stats->_numberCreated +=
-    arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
-                                                                "created", 0);
-    
+        arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
+                                                                    "created", 0);
+
     // look up the "errors" flag
     _stats->_numberErrors +=
-    arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
-                                                                "errors", 0);
-    
+        arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
+                                                                    "errors", 0);
+
     // look up the "updated" flag
     _stats->_numberUpdated +=
-    arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
-                                                                "updated", 0);
-    
+        arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
+                                                                    "updated", 0);
+
     // look up the "ignored" flag
     _stats->_numberIgnored +=
-    arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
-                                                                "ignored", 0);
+        arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
+                                                                    "ignored", 0);
   }
 
   // get the "error" flag. This returns a pointer, not a copy
-  if (arangodb::basics::VelocyPackHelper::getBooleanValue(body, "error",
-                                                          false)) {
-
+  if (arangodb::basics::VelocyPackHelper::getBooleanValue(body, "error", false)) {
     // get the error message
     VPackSlice const errorMessage = body.get("errorMessage");
     if (errorMessage.isString()) {
       _errorMessage = errorMessage.copyString();
     }
-    
+
     // will trigger the waiting ImportHelper thread to cancel the import
     _hasError = true;
   }

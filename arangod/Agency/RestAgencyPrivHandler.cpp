@@ -45,8 +45,7 @@ using namespace arangodb::consensus;
 ////////////////////////////////////////////////////////////////////////////////
 
 RestAgencyPrivHandler::RestAgencyPrivHandler(GeneralRequest* request,
-                                             GeneralResponse* response,
-                                             Agent* agent)
+                                             GeneralResponse* response, Agent* agent)
     : RestBaseHandler(request, response), _agent(agent) {}
 
 bool RestAgencyPrivHandler::isDirect() const { return false; }
@@ -64,8 +63,7 @@ inline RestStatus RestAgencyPrivHandler::reportTooManySuffices() {
   return RestStatus::DONE;
 }
 
-inline RestStatus RestAgencyPrivHandler::reportBadQuery(
-    std::string const& message) {
+inline RestStatus RestAgencyPrivHandler::reportBadQuery(std::string const& message) {
   generateError(rest::ResponseCode::BAD, 400, message);
   return RestStatus::DONE;
 }
@@ -105,12 +103,11 @@ RestStatus RestAgencyPrivHandler::execute() {
         int64_t senderTimeStamp = 0;
         readValue("senderTimeStamp", senderTimeStamp);  // ignore if not given
         if (readValue("term", term) && readValue("leaderId", id) &&
-            readValue("prevLogIndex", prevLogIndex) &&
-            readValue("prevLogTerm", prevLogTerm) &&
+            readValue("prevLogIndex", prevLogIndex) && readValue("prevLogTerm", prevLogTerm) &&
             readValue("leaderCommit", leaderCommit)) {  // found all values
-          auto ret = _agent->recvAppendEntriesRPC(
-            term, id, prevLogIndex, prevLogTerm, leaderCommit,
-            _request->toVelocyPackBuilderPtr());
+          auto ret = _agent->recvAppendEntriesRPC(term, id, prevLogIndex,
+                                                  prevLogTerm, leaderCommit,
+                                                  _request->toVelocyPackBuilderPtr());
           result.add("success", VPackValue(ret.success));
           result.add("term", VPackValue(ret.term));
           result.add("senderTimeStamp", VPackValue(senderTimeStamp));
@@ -123,9 +120,8 @@ RestStatus RestAgencyPrivHandler::execute() {
         if (readValue("term", term) && readValue("candidateId", id) &&
             readValue("prevLogIndex", prevLogIndex) &&
             readValue("prevLogTerm", prevLogTerm)) {
-          priv_rpc_ret_t ret =
-              _agent->requestVote(term, id, prevLogIndex, prevLogTerm, nullptr,
-                                  timeoutMult);
+          priv_rpc_ret_t ret = _agent->requestVote(term, id, prevLogIndex, prevLogTerm,
+                                                   nullptr, timeoutMult);
           result.add("term", VPackValue(ret.term));
           result.add("voteGranted", VPackValue(ret.success));
         }
@@ -134,8 +130,8 @@ RestStatus RestAgencyPrivHandler::execute() {
           return reportMethodNotAllowed();
         }
         if (readValue("term", term) && readValue("agencyId", id)) {
-          priv_rpc_ret_t ret = _agent->requestVote(
-              term, id, 0, 0, _request->toVelocyPackBuilderPtr(), -1);
+          priv_rpc_ret_t ret =
+              _agent->requestVote(term, id, 0, 0, _request->toVelocyPackBuilderPtr(), -1);
           result.add("term", VPackValue(ret.term));
           result.add("voteGranted", VPackValue(ret.success));
         } else {
@@ -159,8 +155,7 @@ RestStatus RestAgencyPrivHandler::execute() {
           return reportMethodNotAllowed();
         }
         if (_agent->leaderID() != NO_LEADER) {
-          result.add("active",
-                     _agent->config().activeAgentsToBuilder()->slice());
+          result.add("active", _agent->config().activeAgentsToBuilder()->slice());
         }
       } else if (suffixes[0] == "inform") {
         query_t query = _request->toVelocyPackBuilderPtr();

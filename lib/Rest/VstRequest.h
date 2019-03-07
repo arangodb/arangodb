@@ -42,12 +42,12 @@ class RestBatchHandler;
 namespace rest {
 class GeneralCommTask;
 class VstCommTask;
-}
+}  // namespace rest
 
 namespace velocypack {
 class Builder;
 struct Options;
-}
+}  // namespace velocypack
 
 using rest::VstInputMessage;
 
@@ -84,8 +84,7 @@ class VstRequest final : public GeneralRequest {
   std::unordered_map<std::string, std::string> values() const override {
     return _values;
   }
-  std::unordered_map<std::string, std::vector<std::string>> arrayValues()
-      const override {
+  std::unordered_map<std::string, std::vector<std::string>> arrayValues() const override {
     return _arrayValues;
   }
   std::string const& value(std::string const& key) const override;
@@ -93,8 +92,7 @@ class VstRequest final : public GeneralRequest {
 
  private:
   VstInputMessage _message;
-  mutable std::unique_ptr<std::unordered_map<std::string, std::string>>
-      _headers;
+  mutable std::unique_ptr<std::unordered_map<std::string, std::string>> _headers;
   // values are query parameters
   std::unordered_map<std::string, std::string> _values;
   std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
@@ -102,5 +100,5 @@ class VstRequest final : public GeneralRequest {
 
   void parseHeaderInformation();
 };
-}
+}  // namespace arangodb
 #endif

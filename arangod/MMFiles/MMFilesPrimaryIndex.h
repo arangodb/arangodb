@@ -43,15 +43,12 @@ namespace transaction {
 class Methods;
 }
 
-typedef arangodb::basics::AssocUnique<uint8_t, MMFilesSimpleIndexElement>
-    MMFilesPrimaryIndexImpl;
+typedef arangodb::basics::AssocUnique<uint8_t, MMFilesSimpleIndexElement> MMFilesPrimaryIndexImpl;
 
 class MMFilesPrimaryIndexIterator final : public IndexIterator {
  public:
-  MMFilesPrimaryIndexIterator(LogicalCollection* collection,
-                              transaction::Methods* trx,
-                              ManagedDocumentResult* mmdr,
-                              MMFilesPrimaryIndex const* index,
+  MMFilesPrimaryIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
+                              ManagedDocumentResult* mmdr, MMFilesPrimaryIndex const* index,
                               std::unique_ptr<VPackBuilder>& keys);
 
   ~MMFilesPrimaryIndexIterator();
@@ -70,12 +67,9 @@ class MMFilesPrimaryIndexIterator final : public IndexIterator {
 
 class MMFilesAllIndexIterator final : public IndexIterator {
  public:
-  MMFilesAllIndexIterator(LogicalCollection* collection,
-                          transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
-                          MMFilesPrimaryIndex const* index,
-                          MMFilesPrimaryIndexImpl const* indexImpl,
-                          bool reverse);
+  MMFilesAllIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
+                          ManagedDocumentResult* mmdr, MMFilesPrimaryIndex const* index,
+                          MMFilesPrimaryIndexImpl const* indexImpl, bool reverse);
 
   ~MMFilesAllIndexIterator() {}
 
@@ -96,10 +90,8 @@ class MMFilesAllIndexIterator final : public IndexIterator {
 
 class MMFilesAnyIndexIterator final : public IndexIterator {
  public:
-  MMFilesAnyIndexIterator(LogicalCollection* collection,
-                          transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
-                          MMFilesPrimaryIndex const* index,
+  MMFilesAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
+                          ManagedDocumentResult* mmdr, MMFilesPrimaryIndex const* index,
                           MMFilesPrimaryIndexImpl const* indexImpl);
 
   ~MMFilesAnyIndexIterator() {}
@@ -147,8 +139,7 @@ class MMFilesPrimaryIndex final : public Index {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimateLocal(
-      arangodb::StringRef const* = nullptr) const override {
+  double selectivityEstimateLocal(arangodb::StringRef const* = nullptr) const override {
     return 1.0;
   }
 
@@ -168,14 +159,11 @@ class MMFilesPrimaryIndex final : public Index {
   void load() override {}
   void unload() override;
 
-  MMFilesSimpleIndexElement lookupKey(transaction::Methods*,
-                                      VPackSlice const&) const;
+  MMFilesSimpleIndexElement lookupKey(transaction::Methods*, VPackSlice const&) const;
   MMFilesSimpleIndexElement lookupKey(transaction::Methods*, VPackSlice const&,
                                       ManagedDocumentResult&) const;
-  MMFilesSimpleIndexElement* lookupKeyRef(transaction::Methods*,
-                                          VPackSlice const&) const;
-  MMFilesSimpleIndexElement* lookupKeyRef(transaction::Methods*,
-                                          VPackSlice const&,
+  MMFilesSimpleIndexElement* lookupKeyRef(transaction::Methods*, VPackSlice const&) const;
+  MMFilesSimpleIndexElement* lookupKeyRef(transaction::Methods*, VPackSlice const&,
                                           ManagedDocumentResult&) const;
 
   /// @brief a method to iterate over all elements in the index in
@@ -183,28 +171,26 @@ class MMFilesPrimaryIndex final : public Index {
   ///        Returns nullptr if all documents have been returned.
   ///        Convention: position === 0 indicates a new start.
   ///        DEPRECATED
-  MMFilesSimpleIndexElement lookupSequential(
-      transaction::Methods*, arangodb::basics::BucketPosition& position,
-      uint64_t& total);
+  MMFilesSimpleIndexElement lookupSequential(transaction::Methods*,
+                                             arangodb::basics::BucketPosition& position,
+                                             uint64_t& total);
 
   /// @brief request an iterator over all elements in the index in
   ///        a sequential order.
-  IndexIterator* allIterator(transaction::Methods*, ManagedDocumentResult*,
-                             bool reverse) const;
+  IndexIterator* allIterator(transaction::Methods*, ManagedDocumentResult*, bool reverse) const;
 
   /// @brief request an iterator over all elements in the index in
   ///        a random order. It is guaranteed that each element is found
   ///        exactly once unless the collection is modified.
-  IndexIterator* anyIterator(transaction::Methods*,
-                             ManagedDocumentResult*) const;
+  IndexIterator* anyIterator(transaction::Methods*, ManagedDocumentResult*) const;
 
   /// @brief a method to iterate over all elements in the index in
   ///        reversed sequential order.
   ///        Returns nullptr if all documents have been returned.
   ///        Convention: position === UINT64_MAX indicates a new start.
   ///        DEPRECATED
-  MMFilesSimpleIndexElement lookupSequentialReverse(
-      transaction::Methods*, arangodb::basics::BucketPosition& position);
+  MMFilesSimpleIndexElement lookupSequentialReverse(transaction::Methods*,
+                                                    arangodb::basics::BucketPosition& position);
 
   Result insertKey(transaction::Methods*, TRI_voc_rid_t revisionId,
                    arangodb::velocypack::Slice const&);
@@ -219,21 +205,18 @@ class MMFilesPrimaryIndex final : public Index {
   int resize(transaction::Methods*, size_t);
 
   void invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)>);
-  void invokeOnAllElementsForRemoval(
-      std::function<bool(MMFilesSimpleIndexElement const&)>);
+  void invokeOnAllElementsForRemoval(std::function<bool(MMFilesSimpleIndexElement const&)>);
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*,
-                                      ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      bool) override;
+                                      arangodb::aql::Variable const*, bool) override;
 
-  arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
+                                              arangodb::aql::Variable const*) const override;
 
  private:
   /// @brief create the iterator, for a single attribute, IN operator
@@ -250,13 +233,13 @@ class MMFilesPrimaryIndex final : public Index {
   void handleValNode(transaction::Methods* trx, VPackBuilder* keys,
                      arangodb::aql::AstNode const* valNode, bool isId) const;
 
-  MMFilesSimpleIndexElement buildKeyElement(
-      TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&) const;
+  MMFilesSimpleIndexElement buildKeyElement(TRI_voc_rid_t revisionId,
+                                            arangodb::velocypack::Slice const&) const;
 
  private:
   /// @brief the actual index
   MMFilesPrimaryIndexImpl* _primaryIndex;
 };
-}
+}  // namespace arangodb
 
 #endif

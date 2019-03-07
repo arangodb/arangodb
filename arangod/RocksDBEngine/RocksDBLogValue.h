@@ -45,18 +45,13 @@ class RocksDBLogValue {
 
   static RocksDBLogValue DatabaseCreate();
   static RocksDBLogValue DatabaseDrop(TRI_voc_tick_t vocbaseId);
-  static RocksDBLogValue CollectionCreate(TRI_voc_tick_t vocbaseId,
-                                          TRI_voc_cid_t cid);
-  static RocksDBLogValue CollectionDrop(TRI_voc_tick_t vocbaseId,
-                                        TRI_voc_cid_t cid);
-  static RocksDBLogValue CollectionRename(TRI_voc_tick_t vocbaseId,
-                                          TRI_voc_cid_t cid,
+  static RocksDBLogValue CollectionCreate(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid);
+  static RocksDBLogValue CollectionDrop(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid);
+  static RocksDBLogValue CollectionRename(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid,
                                           StringRef const& newName);
-  static RocksDBLogValue CollectionChange(TRI_voc_tick_t vocbaseId,
-                                          TRI_voc_cid_t cid);
+  static RocksDBLogValue CollectionChange(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid);
 
-  static RocksDBLogValue IndexCreate(TRI_voc_tick_t vocbaseId,
-                                     TRI_voc_cid_t cid,
+  static RocksDBLogValue IndexCreate(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid,
                                      VPackSlice const& indexInfo);
   static RocksDBLogValue IndexDrop(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid,
                                    TRI_idx_iid_t indexId);
@@ -64,15 +59,13 @@ class RocksDBLogValue {
   static RocksDBLogValue ViewCreate(TRI_voc_cid_t, TRI_idx_iid_t);
   static RocksDBLogValue ViewDrop(TRI_voc_cid_t, TRI_idx_iid_t);
 
-  static RocksDBLogValue BeginTransaction(TRI_voc_tick_t vocbaseId,
-                                          TRI_voc_tid_t trxId);
+  static RocksDBLogValue BeginTransaction(TRI_voc_tick_t vocbaseId, TRI_voc_tid_t trxId);
   static RocksDBLogValue DocumentOpsPrologue(TRI_voc_cid_t cid);
   static RocksDBLogValue DocumentRemove(arangodb::StringRef const&);
   static RocksDBLogValue DocumentRemoveAsPartOfUpdate(arangodb::StringRef const&);
 
   static RocksDBLogValue SinglePut(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid);
-  static RocksDBLogValue SingleRemove(TRI_voc_tick_t vocbaseId,
-                                      TRI_voc_cid_t cid,
+  static RocksDBLogValue SingleRemove(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid,
                                       arangodb::StringRef const&);
 
  public:
@@ -90,7 +83,7 @@ class RocksDBLogValue {
   static velocypack::Slice indexSlice(rocksdb::Slice const&);
   static arangodb::StringRef oldCollectionName(rocksdb::Slice const&);
   static arangodb::StringRef documentKey(rocksdb::Slice const&);
-  
+
   static bool containsDatabaseId(RocksDBLogType type);
   static bool containsCollectionId(RocksDBLogType type);
 
@@ -114,8 +107,7 @@ class RocksDBLogValue {
   RocksDBLogValue(RocksDBLogType type, uint64_t, uint64_t);
   RocksDBLogValue(RocksDBLogType type, uint64_t, uint64_t, uint64_t);
   RocksDBLogValue(RocksDBLogType type, uint64_t, uint64_t, VPackSlice const&);
-  RocksDBLogValue(RocksDBLogType type, uint64_t, uint64_t,
-                  StringRef const& data);
+  RocksDBLogValue(RocksDBLogType type, uint64_t, uint64_t, StringRef const& data);
   RocksDBLogValue(RocksDBLogType type, StringRef const& data);
 
  private:

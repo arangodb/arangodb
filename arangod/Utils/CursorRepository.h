@@ -55,14 +55,13 @@ class CursorRepository {
   ~CursorRepository();
 
  public:
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief stores a cursor in the registry
   /// the repository will take ownership of the cursor
   ////////////////////////////////////////////////////////////////////////////////
 
   Cursor* addCursor(std::unique_ptr<Cursor> cursor);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a cursor and stores it in the registry
   /// the cursor will be returned with the usage flag set to true. it must be
@@ -70,9 +69,9 @@ class CursorRepository {
   /// the cursor will retain a shared pointer of both json and extra
   //////////////////////////////////////////////////////////////////////////////
 
-  Cursor* createFromQueryResult(
-      aql::QueryResult&&, size_t, std::shared_ptr<arangodb::velocypack::Builder>,
-      double, bool);
+  Cursor* createFromQueryResult(aql::QueryResult&&, size_t,
+                                std::shared_ptr<arangodb::velocypack::Builder>,
+                                double, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a cursor by id
@@ -131,6 +130,6 @@ class CursorRepository {
 
   static size_t const MaxCollectCount;
 };
-}
+}  // namespace arangodb
 
 #endif

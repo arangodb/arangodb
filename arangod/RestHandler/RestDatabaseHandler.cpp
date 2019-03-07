@@ -34,8 +34,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDatabaseHandler::RestDatabaseHandler(GeneralRequest* request,
-                                         GeneralResponse* response)
+RestDatabaseHandler::RestDatabaseHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RestDatabaseHandler::execute() {
@@ -53,8 +52,7 @@ RestStatus RestDatabaseHandler::execute() {
   } else if (type == rest::RequestType::DELETE_REQ) {
     return deleteDatabase();
   } else {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 }
@@ -113,8 +111,7 @@ RestStatus RestDatabaseHandler::createDatabase() {
   }
   VPackSlice nameVal = parsedBody->slice().get("name");
   if (!nameVal.isString()) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
     return RestStatus::DONE;
   }
   std::string dbName = nameVal.copyString();
@@ -129,7 +126,7 @@ RestStatus RestDatabaseHandler::createDatabase() {
     if (res.errorNumber() == TRI_ERROR_FORBIDDEN ||
         res.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME) {
       generateError(res);
-    } else {// http_server compatibility
+    } else {  // http_server compatibility
       generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
     }
   }

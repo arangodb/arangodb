@@ -24,11 +24,11 @@
 #ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_H
 #define ARANGOD_AQL_AQL_ITEM_BLOCK_H 1
 
-#include "Basics/Common.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Range.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
 
 #include <utility>
 
@@ -69,8 +69,8 @@ class AqlItemBlock {
   AqlItemBlock(ResourceMonitor*, arangodb::velocypack::Slice const);
 
   /// @brief destroy the block
-  ~AqlItemBlock() { 
-    destroy(); 
+  ~AqlItemBlock() {
+    destroy();
     decreaseMemoryUsage(sizeof(AqlValue) * _nrItems * _nrRegs);
   }
 
@@ -80,7 +80,7 @@ class AqlItemBlock {
   inline void increaseMemoryUsage(size_t value) {
     _resourceMonitor->increaseMemoryUsage(value);
   }
-  
+
   inline void decreaseMemoryUsage(size_t value) {
     _resourceMonitor->decreaseMemoryUsage(value);
   }
@@ -221,7 +221,7 @@ class AqlItemBlock {
     }
     _valueCount.clear();
   }
-  
+
   void copyColValuesFromFirstRow(size_t currentRow, RegisterId col) {
     TRI_ASSERT(currentRow > 0);
     TRI_ASSERT(_data.capacity() > currentRow * _nrRegs + col);
@@ -248,7 +248,7 @@ class AqlItemBlock {
       }
     }
   }
-  
+
   void copyValuesFromRow(size_t currentRow, RegisterId curRegs, size_t fromRow) {
     TRI_ASSERT(currentRow != fromRow);
 
@@ -262,7 +262,7 @@ class AqlItemBlock {
       }
     }
   }
-  
+
   /// @brief valueCount
   /// this is used if the value is stolen and later released from elsewhere
   uint32_t valueCount(AqlValue const& v) const {
@@ -291,7 +291,7 @@ class AqlItemBlock {
 
   /// @brief getter for _nrItems
   inline size_t size() const { return _nrItems; }
-  
+
   inline size_t capacity() const { return _data.size(); }
 
   /// @brief shrink the block to the specified number of rows
@@ -302,7 +302,7 @@ class AqlItemBlock {
 
   /// @brief rescales the block to the specified dimensions
   /// note that the block should be empty before rescaling to prevent
-  /// losses of still managed AqlValues 
+  /// losses of still managed AqlValues
   void rescale(size_t nrItems, RegisterId nrRegs);
 
   /// @brief clears out some columns (registers), this deletes the values if
@@ -318,8 +318,7 @@ class AqlItemBlock {
 
   /// @brief slice/clone chosen rows for a subset, this does a deep copy
   /// of all entries
-  AqlItemBlock* slice(std::vector<size_t> const& chosen, size_t from,
-                      size_t to) const;
+  AqlItemBlock* slice(std::vector<size_t> const& chosen, size_t from, size_t to) const;
 
   /// @brief steal for a subset, this does not copy the entries, rather,
   /// it remembers which it has taken. This is stored in the
@@ -327,7 +326,7 @@ class AqlItemBlock {
   /// after this operation, because it is unclear, when the values
   /// to which our AqlValues point will vanish.
   AqlItemBlock* steal(std::vector<size_t> const& chosen, size_t from, size_t to);
-  
+
   /// @brief concatenate multiple blocks from a collector
   static AqlItemBlock* concatenate(ResourceMonitor*, BlockCollector* collector);
 
@@ -338,8 +337,7 @@ class AqlItemBlock {
 
   /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
-  void toVelocyPack(transaction::Methods* trx,
-                    arangodb::velocypack::Builder&) const;
+  void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
 
  private:
   /// @brief _data, the actual data as a single vector of dimensions _nrItems
@@ -364,7 +362,7 @@ class AqlItemBlock {
   ResourceMonitor* _resourceMonitor;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

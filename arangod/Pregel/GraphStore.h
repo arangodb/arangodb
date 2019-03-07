@@ -54,7 +54,6 @@ struct GraphFormat;
 ////////////////////////////////////////////////////////////////////////////////
 template <typename V, typename E>
 class GraphStore {
-
  public:
   GraphStore(TRI_vocbase_t* vocbase, GraphFormat<V, E>* graphFormat);
   ~GraphStore();
@@ -66,8 +65,7 @@ class GraphStore {
   // ====================== NOT THREAD SAFE ===========================
   void loadShards(WorkerConfig* state, std::function<void()> callback);
   void loadDocument(WorkerConfig* config, std::string const& documentID);
-  void loadDocument(WorkerConfig* config, PregelShard sourceShard,
-                    PregelKey const& _key);
+  void loadDocument(WorkerConfig* config, PregelShard sourceShard, PregelKey const& _key);
   // ======================================================================
 
   // only thread safe if your threads coordinate access to memory locations
@@ -82,43 +80,42 @@ class GraphStore {
 
   /// Write results to database
   void storeResults(WorkerConfig* config, std::function<void()> callback);
-  
-private:
+
+ private:
   std::unordered_map<ShardID, uint64_t> _preallocateMemory();
   void _loadVertices(size_t i, ShardID const& vertexShard,
-                     std::vector<ShardID> const& edgeShards,
-                     uint64_t vertexOffset);
+                     std::vector<ShardID> const& edgeShards, uint64_t vertexOffset);
   void _loadEdges(transaction::Methods* trx, ShardID const& shard,
                   VertexEntry& vertexEntry, std::string const& documentID);
   void _storeVertices(std::vector<ShardID> const& globalShards,
                       RangeIterator<VertexEntry>& it);
   std::unique_ptr<transaction::Methods> _createTransaction();
-  
-private:
+
+ private:
   VocbaseGuard _vocbaseGuard;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
   WorkerConfig* _config = nullptr;
-  
+
   /// Holds vertex keys and pointers to vertex data and edges
   std::vector<VertexEntry> _index;
   /// Vertex data
   TypedBuffer<V>* _vertexData = nullptr;
   /// Edges (and data)
   TypedBuffer<Edge<E>>* _edges = nullptr;
-  
+
   // cache the amount of vertices
   std::set<ShardID> _loadedShards;
   // hold the current position where the ith vertex shard can
   // start to write its data. At the end the offset should equal the
   // sum of the counts of all ith edge shards
   std::vector<uint64_t> _edgeShardsOffset;
-  
+
   // actual count of loaded vertices / edges
   std::atomic<uint64_t> _localVerticeCount;
   std::atomic<uint64_t> _localEdgeCount;
   std::atomic<uint32_t> _runningThreads;
   bool _destroyed = false;
 };
-}
-}
+}  // namespace pregel
+}  // namespace arangodb
 #endif

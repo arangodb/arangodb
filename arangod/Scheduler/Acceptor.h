@@ -30,28 +30,28 @@
 
 namespace arangodb {
 class Acceptor {
-  public:
-    typedef std::function<void(boost::system::error_code const&)> AcceptHandler;
+ public:
+  typedef std::function<void(boost::system::error_code const&)> AcceptHandler;
 
-    Acceptor(boost::asio::io_service& ioService, Endpoint* endpoint);
-    virtual ~Acceptor() {}
+  Acceptor(boost::asio::io_service& ioService, Endpoint* endpoint);
+  virtual ~Acceptor() {}
 
-    virtual void open() = 0;
-    virtual void close() = 0;
-    virtual void asyncAccept(AcceptHandler const& handler) = 0;
-    std::unique_ptr<Socket> movePeer() { return std::move(_peer); };
-  
-  public:
-    static std::unique_ptr<Acceptor> factory(
-        boost::asio::io_service& _ioService, Endpoint* endpoint);
-  
-  protected:
-    virtual void createPeer() = 0;
-  
-  protected:
-    boost::asio::io_service& _ioService;
-    Endpoint* _endpoint;
-    std::unique_ptr<Socket> _peer;
+  virtual void open() = 0;
+  virtual void close() = 0;
+  virtual void asyncAccept(AcceptHandler const& handler) = 0;
+  std::unique_ptr<Socket> movePeer() { return std::move(_peer); };
+
+ public:
+  static std::unique_ptr<Acceptor> factory(boost::asio::io_service& _ioService,
+                                           Endpoint* endpoint);
+
+ protected:
+  virtual void createPeer() = 0;
+
+ protected:
+  boost::asio::io_service& _ioService;
+  Endpoint* _endpoint;
+  std::unique_ptr<Socket> _peer;
 };
-}
+}  // namespace arangodb
 #endif

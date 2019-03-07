@@ -30,16 +30,14 @@
 #include "VocBase/ManagedDocumentResult.h"
 
 using namespace arangodb;
-  
-IndexIterator::IndexIterator(LogicalCollection* collection, 
-                             transaction::Methods* trx, 
-                             ManagedDocumentResult* mmdr, 
-                             arangodb::Index const* index)
-      : _collection(collection), 
-        _trx(trx), 
-        _mmdr(mmdr ? mmdr : new ManagedDocumentResult), 
-        _context(trx, collection, _mmdr, index->fields().size()),
-        _responsible(mmdr == nullptr) {
+
+IndexIterator::IndexIterator(LogicalCollection* collection, transaction::Methods* trx,
+                             ManagedDocumentResult* mmdr, arangodb::Index const* index)
+    : _collection(collection),
+      _trx(trx),
+      _mmdr(mmdr ? mmdr : new ManagedDocumentResult),
+      _context(trx, collection, _mmdr, index->fields().size()),
+      _responsible(mmdr == nullptr) {
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(_mmdr != nullptr);
@@ -58,9 +56,11 @@ bool IndexIterator::hasExtra() const {
 }
 
 bool IndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
-  return next([this, &cb](DocumentIdentifierToken const& token) {
-    _collection->readDocumentWithCallback(_trx, token, cb);
-  }, limit);
+  return next(
+      [this, &cb](DocumentIdentifierToken const& token) {
+        _collection->readDocumentWithCallback(_trx, token, cb);
+      },
+      limit);
 }
 
 /// @brief default implementation for next
@@ -80,9 +80,7 @@ void IndexIterator::reset() {}
 /// @brief default implementation for skip
 void IndexIterator::skip(uint64_t count, uint64_t& skipped) {
   // Skip the first count-many entries
-  auto cb = [&skipped] (DocumentIdentifierToken const& ) {
-    ++skipped;
-  };
+  auto cb = [&skipped](DocumentIdentifierToken const&) { ++skipped; };
   // TODO: Can be improved
   next(cb, count);
 }
@@ -92,7 +90,7 @@ void IndexIterator::skip(uint64_t count, uint64_t& skipped) {
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
 bool MultiIndexIterator::next(TokenCallback const& callback, size_t limit) {
-  auto cb = [&limit, &callback] (DocumentIdentifierToken const& token) {
+  auto cb = [&limit, &callback](DocumentIdentifierToken const& token) {
     --limit;
     callback(token);
   };

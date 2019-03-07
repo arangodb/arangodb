@@ -41,7 +41,7 @@ static bool isContained(std::vector<std::vector<arangodb::basics::AttributeName>
   return false;
 }
 
-}
+}  // namespace
 
 /// @brief create an empty condition
 SortCondition::SortCondition()
@@ -52,23 +52,21 @@ SortCondition::SortCondition()
       _ascending(true) {}
 
 /// @brief create the sort condition
-SortCondition::SortCondition(
-    std::vector<std::pair<VariableId, bool>> const& sorts,
-    std::vector<std::vector<arangodb::basics::AttributeName>> const& constAttributes,
-    std::unordered_map<VariableId, AstNode const*> const& variableDefinitions)
+SortCondition::SortCondition(std::vector<std::pair<VariableId, bool>> const& sorts,
+                             std::vector<std::vector<arangodb::basics::AttributeName>> const& constAttributes,
+                             std::unordered_map<VariableId, AstNode const*> const& variableDefinitions)
     : _fields(),
       _constAttributes(constAttributes),
       _unidirectional(true),
       _onlyAttributeAccess(true),
       _ascending(true) {
-
   bool foundDirection = false;
 
   std::vector<arangodb::basics::AttributeName> fieldNames;
   size_t const n = sorts.size();
 
   for (size_t i = 0; i < n; ++i) {
-    bool isConst = false; // const attribute?
+    bool isConst = false;  // const attribute?
     bool handled = false;
     auto variableId = sorts[i].first;
 
@@ -79,10 +77,9 @@ SortCondition::SortCondition(
 
       if (node != nullptr && node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
         fieldNames.clear();
-        
+
         while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          fieldNames.emplace_back(
-              arangodb::basics::AttributeName(node->getString(), false));
+          fieldNames.emplace_back(arangodb::basics::AttributeName(node->getString(), false));
           node = node->getMember(0);
         }
 
@@ -93,8 +90,8 @@ SortCondition::SortCondition(
             std::reverse(fieldNames.begin(), fieldNames.end());
           }
 
-          _fields.emplace_back(std::make_pair(
-              static_cast<Variable const*>(node->getData()), fieldNames));
+          _fields.emplace_back(
+              std::make_pair(static_cast<Variable const*>(node->getData()), fieldNames));
 
           for (auto const& it2 : constAttributes) {
             if (it2 == fieldNames) {
@@ -102,7 +99,7 @@ SortCondition::SortCondition(
               isConst = true;
               break;
             }
-          } 
+          }
         }
       }
     }
@@ -113,16 +110,14 @@ SortCondition::SortCondition(
         // first attribute that we found
         foundDirection = true;
         _ascending = sorts[i].second;
-      }
-      else if (_unidirectional && sorts[i].second != _ascending) {
+      } else if (_unidirectional && sorts[i].second != _ascending) {
         _unidirectional = false;
       }
     }
 
     if (!handled) {
       _fields.emplace_back(
-          std::pair<Variable const*,
-                    std::vector<arangodb::basics::AttributeName>>());
+          std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>());
       _onlyAttributeAccess = false;
     }
   }
@@ -139,29 +134,28 @@ SortCondition::~SortCondition() {}
 /// by the specified index fields
 size_t SortCondition::coveredAttributes(
     Variable const* reference,
-    std::vector<std::vector<arangodb::basics::AttributeName>> const&
-        indexAttributes) const {
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& indexAttributes) const {
   size_t numCovered = 0;
   size_t fieldsPosition = 0;
-  
+
   // iterate over all fields of the index definition
   size_t const n = indexAttributes.size();
 
   for (size_t i = 0; i < n; /* no hoisting */) {
-    if (fieldsPosition >= _fields.size()) { 
+    if (fieldsPosition >= _fields.size()) {
       // done
       break;
     }
-    
+
     auto const& field = _fields[fieldsPosition];
-      
+
     // ...and check if the field is present in the index definition too
     if (reference == field.first &&
         arangodb::basics::AttributeName::isIdentical(field.second, indexAttributes[i], false)) {
       // field match
       ++fieldsPosition;
       ++numCovered;
-      ++i; // next index field
+      ++i;  // next index field
       continue;
     }
 
@@ -175,15 +169,13 @@ size_t SortCondition::coveredAttributes(
       ++fieldsPosition;
       ++numCovered;
     }
-    
-    if (!isConstant &&
-        isContained(_constAttributes, indexAttributes[i])) {
+
+    if (!isConstant && isContained(_constAttributes, indexAttributes[i])) {
       // no field match, but a constant attribute
       isConstant = true;
-      ++i; // next index field
+      ++i;  // next index field
     }
 
-          
     if (!isConstant) {
       break;
     }

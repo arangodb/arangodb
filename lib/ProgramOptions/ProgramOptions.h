@@ -87,20 +87,17 @@ class ProgramOptions {
   typedef std::function<size_t()> TerminalWidthFuncType;
 
   // function type for determining the similarity between two strings
-  typedef std::function<int(std::string const&, std::string const&)>
-      SimilarityFuncType;
+  typedef std::function<int(std::string const&, std::string const&)> SimilarityFuncType;
 
   // no need to copy this
   ProgramOptions(ProgramOptions const&) = delete;
   ProgramOptions& operator=(ProgramOptions const&) = delete;
 
   ProgramOptions(char const* progname, std::string const& usage,
-                 std::string const& more,
-                 char const* binaryPath);
+                 std::string const& more, char const* binaryPath);
 
   // sets a value translator
-  void setTranslator(
-      std::function<std::string(std::string const&, char const*)> translator);
+  void setTranslator(std::function<std::string(std::string const&, char const*)> translator);
 
   // return a const reference to the processing result
   ProcessingResult const& processingResult() const { return _processingResult; }
@@ -145,8 +142,7 @@ class ProgramOptions {
   }
 
   // adds a hidden section to the program options
-  void addHiddenSection(std::string const& name,
-                        std::string const& description) {
+  void addHiddenSection(std::string const& name, std::string const& description) {
     addSection(Section(name, description, "", true, false));
   }
 
@@ -156,8 +152,7 @@ class ProgramOptions {
   }
 
   // adds an option to the program options
-  void addOption(std::string const& name, std::string const& description,
-                 Parameter* parameter) {
+  void addOption(std::string const& name, std::string const& description, Parameter* parameter) {
     addOption(Option(name, description, parameter, false, false));
   }
 
@@ -169,8 +164,7 @@ class ProgramOptions {
 
   // adds an obsolete and hidden option to the program options
   void addObsoleteOption(std::string const& name,
-                         std::string const& description,
-                         bool requiresValue) {
+                         std::string const& description, bool requiresValue) {
     addOption(Option(name, description, new ObsoleteParameter(requiresValue), true, true));
   }
 
@@ -185,14 +179,14 @@ class ProgramOptions {
 
   // prints the names for all section help options
   void printSectionsHelp() const;
-  
+
   // returns a VPack representation of the option values
   arangodb::velocypack::Builder toVPack(bool onlyTouched,
-                       std::unordered_set<std::string> const& exclude) const;
+                                        std::unordered_set<std::string> const& exclude) const;
 
   // translate a shorthand option
   std::string translateShorthand(std::string const& name) const;
-  
+
   void walk(std::function<void(Section const&, Option const&)> const& callback,
             bool onlyTouched) const;
 
@@ -202,13 +196,13 @@ class ProgramOptions {
 
   // sets a value for an option
   bool setValue(std::string const& name, std::string const& value);
-  
+
   // finalizes a pass, copying touched into frozen
   void endPass();
 
   // check whether or not an option requires a value
   bool requiresValue(std::string const& name) const;
-  
+
   // returns a pointer to an option value, specified by option name
   // returns a nullptr if the option is unknown
   template <typename T>
@@ -239,7 +233,7 @@ class ProgramOptions {
 
   // report an error (callback from parser)
   bool fail(std::string const& message);
-  
+
   void failNotice(std::string const& message);
 
   // add a positional argument (callback from parser)
@@ -256,8 +250,7 @@ class ProgramOptions {
   void checkIfSealed() const;
 
   // get a list of similar options
-  std::vector<std::string> similar(std::string const& value, int cutOff,
-                                   size_t maxResults);
+  std::vector<std::string> similar(std::string const& value, int cutOff, size_t maxResults);
 
  private:
   // name of binary (i.e. argv[0])
@@ -291,7 +284,7 @@ class ProgramOptions {
   // directory of this binary
   char const* _binaryPath;
 };
-}
-}
+}  // namespace options
+}  // namespace arangodb
 
 #endif

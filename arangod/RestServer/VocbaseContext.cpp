@@ -28,18 +28,16 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-double VocbaseContext::ServerSessionTtl =
-    60.0 * 60.0 * 24 * 60;  // 2 month session timeout
+double VocbaseContext::ServerSessionTtl = 60.0 * 60.0 * 24 * 60;  // 2 month session timeout
 
 VocbaseContext::VocbaseContext(GeneralRequest* request, TRI_vocbase_t* vocbase)
-    : RequestContext(request),
-    _vocbase(vocbase) {
+    : RequestContext(request), _vocbase(vocbase) {
   TRI_ASSERT(_vocbase != nullptr);
   // _vocbase has already been refcounted for us
   TRI_ASSERT(!_vocbase->isDangling());
 }
 
-VocbaseContext::~VocbaseContext() { 
+VocbaseContext::~VocbaseContext() {
   TRI_ASSERT(!_vocbase->isDangling());
-  _vocbase->release(); 
+  _vocbase->release();
 }

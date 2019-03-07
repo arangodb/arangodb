@@ -53,8 +53,7 @@ class LogAppender {
   virtual ~LogAppender() {}
 
  public:
-  virtual bool logMessage(LogLevel, std::string const& message,
-                          size_t offset) = 0;
+  virtual bool logMessage(LogLevel, std::string const& message, size_t offset) = 0;
 
   virtual std::string details() = 0;
 
@@ -75,14 +74,11 @@ class LogAppender {
 
  private:
   static Mutex _appendersLock;
-  static std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>
-      _topics2appenders;
-  static std::map<std::pair<std::string, std::string>,
-                  std::shared_ptr<LogAppender>>
-      _definition2appenders;
+  static std::map<size_t, std::vector<std::shared_ptr<LogAppender>>> _topics2appenders;
+  static std::map<std::pair<std::string, std::string>, std::shared_ptr<LogAppender>> _definition2appenders;
   static std::vector<std::function<void(LogMessage*)>> _loggers;
   static bool _allowStdLogging;
 };
-}
+}  // namespace arangodb
 
 #endif

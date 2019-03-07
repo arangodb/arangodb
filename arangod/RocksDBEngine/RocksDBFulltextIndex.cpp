@@ -46,24 +46,22 @@
 
 using namespace arangodb;
 
-TRI_voc_rid_t RocksDBFulltextIndex::fromDocumentIdentifierToken(
-    DocumentIdentifierToken const& token) {
+TRI_voc_rid_t RocksDBFulltextIndex::fromDocumentIdentifierToken(DocumentIdentifierToken const& token) {
   auto tkn = static_cast<RocksDBToken const*>(&token);
   return tkn->revisionId();
 }
 
-DocumentIdentifierToken RocksDBFulltextIndex::toDocumentIdentifierToken(
-    TRI_voc_rid_t revisionId) {
+DocumentIdentifierToken RocksDBFulltextIndex::toDocumentIdentifierToken(TRI_voc_rid_t revisionId) {
   return RocksDBToken{revisionId};
 }
 
-RocksDBFulltextIndex::RocksDBFulltextIndex(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
-    VPackSlice const& info)
+RocksDBFulltextIndex::RocksDBFulltextIndex(TRI_idx_iid_t iid,
+                                           arangodb::LogicalCollection* collection,
+                                           VPackSlice const& info)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::fulltext(), false),
       _minWordLength(TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT) {
   TRI_ASSERT(iid != 0);
-  TRI_ASSERT(_cf == RocksDBColumnFamily::fulltext()); 
+  TRI_ASSERT(_cf == RocksDBColumnFamily::fulltext());
 
   VPackSlice const value = info.get("minLength");
 
@@ -153,12 +151,12 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
   if (n != _fields.size()) {
     return false;
   }
-  if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "unique", false)) {
+  if (_unique !=
+      arangodb::basics::VelocyPackHelper::getBooleanValue(info, "unique", false)) {
     return false;
   }
-  if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "sparse", true)) {
+  if (_sparse !=
+      arangodb::basics::VelocyPackHelper::getBooleanValue(info, "sparse", true)) {
     return false;
   }
 
@@ -173,8 +171,7 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
     }
     arangodb::StringRef in(f);
     TRI_ParseAttributeString(in, translate, true);
-    if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate,
-                                                      false)) {
+    if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate, false)) {
       return false;
     }
   }
@@ -182,8 +179,7 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
 }
 
 Result RocksDBFulltextIndex::insertInternal(transaction::Methods* trx,
-                                            RocksDBMethods* mthd,
-                                            TRI_voc_rid_t revisionId,
+                                            RocksDBMethods* mthd, TRI_voc_rid_t revisionId,
                                             VPackSlice const& doc) {
   std::set<std::string> words = wordlist(doc);
   if (words.empty()) {
@@ -210,8 +206,7 @@ Result RocksDBFulltextIndex::insertInternal(transaction::Methods* trx,
 }
 
 Result RocksDBFulltextIndex::removeInternal(transaction::Methods* trx,
-                                            RocksDBMethods* mthd,
-                                            TRI_voc_rid_t revisionId,
+                                            RocksDBMethods* mthd, TRI_voc_rid_t revisionId,
                                             VPackSlice const& doc) {
   std::set<std::string> words = wordlist(doc);
   if (words.empty()) {
@@ -243,8 +238,9 @@ static void ExtractWords(std::set<std::string>& words, VPackSlice const value,
     std::string text = value.copyString();
 
     // parse the document text
-    arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(
-        words, text, minWordLength, TRI_FULLTEXT_MAX_WORD_LENGTH, true);
+    arangodb::basics::Utf8Helper::DefaultUtf8Helper.tokenize(words, text, minWordLength,
+                                                             TRI_FULLTEXT_MAX_WORD_LENGTH,
+                                                             true);
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed
   } else if (value.isArray() && level == 0) {
@@ -273,8 +269,7 @@ std::set<std::string> RocksDBFulltextIndex::wordlist(VPackSlice const& doc) {
   return words;
 }
 
-Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
-                                              FulltextQuery& query) {
+Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr, FulltextQuery& query) {
   if (qstr.empty()) {
     return Result(TRI_ERROR_BAD_PARAMETER);
   }
@@ -348,16 +343,14 @@ Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
 
     TRI_ASSERT(end >= start);
     size_t outLength;
-    char* normalized = TRI_normalize_utf8_to_NFC(word,
-                                                 wordLength, &outLength);
+    char* normalized = TRI_normalize_utf8_to_NFC(word, wordLength, &outLength);
     if (normalized == nullptr) {
       return Result(TRI_ERROR_OUT_OF_MEMORY);
     }
 
     // lower case string
     int32_t outLength2;
-    char* lowered = TRI_tolower_utf8(normalized,
-                                     (int32_t)outLength, &outLength2);
+    char* lowered = TRI_tolower_utf8(normalized, (int32_t)outLength, &outLength2);
     TRI_Free(normalized);
     if (lowered == nullptr) {
       return Result(TRI_ERROR_OUT_OF_MEMORY);
@@ -366,12 +359,10 @@ Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
     TRI_DEFER(TRI_Free(lowered));
 
     // calculate the proper prefix
-    char* prefixEnd =
-        TRI_PrefixUtf8String(lowered, TRI_FULLTEXT_MAX_WORD_LENGTH);
+    char* prefixEnd = TRI_PrefixUtf8String(lowered, TRI_FULLTEXT_MAX_WORD_LENGTH);
     ptrdiff_t prefixLength = prefixEnd - lowered;
 
-    query.emplace_back(std::string(lowered, (size_t)prefixLength), matchType,
-                       operation);
+    query.emplace_back(std::string(lowered, (size_t)prefixLength), matchType, operation);
 
     ++i;
     if (i >= TRI_FULLTEXT_SEARCH_MAX_WORDS) {
@@ -388,8 +379,7 @@ Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
 
 Result RocksDBFulltextIndex::executeQuery(transaction::Methods* trx,
                                           FulltextQuery const& query,
-                                          size_t maxResults,
-                                          VPackBuilder& builder) {
+                                          size_t maxResults, VPackBuilder& builder) {
   std::set<TRI_voc_rid_t> resultSet;
   for (FulltextQueryToken const& token : query) {
     applyQueryToken(trx, token, resultSet);
@@ -417,8 +407,7 @@ Result RocksDBFulltextIndex::executeQuery(transaction::Methods* trx,
   return Result();
 }
 
-static RocksDBKeyBounds MakeBounds(uint64_t oid,
-                                   FulltextQueryToken const& token) {
+static RocksDBKeyBounds MakeBounds(uint64_t oid, FulltextQueryToken const& token) {
   if (token.matchType == FulltextQueryToken::COMPLETE) {
     return RocksDBKeyBounds::FulltextIndexComplete(oid, StringRef(token.value));
   } else if (token.matchType == FulltextQueryToken::PREFIX) {
@@ -427,9 +416,9 @@ static RocksDBKeyBounds MakeBounds(uint64_t oid,
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result RocksDBFulltextIndex::applyQueryToken(
-    transaction::Methods* trx, FulltextQueryToken const& token,
-    std::set<TRI_voc_rid_t>& resultSet) {
+Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
+                                             FulltextQueryToken const& token,
+                                             std::set<TRI_voc_rid_t>& resultSet) {
   auto mthds = RocksDBTransactionState::toMethods(trx);
   // why can't I have an assignment operator when I want one
   RocksDBKeyBounds bounds = MakeBounds(_objectId, token);
@@ -452,8 +441,8 @@ Result RocksDBFulltextIndex::applyQueryToken(
       return rocksutils::convertStatus(s);
     }
 
-    TRI_voc_rid_t revId = RocksDBKey::revisionId(
-        RocksDBEntryType::FulltextIndexValue, iter->key());
+    TRI_voc_rid_t revId =
+        RocksDBKey::revisionId(RocksDBEntryType::FulltextIndexValue, iter->key());
     if (token.operation == FulltextQueryToken::AND) {
       intersect.insert(revId);
     } else if (token.operation == FulltextQueryToken::OR) {
@@ -468,9 +457,8 @@ Result RocksDBFulltextIndex::applyQueryToken(
       resultSet.clear();
     } else {
       std::set<TRI_voc_rid_t> output;
-      std::set_intersection(resultSet.begin(), resultSet.end(),
-                            intersect.begin(), intersect.end(),
-                            std::inserter(output, output.begin()));
+      std::set_intersection(resultSet.begin(), resultSet.end(), intersect.begin(),
+                            intersect.end(), std::inserter(output, output.begin()));
       resultSet = std::move(output);
     }
   }

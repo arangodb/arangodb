@@ -32,8 +32,7 @@
 
 namespace arangodb {
 
-class CacheManagerFeature final
-    : public application_features::ApplicationFeature {
+class CacheManagerFeature final : public application_features::ApplicationFeature {
  public:
   static cache::Manager* MANAGER;
 
@@ -57,6 +56,6 @@ class CacheManagerFeature final
   uint64_t _cacheSize;
   uint64_t _rebalancingInterval;
 };
-}
+}  // namespace arangodb
 
 #endif

@@ -44,8 +44,7 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
   /// helper to generate a compliant response for individual user requests
   void generateUserResult(rest::ResponseCode code, VPackBuilder const& doc);
 
-  void generateDatabaseResult(AuthInfo* authInfo, std::string const& user,
-                              bool full);
+  void generateDatabaseResult(AuthInfo* authInfo, std::string const& user, bool full);
 
   RestStatus getRequest(AuthInfo*);
   RestStatus postRequest(AuthInfo*);
@@ -53,6 +52,6 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
   RestStatus patchRequest(AuthInfo*);
   RestStatus deleteRequest(AuthInfo*);
 };
-}
+}  // namespace arangodb
 
 #endif

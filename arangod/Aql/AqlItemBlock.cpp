@@ -133,11 +133,9 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
             dataIterator.next();
             VPackSlice highBound = dataIterator.value();
             dataIterator.next();
-             
-            int64_t low =
-                VelocyPackHelper::getNumericValue<int64_t>(lowBound, 0);
-            int64_t high =
-                VelocyPackHelper::getNumericValue<int64_t>(highBound, 0);
+
+            int64_t low = VelocyPackHelper::getNumericValue<int64_t>(lowBound, 0);
+            int64_t high = VelocyPackHelper::getNumericValue<int64_t>(highBound, 0);
             AqlValue a(low, high);
             try {
               setValue(i, column, a);
@@ -250,7 +248,7 @@ void AqlItemBlock::shrink(size_t nrItems, bool sweep) {
       }
     }
   }
-    
+
   decreaseMemoryUsage(sizeof(AqlValue) * (_nrItems - nrItems) * _nrRegs);
 
   // adjust the size of the block
@@ -292,9 +290,7 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
 
 /// @brief clears out some columns (registers), this deletes the values if
 /// necessary, using the reference count.
-void AqlItemBlock::clearRegisters(
-    std::unordered_set<RegisterId> const& toClear) {
-
+void AqlItemBlock::clearRegisters(std::unordered_set<RegisterId> const& toClear) {
   for (auto const& reg : toClear) {
     for (size_t i = 0; i < _nrItems; i++) {
       AqlValue& a(_data[_nrRegs * i + reg]);
@@ -353,7 +349,7 @@ AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
         } else {
           // simple copying of values
           res->setValue(row - from, col, a);
-        } 
+        }
       }
     }
   }
@@ -362,8 +358,7 @@ AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
 }
 
 /// @brief slice/clone, this does a deep copy of all entries
-AqlItemBlock* AqlItemBlock::slice(
-    size_t row, std::unordered_set<RegisterId> const& registers) const {
+AqlItemBlock* AqlItemBlock::slice(size_t row, std::unordered_set<RegisterId> const& registers) const {
   std::unordered_map<AqlValue, AqlValue> cache;
 
   auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, 1, _nrRegs);
@@ -402,8 +397,8 @@ AqlItemBlock* AqlItemBlock::slice(
 
 /// @brief slice/clone chosen rows for a subset, this does a deep copy
 /// of all entries
-AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen, size_t from,
-                                  size_t to) const {
+AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen,
+                                  size_t from, size_t to) const {
   TRI_ASSERT(from < to && to <= chosen.size());
 
   std::unordered_map<AqlValue, AqlValue> cache;
@@ -447,8 +442,7 @@ AqlItemBlock* AqlItemBlock::slice(std::vector<size_t> const& chosen, size_t from
 /// operation, because it is unclear, when the values to which our
 /// AqlValues point will vanish! In particular, do not use setValue
 /// any more.
-AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from,
-                                  size_t to) {
+AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from, size_t to) {
   TRI_ASSERT(from < to && to <= chosen.size());
 
   auto res = std::make_unique<AqlItemBlock>(_resourceMonitor, to - from, _nrRegs);
@@ -474,8 +468,7 @@ AqlItemBlock* AqlItemBlock::steal(std::vector<size_t> const& chosen, size_t from
 
 /// @brief concatenate multiple blocks
 AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
-    BlockCollector* collector) {
-  
+                                        BlockCollector* collector) {
   size_t totalSize = collector->totalSize();
   RegisterId nrRegs = collector->nrRegs();
 
@@ -507,9 +500,9 @@ AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
 /// AqlValue pointers in the old blocks, therefore, the latter are all
 /// set to nullptr, just to be sure.
 AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
-    std::vector<AqlItemBlock*> const& blocks) {
+                                        std::vector<AqlItemBlock*> const& blocks) {
   TRI_ASSERT(!blocks.empty());
-  
+
   size_t totalSize = 0;
   RegisterId nrRegs = 0;
   for (auto& it : blocks) {
@@ -569,8 +562,7 @@ AqlItemBlock* AqlItemBlock::concatenate(ResourceMonitor* resourceMonitor,
 ///                      corresponding position
 ///  "raw":     List of actual values, positions 0 and 1 are always null
 ///                      such that actual indices start at 2
-void AqlItemBlock::toVelocyPack(transaction::Methods* trx,
-                                VPackBuilder& result) const {
+void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result) const {
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
@@ -582,7 +574,7 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx,
   raw.add(VPackValue(VPackValueType::Null));
 
   std::unordered_map<AqlValue, size_t> table;  // remember duplicates
-  
+
   result.add("nrItems", VPackValue(_nrItems));
   result.add("nrRegs", VPackValue(_nrRegs));
   result.add("error", VPackValue(false));
@@ -630,8 +622,8 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx,
     }
   }
   commitEmpties();
-  
-  result.close(); // closes "data"
+
+  result.close();  // closes "data"
 
   raw.close();
   result.add("raw", raw.slice());

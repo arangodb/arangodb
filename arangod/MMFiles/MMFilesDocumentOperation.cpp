@@ -32,21 +32,15 @@
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
-  
-MMFilesDocumentOperation::MMFilesDocumentOperation(LogicalCollection* collection,
-                                     TRI_voc_document_operation_e type)
-      : _collection(collection),
-        _tick(0),
-        _type(type),
-        _status(StatusType::CREATED) {
-}
 
-MMFilesDocumentOperation::~MMFilesDocumentOperation() {
-}
-  
+MMFilesDocumentOperation::MMFilesDocumentOperation(LogicalCollection* collection,
+                                                   TRI_voc_document_operation_e type)
+    : _collection(collection), _tick(0), _type(type), _status(StatusType::CREATED) {}
+
+MMFilesDocumentOperation::~MMFilesDocumentOperation() {}
+
 MMFilesDocumentOperation* MMFilesDocumentOperation::clone() {
-  MMFilesDocumentOperation* copy =
-      new MMFilesDocumentOperation(_collection, _type);
+  MMFilesDocumentOperation* copy = new MMFilesDocumentOperation(_collection, _type);
   copy->_tick = _tick;
   copy->_oldRevision = _oldRevision;
   copy->_newRevision = _newRevision;
@@ -67,7 +61,7 @@ void MMFilesDocumentOperation::setVPack(uint8_t const* vpack) {
 }
 
 void MMFilesDocumentOperation::setRevisions(DocumentDescriptor const& oldRevision,
-                                     DocumentDescriptor const& newRevision) {
+                                            DocumentDescriptor const& newRevision) {
   TRI_ASSERT(_oldRevision.empty());
   TRI_ASSERT(_newRevision.empty());
 
@@ -92,7 +86,7 @@ void MMFilesDocumentOperation::setRevisions(DocumentDescriptor const& oldRevisio
 
 void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
   TRI_ASSERT(trx != nullptr);
-  
+
   if (_status == StatusType::SWAPPED || _status == StatusType::REVERTED) {
     return;
   }
@@ -123,8 +117,8 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
   if (_type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
     TRI_ASSERT(_oldRevision.empty());
     TRI_ASSERT(!_newRevision.empty());
-    
-    if (status != StatusType::CREATED) { 
+
+    if (status != StatusType::CREATED) {
       // remove revision from indexes
       try {
         physical->rollbackOperation(trx, _type, oldRevisionId, oldDoc, newRevisionId, newDoc);
@@ -142,32 +136,33 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
              _type == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
     TRI_ASSERT(!_oldRevision.empty());
     TRI_ASSERT(!_newRevision.empty());
-    
+
     try {
       // re-insert the old revision
       physical->insertRevision(_oldRevision._revisionId, _oldRevision._vpack, 0, true, true);
     } catch (...) {
     }
 
-    if (status != StatusType::CREATED) { 
+    if (status != StatusType::CREATED) {
       try {
         // restore the old index state
         physical->rollbackOperation(trx, _type, oldRevisionId, oldDoc, newRevisionId, newDoc);
       } catch (...) {
       }
     }
-   
+
     // let the primary index entry point to the correct document
     MMFilesSimpleIndexElement* element = physical->primaryIndex()->lookupKeyRef(
         trx, transaction::helpers::extractKeyFromDocument(newDoc));
     if (element != nullptr && element->revisionId() != 0) {
       VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(oldDoc));
-      element->updateRevisionId(oldRevisionId, static_cast<uint32_t>(keySlice.begin() - oldDoc.begin()));
+      element->updateRevisionId(oldRevisionId,
+                                static_cast<uint32_t>(keySlice.begin() - oldDoc.begin()));
     }
     physical->updateRevision(oldRevisionId, oldDoc.begin(), 0, false);
-    
+
     // remove now obsolete new revision
-    if (oldRevisionId != newRevisionId) { 
+    if (oldRevisionId != newRevisionId) {
       // we need to check for the same revision id here
       try {
         physical->removeRevision(newRevisionId, true);
@@ -177,13 +172,13 @@ void MMFilesDocumentOperation::revert(transaction::Methods* trx) {
   } else if (_type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
     TRI_ASSERT(!_oldRevision.empty());
     TRI_ASSERT(_newRevision.empty());
-    
+
     try {
       physical->insertRevision(_oldRevision._revisionId, _oldRevision._vpack, 0, true, true);
     } catch (...) {
     }
-    
-    if (status != StatusType::CREATED) { 
+
+    if (status != StatusType::CREATED) {
       try {
         // remove from indexes again
         physical->rollbackOperation(trx, _type, oldRevisionId, oldDoc, newRevisionId, newDoc);

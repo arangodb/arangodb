@@ -44,6 +44,6 @@ struct RocksDBToken : public DocumentIdentifierToken {
 
 static_assert(sizeof(RocksDBToken) == sizeof(uint64_t),
               "invalid RocksDBToken size");
-}
+}  // namespace arangodb
 
 #endif

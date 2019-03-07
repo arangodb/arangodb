@@ -33,52 +33,37 @@
 
 using namespace arangodb::consensus;
 
-JobContext::JobContext (JOB_STATUS status, std::string id, Node const& snapshot,
-                        AgentInterface* agent) : _job(nullptr) {
-
+JobContext::JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
+                       AgentInterface* agent)
+    : _job(nullptr) {
   std::string path = pos[status] + id;
-  auto const& job  = snapshot(path);
+  auto const& job = snapshot(path);
   auto const& type = job("type").getString();
-  
-  if        (type == "failedLeader") {
-    _job =
-      std::unique_ptr<FailedLeader>(
-        new FailedLeader(snapshot, agent, status, id));
-  } else if (type == "failedFollower") {
-    _job =
-      std::unique_ptr<FailedFollower>(
-        new FailedFollower(snapshot, agent, status, id));
-  } else if (type == "failedServer") {
-    _job =
-      std::unique_ptr<FailedServer>(
-        new FailedServer(snapshot, agent, status, id));
-  } else if (type == "cleanOutServer") {
-    _job =
-      std::unique_ptr<CleanOutServer>(
-        new CleanOutServer(snapshot, agent, status, id));
-  } else if (type == "moveShard") {
-    _job =
-      std::unique_ptr<MoveShard>(
-        new MoveShard(snapshot, agent, status, id));
-  } else if (type == "addFollower") {
-    _job =
-      std::unique_ptr<AddFollower>(
-        new AddFollower(snapshot, agent, status, id));
-  } else if (type == "removeFollower") {
-    _job =
-      std::unique_ptr<RemoveFollower>(
-        new RemoveFollower(snapshot, agent, status, id));
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) <<
-      "Failed to run supervision job " << type << " with id " << id;
-  }
 
+  if (type == "failedLeader") {
+    _job = std::unique_ptr<FailedLeader>(new FailedLeader(snapshot, agent, status, id));
+  } else if (type == "failedFollower") {
+    _job = std::unique_ptr<FailedFollower>(new FailedFollower(snapshot, agent, status, id));
+  } else if (type == "failedServer") {
+    _job = std::unique_ptr<FailedServer>(new FailedServer(snapshot, agent, status, id));
+  } else if (type == "cleanOutServer") {
+    _job = std::unique_ptr<CleanOutServer>(new CleanOutServer(snapshot, agent, status, id));
+  } else if (type == "moveShard") {
+    _job = std::unique_ptr<MoveShard>(new MoveShard(snapshot, agent, status, id));
+  } else if (type == "addFollower") {
+    _job = std::unique_ptr<AddFollower>(new AddFollower(snapshot, agent, status, id));
+  } else if (type == "removeFollower") {
+    _job = std::unique_ptr<RemoveFollower>(new RemoveFollower(snapshot, agent, status, id));
+  } else {
+    LOG_TOPIC(ERR, Logger::AGENCY)
+        << "Failed to run supervision job " << type << " with id " << id;
+  }
 }
 
 void JobContext::create(std::shared_ptr<VPackBuilder> b) {
   if (_job != nullptr) {
     _job->create(b);
-  } 
+  }
 }
 
 void JobContext::start() {
@@ -98,4 +83,3 @@ void JobContext::abort() {
     _job->abort();
   }
 }
-

@@ -37,8 +37,7 @@ class CollectionGuard {
   CollectionGuard& operator=(CollectionGuard const&) = delete;
 
   /// @brief create the guard, using a collection id
-  CollectionGuard(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                  bool restoreOriginalStatus = false)
+  CollectionGuard(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, bool restoreOriginalStatus = false)
       : _vocbase(vocbase),
         _collection(nullptr),
         _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
@@ -90,9 +89,8 @@ class CollectionGuard {
     if (_collection != nullptr) {
       _vocbase->releaseCollection(_collection);
 
-      if (_restoreOriginalStatus &&
-          (_originalStatus == TRI_VOC_COL_STATUS_UNLOADING ||
-           _originalStatus == TRI_VOC_COL_STATUS_UNLOADED)) {
+      if (_restoreOriginalStatus && (_originalStatus == TRI_VOC_COL_STATUS_UNLOADING ||
+                                     _originalStatus == TRI_VOC_COL_STATUS_UNLOADED)) {
         // re-unload the collection
         _vocbase->unloadCollection(_collection, false);
       }
@@ -129,6 +127,6 @@ class CollectionGuard {
   /// @brief whether or not to restore the original collection status
   bool _restoreOriginalStatus;
 };
-}
+}  // namespace arangodb
 
 #endif

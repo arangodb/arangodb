@@ -43,8 +43,7 @@
 using namespace arangodb::aql;
 using namespace arangodb::graph;
 
-ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
-                                     ShortestPathNode const* ep)
+ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine, ShortestPathNode const* ep)
     : ExecutionBlock(engine, ep),
       _vertexVar(nullptr),
       _vertexReg(ExecutionNode::MaxRegisterId),
@@ -90,11 +89,9 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
   _path = std::make_unique<arangodb::graph::ShortestPathResult>();
 
   if (_opts->useWeight()) {
-    _finder.reset(
-        new arangodb::graph::AttributeWeightShortestPathFinder(_opts));
+    _finder.reset(new arangodb::graph::AttributeWeightShortestPathFinder(_opts));
   } else {
-    _finder.reset(
-        new arangodb::graph::ConstantWeightShortestPathFinder(_opts));
+    _finder.reset(new arangodb::graph::ConstantWeightShortestPathFinder(_opts));
   }
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
@@ -102,8 +99,7 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
   }
 }
 
-ShortestPathBlock::~ShortestPathBlock() {
-}
+ShortestPathBlock::~ShortestPathBlock() {}
 
 int ShortestPathBlock::initialize() {
   DEBUG_BEGIN_BLOCK();
@@ -152,10 +148,10 @@ int ShortestPathBlock::shutdown(int errorCode) {
       for (auto const& it : *_engines) {
         arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
         std::unordered_map<std::string, std::string> headers;
-        auto res = cc->syncRequest(
-            "", coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
-            url + arangodb::basics::StringUtils::itoa(it.second), "", headers,
-            30.0);
+        auto res = cc->syncRequest("", coordTransactionID, "server:" + it.first,
+                                   RequestType::DELETE_REQ,
+                                   url + arangodb::basics::StringUtils::itoa(it.second),
+                                   "", headers, 30.0);
         if (res->status != CL_COMM_SENT) {
           // Note If there was an error on server side we do not have CL_COMM_SENT
           std::string message("Could not destroy all traversal engines");
@@ -173,7 +169,6 @@ int ShortestPathBlock::shutdown(int errorCode) {
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
-
 
 bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
   if (_usedConstant) {
@@ -311,7 +306,7 @@ AqlItemBlock* ShortestPathBlock::getSome(size_t, size_t atMost) {
     size_t toSend = (std::min)(atMost, available);
 
     RegisterId nrRegs =
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
     std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrRegs));
     // automatically freed if we throw
     TRI_ASSERT(curRegs <= res->getNrRegs());
@@ -321,12 +316,10 @@ AqlItemBlock* ShortestPathBlock::getSome(size_t, size_t atMost) {
 
     for (size_t j = 0; j < toSend; j++) {
       if (usesVertexOutput()) {
-        res->setValue(j, _vertexReg,
-            _path->vertexToAqlValue(_opts->cache(), _posInPath));
+        res->setValue(j, _vertexReg, _path->vertexToAqlValue(_opts->cache(), _posInPath));
       }
       if (usesEdgeOutput()) {
-        res->setValue(j, _edgeReg,
-            _path->edgeToAqlValue(_opts->cache(), _posInPath));
+        res->setValue(j, _edgeReg, _path->edgeToAqlValue(_opts->cache(), _posInPath));
       }
       if (j > 0) {
         // re-use already copied aqlvalues

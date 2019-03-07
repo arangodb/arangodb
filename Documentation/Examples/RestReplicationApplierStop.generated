@@ -14,10 +14,10 @@ x-content-type-options: nosniff
     <span class="hljs-string">"progress"</span> : { 
       <span class="hljs-string">"time"</span> : <span class="hljs-string">"2019-03-07T01:42:56Z"</span>, 
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"applier shut down"</span>, 
-      <span class="hljs-string">"failedConnects"</span> : <span class="hljs-number">1</span> 
+      <span class="hljs-string">"failedConnects"</span> : <span class="hljs-number">0</span> 
     }, 
-    <span class="hljs-string">"totalRequests"</span> : <span class="hljs-number">3</span>, 
-    <span class="hljs-string">"totalFailedConnects"</span> : <span class="hljs-number">3</span>, 
+    <span class="hljs-string">"totalRequests"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"totalFailedConnects"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"totalOperationsExcluded"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"lastError"</span> : { 

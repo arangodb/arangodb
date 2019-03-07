@@ -16,8 +16,8 @@ x-content-type-options: nosniff
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"fetching master state information"</span>, 
       <span class="hljs-string">"failedConnects"</span> : <span class="hljs-number">0</span> 
     }, 
-    <span class="hljs-string">"totalRequests"</span> : <span class="hljs-number">1</span>, 
-    <span class="hljs-string">"totalFailedConnects"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"totalRequests"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"totalFailedConnects"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"totalOperationsExcluded"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"lastError"</span> : { 

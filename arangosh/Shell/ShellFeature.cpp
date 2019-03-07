@@ -32,8 +32,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-ShellFeature::ShellFeature(
-    application_features::ApplicationServer* server, int* result)
+ShellFeature::ShellFeature(application_features::ApplicationServer* server, int* result)
     : ApplicationFeature(server, "Shell"),
       _jslint(),
       _result(result),
@@ -46,15 +45,13 @@ ShellFeature::ShellFeature(
   startsAfter("V8Shell");
 }
 
-void ShellFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void ShellFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addOption("--jslint", "do not start as shell, run jslint instead",
                      new VectorParameter<StringParameter>(&_jslint));
 
   options->addSection("javascript", "Configure the Javascript engine");
 
-  options->addOption("--javascript.execute",
-                     "execute Javascript code from file",
+  options->addOption("--javascript.execute", "execute Javascript code from file",
                      new VectorParameter<StringParameter>(&_executeScripts));
 
   options->addOption("--javascript.execute-string",
@@ -70,8 +67,7 @@ void ShellFeature::collectOptions(
                      new VectorParameter<StringParameter>(&_unitTests));
 }
 
-void ShellFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
+void ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   _positionals = options->processingResult()._positionals;
 
   ClientFeature* client =
@@ -123,15 +119,18 @@ void ShellFeature::validateOptions(
   }
 
   if (1 < n) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "you cannot specify more than one type ("
-             << "jslint, execute, execute-string, check-syntax, unit-tests)";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "you cannot specify more than one type ("
+        << "jslint, execute, execute-string, check-syntax, unit-tests)";
   }
 }
 
 void ShellFeature::start() {
   *_result = EXIT_FAILURE;
 
-  V8ShellFeature* shell = application_features::ApplicationServer::getFeature<V8ShellFeature>("V8Shell");
+  V8ShellFeature* shell =
+      application_features::ApplicationServer::getFeature<V8ShellFeature>(
+          "V8Shell");
 
   // turn off memory allocation failures before we move into V8 code
   TRI_DisallowMemoryFailures();

@@ -44,10 +44,7 @@ using namespace arangodb::basics;
 bool HttpResponse::HIDE_PRODUCT_HEADER = false;
 
 HttpResponse::HttpResponse(ResponseCode code)
-    : GeneralResponse(code),
-      _isHeadResponse(false),
-      _body(false),
-      _bodySize(0) {
+    : GeneralResponse(code), _isHeadResponse(false), _body(false), _bodySize(0) {
   _generateBody = false;
   _contentType = ContentType::TEXT;
   _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
@@ -69,10 +66,8 @@ void HttpResponse::reset(ResponseCode code) {
 
 void HttpResponse::setCookie(std::string const& name, std::string const& value,
                              int lifeTimeSeconds, std::string const& path,
-                             std::string const& domain, bool secure,
-                             bool httpOnly) {
-  std::unique_ptr<StringBuffer> buffer =
-      std::make_unique<StringBuffer>(false);
+                             std::string const& domain, bool secure, bool httpOnly) {
+  std::unique_ptr<StringBuffer> buffer = std::make_unique<StringBuffer>(false);
 
   std::string tmp = StringUtils::trim(name);
   buffer->appendText(tmp);
@@ -164,8 +159,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
       continue;
     }
 
-    if (keyLength == 6 && key[0] == 's' &&
-        memcmp(key.c_str(), "server", keyLength) == 0) {
+    if (keyLength == 6 && key[0] == 's' && memcmp(key.c_str(), "server", keyLength) == 0) {
       // this ensures we don't print two "Server" headers
       seenServerHeader = true;
       // go on and use the user-defined "Server" header value
@@ -177,8 +171,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
     }
 
     // reserve enough space for header name + ": " + value + "\r\n"
-    if (output->reserve(keyLength + 2 + it.second.size() + 2) !=
-        TRI_ERROR_NO_ERROR) {
+    if (output->reserve(keyLength + 2 + it.second.size() + 2) != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
@@ -300,10 +293,10 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   // end of header, body to follow
 }
 
-void HttpResponse::addPayloadPostHook(
-    VPackSlice const& slice,
-    VPackOptions const* options = &VPackOptions::Options::Defaults,
-    bool resolveExternals = true, bool bodySkipped = false) {
+void HttpResponse::addPayloadPostHook(VPackSlice const& slice,
+                                      VPackOptions const* options = &VPackOptions::Options::Defaults,
+                                      bool resolveExternals = true,
+                                      bool bodySkipped = false) {
   VPackSlice const* slicePtr;
   VPackSlice tmpSlice;
   if (!bodySkipped) {

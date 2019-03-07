@@ -141,9 +141,9 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
                      static_cast<size_t>(data.byteSize()));
       break;
     }
-      
+
     case RocksDBEntryType::Document:
-      TRI_ASSERT(false);// use for document => get free schellen
+      TRI_ASSERT(false);  // use for document => get free schellen
       break;
 
     default:

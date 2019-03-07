@@ -143,6 +143,7 @@ void VelocyPackCursor::dump(VPackBuilder& builder) {
   } catch (std::exception const& ex) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "internal error during VPackCursor::dump");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "internal error during VPackCursor::dump");
   }
 }

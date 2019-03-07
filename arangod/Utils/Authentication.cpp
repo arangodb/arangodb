@@ -57,7 +57,7 @@ std::string arangodb::convertFromAuthLevel(AuthLevel lvl) {
   }
 }
 
-AuthenticationResult DefaultAuthenticationHandler::authenticate(
-    std::string const& username, std::string const& password) {
+AuthenticationResult DefaultAuthenticationHandler::authenticate(std::string const& username,
+                                                                std::string const& password) {
   return AuthenticationResult(TRI_ERROR_USER_NOT_FOUND, AuthSource::COLLECTION);
 }
