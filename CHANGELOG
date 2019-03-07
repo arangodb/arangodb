@@ -1,6 +1,8 @@
 devel
 -----
 
+* fix compation behaviour of followers
+
 * added "random" masking to mask any data type, added wildcard masking
 
 * added option `--console.history` to arangosh for controlling whether
@@ -12,7 +14,7 @@ devel
   exited. The command-line history will then only be available in the
   current shell session.
 
-* display the server role when connecting arangosh against a server (e.g. 
+* display the server role when connecting arangosh against a server (e.g.
   SINGLE, COORDINATOR)
 
 * fixed overflow in Windows NowNanos in RocksDB
@@ -31,7 +33,7 @@ devel
 * Supervision fix: abort CleanOutServer job does not leave server in
   ToBeCleanedServers,
 
-* Supervision fix: move shard with data stopped to early due to wrong usage 
+* Supervision fix: move shard with data stopped to early due to wrong usage
   of compare function
 
 * Supervision fix: AddFollower only counts good followers, fixing a
