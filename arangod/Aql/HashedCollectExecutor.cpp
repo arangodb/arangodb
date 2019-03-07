@@ -122,8 +122,7 @@ void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
   TRI_ASSERT(input.isInitialized());
 
   decltype(_allGroups)::iterator currentGroupIt;
-  bool newGroup;
-  std::tie(currentGroupIt, newGroup) = findOrEmplaceGroup(input);
+  currentGroupIt = findOrEmplaceGroup(input);
 
   // reduce the aggregates
   AggregateValuesType* aggregateValues = currentGroupIt->second.get();
@@ -174,7 +173,7 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) 
       AqlValue r = it->stealValue();
       AqlValueGuard guard{r, true};
       output.moveValueInto(_infos.getAggregatedRegisters()[j++].first,
-                            _lastInitializedInputRow, guard);
+                           _lastInitializedInputRow, guard);
     }
   } else {
     // set group count in result register
@@ -246,7 +245,7 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRow(OutputAqlIt
 // if no group exists for the current row yet, this builds a new group.
 std::pair<std::unique_ptr<HashedCollectExecutor::AggregateValuesType>, std::vector<AqlValue>>
 HashedCollectExecutor::buildNewGroup(InputAqlItemRow& input, size_t n) {
-  std::vector<AqlValue> group;
+  GroupKeyType group;
   group.reserve(n);
 
   // copy the group values before they get invalidated
@@ -266,9 +265,9 @@ HashedCollectExecutor::buildNewGroup(InputAqlItemRow& input, size_t n) {
 // finds the group matching the current row, or emplaces it. in either case,
 // it returns an iterator to the group matching the current row in
 // _allGroups. additionally, .second is true iff a new group was emplaced.
-std::pair<decltype(HashedCollectExecutor::_allGroups)::iterator, bool>
-HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
-  std::vector<AqlValue> groupValues;  // TODO store groupValues locally
+decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::findOrEmplaceGroup(
+    InputAqlItemRow& input) {
+  GroupKeyType groupValues; // TODO store groupValues locally
   size_t const n = _infos.getGroupRegisters().size();
   groupValues.reserve(n);
 
@@ -282,12 +281,12 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
 
   if (it != _allGroups.end()) {
     // group already exists
-    return {it, false};
+    return it;
   }
 
   // must create new group
-  std::unique_ptr<AggregateValuesType> aggregateValues;
-  std::vector<AqlValue> group;
+  GroupValueType aggregateValues;
+  GroupKeyType group;
   std::tie(aggregateValues, group) = buildNewGroup(input, n);
 
   // note: aggregateValues may be a nullptr!
@@ -295,5 +294,5 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
   // emplace must not fail
   TRI_ASSERT(emplaceResult.second);
 
-  return {emplaceResult.first, true};
+  return emplaceResult.first;
 };

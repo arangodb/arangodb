@@ -169,7 +169,7 @@ class HashedCollectExecutor {
   std::pair<GroupValueType, GroupKeyType>
   buildNewGroup(InputAqlItemRow& input, size_t n);
 
-  std::pair<GroupMapType::iterator, bool> findOrEmplaceGroup(InputAqlItemRow& input);
+  GroupMapType::iterator findOrEmplaceGroup(InputAqlItemRow& input);
 
   void consumeInputRow(InputAqlItemRow& input);
 
