@@ -79,7 +79,8 @@ ModificationExecutor<Modifier>::produceRow(OutputAqlItemRow& output) {
   ExecutionState state = ExecutionState::HASMORE;
   ModificationExecutor::Stats stats;
 
-  while (!_prepared && _fetcher.upstreamState() != ExecutionState::DONE) {
+  //TODO - sane handling of prefetch
+  while (!_prepared && ( _fetcher.upstreamState() != ExecutionState::DONE || _fetcher._prefetched)) {
     std::shared_ptr<AqlItemBlockShell> block;
     std::tie(state, block) = _fetcher.fetchBlock();
     _modifier._block = block;

@@ -52,7 +52,8 @@ class SingleBlockFetcher {
   explicit SingleBlockFetcher(BlockFetcher<pass>& executionBlock)
       : _blockFetcher(&executionBlock),
         _currentBlock(nullptr),
-        _upstreamState(ExecutionState::HASMORE) {}
+        _upstreamState(ExecutionState::HASMORE),
+        _prefetched(false) {}
 
   TEST_VIRTUAL ~SingleBlockFetcher() = default;
 
@@ -83,7 +84,16 @@ class SingleBlockFetcher {
   // there are no executors that could use this and not better use
   // SingleRowFetcher instead.
 
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock() {
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock(bool prefetch = false) {
+    if (_prefetched) {
+      LOG_DEVEL_IF(_currentBlock) << "FETCH - prefetched ";
+      TRI_ASSERT(!prefetch);
+      _prefetched = false;
+      return {_upstreamState, _currentBlock};
+    }
+
+    LOG_DEVEL_IF(_currentBlock) << "FETCH - not prefetched";
+
     if (_upstreamState == ExecutionState::DONE) {
       TRI_ASSERT(_currentBlock == nullptr);
       return {_upstreamState, _currentBlock};
@@ -92,6 +102,8 @@ class SingleBlockFetcher {
     auto res = _blockFetcher->fetchBlock();
     _upstreamState = res.first;
     _currentBlock = res.second;
+    _prefetched = prefetch;
+
     return res;
   }
 
@@ -100,8 +112,10 @@ class SingleBlockFetcher {
   };
 
   std::pair<ExecutionState, std::size_t> preFetchNumberOfRows(std::size_t) {
-    TRI_ASSERT(false);
-    return {ExecutionState::DONE, 0};
+    LOG_DEVEL_IF(_currentBlock) << "PRE-FETCH with block";
+    LOG_DEVEL_IF(!_currentBlock) << "PRE-FETCH without block";
+    fetchBlock(true);
+    return {_upstreamState, _currentBlock != nullptr ? _currentBlock->block().size() : 0};
   }
 
   InputAqlItemRow accessRow(std::size_t index) {
@@ -115,6 +129,7 @@ class SingleBlockFetcher {
     return _currentBlock;
   }
 
+  bool _prefetched;
  private:
   BlockFetcher<pass>* _blockFetcher;
   std::shared_ptr<AqlItemBlockShell> _currentBlock;
