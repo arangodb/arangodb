@@ -160,24 +160,29 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) 
 
   TRI_ASSERT(keys.size() == _infos.getGroupRegisters().size());
   size_t i = 0;
-  for (auto& key : keys) {
-    output.cloneValueInto(_infos.getGroupRegisters()[i++].first,
-                          _lastInitializedInputRow, key);
-    const_cast<AqlValue*>(&key)->erase();  // to prevent double-freeing later
+  for (auto& it : keys) {
+    AqlValue& key = *const_cast<AqlValue*>(&it);
+    AqlValueGuard guard{key, true};
+    output.moveValueInto(_infos.getGroupRegisters()[i++].first,
+                         _lastInitializedInputRow, guard);
+    key.erase();  // to prevent double-freeing later
   }
 
   if (!_infos.getCount()) {
     TRI_ASSERT(_currentGroup->second->size() == _infos.getAggregatedRegisters().size());
     size_t j = 0;
-    for (auto const& r : *(_currentGroup->second)) {
-      output.cloneValueInto(_infos.getAggregatedRegisters()[j++].first,
-                            _lastInitializedInputRow, r->stealValue());
+    for (auto const& it : *(_currentGroup->second)) {
+      AqlValue r = it->stealValue();
+      AqlValueGuard guard{r, true};
+      output.moveValueInto(_infos.getAggregatedRegisters()[j++].first,
+                            _lastInitializedInputRow, guard);
     }
   } else {
     // set group count in result register
     TRI_ASSERT(!_currentGroup->second->empty());
-    output.cloneValueInto(_infos.getCollectRegister(), _lastInitializedInputRow,
-                          _currentGroup->second->back()->stealValue());
+    AqlValue r = _currentGroup->second->back()->stealValue();
+    AqlValueGuard guard{r, true};
+    output.moveValueInto(_infos.getCollectRegister(), _lastInitializedInputRow, guard);
   }
 }
 
