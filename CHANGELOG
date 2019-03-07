@@ -1,4 +1,4 @@
-v3.4.5 (2019-XX-XX)
+v3.4.5 (XXXX-XX-XX)
 -------------------
 
 * add "PRUNE <condition>" to AQL Traversals. This allows to early abort searching of
@@ -6,17 +6,34 @@ v3.4.5 (2019-XX-XX)
   PRUNE is only allowed in the Traversal statement and only between the graphdefinition
   and the options of the traversal.
   e.g.:
-  FOR v, e, p IN 1..3 OUTBOUND @source GRAPH "myGraph"
-    PRUNE v.value == "bar"
-    OPTIONS {} /* These options remain optional */
-    RETURN v
+
+      FOR v, e, p IN 1..3 OUTBOUND @source GRAPH "myGraph"
+        PRUNE v.value == "bar"
+        OPTIONS {} /* These options remain optional */
+        RETURN v
+        
   for more details refer to the documentation chapter.
 
-v3.4.4 (2019-XX-XX)
+* added option `--console.history` to arangosh for controlling whether
+  the command-line history should be loaded from and persisted in a file.
+
+  The default value for this option is `true`. Setting it to `false`
+  will make arangosh not load any command-line history from the history
+  file, and not store the current session's history when the shell is
+  exited. The command-line history will then only be available in the
+  current shell session.
+
+* display the server role when connecting arangosh against a server (e.g. 
+  SINGLE, COORDINATOR)
+
+
+v3.4.4 (2019-03-08)
 -------------------
 
 * follow up to fix JWT authentication in arangosh (#7530):
   also fix reconnect
+
+* now also syncing _jobs and _queues collections in active failover mode
 
 * fixed overflow in windows NowNanos in RocksDB
 
@@ -48,6 +65,12 @@ v3.4.4 (2019-XX-XX)
   as replacement servers
 
 * Maintenance fix: added precondition of unchanged Plan in phase2
+
+* Allow MoveShard from leader to a follower, thus swapping the two
+
+* Supervision fix: Satellite collections, various fixes
+
+* Add coordinator route for agency dump
 
 v3.4.3 (2019-02-19)
 -------------------

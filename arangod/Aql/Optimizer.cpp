@@ -55,6 +55,8 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan,
                         OptimizerRule const* rule, bool wasModified, int newLevel) {
   TRI_ASSERT(plan != nullptr);
   TRI_ASSERT(&_currentRule->second.rule == rule);
+        
+  plan->setValidity(true);
 
   auto it = _currentRule;
 
@@ -170,6 +172,7 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         // - if the rule throws, then the original plan will be deleted by the optimizer.
         //   thus the rule must not have deleted the plan itself or add it
         //   back to the optimizer
+        p->setValidity(false);
         rule.func(this, std::move(p), &rule);
 
         if (!rule.isHidden) {
