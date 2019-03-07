@@ -57,7 +57,7 @@ FOR vertex[, edge[, path]]
       the search will not continue from this path, namely there will be no
       result having this path as a prefix.
       e.g.: Take the path: `(A) -> (B) -> (C)`  starting at `A` and PRUNE on `B`
-      will result in `(A)` and `(A) -> (B)` beeing valid paths, and `(A) -> (B) -> (C)`
+      will result in `(A)` and `(A) -> (B)` being valid paths, and `(A) -> (B) -> (C)`
       not returned, it got pruned on B.
     * If the condition evaluates to `false` we will continue our search beyond
       this path.
@@ -67,6 +67,12 @@ FOR vertex[, edge[, path]]
   as well as all variables defined before this Traversal statement.
 - `OPTIONS` **options** (object, *optional*): used to modify the execution of the
   traversal. Only the following attributes have an effect, all others are ignored:
+  - **bfs** (bool): optionally use the alternative breadth-first traversal algorithm
+    - true – the traversal will be executed breadth-first. The results will first
+      contain all vertices at depth 1. Than all vertices at depth 2 and so on.
+    - false (default) – the traversal will be executed depth-first. It will first
+      return all paths from *min* depth to *max* depth for one vertex at depth 1.
+      Than for the next vertex at depth 1 and so on.
   - **uniqueVertices** (string): optionally ensure vertex uniqueness
     - "path" – it is guaranteed that there is no path returned with a duplicate vertex
     - "global" – it is guaranteed that each vertex is visited at most once during
@@ -75,18 +81,14 @@ FOR vertex[, edge[, path]]
       might not be returned at all (it still might be part of a path). **Note:**
       Using this configuration the result is not deterministic any more. If there
       are multiple paths from *startVertex* to *vertex*, one of those is picked.
+      It is required to set `bfs: true` because with depth-first search the results
+      would be unpredictable.
     - "none" (default) – no uniqueness check is applied on vertices
   - **uniqueEdges** (string): optionally ensure edge uniqueness
     - "path" (default) – it is guaranteed that there is no path returned with a
       duplicate edge
     - "none" – no uniqueness check is applied on edges. **Note:**
       Using this configuration the traversal will follow cycles in edges.
-  - **bfs** (bool): optionally use the alternative breadth-first traversal algorithm
-    - true – the traversal will be executed breadth-first. The results will first
-      contain all vertices at depth 1. Than all vertices at depth 2 and so on.
-    - false (default) – the traversal will be executed depth-first. It will first
-      return all paths from *min* depth to *max* depth for one vertex at depth 1.
-      Than for the next vertex at depth 1 and so on.
 
 ### Working with collection sets
 
@@ -156,7 +158,9 @@ combined filters cannot.
 
 The following examples are based on the [traversal graph](../../Manual/Graphs/index.html#the-traversal-graph).
 
-### Pruning (since version 3.4.5)
+### Pruning
+
+<small>Introduced in: v3.4.5</small>
 
 Pruning is the easiest variant to formulate conditions to reduce the amount of data
 to be checked during a search. So it allows to improve query performance and reduces
@@ -165,7 +169,7 @@ vertex, the edge and the path and any variable defined before.
 See examples:
 
     @startDocuBlockInline GRAPHTRAV_graphPruneEdges
-    @EXAMPLE_AQL{GRAPHTRAV_graphFilterEdges}
+    @EXAMPLE_AQL{GRAPHTRAV_graphPruneEdges}
     @DATASET{traversalGraph}
     FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
       PRUNE e.theTruth == true
@@ -180,7 +184,7 @@ See examples:
     or the last edge on the path has `theTruth == true`.
 
     @startDocuBlockInline GRAPHTRAV_graphPruneVertices
-    @EXAMPLE_AQL{GRAPHTRAV_graphFilterEdges}
+    @EXAMPLE_AQL{GRAPHTRAV_graphPruneVertices}
     @DATASET{traversalGraph}
     FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
       PRUNE v._key == 'G'
@@ -200,7 +204,7 @@ Note you can also prune as soon as you reach a certain collection with the follo
 example:
 
     @startDocuBlockInline GRAPHTRAV_graphPruneCollection
-    @EXAMPLE_AQL{GRAPHTRAV_graphFilterEdges}
+    @EXAMPLE_AQL{GRAPHTRAV_graphPruneCollection}
     @DATASET{traversalGraph}
     FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
       PRUNE IS_SAME_COLLECTION('circles', v)
@@ -315,7 +319,7 @@ All of the above filters can be defined on vertices in the exact same way.
 Filtering on the path influences the Iteration on your graph. If certain conditions 
 aren't met, the traversal may stop continuing along this path.
 
-In contrast filters on vertex or edge only express whether you're interestet in the actual value of these
+In contrast filters on vertex or edge only express whether you're interested in the actual value of these
 documents. Thus, it influences the list of returned documents (if you return v or e) similar 
 as specifying a non-null `min` value. If you specify a min value of 2, the traversal over the first
 two nodes of these paths has to be executed - you just won't see them in your result array. 
