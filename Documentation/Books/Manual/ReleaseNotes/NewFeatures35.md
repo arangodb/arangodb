@@ -84,10 +84,9 @@ request will still block until the index is completely ready. Existing single-th
 client programs can thus safely set the *inBackground* option to *true* and continue to 
 work as before.
 
-{% hint 'warning' %}
 Should you be building an index in the background you cannot rename or drop the collection.
-These operations will block until the index creation is finished.
-{% endhint %}
+These operations will block until the index creation is finished. This is equally the case
+with foreground indexing.
 
 After an interrupted index build (i.e. due to a server crash) the partially built index
 will the removed. In the ArangoDB cluster the index might then be automatically recreated 
