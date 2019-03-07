@@ -266,9 +266,6 @@ class State {
   /// @brief Operation options
   arangodb::OperationOptions _options;
 
-  /// @brief Compaction operation option
-  arangodb::OperationOptions _overwrite;
-
   /// @brief Empty log entry;
   static log_t emptyLog;
 
