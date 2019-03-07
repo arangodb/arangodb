@@ -677,7 +677,9 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     _currentTrxId = 0;
     _trxDbId = 0;
     _removedDocRid = 0;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _checkTick = true;
+#endif
   }
 
   uint64_t endBatch() {
