@@ -860,7 +860,11 @@ void RocksDBHotBackupList::execute() {
     _result.close();
     _success = true;
   } catch (...) {
-  }
+    _respCode = rest::ResponseCode::BAD;
+    _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      << "RocksDBHotBackupList exception generating response.";
+  } // catch
 
   return;
 
