@@ -170,8 +170,7 @@ Supervision::Supervision()
       _jobIdMax(0),
       _haveAborts(false),
       _selfShutdown(false),
-      _upgraded(false),
-{}
+      _upgraded(false) {}
 
 Supervision::~Supervision() {
   if (!isStopping()) {
