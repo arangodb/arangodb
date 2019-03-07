@@ -1288,7 +1288,24 @@ bool State::persistCompactionSnapshot(index_t cind,
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    auto result = trx.insert("compact", store.slice(), _options);
+    OperationResult result;
+    try {
+      auto result = trx.insert("compact", store.slice(), _options);
+      if (!result.ok()) {
+        if (result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
+          result = trx.replace("compact", store.slice(), _options);
+          if (!result.ok()) {
+            LOG_TOPIC(FATAL, Logger::AGENCY)
+              << "Failed to persist compated state: " << result.errorMessage();
+          }
+        } else {
+          LOG_TOPIC(FATAL, Logger::AGENCY)
+            << "Failed to persist compated state: " << result.errorMessage();
+        }
+      } 
+    } catch (std::exception const& e) {
+      LOG_TOPIC(FATAL, Logger::AGENCY) << "Failed to persist compated state: " << e.what();
+    }
     res = trx.finish(result.result);
 
     if (res.ok()) {
