@@ -81,6 +81,7 @@ class SupervisedScheduler : public Scheduler {
   // in a container class and store pointers. -- Maybe there is a better way?
   boost::lockfree::queue<WorkItem*> _queue[3];
 
+  // padding required to prevent false sharing
   char _padding1[64];
   std::atomic<uint64_t> _jobsSubmitted;
   char _padding2[64];
