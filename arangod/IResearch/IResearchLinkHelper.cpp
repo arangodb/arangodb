@@ -173,10 +173,9 @@ arangodb::Result modifyLinks(std::unordered_set<TRI_voc_cid_t>& modified,
 
     if (!arangodb::iresearch::mergeSliceSkipKeys(namedJson, link, acceptor)) {
       return arangodb::Result(
-          TRI_ERROR_INTERNAL,
-          std::string("failed to update link definition with the view name "
-                      "while updating arangosearch view '") +
-              view.name() + "' collection '" + collectionName + "'");
+        TRI_ERROR_INTERNAL,
+        std::string("failed to update link definition with the view name while updating arangosearch view '") + view.name() + "' collection '" + collectionName + "'"
+      );
     }
 
     namedJson.close();
@@ -184,12 +183,11 @@ arangodb::Result modifyLinks(std::unordered_set<TRI_voc_cid_t>& modified,
     std::string error;
     arangodb::iresearch::IResearchLinkMeta linkMeta;
 
-    if (!linkMeta.init(namedJson.slice(), error)) {
-      return arangodb::Result(TRI_ERROR_BAD_PARAMETER,
-                              std::string("error parsing link parameters from "
-                                          "json for arangosearch view '") +
-                                  view.name() + "' collection '" +
-                                  collectionName + "' error '" + error + "'");
+    if (!linkMeta.init(namedJson.slice(), error)) { // analyzers in definition should already be normalized
+      return arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("error parsing link parameters from json for arangosearch view '") + view.name() + "' collection '" + collectionName + "' error '" + error + "'"
+      );
     }
 
     linkModifications.emplace_back(collectionsToLock.size(), linkDefinitions.size());
@@ -200,14 +198,12 @@ arangodb::Result modifyLinks(std::unordered_set<TRI_voc_cid_t>& modified,
   auto trxCtx = arangodb::transaction::StandaloneContext::Create(vocbase);
 
   // add removals for any 'stale' links not found in the 'links' definition
-  for (auto& id : stale) {
+  for (auto& id: stale) {
     if (!trxCtx->resolver().getCollection(id)) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "request for removal of a stale link to a missing collection '"
-          << id << "', ignoring";
+        << "request for removal of a stale link to a missing collection '" << id << "', ignoring";
 
-      continue;  // skip adding removal requests to stale links to non-existant
-                 // collections (already dropped)
+      continue; // skip adding removal requests to stale links to non-existent collections (already dropped)
     }
 
     linkModifications.emplace_back(collectionsToLock.size());
@@ -517,38 +513,49 @@ namespace iresearch {
   return nullptr;
 }
 
-/*static*/ arangodb::Result IResearchLinkHelper::normalize(arangodb::velocypack::Builder& normalized,
-                                                           velocypack::Slice definition,
-                                                           bool  // isCreation
+/*static*/ arangodb::Result IResearchLinkHelper::normalize( // normalize definition
+  arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
+  arangodb::velocypack::Slice definition, // source definition
+  bool isCreation, // definition for index creation
+  TRI_vocbase_t const& vocbase // index vocbase
 ) {
+  UNUSED(isCreation);
+
   if (!normalized.isOpenObject()) {
     return arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("invalid output buffer provided for arangosearch link "
-                    "normalized definition generation"));
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("invalid output buffer provided for arangosearch link normalized definition generation")
+    );
   }
 
   std::string error;
   IResearchLinkMeta meta;
 
-  if (!meta.init(definition, error)) {
+  if (!meta.init(definition, error, IResearchLinkMeta::DEFAULT(), &vocbase)) {
     return arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("error parsing arangosearch link parameters from json: ") + error);
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("error parsing arangosearch link parameters from json: ") + error
+    );
   }
 
-  normalized.add(arangodb::StaticStrings::IndexType, arangodb::velocypack::Value(LINK_TYPE));
+  normalized.add(
+    arangodb::StaticStrings::IndexType, arangodb::velocypack::Value(LINK_TYPE)
+  );
 
   // copy over IResearch View identifier
   if (definition.hasKey(StaticStrings::ViewIdField)) {
-    normalized.add(StaticStrings::ViewIdField, definition.get(StaticStrings::ViewIdField));
+    normalized.add(
+      StaticStrings::ViewIdField, definition.get(StaticStrings::ViewIdField)
+    );
   }
 
   return meta.json(normalized)
-             ? arangodb::Result()
-             : arangodb::Result(TRI_ERROR_BAD_PARAMETER,
-                                std::string("error generating arangosearch "
-                                            "link normalized definition"));
+    ? arangodb::Result()
+    : arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("error generating arangosearch link normalized definition")
+      )
+    ;
 }
 
 /*static*/ std::string const& IResearchLinkHelper::type() noexcept {

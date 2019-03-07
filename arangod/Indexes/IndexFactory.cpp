@@ -56,9 +56,12 @@ struct InvalidIndexFactory : public arangodb::IndexTypeFactory {
             definition.toString());
   }
 
-  arangodb::Result normalize(arangodb::velocypack::Builder&,
-                             arangodb::velocypack::Slice definition,
-                             bool) const override {
+  arangodb::Result normalize( // normalize definition
+      arangodb::velocypack::Builder&, // normalized definition (out-param)
+      arangodb::velocypack::Slice definition,  // source definition
+      bool, // definition for index creation
+      TRI_vocbase_t const& // index vocbase
+  ) const override {
     return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string(
@@ -185,10 +188,12 @@ Result IndexFactory::emplace(std::string const& type, IndexTypeFactory const& fa
   return arangodb::Result();
 }
 
-Result IndexFactory::enhanceIndexDefinition(velocypack::Slice const definition,
-                                            velocypack::Builder& normalized,
-                                            bool isCreation, bool isCoordinator) const {
-
+Result IndexFactory::enhanceIndexDefinition( // normalizze deefinition
+    velocypack::Slice const definition, // source definition
+    velocypack::Builder& normalized, // normalized definition (out-param)
+    bool isCreation, // definition for index creation
+    TRI_vocbase_t const& vocbase // index vocbase
+) const {
   auto type = definition.get(StaticStrings::IndexType);
 
   if (!type.isString()) {
@@ -197,7 +202,6 @@ Result IndexFactory::enhanceIndexDefinition(velocypack::Slice const definition,
 
   auto& factory = IndexFactory::factory(type.copyString());
 
-  TRI_ASSERT(ServerState::instance()->isCoordinator() == isCoordinator);
   TRI_ASSERT(normalized.isEmpty());
 
   try {
@@ -216,7 +220,7 @@ Result IndexFactory::enhanceIndexDefinition(velocypack::Slice const definition,
                      arangodb::velocypack::Value(std::to_string(id)));
     }
 
-    return factory.normalize(normalized, definition, isCreation);
+    return factory.normalize(normalized, definition, isCreation, vocbase);
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {

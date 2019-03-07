@@ -67,6 +67,7 @@ if (USE_IRESEARCH)
     V8Server/v8-users-test.cpp
     V8Server/v8-views-test.cpp
     VocBase/LogicalDataSource-test.cpp
+    VocBase/LogicalView-test.cpp
     VocBase/vocbase-test.cpp
   )
 endif ()
