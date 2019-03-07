@@ -733,8 +733,6 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
 
   _options.waitForSync = waitForSync;
   _options.silent = true;
-  _overwrite = _options;
-  _overwrite.overwrite = true;
 
   if (loadPersisted()) {
     MUTEX_LOCKER(logLock, _logLock);
