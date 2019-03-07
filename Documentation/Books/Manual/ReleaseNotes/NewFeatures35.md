@@ -84,6 +84,7 @@ request will still block until the index is completely ready. Existing single-th
 client programs can thus safely set the *inBackground* option to *true* and continue to 
 work as before.
 
+{% hint 'warning' %}
 Should you be building an index in the background you cannot rename or drop the collection.
 These operations will block until the index creation is finished.
 {% endhint %}
