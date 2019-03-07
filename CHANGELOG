@@ -1,7 +1,19 @@
 v3.4.5 (2019-03-XX)
 -------------------
 
- * agents need to be able to overwrite a compacted state with same _key
+* added option `--console.history` to arangosh for controlling whether
+  the command-line history should be loaded from and persisted in a file.
+
+  The default value for this option is `true`. Setting it to `false`
+  will make arangosh not load any command-line history from the history
+  file, and not store the current session's history when the shell is
+  exited. The command-line history will then only be available in the
+  current shell session.
+
+* display the server role when connecting arangosh against a server (e.g. 
+  SINGLE, COORDINATOR)
+
+* agents need to be able to overwrite a compacted state with same _key
 
 v3.4.4 (2019-03-08)
 -------------------
