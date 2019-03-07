@@ -287,7 +287,7 @@ class XcodeProject(object):
 """%s -c "import fcntl, subprocess, sys
 file = open('$TMPDIR/GYP_serialize_test_runs', 'a')
 fcntl.flock(file.fileno(), fcntl.LOCK_EX)
-sys.exit(subprocess.call(sys.argv[1:]))" """ sys.executable
+sys.exit(subprocess.call(sys.argv[1:]))" """ % (sys.executable)
 
         # If we were unable to exec for some reason, we want to exit
         # with an error, and fixup variable references to be shell
