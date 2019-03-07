@@ -54,7 +54,7 @@ class RocksDBWalAccess final : public WalAccess {
 
   /// Tails the wall, this will already sanitize the
   WalAccessResult tail(WalAccess::Filter const& filter, size_t chunkSize,
-                       TRI_voc_tick_t barrierId, bool supportsDeletedMarkers,
+                       TRI_voc_tick_t barrierId, 
                        MarkerCallback const&) const override;
 };
 }  // namespace arangodb

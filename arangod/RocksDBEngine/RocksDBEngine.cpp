@@ -1318,7 +1318,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
 
   // if we get here all documents / indexes are gone.
   // We have no data garbage left.
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 void RocksDBEngine::destroyCollection(TRI_vocbase_t& /*vocbase*/, LogicalCollection& /*collection*/

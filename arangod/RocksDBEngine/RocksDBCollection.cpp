@@ -562,6 +562,8 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   TRI_ASSERT(_objectId != 0);
   auto state = RocksDBTransactionState::toState(&trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
+  // don't compact on restore
+  bool const doCompact = !options.isRestore;
 
   if (state->isOnlyExclusiveTransaction() &&
       state->hasHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE) &&
@@ -645,7 +647,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
     guard.fire();  // remove blocker
 
-    if (numDocs > 64 * 1024) {
+    if (numDocs > 64 * 1024 && doCompact) {
       // also compact the ranges in order to speed up all further accesses
       compact();
     }
@@ -716,7 +718,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   // reset to previous value after truncate is finished
   state->options().intermediateCommitCount = prvICC;
 
-  if (found > 64 * 1024) {
+  if (found > 64 * 1024 && doCompact) {
     // also compact the ranges in order to speed up all further accesses
     compact();
   }

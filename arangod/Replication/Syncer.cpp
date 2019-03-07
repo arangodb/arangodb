@@ -417,6 +417,8 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
   } else if (_state.applier._chunkSize < 16 * 1024) {
     _state.applier._chunkSize = 16 * 1024;
   }
+    
+    _state.applier._chunkSize = 50;
 
   // get our own server-id
   _state.localServerId = ServerIdFeature::getId();

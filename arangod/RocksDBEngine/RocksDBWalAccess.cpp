@@ -101,13 +101,11 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
  public:
   MyWALDumper(WalAccess::Filter const& filter,
               WalAccess::MarkerCallback const& f, 
-              size_t maxResponseSize,
-              bool supportsDeletedMarkers)
+              size_t maxResponseSize)
       : WalAccessContext(filter, f),
         _definitionsCF(RocksDBColumnFamily::definitions()->GetID()),
         _documentsCF(RocksDBColumnFamily::documents()->GetID()),
         _primaryCF(RocksDBColumnFamily::primary()->GetID()),
-        _supportsDeletedMarkers(supportsDeletedMarkers),
         _maxResponseSize(maxResponseSize),
         _startSequence(0),
         _currentSequence(0),
@@ -334,7 +332,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
         if (shouldHandleDB(dbid)) {
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
           // note: vocbase may be a nullptr here, if the database was already deleted!
-          if (vocbase != nullptr || _supportsDeletedMarkers) {
+          if (vocbase != nullptr) {
             _state = TRANSACTION;
             _currentTrxId = tid;
             _trxDbId = dbid;
@@ -342,14 +340,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
             _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
             _builder.add("type", VPackValue(rocksutils::convertLogType(type)));
             _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
-            if (vocbase != nullptr) {
-              _builder.add("db", VPackValue(vocbase->name()));
-            } else {
-              // put in something... we have to make sure the slave
-              // still receives a commit marker so it can remove hanging
-              // transactions for databases already removed on the master
-              _builder.add("db", VPackValue(TailingSyncer::droppedDatabase));
-            }
+            _builder.add("db", VPackValue(vocbase->name()));
             _builder.close();
             printMarker(vocbase);
           }
@@ -699,25 +690,22 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
 
   uint64_t lastWrittenSequence() const { return _lastWrittenSequence; }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  void disableTickCheck() { _checkTick = false; }
+#endif
+
  private:
 
   void writeCommitMarker(TRI_voc_tick_t dbid) {
     TRI_ASSERT(_state == TRANSACTION);
     TRI_vocbase_t* vocbase = loadVocbase(dbid);
     // note: vocbase may be a nullptr here, if the database was already deleted!
-    if (vocbase != nullptr || _supportsDeletedMarkers) {
+    if (vocbase != nullptr) {
       _builder.openObject(true);
       _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
       _builder.add("type", VPackValue(static_cast<uint64_t>(REPLICATION_TRANSACTION_COMMIT)));
       _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
-      if (vocbase != nullptr) {
-        _builder.add("db", VPackValue(vocbase->name()));
-      } else {
-        // put in something... we have to make sure the slave
-        // still receives a commit marker so it can remove hanging
-        // transactions for databases already removed on the master
-        _builder.add("db", VPackValue(TailingSyncer::droppedDatabase));
-      }
+      _builder.add("db", VPackValue(vocbase->name()));
       _builder.close();
 
       printMarker(vocbase);
@@ -763,7 +751,6 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
   uint32_t const _definitionsCF;
   uint32_t const _documentsCF;
   uint32_t const _primaryCF;
-  bool const _supportsDeletedMarkers;
   size_t const _maxResponseSize;
 
   rocksdb::SequenceNumber _startSequence;
@@ -785,7 +772,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
 // iterates over WAL starting at 'from' and returns up to 'chunkSize' documents
 // from the corresponding database
 WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
-                                       TRI_voc_tick_t, bool supportsDeletedMarkers,
+                                       TRI_voc_tick_t, 
                                        MarkerCallback const& func) const {
   TRI_ASSERT(filter.transactionIds.empty());  // not supported in any way
 
@@ -798,7 +785,7 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   // pre 3.4 breaking up write batches is not supported
   size_t maxTrxChunkSize = filter.tickLastScanned > 0 ? chunkSize : SIZE_MAX;
 
-  MyWALDumper dumper(filter, func, maxTrxChunkSize, supportsDeletedMarkers);
+  MyWALDumper dumper(filter, func, maxTrxChunkSize);
   const uint64_t since = dumper.safeBeginTick();
   TRI_ASSERT(since <= filter.tickStart);
   TRI_ASSERT(since <= filter.tickEnd);
@@ -848,6 +835,13 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
 
     dumper.startNewBatch(batch.sequence);
     s = batch.writeBatchPtr->Iterate(&dumper);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    if (batch.writeBatchPtr->Count() == 0) {
+      // there can be completely empty write batches. in case we encounter
+      // some, we cannot assume the tick gets increased next time
+      dumper.disableTickCheck();
+    }
+#endif
     if (!s.ok()) {
       LOG_TOPIC(ERR, Logger::REPLICATION) << "error during WAL scan: " << s.ToString();
       break;  // s is considered in the end
