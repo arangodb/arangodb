@@ -4,8 +4,6 @@ Components
 Replication Logger
 ------------------
 
-### Purpose
-
 The replication logger will write all data-modification operations into the write-ahead log.
 This log may then be read by clients to replay any data modification on a different server.
 
@@ -58,8 +56,6 @@ maximum tick values per logfile:
 
 Replication Applier
 -------------------
-
-### Purpose
 
 The purpose of the replication applier is to read data from a master database's event log, 
 and apply them locally. The applier will check the master database for new operations periodically. 
@@ -389,7 +385,7 @@ The initial synchronization for the current database is executed with the *sync*
 require("@arangodb/replication").sync({
   endpoint: "tcp://master.domain.org:8529",
   username: "root",
-  password: "secret,
+  password: "secret",
   includeSystem: true
 });
 ```
@@ -406,7 +402,7 @@ The following command only synchronizes collection *foo* and *bar*:
 require("@arangodb/replication").sync({
   endpoint: "tcp://master.domain.org:8529",
   username: "root",
-  password: "secret,
+  password: "secret",
   restrictType: "include",
   restrictCollections: [ "foo", "bar" ]
 });

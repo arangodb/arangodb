@@ -2,7 +2,7 @@
 @startDocuBlock JSF_cluster_test_GET
 @brief executes a cluster roundtrip for sharding
 
-@RESTHEADER{GET /_admin/cluster-test, Execute cluster roundtrip}
+@RESTHEADER{GET /_admin/cluster-test, Execute cluster roundtrip (GET)}
 
 @RESTDESCRIPTION
 Executes a cluster roundtrip from a coordinator to a DB server and
