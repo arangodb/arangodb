@@ -13,10 +13,6 @@ v3.4.5 (XXXX-XX-XX)
 * display the server role when connecting arangosh against a server (e.g. 
   SINGLE, COORDINATOR)
 
-
-v3.4.4 (2019-03-08)
--------------------
-
 * added replication applier state figures `totalDocuments` and `totalRemovals` to 
   access the number of document insert/replace operations and the number of document
   removals operations separately. Also added figures `totalApplyTime` and 
@@ -35,17 +31,6 @@ v3.4.4 (2019-03-08)
   In this case aborting the ongoing transactions on the slave is necessary because 
   they may have held exclusive locks on collections, which may otherwise not be 
   released.
-
-* speed up replication of transactions containing updates of existing documents.
- 
-  The replication protocol does not provide any information on whether a document
-  was inserted on the master or updated/replaced. Therefore the slave will always
-  try an insert first, and move to a replace if the insert fails with "unique
-  constraint violation". This case is however very costly in a bigger transaction,
-  as the rollback of the insert will force the underlying RocksDB write batch to be
-  entirely rewritten. To circumvent rewriting entire write batches, we now do a
-  quick check if the target document already exists, and then branch to either
-  insert or replace internally.
 
 * added option `--rocksdb.wal-archive-size-limit` for controlling the
   maximum total size (in bytes) of archived WAL files. The default is 0
@@ -67,6 +52,21 @@ v3.4.4 (2019-03-08)
   deletes files from the archive that followers want to read, this will abort
   the replication on the followers. Followers can however restart the replication
   doing a resync.
+
+
+v3.4.4 (2019-03-08)
+-------------------
+
+* speed up replication of transactions containing updates of existing documents.
+ 
+  The replication protocol does not provide any information on whether a document
+  was inserted on the master or updated/replaced. Therefore the slave will always
+  try an insert first, and move to a replace if the insert fails with "unique
+  constraint violation". This case is however very costly in a bigger transaction,
+  as the rollback of the insert will force the underlying RocksDB write batch to be
+  entirely rewritten. To circumvent rewriting entire write batches, we now do a
+  quick check if the target document already exists, and then branch to either
+  insert or replace internally.
 
 * follow up to fix JWT authentication in arangosh (#7530):
   also fix reconnect
