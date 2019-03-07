@@ -37,7 +37,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
-#include "tests/IResearch/StorageEngineMock.h"
+#include "tests/Mocks/StorageEngineMock.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -440,7 +440,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 REQUIRE(secondFollower.isString());
 
                 // We do not guarentee any ordering here
-                if (StringRef(firstFollower) == dbserver2short) {
+                if (arangodb::velocypack::StringRef(firstFollower) == dbserver2short) {
                   REQUIRE(secondFollower.copyString() == dbserver3short);
                 } else {
                   REQUIRE(firstFollower.copyString() == dbserver3short);
@@ -478,7 +478,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 REQUIRE(secondFollower.isString());
 
                 // We do not guarentee any ordering here
-                if (StringRef(firstFollower) == dbserver1short) {
+                if (arangodb::velocypack::StringRef(firstFollower) == dbserver1short) {
                   REQUIRE(secondFollower.copyString() == dbserver3short);
                 } else {
                   REQUIRE(firstFollower.copyString() == dbserver3short);
@@ -516,7 +516,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 REQUIRE(secondFollower.isString());
 
                 // We do not guarentee any ordering here
-                if (StringRef(firstFollower) == dbserver1short) {
+                if (arangodb::velocypack::StringRef(firstFollower) == dbserver1short) {
                   REQUIRE(secondFollower.copyString() == dbserver2short);
                 } else {
                   REQUIRE(firstFollower.copyString() == dbserver2short);
@@ -563,7 +563,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 REQUIRE(secondFollower.isString());
 
                 // We do not guarentee any ordering here
-                if (StringRef(firstFollower) == dbserver2short) {
+                if (arangodb::velocypack::StringRef(firstFollower) == dbserver2short) {
                   REQUIRE(secondFollower.copyString() == dbserver3short);
                 } else {
                   REQUIRE(firstFollower.copyString() == dbserver3short);
@@ -663,7 +663,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 REQUIRE(secondFollower.isString());
 
                 // We do not guarentee any ordering here
-                if (StringRef(firstFollower) == dbserver2short) {
+                if (arangodb::velocypack::StringRef(firstFollower) == dbserver2short) {
                   REQUIRE(secondFollower.copyString() == dbserver3short);
                 } else {
                   REQUIRE(firstFollower.copyString() == dbserver3short);
@@ -701,7 +701,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 REQUIRE(secondFollower.isString());
 
                 // We do not guarentee any ordering here
-                if (StringRef(firstFollower) == dbserver1short) {
+                if (arangodb::velocypack::StringRef(firstFollower) == dbserver1short) {
                   REQUIRE(secondFollower.copyString() == dbserver3short);
                 } else {
                   REQUIRE(firstFollower.copyString() == dbserver3short);
@@ -747,7 +747,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 REQUIRE(secondFollower.isString());
 
                 // We do not guarentee any ordering here
-                if (StringRef(firstFollower) == dbserver1short) {
+                if (arangodb::velocypack::StringRef(firstFollower) == dbserver1short) {
                   REQUIRE(secondFollower.copyString() == dbserver2short);
                 } else {
                   REQUIRE(firstFollower.copyString() == dbserver2short);
@@ -802,7 +802,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 REQUIRE(secondFollower.isString());
 
                 // We do not guarentee any ordering here
-                if (StringRef(firstFollower) == dbserver2short) {
+                if (arangodb::velocypack::StringRef(firstFollower) == dbserver2short) {
                   REQUIRE(secondFollower.copyString() == dbserver3short);
                 } else {
                   REQUIRE(firstFollower.copyString() == dbserver3short);

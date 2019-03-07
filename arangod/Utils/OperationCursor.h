@@ -60,7 +60,7 @@ struct OperationCursor {
         _limit(UINT64_MAX),  // _limit is modified later on
         _batchSize(batchSize) {}
 
-  ~OperationCursor() {}
+  TEST_VIRTUAL ~OperationCursor() {}
 
   IndexIterator* indexIterator() const { return _indexIterator.get(); }
 
@@ -81,7 +81,7 @@ struct OperationCursor {
   bool hasCovering() const;
 
   /// @brief Reset the cursor
-  void reset();
+  TEST_VIRTUAL void reset();
 
   /// @brief Calls cb for the next batchSize many elements
   /// returns true if there are more documents (hasMore) and false

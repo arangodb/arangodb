@@ -134,9 +134,8 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
       auto member = optionsNode->getMember(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        std::string const name = member->getString();
+        auto const name = member->getStringRef();
         auto value = member->getMember(0);
-
         TRI_ASSERT(value->isConstant());
 
         if (name == "bfs") {
@@ -188,7 +187,7 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Que
       auto member = node->getMember(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        std::string const name = member->getString();
+        auto const name = member->getStringRef();
         auto value = member->getMember(0);
 
         TRI_ASSERT(value->isConstant());
@@ -207,12 +206,20 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Que
   return ret;
 }
 
+std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast, AstNode* node) {
+  if (node->type == NODE_TYPE_NOP) {
+    return nullptr;
+  }
+  return std::make_unique<Expression>(plan, ast, node);
+}
+
 }  // namespace
 
 /// @brief create the plan
 ExecutionPlan::ExecutionPlan(Ast* ast)
     : _ids(),
       _root(nullptr),
+      _planValid(true),
       _varUsageComputed(false),
       _isResponsibleForInitialize(true),
       _nestingLevel(0),
@@ -225,7 +232,7 @@ ExecutionPlan::ExecutionPlan(Ast* ast)
 /// @brief destroy the plan, frees all assigned nodes
 ExecutionPlan::~ExecutionPlan() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (_root != nullptr) {
+  if (_root != nullptr && _planValid) {
     try {
       // count the actual number of nodes in the plan
       ::NodeCounter counter;
@@ -654,11 +661,11 @@ bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
     auto member = node->getMember(i);
 
     if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-      std::string const name = member->getString();
-      auto value = member->getMember(0);
+      auto const name = member->getStringRef();
 
-      TRI_ASSERT(value->isConstant());
       if (name == "exclusive") {
+        auto value = member->getMember(0);
+        TRI_ASSERT(value->isConstant());
         return value->isTrue();
       }
     }
@@ -679,7 +686,7 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
       auto member = node->getMember(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        std::string const name = member->getString();
+        auto const name = member->getStringRef();
         auto value = member->getMember(0);
 
         TRI_ASSERT(value->isConstant());
@@ -757,7 +764,7 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
       auto member = node->getMember(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        std::string const name = member->getString();
+        auto const name = member->getStringRef();
         if (name == "method") {
           auto value = member->getMember(0);
           if (value->isStringValue()) {
@@ -908,12 +915,14 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous, AstNode c
   TRI_ASSERT(node->numMembers() == 4);
 
   auto const* variable = node->getMember(0);
+  TRI_ASSERT(variable);
   auto const* expression = node->getMember(1);
+  TRI_ASSERT(expression);
 
   // fetch 1st operand (out variable name)
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
   auto v = static_cast<Variable*>(variable->getData());
-  TRI_ASSERT(v != nullptr);
+  TRI_ASSERT(v);
 
   ExecutionNode* en = nullptr;
 
@@ -949,19 +958,20 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous, AstNode c
   }
 
   if (!view) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                                    "no view for EnumerateView");
   }
 
   auto* search = node->getMember(2);
+  TRI_ASSERT(search);
   TRI_ASSERT(search->type == NODE_TYPE_FILTER);
   TRI_ASSERT(search->numMembers() == 1);
 
   auto* options = node->getMemberUnchecked(3);
+  TRI_ASSERT(options);
+
   if (options->type == NODE_TYPE_NOP) {
     options = nullptr;
-  } else if (!options->isConstObject()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS);
   }
 
   en = registerNode(new iresearch::IResearchViewNode(*this, nextId(), vocbase, view, *v,
@@ -978,11 +988,11 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous, AstNode c
 /// @brief create an execution plan element from an AST FOR TRAVERSAL node
 ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous, AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_TRAVERSAL);
-  TRI_ASSERT(node->numMembers() >= 5);
-  TRI_ASSERT(node->numMembers() <= 7);
+  TRI_ASSERT(node->numMembers() >= 6);
+  TRI_ASSERT(node->numMembers() <= 8);
 
-  // the first 3 members are used by traversal internally.
-  // The members 4-6, where 5 and 6 are optional, are used
+  // the first 5 members are used by traversal internally.
+  // The members 6-8, where 5 and 6 are optional, are used
   // as out variables.
   AstNode const* direction = node->getMember(0);
   AstNode const* start = node->getMember(1);
@@ -1007,8 +1017,11 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous, AstNode
     previous = calc;
   }
 
+  // Prune Expression
+  std::unique_ptr<Expression> pruneExpression = createPruneExpression(this, _ast, node->getMember(3));
+
   auto options =
-      createTraversalOptions(getAst()->query(), direction, node->getMember(3));
+      createTraversalOptions(getAst()->query(), direction, node->getMember(4));
 
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
@@ -1017,24 +1030,25 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous, AstNode
 
   // First create the node
   auto travNode = new TraversalNode(this, nextId(), &(_ast->query()->vocbase()),
-                                    direction, start, graph, std::move(options));
+                                    direction, start, graph,
+                                    std::move(pruneExpression), std::move(options));
 
-  auto variable = node->getMember(4);
+  auto variable = node->getMember(5);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
   auto v = static_cast<Variable*>(variable->getData());
   TRI_ASSERT(v != nullptr);
   travNode->setVertexOutput(v);
 
-  if (node->numMembers() > 5) {
+  if (node->numMembers() > 6) {
     // return the edge as well
-    variable = node->getMember(5);
+    variable = node->getMember(6);
     TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
     v = static_cast<Variable*>(variable->getData());
     TRI_ASSERT(v != nullptr);
     travNode->setEdgeOutput(v);
-    if (node->numMembers() > 6) {
+    if (node->numMembers() > 7) {
       // return the path as well
-      variable = node->getMember(6);
+      variable = node->getMember(7);
       TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
       v = static_cast<Variable*>(variable->getData());
       TRI_ASSERT(v != nullptr);
@@ -2067,6 +2081,12 @@ bool ExecutionPlan::varUsageComputed() const { return _varUsageComputed; }
 /// @brief unlinkNodes, note that this does not delete the removed
 /// nodes and that one cannot remove the root node of the plan.
 void ExecutionPlan::unlinkNodes(std::unordered_set<ExecutionNode*> const& toRemove) {
+  for (auto& node : toRemove) {
+    unlinkNode(node);
+  }
+}
+
+void ExecutionPlan::unlinkNodes(arangodb::HashSet<ExecutionNode*> const& toRemove) {
   for (auto& node : toRemove) {
     unlinkNode(node);
   }

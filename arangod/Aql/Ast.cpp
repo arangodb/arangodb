@@ -32,7 +32,6 @@
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Basics/SmallVector.h"
-#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterInfo.h"
@@ -44,6 +43,7 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -70,7 +70,7 @@ auto doNothingVisitor = [](AstNode const*) {};
  */
 LogicalDataSource::Category const* injectDataSourceInQuery(
     Query& query, arangodb::CollectionNameResolver const& resolver,
-    AccessMode::Type accessType, bool failIfDoesNotExist, arangodb::StringRef& nameRef) {
+    AccessMode::Type accessType, bool failIfDoesNotExist, arangodb::velocypack::StringRef& nameRef) {
   std::string const name = nameRef.toString();
   // NOTE The name may be modified if a numeric collection ID is given instead
   // of a collection Name. Afterwards it will contain the name.
@@ -99,9 +99,9 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
 
   if (nameRef != name) {
     // name has changed by the lookup, so we need to reserve the collection
-    // name on the heap and update our StringRef
+    // name on the heap and update our arangodb::velocypack::StringRef
     char* p = query.registerString(dataSourceName.data(), dataSourceName.size());
-    nameRef = arangodb::StringRef(p, dataSourceName.size());
+    nameRef = arangodb::velocypack::StringRef(p, dataSourceName.size());
   }
 
   // add views to the collection list
@@ -668,7 +668,7 @@ AstNode* Ast::createNodeDataSource(arangodb::CollectionNameResolver const& resol
                                    char const* name, size_t nameLength,
                                    AccessMode::Type accessType,
                                    bool validateName, bool failIfDoesNotExist) {
-  arangodb::StringRef nameRef(name, nameLength);
+  arangodb::velocypack::StringRef nameRef(name, nameLength);
 
   // will throw if validation fails
   validateDataSourceName(nameRef, validateName);
@@ -695,7 +695,7 @@ AstNode* Ast::createNodeDataSource(arangodb::CollectionNameResolver const& resol
 AstNode* Ast::createNodeCollection(arangodb::CollectionNameResolver const& resolver,
                                    char const* name, size_t nameLength,
                                    AccessMode::Type accessType) {
-  arangodb::StringRef nameRef(name, nameLength);
+  arangodb::velocypack::StringRef nameRef(name, nameLength);
 
   // will throw if validation fails
   validateDataSourceName(nameRef, true);
@@ -1051,16 +1051,24 @@ AstNode* Ast::createNodeArray(size_t size) {
 }
 
 /// @brief create an AST unique array node, AND-merged from two other arrays
+/// the resulting array has no particular order
 AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs) {
   TRI_ASSERT(lhs->isArray() && lhs->isConstant());
   TRI_ASSERT(rhs->isArray() && rhs->isConstant());
 
-  size_t const nl = lhs->numMembers();
-  size_t const nr = rhs->numMembers();
+  size_t nl = lhs->numMembers();
+  size_t nr = rhs->numMembers();
+
+  if (nl > nr) {
+    // we want lhs to be the shorter of the two arrays, so we use less
+    // memory for the lookup cache
+    std::swap(lhs, rhs);
+    std::swap(nl, nr);
+  }
 
   std::unordered_map<VPackSlice, AstNode const*, arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
-      cache(nl + nr, arangodb::basics::VelocyPackHelper::VPackHash(),
+      cache(nl, arangodb::basics::VelocyPackHelper::VPackHash(),
             arangodb::basics::VelocyPackHelper::VPackEqual());
 
   for (size_t i = 0; i < nl; ++i) {
@@ -1070,7 +1078,7 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs)
     cache.emplace(slice, member);
   }
 
-  auto node = createNodeArray(nr / 2);
+  auto node = createNodeArray(cache.size() + nr);
 
   for (size_t i = 0; i < nr; ++i) {
     auto member = rhs->getMemberUnchecked(i);
@@ -1087,12 +1095,15 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs)
 }
 
 /// @brief create an AST unique array node, OR-merged from two other arrays
+/// the resulting array will be sorted by value
 AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
   TRI_ASSERT(lhs->isArray() && lhs->isConstant());
   TRI_ASSERT(rhs->isArray() && rhs->isConstant());
 
   size_t const nl = lhs->numMembers();
   size_t const nr = rhs->numMembers();
+
+  auto node = createNodeArray(nl + nr);
 
   std::unordered_map<VPackSlice, AstNode const*, arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
@@ -1108,14 +1119,12 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
     }
     VPackSlice slice = member->computeValue();
 
-    cache.emplace(slice, member);
+    if (cache.emplace(slice, member).second) {
+      // only insert unique values
+      node->addMember(member);
+    }
   }
 
-  auto node = createNodeArray(cache.size());
-
-  for (auto& it : cache) {
-    node->addMember(it.second);
-  }
   node->sort();
 
   return node;
@@ -1162,7 +1171,7 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections,
     if (c->isStringValue()) {
       std::string const name = c->getString();
       // this call may update nameRef
-      arangodb::StringRef nameRef(name);
+      arangodb::velocypack::StringRef nameRef(name);
       LogicalDataSource::Category const* category =
           injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, nameRef);
       if (category == LogicalCollection::category()) {
@@ -1178,7 +1187,7 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections,
             auto names = coll->realNames();
 
             for (auto const& n : names) {
-              arangodb::StringRef shardsNameRef(n);
+              arangodb::velocypack::StringRef shardsNameRef(n);
               LogicalDataSource::Category const* shardsCategory =
                   injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ,
                                           false, shardsNameRef);
@@ -1210,7 +1219,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
   auto ci = ClusterInfo::instance();
   auto ss = ServerState::instance();
   auto doTheAdd = [&](std::string const& name) {
-    arangodb::StringRef nameRef(name);
+    arangodb::velocypack::StringRef nameRef(name);
     LogicalDataSource::Category const* category =
         injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ, false, nameRef);
     if (category == LogicalCollection::category()) {
@@ -1220,7 +1229,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
           auto const& names = c->realNames();
 
           for (auto const& n : names) {
-            arangodb::StringRef shardsNameRef(n);
+            arangodb::velocypack::StringRef shardsNameRef(n);
             LogicalDataSource::Category const* shardsCategory =
                 injectDataSourceInQuery(*_query, resolver, AccessMode::Type::READ,
                                         false, shardsNameRef);
@@ -1295,129 +1304,65 @@ AstNode* Ast::createNodeCollectionDirection(uint64_t direction, AstNode const* c
   return node;
 }
 
-/// @brief create an AST traversal node with only vertex variable
-AstNode* Ast::createNodeTraversal(char const* vertexVarName, size_t vertexVarLength,
-                                  AstNode const* direction, AstNode const* start,
-                                  AstNode const* graph, AstNode const* options) {
-  if (vertexVarName == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+/// @brief create an AST traversal node
+AstNode* Ast::createNodeTraversal(AstNode const* outVars, AstNode const* graphInfo) {
+  TRI_ASSERT(outVars->type == NODE_TYPE_ARRAY);
+  TRI_ASSERT(graphInfo->type == NODE_TYPE_ARRAY);
   AstNode* node = createNode(NODE_TYPE_TRAVERSAL);
-  node->reserve(5);
+  node->reserve(outVars->numMembers() + graphInfo->numMembers());
 
-  if (options == nullptr) {
-    // no options given. now use default options
-    options = &NopNode;
+  TRI_ASSERT(graphInfo->numMembers() == 5);
+  TRI_ASSERT(outVars->numMembers() > 0);
+  TRI_ASSERT(outVars->numMembers() < 4);
+
+  // Add GraphInfo
+  for (size_t i = 0; i < graphInfo->numMembers(); ++i) {
+    node->addMember(graphInfo->getMemberUnchecked(i));
   }
 
-  node->addMember(direction);
-  node->addMember(start);
-  node->addMember(graph);
-  node->addMember(options);
-
-  AstNode* vertexVar = createNodeVariable(vertexVarName, vertexVarLength, false);
-  node->addMember(vertexVar);
-
-  TRI_ASSERT(node->numMembers() == 5);
+  // Add variables
+  for (size_t i = 0; i < outVars->numMembers(); ++i) {
+    node->addMember(outVars->getMemberUnchecked(i));
+  }
+  TRI_ASSERT(node->numMembers() == graphInfo->numMembers() + outVars->numMembers());
 
   _containsTraversal = true;
 
   return node;
 }
 
-/// @brief create an AST traversal node with vertex and edge variable
-AstNode* Ast::createNodeTraversal(char const* vertexVarName, size_t vertexVarLength,
-                                  char const* edgeVarName, size_t edgeVarLength,
-                                  AstNode const* direction, AstNode const* start,
-                                  AstNode const* graph, AstNode const* options) {
-  if (edgeVarName == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-  AstNode* node = createNodeTraversal(vertexVarName, vertexVarLength, direction,
-                                      start, graph, options);
-
-  AstNode* edgeVar = createNodeVariable(edgeVarName, edgeVarLength, false);
-  node->addMember(edgeVar);
-
-  TRI_ASSERT(node->numMembers() == 6);
-
-  _containsTraversal = true;
-
-  return node;
-}
-
-/// @brief create an AST traversal node with vertex, edge and path variable
-AstNode* Ast::createNodeTraversal(char const* vertexVarName, size_t vertexVarLength,
-                                  char const* edgeVarName, size_t edgeVarLength,
-                                  char const* pathVarName, size_t pathVarLength,
-                                  AstNode const* direction, AstNode const* start,
-                                  AstNode const* graph, AstNode const* options) {
-  if (pathVarName == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-  AstNode* node = createNodeTraversal(vertexVarName, vertexVarLength, edgeVarName,
-                                      edgeVarLength, direction, start, graph, options);
-
-  AstNode* pathVar = createNodeVariable(pathVarName, pathVarLength, false);
-  node->addMember(pathVar);
-
-  TRI_ASSERT(node->numMembers() == 7);
-
-  _containsTraversal = true;
-
-  return node;
-}
-
-/// @brief create an AST shortest path node with only vertex variable
-AstNode* Ast::createNodeShortestPath(char const* vertexVarName,
-                                     size_t vertexVarLength, uint64_t direction,
-                                     AstNode const* start, AstNode const* target,
-                                     AstNode const* graph, AstNode const* options) {
-  if (vertexVarName == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+/// @brief create an AST shortest path node
+AstNode* Ast::createNodeShortestPath(AstNode const* outVars, AstNode const* graphInfo) {
+  TRI_ASSERT(outVars->type == NODE_TYPE_ARRAY);
+  TRI_ASSERT(graphInfo->type == NODE_TYPE_ARRAY);
   AstNode* node = createNode(NODE_TYPE_SHORTEST_PATH);
+  node->reserve(outVars->numMembers() + graphInfo->numMembers());
 
-  node->reserve(6);
+  TRI_ASSERT(graphInfo->numMembers() == 5);
+  TRI_ASSERT(outVars->numMembers() > 0);
+  TRI_ASSERT(outVars->numMembers() < 3);
 
-  if (options == nullptr) {
-    // no options given. now use default options
-    options = &NopNode;
+  // Add GraphInfo
+  for (size_t i = 0; i < graphInfo->numMembers(); ++i) {
+    node->addMember(graphInfo->getMemberUnchecked(i));
   }
-  AstNode* dir = createNodeValueInt(direction);
-  node->addMember(dir);
-  node->addMember(start);
-  node->addMember(target);
-  node->addMember(graph);
-  node->addMember(options);
 
-  AstNode* vertexVar = createNodeVariable(vertexVarName, vertexVarLength, false);
-  node->addMember(vertexVar);
+  // Add variables
+  for (size_t i = 0; i < outVars->numMembers(); ++i) {
+    node->addMember(outVars->getMemberUnchecked(i));
+  }
+  TRI_ASSERT(node->numMembers() == graphInfo->numMembers() + outVars->numMembers());
 
-  TRI_ASSERT(node->numMembers() == 6);
+  _containsTraversal = true;
 
   return node;
 }
 
-/// @brief create an AST shortest path node with vertex and edge variable
-AstNode* Ast::createNodeShortestPath(char const* vertexVarName,
-                                     size_t vertexVarLength, char const* edgeVarName,
-                                     size_t edgeVarLength, uint64_t direction,
-                                     AstNode const* start, AstNode const* target,
-                                     AstNode const* graph, AstNode const* options) {
-  if (edgeVarName == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+AstNode const* Ast::createNodeOptions(AstNode const* options) const {
+  if (options != nullptr) {
+    return options;
   }
-
-  AstNode* node = createNodeShortestPath(vertexVarName, vertexVarLength, direction,
-                                         start, target, graph, options);
-
-  AstNode* edgeVar = createNodeVariable(edgeVarName, edgeVarLength, false);
-  node->addMember(edgeVar);
-
-  TRI_ASSERT(node->numMembers() == 7);
-
-  return node;
+  return &NopNode;
 }
 
 /// @brief create an AST function call node
@@ -1569,12 +1514,12 @@ void Ast::injectBindParameters(BindParameters& parameters,
           // check if the collection was used in a data-modification query
           bool isWriteCollection = false;
 
-          arangodb::StringRef paramRef(param);
+          arangodb::velocypack::StringRef paramRef(param);
           for (auto const& it : _writeCollections) {
             auto const& c = it.first;
 
             if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
-                paramRef == arangodb::StringRef(c->getStringValue(), c->getStringLength())) {
+                paramRef == arangodb::velocypack::StringRef(c->getStringValue(), c->getStringLength())) {
               isWriteCollection = true;
               break;
             }
@@ -1592,7 +1537,7 @@ void Ast::injectBindParameters(BindParameters& parameters,
               auto& c = _writeCollections[i].first;
 
               if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
-                  paramRef == arangodb::StringRef(c->getStringValue(), c->getStringLength())) {
+                  paramRef == arangodb::velocypack::StringRef(c->getStringValue(), c->getStringLength())) {
                 c = node;
                 // no break here. replace all occurrences
               }
@@ -1696,7 +1641,7 @@ AstNode* Ast::replaceAttributeAccess(AstNode* node, Variable const* variable,
     return node;
   }
 
-  std::vector<arangodb::StringRef> attributePath;
+  std::vector<arangodb::velocypack::StringRef> attributePath;
 
   auto visitor = [&](AstNode* node) -> AstNode* {
     if (node == nullptr) {
@@ -1911,6 +1856,27 @@ void Ast::validateAndOptimize() {
       }
     } else if (node->type == NODE_TYPE_AGGREGATIONS) {
       --ctx->stopOptimizationRequests;
+    } else if (node->type == NODE_TYPE_ARRAY && 
+               node->hasFlag(DETERMINED_CONSTANT) && 
+               !node->hasFlag(VALUE_CONSTANT) && 
+               node->numMembers() < 10) {
+      // optimization attempt: we are speculating that this array contains function
+      // call parameters, which may have been optimized somehow.
+      // if the array is marked as non-const, we remove this non-const marker so its
+      // constness will be checked upon next attempt again
+      // this allows optimizing cases such as FUNC1(FUNC2(...)):
+      // in this case, due to the depth-first traversal we will first optimize FUNC2(...)
+      // and replace it with a constant value. This will turn the Ast into FUNC1(const),
+      // which may be optimized further if FUNC1 is deterministic.
+      // However, function parameters are stored in ARRAY Ast nodes, which do not have
+      // a back pointer to the actual function, so all we can do here is guess and
+      // speculate that the array contained actual function call parameters
+      // note: the max array length of 10 is chosen arbitrarily based on the assumption
+      // that function calls normally have few parameters only, and it puts a cap
+      // on the additional costs of having to re-calculate the const-determination flags
+      // for all array members later on
+      node->removeFlag(DETERMINED_CONSTANT);
+      node->removeFlag(VALUE_CONSTANT);
     }
   };
 
@@ -3311,7 +3277,7 @@ AstNode* Ast::optimizeIndexedAccess(AstNode* node) {
     // found a string value (e.g. a['foo']). now turn this into
     // an attribute access (e.g. a.foo) in order to make the node qualify
     // for being turned into an index range later
-    arangodb::StringRef indexValue(index->getStringValue(), index->getStringLength());
+    arangodb::velocypack::StringRef indexValue(index->getStringValue(), index->getStringLength());
 
     if (!indexValue.empty() && (indexValue[0] < '0' || indexValue[0] > '9')) {
       // we have to be careful with numeric values here...
@@ -3538,9 +3504,10 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
 AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
+  AstNode const* original = node;
 
-  SmallVector<arangodb::StringRef>::allocator_type::arena_type a;
-  SmallVector<arangodb::StringRef> attributeNames{a};
+  SmallVector<arangodb::velocypack::StringRef>::allocator_type::arena_type a;
+  SmallVector<arangodb::velocypack::StringRef> attributeNames{a};
 
   while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     attributeNames.push_back(node->getStringRef());
@@ -3551,6 +3518,10 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
   TRI_ASSERT(which > 0);
 
   while (which > 0) {
+    if (node->type == NODE_TYPE_PARAMETER) {
+      return original;
+    }
+
     TRI_ASSERT(node->type == NODE_TYPE_VALUE || node->type == NODE_TYPE_ARRAY ||
                node->type == NODE_TYPE_OBJECT);
 
@@ -3558,7 +3529,7 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
 
     if (node->type == NODE_TYPE_OBJECT) {
       TRI_ASSERT(which > 0);
-      arangodb::StringRef const& attributeName = attributeNames[which - 1];
+      arangodb::velocypack::StringRef const& attributeName = attributeNames[which - 1];
       --which;
 
       size_t const n = node->numMembers();
@@ -3566,7 +3537,7 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
         auto member = node->getMemberUnchecked(i);
 
         if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-            arangodb::StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
+            arangodb::velocypack::StringRef(member->getStringValue(), member->getStringLength()) == attributeName) {
           // found the attribute
           node = member->getMember(0);
           if (which == 0) {
@@ -3612,7 +3583,7 @@ AstNode* Ast::traverseAndModify(AstNode* node,
       AstNode* result = traverseAndModify(member, preVisitor, visitor, postVisitor);
 
       if (result != member) {
-        TEMPORARILY_UNLOCK_NODE(node);  // TODO change so we can replace instead
+        TEMPORARILY_UNLOCK_NODE(node);
         TRI_ASSERT(node != nullptr);
         node->changeMember(i, result);
       }
@@ -3725,7 +3696,7 @@ AstNode* Ast::createNode(AstNodeType type) {
 
 /// @brief validate the name of the given datasource
 /// in case validation fails, will throw an exception
-void Ast::validateDataSourceName(arangodb::StringRef const& name, bool validateStrict) {
+void Ast::validateDataSourceName(arangodb::velocypack::StringRef const& name, bool validateStrict) {
   // common validation
   if (name.empty() ||
       (validateStrict &&
@@ -3739,7 +3710,7 @@ void Ast::validateDataSourceName(arangodb::StringRef const& name, bool validateS
 
 /// @brief create an AST collection node
 /// private function, does no validation
-AstNode* Ast::createNodeCollectionNoValidation(arangodb::StringRef const& name,
+AstNode* Ast::createNodeCollectionNoValidation(arangodb::velocypack::StringRef const& name,
                                                AccessMode::Type accessType) {
   if (ServerState::instance()->isCoordinator()) {
     auto ci = ClusterInfo::instance();

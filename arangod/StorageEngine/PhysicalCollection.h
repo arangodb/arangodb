@@ -142,7 +142,7 @@ class PhysicalCollection {
   virtual LocalDocumentId lookupKey(transaction::Methods*,
                                     arangodb::velocypack::Slice const&) const = 0;
 
-  virtual Result read(transaction::Methods*, arangodb::StringRef const& key,
+  virtual Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
                       ManagedDocumentResult& result, bool) = 0;
 
   virtual Result read(transaction::Methods*, arangodb::velocypack::Slice const& key,

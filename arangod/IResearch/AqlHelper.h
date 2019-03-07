@@ -246,6 +246,8 @@ class ScopedAqlValue : private irs::util::noncopyable {
  public:
   static aql::AstNode const INVALID_NODE;
 
+  static irs::string_ref const& typeString(ScopedValueType type) noexcept;
+
   explicit ScopedAqlValue(aql::AstNode const& node = INVALID_NODE) noexcept {
     reset(node);
   }
@@ -290,12 +292,12 @@ class ScopedAqlValue : private irs::util::noncopyable {
   bool getDouble(double_t& value) const {
     bool failed = false;
     value = _node->isConstant() ? _node->getDoubleValue()
-                                : _value.toDouble(nullptr, failed);
+                                : _value.toDouble(failed);
     return !failed;
   }
 
   int64_t getInt64() const {
-    return _node->isConstant() ? _node->getIntValue() : _value.toInt64(nullptr);
+    return _node->isConstant() ? _node->getIntValue() : _value.toInt64();
   }
 
   bool getString(irs::string_ref& value) const {
@@ -329,7 +331,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
 
  private:
   ScopedAqlValue(aql::AqlValue const& src, size_t i, bool doCopy) {
-    _value = src.at(nullptr, i, _destroy, doCopy);
+    _value = src.at(i, _destroy, doCopy);
     _node = &INVALID_NODE;
     _executed = true;
     _type = AqlValueTraits::type(_value);
@@ -489,11 +491,11 @@ aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif  // ARANGOD_IRESEARCH__AQL_HELPER_H
-
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
+
+#endif  // ARANGOD_IRESEARCH__AQL_HELPER_H
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

@@ -37,15 +37,13 @@ namespace arangodb {
 
 class RocksDBVPackComparator final : public rocksdb::Comparator {
  public:
-  RocksDBVPackComparator();
-  ~RocksDBVPackComparator();
+  RocksDBVPackComparator() = default;
+  ~RocksDBVPackComparator() = default;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Compares any two RocksDB keys.
   /// returns  < 0 if lhs < rhs
   ///          > 0 if lhs > rhs
   ///            0 if lhs == rhs
-  //////////////////////////////////////////////////////////////////////////////
   int Compare(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const override {
     return compareIndexValues(lhs, rhs);
   }
@@ -60,16 +58,9 @@ class RocksDBVPackComparator final : public rocksdb::Comparator {
   void FindShortSuccessor(std::string*) const override {}
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Compares two IndexValue keys or two UniqueIndexValue keys
   /// (containing VelocyPack data and more).
-  //////////////////////////////////////////////////////////////////////////////
   int compareIndexValues(rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief A helper function for the actual VelocyPack comparison
-  //////////////////////////////////////////////////////////////////////////////
-  int compareIndexedValues(VPackSlice const& lhs, VPackSlice const& rhs) const;
 };
 
 }  // namespace arangodb

@@ -9,16 +9,16 @@
 }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> Created
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104666"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104666"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zbi--B"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105246"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/105246"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YOn1XYC--D"</span>, 
       <span class="hljs-string">"a"</span> : { 
         <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span> 
       }, 
@@ -36,7 +36,8 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0003941059112548828</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00022554397583007812</span>, 
+      <span class="hljs-string">"peakMemoryUsage"</span> : <span class="hljs-number">68896</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 

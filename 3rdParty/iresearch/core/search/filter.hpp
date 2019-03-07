@@ -88,13 +88,13 @@ class IRESEARCH_API filter {
   class IRESEARCH_API prepared: public util::attribute_store_provider {
    public:
     DECLARE_SHARED_PTR(const prepared);
-    DEFINE_FACTORY_INLINE(prepared);
+    DEFINE_FACTORY_INLINE(prepared)
 
     static prepared::ptr empty();
 
     prepared() = default;
     explicit prepared(attribute_store&& attrs) NOEXCEPT;
-    virtual ~prepared();
+    virtual ~prepared() = default;
 
     using util::attribute_store_provider::attributes;
     virtual attribute_store& attributes() NOEXCEPT override final {
@@ -126,10 +126,10 @@ class IRESEARCH_API filter {
   }; // prepared
 
   DECLARE_UNIQUE_PTR(filter);
-  DEFINE_FACTORY_INLINE(filter);
+  DEFINE_FACTORY_INLINE(filter)
 
   filter(const type_id& type) NOEXCEPT;
-  virtual ~filter();
+  virtual ~filter() = default;
 
   virtual size_t hash() const NOEXCEPT {
     return std::hash<const type_id*>()(type_);

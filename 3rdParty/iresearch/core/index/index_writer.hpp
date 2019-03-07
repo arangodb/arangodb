@@ -55,15 +55,33 @@ class directory_reader;
 
 class readers_cache final : util::noncopyable {
  public:
+  struct key_t {
+    std::string name;
+    uint64_t version;
+    key_t(const segment_meta& meta); // implicit constructor
+    bool operator<(const key_t& other) const NOEXCEPT {
+      return name < other.name
+        || (name == other.name && version < other.version);
+    }
+    bool operator==(const key_t& other) const NOEXCEPT {
+      return name == other.name && version == other.version;
+    }
+  };
+  struct key_hash_t {
+    size_t operator()(const key_t& key) const NOEXCEPT {
+      return std::hash<std::string>()(key.name);
+    }
+  };
+
   readers_cache(directory& dir): dir_(dir) {}
 
-  segment_reader emplace(const segment_meta& meta);
   void clear() NOEXCEPT;
-  size_t purge(const std::unordered_set<std::string>& segments) NOEXCEPT;
+  segment_reader emplace(const segment_meta& meta);
+  size_t purge(const std::unordered_set<key_t, key_hash_t>& segments) NOEXCEPT;
 
  private:
   std::mutex lock_;
-  std::unordered_map<std::string, segment_reader> cache_;
+  std::unordered_map<key_t, segment_reader, key_hash_t> cache_;
   directory& dir_;
 }; // readers_cache
 
@@ -131,11 +149,13 @@ class IRESEARCH_API index_writer:
     const segment_context_ptr& ctx() const NOEXCEPT { return ctx_; }
 
    private:
+    IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
     friend struct flush_context; // for flush_context::emplace(...)
     segment_context_ptr ctx_{nullptr};
     flush_context* flush_ctx_{nullptr}; // nullptr will not match any flush_context
     size_t pending_segment_context_offset_; // segment offset in flush_ctx_->pending_segment_contexts_
     std::atomic<size_t>* segments_active_; // reference to index_writer::segments_active_
+    IRESEARCH_API_PRIVATE_VARIABLES_END
   };
 
  public:
@@ -747,18 +767,18 @@ class IRESEARCH_API index_writer:
     format::ptr codec_; // the codec to used for flushing a segment writer
     bool dirty_; // true if flush_all() started processing this segment (this segment should not be used for any new operations), guarded by the flush_context::flush_mutex_
     ref_tracking_directory dir_; // ref tracking for segment_writer to allow for easy ref removal on segment_writer reset
-    std::mutex flush_mutex_; // guard 'uncomitted_*' and 'writer_' from concurrent flush
+    std::recursive_mutex flush_mutex_; // guard 'flushed_', 'uncomitted_*' and 'writer_' from concurrent flush
     std::vector<flushed_t> flushed_; // all of the previously flushed versions of this segment, guarded by the flush_context::flush_mutex_
     std::vector<segment_writer::update_context> flushed_update_contexts_; // update_contexts to use with 'flushed_' sequentially increasing through all offsets (sequential doc_id in 'flushed_' == offset + type_limits<type_t::doc_id_t>::min(), size() == sum of all 'flushed_'.'docs_count')
     segment_meta_generator_t meta_generator_; // function to get new segment_meta from
     std::vector<modification_context> modification_queries_; // sequential list of pending modification requests (remove/update)
     size_t uncomitted_doc_id_begin_; // starting doc_id that is not part of the current flush_context (doc_id sequentially increasing through all 'flushed_' offsets and into 'segment_writer::doc_contexts' hence value may be greater than doc_id_t::max)
-    size_t uncomitted_generation_offset_; // current modification/update generation offset for asignment to uncommited operations
+    size_t uncomitted_generation_offset_; // current modification/update generation offset for asignment to uncommited operations (same as modification_queries_.size() - uncomitted_modification_queries_) FIXME TODO consider removing
     size_t uncomitted_modification_queries_; // staring offset in 'modification_queries_' that is not part of the current flush_context
     segment_writer::ptr writer_;
     index_meta::index_segment_t writer_meta_; // the segment_meta this writer was initialized with
 
-    DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator)
+    DECLARE_FACTORY(directory& dir, segment_meta_generator_t&& meta_generator);
     segment_context(directory& dir, segment_meta_generator_t&& meta_generator);
 
     ////////////////////////////////////////////////////////////////////////////
@@ -856,7 +876,7 @@ class IRESEARCH_API index_writer:
     std::condition_variable pending_segment_context_cond_; // notified when a segment has been freed (guarded by mutex_)
     std::deque<pending_segment_context> pending_segment_contexts_; // segment writers with data pending for next commit (all segments that have been used by this flush_context) must be std::deque to garantee that element memory location does not change for use with 'pending_segment_contexts_freelist_'
     freelist_t pending_segment_contexts_freelist_; // entries from 'pending_segment_contexts_' that are available for reuse
-    std::unordered_set<std::string> segment_mask_; // set of segment names to be removed from the index upon commit
+    std::unordered_set<readers_cache::key_t, readers_cache::key_hash_t> segment_mask_; // set of segment names to be removed from the index upon commit
 
     flush_context() = default;
 

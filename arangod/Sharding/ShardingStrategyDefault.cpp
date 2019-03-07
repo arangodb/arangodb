@@ -25,7 +25,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/hashes.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -34,6 +33,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -52,15 +52,15 @@ void preventUseOnSmartEdgeCollection(LogicalCollection const* collection,
   }
 }
 
-inline void parseAttributeAndPart(std::string const& attr, std::string& realAttr, Part& part) {
-  if (attr.size() > 0 && attr.back() == ':') {
-    realAttr = attr.substr(0, attr.size() - 1);
+inline void parseAttributeAndPart(std::string const& attr, arangodb::velocypack::StringRef& realAttr, Part& part) {
+  if (!attr.empty() && attr.back() == ':') {
+    realAttr = arangodb::velocypack::StringRef(attr.data(), attr.size() - 1);
     part = Part::FRONT;
-  } else if (attr.size() > 0 && attr.front() == ':') {
-    realAttr = attr.substr(1);
+  } else if (!attr.empty() && attr.front() == ':') {
+    realAttr = arangodb::velocypack::StringRef(attr.data() + 1, attr.size() - 1);
     part = Part::BACK;
   } else {
-    realAttr = attr;
+    realAttr = arangodb::velocypack::StringRef(attr.data(), attr.size());
     part = Part::ALL;
   }
 }
@@ -72,7 +72,7 @@ VPackSlice buildTemporarySlice(VPackSlice const& sub, Part const& part,
     switch (part) {
       case Part::ALL: {
         if (splitSlash) {
-          arangodb::StringRef key(sub);
+          arangodb::velocypack::StringRef key(sub);
           size_t pos = key.find('/');
           if (pos != std::string::npos) {
             // We have an _id. Split it.
@@ -85,7 +85,7 @@ VPackSlice buildTemporarySlice(VPackSlice const& sub, Part const& part,
         return sub;
       }
       case Part::FRONT: {
-        arangodb::StringRef prefix(sub);
+        arangodb::velocypack::StringRef prefix(sub);
         size_t pos;
         if (splitSlash) {
           pos = prefix.find('/');
@@ -129,9 +129,9 @@ uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& 
   error = TRI_ERROR_NO_ERROR;
   slice = slice.resolveExternal();
   if (slice.isObject()) {
-    std::string realAttr;
-    ::Part part;
     for (auto const& attr : attributes) {
+      arangodb::velocypack::StringRef realAttr;
+      ::Part part;
       ::parseAttributeAndPart(attr, realAttr, part);
       VPackSlice sub = slice.get(realAttr).resolveExternal();
       VPackBuilder temporaryBuilder;
@@ -151,7 +151,7 @@ uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& 
       hash = sub.normalizedHash(hash);
     }
   } else if (slice.isString() && attributes.size() == 1) {
-    std::string realAttr;
+    arangodb::velocypack::StringRef realAttr;
     ::Part part;
     ::parseAttributeAndPart(attributes[0], realAttr, part);
     if (realAttr == StaticStrings::KeyString && key.empty()) {

@@ -17,11 +17,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Gräter
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Databases.h"
 #include "Basics/Common.h"
+#include "Databases.h"
 
 #include "Agency/AgencyComm.h"
 #include "Basics/StringUtils.h"
@@ -286,7 +286,7 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
   if (upgradeRes.fail()) {
     LOG_TOPIC(ERR, Logger::FIXME)
         << "Could not create database: " << upgradeRes.errorMessage();
-    return upgradeRes;
+    return std::move(upgradeRes).result();
   }
 
   // Entirely Foxx related:

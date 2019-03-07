@@ -4,16 +4,16 @@
 }
 EOF
 
-HTTP/1.1 undefined
+HTTP/1.1 Accepted
 content-type: text/plain; charset=utf-8
-x-arango-async-id: 131184
+x-arango-async-id: 132282
 x-content-type-options: nosniff
 
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/job/131184</span>
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/job/132282</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> Bad Request
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">131184</span>
+x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">132282</span>
 x-content-type-options: nosniff
 
 { 

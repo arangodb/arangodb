@@ -7,13 +7,13 @@
 }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> Conflict
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"unique constraint violated - in index 0 of type primary over [\"_key\"]; conflicting key: abc"</span>, 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">" - in index 0 of type primary over '_key'; conflicting key: abc"</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">409</span>, 
   <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1210</span> 
 }

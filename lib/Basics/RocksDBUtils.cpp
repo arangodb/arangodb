@@ -24,10 +24,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBUtils.h"
-#include "Basics/StringRef.h"
 
 #include <rocksdb/convenience.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 namespace rocksutils {
@@ -36,7 +36,7 @@ static bool hasObjectIds(VPackSlice const& inputSlice) {
   bool rv = false;
   if (inputSlice.isObject()) {
     for (auto const& objectPair : arangodb::velocypack::ObjectIterator(inputSlice)) {
-      if (arangodb::StringRef(objectPair.key) == "objectId") {
+      if (arangodb::velocypack::StringRef(objectPair.key) == "objectId") {
         return true;
       }
       rv = hasObjectIds(objectPair.value);
@@ -59,7 +59,7 @@ static VPackBuilder& stripObjectIdsImpl(VPackBuilder& builder, VPackSlice const&
   if (inputSlice.isObject()) {
     builder.openObject();
     for (auto const& objectPair : arangodb::velocypack::ObjectIterator(inputSlice)) {
-      if (arangodb::StringRef(objectPair.key) == "objectId") {
+      if (arangodb::velocypack::StringRef(objectPair.key) == "objectId") {
         continue;
       }
       builder.add(objectPair.key);

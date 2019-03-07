@@ -80,6 +80,8 @@ class Maskings {
 
  private:
   std::map<std::string, Collection> _collections;
+  bool _hasDefaultCollection = false;
+  Collection _defaultCollection;
   uint64_t _randomSeed = 0;
 };
 

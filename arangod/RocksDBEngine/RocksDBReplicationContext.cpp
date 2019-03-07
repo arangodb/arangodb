@@ -22,20 +22,20 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBReplicationContext.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
 #include "Replication/common-defines.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBReplicationContext.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Utils/DatabaseGuard.h"
@@ -44,6 +44,7 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Dumper.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -154,22 +155,20 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
   bool isNumberDocsExclusive = false;
   auto* rcoll = static_cast<RocksDBCollection*>(logical->getPhysical());
   if (_snapshot == nullptr) {
-    // fetch number docs and snapshot under exclusive lock
-    // this should enable us to correct the count later
+    // only DBServers require a corrected document count
+    const double to = ServerState::instance()->isDBServer() ? 10.0 : 1.0;
     auto lockGuard = scopeGuard([rcoll] { rcoll->unlockWrite(); });
-    int res = rcoll->lockWrite(transaction::Options::defaultLockTimeout);
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (rcoll->lockWrite(to) == TRI_ERROR_NO_ERROR) {
+      // fetch number docs and snapshot under exclusive lock
+      // this should enable us to correct the count later
+      isNumberDocsExclusive = true;
+    } else {
       lockGuard.cancel();
-      return std::make_tuple(res, 0, 0);
     }
-
-    numberDocuments = rcoll->numberDocuments();
-    isNumberDocsExclusive = true;
-    lazyCreateSnapshot();
-    lockGuard.fire();  // release exclusive lock
-  } else {             // fetch non-exclusive
     numberDocuments = rcoll->numberDocuments();
     lazyCreateSnapshot();
+  } else {  // fetch non-exclusive
+    numberDocuments = rcoll->numberDocuments();
   }
   TRI_ASSERT(_snapshot != nullptr);
 
@@ -194,20 +193,21 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
 
 // returns inventory
 Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool includeSystem,
+                                               bool includeFoxxQueues,
                                                bool global, VPackBuilder& result) {
   {
     MUTEX_LOCKER(locker, _contextLock);
     lazyCreateSnapshot();
   }
 
-  auto nameFilter = [includeSystem](LogicalCollection const* collection) {
-    std::string const cname = collection->name();
-    if (!includeSystem && !cname.empty() && cname[0] == '_') {
+  auto nameFilter = [&](LogicalCollection const* collection) {
+    std::string const& cname = collection->name();
+    if (!includeSystem && TRI_vocbase_t::IsSystemName(cname)) {
       // exclude all system collections
       return false;
     }
 
-    if (TRI_ExcludeCollectionReplication(cname, includeSystem)) {
+    if (TRI_ExcludeCollectionReplication(cname, includeSystem, includeFoxxQueues)) {
       // collection is excluded from replication
       return false;
     }
@@ -335,13 +335,13 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
   Result rv;
   {
     if (0 == cid || _snapshot == nullptr) {
-      return RocksDBReplicationResult{TRI_ERROR_BAD_PARAMETER, _snapshotTick};
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
 
     MUTEX_LOCKER(writeLocker, _contextLock);
     cIter = getCollectionIterator(vocbase, cid, /*sorted*/ true, /*create*/ true);
     if (!cIter || !cIter->sorted() || !cIter->iter) {
-      return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _snapshotTick);
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
   }
 
@@ -368,7 +368,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
     while (k-- > 0 && cIter->hasMore()) {
       snapNumDocs++;
 
-      StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
+      arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
       if (lowKey.empty()) {
         lowKey.assign(key.data(), key.size());
       }
@@ -455,13 +455,13 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
   Result rv;
   {
     if (0 == cid || _snapshot == nullptr) {
-      return RocksDBReplicationResult{TRI_ERROR_BAD_PARAMETER, _snapshotTick};
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
 
     MUTEX_LOCKER(writeLocker, _contextLock);
     cIter = getCollectionIterator(vocbase, cid, /*sorted*/ true, /*create*/ false);
     if (!cIter || !cIter->sorted() || !cIter->iter) {
-      return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _snapshotTick);
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
   }
 
@@ -478,7 +478,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
   size_t from = chunk * chunkSize;
   if (from != cIter->lastSortedIteratorOffset) {
     if (!lowKey.empty()) {
-      tmpKey.constructPrimaryIndexValue(cIter->bounds.objectId(), StringRef(lowKey));
+      tmpKey.constructPrimaryIndexValue(cIter->bounds.objectId(), arangodb::velocypack::StringRef(lowKey));
       cIter->iter->Seek(tmpKey.string());
       cIter->lastSortedIteratorOffset = from;
       TRI_ASSERT(cIter->iter->Valid());
@@ -533,7 +533,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
         TRI_ASSERT(ps.size() > 0);
         docRev = TRI_ExtractRevisionId(VPackSlice(ps.data()));
       } else {
-        StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
+        arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
         LOG_TOPIC(WARN, Logger::REPLICATION)
             << "inconsistent primary index, "
             << "did not find document with key " << key.toString();
@@ -542,7 +542,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
       }
     }
 
-    StringRef docKey(RocksDBKey::primaryKey(cIter->iter->key()));
+    arangodb::velocypack::StringRef docKey(RocksDBKey::primaryKey(cIter->iter->key()));
     b.openArray(true);
     b.add(velocypack::ValuePair(docKey.data(), docKey.size(), velocypack::ValueType::String));
     b.add(TRI_RidToValuePair(docRev, &ridBuffer[0]));
@@ -569,13 +569,13 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   Result rv;
   {
     if (0 == cid || _snapshot == nullptr) {
-      return RocksDBReplicationResult{TRI_ERROR_BAD_PARAMETER, _snapshotTick};
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
 
     MUTEX_LOCKER(writeLocker, _contextLock);
     cIter = getCollectionIterator(vocbase, cid, /*sorted*/ true, /*create*/ true);
     if (!cIter || !cIter->sorted() || !cIter->iter) {
-      return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _snapshotTick);
+      return Result{TRI_ERROR_BAD_PARAMETER};
     }
   }
 
@@ -593,7 +593,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   size_t from = chunk * chunkSize;
   if (from != cIter->lastSortedIteratorOffset) {
     if (!lowKey.empty()) {
-      tmpKey.constructPrimaryIndexValue(cIter->bounds.objectId(), StringRef(lowKey));
+      tmpKey.constructPrimaryIndexValue(cIter->bounds.objectId(), arangodb::velocypack::StringRef(lowKey));
       cIter->iter->Seek(tmpKey.string());
       cIter->lastSortedIteratorOffset = from;
       TRI_ASSERT(cIter->iter->Valid());
@@ -672,7 +672,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
           TRI_ASSERT(VPackSlice(ps.data()).isObject());
           b.add(VPackSlice(ps.data()));
         } else {
-          StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
+          arangodb::velocypack::StringRef key = RocksDBKey::primaryKey(cIter->iter->key());
           LOG_TOPIC(WARN, Logger::REPLICATION)
               << "inconsistent primary index, "
               << "did not find document with key " << key.toString();

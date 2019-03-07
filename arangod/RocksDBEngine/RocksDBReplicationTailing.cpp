@@ -23,7 +23,6 @@
 
 #include "RocksDBReplicationTailing.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Logger/Logger.h"
 #include "Replication/common-defines.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
@@ -35,6 +34,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <rocksdb/utilities/transaction_db.h>
@@ -165,7 +165,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
         // always return false for dropped collections
         if (shouldHandleDB(dbid)) {
           {  // tick number
-            StringRef uuid = RocksDBLogValue::collectionUUID(blob);
+            arangodb::velocypack::StringRef uuid = RocksDBLogValue::collectionUUID(blob);
             TRI_ASSERT(!uuid.empty());
             uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
             VPackObjectBuilder marker(&_builder, true);
@@ -335,6 +335,8 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
       case RocksDBLogType::DocumentOperationsPrologue:
       case RocksDBLogType::DocumentRemove:
       case RocksDBLogType::DocumentRemoveAsPartOfUpdate:
+      case RocksDBLogType::TrackedDocumentInsert:
+      case RocksDBLogType::TrackedDocumentRemove:
         break;  // ignore deprecated && unused markers
 
       default:
@@ -435,7 +437,9 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
 
     if (cfId != _primaryCF) {
       return;  // ignore all document operations
-    } else if (_state != TRANSACTION && _state != SINGLE_REMOVE) {
+    }
+    
+    if (_state != TRANSACTION && _state != SINGLE_REMOVE) {
       resetTransientState();
       return;
     }
@@ -451,7 +455,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
     }
     TRI_ASSERT(_vocbase->id() == dbid);
 
-    StringRef docKey = RocksDBKey::primaryKey(key);
+    arangodb::velocypack::StringRef docKey = RocksDBKey::primaryKey(key);
     LogicalCollection* coll = loadCollection(cid);
     TRI_ASSERT(coll != nullptr);
     {
@@ -572,7 +576,8 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
       if (collection == nullptr) {
         return false;
       }
-      return !TRI_ExcludeCollectionReplication(collection->name(), _includeSystem);
+      return !TRI_ExcludeCollectionReplication(collection->name(), _includeSystem,
+                                               /*includeFoxxQueues*/ false);
     }
     return false;
   }

@@ -72,14 +72,14 @@ class TraversalNode : public GraphNode {
   };
 
   friend class ExecutionBlock;
-  friend class TraversalBlock;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
  public:
   TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                 AstNode const* direction, AstNode const* start,
-                AstNode const* graph, std::unique_ptr<graph::BaseOptions> options);
+                AstNode const* graph, std::unique_ptr<Expression> pruneExpression,
+                std::unique_ptr<graph::BaseOptions> options);
 
   TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
@@ -118,6 +118,9 @@ class TraversalNode : public GraphNode {
       if (condVar != getTemporaryVariable()) {
         result.emplace(condVar);
       }
+    }
+    for (auto const& pruneVar : _pruneVariables) {
+      result.emplace(pruneVar);
     }
     if (usesInVariable()) {
       result.emplace(_inVariable);
@@ -179,10 +182,16 @@ class TraversalNode : public GraphNode {
 
   void getConditionVariables(std::vector<Variable const*>&) const override;
 
+  void getPruneVariables(std::vector<Variable const*>&) const;
+
   /// @brief Compute the traversal options containing the expressions
   ///        MUST! be called after optimization and before creation
   ///        of blocks.
   void prepareOptions() override;
+
+  // @brief Get reference to the Prune expression.
+  //        You are not responsible for it!
+  Expression* pruneExpression() const { return _pruneExpression.get(); }
 
  private:
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -211,6 +220,9 @@ class TraversalNode : public GraphNode {
   /// @brief The hard coded condition on _to
   AstNode* _toCondition;
 
+  /// @brief The condition given in PRUNE (might be empty)
+  std::unique_ptr<Expression> _pruneExpression;
+
   /// @brief The global edge condition. Does not contain
   ///        _from and _to checks
   std::vector<AstNode const*> _globalEdgeConditions;
@@ -223,6 +235,9 @@ class TraversalNode : public GraphNode {
 
   /// @brief List of all depth specific conditions for vertices
   std::unordered_map<uint64_t, AstNode*> _vertexConditions;
+
+  /// @brief the hashSet for variables used in pruning
+  arangodb::HashSet<Variable const*> _pruneVariables;
 };
 
 }  // namespace aql

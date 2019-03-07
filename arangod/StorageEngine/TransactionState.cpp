@@ -48,6 +48,7 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
       _serverRole(ServerState::instance()->getRole()),
       _hints(),
       _nestingLevel(0),
+      _registeredTransaction(false),
       _options(options) {}
 
 /// @brief free a transaction container

@@ -67,7 +67,7 @@ TEST_CASE("ClusterTraverserCache", "[aql][cluster]") {
     ClusterTraverserCache testee(&query, &engines);
 
     // NOTE: we do not put anything into the cache, so we get null for any vertex
-    AqlValue val = testee.fetchVertexAqlResult(StringRef(vertexId));
+    AqlValue val = testee.fetchVertexAqlResult(arangodb::velocypack::StringRef(vertexId));
     REQUIRE(val.isNull(false));
     fakeit::Verify(Method(queryMock, registerWarning)).Exactly(1);
   }
@@ -93,7 +93,7 @@ TEST_CASE("ClusterTraverserCache", "[aql][cluster]") {
     ClusterTraverserCache testee(&query, &engines);
 
     // NOTE: we do not put anything into the cache, so we get null for any vertex
-    testee.insertVertexIntoResult(StringRef(vertexId), result);
+    testee.insertVertexIntoResult(arangodb::velocypack::StringRef(vertexId), result);
 
     VPackSlice sl = result.slice();
     REQUIRE(sl.isNull());

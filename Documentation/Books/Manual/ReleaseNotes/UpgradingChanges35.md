@@ -7,13 +7,26 @@ upgrading to ArangoDB 3.5, and adjust any client programs if necessary.
 The following incompatible changes have been made in ArangoDB 3.5:
 
 
-UI
---
+Web interface
+-------------
 
-Primary index keys will now always be sorted in lexicographical order as keys are
-strings. An exception for values representing numerical values has been removed
-when shown in the UI. Therefore a key with value "10" will be displayed before
-a key having "9" as value.
+### Potentially different sort order of documents
+
+In the list of documents for a collection, the documents will now always be sorted
+in lexicographical order of their `_key` values. An exception for keys representing 
+quasi-numerical values has been removed when doing the sorting in the web interface.
+
+Therefore a document with a key value "10" will now be displayed before a document
+with a key value of "9".
+
+### Removal of index types "skiplist" and "persistent" (RocksDB engine)
+
+For the RocksDB engine, the selection of index types "persistent" and "skiplist" 
+has been removed from the web interface when creating new indexes. 
+
+The index types "hash", "skiplist" and "persistent" are just aliases of each other 
+when using the RocksDB engine, so there is no need to offer all of them in parallel.
+
 
 AQL
 ---

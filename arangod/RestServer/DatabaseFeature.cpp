@@ -389,6 +389,18 @@ void DatabaseFeature::beginShutdown() {
 void DatabaseFeature::stop() {
   stopAppliers();
 
+  // turn off query cache and flush it
+  arangodb::aql::QueryCacheProperties p;
+  p.mode = arangodb::aql::QueryCacheMode::CACHE_ALWAYS_OFF;
+  p.maxResultsCount = 0;
+  p.maxResultsSize = 0;
+  p.includeSystem = false;
+  p.showBindVars = false;
+
+  
+  arangodb::aql::QueryCache::instance()->properties(p);
+  arangodb::aql::QueryCache::instance()->invalidate();
+
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
@@ -409,6 +421,9 @@ void DatabaseFeature::stop() {
         },
         true);
   }
+  
+  // flush again so we are sure no query is left in the cache here
+  arangodb::aql::QueryCache::instance()->invalidate();
 }
 
 void DatabaseFeature::unprepare() {

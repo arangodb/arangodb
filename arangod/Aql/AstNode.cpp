@@ -204,14 +204,14 @@ inline int valueTypeOrder(VPackValueType type) {
     case VPackValueType::Double:
       return 2;
     case VPackValueType::String:
-    case VPackValueType::Custom: // _id
+    case VPackValueType::Custom:  // _id
       return 3;
     case VPackValueType::Array:
       return 4;
     case VPackValueType::Object:
       return 5;
-    default: 
-      return 0; // null
+    default:
+      return 0;  // null
   }
 }
 
@@ -395,7 +395,7 @@ AstNode::AstNode(AstNodeType type)
 }
 
 /// @brief create a node, with defining a value
-AstNode::AstNode(AstNodeValue value)
+AstNode::AstNode(AstNodeValue const& value)
     : type(NODE_TYPE_VALUE),
       flags(makeFlags(DETERMINED_CONSTANT, VALUE_CONSTANT, DETERMINED_SIMPLE,
                       VALUE_SIMPLE, DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER)),
@@ -768,15 +768,15 @@ std::string AstNode::getString() const {
   return std::string(getStringValue(), getStringLength());
 }
 
-/// @brief return the string value of a node, as a StringRef
-arangodb::StringRef AstNode::getStringRef() const noexcept {
+/// @brief return the string value of a node, as a arangodb::velocypack::StringRef
+arangodb::velocypack::StringRef AstNode::getStringRef() const noexcept {
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_OBJECT_ELEMENT ||
              type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_PARAMETER ||
              type == NODE_TYPE_PARAMETER_DATASOURCE || type == NODE_TYPE_COLLECTION ||
              type == NODE_TYPE_VIEW || type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS ||
              type == NODE_TYPE_FCALL_USER);
   TRI_ASSERT(value.type == VALUE_TYPE_STRING);
-  return arangodb::StringRef(getStringValue(), getStringLength());
+  return arangodb::velocypack::StringRef(getStringValue(), getStringLength());
 }
 
 /// @brief test if all members of a node are equality comparisons
@@ -800,20 +800,20 @@ uint64_t AstNode::hashValue(uint64_t hash) const noexcept {
   if (type == NODE_TYPE_VALUE) {
     switch (value.type) {
       case VALUE_TYPE_NULL:
-        return fasthash64(static_cast<const void*>("null"), 4, hash);
+        return fasthash64(static_cast<void const*>("null"), 4, hash);
       case VALUE_TYPE_BOOL:
         if (value.value._bool) {
-          return fasthash64(static_cast<const void*>("true"), 4, hash);
+          return fasthash64(static_cast<void const*>("true"), 4, hash);
         }
-        return fasthash64(static_cast<const void*>("false"), 5, hash);
+        return fasthash64(static_cast<void const*>("false"), 5, hash);
       case VALUE_TYPE_INT:
-        return fasthash64(static_cast<const void*>(&value.value._int),
+        return fasthash64(static_cast<void const*>(&value.value._int),
                           sizeof(value.value._int), hash);
       case VALUE_TYPE_DOUBLE:
-        return fasthash64(static_cast<const void*>(&value.value._double),
+        return fasthash64(static_cast<void const*>(&value.value._double),
                           sizeof(value.value._double), hash);
       case VALUE_TYPE_STRING:
-        return fasthash64(static_cast<const void*>(getStringValue()),
+        return fasthash64(static_cast<void const*>(getStringValue()),
                           getStringLength(), hash);
     }
   }
@@ -821,7 +821,7 @@ uint64_t AstNode::hashValue(uint64_t hash) const noexcept {
   size_t const n = numMembers();
 
   if (type == NODE_TYPE_ARRAY) {
-    hash = fasthash64(static_cast<const void*>("array"), 5, hash);
+    hash = fasthash64(static_cast<void const*>("array"), 5, hash);
     for (size_t i = 0; i < n; ++i) {
       hash = getMemberUnchecked(i)->hashValue(hash);
     }
@@ -829,11 +829,11 @@ uint64_t AstNode::hashValue(uint64_t hash) const noexcept {
   }
 
   if (type == NODE_TYPE_OBJECT) {
-    hash = fasthash64(static_cast<const void*>("object"), 6, hash);
+    hash = fasthash64(static_cast<void const*>("object"), 6, hash);
     for (size_t i = 0; i < n; ++i) {
       auto sub = getMemberUnchecked(i);
       if (sub != nullptr) {
-        hash = fasthash64(static_cast<const void*>(sub->getStringValue()),
+        hash = fasthash64(static_cast<void const*>(sub->getStringValue()),
                           sub->getStringLength(), hash);
         TRI_ASSERT(sub->numMembers() > 0);
         hash = sub->getMemberUnchecked(0)->hashValue(hash);
@@ -1655,6 +1655,12 @@ bool AstNode::isConstant() const {
       setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
       return true;
     }
+  }
+
+  if (type == NODE_TYPE_PARAMETER) {
+    // bind parameter values will always be constant values later on...
+    setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+    return true;
   }
 
   setFlag(DETERMINED_CONSTANT);

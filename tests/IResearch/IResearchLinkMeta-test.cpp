@@ -24,7 +24,7 @@
 #include "catch.hpp"
 #include "common.h"
 
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
@@ -157,6 +157,7 @@ struct IResearchLinkMetaSetup {
     >();
 
     analyzers->emplace("empty", "empty", "en", irs::flags{ TestAttribute::type() }); // cache the 'empty' analyzer
+    analyzers->emplace("testVocbase::empty", "empty", "de", irs::flags{ TestAttribute::type() }); // cache the 'empty' analyzer for 'testVocbase'
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
@@ -268,49 +269,69 @@ SECTION("test_inheritDefaults") {
 }
 
 SECTION("test_readDefaults") {
-  arangodb::iresearch::IResearchLinkMeta meta;
   auto json = arangodb::velocypack::Parser::fromJson("{}");
-  std::string tmpString;
 
-  CHECK(true == meta.init(json->slice(), tmpString));
-  CHECK(true == meta._fields.empty());
-  CHECK(false == meta._includeAllFields);
-  CHECK(false == meta._trackListPositions);
-  CHECK((arangodb::iresearch::ValueStorage::NONE == meta._storeValues));
-  CHECK(1U == meta._analyzers.size());
-  CHECK((*(meta._analyzers.begin())));
-  CHECK(("identity" == (*(meta._analyzers.begin()))->name()));
-  CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*(meta._analyzers.begin()))->features()));
+  // without active vobcase
+  {
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string tmpString;
+    CHECK((true == meta.init(json->slice(), tmpString)));
+    CHECK((true == meta._fields.empty()));
+    CHECK((false == meta._includeAllFields));
+    CHECK((false == meta._trackListPositions));
+    CHECK((arangodb::iresearch::ValueStorage::NONE == meta._storeValues));
+    CHECK((1U == meta._analyzers.size()));
+    CHECK((*(meta._analyzers.begin())));
+    CHECK(("identity" == (*(meta._analyzers.begin()))->name()));
+    CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*(meta._analyzers.begin()))->features()));
+    CHECK((false == !meta._analyzers.begin()->get()));
+  }
 
-  CHECK(false == !meta._analyzers.begin()->get());
+  // with active vocbase
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string tmpString;
+    CHECK((true == meta.init(json->slice(), tmpString, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &vocbase)));
+    CHECK((true == meta._fields.empty()));
+    CHECK((false == meta._includeAllFields));
+    CHECK((false == meta._trackListPositions));
+    CHECK((arangodb::iresearch::ValueStorage::NONE == meta._storeValues));
+    CHECK((1U == meta._analyzers.size()));
+    CHECK((*(meta._analyzers.begin())));
+    CHECK(("identity" == (*(meta._analyzers.begin()))->name()));
+    CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*(meta._analyzers.begin()))->features()));
+    CHECK((false == !meta._analyzers.begin()->get()));
+  }
 }
 
 SECTION("test_readCustomizedValues") {
-  std::unordered_set<std::string> expectedFields = { "a", "b", "c" };
-  std::unordered_set<std::string> expectedOverrides = { "default", "all", "some", "none" };
-  std::unordered_set<std::string> expectedAnalyzers = { "empty", "identity" };
-  arangodb::iresearch::IResearchLinkMeta meta;
-  std::string tmpString;
-
-  {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"fields\": { \
-        \"a\": {}, \
-        \"b\": {}, \
-        \"c\": { \
-          \"fields\": { \
-            \"default\": { \"fields\": {}, \"includeAllFields\": false, \"trackListPositions\": false, \"storeValues\": \"none\", \"analyzers\": [ \"identity\" ] }, \
-            \"all\": { \"fields\": {\"d\": {}, \"e\": {}}, \"includeAllFields\": true, \"trackListPositions\": true, \"storeValues\": \"full\", \"analyzers\": [ \"empty\" ] }, \
-            \"some\": { \"trackListPositions\": true, \"storeValues\": \"id\" }, \
-            \"none\": {} \
-          } \
+  auto json = arangodb::velocypack::Parser::fromJson("{ \
+    \"fields\": { \
+      \"a\": {}, \
+      \"b\": {}, \
+      \"c\": { \
+        \"fields\": { \
+          \"default\": { \"fields\": {}, \"includeAllFields\": false, \"trackListPositions\": false, \"storeValues\": \"none\", \"analyzers\": [ \"identity\" ] }, \
+          \"all\": { \"fields\": {\"d\": {}, \"e\": {}}, \"includeAllFields\": true, \"trackListPositions\": true, \"storeValues\": \"full\", \"analyzers\": [ \"empty\" ] }, \
+          \"some\": { \"trackListPositions\": true, \"storeValues\": \"id\" }, \
+          \"none\": {} \
         } \
-      }, \
-      \"includeAllFields\": true, \
-      \"trackListPositions\": true, \
-      \"storeValues\": \"full\", \
-      \"analyzers\": [ \"empty\", \"identity\" ] \
-    }");
+      } \
+    }, \
+    \"includeAllFields\": true, \
+    \"trackListPositions\": true, \
+    \"storeValues\": \"full\", \
+    \"analyzers\": [ \"empty\", \"identity\" ] \
+  }");
+
+  // without active vocbase
+  {
+    std::unordered_set<std::string> expectedFields = { "a", "b", "c" };
+    std::unordered_set<std::string> expectedOverrides = { "default", "all", "some", "none" };
+    std::unordered_set<std::string> expectedAnalyzers = { "empty", "identity" };
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string tmpString;
     CHECK(true == meta.init(json->slice(), tmpString));
     CHECK(3U == meta._fields.size());
 
@@ -395,34 +416,164 @@ SECTION("test_readCustomizedValues") {
     CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*itr)->features()));
     CHECK(false == !itr->get());
   }
+
+  // with active vocbase
+  {
+    std::unordered_set<std::string> expectedFields = { "a", "b", "c" };
+    std::unordered_set<std::string> expectedOverrides = { "default", "all", "some", "none" };
+    std::unordered_set<std::string> expectedAnalyzers = { "empty", "identity" };
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string tmpString;
+    CHECK((true == meta.init(json->slice(), tmpString, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &vocbase)));
+    CHECK((3U == meta._fields.size()));
+
+    for (auto& field: meta._fields) {
+      CHECK((1U == expectedFields.erase(field.key())));
+
+      for (auto& fieldOverride: field.value()->_fields) {
+        auto& actual = *(fieldOverride.value());
+
+        CHECK((1U == expectedOverrides.erase(fieldOverride.key())));
+
+        if ("default" == fieldOverride.key()) {
+          CHECK((true == actual._fields.empty()));
+          CHECK((false == actual._includeAllFields));
+          CHECK((false == actual._trackListPositions));
+          CHECK((arangodb::iresearch::ValueStorage::NONE == actual._storeValues));
+          CHECK((1U == actual._analyzers.size()));
+          CHECK((*(actual._analyzers.begin())));
+          CHECK(("identity" == (*(actual._analyzers.begin()))->name()));
+          CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*(actual._analyzers.begin()))->features()));
+          CHECK((false == !actual._analyzers.begin()->get()));
+        } else if ("all" == fieldOverride.key()) {
+          CHECK((2U == actual._fields.size()));
+          CHECK((true == (actual._fields.find("d") != actual._fields.end())));
+          CHECK((true == (actual._fields.find("e") != actual._fields.end())));
+          CHECK((true == actual._includeAllFields));
+          CHECK((true == actual._trackListPositions));
+          CHECK((arangodb::iresearch::ValueStorage::FULL == actual._storeValues));
+          CHECK((1U == actual._analyzers.size()));
+          CHECK((*(actual._analyzers.begin())));
+          CHECK(("testVocbase::empty" == (*(actual._analyzers.begin()))->name()));
+          CHECK((irs::flags({TestAttribute::type()}) == (*(actual._analyzers.begin()))->features()));
+          CHECK((false == !actual._analyzers.begin()->get()));
+        } else if ("some" == fieldOverride.key()) {
+          CHECK((true == actual._fields.empty())); // not inherited
+          CHECK((true == actual._includeAllFields)); // inherited
+          CHECK((true == actual._trackListPositions));
+          CHECK((arangodb::iresearch::ValueStorage::ID == actual._storeValues));
+          CHECK((2U == actual._analyzers.size()));
+          auto itr = actual._analyzers.begin();
+          CHECK((*itr));
+          CHECK(("testVocbase::empty" == (*itr)->name()));
+          CHECK((irs::flags({TestAttribute::type()}) == (*itr)->features()));
+          CHECK((false == !itr->get()));
+          ++itr;
+          CHECK((*itr));
+          CHECK(("identity" == (*itr)->name()));
+          CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*itr)->features()));
+          CHECK((false == !itr->get()));
+        } else if ("none" == fieldOverride.key()) {
+          CHECK((true == actual._fields.empty())); // not inherited
+          CHECK((true == actual._includeAllFields)); // inherited
+          CHECK((true == actual._trackListPositions)); // inherited
+          CHECK((arangodb::iresearch::ValueStorage::FULL == actual._storeValues));
+          auto itr = actual._analyzers.begin();
+          CHECK((*itr));
+          CHECK(("testVocbase::empty" == (*itr)->name()));
+          CHECK((irs::flags({TestAttribute::type()}) == (*itr)->features()));
+          CHECK((false == !itr->get()));
+          ++itr;
+          CHECK((*itr));
+          CHECK(("identity" == (*itr)->name()));
+          CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*itr)->features()));
+          CHECK((false == !itr->get()));
+        }
+      }
+    }
+
+    CHECK((true == expectedOverrides.empty()));
+    CHECK((true == expectedFields.empty()));
+    CHECK((true == meta._includeAllFields));
+    CHECK((true == meta._trackListPositions));
+    CHECK((arangodb::iresearch::ValueStorage::FULL == meta._storeValues));
+    auto itr = meta._analyzers.begin();
+    CHECK((*itr));
+    CHECK(("testVocbase::empty" == (*itr)->name()));
+    CHECK((irs::flags({TestAttribute::type()}) == (*itr)->features()));
+    CHECK((false == !itr->get()));
+    ++itr;
+    CHECK((*itr));
+    CHECK(("identity" == (*itr)->name()));
+    CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*itr)->features()));
+    CHECK((false == !itr->get()));
+  }
 }
 
 SECTION("test_writeDefaults") {
-  arangodb::iresearch::IResearchLinkMeta meta;
-  arangodb::velocypack::Builder builder;
-  arangodb::velocypack::Slice tmpSlice;
+  // without active vobcase
+  {
+    arangodb::iresearch::IResearchLinkMeta meta;
+    arangodb::velocypack::Builder builder;
+    arangodb::velocypack::Slice tmpSlice;
 
-  CHECK(true == meta.json(arangodb::velocypack::ObjectBuilder(&builder)));
+    builder.openObject();
+    CHECK((true == meta.json(builder)));
+    builder.close();
 
-  auto slice = builder.slice();
+    auto slice = builder.slice();
 
-  CHECK((5U == slice.length()));
-  tmpSlice = slice.get("fields");
-  CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
-  tmpSlice = slice.get("includeAllFields");
-  CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
-  tmpSlice = slice.get("trackListPositions");
-  CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
-  tmpSlice = slice.get("storeValues");
-  CHECK((true == tmpSlice.isString() && std::string("none") == tmpSlice.copyString()));
-  tmpSlice = slice.get("analyzers");
-  CHECK((
-    true ==
-    tmpSlice.isArray() &&
-    1 == tmpSlice.length() &&
-    tmpSlice.at(0).isString() &&
-    std::string("identity") == tmpSlice.at(0).copyString()
-  ));
+    CHECK((5U == slice.length()));
+    tmpSlice = slice.get("fields");
+    CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+    tmpSlice = slice.get("includeAllFields");
+    CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
+    tmpSlice = slice.get("trackListPositions");
+    CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
+    tmpSlice = slice.get("storeValues");
+    CHECK((true == tmpSlice.isString() && std::string("none") == tmpSlice.copyString()));
+    tmpSlice = slice.get("analyzers");
+    CHECK((
+      true ==
+      tmpSlice.isArray() &&
+      1 == tmpSlice.length() &&
+      tmpSlice.at(0).isString() &&
+      std::string("identity") == tmpSlice.at(0).copyString()
+    ));
+  }
+
+  // with active vocbase
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    arangodb::velocypack::Builder builder;
+    arangodb::velocypack::Slice tmpSlice;
+
+    builder.openObject();
+    CHECK((true == meta.json(builder, nullptr, &vocbase)));
+    builder.close();
+
+    auto slice = builder.slice();
+
+    CHECK((5U == slice.length()));
+    tmpSlice = slice.get("fields");
+    CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+    tmpSlice = slice.get("includeAllFields");
+    CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
+    tmpSlice = slice.get("trackListPositions");
+    CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
+    tmpSlice = slice.get("storeValues");
+    CHECK((true == tmpSlice.isString() && std::string("none") == tmpSlice.copyString()));
+    tmpSlice = slice.get("analyzers");
+    CHECK((
+      true ==
+      tmpSlice.isArray() &&
+      1 == tmpSlice.length() &&
+      tmpSlice.at(0).isString() &&
+      std::string("identity") == tmpSlice.at(0).copyString()
+    ));
+  }
 }
 
 SECTION("test_writeCustomizedValues") {
@@ -466,106 +617,218 @@ SECTION("test_writeCustomizedValues") {
   overrideSome._storeValues = arangodb::iresearch::ValueStorage::ID;
   overrideNone._fields.clear(); // do not inherit fields to match jSon inheritance
 
-  std::unordered_set<std::string> expectedFields = { "a", "b", "c" };
-  std::unordered_set<std::string> expectedOverrides = { "default", "all", "some", "none" };
-  std::unordered_set<std::string> expectedAnalyzers = { "empty", "identity" };
-  arangodb::velocypack::Builder builder;
-  arangodb::velocypack::Slice tmpSlice;
+  // without active vobcase
+  {
+    std::unordered_set<std::string> expectedFields = { "a", "b", "c" };
+    std::unordered_set<std::string> expectedOverrides = { "default", "all", "some", "none" };
+    std::unordered_set<std::string> expectedAnalyzers = { "empty", "identity" };
+    arangodb::velocypack::Builder builder;
+    arangodb::velocypack::Slice tmpSlice;
 
-  CHECK(true == meta.json(arangodb::velocypack::ObjectBuilder(&builder)));
+    builder.openObject();
+    CHECK((true == meta.json(builder)));
+    builder.close();
 
-  auto slice = builder.slice();
+    auto slice = builder.slice();
 
-  CHECK((5U == slice.length()));
-  tmpSlice = slice.get("fields");
-  CHECK((true == tmpSlice.isObject() && 3 == tmpSlice.length()));
+    CHECK((5U == slice.length()));
+    tmpSlice = slice.get("fields");
+    CHECK((true == tmpSlice.isObject() && 3 == tmpSlice.length()));
 
-  for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid(); ++itr) {
-    auto key = itr.key();
-    auto value = itr.value();
-    CHECK((true == key.isString() && 1 == expectedFields.erase(key.copyString())));
-    CHECK(true == value.isObject());
+    for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid(); ++itr) {
+      auto key = itr.key();
+      auto value = itr.value();
+      CHECK((true == key.isString() && 1 == expectedFields.erase(key.copyString())));
+      CHECK((true == value.isObject()));
 
-    if (!value.hasKey("fields")) {
-      continue;
-    }
+      if (!value.hasKey("fields")) {
+        continue;
+      }
 
-    tmpSlice = value.get("fields");
+      tmpSlice = value.get("fields");
 
-    for (arangodb::velocypack::ObjectIterator overrideItr(tmpSlice); overrideItr.valid(); ++overrideItr) {
-      auto fieldOverride = overrideItr.key();
-      auto sliceOverride = overrideItr.value();
-      CHECK((true == fieldOverride.isString() && sliceOverride.isObject()));
-      CHECK(1U == expectedOverrides.erase(fieldOverride.copyString()));
+      for (arangodb::velocypack::ObjectIterator overrideItr(tmpSlice); overrideItr.valid(); ++overrideItr) {
+        auto fieldOverride = overrideItr.key();
+        auto sliceOverride = overrideItr.value();
+        CHECK((true == fieldOverride.isString() && sliceOverride.isObject()));
+        CHECK((1U == expectedOverrides.erase(fieldOverride.copyString())));
 
-      if ("default" == fieldOverride.copyString()) {
-        CHECK((4U == sliceOverride.length()));
-        tmpSlice = sliceOverride.get("includeAllFields");
-        CHECK(true == (false == tmpSlice.getBool()));
-        tmpSlice = sliceOverride.get("trackListPositions");
-        CHECK(true == (false == tmpSlice.getBool()));
-        tmpSlice = sliceOverride.get("storeValues");
-        CHECK((true == tmpSlice.isString() && std::string("none") == tmpSlice.copyString()));
-        tmpSlice = sliceOverride.get("analyzers");
-        CHECK((
-          true ==
-          tmpSlice.isArray() &&
-          1 == tmpSlice.length() &&
-          tmpSlice.at(0).isString() &&
-          std::string("identity") == tmpSlice.at(0).copyString()
-        ));
-      } else if ("all" == fieldOverride.copyString()) {
-        std::unordered_set<std::string> expectedFields = { "x", "y" };
-        CHECK((5U == sliceOverride.length()));
-        tmpSlice = sliceOverride.get("fields");
-        CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
-        for (arangodb::velocypack::ObjectIterator overrideFieldItr(tmpSlice); overrideFieldItr.valid(); ++overrideFieldItr) {
-          CHECK((true == overrideFieldItr.key().isString() && 1 == expectedFields.erase(overrideFieldItr.key().copyString())));
+        if ("default" == fieldOverride.copyString()) {
+          CHECK((4U == sliceOverride.length()));
+          tmpSlice = sliceOverride.get("includeAllFields");
+          CHECK((true == (false == tmpSlice.getBool())));
+          tmpSlice = sliceOverride.get("trackListPositions");
+          CHECK((true == (false == tmpSlice.getBool())));
+          tmpSlice = sliceOverride.get("storeValues");
+          CHECK((true == tmpSlice.isString() && std::string("none") == tmpSlice.copyString()));
+          tmpSlice = sliceOverride.get("analyzers");
+          CHECK((
+            true ==
+            tmpSlice.isArray() &&
+            1 == tmpSlice.length() &&
+            tmpSlice.at(0).isString() &&
+            std::string("identity") == tmpSlice.at(0).copyString()
+          ));
+        } else if ("all" == fieldOverride.copyString()) {
+          std::unordered_set<std::string> expectedFields = { "x", "y" };
+          CHECK((5U == sliceOverride.length()));
+          tmpSlice = sliceOverride.get("fields");
+          CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
+          for (arangodb::velocypack::ObjectIterator overrideFieldItr(tmpSlice); overrideFieldItr.valid(); ++overrideFieldItr) {
+            CHECK((true == overrideFieldItr.key().isString() && 1 == expectedFields.erase(overrideFieldItr.key().copyString())));
+          }
+          CHECK((true == expectedFields.empty()));
+          tmpSlice = sliceOverride.get("includeAllFields");
+          CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
+          tmpSlice = sliceOverride.get("trackListPositions");
+          CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
+          tmpSlice = sliceOverride.get("storeValues");
+          CHECK((true == tmpSlice.isString() && std::string("none") == tmpSlice.copyString()));
+          tmpSlice = sliceOverride.get("analyzers");
+          CHECK((
+            true ==
+            tmpSlice.isArray() &&
+            1 == tmpSlice.length() &&
+            tmpSlice.at(0).isString() &&
+            std::string("empty") == tmpSlice.at(0).copyString()
+          ));
+        } else if ("some" == fieldOverride.copyString()) {
+          CHECK((2U == sliceOverride.length()));
+          tmpSlice = sliceOverride.get("trackListPositions");
+          CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
+          tmpSlice = sliceOverride.get("storeValues");
+          CHECK((true == tmpSlice.isString() && std::string("id") == tmpSlice.copyString()));
+        } else if ("none" == fieldOverride.copyString()) {
+          CHECK((0U == sliceOverride.length()));
         }
-        CHECK(true == expectedFields.empty());
-        tmpSlice = sliceOverride.get("includeAllFields");
-        CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
-        tmpSlice = sliceOverride.get("trackListPositions");
-        CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
-        tmpSlice = sliceOverride.get("storeValues");
-        CHECK((true == tmpSlice.isString() && std::string("none") == tmpSlice.copyString()));
-        tmpSlice = sliceOverride.get("analyzers");
-        CHECK((
-          true ==
-          tmpSlice.isArray() &&
-          1 == tmpSlice.length() &&
-          tmpSlice.at(0).isString() &&
-          std::string("empty") == tmpSlice.at(0).copyString()
-        ));
-      } else if ("some" == fieldOverride.copyString()) {
-        CHECK(2U == sliceOverride.length());
-        tmpSlice = sliceOverride.get("trackListPositions");
-        CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
-        tmpSlice = sliceOverride.get("storeValues");
-        CHECK((true == tmpSlice.isString() && std::string("id") == tmpSlice.copyString()));
-      } else if ("none" == fieldOverride.copyString()) {
-        CHECK(0U == sliceOverride.length());
       }
     }
+
+    CHECK((true == expectedOverrides.empty()));
+    CHECK((true == expectedFields.empty()));
+    tmpSlice = slice.get("includeAllFields");
+    CHECK((true == tmpSlice.isBool() && true == tmpSlice.getBool()));
+    tmpSlice = slice.get("trackListPositions");
+    CHECK((true == tmpSlice.isBool() && true == tmpSlice.getBool()));
+    tmpSlice = slice.get("storeValues");
+    CHECK((true == tmpSlice.isString() && std::string("full") == tmpSlice.copyString()));
+    tmpSlice = slice.get("analyzers");
+    CHECK((true == tmpSlice.isArray() && 2 == tmpSlice.length()));
+
+    for (arangodb::velocypack::ArrayIterator analyzersItr(tmpSlice); analyzersItr.valid(); ++analyzersItr) {
+      auto key = *analyzersItr;
+      CHECK((true == key.isString() && 1 == expectedAnalyzers.erase(key.copyString())));
+    }
+
+    CHECK((true == expectedAnalyzers.empty()));
   }
 
-  CHECK(true == expectedOverrides.empty());
-  CHECK(true == expectedFields.empty());
-  tmpSlice = slice.get("includeAllFields");
-  CHECK((true == tmpSlice.isBool() && true == tmpSlice.getBool()));
-  tmpSlice = slice.get("trackListPositions");
-  CHECK((true == tmpSlice.isBool() && true == tmpSlice.getBool()));
-  tmpSlice = slice.get("storeValues");
-  CHECK((true == tmpSlice.isString() && std::string("full") == tmpSlice.copyString()));
-  tmpSlice = slice.get("analyzers");
-  CHECK((true == tmpSlice.isArray() && 2 == tmpSlice.length()));
+  // with active vocbase
+  {
+    std::unordered_set<std::string> expectedFields = { "a", "b", "c" };
+    std::unordered_set<std::string> expectedOverrides = { "default", "all", "some", "none" };
+    std::unordered_set<std::string> expectedAnalyzers = { "empty", "identity" };
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    arangodb::velocypack::Builder builder;
+    arangodb::velocypack::Slice tmpSlice;
 
-  for (arangodb::velocypack::ArrayIterator analyzersItr(tmpSlice); analyzersItr.valid(); ++analyzersItr) {
-    auto key = *analyzersItr;
-    CHECK((true == key.isString() && 1 == expectedAnalyzers.erase(key.copyString())));
+    builder.openObject();
+    CHECK((true == meta.json(builder, nullptr, &vocbase)));
+    builder.close();
+
+    auto slice = builder.slice();
+
+    CHECK((5U == slice.length()));
+    tmpSlice = slice.get("fields");
+    CHECK((true == tmpSlice.isObject() && 3 == tmpSlice.length()));
+
+    for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid(); ++itr) {
+      auto key = itr.key();
+      auto value = itr.value();
+      CHECK((true == key.isString() && 1 == expectedFields.erase(key.copyString())));
+      CHECK((true == value.isObject()));
+
+      if (!value.hasKey("fields")) {
+        continue;
+      }
+
+      tmpSlice = value.get("fields");
+
+      for (arangodb::velocypack::ObjectIterator overrideItr(tmpSlice); overrideItr.valid(); ++overrideItr) {
+        auto fieldOverride = overrideItr.key();
+        auto sliceOverride = overrideItr.value();
+        CHECK((true == fieldOverride.isString() && sliceOverride.isObject()));
+        CHECK((1U == expectedOverrides.erase(fieldOverride.copyString())));
+
+        if ("default" == fieldOverride.copyString()) {
+          CHECK((4U == sliceOverride.length()));
+          tmpSlice = sliceOverride.get("includeAllFields");
+          CHECK((true == (false == tmpSlice.getBool())));
+          tmpSlice = sliceOverride.get("trackListPositions");
+          CHECK((true == (false == tmpSlice.getBool())));
+          tmpSlice = sliceOverride.get("storeValues");
+          CHECK((true == tmpSlice.isString() && std::string("none") == tmpSlice.copyString()));
+          tmpSlice = sliceOverride.get("analyzers");
+          CHECK((
+            true ==
+            tmpSlice.isArray() &&
+            1 == tmpSlice.length() &&
+            tmpSlice.at(0).isString() &&
+            std::string("identity") == tmpSlice.at(0).copyString()
+          ));
+        } else if ("all" == fieldOverride.copyString()) {
+          std::unordered_set<std::string> expectedFields = { "x", "y" };
+          CHECK((5U == sliceOverride.length()));
+          tmpSlice = sliceOverride.get("fields");
+          CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
+          for (arangodb::velocypack::ObjectIterator overrideFieldItr(tmpSlice); overrideFieldItr.valid(); ++overrideFieldItr) {
+            CHECK((true == overrideFieldItr.key().isString() && 1 == expectedFields.erase(overrideFieldItr.key().copyString())));
+          }
+          CHECK((true == expectedFields.empty()));
+          tmpSlice = sliceOverride.get("includeAllFields");
+          CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
+          tmpSlice = sliceOverride.get("trackListPositions");
+          CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
+          tmpSlice = sliceOverride.get("storeValues");
+          CHECK((true == tmpSlice.isString() && std::string("none") == tmpSlice.copyString()));
+          tmpSlice = sliceOverride.get("analyzers");
+          CHECK((
+            true ==
+            tmpSlice.isArray() &&
+            1 == tmpSlice.length() &&
+            tmpSlice.at(0).isString() &&
+            std::string("empty") == tmpSlice.at(0).copyString()
+          ));
+        } else if ("some" == fieldOverride.copyString()) {
+          CHECK((2U == sliceOverride.length()));
+          tmpSlice = sliceOverride.get("trackListPositions");
+          CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
+          tmpSlice = sliceOverride.get("storeValues");
+          CHECK((true == tmpSlice.isString() && std::string("id") == tmpSlice.copyString()));
+        } else if ("none" == fieldOverride.copyString()) {
+          CHECK((0U == sliceOverride.length()));
+        }
+      }
+    }
+
+    CHECK((true == expectedOverrides.empty()));
+    CHECK((true == expectedFields.empty()));
+    tmpSlice = slice.get("includeAllFields");
+    CHECK((true == tmpSlice.isBool() && true == tmpSlice.getBool()));
+    tmpSlice = slice.get("trackListPositions");
+    CHECK((true == tmpSlice.isBool() && true == tmpSlice.getBool()));
+    tmpSlice = slice.get("storeValues");
+    CHECK((true == tmpSlice.isString() && std::string("full") == tmpSlice.copyString()));
+    tmpSlice = slice.get("analyzers");
+    CHECK((true == tmpSlice.isArray() && 2 == tmpSlice.length()));
+
+    for (arangodb::velocypack::ArrayIterator analyzersItr(tmpSlice); analyzersItr.valid(); ++analyzersItr) {
+      auto key = *analyzersItr;
+      CHECK((true == key.isString() && 1 == expectedAnalyzers.erase(key.copyString())));
+    }
+
+    CHECK((true == expectedAnalyzers.empty()));
   }
-
-  CHECK(true == expectedAnalyzers.empty());
 }
 
 SECTION("test_readMaskAll") {
@@ -580,7 +843,7 @@ SECTION("test_readMaskAll") {
     \"storeValues\": \"full\", \
     \"analyzers\": [] \
   }");
-  CHECK(true == meta.init(json->slice(), tmpString, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
+  CHECK(true == meta.init(json->slice(), tmpString, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), nullptr, &mask));
   CHECK(true == mask._fields);
   CHECK(true == mask._includeAllFields);
   CHECK(true == mask._trackListPositions);
@@ -594,7 +857,7 @@ SECTION("test_readMaskNone") {
   std::string tmpString;
 
   auto json = arangodb::velocypack::Parser::fromJson("{}");
-  CHECK(true == meta.init(json->slice(), tmpString, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
+  CHECK(true == meta.init(json->slice(), tmpString, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), nullptr, &mask));
   CHECK(false == mask._fields);
   CHECK(false == mask._includeAllFields);
   CHECK(false == mask._trackListPositions);
@@ -607,7 +870,9 @@ SECTION("test_writeMaskAll") {
   arangodb::iresearch::IResearchLinkMeta::Mask mask(true);
   arangodb::velocypack::Builder builder;
 
-  CHECK(true == meta.json(arangodb::velocypack::ObjectBuilder(&builder), nullptr, &mask));
+  builder.openObject();
+  CHECK((true == meta.json(builder, nullptr, nullptr, &mask)));
+  builder.close();
 
   auto slice = builder.slice();
 
@@ -624,7 +889,9 @@ SECTION("test_writeMaskNone") {
   arangodb::iresearch::IResearchLinkMeta::Mask mask(false);
   arangodb::velocypack::Builder builder;
 
-  CHECK(true == meta.json(arangodb::velocypack::ObjectBuilder(&builder), nullptr, &mask));
+  builder.openObject();
+  CHECK((true == meta.json(builder, nullptr, nullptr, &mask)));
+  builder.close();
 
   auto slice = builder.slice();
 

@@ -22,7 +22,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBEngine.h"
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
@@ -45,6 +44,7 @@
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
@@ -902,16 +902,17 @@ int RocksDBEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
 }
 
 int RocksDBEngine::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) {
-  rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(
-      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
-
-  result.openArray();
-
   auto bounds = RocksDBKeyBounds::DatabaseViews(vocbase.id());
+  rocksdb::Slice upper = bounds.end();
+  rocksdb::ColumnFamilyHandle* cf = RocksDBColumnFamily::definitions();
 
-  for (iter->Seek(bounds.start());
-       iter->Valid() && iter->key().compare(bounds.end()) < 0; iter->Next()) {
+  rocksdb::ReadOptions ro;
+  ro.iterate_upper_bound = &upper;
+
+  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(ro, cf));
+  result.openArray();
+  for (iter->Seek(bounds.start()); iter->Valid(); iter->Next()) {
+    TRI_ASSERT(iter->key().compare(bounds.end()) < 0);
     auto slice = VPackSlice(iter->value().data());
 
     LOG_TOPIC(TRACE, Logger::VIEWS) << "got view slice: " << slice.toJson();
@@ -1181,7 +1182,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   rocksdb::WriteBatch batch;
   RocksDBLogValue logValue =
       RocksDBLogValue::CollectionDrop(vocbase.id(), collection.id(),
-                                      StringRef(collection.guid()));
+                                      arangodb::velocypack::StringRef(collection.guid()));
   batch.PutLogData(logValue.slice());
 
   RocksDBKey key;
@@ -1300,7 +1301,7 @@ arangodb::Result RocksDBEngine::renameCollection(TRI_vocbase_t& vocbase,
   auto builder = collection.toVelocyPackIgnore({"path", "statusString"}, true, true);
   int res = writeCreateCollectionMarker(
       vocbase.id(), collection.id(), builder.slice(),
-      RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(), StringRef(oldName)));
+      RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(), arangodb::velocypack::StringRef(oldName)));
 
   return arangodb::Result(res);
 }
@@ -1353,7 +1354,7 @@ arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
   builder.close();
 
   auto logValue =
-      RocksDBLogValue::ViewDrop(vocbase.id(), view.id(), StringRef(view.guid()));
+      RocksDBLogValue::ViewDrop(vocbase.id(), view.id(), arangodb::velocypack::StringRef(view.guid()));
   RocksDBKey key;
   key.constructView(vocbase.id(), view.id());
 
@@ -1569,6 +1570,14 @@ void RocksDBEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) 
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
+}
+
+void RocksDBEngine::disableWalFilePruning(bool disable) {
+  _backgroundThread->disableWalFilePruning(disable);
+}
+
+bool RocksDBEngine::disableWalFilePruning() const {
+  return _backgroundThread->disableWalFilePruning();
 }
 
 Result RocksDBEngine::registerRecoveryHelper(std::shared_ptr<RocksDBRecoveryHelper> helper) {
@@ -2133,7 +2142,7 @@ Result RocksDBEngine::lastLogger(TRI_vocbase_t& vocbase,
   builder->close();
   builderSPtr = std::move(builder);
 
-  return std::move(rep);
+  return std::move(rep).result();
 }
 
 WalAccess const* RocksDBEngine::walAccess() const {
@@ -2175,10 +2184,6 @@ void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
   if (tick > _releasedTick) {
     _releasedTick = tick;
   }
-}
-
-bool RocksDBEngine::canUseRangeDeleteInWal() const {
-  return ServerState::instance()->isSingleServer();
 }
 
 }  // namespace arangodb

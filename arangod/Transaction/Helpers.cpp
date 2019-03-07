@@ -65,7 +65,7 @@ VPackSlice transaction::helpers::extractKeyFromDocument(VPackSlice slice) {
 }
 
 /// @brief extract the _key attribute from a slice
-StringRef transaction::helpers::extractKeyPart(VPackSlice slice) {
+arangodb::velocypack::StringRef transaction::helpers::extractKeyPart(VPackSlice slice) {
   if (slice.isExternal()) {
     slice = slice.resolveExternal();
   }
@@ -74,19 +74,19 @@ StringRef transaction::helpers::extractKeyPart(VPackSlice slice) {
   if (slice.isObject()) {
     VPackSlice k = slice.get(StaticStrings::KeyString);
     if (!k.isString()) {
-      return StringRef();  // fail
+      return arangodb::velocypack::StringRef();  // fail
     }
-    return StringRef(k);
+    return arangodb::velocypack::StringRef(k);
   }
   if (slice.isString()) {
-    StringRef key(slice);
+    arangodb::velocypack::StringRef key(slice);
     size_t pos = key.find('/');
     if (pos == std::string::npos) {
       return key;
     }
     return key.substr(pos + 1);
   }
-  return StringRef();
+  return arangodb::velocypack::StringRef();
 }
 
 /// @brief extract the _id attribute from a slice, and convert it into a
@@ -289,7 +289,7 @@ void transaction::helpers::extractKeyAndRevFromDocument(VPackSlice slice, VPackS
       VPackSlice revSlice(p + 1);
       if (revSlice.isString()) {
         VPackValueLength l;
-        char const* p = revSlice.getString(l);
+        char const* p = revSlice.getStringUnchecked(l);
         revisionId = TRI_StringToRid(p, l, false);
       } else if (revSlice.isNumber()) {
         revisionId = revSlice.getNumericValue<TRI_voc_rid_t>();
@@ -327,7 +327,7 @@ TRI_voc_rid_t transaction::helpers::extractRevFromDocument(VPackSlice slice) {
       VPackSlice revSlice(p + 1);
       if (revSlice.isString()) {
         VPackValueLength l;
-        char const* p = revSlice.getString(l);
+        char const* p = revSlice.getStringUnchecked(l);
         return TRI_StringToRid(p, l, false);
       } else if (revSlice.isNumber()) {
         return revSlice.getNumericValue<TRI_voc_rid_t>();
