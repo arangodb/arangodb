@@ -418,8 +418,6 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     _state.applier._chunkSize = 16 * 1024;
   }
     
-    _state.applier._chunkSize = 50;
-
   // get our own server-id
   _state.localServerId = ServerIdFeature::getId();
   _state.localServerIdString = basics::StringUtils::itoa(_state.localServerId);
