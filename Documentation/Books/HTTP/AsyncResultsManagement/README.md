@@ -50,7 +50,7 @@ Clients should thus not send the extra header when they have strict durability
 requirements or if they rely on result of the sent operation for further actions.
 
 The maximum number of queued tasks is determined by the startup option 
-*-scheduler.maximal-queue-size*. If more than this number of tasks are already queued,
+*--server.maximal-queue-size*. If more than this number of tasks are already queued,
 the server will reject the request with an HTTP 500 error.
 
 Finally, please note that it is not possible to cancel such a
