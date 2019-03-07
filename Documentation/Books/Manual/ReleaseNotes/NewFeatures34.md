@@ -1047,6 +1047,18 @@ versions on the same machine (e.g. for testing).
 Client tools
 ------------
 
+### Arangosh
+
+Starting with ArangoDB version 3.4.5, the ArangoShell (arangosh) provides the option 
+`--console.history` for controlling whether the shell's command-line history 
+should be loaded from and persisted in a file.
+
+The default value for this option is `true`. Setting it to `false`
+will make arangosh not load any command-line history from the history
+file, and not store the current session's history when the shell is
+exited. The command-line history will then only be available in the
+current shell session.
+
 ### Arangodump
 
 Arangodump can now dump multiple collections in parallel. This can significantly
