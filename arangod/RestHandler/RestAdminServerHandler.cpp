@@ -23,6 +23,10 @@
 
 #include "RestAdminServerHandler.h"
 
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterHelpers.h"
+#include "Sharding/ShardingInfo.h"
+#include "VocBase/LogicalCollection.h"
 #include "Actions/RestActionHandler.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Replication/ReplicationFeature.h"
@@ -123,6 +127,38 @@ void RestAdminServerHandler::handleAvailability() {
     case ServerState::Mode::INVALID:
       TRI_ASSERT(!available);
       break;
+  }
+
+  bool includeSyncState = _request->parsedValue("includeSyncState", false);
+
+  if (includeSyncState && available) {
+    ServerState *ss = ServerState::instance();
+    std::string serverId = ss->getId();
+    if (ss->isDBServer()) {
+      // Check if all shards are in sync
+      ClusterInfo* ci = ClusterInfo::instance();
+
+      for (auto const& db : ci->databases()) {
+        for (auto const& c : ci->getCollections(db)) {
+          // We want to check if the collection is usable and all followers
+          // are in sync:
+          std::shared_ptr<ShardMap> shardMap = c->shardIds();
+          // shardMap is an unordered_map from ShardId (string) to a vector of
+          // servers (strings), wrapped in a shared_ptr
+          auto cic = ci->getCollectionCurrent(db, basics::StringUtils::itoa(c->id()));
+          // Check all shards:
+          for (auto const& p : *shardMap) {
+            if (p.second[0] != serverId) {
+              continue;
+            }
+            auto currentServerList = cic->servers(p.first /* shardId */);
+            if (!ClusterHelpers::compareServerLists(p.second, currentServerList)) {
+              available = false;
+            }
+          }
+        }
+      }
+    }
   }
 
   if (!available) {
