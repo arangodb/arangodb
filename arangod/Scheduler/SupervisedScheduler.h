@@ -81,13 +81,9 @@ class SupervisedScheduler : public Scheduler {
   // in a container class and store pointers. -- Maybe there is a better way?
   boost::lockfree::queue<WorkItem*> _queue[3];
 
-  char _padding1[64];
   std::atomic<uint64_t> _jobsSubmitted;
-  char _padding2[64];
   std::atomic<uint64_t> _jobsDequeued;
-  char _padding3[64];
   std::atomic<uint64_t> _jobsDone;
-  char _padding5[64];
 
   // During a queue operation there a two reasons to manually wake up a worker
   //  1. the queue length is bigger than _wakeupQueueLength and the last submit time
