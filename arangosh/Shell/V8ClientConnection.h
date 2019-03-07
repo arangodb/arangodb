@@ -78,6 +78,7 @@ class V8ClientConnection {
   std::string lastErrorMessage() const { return _lastErrorMessage; }
   std::string const& version() const { return _version; }
   std::string const& mode() const { return _mode; }
+  std::string const& role() const { return _role; }
   std::string endpointSpecification() const;
 
   v8::Handle<v8::Value> getData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
@@ -146,6 +147,7 @@ class V8ClientConnection {
   std::string _lastErrorMessage;
   std::string _version;
   std::string _mode;
+  std::string _role;
 
   fuerte::EventLoopService _loop;
   fuerte::ConnectionBuilder _builder;
