@@ -2,7 +2,7 @@
 @startDocuBlock JSF_cluster_test_PUT
 @brief executes a cluster roundtrip for sharding
 
-@RESTHEADER{PUT /_admin/cluster-test, Execute cluster roundtrip (PUT)}
+@RESTHEADER{PUT /_admin/cluster-test, Execute cluster roundtrip PUT}
 
 @RESTALLBODYPARAM{body,object,required}
 
