@@ -181,11 +181,10 @@ class IndexExecutor {
   typedef std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
 
   void setProducingFunction(DocumentProducingFunction documentProducer) {
-    _documentProducer = documentProducer;
+    _documentProducer = std::move(documentProducer);
   };
 
  private:
-  bool initializeCursor();
   bool advanceCursor();
   void executeExpressions(InputAqlItemRow& input);
   bool initIndexes(InputAqlItemRow& input);
