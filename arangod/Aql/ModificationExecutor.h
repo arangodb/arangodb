@@ -161,6 +161,7 @@ struct ModificationExecutorBase {
   struct Properties {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
+    static const bool inputSizeRestrictsOutputSize = true;
   };
   using Infos = ModificationExecutorInfos;
   using Fetcher = SingleBlockFetcher<Properties::allowsBlockPassthrough>;

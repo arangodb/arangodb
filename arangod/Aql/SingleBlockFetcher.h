@@ -99,7 +99,7 @@ class SingleBlockFetcher {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   };
 
-  std::pair<ExecutionState, std::size_t> preFetchNumberOfRows() {
+  std::pair<ExecutionState, std::size_t> preFetchNumberOfRows(std::size_t) {
     TRI_ASSERT(false);
     return {ExecutionState::DONE, 0};
   }
