@@ -214,6 +214,13 @@ bool Insert::doModifications(ModificationExecutorInfos& info,
     return true;
   }
 
+  try {
+    LOG_DEVEL << "use overwrite: " << std::boolalpha << options.overwrite;
+    LOG_DEVEL << toInsert.toJson();
+  } catch (...){
+
+  }
+
   // execute insert
   TRI_ASSERT(info._trx);
   auto operationResult = info._trx->insert(info._aqlCollection->name(), toInsert, options);

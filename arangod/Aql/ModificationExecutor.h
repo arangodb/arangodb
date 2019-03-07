@@ -72,7 +72,7 @@ inline OperationOptions convertOptions(ModificationOptions const& in,
   out.isRestore = in.useIsRestore;
   // in.consultAqlWriteFilter;
   // in.exclusive;
-  // in.overwrite;
+  out.overwrite = in.overwrite;
   out.ignoreRevs = in.ignoreRevs;
 
   out.returnNew = (outVariableNew != nullptr);
