@@ -550,6 +550,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
 /// Tails the wall, this will already sanitize the
 WalAccessResult MMFilesWalAccess::tail(WalAccess::Filter const& filter,
                                        size_t chunkSize, TRI_voc_tid_t barrierId,
+                                       bool /*supportsDeletedMarkers*/,
                                        MarkerCallback const& callback) const {
   /*OG_TOPIC(WARN, Logger::REPLICATION)
       << "1. Starting tailing: tickStart " << tickStart << " tickEnd "

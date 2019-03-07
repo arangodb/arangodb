@@ -99,6 +99,10 @@ uint64_t getUIntHeader(std::unique_ptr<httpclient::SimpleHttpResult> const& resp
 /// @brief base url of the replication API
 std::string const TailingSyncer::WalAccessUrl = "/_api/wal";
 
+/// @brief pseudo database name that is used for replicating certain
+/// actions of already-dropped databases
+std::string const TailingSyncer::droppedDatabase("---deleted---");
+
 TailingSyncer::TailingSyncer(ReplicationApplier* applier,
                              ReplicationApplierConfiguration const& configuration,
                              TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
@@ -304,6 +308,17 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
 
     if (vocbase != nullptr && name != TRI_VOC_SYSTEM_DATABASE) {
+      // remove all open transactions for the database to be dropped
+      for (auto it = _ongoingTransactions.begin(); it != _ongoingTransactions.end(); /* no hoisting */) {
+        auto& trx = (*it).second;
+        if (trx != nullptr && trx->vocbase().name() == name) {
+          LOG_TOPIC(TRACE, Logger::REPLICATION) << "aborting open transaction for db " << name;
+          it = _ongoingTransactions.erase(it);
+        } else {
+          ++it;
+        }
+      }
+
       auto system = sysDbFeature->use();
       TRI_ASSERT(system.get());
       // delete from cache by id and name
@@ -533,7 +548,17 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
   // "collections":[{"cid":"230920700700391","operations":10}]}
 
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
+
   if (vocbase == nullptr) {
+    // very special case: we are getting a begin transaction marker
+    // for a database that was already deleted on the master
+    VPackSlice dbSlice = slice.get("db");
+    if (dbSlice.isString() && dbSlice.stringRef() == TailingSyncer::droppedDatabase) {
+      // in this case we must go on replicating
+      return Result();
+    }
+    
+    // for any other case, return "database not found" and abort the replication
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -620,6 +645,18 @@ Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
 
   if (it == _ongoingTransactions.end() || (*it).second == nullptr) {
     // invalid state, no transaction was started.
+    VPackSlice dbSlice = slice.get("db");
+    if (dbSlice.isString() && dbSlice.stringRef() == TailingSyncer::droppedDatabase) {
+      // special case: we are getting a commit transaction marker for a database
+      // that was already deleted on the master
+      // in this case we must go on replicating, but make sure the transaction
+      // is also dropped locally - otherwise the open transaction would linger
+      // around forever
+      _ongoingTransactions.erase(tid);
+      TRI_ASSERT(_ongoingTransactions.empty() || _supportsMultipleOpenTransactions);
+      return Result();
+    }
+
     return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION);
   }
 
@@ -1705,7 +1742,8 @@ void TailingSyncer::fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> shar
                                       : "") +
         "&serverId=" + _state.localServerIdString +
         "&includeSystem=" + (_state.applier._includeSystem ? "true" : "false") +
-        "&includeFoxxQueues=" + (_state.applier._includeFoxxQueues ? "true" : "false");
+        "&includeFoxxQueues=" + (_state.applier._includeFoxxQueues ? "true" : "false") +
+        "&supportsDeletedMarkers=true";
     
     // send request
     setProgress(std::string("fetching master log from tick ") + StringUtils::itoa(fetchTick) +
@@ -1822,9 +1860,16 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
   TRI_voc_tick_t lastIncludedTick =
       getUIntHeader(response, StaticStrings::ReplicationHeaderLastIncluded);
   TRI_voc_tick_t const tick = getUIntHeader(response, StaticStrings::ReplicationHeaderLastTick);
-  TRI_ASSERT(tick >= lastIncludedTick);
   
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "applyLog. fetchTick: " << fetchTick << ", checkMore: " << checkMore << ", fromIncluded: " << fromIncluded << ", lastScannedTick: " << lastScannedTick << ", lastIncludedTick: " << lastIncludedTick << ", tick: " << tick;
+  
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // some temporary debug output here. TODO: remove this later when the assert does not trigger anymore
+  if (tick < lastIncludedTick) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "oops. tick: " << tick << ", lastIncludedTick: " << lastIncludedTick << ", response: " << response->getBody(); 
+  }
+#endif
+  TRI_ASSERT(tick >= lastIncludedTick);
 
   if (lastIncludedTick == 0 && lastScannedTick > 0 && lastScannedTick > fetchTick) {
     // master did not have any news for us

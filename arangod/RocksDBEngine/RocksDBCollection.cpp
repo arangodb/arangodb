@@ -295,7 +295,7 @@ void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
     LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << msg;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (auto it : _indexes) {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "- " << it.get();
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "- " << it->context();
     }
 #endif
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);

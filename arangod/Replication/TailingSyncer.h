@@ -63,6 +63,10 @@ class TailingSyncer : public Syncer {
   /// @brief run method, performs continuous synchronization
   /// catches exceptions
   Result run();
+  
+  /// @brief pseudo database name that is used for replicating certain
+  /// actions of already-dropped databases
+  static std::string const droppedDatabase;
 
  protected:
   /// @brief decide based on _masterInfo which api to use
