@@ -68,6 +68,7 @@ namespace {
 static arangodb::velocypack::StringRef const cnameRef("cname");
 static arangodb::velocypack::StringRef const dataRef("data");
 static arangodb::velocypack::StringRef const tickRef("tick");
+static arangodb::velocypack::StringRef const dbRef("db");
 
 bool hasHeader(std::unique_ptr<httpclient::SimpleHttpResult> const& response,
                std::string const& name) {
@@ -98,10 +99,6 @@ uint64_t getUIntHeader(std::unique_ptr<httpclient::SimpleHttpResult> const& resp
 
 /// @brief base url of the replication API
 std::string const TailingSyncer::WalAccessUrl = "/_api/wal";
-
-/// @brief pseudo database name that is used for replicating certain
-/// actions of already-dropped databases
-std::string const TailingSyncer::droppedDatabase("---deleted---");
 
 TailingSyncer::TailingSyncer(ReplicationApplier* applier,
                              ReplicationApplierConfiguration const& configuration,
@@ -166,6 +163,56 @@ void TailingSyncer::abortOngoingTransactions() noexcept {
     // ignore errors here
   }
 }
+  
+/// @brief abort all ongoing transactions for a specific database 
+void TailingSyncer::abortOngoingTransactions(std::string const& dbName) {
+  for (auto it = _ongoingTransactions.begin(); it != _ongoingTransactions.end(); /* no hoisting */) {
+    auto& trx = (*it).second;
+    if (trx != nullptr && trx->vocbase().name() == dbName) {
+      LOG_TOPIC(TRACE, Logger::REPLICATION) << "aborting open transaction for db " << dbName;
+      it = _ongoingTransactions.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
+/// @brief count all ongoing transactions for a specific database 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+size_t TailingSyncer::countOngoingTransactions(VPackSlice slice) const {
+  size_t result = 0;
+
+  TRI_ASSERT(slice.isObject());
+  VPackSlice nameSlice = slice.get(::dbRef);
+  
+  if (nameSlice.isString()) {
+    for (auto const& it : _ongoingTransactions) {
+      auto const& trx = it.second;
+      if (trx != nullptr && StringRef(nameSlice) == trx->vocbase().name()) {
+        ++result;
+      }
+    }
+  }
+
+  return result;
+}
+#endif
+
+/// @brief whether or not the are multiple ongoing transactions for one
+/// database
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+bool TailingSyncer::hasMultipleOngoingTransactions() const {
+  std::unordered_set<TRI_voc_tick_t> found;
+  for (auto const& it : _ongoingTransactions) {
+    auto const& trx = it.second;
+    if (trx != nullptr && !found.emplace(trx->vocbase().id()).second) {
+      // found a duplicate
+      return true;
+    }
+  }
+  return false;
+}
+#endif
 
 /// @brief whether or not a marker should be skipped
 bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick, VPackSlice const& slice,
@@ -258,7 +305,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
   TRI_ASSERT(!_ignoreDatabaseMarkers);
 
   // the new wal access protocol contains database names
-  VPackSlice const nameSlice = slice.get("db");
+  VPackSlice const nameSlice = slice.get(::dbRef);
   if (!nameSlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -312,16 +359,8 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
 
     if (vocbase != nullptr && name != TRI_VOC_SYSTEM_DATABASE) {
-      // remove all open transactions for the database to be dropped
-      for (auto it = _ongoingTransactions.begin(); it != _ongoingTransactions.end(); /* no hoisting */) {
-        auto& trx = (*it).second;
-        if (trx != nullptr && trx->vocbase().name() == name) {
-          LOG_TOPIC(TRACE, Logger::REPLICATION) << "aborting open transaction for db " << name;
-          it = _ongoingTransactions.erase(it);
-        } else {
-          ++it;
-        }
-      }
+      // abort all ongoing transactions for the database to be dropped
+      abortOngoingTransactions(name);
 
       auto system = sysDbFeature->use();
       TRI_ASSERT(system.get());
@@ -553,14 +592,6 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
 
   if (vocbase == nullptr) {
-    // very special case: we are getting a begin transaction marker
-    // for a database that was already deleted on the master
-    VPackSlice dbSlice = slice.get("db");
-    if (dbSlice.isString() && dbSlice.copyString() == TailingSyncer::droppedDatabase) {
-      // in this case we must go on replicating
-      return Result();
-    }
-    
     // for any other case, return "database not found" and abort the replication
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
@@ -587,7 +618,7 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
 
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "starting replication transaction " << tid;
 
-  TRI_ASSERT(_ongoingTransactions.empty() || _supportsMultipleOpenTransactions);
+  TRI_ASSERT(_supportsMultipleOpenTransactions || countOngoingTransactions(slice) == 0);
 
   auto trx = std::make_unique<ReplicationTransaction>(*vocbase);
   Result res = trx->begin();
@@ -647,19 +678,6 @@ Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
   auto it = _ongoingTransactions.find(tid);
 
   if (it == _ongoingTransactions.end() || (*it).second == nullptr) {
-    // invalid state, no transaction was started.
-    VPackSlice dbSlice = slice.get("db");
-    if (dbSlice.isString() && dbSlice.copyString() == TailingSyncer::droppedDatabase) {
-      // special case: we are getting a commit transaction marker for a database
-      // that was already deleted on the master
-      // in this case we must go on replicating, but make sure the transaction
-      // is also dropped locally - otherwise the open transaction would linger
-      // around forever
-      _ongoingTransactions.erase(tid);
-      TRI_ASSERT(_ongoingTransactions.empty() || _supportsMultipleOpenTransactions);
-      return Result();
-    }
-
     return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION);
   }
 
@@ -672,7 +690,7 @@ Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
 
   _ongoingTransactions.erase(it);
 
-  TRI_ASSERT(_ongoingTransactions.empty() || _supportsMultipleOpenTransactions);
+  TRI_ASSERT(_supportsMultipleOpenTransactions || countOngoingTransactions(slice) == 0);
   return res;
 }
 
@@ -1352,6 +1370,12 @@ retry:
         _applier->stop(res);
         return res;
       }
+      
+      // do an automatic full resync
+      LOG_TOPIC(WARN, Logger::REPLICATION)
+          << "restarting initial synchronization for database '" << _state.databaseName
+          << "' because autoResync option is set. retry #" << shortTermFailsInRow 
+          << " of " << _state.applier._autoResyncRetries;
 
       {
         // increase number of syncs counter
@@ -1360,14 +1384,8 @@ retry:
        
         // necessary to reset the state here, because otherwise running the
         // InitialSyncer may fail with "applier is running" errors 
-        _applier->_state._phase = ReplicationApplierState::ActivityPhase::INACTIVE;
+        _applier->_state._phase = ReplicationApplierState::ActivityPhase::INITIAL;
       }
-
-      // do an automatic full resync
-      LOG_TOPIC(WARN, Logger::REPLICATION)
-          << "restarting initial synchronization for database '" << _state.databaseName
-          << "' because autoResync option is set. retry #" << shortTermFailsInRow 
-          << " of " << _state.applier._autoResyncRetries;
 
       // start initial synchronization
       try {
@@ -1398,6 +1416,9 @@ retry:
         res.reset(TRI_ERROR_INTERNAL,
                   "caught unknown exception during initial replication");
       }
+        
+      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+      _applier->_state._phase = ReplicationApplierState::ActivityPhase::INACTIVE;
     }
       
     abortOngoingTransactions();
@@ -1722,7 +1743,7 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tic
     _ongoingTransactions.emplace(StringUtils::uint64(it.copyString()), nullptr);
   }
 
-  TRI_ASSERT(_ongoingTransactions.size() <= 1 || _supportsMultipleOpenTransactions);
+  TRI_ASSERT(_supportsMultipleOpenTransactions || !hasMultipleOngoingTransactions());
 
   {
     std::string const progress =
@@ -2089,3 +2110,4 @@ Result TailingSyncer::handleRequiredFromPresentFailure(TRI_voc_tick_t fromTick,
 
   return Result();
 }
+

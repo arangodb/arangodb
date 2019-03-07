@@ -64,10 +64,6 @@ class TailingSyncer : public Syncer {
   /// catches exceptions
   Result run();
   
-  /// @brief pseudo database name that is used for replicating certain
-  /// actions of already-dropped databases
-  static std::string const droppedDatabase;
-
  protected:
   /// @brief decide based on _masterInfo which api to use
   virtual std::string tailingBaseUrl(std::string const& command);
@@ -77,6 +73,22 @@ class TailingSyncer : public Syncer {
 
   /// @brief abort all ongoing transactions
   void abortOngoingTransactions() noexcept;
+
+  /// @brief abort all ongoing transactions for a specific database
+  void abortOngoingTransactions(std::string const& dbName);
+
+  /// @brief count all ongoing transactions for a specific database
+  /// used only from within assertions
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  size_t countOngoingTransactions(arangodb::velocypack::Slice slice) const;
+#endif
+
+  /// @brief whether or not the are multiple ongoing transactions for one
+  /// database
+  /// used only from within assertions
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool hasMultipleOngoingTransactions() const;
+#endif
 
   /// @brief whether or not a collection should be excluded
   bool skipMarker(TRI_voc_tick_t firstRegularTick, arangodb::velocypack::Slice const& slice,

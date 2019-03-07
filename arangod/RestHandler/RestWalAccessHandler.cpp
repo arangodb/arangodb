@@ -244,8 +244,6 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
 
   grantTemporaryRights();
 
-  bool const supportsDeletedMarkers = _request->parsedValue("supportsDeletedMarkers", false);
-
   bool found = false;
   size_t chunkSize = 1024 * 1024;
   std::string const& value5 = _request->value("chunkSize", found);
@@ -272,7 +270,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   size_t length = 0;
 
   if (useVst) {
-    result = wal->tail(filter, chunkSize, barrierId, supportsDeletedMarkers,
+    result = wal->tail(filter, chunkSize, barrierId, 
                        [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
                          length++;
 
@@ -293,7 +291,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
     // note: we need the CustomTypeHandler here
     VPackDumper dumper(&adapter, &opts);
-    result = wal->tail(filter, chunkSize, barrierId, supportsDeletedMarkers,
+    result = wal->tail(filter, chunkSize, barrierId, 
                        [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
                          length++;
 
