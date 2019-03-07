@@ -115,6 +115,22 @@ class CollectNode : public ExecutionNode {
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
+  /// @brief calculate the collect register
+  void calcCollectRegister(RegisterId& collectRegister,
+                           std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+
+  /// @brief calculate the group registers
+  void calcGroupRegisters(
+      std::vector<std::pair<RegisterId, RegisterId>>& groupRegisters,
+      std::unordered_set<RegisterId>& readableInputRegisters,
+      std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+
+  /// @brief calculate the aggregate registers
+  void calcAggregateRegisters(
+      std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
+      std::unordered_set<RegisterId>& readableInputRegisters,
+      std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
