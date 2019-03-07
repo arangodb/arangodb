@@ -118,14 +118,14 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
  * @brief Implementation of Hashed Collect Executor
  */
 
-typedef std::vector<std::unique_ptr<Aggregator>> AggregateValuesType;
-
 class HashedCollectExecutor {
  public:
   struct Properties {
     static const bool preservesOrder = false;
     static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = true;
+    // TODO This should be true, but the current implementation in
+    // ExecutionBlockImpl and the fetchers does not work with this.
+    static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = HashedCollectExecutorInfos;
@@ -145,22 +145,54 @@ class HashedCollectExecutor {
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
  private:
+  using AggregateValuesType = std::vector<std::unique_ptr<Aggregator>>;
+  using GroupKeyType = std::vector<AqlValue>;
+  using GroupValueType = std::unique_ptr<AggregateValuesType>;
+  using GroupMapType = std::unordered_map<GroupKeyType, GroupValueType, AqlValueGroupHash, AqlValueGroupEqual>;
+
   Infos const& infos() const noexcept { return _infos; };
 
-  void _destroyAllGroupsAqlValues();
+  /**
+  * @brief Shall be executed until it returns DONE, then never again.
+  * Consumes all input, writes groups and calculates aggregates, and initializes
+  * _currentGroup to _allGroups.begin().
+  *
+  * @return DONE or WAITING
+  */
+  ExecutionState init();
+
+  void destroyAllGroupsAqlValues();
+
+  static std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*>
+  createAggregatorFactories(HashedCollectExecutor::Infos const& infos);
+
+  std::pair<GroupValueType, GroupKeyType>
+  buildNewGroup(InputAqlItemRow& input, size_t n);
+
+  std::pair<GroupMapType::iterator, bool> findOrEmplaceGroup(InputAqlItemRow& input);
+
+  void consumeInputRow(InputAqlItemRow& input);
+
+  void writeCurrentGroupToOutput(OutputAqlItemRow& output);
 
  private:
   Infos const& _infos;
   Fetcher& _fetcher;
-  ExecutionState _state;
-  InputAqlItemRow _input;
+  ExecutionState _upstreamState;
+
+  /// @brief We need to save any input row (it really doesn't matter, except for
+  /// when input blocks are freed - thus the last), so we can produce output
+  /// rows later.
+  InputAqlItemRow _lastInitializedInputRow;
 
   /// @brief hashmap of all encountered groups
-  std::unordered_map<std::vector<AqlValue>, std::unique_ptr<AggregateValuesType>, AqlValueGroupHash, AqlValueGroupEqual> _allGroups;
-  std::unordered_map<std::vector<AqlValue>, std::unique_ptr<AggregateValuesType>,
-                     AqlValueGroupHash, AqlValueGroupEqual>::iterator _currentGroup;
-  bool _done;  // wrote last output row
-  bool _init;  // done aggregating groups
+  GroupMapType _allGroups;
+  GroupMapType::iterator _currentGroup;
+
+  bool _producingOutput;  // done aggregating groups
+  bool _isInitialized;  // init() was called successfully (e.g. it returned DONE)
+
+  std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*> _aggregatorFactories;
 };
 
 }  // namespace aql
