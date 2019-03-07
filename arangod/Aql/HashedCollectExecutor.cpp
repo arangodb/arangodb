@@ -98,7 +98,6 @@ HashedCollectExecutor::HashedCollectExecutor(Fetcher& fetcher, Infos& infos)
                  AqlValueGroupHash(_infos.getTransaction(),
                                    _infos.getGroupVariables().size()),
                  AqlValueGroupEqual(_infos.getTransaction())),
-      _producingOutput(false),
       _isInitialized(false),
       _aggregatorFactories() {
   _aggregatorFactories = createAggregatorFactories(_infos);
@@ -212,11 +211,7 @@ ExecutionState HashedCollectExecutor::init() {
   }
 
   // initialize group iterator for output
-  if (!_producingOutput) {
-    _producingOutput = true;
-    // setup the iterator
-    _currentGroup = _allGroups.begin();
-  }
+  _currentGroup = _allGroups.begin();
 
   return ExecutionState::DONE;
 }

@@ -189,7 +189,6 @@ class HashedCollectExecutor {
   GroupMapType _allGroups;
   GroupMapType::iterator _currentGroup;
 
-  bool _producingOutput;  // done aggregating groups
   bool _isInitialized;  // init() was called successfully (e.g. it returned DONE)
 
   std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*> _aggregatorFactories;
