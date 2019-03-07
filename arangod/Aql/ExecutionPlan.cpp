@@ -219,6 +219,7 @@ std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast,
 ExecutionPlan::ExecutionPlan(Ast* ast)
     : _ids(),
       _root(nullptr),
+      _planValid(true),
       _varUsageComputed(false),
       _isResponsibleForInitialize(true),
       _nestingLevel(0),
@@ -231,7 +232,7 @@ ExecutionPlan::ExecutionPlan(Ast* ast)
 /// @brief destroy the plan, frees all assigned nodes
 ExecutionPlan::~ExecutionPlan() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (_root != nullptr) {
+  if (_root != nullptr && _planValid) {
     try {
       // count the actual number of nodes in the plan
       ::NodeCounter counter;
