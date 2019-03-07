@@ -37,10 +37,10 @@ They use the full spectrum of ArangoDBs graph features. You may access them via 
   - [AQL Traversals](../../AQL/Graphs/Traversals.html) on both named and anonymous graphs
   - [AQL Shortest Path](../../AQL/Graphs/ShortestPath.html) on both named and anonymous graph
 - [JavaScript General Graph implementation, as you may use it in Foxx Services](GeneralGraphs/README.md)
-  - [Graph Management](GeneralGraphs/Management.md); creating & manipualating graph definitions; inserting, updating and deleting vertices and edges into graphs
+  - [Graph Management](GeneralGraphs/Management.md); creating & manipulating graph definitions; inserting, updating and deleting vertices and edges into graphs
   - [Graph Functions](GeneralGraphs/Functions.md) for working with edges and vertices, to analyze them and their relations
 - [JavaScript Smart Graph implementation, for scalable graphs](SmartGraphs/README.md)
-  - [Smart Graph Management](SmartGraphs/Management.md); creating & manipualating SmartGraph definitions; Differences to General Graph 
+  - [Smart Graph Management](SmartGraphs/Management.md); creating & manipulating SmartGraph definitions; Differences to General Graph 
 - [RESTful General Graph interface](../../HTTP/Gharial/index.html) used to implement graph management in client drivers
 
 ### Manipulating collections of named graphs with regular document functions
@@ -162,7 +162,7 @@ and [Arangorestore](../Administration/Arangorestore.md) to restore a backup into
 Managing graphs
 ---------------
 
-By default you should use [the interface your driver provides to manage graphs](../HTTP/Gharial/Management.html).
+By default you should use [the interface your driver provides to manage graphs](../../HTTP/Gharial/Management.html).
 
 This is i.e. documented [in Graphs-Section of the ArangoDB Java driver](https://github.com/arangodb/arangodb-java-driver#graphs).
 
@@ -287,7 +287,6 @@ Cookbook examples
 The above referenced chapters describe the various APIs of ArangoDBs graph engine with small examples. Our cookbook has some more real life examples:
 
  - [Traversing a graph in full depth](../../Cookbook/Graph/FulldepthTraversal.html)
- - [Using an example vertex with the java driver](../../Cookbook/Graph/JavaDriverGraphExampleVertex.html)
  - [Retrieving documents from ArangoDB without knowing the structure](../../Cookbook/UseCases/JavaDriverBaseDocument.html)
  - [Using a custom visitor from node.js](../../Cookbook/Graph/CustomVisitorFromNodeJs.html)
  - [AQL Example Queries on an Actors and Movies Database](../../Cookbook/Graph/ExampleActorsAndMovies.html)

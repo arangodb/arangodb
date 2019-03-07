@@ -19,7 +19,7 @@ The documentation is organized in four handbooks:
   that is used to communicate with clients. In general, the HTTP handbook will be
   of interest to driver developers. If you use any of the existing drivers for
   the language of your choice, you can skip this handbook.
-- Our [cookbook](../cookbook/index.html) with recipes for specific problems and
+- Our [cookbook](../Cookbook/index.html) with recipes for specific problems and
   solutions.
 
 Features are illustrated with interactive usage examples; you can cut'n'paste them

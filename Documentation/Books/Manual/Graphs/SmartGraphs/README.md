@@ -9,7 +9,7 @@ On a single server this feature is pointless, hence it is only available in a cl
 In terms of querying there is no difference between smart and General Graphs.
 The former are a transparent replacement for the latter.
 So for querying the graph please refer to
-[AQL Graph Operations](../../AQL/Graphs/index.html) and
+[AQL Graph Operations](../../../AQL/Graphs/index.html) and
 [Graph Functions](../GeneralGraphs/Functions.md) sections.
 The optimizer is clever enough to identify if we are on a SmartGraph or not.
 
