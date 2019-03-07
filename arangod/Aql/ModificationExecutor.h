@@ -109,9 +109,11 @@ class ModificationExecutorInfos : public ExecutorInfos {
                             bool consultAqlWriteFilter, bool ignoreErrors,
                             bool doCount, bool returnInheritedResults,
                             bool isReplace, bool ignoreDocumentNotFound)
-      : ExecutorInfos(makeSet({wrap(input1RegisterId),wrap(input2RegisterId), wrap(input3RegisterId)}) /*input registers*/,
+      : ExecutorInfos(makeSet({wrap(input1RegisterId), wrap(input2RegisterId),
+                               wrap(input3RegisterId)}) /*input registers*/,
                       makeSet({wrap(outputOldRegisterId), wrap(outputNewRegisterId)}) /*output registers*/,
-                      nrInputRegisters, nrOutputRegisters, std::move(registersToClear), std::move(registersToKeep)),
+                      nrInputRegisters, nrOutputRegisters,
+                      std::move(registersToClear), std::move(registersToKeep)),
         _trx(trx),
         _options(options),
         _aqlCollection(aqlCollection),
@@ -126,8 +128,7 @@ class ModificationExecutorInfos : public ExecutorInfos {
         _input2RegisterId(input2RegisterId),
         _input3RegisterId(input3RegisterId),
         _outputNewRegisterId(outputNewRegisterId),
-        _outputOldRegisterId(outputOldRegisterId)
-        {}
+        _outputOldRegisterId(outputOldRegisterId) {}
 
   ModificationExecutorInfos() = delete;
   ModificationExecutorInfos(ModificationExecutorInfos&&) = default;
@@ -143,8 +144,8 @@ class ModificationExecutorInfos : public ExecutorInfos {
   bool _ignoreErrors;
   bool _doCount;  // count statisitics
   bool _returnInheritedResults;
-  bool _isReplace; // needed for upsert
-  bool _ignoreDocumentNotFound; // needed for update replace
+  bool _isReplace;               // needed for upsert
+  bool _ignoreDocumentNotFound;  // needed for update replace
 
   // insert (singleinput) - upsert (inDoc) - update replace (inDoc)
   boost::optional<RegisterId> _input1RegisterId;
@@ -161,7 +162,8 @@ struct ModificationExecutorBase {
   struct Properties {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = true;
+    static const bool inputSizeRestrictsOutputSize =
+        false;  // disabled because prefetch does not work in the cluster should be set to true
   };
   using Infos = ModificationExecutorInfos;
   using Fetcher = SingleBlockFetcher<Properties::allowsBlockPassthrough>;
@@ -179,7 +181,6 @@ struct ModificationExecutorBase {
   // /// array or empty. updates dstRow in this case and returns true!
   // bool skipEmptyValues(VPackSlice const& values, size_t n, AqlItemBlock const* src,
   //                      AqlItemBlock* dst, size_t& dstRow);
-
 };
 
 template <typename Modifier>

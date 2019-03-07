@@ -50,10 +50,10 @@ template <bool pass>
 class SingleBlockFetcher {
  public:
   explicit SingleBlockFetcher(BlockFetcher<pass>& executionBlock)
-      : _blockFetcher(&executionBlock),
+      : _prefetched(false),
+        _blockFetcher(&executionBlock),
         _currentBlock(nullptr),
-        _upstreamState(ExecutionState::HASMORE),
-        _prefetched(false) {}
+        _upstreamState(ExecutionState::HASMORE) {}
 
   TEST_VIRTUAL ~SingleBlockFetcher() = default;
 
@@ -102,7 +102,10 @@ class SingleBlockFetcher {
     auto res = _blockFetcher->fetchBlock();
     _upstreamState = res.first;
     _currentBlock = res.second;
-    _prefetched = prefetch;
+
+    if (prefetch && _currentBlock && _currentBlock->hasBlock()) {
+      _prefetched = prefetch;
+    }
 
     return res;
   }
@@ -130,6 +133,7 @@ class SingleBlockFetcher {
   }
 
   bool _prefetched;
+
  private:
   BlockFetcher<pass>* _blockFetcher;
   std::shared_ptr<AqlItemBlockShell> _currentBlock;
