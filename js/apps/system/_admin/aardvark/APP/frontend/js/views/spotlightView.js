@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, window, setTimeout, _ */
+/* global Backbone, $, window, _ */
 /* global arangoHelper, templateEngine */
 
 (function () {

@@ -25,10 +25,11 @@
 #define ARANGOD_GRAPH_EDGEDOCUMENTTOKEN_H 1
 
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
 #include "Cluster/ServerState.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
+
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 

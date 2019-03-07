@@ -35,6 +35,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchIndex-test.cpp
     IResearch/IResearchLink-test.cpp
     IResearch/IResearchLinkCoordinator-test.cpp
+    IResearch/IResearchLinkHelper-test.cpp
     IResearch/IResearchLinkMeta-test.cpp
     IResearch/IResearchQuery-test.cpp
     IResearch/IResearchQueryAnd-test.cpp
@@ -57,7 +58,6 @@ if (USE_IRESEARCH)
     IResearch/IResearchQueryTraversal-test.cpp
     IResearch/IResearchQueryOptions-test.cpp
     IResearch/RestHandlerMock.cpp
-    IResearch/StorageEngineMock.cpp
     IResearch/IResearchViewNode-test.cpp
     IResearch/VelocyPackHelper-test.cpp
     RestHandler/RestUsersHandler-test.cpp
@@ -67,6 +67,7 @@ if (USE_IRESEARCH)
     V8Server/v8-users-test.cpp
     V8Server/v8-views-test.cpp
     VocBase/LogicalDataSource-test.cpp
+    VocBase/LogicalView-test.cpp
     VocBase/vocbase-test.cpp
   )
 endif ()
@@ -83,14 +84,38 @@ set(ARANGODB_TESTS_SOURCES
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
+  Aql/AllRowsFetcherTest.cpp
+  Aql/AqlItemBlockHelper.cpp
+  Aql/AqlItemRowTest.cpp
+  Aql/BlockFetcherHelper.cpp
+  Aql/BlockFetcherMock.cpp
+  Aql/CalculationExecutorTest.cpp
+  Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
+  Aql/DistinctCollectExecutorTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
+  Aql/EnumerateCollectionExecutorTest.cpp
+  Aql/EnumerateListExecutorTest.cpp
+  Aql/ExecutionBlockImplTest.cpp
+  Aql/ExecutionBlockImplTestInstances.cpp
+  Aql/FilterExecutorTest.cpp
+  Aql/LimitExecutorTest.cpp
+  Aql/IdExecutorTest.cpp
+  Aql/NoResultsExecutorTest.cpp
   Aql/RestAqlHandlerTest.cpp
+  Aql/ReturnExecutorTest.cpp
+  Aql/ShortestPathExecutorTest.cpp
+  Aql/SingleRowFetcherTest.cpp
+  Aql/SortExecutorTest.cpp
   Aql/SortLimit-test.cpp
+  Aql/TestEmptyExecutorHelper.cpp
+  Aql/TestExecutorHelper.cpp
+  Aql/TraversalExecutorTest.cpp
+  Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
   Auth/UserManagerTest.cpp
-  Basics/icu-helper.cpp
   Basics/ApplicationServerTest.cpp
+  Basics/icu-helper.cpp
   Basics/AttributeNameParserTest.cpp
   Basics/associative-multi-pointer-test.cpp
   Basics/associative-multi-pointer-nohashcache-test.cpp
@@ -109,6 +134,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/string-test.cpp
   Basics/vector-test.cpp
   Basics/structure-size-test.cpp
+  Basics/CompileTimeStrlenTest.cpp
   Basics/EndpointTest.cpp
   Basics/HashSetTest.cpp
   Basics/LoggerTest.cpp
@@ -148,6 +174,8 @@ set(ARANGODB_TESTS_SOURCES
   Network/ConnectionPoolTest.cpp
   Network/MethodsTest.cpp
   Network/UtilsTest.cpp
+  Mocks/StorageEngineMock.cpp
+  Mocks/Servers.cpp
   Pregel/typedbuffer.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
@@ -192,6 +220,7 @@ target_link_libraries(
 
 target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
+  ${V8_INCLUDE_DIR}
 )
 
 # add these includes as system includes because otherwise

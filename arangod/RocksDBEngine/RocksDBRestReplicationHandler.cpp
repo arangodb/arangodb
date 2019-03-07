@@ -22,7 +22,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBRestReplicationHandler.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
@@ -34,6 +33,7 @@
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
+#include "RocksDBRestReplicationHandler.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
@@ -365,6 +365,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
   // include system collections?
   bool includeSystem = _request->parsedValue("includeSystem", true);
+  bool includeFoxxQs = _request->parsedValue("includeFoxxQueues", false);
 
   // produce inventory for all databases?
   bool isGlobal = false;
@@ -377,10 +378,10 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   Result res;
   if (isGlobal) {
     builder.add(VPackValue("databases"));
-    res = ctx->getInventory(_vocbase, includeSystem, true, builder);
+    res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, true, builder);
   } else {
     grantTemporaryRights();
-    res = ctx->getInventory(_vocbase, includeSystem, false, builder);
+    res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, false, builder);
     TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
   }
 
@@ -700,7 +701,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     res = ctx->dumpVPack(_vocbase, cname, buffer, chunkSize);
     // generate the result
     if (res.fail()) {
-      generateError(res);
+      generateError(res.result());
     } else if (buffer.byteSize() == 0) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {

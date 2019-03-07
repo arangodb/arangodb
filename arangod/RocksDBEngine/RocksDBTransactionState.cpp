@@ -47,7 +47,6 @@
 
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
-#include <rocksdb/utilities/optimistic_transaction_db.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
@@ -93,12 +92,8 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   }
 
   Result result = useCollections(_nestingLevel);
-  if (result.ok()) {
-    // all valid
-    if (_nestingLevel == 0) {
-      updateStatus(transaction::Status::RUNNING);
-    }
-  } else {
+
+  if (result.fail()) {
     // something is wrong
     if (_nestingLevel == 0) {
       updateStatus(transaction::Status::ABORTED);
@@ -110,10 +105,15 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     return result;
   }
 
+  // all valid
   if (_nestingLevel == 0) {
+    updateStatus(transaction::Status::RUNNING);
+
     // register a protector (intentionally empty)
     TransactionManagerFeature::manager()->registerTransaction(
         _id, std::unique_ptr<RocksDBTransactionData>());
+
+    setRegistered();
 
     TRI_ASSERT(_rocksTransaction == nullptr);
     TRI_ASSERT(_cacheTx == nullptr);
@@ -203,7 +203,7 @@ void RocksDBTransactionState::createTransaction() {
 
   if (isOnlyExclusiveTransaction()) {
     // we are exclusively modifying collection data here, so we can turn off
-    // all concurrency controls to save time
+    // all concurrency control checks to save time
     trxOpts.skip_concurrency_control = true;
   }
 
@@ -318,7 +318,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     uint64_t numOps = _rocksTransaction->GetNumPuts() +
                       _rocksTransaction->GetNumDeletes() +
                       _rocksTransaction->GetNumMerges();
-    // will invaliate all counts
+    // will invalidate all counts
     result = rocksutils::convertStatus(_rocksTransaction->Commit());
 
     if (result.ok()) {
@@ -625,7 +625,7 @@ Result RocksDBTransactionState::checkIntermediateCommit(uint64_t newSize, bool& 
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief temporarily lease a Builder object
+/// @brief temporarily lease a RocksDBKey object
 RocksDBKey* RocksDBTransactionState::leaseRocksDBKey() {
   if (_keys.empty()) {
     // create a new key and return it
@@ -640,7 +640,7 @@ RocksDBKey* RocksDBTransactionState::leaseRocksDBKey() {
 }
 
 /// @brief return a temporary RocksDBKey object
-void RocksDBTransactionState::returnRocksDBKey(RocksDBKey* key) {
+void RocksDBTransactionState::returnRocksDBKey(RocksDBKey* key) noexcept {
   try {
     // put key back into our vector of keys
     _keys.emplace_back(key);

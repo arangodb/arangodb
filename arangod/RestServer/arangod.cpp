@@ -91,6 +91,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TransactionManagerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "RestServer/TtlFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -214,6 +215,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature(new TempFeature(server, name));
     server.addFeature(new TransactionManagerFeature(server));
     server.addFeature(new TraverserEngineRegistryFeature(server));
+    server.addFeature(new TtlFeature(server));
     server.addFeature(new UpgradeFeature(server, &ret, nonServerFeatures));
     server.addFeature(new V8DealerFeature(server));
     server.addFeature(new V8PlatformFeature(server));

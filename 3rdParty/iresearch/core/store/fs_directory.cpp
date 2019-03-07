@@ -25,6 +25,7 @@
 #include "directory_attributes.hpp"
 #include "fs_directory.hpp"
 #include "error/error.hpp"
+#include "utils/locale_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/object_pool.hpp"
 #include "utils/string_utils.hpp"
@@ -35,8 +36,6 @@
 #ifdef _WIN32
   #include <Windows.h> // for GetLastError()
 #endif
-
-#include <boost/locale/encoding.hpp>
 
 NS_LOCAL
 
@@ -184,7 +183,11 @@ class fs_index_output : public buffered_index_output {
     file_utils::handle_t handle(file_open(name, "wb"));
 
     if (nullptr == handle) {
-      auto path = boost::locale::conv::utf_to_utf<char>(name);
+      typedef std::remove_pointer<file_path_t>::type char_t;
+      auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
+      std::string path;
+
+      irs::locale_utils::append_external<char_t>(path, name, locale);
 
       // even win32 uses 'errno' fo error codes in calls to file_open(...)
       IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", errno, path.c_str());
@@ -249,12 +252,14 @@ class fs_index_output : public buffered_index_output {
 class pooled_fs_index_input; // predeclaration used by fs_index_input
 class fs_index_input : public buffered_index_input {
  public:
+  using buffered_index_input::read_internal;
+
   virtual int64_t checksum(size_t offset) const override final {
     const auto begin = handle_->pos;
     const auto end = (std::min)(begin + offset, handle_->size);
 
     crc32c crc;
-    byte_type buf[1024];
+    byte_type buf[DEFAULT_BUFFER_SIZE];
 
     for (auto pos = begin; pos < end; ) {
       const auto to_read = (std::min)(end - pos, sizeof buf);
@@ -282,7 +287,11 @@ class fs_index_input : public buffered_index_input {
     handle->handle = file_open(name, "rb");
 
     if (nullptr == handle->handle) {
-      auto path = boost::locale::conv::utf_to_utf<char>(name);
+      typedef std::remove_pointer<file_path_t>::type char_t;
+      auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
+      std::string path;
+
+      irs::locale_utils::append_external<char_t>(path, name, locale);
 
       // even win32 uses 'errno' for error codes in calls to file_open(...)
       IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s", errno, path.c_str());
@@ -294,7 +303,12 @@ class fs_index_input : public buffered_index_input {
     uint64_t size;
 
     if (!file_utils::byte_size(size, file_no(*handle))) {
-      auto path = boost::locale::conv::utf_to_utf<char>(name);
+      typedef std::remove_pointer<file_path_t>::type char_t;
+      auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
+      std::string path;
+
+      irs::locale_utils::append_external<char_t>(path, name, locale);
+
       #ifdef _WIN32
         auto error = GetLastError();
       #else
@@ -358,7 +372,7 @@ class fs_index_input : public buffered_index_input {
       handle_->pos = pos_;
     }
 
-    const size_t read = fread(b, sizeof(byte_type), len, stream);
+    size_t read = fread(b, sizeof(byte_type), len, stream);
     pos_ = handle_->pos += read;
 
     if (read != len) {

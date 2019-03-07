@@ -144,7 +144,7 @@ void raceForClusterBootstrap() {
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
     arangodb::SystemDatabaseFeature::ptr vocbase =
         sysDbFeature ? sysDbFeature->use() : nullptr;
-    auto upgradeRes = vocbase ? methods::Upgrade::clusterBootstrap(*vocbase)
+    auto upgradeRes = vocbase ? methods::Upgrade::clusterBootstrap(*vocbase).result()
                               : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
 
     if (upgradeRes.fail()) {

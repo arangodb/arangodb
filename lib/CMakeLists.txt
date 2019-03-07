@@ -183,7 +183,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/StaticStrings.cpp
   Basics/StringBuffer.cpp
   Basics/StringHeap.cpp
-  Basics/StringRef.cpp
   Basics/StringUtils.cpp
   Basics/Thread.cpp
   Basics/Utf8Helper.cpp
@@ -237,6 +236,7 @@ add_library(${LIB_ARANGO} STATIC
   Maskings/Collection.cpp
   Maskings/Maskings.cpp
   Maskings/Path.cpp
+  Maskings/RandomMask.cpp
   Maskings/RandomStringMask.cpp
   ProgramOptions/Option.cpp
   ProgramOptions/ProgramOptions.cpp

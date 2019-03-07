@@ -31,13 +31,11 @@
 namespace arangodb {
 namespace graph {
 class ShortestPathResult;
-}
-
-namespace graph {
+struct ShortestPathOptions;
 
 class ShortestPathFinder {
  protected:
-  ShortestPathFinder() {}
+  ShortestPathFinder(ShortestPathOptions& options);
 
  public:
   virtual ~ShortestPathFinder() {}
@@ -46,6 +44,16 @@ class ShortestPathFinder {
                             arangodb::velocypack::Slice const& target,
                             arangodb::graph::ShortestPathResult& result,
                             std::function<void()> const& callback) = 0;
+
+  void destroyEngines();
+
+  ShortestPathOptions& options() const;
+
+ protected:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief The options to modify this shortest path computation
+  //////////////////////////////////////////////////////////////////////////////
+  ShortestPathOptions& _options;
 };
 
 }  // namespace graph

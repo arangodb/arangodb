@@ -182,11 +182,14 @@ void SupervisedScheduler::shutdown() {
     stopOneThread();
   }
   
-  cleanupAbandonedThreads(); // cleanup once without logging
+  int tries = 0;
   while (!cleanupAbandonedThreads()) {
-    LOG_TOPIC(ERR, Logger::THREADS)
-    << "Scheduler received shutdown, but there are still abandoned threads";
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    if (++tries > 5 * 5) {
+      // spam only after some time (5 seconds here)
+      LOG_TOPIC(WARN, Logger::THREADS)
+      << "Scheduler received shutdown, but there are still abandoned threads";
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
 }
 

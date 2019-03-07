@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global window, document, Backbone, $, arangoHelper, templateEngine, Joi */
+/* global window, Backbone, $, arangoHelper, templateEngine, Joi */
 (function () {
   'use strict';
 
@@ -250,7 +250,7 @@
         reducedCollection;
 
       searchInput = $('#databaseSearchInput');
-      searchString = $('#databaseSearchInput').val();
+      searchString = arangoHelper.escapeHtml($('#databaseSearchInput').val());
       reducedCollection = this.collection.filter(
         function (u) {
           return u.get('name').indexOf(searchString) !== -1;

@@ -25,14 +25,13 @@
 #define ARANGOD_GRAPH_SINGLE_SERVER_EDGE_CURSOR_H 1
 
 #include "Basics/Common.h"
-
 #include "Graph/EdgeCursor.h"
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 
 class LocalDocumentId;
 struct OperationCursor;
-class StringRef;
 class LogicalCollection;
 
 namespace transaction {

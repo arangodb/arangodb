@@ -76,11 +76,18 @@ ReplicationApplierState& ReplicationApplierState::operator=(ReplicationApplierSt
   return *this;
 }
 
-void ReplicationApplierState::reset(bool resetState) {
+void ReplicationApplierState::reset(bool resetPhase, bool reducedSet) {
   _lastProcessedContinuousTick = 0;
   _lastAppliedContinuousTick = 0;
-  _lastAvailableContinuousTick = 0;
   _safeResumeTick = 0;
+  _failedConnects = 0;
+  _totalRequests = 0;
+  _totalFailedConnects = 0;
+  _totalResyncs = 0;
+
+  if(reducedSet) { return; }
+
+  _lastAvailableContinuousTick = 0;
   _preventStart = false;
   _stopInitialSynchronization = false;
   _progressMsg.clear();
@@ -88,14 +95,10 @@ void ReplicationApplierState::reset(bool resetState) {
   _serverId = 0;
   _lastError.reset();
 
-  _failedConnects = 0;
-  _totalRequests = 0;
-  _totalFailedConnects = 0;
   _totalEvents = 0;
-  _totalResyncs = 0;
   _skippedOperations = 0;
 
-  if (resetState) {
+  if (resetPhase) {
     _phase = ActivityPhase::INACTIVE;
   }
 }

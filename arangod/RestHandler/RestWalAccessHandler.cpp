@@ -21,7 +21,6 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestWalAccessHandler.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
@@ -31,6 +30,7 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RestWalAccessHandler.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/WalAccess.h"
@@ -109,6 +109,7 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
   }
 
   filter.includeSystem = _request->parsedValue("includeSystem", filter.includeSystem);
+  filter.includeFoxxQueues = _request->parsedValue("includeFoxxQueues", false);
 
   // grab list of transactions from the body value
   if (_request->requestType() == arangodb::rest::RequestType::PUT) {
@@ -309,7 +310,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   }
 
   if (result.fail()) {
-    generateError(result);
+    generateError(std::move(result).result());
     return;
   }
 

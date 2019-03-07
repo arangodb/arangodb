@@ -24,7 +24,6 @@
 #include "mmfiles-replication-dump.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCompactionLocker.h"
@@ -37,6 +36,7 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -323,7 +323,7 @@ static bool MustReplicateWalMarker(MMFilesReplicationDumpContext* dump,
   if (cid != 0) {
     std::string const& name = nameFromCid(dump, cid);
 
-    if (!name.empty() && TRI_ExcludeCollectionReplication(name, dump->_includeSystem)) {
+    if (!name.empty() && TRI_ExcludeCollectionReplication(name, dump->_includeSystem, /*includeFoxxQueues*/false)) {
       return false;
     }
   }

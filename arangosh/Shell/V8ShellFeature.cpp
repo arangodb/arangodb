@@ -187,11 +187,12 @@ void V8ShellFeature::unprepare() {
     v8::Context::Scope context_scope{context};
 
     // clear globals to free memory
+    auto isolate = _isolate;
     auto globals = _isolate->GetCurrentContext()->Global();
     v8::Handle<v8::Array> names = globals->GetOwnPropertyNames();
     uint32_t const n = names->Length();
     for (uint32_t i = 0; i < n; ++i) {
-      globals->Delete(names->Get(i));
+      TRI_DeleteProperty(context, isolate, globals, names->Get(i));
     }
 
     TRI_RunGarbageCollectionV8(_isolate, 2500.0);
@@ -342,7 +343,7 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
         std::ostringstream is;
 
         is << "Connected to ArangoDB '" << v8connection->endpointSpecification()
-           << "' version: " << v8connection->version() << " ["
+           << "' version: " << v8connection->version() << " [" << v8connection->role() << ", "
            << v8connection->mode() << "], database: '" << v8connection->databaseName()
            << "', username: '" << v8connection->username() << "'";
 
@@ -350,7 +351,8 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
       } else {
         std::ostringstream is;
 
-        is << "Could not connect to endpoint '" << v8connection->endpointSpecification()
+        auto client = server()->getFeature<ClientFeature>("Client");
+        is << "Could not connect to endpoint '" << client->endpoint()
            << "', database: '" << v8connection->databaseName()
            << "', username: '" << v8connection->username() << "'";
 
@@ -410,6 +412,7 @@ std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
 }
 
 int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
+  auto isolate = _isolate;
   v8::Locker locker{_isolate};
   v8::Isolate::Scope isolate_scope(_isolate);
 
@@ -422,7 +425,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
   bool promptError;
   auto v8connection = setup(context, true, positionals, &promptError);
 
-  V8LineEditor v8LineEditor(_isolate, context, "." + _name + ".history");
+  V8LineEditor v8LineEditor(_isolate, context, _console->useHistory() ? "." + _name + ".history" : "");
 
   if (v8connection != nullptr) {
     v8LineEditor.setSignalFunction(
@@ -479,7 +482,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
     v8LineEditor.addHistory(input);
 
-    v8::TryCatch tryCatch;
+    v8::TryCatch tryCatch(isolate);
 
     _console->startPager();
 
@@ -553,6 +556,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
 bool V8ShellFeature::runScript(std::vector<std::string> const& files,
                                std::vector<std::string> const& positionals, bool execute) {
+  auto isolate = _isolate;
   v8::Locker locker{_isolate};
 
   v8::Isolate::Scope isolate_scope(_isolate);
@@ -575,7 +579,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
     }
 
     if (execute) {
-      v8::TryCatch tryCatch;
+      v8::TryCatch tryCatch(isolate);
 
       v8::Handle<v8::String> name = TRI_V8_STD_STRING(_isolate, file);
       v8::Handle<v8::Value> args[] = {name};
@@ -586,29 +590,29 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
       auto oldFilename =
           current->Get(TRI_V8_ASCII_STRING(_isolate, "__filename"));
 
-      current->ForceSet(TRI_V8_ASCII_STRING(_isolate, "__filename"), filename);
+      current->Set(TRI_V8_ASCII_STRING(_isolate, "__filename"), filename);
 
       auto oldDirname =
           current->Get(TRI_V8_ASCII_STRING(_isolate, "__dirname"));
 
-      auto dirname = FileUtils::dirname(TRI_ObjectToString(filename));
+      auto dirname = FileUtils::dirname(TRI_ObjectToString(isolate, filename));
 
-      current->ForceSet(TRI_V8_ASCII_STRING(_isolate, "__dirname"),
-                        TRI_V8_STD_STRING(_isolate, dirname));
+      current->Set(TRI_V8_ASCII_STRING(_isolate, "__dirname"),
+                   TRI_V8_STD_STRING(_isolate, dirname));
 
       ok = TRI_ExecuteGlobalJavaScriptFile(_isolate, file.c_str(), true);
 
       // restore old values for __dirname and __filename
       if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
-        current->Delete(TRI_V8_ASCII_STRING(_isolate, "__filename"));
+        TRI_DeleteProperty(context, isolate, current, "__filename");
       } else {
-        current->ForceSet(TRI_V8_ASCII_STRING(_isolate, "__filename"), oldFilename);
+        current->Set(TRI_V8_ASCII_STRING(_isolate, "__filename"), oldFilename);
       }
 
       if (oldDirname.IsEmpty() || oldDirname->IsUndefined()) {
-        current->Delete(TRI_V8_ASCII_STRING(_isolate, "__dirname"));
+        TRI_DeleteProperty(context, isolate, current, "__dirname");
       } else {
-        current->ForceSet(TRI_V8_ASCII_STRING(_isolate, "__dirname"), oldDirname);
+        current->Set(TRI_V8_ASCII_STRING(_isolate, "__dirname"), oldDirname);
       }
 
       if (tryCatch.HasCaught()) {
@@ -641,7 +645,7 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
 
   bool ok = true;
   for (auto const& script : strings) {
-    v8::TryCatch tryCatch;
+    v8::TryCatch tryCatch(_isolate);
 
     v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(
         _isolate, context, TRI_V8_STD_STRING(_isolate, script),
@@ -654,7 +658,7 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
     } else {
       // check return value of script
       if (result->IsNumber()) {
-        int64_t intResult = TRI_ObjectToInt64(result);
+        int64_t intResult = TRI_ObjectToInt64(_isolate, result);
 
         if (intResult != 0) {
           ok = false;
@@ -669,6 +673,7 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
 }
 
 bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
+  auto isolate = _isolate;
   v8::Locker locker{_isolate};
 
   v8::Isolate::Scope isolate_scope(_isolate);
@@ -710,7 +715,7 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
 
   auto name = TRI_V8_ASCII_STRING(_isolate, TRI_V8_SHELL_COMMAND_NAME);
 
-  v8::TryCatch tryCatch;
+  v8::TryCatch tryCatch(isolate);
   TRI_ExecuteJavaScriptString(_isolate, context, input, name, true);
 
   if (tryCatch.HasCaught()) {
@@ -718,8 +723,10 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
         << TRI_StringifyV8Exception(_isolate, &tryCatch);
     ok = false;
   } else {
-    bool res = TRI_ObjectToBoolean(context->Global()->Get(
-        TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT")));
+    bool res =
+        TRI_ObjectToBoolean(isolate,
+                            TRI_GetProperty(context, isolate, context->Global(),
+                                                    "SYS_UNIT_TESTS_RESULT"));
 
     ok = ok && res;
   }
@@ -730,6 +737,7 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
 bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
                                   std::vector<std::string> const& positionals,
                                   std::string const& testFilter) {
+  auto isolate = _isolate;
   v8::Locker locker{_isolate};
 
   v8::Isolate::Scope isolate_scope(_isolate);
@@ -776,7 +784,7 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
 
   auto name = TRI_V8_ASCII_STRING(_isolate, TRI_V8_SHELL_COMMAND_NAME);
 
-  v8::TryCatch tryCatch;
+  v8::TryCatch tryCatch(isolate);
   TRI_ExecuteJavaScriptString(_isolate, context, input, name, true);
 
   if (tryCatch.HasCaught()) {
@@ -784,8 +792,10 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << exception;
     ok = false;
   } else {
-    bool res = TRI_ObjectToBoolean(context->Global()->Get(
-        TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT")));
+    bool res =
+        TRI_ObjectToBoolean(isolate,
+                            TRI_GetProperty(context, isolate, context->Global(),
+                                                    "SYS_UNIT_TESTS_RESULT"));
 
     ok = ok && res;
   }
@@ -806,7 +816,7 @@ static void JS_PagerOutput(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   for (int i = 0; i < args.Length(); i++) {
     // extract the next argument
-    console->print(TRI_ObjectToString(args[i]));
+    console->print(TRI_ObjectToString(isolate, args[i]));
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -888,8 +898,8 @@ static void JS_CompareString(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "COMPARE_STRING(<left string>, <right string>)");
   }
 
-  v8::String::Value left(args[0]);
-  v8::String::Value right(args[1]);
+  v8::String::Value left(isolate, args[0]);
+  v8::String::Value right(isolate, args[1]);
 
   int result = Utf8Helper::DefaultUtf8Helper.compareUtf16(*left, left.length(),
                                                           *right, right.length());
@@ -908,7 +918,7 @@ static void JS_VersionClient(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   bool details = false;
   if (args.Length() > 0) {
-    details = TRI_ObjectToBoolean(args[0]);
+    details = TRI_ObjectToBoolean(isolate, args[0]);
   }
 
   if (!details) {
@@ -937,7 +947,7 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
   int64_t code = 0;
 
   if (args.Length() > 0) {
-    code = TRI_ObjectToInt64(args[0]);
+    code = TRI_ObjectToInt64(isolate, args[0]);
   }
 
   exit((int)code);

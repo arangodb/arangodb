@@ -243,6 +243,10 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
 
   if (res.ok()) {  // required so iresearch commits
     res = trx.commit();
+
+    if (ridx.estimator() != nullptr) {
+      ridx.estimator()->setCommitSeq(rootDB->GetLatestSequenceNumber());
+    }
   }
 
   // if an error occured drop() will be called
@@ -254,7 +258,6 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
  arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
   RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(internal != nullptr);
-  std::function<void()> empty;
 
   const rocksdb::Snapshot* snap = nullptr;
 
@@ -492,6 +495,10 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
   if (res.ok()) {
     numScanned = replay.numInserted + replay.numRemoved;
     res = trx.commit();  // important for iresearch
+    
+    if (ridx.estimator() != nullptr) {
+      ridx.estimator()->setCommitSeq(rootDB->GetLatestSequenceNumber());
+    }
   }
 
   LOG_TOPIC(DEBUG, Logger::ENGINES) << "WAL REPLAYED insertions: " << replay.numInserted
