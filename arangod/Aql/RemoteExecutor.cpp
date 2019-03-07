@@ -243,6 +243,10 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   VPackBuilder builder(&options);
   builder.openObject();
 
+  // Backwards Compatibility 3.3
+  // NOTE: Removing this breaks tests in current devel - is this really for
+  // bc only?
+  builder.add("exhausted", VPackValue(false));
   // Used in 3.4.0 onwards
   builder.add("done", VPackValue(false));
   builder.add("error", VPackValue(false));
