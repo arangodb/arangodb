@@ -49,10 +49,10 @@ public:
   int restResponseError() const {return _respError;};
   std::string const& errorMessage() const {return _errorMessage;};
 
-  // @brief Validate and extract parameters appropriate to the operation type
+  /// @brief Validate and extract parameters appropriate to the operation type
   virtual void parseParameters(rest::RequestType const) {};
 
-  // @brief Execute the operation
+  /// @brief Execute the operation
   virtual void execute() {};
 
   VPackSlice resultSlice() {return _result.slice();};
@@ -60,6 +60,11 @@ public:
 
   std::string getRocksDBPath();
   unsigned getTimeout() const {return _timeoutSeconds;}
+
+  /// @brief Build "/user/database/path/hotbackups"
+  std::string rebuildPathPrefix();
+
+  /// @brief Build rebuildPathPrefix() + "/" + suffix
   std::string rebuildPath(const std::string & suffix);
 
 protected:
@@ -138,6 +143,10 @@ protected:
 };// class RocksDBHotBackupCreate
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief POST:  Creates copy of given hotbackup, stops server, moves copy into
+///               production position, restarts process
+////////////////////////////////////////////////////////////////////////////////
 class RocksDBHotBackupRestore : public RocksDBHotBackup {
 public:
 
@@ -172,10 +181,18 @@ protected:
 };// class RocksDBHotBackupRestore
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief POST:  Returns array of Hotbackup directory names
+////////////////////////////////////////////////////////////////////////////////
 class RocksDBHotBackupList : public RocksDBHotBackup {
 public:
 
-  void execute() override {};
+  RocksDBHotBackupList() = delete;
+  RocksDBHotBackupList(const VPackSlice body);
+  ~RocksDBHotBackupList();
+
+  void parseParameters(rest::RequestType const) override;
+  void execute() override;
 
 };// class RocksDBHotBackupList
 
