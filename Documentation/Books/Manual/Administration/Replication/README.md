@@ -56,11 +56,3 @@ They will replicate all data to all database servers allowing the database serve
 locally instead of doing heavy network operations.
 
 Satellite collections are an enterprise only feature.
-
-### Asynchronous replication
-
-In ArangoDB any write operation will be logged to the write-ahead
-log. When using Asynchronous replication slaves will connect to a
-master and apply all the events from the log in the same order
-locally. After that, they will have the same state of data as the
-master database. 
