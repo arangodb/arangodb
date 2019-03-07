@@ -615,7 +615,9 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
 
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "starting replication transaction " << tid;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(_supportsMultipleOpenTransactions || countOngoingTransactions(slice) == 0);
+#endif
 
   auto trx = std::make_unique<ReplicationTransaction>(*vocbase);
   Result res = trx->begin();
@@ -687,7 +689,9 @@ Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
 
   _ongoingTransactions.erase(it);
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(_supportsMultipleOpenTransactions || countOngoingTransactions(slice) == 0);
+#endif
   return res;
 }
 
@@ -1729,7 +1733,9 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tic
     _ongoingTransactions.emplace(StringUtils::uint64(it.copyString()), nullptr);
   }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(_supportsMultipleOpenTransactions || !hasMultipleOngoingTransactions());
+#endif
 
   {
     std::string const progress =
