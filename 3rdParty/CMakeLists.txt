@@ -126,10 +126,40 @@ if (USE_IRESEARCH)
     IMPORTED_LOCATION "boost_locale;boost_system;boost_thread"
   )
 
-  set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}") # explicitly set since suppressing Boost search
+  # explicitly set since suppressing Boost search
+  set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}")
 
   # IResearch on MacOS requires a complete build of ICU for encoding conversion
-  set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
+  if(APPLE)
+    set(ICU_LIBS icu-static CACHE INTERNAL "ICU: Libraries" FORCE) # use complete ICU build
+    set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_SUB_DIR}/third_party/icu")
+  elseif(MSVC)
+    add_library(icu-shared STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch shared dependencies
+    add_library(icudata-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
+    add_library(icui18n-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
+    add_library(icuuc-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
+    add_library(icu-static STATIC IMPORTED GLOBAL)
+    set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_DEBUG "${ICU_ROOT}/Debug/lib/icui18n.lib")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELEASE "${ICU_ROOT}/Release/lib/icui18n.lib")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELWITHDEBINFO "${ICU_ROOT}/Release/lib/icui18n.lib")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_MINSIZEREL "${ICU_ROOT}/Release/lib/icui18n.lib")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_DEBUG "${ICU_ROOT}/Debug/lib/icuuc.lib")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELEASE "${ICU_ROOT}/Release/lib/icuuc.lib")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELWITHDEBINFO "${ICU_ROOT}/Release/lib/icuuc.lib")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_MINSIZEREL "${ICU_ROOT}/Release/lib/icuuc.lib")
+    set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
+  else()
+    add_library(icu-shared STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch shared dependencies
+    add_library(icudata-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
+    add_library(icui18n-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
+    add_library(icuuc-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
+    add_library(icu-static STATIC IMPORTED GLOBAL)
+    set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION "${ICU_LIBRARY_DIR}/libicui18n.a")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES "${ICU_LIBRARY_DIR}/libicuuc.a")
+    set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
+  endif()
 
   if(NOT PERL_FOUND)
     set(PERL_FOUND TRUE) # suppress error for Perl not-found
@@ -165,6 +195,11 @@ if (USE_IRESEARCH)
   set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH_ORIGINAL}) # restore CMAKE_MODULE_PATH
   unset(BUILD_SHARED_LIBS) # otherwise ZLib (below) does not build on win32
   unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
+
+  if(APPLE)
+    # cmake does not build ICU without this (cmake does not inherit dependencies)
+    add_dependencies(v8_build icu-build icudata-static icui18n-static icuuc-static)
+  endif()
 endif()
 
 

@@ -31,6 +31,7 @@
 #include "Basics/SmallVector.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
@@ -85,7 +86,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
-  bool hasCovering() const override { return true; }
+  bool hasCovering() const override;
 
  private:
   arangodb::RocksDBVPackIndex const* _index;
@@ -121,10 +122,20 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
-  bool hasCovering() const override { return true; }
+  bool hasCovering() const override;
 
  private:
   inline bool outOfRange() const {
+    if (_fullEnumerationObjectId) {
+      // we are enumerating the entire index
+      // so we can use a cheap comparator that only checks the objectId
+      return (arangodb::rocksutils::uint64FromPersistent(_iterator->key().data()) != _fullEnumerationObjectId);
+    }
+
+    // we are enumerating a subset of the index
+    // so we really need to run the full-featured (read: expensive)
+    // comparator
+
     if (_reverse) {
       return (_cmp->Compare(_iterator->key(), _rangeBound) < 0);
     } else {
@@ -145,6 +156,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   arangodb::RocksDBVPackIndex const* _index;
   rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
+  uint64_t _fullEnumerationObjectId;
   bool const _reverse;
   RocksDBKeyBounds _bounds;
   // used for iterate_upper_bound iterate_lower_bound

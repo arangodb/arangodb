@@ -78,7 +78,7 @@ FailedFollower::FailedFollower(Node const& snapshot, AgentInterface* agent,
 
 FailedFollower::~FailedFollower() {}
 
-void FailedFollower::run() { runHelper("", _shard); }
+void FailedFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 
 bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   using namespace std::chrono;
@@ -86,7 +86,7 @@ bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
       << "Create failedFollower for " + _shard + " from " + _from;
 
   _created = system_clock::now();
- 
+
   if (envelope == nullptr) {
     _jb = std::make_shared<Builder>();
     _jb->openArray();
@@ -117,10 +117,10 @@ bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   }
 
   return true;
-  
+
 }
 
-bool FailedFollower::start() {
+bool FailedFollower::start(bool& aborts) {
   using namespace std::chrono;
 
   std::vector<std::string> existing =
@@ -141,15 +141,33 @@ bool FailedFollower::start() {
   // Planned servers vector
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  auto plannedPair = _snapshot.hasAsSlice(planPath);  // if missing, what?
+  auto plannedPair = _snapshot.hasAsSlice(planPath);
   Slice const& planned = plannedPair.first;
   if (!plannedPair.second) {
-    // not clear what servers should or should not get failover ... retry later
+    finish("", _shard, true,
+        "Plan entry for collection " + _collection + " gone");
+    return false;
+  }
+
+  // Now check if _server is still in this plan, note that it could have
+  // been removed by RemoveFollower already, in which case we simply stop:
+  bool found = false;
+  if (planned.isArray()) {
+    for (auto const& s : VPackArrayIterator(planned)) {
+      if (s.isString() && _from == s.copyString()) {
+        found = true;
+        break;
+      }
+    }
+  }
+  if (!found) {
+    finish("", _shard, true, "Server no longer found in Plan for collection " +
+        _collection + ", our job is done.");
     return false;
   }
 
   // Get proper replacement
-  _to = randomIdleGoodAvailableServer(_snapshot, planned);
+  _to = randomIdleAvailableServer(_snapshot, planned);
   if (_to.empty()) {
     // retry later
     return false;
@@ -254,9 +272,11 @@ bool FailedFollower::start() {
     if (jobId.second && !abortable(_snapshot, jobId.first)) {
       return false;
     } else if (jobId.second) {
+      aborts = true;
       JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+      return false;
     }
-  }  // if
+  } 
 
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "FailedFollower start transaction: " << job.toJson();

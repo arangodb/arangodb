@@ -90,6 +90,10 @@ void RocksDBVPackUniqueIndexIterator::reset() {
 
   _done = false;
 }
+    
+bool RocksDBVPackUniqueIndexIterator::hasCovering() const {
+  return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX; 
+}
 
 bool RocksDBVPackUniqueIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
@@ -143,6 +147,7 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(LogicalCollection* collecti
     : IndexIterator(collection, trx),
       _index(index),
       _cmp(index->comparator()),
+      _fullEnumerationObjectId(0),
       _reverse(reverse),
       _bounds(std::move(bounds)) {
   TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
@@ -154,9 +159,21 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(LogicalCollection* collecti
   if (reverse) {
     _rangeBound = _bounds.start();
     options.iterate_lower_bound = &_rangeBound;
+    VPackSlice s = VPackSlice(_rangeBound.data() + sizeof(uint64_t));
+    if (s.isArray() && s.length() == 1 && s.at(0).isMinKey()) {
+      // lower bound is the min key. that means we can get away with a
+      // cheap outOfBounds comparator
+      _fullEnumerationObjectId = _index->objectId();
+    }
   } else {
     _rangeBound = _bounds.end();
     options.iterate_upper_bound = &_rangeBound;
+    VPackSlice s = VPackSlice(_rangeBound.data() + sizeof(uint64_t));
+    if (s.isArray() && s.length() == 1 && s.at(0).isMaxKey()) {
+      // upper bound is the max key. that means we can get away with a
+      // cheap outOfBounds comparator
+      _fullEnumerationObjectId = _index->objectId();
+    }
   }
 
   TRI_ASSERT(options.prefix_same_as_start);
@@ -177,6 +194,10 @@ void RocksDBVPackIndexIterator::reset() {
   } else {
     _iterator->Seek(_bounds.start());
   }
+}
+
+bool RocksDBVPackIndexIterator::hasCovering() const {
+  return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX; 
 }
 
 bool RocksDBVPackIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
@@ -926,7 +947,6 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     TRI_IF_FAILURE("HashIndex::noSortIterator") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-
   } else {
     // Create the search values for the lookup
     VPackArrayBuilder guard(&searchValues);
