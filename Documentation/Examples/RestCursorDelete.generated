@@ -15,20 +15,20 @@ x-content-type-options: nosniff
   <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span>, 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10290"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10290"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_X31Jdzm--_"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10289"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10289"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YTVPRHC--_"</span>, 
       <span class="hljs-string">"hello3"</span> : <span class="hljs-string">"world1"</span> 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10287"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10287"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_X31Jdzm---"</span>, 
-      <span class="hljs-string">"hello2"</span> : <span class="hljs-string">"world1"</span> 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10292"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10292"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YTVPRHC--A"</span>, 
+      <span class="hljs-string">"hello4"</span> : <span class="hljs-string">"world1"</span> 
     } 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"10299"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"10298"</span>, 
   <span class="hljs-string">"count"</span> : <span class="hljs-number">5</span>, 
   <span class="hljs-string">"extra"</span> : { 
     <span class="hljs-string">"stats"</span> : { 
@@ -38,11 +38,11 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00014281272888183594</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00009870529174804688</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 
   <span class="hljs-string">"cached"</span> : <span class="hljs-literal">false</span> 
 }
-shell> curl -X DELETE --dump - http://localhost:8529/_api/cursor/10299
+shell> curl -X DELETE --dump - http://localhost:8529/_api/cursor/10298
 
