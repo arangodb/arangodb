@@ -61,7 +61,8 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent, std::string co
 
 MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
                      JOB_STATUS status, std::string const& jobId)
-    : Job(status, snapshot, agent, jobId) {
+    : Job(status, snapshot, agent, jobId),
+      _toServerIsFollower(false) {
   // Get job details from agency:
   std::string path = pos[status] + _jobId + "/";
   auto tmp_database = _snapshot.hasAsString(path + "database");
