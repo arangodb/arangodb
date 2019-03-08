@@ -470,7 +470,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
       // of the result :-|
       TRI_ASSERT(type != REPLICATION_MARKER_REMOVE);
       TRI_ASSERT(!res.errorMessage().empty());
-      conflictDocumentKey = std::move(res.errorMessage());
+      conflictDocumentKey = std::move(res).errorMessage();
       // restart the while loop above
       continue;
     }

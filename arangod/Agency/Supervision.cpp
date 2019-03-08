@@ -168,6 +168,7 @@ Supervision::Supervision()
       _okThreshold(5.),
       _jobId(0),
       _jobIdMax(0),
+      _haveAborts(false),
       _selfShutdown(false),
       _upgraded(false) {}
 
