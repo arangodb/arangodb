@@ -705,7 +705,7 @@ function TtlSuite () {
       assertNotEqual(stats.runs, oldStats.runs);
       assertTrue(stats.limitReached > oldStats.limitReached);
       assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
-      assertTrue(db._collection(cn).count() < oldCount);
+      assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0);
     },
     
     testRemovalsLimitsHitCollectionNumeric : function () {
@@ -744,7 +744,7 @@ function TtlSuite () {
       assertNotEqual(stats.runs, oldStats.runs);
       assertTrue(stats.limitReached > oldStats.limitReached);
       assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
-      assertTrue(db._collection(cn).count() < oldCount);
+      assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0);
     },
     
     testRemovalsLimitsHitCollectionDate : function () {
@@ -783,7 +783,7 @@ function TtlSuite () {
       assertNotEqual(stats.runs, oldStats.runs);
       assertTrue(stats.limitReached > oldStats.limitReached);
       assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
-      assertTrue(db._collection(cn).count() < oldCount);
+      assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0);
     },
   
   };
