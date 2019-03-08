@@ -56,9 +56,8 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
       std::unordered_set<RegisterId>&& readableInputRegisters,
       std::unordered_set<RegisterId>&& writeableOutputRegisters,
       std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters, RegisterId collectRegister,
-      std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
+      std::vector<std::string>&& aggregateTypes,
       std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-      std::vector<std::pair<Variable const*, Variable const*>> groupVariables,
       transaction::Methods* trxPtr, bool count);
 
   HashedCollectExecutorInfos() = delete;
@@ -70,14 +69,11 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
   std::vector<std::pair<RegisterId, RegisterId>> getGroupRegisters() const {
     return _groupRegisters;
   }
-  std::vector<std::pair<Variable const*, Variable const*>> getGroupVariables() const {
-    return _groupVariables;
-  }
   std::vector<std::pair<RegisterId, RegisterId>> getAggregatedRegisters() const {
     return _aggregateRegisters;
   }
-  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> getAggregateVariables() const {
-    return _aggregateVariables;
+  std::vector<std::string> getAggregateTypes () const {
+    return _aggregateTypes;
   }
   bool getCount() const noexcept { return _count; };
   transaction::Methods* getTransaction() const { return _trxPtr; }
@@ -89,8 +85,8 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
   // respectively getInputRegisters().
   RegisterId _inputRegister;
 
-  /// @brief input/output variables for the aggregation (out, in)
-  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> _aggregateVariables;
+  /// @brief aggregate types
+  std::vector<std::string> _aggregateTypes;
 
   /// @brief pairs, consisting of out register and in register
   std::vector<std::pair<RegisterId, RegisterId>> _aggregateRegisters;
@@ -103,9 +99,6 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
   /// this register is also used for counting in case WITH COUNT INTO var is
   /// used
   RegisterId _collectRegister;
-
-  /// @brief input/output variables for the collection (out, in)
-  std::vector<std::pair<Variable const*, Variable const*>> _groupVariables;
 
   /// @brief COUNTing node?
   bool _count;

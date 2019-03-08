@@ -203,13 +203,22 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
       calcAggregateRegisters(aggregateRegisters, readableInputRegisters, writeableOutputRegisters);
 
+      TRI_ASSERT(groupRegisters.size() == _groupVariables.size());
+      TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
+
+      std::vector<std::string> aggregateTypes;
+      std::transform(aggregateVariables().begin(), aggregateVariables().end(),
+                     aggregateTypes.begin(),
+                     [](auto& it) { return it.second.second; });
+      TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
+
       transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
       HashedCollectExecutorInfos infos(
           getRegisterPlan()->nrRegs[previousNode->getDepth()],
           getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
           std::move(readableInputRegisters), std::move(writeableOutputRegisters),
-          std::move(groupRegisters), collectRegister, _aggregateVariables,
-          std::move(aggregateRegisters), _groupVariables, trxPtr, _count);
+          std::move(groupRegisters), collectRegister, std::move(aggregateTypes),
+          std::move(aggregateRegisters), trxPtr, _count);
 
       return std::make_unique<ExecutionBlockImpl<HashedCollectExecutor>>(&engine, this,
                                                                          std::move(infos));

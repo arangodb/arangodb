@@ -47,19 +47,17 @@ HashedCollectExecutorInfos::HashedCollectExecutorInfos(
     std::unordered_set<RegisterId>&& readableInputRegisters,
     std::unordered_set<RegisterId>&& writeableOutputRegisters,
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters, RegisterId collectRegister,
-    std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
+    std::vector<std::string>&& aggregateTypes,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-    std::vector<std::pair<Variable const*, Variable const*>> groupVariables,
     transaction::Methods* trxPtr, bool count)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
                     std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
-      _aggregateVariables(aggregateVariables),
+      _aggregateTypes(aggregateTypes),
       _aggregateRegisters(aggregateRegisters),
       _groupRegisters(groupRegisters),
       _collectRegister(collectRegister),
-      _groupVariables(std::move(groupVariables)),
       _count(count),
       _trxPtr(trxPtr) {
   TRI_ASSERT(!_groupRegisters.empty());
@@ -69,7 +67,7 @@ std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> co
 HashedCollectExecutor::createAggregatorFactories(HashedCollectExecutor::Infos const& infos) {
   std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*> aggregatorFactories;
 
-  if (infos.getAggregateVariables().empty()) {
+  if (infos.getAggregateTypes().empty()) {
     // no aggregate registers. this means we'll only count the number of items
     if (infos.getCount()) {
       aggregatorFactories.emplace_back(
@@ -80,9 +78,9 @@ HashedCollectExecutor::createAggregatorFactories(HashedCollectExecutor::Infos co
     aggregatorFactories.reserve(infos.getAggregatedRegisters().size());
 
     // initialize aggregators
-    for (auto const& r : infos.getAggregateVariables()) {
+    for (auto const& r : infos.getAggregateTypes()) {
       aggregatorFactories.emplace_back(
-          Aggregator::factoryFromTypeString(r.second.second));
+          Aggregator::factoryFromTypeString(r));
     }
   }
 
@@ -96,7 +94,7 @@ HashedCollectExecutor::HashedCollectExecutor(Fetcher& fetcher, Infos& infos)
       _lastInitializedInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _allGroups(1024,
                  AqlValueGroupHash(_infos.getTransaction(),
-                                   _infos.getGroupVariables().size()),
+                                   _infos.getGroupRegisters().size()),
                  AqlValueGroupEqual(_infos.getTransaction())),
       _isInitialized(false),
       _aggregatorFactories() {
@@ -127,7 +125,7 @@ void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
   // reduce the aggregates
   AggregateValuesType* aggregateValues = currentGroupIt->second.get();
 
-  if (_infos.getAggregateVariables().empty()) {
+  if (_infos.getAggregateTypes().empty()) {
     // no aggregate registers. simply increase the counter
     if (_infos.getCount()) {
       // TODO get rid of this special case if possible
