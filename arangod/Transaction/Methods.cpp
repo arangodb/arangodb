@@ -2475,10 +2475,6 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
   std::unique_ptr<OperationCursor> cursor =
       indexScan(collectionName, transaction::Methods::CursorType::ALL);
 
-  if (cursor->fail()) {
-    return OperationResult(cursor->code);
-  }
-
   auto cb = [&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
     resultBuilder.add(slice);
   };
@@ -2918,10 +2914,10 @@ std::pair<bool, bool> transaction::Methods::getIndexForSortCondition(
   return std::make_pair(false, false);
 }
 
-/// @brief factory for OperationCursor objects from AQL
+/// @brief factory for IndexIterator objects from AQL
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
-OperationCursor* transaction::Methods::indexScanForCondition(
+std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
     IndexHandle const& indexId, arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* var, ManagedDocumentResult* mmdr,
     IndexIteratorOptions const& opts) {
@@ -2937,15 +2933,7 @@ OperationCursor* transaction::Methods::indexScanForCondition(
   }
 
   // Now create the Iterator
-  std::unique_ptr<IndexIterator> iterator(
-      idx->iteratorForCondition(this, mmdr, condition, var, opts));
-
-  if (iterator == nullptr) {
-    // We could not create an ITERATOR and it did not throw an error itself
-    return new OperationCursor(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  return new OperationCursor(iterator.release(), defaultBatchSize());
+  return std::unique_ptr<IndexIterator>(idx->iteratorForCondition(this, mmdr, condition, var, opts));
 }
 
 /// @brief factory for OperationCursor objects
@@ -2972,7 +2960,7 @@ std::unique_ptr<OperationCursor> transaction::Methods::indexScan(std::string con
   // will throw when it fails
   _transactionContextPtr->pinData(logical);
 
-  std::unique_ptr<IndexIterator> iterator = nullptr;
+  std::unique_ptr<IndexIterator> iterator;
   switch (cursorType) {
     case CursorType::ANY: {
       iterator = logical->getAnyIterator(this);
@@ -2983,12 +2971,11 @@ std::unique_ptr<OperationCursor> transaction::Methods::indexScan(std::string con
       break;
     }
   }
-  if (iterator == nullptr) {
-    // We could not create an ITERATOR and it did not throw an error itself
-    return std::make_unique<OperationCursor>(TRI_ERROR_OUT_OF_MEMORY);
-  }
 
-  return std::make_unique<OperationCursor>(iterator.release(), defaultBatchSize());
+  // the above methods must always return a valid iterator or throw!  
+  TRI_ASSERT(iterator != nullptr);
+
+  return std::make_unique<OperationCursor>(std::move(iterator));
 }
 
 /// @brief return the collection

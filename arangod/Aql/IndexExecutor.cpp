@@ -180,11 +180,19 @@ IndexExecutor::~IndexExecutor() = default;
 /// @brief order a cursor for the index at the specified position
 arangodb::OperationCursor* IndexExecutor::orderCursor(size_t currentIndex) {
   TRI_ASSERT(_infos.getIndexes().size() > currentIndex);
-
+  
+  if (getCursor(currentIndex) == nullptr) {
+    // first create an empty cursor object if none is there yet
+    resetCursor(currentIndex, std::make_unique<OperationCursor>()); 
+  }
+  
+  OperationCursor* cursor = getCursor(currentIndex);
+  TRI_ASSERT(cursor != nullptr);
+  
   // TODO: if we have _nonConstExpressions, we should also reuse the
   // cursors, but in this case we have to adjust the iterator's search condition
   // from _condition
-  if (!_infos.getNonConstExpressions().empty() || getCursor(currentIndex) == nullptr) {
+  if (!_infos.getNonConstExpressions().empty() || cursor->indexIterator() == nullptr) {
     AstNode const* conditionNode = nullptr;
     if (_infos.getCondition() != nullptr) {
       TRI_ASSERT(_infos.getIndexes().size() == _infos.getCondition()->numMembers());
@@ -193,17 +201,17 @@ arangodb::OperationCursor* IndexExecutor::orderCursor(size_t currentIndex) {
       conditionNode = _infos.getCondition()->getMember(currentIndex);
     }
 
-    // yet no cursor for index, so create it
-    resetCursor(currentIndex,
+    // inject the index iterator into the existing cursor
+    cursor->rearm(
                 _infos.getTrxPtr()->indexScanForCondition(
                     _infos.getIndexes()[currentIndex], conditionNode,
                     _infos.getOutVariable(), _mmdr.get(), _infos.getOptions()));
   } else {
-    // cursor for index already exists, reset and reuse it
+    // reset the cursor to its initial state
     resetCursor(currentIndex);
   }
-
-  return getCursor(currentIndex);
+    
+  return cursor;
 }
 
 void IndexExecutor::createCursor() {
@@ -315,10 +323,6 @@ bool IndexExecutor::initIndexes(InputAqlItemRow& input) {
   }
 
   createCursor();
-  if (getCursor()->fail()) {
-    THROW_ARANGO_EXCEPTION(getCursor()->code);
-  }
-
   return advanceCursor();
 }
 
@@ -383,9 +387,6 @@ bool IndexExecutor::advanceCursor() {
     if (getCurrentIndex() < _infos.getIndexes().size()) {
       // This check will work as long as _indexes.size() < MAX_SIZE_T
       createCursor();
-      if (getCursor()->fail()) {
-        THROW_ARANGO_EXCEPTION(getCursor()->code);
-      }
     } else {
       setCursor(nullptr);
       setIndexesExhausted(true);
@@ -396,7 +397,7 @@ bool IndexExecutor::advanceCursor() {
 
   setIndexesExhausted(false);
   return true;
-};
+}
 
 std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("IndexExecutor::produceRow") {

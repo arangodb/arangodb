@@ -36,6 +36,7 @@
 #include "Graph/TraverserCacheFactory.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
+#include "Utils/OperationCursor.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -419,7 +420,7 @@ EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr, arangodb::
     csrs.reserve(info.idxHandles.size());
     IndexIteratorOptions opts;
     for (auto const& it : info.idxHandles) {
-      csrs.emplace_back(_trx->indexScanForCondition(it, node, _tmpVar, mmdr, opts));
+      csrs.emplace_back(new OperationCursor(_trx->indexScanForCondition(it, node, _tmpVar, mmdr, opts)));
     }
     opCursors.emplace_back(std::move(csrs));
   }

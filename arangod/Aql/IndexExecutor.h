@@ -182,7 +182,7 @@ class IndexExecutor {
 
   void setProducingFunction(DocumentProducingFunction documentProducer) {
     _documentProducer = documentProducer;
-  };
+  }
 
  private:
   bool initializeCursor();
@@ -200,34 +200,34 @@ class IndexExecutor {
   void resetCursor(size_t pos) { _cursors[pos]->reset(); };
 
   /// @brief reset and initialize the cursor at given position
-  void resetCursor(size_t pos, OperationCursor* cursor) {
-    _cursors[pos].reset(cursor);
-  };
+  void resetCursor(size_t pos, std::unique_ptr<OperationCursor> cursor) {
+    _cursors[pos] = std::move(cursor);
+  }
 
   /// @brief order a cursor for the index at the specified position
   OperationCursor* orderCursor(size_t currentIndex);
 
   /// @brief set a new cursor
-  void setCursor(arangodb::OperationCursor* cursor) { _cursor = cursor; };
+  void setCursor(arangodb::OperationCursor* cursor) { _cursor = cursor; }
 
-  arangodb::OperationCursor* getCursor() { return _cursor; };
+  arangodb::OperationCursor* getCursor() { return _cursor; }
   arangodb::OperationCursor* getCursor(size_t pos) {
     return _cursors[pos].get();
-  };
+  }
   std::vector<std::unique_ptr<OperationCursor>>& getCursors() {
     return _cursors;
-  };
+  }
 
-  void setIndexesExhausted(bool flag) { _indexesExhausted = flag; };
-  bool getIndexesExhausted() { return _indexesExhausted; };
+  void setIndexesExhausted(bool flag) { _indexesExhausted = flag; }
+  bool getIndexesExhausted() { return _indexesExhausted; }
 
-  void setLastIndex(bool flag) { _isLastIndex = flag; };
-  bool isLastIndex() { return _isLastIndex; };
+  void setLastIndex(bool flag) { _isLastIndex = flag; }
+  bool isLastIndex() { return _isLastIndex; }
 
-  void setCurrentIndex(size_t pos) { _currentIndex = pos; };
-  void decrCurrentIndex() { _currentIndex--; };
-  void incrCurrentIndex() { _currentIndex++; };
-  size_t getCurrentIndex() const noexcept { return _currentIndex; };
+  void setCurrentIndex(size_t pos) { _currentIndex = pos; }
+  void decrCurrentIndex() { _currentIndex--; }
+  void incrCurrentIndex() { _currentIndex++; }
+  size_t getCurrentIndex() const noexcept { return _currentIndex; }
 
  private:
   Infos& _infos;

@@ -368,13 +368,13 @@ class Methods {
       arangodb::aql::Variable const*, size_t, std::vector<IndexHandle>&,
       size_t& coveredAttributes);
 
-  /// @brief factory for OperationCursor objects from AQL
+  /// @brief factory for IndexIterator objects from AQL
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
-  OperationCursor* indexScanForCondition(IndexHandle const&, arangodb::aql::AstNode const*,
-                                         arangodb::aql::Variable const*,
-                                         ManagedDocumentResult*,
-                                         IndexIteratorOptions const&);
+  std::unique_ptr<IndexIterator> indexScanForCondition(IndexHandle const&, arangodb::aql::AstNode const*,
+                                                       arangodb::aql::Variable const*,
+                                                       ManagedDocumentResult*,
+                                                       IndexIteratorOptions const&);
 
   /// @brief factory for OperationCursor objects
   /// note: the caller must have read-locked the underlying collection when

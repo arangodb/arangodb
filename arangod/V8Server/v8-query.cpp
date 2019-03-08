@@ -224,10 +224,6 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::unique_ptr<OperationCursor> opCursor =
       trx.indexScan(collectionName, transaction::Methods::CursorType::ALL);
 
-  if (opCursor->fail()) {
-    TRI_V8_THROW_EXCEPTION(opCursor->code);
-  }
-
   if (!opCursor->hasMore()) {
     // OUT OF MEMORY. initial hasMore should return true even if index is empty
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

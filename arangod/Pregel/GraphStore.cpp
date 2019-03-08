@@ -383,11 +383,6 @@ void GraphStore<V, E>::_loadVertices(transaction::Methods& trx, ShardID const& v
   std::unique_ptr<OperationCursor> cursor =
       trx.indexScan(vertexShard, transaction::Methods::CursorType::ALL);
 
-  if (cursor->fail()) {
-    THROW_ARANGO_EXCEPTION_FORMAT(cursor->code, "while looking up shard '%s'",
-                                  vertexShard.c_str());
-  }
-
   // tell the formatter the number of docs we are about to load
   LogicalCollection* collection = cursor->collection();
   uint64_t number = collection->numberDocuments(&trx, transaction::CountType::Normal);
@@ -444,11 +439,6 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, ShardID const& edge
                                      StaticStrings::FromString, 0);
   ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor = info.getEdges(documentID, &mmdr);
-  if (cursor->fail()) {
-    THROW_ARANGO_EXCEPTION_FORMAT(cursor->code,
-                                  "while looking up edges '%s' from %s",
-                                  documentID.c_str(), edgeShard.c_str());
-  }
 
   auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
     if (slice.isExternal()) {

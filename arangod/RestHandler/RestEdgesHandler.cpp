@@ -76,17 +76,13 @@ void RestEdgesHandler::readCursor(aql::AstNode* condition, aql::Variable const* 
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_ARANGO_NO_INDEX,
-        "Unable to find an edge-index to identify matching edges.");
+        "Unable to find an edge index to identify matching edges.");
   }
 
   ManagedDocumentResult mmdr;
   IndexIteratorOptions opts;
-  std::unique_ptr<OperationCursor> cursor(
+  auto cursor = std::make_unique<OperationCursor>(
       trx.indexScanForCondition(indexId, condition, var, &mmdr, opts));
-
-  if (cursor->fail()) {
-    THROW_ARANGO_EXCEPTION(cursor->code);
-  }
 
   cursor->all(cb);
 }
