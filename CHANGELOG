@@ -1,4 +1,4 @@
-v3.4.5 (XXXX-XX-XX)
+v3.4.5 (2019-03-XX)
 -------------------
 
 * add "PRUNE <condition>" to AQL Traversals. This allows to early abort searching of
@@ -26,6 +26,7 @@ v3.4.5 (XXXX-XX-XX)
 * display the server role when connecting arangosh against a server (e.g. 
   SINGLE, COORDINATOR)
 
+* agents need to be able to overwrite a compacted state with same _key
 
 v3.4.4 (2019-03-08)
 -------------------
