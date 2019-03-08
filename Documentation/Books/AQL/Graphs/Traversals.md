@@ -172,33 +172,33 @@ See examples:
     @EXAMPLE_AQL{GRAPHTRAV_graphPruneEdges}
     @DATASET{traversalGraph}
     FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
-      PRUNE e.theTruth == true
-          RETURN { vertices: p.vertices[*]._key, edges: p.edges[*].label }
+        PRUNE e.theTruth == true
+        RETURN { vertices: p.vertices[*]._key, edges: p.edges[*].label }
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_graphPruneEdges
 
-    This will search until it sees an edge having `theTruth == true`.
-    The path with this edge will be returned, the search will not
-    continue after this edge.
-    Namely all responses either have no edge with `theTruth == true`
-    or the last edge on the path has `theTruth == true`.
+This will search until it sees an edge having `theTruth == true`.
+The path with this edge will be returned, the search will not
+continue after this edge.
+Namely all responses either have no edge with `theTruth == true`
+or the last edge on the path has `theTruth == true`.
 
     @startDocuBlockInline GRAPHTRAV_graphPruneVertices
     @EXAMPLE_AQL{GRAPHTRAV_graphPruneVertices}
     @DATASET{traversalGraph}
     FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
-      PRUNE v._key == 'G'
-      FILTER v._key == 'G'
-          RETURN { vertices: p.vertices[*]._key, edges: p.edges[*].label }
+        PRUNE v._key == 'G'
+        FILTER v._key == 'G'
+        RETURN { vertices: p.vertices[*]._key, edges: p.edges[*].label }
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_graphPruneVertices
 
-    This will search for all paths from the source `circles/A` to the vertex `circles/G`.
-    This is done with first the PRUNE which makes sure we stop search as soon as we have found
-    `G` and we will not go beyond `G` and via a loop return to it.
-    With the second filter, we remove all paths that do not end in `G` namely
-    all shorter ones that have not been cut out by prune.
-    Hence the list of all paths from `A` to `G` are returned.
+This will search for all paths from the source `circles/A` to the vertex `circles/G`.
+This is done with first the PRUNE which makes sure we stop search as soon as we have found
+`G` and we will not go beyond `G` and via a loop return to it.
+With the second filter, we remove all paths that do not end in `G` namely
+all shorter ones that have not been cut out by prune.
+Hence the list of all paths from `A` to `G` are returned.
 
 Note you can also prune as soon as you reach a certain collection with the following
 example:
@@ -207,8 +207,8 @@ example:
     @EXAMPLE_AQL{GRAPHTRAV_graphPruneCollection}
     @DATASET{traversalGraph}
     FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
-      PRUNE IS_SAME_COLLECTION('circles', v)
-          RETURN { vertices: p.vertices[*]._key, edges: p.edges[*].label }
+        PRUNE IS_SAME_COLLECTION('circles', v)
+        RETURN { vertices: p.vertices[*]._key, edges: p.edges[*].label }
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_graphPruneCollection
 
@@ -227,8 +227,8 @@ or relative positions to the end of the path by specifying a negative number.
     @EXAMPLE_AQL{GRAPHTRAV_graphFilterEdges}
     @DATASET{traversalGraph}
     FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
-      FILTER p.edges[0].theTruth == true
-          RETURN { vertices: p.vertices[*]._key, edges: p.edges[*].label }
+        FILTER p.edges[0].theTruth == true
+        RETURN { vertices: p.vertices[*]._key, edges: p.edges[*].label }
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_graphFilterEdges
 
@@ -244,8 +244,8 @@ Similar to filtering the edges on the path you can also filter the vertices:
     @EXAMPLE_AQL{GRAPHTRAV_graphFilterVertices}
     @DATASET{traversalGraph}
     FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
-      FILTER p.vertices[1]._key == "G"
-          RETURN { vertices: p.vertices[*]._key, edges: p.edges[*].label }
+        FILTER p.vertices[1]._key == "G"
+        RETURN { vertices: p.vertices[*]._key, edges: p.edges[*].label }
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_graphFilterVertices
 
@@ -257,10 +257,10 @@ And of course you can combine these filters in any way you like:
     @EXAMPLE_AQL{GRAPHTRAV_graphFilterCombine}
     @DATASET{traversalGraph}
     FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
-      FILTER p.edges[0].theTruth == true
-         AND p.edges[1].theFalse == false
-      FILTER p.vertices[1]._key == "G"
-          RETURN { vertices: p.vertices[*]._key, edges: p.edges[*].label }
+        FILTER p.edges[0].theTruth == true
+           AND p.edges[1].theFalse == false
+        FILTER p.vertices[1]._key == "G"
+        RETURN { vertices: p.vertices[*]._key, edges: p.edges[*].label }
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_graphFilterCombine
 
@@ -282,8 +282,8 @@ on the entire path, like ALL edges should have theTruth == true:
     @EXAMPLE_AQL{GRAPHTRAV_graphFilterEntirePath}
     @DATASET{traversalGraph}
     FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
-      FILTER p.edges[*].theTruth ALL == true
-          RETURN { vertices: p.vertices[*]._key, edges: p.edges[*].label }
+        FILTER p.edges[*].theTruth ALL == true
+        RETURN { vertices: p.vertices[*]._key, edges: p.edges[*].label }
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_graphFilterEntirePath
 
@@ -293,8 +293,8 @@ Or NONE of the edges should have theTruth == true:
     @EXAMPLE_AQL{GRAPHTRAV_graphFilterPathEdges}
     @DATASET{traversalGraph}
     FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
-       FILTER p.edges[*].theTruth NONE == true
-          RETURN { vertices: p.vertices[*]._key, edges: p.edges[*].label }
+        FILTER p.edges[*].theTruth NONE == true
+        RETURN { vertices: p.vertices[*]._key, edges: p.edges[*].label }
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_graphFilterPathEdges
 
@@ -307,8 +307,8 @@ It is also possible to define that at least one edge on the path has to fulfill 
     @EXAMPLE_AQL{GRAPHTRAV_graphFilterPathAnyEdge}
     @DATASET{traversalGraph}
     FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
-      FILTER p.edges[*].theTruth ANY == true
-          RETURN { vertices: p.vertices[*]._key, edges: p.edges[*].label }
+        FILTER p.edges[*].theTruth ANY == true
+        RETURN { vertices: p.vertices[*]._key, edges: p.edges[*].label }
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_graphFilterPathAnyEdge
 
@@ -326,7 +326,6 @@ two nodes of these paths has to be executed - you just won't see them in your re
 
 Similar are filters on vertices or edges - the traverser has to walk along these nodes, since 
 you may be interested in documents further down the path.
-
 
 ### Examples
 
@@ -403,14 +402,18 @@ side of the graph, we may filter in two ways:
     @startDocuBlockInline GRAPHTRAV_04_traverse_4a
     @EXAMPLE_AQL{GRAPHTRAV_04_traverse_4a}
     @DATASET{traversalGraph}
-    FOR v, e, p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' FILTER p.vertices[1]._key != 'G' RETURN v._key
+    FOR v, e, p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+        FILTER p.vertices[1]._key != 'G'
+        RETURN v._key
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_04_traverse_4a
 
     @startDocuBlockInline GRAPHTRAV_04_traverse_4b
     @EXAMPLE_AQL{GRAPHTRAV_04_traverse_4b}
     @DATASET{traversalGraph}
-    FOR v, e, p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' FILTER p.edges[0].label != 'right_foo' RETURN v._key
+    FOR v, e, p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+        FILTER p.edges[0].label != 'right_foo'
+        RETURN v._key
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_04_traverse_4b
 
@@ -426,8 +429,8 @@ We also may combine several filters, for instance to filter out the right branch
     @EXAMPLE_AQL{GRAPHTRAV_05_traverse_5a}
     @DATASET{traversalGraph}
     FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
-      FILTER p.vertices[1]._key != 'G'
-      FILTER p.edges[1].label != 'left_blub'
+        FILTER p.vertices[1]._key != 'G'
+        FILTER p.edges[1].label != 'left_blub'
         RETURN v._key
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_05_traverse_5a
@@ -436,7 +439,7 @@ We also may combine several filters, for instance to filter out the right branch
     @EXAMPLE_AQL{GRAPHTRAV_05_traverse_5b}
     @DATASET{traversalGraph}
     FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
-      FILTER p.vertices[1]._key != 'G' AND p.edges[1].label != 'left_blub'
+        FILTER p.vertices[1]._key != 'G' AND p.edges[1].label != 'left_blub'
         RETURN v._key
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_05_traverse_5b
@@ -455,7 +458,7 @@ from `circles/E`:
     @EXAMPLE_AQL{GRAPHTRAV_06_traverse_6a}
     @DATASET{traversalGraph}
     FOR v IN 1..3 OUTBOUND 'circles/E' GRAPH 'traversalGraph'
-      RETURN v._key
+        RETURN v._key
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_06_traverse_6a
 
@@ -463,7 +466,7 @@ from `circles/E`:
     @EXAMPLE_AQL{GRAPHTRAV_06_traverse_6b}
     @DATASET{traversalGraph}
     FOR v IN 1..3 INBOUND 'circles/E' GRAPH 'traversalGraph'
-      RETURN v._key
+        RETURN v._key
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_06_traverse_6b
 
@@ -471,7 +474,7 @@ from `circles/E`:
     @EXAMPLE_AQL{GRAPHTRAV_06_traverse_6c}
     @DATASET{traversalGraph}
     FOR v IN 1..3 ANY 'circles/E' GRAPH 'traversalGraph'
-      RETURN v._key
+        RETURN v._key
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_06_traverse_6c
 
@@ -500,20 +503,19 @@ traversal queries using [the explainer](../ExecutionAndPerformance/Optimizer.md)
     @DATASET{traversalGraph}
     @EXPLAIN{TRUE}
     FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
-      LET localScopeVar = RAND() > 0.5
-      FILTER p.edges[0].theTruth != localScopeVar
-    RETURN v._key
+        LET localScopeVar = RAND() > 0.5
+        FILTER p.edges[0].theTruth != localScopeVar
+        RETURN v._key
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_07_traverse_7
-
 
     @startDocuBlockInline GRAPHTRAV_07_traverse_8
     @EXAMPLE_AQL{GRAPHTRAV_07_traverse_8}
     @DATASET{traversalGraph}
     @EXPLAIN{TRUE}
     FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
-    FILTER p.edges[0].label == 'right_foo'
-    RETURN v._key
+        FILTER p.edges[0].label == 'right_foo'
+        RETURN v._key
     @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_07_traverse_8
 
@@ -533,7 +535,6 @@ And finally clean it up again:
     examples.dropGraph("traversalGraph");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHTRAV_99_drop_graph
-
 
 If this traversal is not powerful enough for your needs, like you cannot describe
 your conditions as AQL filter statements, then you might want to have a look at
