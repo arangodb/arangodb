@@ -40,4 +40,71 @@ describe('Foxx arangoUser', function () {
     expect(result.code).to.equal(200);
     expect(result.body).to.eql(JSON.stringify({user: 'root'}));
   });
+
+  it('should not set the arangoUser object if not authenticated correctly - used invalid password', function () {
+    const opts = { headers: {
+      authorization: (
+        'Basic ' + new Buffer('root:invalidpassword').toString('base64')
+      )
+    }};
+    const result = internal.download(url + mount, '', opts);
+    expect(result.code).to.equal(200);
+    expect(result.body).to.eql(JSON.stringify({user: null}));
+  });
+
+  it('should not set the arangoUser object if not authenticated correctly - used invalid username', function () {
+    const opts = { headers: {
+      authorization: (
+        'Basic ' + new Buffer('iamnotavaliduser:').toString('base64')
+      )
+    }};
+    const result = internal.download(url + mount, '', opts);
+    expect(result.code).to.equal(200);
+    expect(result.body).to.eql(JSON.stringify({user: null}));
+  });
+
+  it('should not set the arangoUser object if not authenticated correctly - used invalid username and password', function () {
+    const opts = { headers: {
+      authorization: (
+        'Basic ' + new Buffer('iamnotavaliduser:noriamavalidpassword').toString('base64')
+      )
+    }};
+    const result = internal.download(url + mount, '', opts);
+    expect(result.code).to.equal(200);
+    expect(result.body).to.eql(JSON.stringify({user: null}));
+  });
+
+  it('should not set the arangoUser object if not authenticated correctly - empty username and empty password', function () {
+    const opts = { headers: {
+      authorization: (
+        'Basic ' + new Buffer(':').toString('base64')
+      )
+    }};
+    const result = internal.download(url + mount, '', opts);
+    expect(result.code).to.equal(200);
+    expect(result.body).to.eql(JSON.stringify({user: null}));
+  });
+
+  it('should not set the arangoUser object if not authenticated correctly - empty password', function () {
+    const opts = { headers: {
+      authorization: (
+        'Basic ' + new Buffer('iamnotavaliduser:').toString('base64')
+      )
+    }};
+    const result = internal.download(url + mount, '', opts);
+    expect(result.code).to.equal(200);
+    expect(result.body).to.eql(JSON.stringify({user: null}));
+  });
+
+  it('should not set the arangoUser object if not authenticated correctly - empty user', function () {
+    const opts = { headers: {
+      authorization: (
+        'Basic ' + new Buffer(':somerandompass').toString('base64')
+      )
+    }};
+    const result = internal.download(url + mount, '', opts);
+    expect(result.code).to.equal(200);
+    expect(result.body).to.eql(JSON.stringify({user: null}));
+  });
+
 });
