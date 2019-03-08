@@ -216,11 +216,27 @@ you need to place hooks:
 
 # Include ditaa diagrams
 
-We use the [beautifull ditaa (DIagrams Through Ascii Art)](http://ditaa.sourceforge.net/) to generate diagrams explaining flows etc.
-in our documentation.
+[ditaa (DIagrams Through Ascii Art)](http://ditaa.sourceforge.net/) to generate diagrams explaining flows etc.
+is available for documentation purposes. A file like `illustration.ditaa`:
 
-We have i.e. `Manual/Graphs/graph_user_in_group.ditaa` which is transpiled by ditaa into a png file, thus you simply include
-a png file of the same name as image into the markdown: `![User in group example](graph_user_in_group.png)` to reference it.
+
+```
+    Users      UsersInGroups           Groups
+
+ +----------+                 +----------------------+
+ |   John   +---------------->| BowlingGroupHappyPin |
+ +----------+                 +----------------------+
+```
+
+... is rendered by ditaa to a PNG file, which can be referenced in Markdown using the relative file path with a `.png`
+extension like a regular image:
+
+```
+![Graph: User in group](illustration.png)
+```
+
+However, it is rather limited in what you can depict. Therefore, illustrations should be rather created with a
+tool of choice, rasterized and added to the docs in PNG or JPG format.
 
 # Read / use the documentation
 
