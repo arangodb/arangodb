@@ -184,6 +184,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Gossip in
   bool activeAgency();
 
+  /// @brief Get the index at which the leader is
+  index_t index();
+
   /// @brief Start orderly shutdown of threads
   void beginShutdown() override final;
 
@@ -224,6 +227,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   /// @brief Get read store and compaction index
   index_t readDB(Node&) const;
+
+  /// @brief Get read store and compaction index
+  index_t readDB(VPackBuilder&) const;
 
   /// @brief Get read store
   ///  WARNING: this assumes caller holds appropriate

@@ -264,7 +264,7 @@
   },
   "input-directory" : {
     "category" : "option",
-    "default" : "/home/jenkins/stable-3.4/dump",
+    "default" : "/home/fceller/ArangoDB-3.4/dump",
     "deprecatedIn" : null,
     "description" : "input directory",
     "dynamic" : false,

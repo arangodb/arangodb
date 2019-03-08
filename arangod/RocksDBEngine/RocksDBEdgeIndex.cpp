@@ -589,6 +589,7 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx, RocksDBMethod
                                         VPackSlice const& doc, OperationMode mode) {
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
+  TRI_ASSERT(!_unique);
   auto fromToRef = StringRef(fromTo);
   RocksDBKeyLeaser key(trx);
   key->constructEdgeIndexValue(_objectId, fromToRef, documentId);
@@ -602,7 +603,7 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx, RocksDBMethod
   blackListKey(fromToRef);
 
   // acquire rocksdb transaction
-  Result r = mthd->Put(_cf, key.ref(), value.string(), rocksutils::index);
+  Result r = mthd->PutUntracked(_cf, key.ref(), value.string(), rocksutils::index);
   if (r.ok()) {
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));

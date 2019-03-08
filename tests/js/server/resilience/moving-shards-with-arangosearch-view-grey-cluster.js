@@ -194,6 +194,33 @@ function MovingShardsWithViewSuite (options) {
     return body;
   }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief display agency information in case of a bad outcome
+////////////////////////////////////////////////////////////////////////////////
+
+  function displayAgencyInformation() {
+    var coordEndpoint =
+        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+    var request = require("@arangodb/request");
+    var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    var url = endpointToURL(coordEndpoint);
+    
+    var res;
+    try {
+      var envelope = { method: "GET", url: url + "/_api/cluster/agency-dump" };
+      res = request(envelope);
+    } catch (err) {
+      console.error(
+        "Exception for GET /_api/cluster/agency-dump:", err.stack);
+      return;
+    }
+    if (res.statusCode !== 200) {
+      return;
+    }
+    var body = res.body;
+    console.error("Agency state after disaster:", body);
+  }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test whether or not a server is clean
@@ -230,6 +257,7 @@ function MovingShardsWithViewSuite (options) {
         console.info(
           "Failed: Server " + id + " was not cleaned out. List of cleaned servers: ["
             + obj.cleanedServers + "]");
+        displayAgencyInformation();
       }
 
     } else {
@@ -262,6 +290,7 @@ function MovingShardsWithViewSuite (options) {
           }
         }
         if (!ok) {
+          displayAgencyInformation();
           return false;
         }
 
@@ -1042,14 +1071,6 @@ function MovingShardsWithViewSuite (options) {
       assertTrue(waitForSupervision());
       waitAndAssertViewEqualCollectionServers();
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief just to allow a trailing comma at the end of the last test
-////////////////////////////////////////////////////////////////////////////////
-
-    testDummy : function () {
-      assertEqual(12, 12);
-    }
 
   };
 }

@@ -454,9 +454,26 @@
     "section" : "log",
     "type" : "boolean"
   },
+  "maskings" : {
+    "category" : "option",
+    "default" : "",
+    "deprecatedIn" : null,
+    "description" : "file with maskings definition",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.3.22",
+      "v3.4.2"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "",
+    "type" : "string"
+  },
   "output-directory" : {
     "category" : "option",
-    "default" : "/home/jenkins/stable-3.4/dump",
+    "default" : "/home/fceller/ArangoDB-3.4/dump",
     "deprecatedIn" : null,
     "description" : "output directory",
     "dynamic" : false,

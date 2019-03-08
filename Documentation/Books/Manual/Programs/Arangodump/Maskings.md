@@ -3,16 +3,19 @@ Arangodump Data Maskings
 
 *--maskings path-of-config*
 
-It is possible to mask certain fields for a dump. A JSON configuration file is
-used to define which fields should be masked and how.
+This feature allows you to define how sensitive data shall be dumped.
+It is possible to exclude collections entirely, limit the dump to the
+structural information of a collection (name, indexes, sharding etc.)
+or to obfuscate certain fields for a dump. A JSON configuration file is
+used to define which collections and fields to mask and how.
 
-The general structure of the config file looks like this:
+The general structure of the configuration file looks like this:
 
 ```json
 {
   "collection-name": {
-    "type": MASKING_TYPE
-    "maskings" : [
+    "type": MASKING_TYPE,
+    "maskings": [
       MASKING1,
       MASKING2,
       ...
@@ -22,8 +25,9 @@ The general structure of the config file looks like this:
 }
 ```
 
-Using `"*"` as collection name defines a default behavior for collections not
-listed explicitly.
+At the top level, there is an object with collection names and the masking
+settings to be applied to them. Using `"*"` as collection name defines a
+default behavior for collections not listed explicitly.
 
 Masking Types
 -------------
@@ -31,13 +35,17 @@ Masking Types
 `type` is a string describing how to mask the given collection.
 Possible values are:
 
-- `"exclude"`: the collection is ignored completely and not even the structure data
-  is dumped.
+- `"exclude"`: the collection is ignored completely and not even the
+  structure data is dumped.
 
 - `"structure"`: only the collection structure is dumped, but no data at all
 
 - `"masked"`: the collection structure and all data is dumped. However, the data
-  is subject to obfuscation defined in the attribute `maskings`.
+  is subject to obfuscation defined in the attribute `maskings`. It is an array
+  of objects, with one object per field to mask. Each object needs at least a
+  `path` and a `type` attribute to [define which field to mask](#path) and which
+  [masking function](#masking-functions) to apply. Depending on the
+  masking type, there may exist additional attributes.
 
 - `"full"`: the collection structure and all data is dumped. No masking is
   applied to this collection at all.
@@ -72,12 +80,13 @@ Possible values are:
 }
 ```
 
-In the example the collection _private_ is completely ignored. Only the
-structure of the collection _log_ is dumped, but not the data itself.
-The collection _person_ is dumped completely but with the _name_ field masked
-if it occurs on the top-level. It also masks fields with the name "security_id"
-anywhere in the document. See below for a complete description of the parameters
-of [type "xifyFront"](#xify-front).
+- The collection called _private_ is completely ignored.
+- Only the structure of the collection _log_ is dumped, but not the data itself.
+- The collection _person_ is dumped completely but with maskings applied:
+  - The _name_ field is masked if it occurs on the top-level.
+  - It also masks fields with the name _security_id_ anywhere in the document.
+  - The masking function is of type [_xifyFront_](#xify-front) in both cases.
+    The additional setting `unmaskedLength` is specific so _xifyFront_.
 
 ### Masking vs. dump-data option
 
@@ -98,13 +107,47 @@ This will take the intersection of exportable collections.
 Path
 ----
 
-If the path starts with a `.` then it is considered to match any path
-ending in `name`. For example, `.name` will match the attribute name
-`name` all leaf attributes in the document. Leaf attributes are
-attributes whose value is `null` or of data type `string`, `number`,
-`bool` and `array` (see below). `name` will only match leaf attributes
+`path` defines which field to obfuscate. There can only be a single
+path per masking, but an unlimited amount of maskings per collection.
+
+To mask a top-level attribute value, the path is simply the attribute
+name, for instance `"name"` to mask the value `"foobar"`:
+
+```json
+{
+  "_key": "1234",
+  "name": "foobar"
+}
+```
+
+The path to a nested attribute `name` with a top-level attribute `person`
+as its parent is `"person.name"`:
+
+```json
+{
+  "_key": "1234",
+  "person": {
+    "name": "foobar"
+  }
+}
+```
+
+If the path starts with a `.` then it matches any path ending in `name`.
+For example, `.name` will match the field `name` of all leaf attributes
+in the document. Leaf attributes are attributes whose value is `null`,
+`true`, `false`, or of data type `string`, `number` or `array`.
+That means, it matches `name` at the top level
+as well as at any nested level (e.g. `foo.bar.name`), but not nested
+objects themselves.
+
+On the other hand, `name` will only match leaf attributes
 at top level. `person.name` will match the attribute `name` of a leaf
-in the top-level object `person`.
+in the top-level object `person`. If `person` was itself an object,
+then the masking settings for this path would be ignored, because it
+is not a leaf attribute.
+
+If the attribute value is an **array** then the masking is applied to
+**all array elements individually**.
 
 If you have an attribute name that contains a dot, you need to quote the
 name with either a tick or a backtick. For example:
@@ -115,13 +158,10 @@ or
 
     "path": "`name.with.dots`"
 
-If the attribute value is an array the masking is applied to all the
-array elements individually.
-
 **Example**
 
-The following configuration will replace the value of the "name"
-attribute with an "XXXX"-masked string:
+The following configuration will replace the value of the `name`
+attribute with an "xxxx"-masked string:
 
 ```json
 {
@@ -165,63 +205,80 @@ are not contained in an attribute value of which the attribute name is
 
 If you specify a path and the attribute value is an array then the
 masking decision is applied to each element of the array as if this
-was the value of the attribute.
+was the value of the attribute. This applies to arrays inside the array too.
 
-If the attribute value is an object, then the attribute is not masked.
-Instead the nested object is checked further for leaf attributes.
+If the attribute value is an object, then it is ignored and the attribute
+does not get masked. To mask nested fields, specify the full path for each
+leaf attribute.
 
-**Example**
+{% hint 'tip' %}
+If some documents have an attribute `email` with a string as value, but other
+documents store a nested object under the same attribute name, then make sure
+to set up proper masking for the latter case, in which sub-attributes will not
+get masked if there is only a masking configured for the attribute `email`
+but not its nested attributes.
+{% endhint %}
 
-Masking `email` will convert:
+**Examples**
 
+Masking `email` with the _Xify Front_ function will convert:
 
 ```json
-{ 
-  "email" : "email address" 
+{
+  "email" : "email address"
 }
 ```
 
 … into:
 
 ```json
-{ 
-  "email" : "xxil xxxxxxss" 
+{
+  "email" : "xxil xxxxxxss"
 }
 ```
 
 because `email` is a leaf attribute. The document:
 
 ```json
-{ 
-  "email" : [ 
-    "address one", 
-    "address two" 
-  ] 
-} 
+{
+  "email" : [
+    "address one",
+    "address two",
+    [
+      "address three"
+    ]
+  ]
+}
 ```
 
 … will be converted into:
 
 ```json
-{ 
-  "email" : [ 
-    "xxxxxss xne", 
-    "xxxxxss xwo" 
-  ] 
-} 
+{
+  "email" : [
+    "xxxxxss xne",
+    "xxxxxss xwo",
+    [
+      "xxxxxss xxxee"
+    ]
+  ]
+}
 ```
 
-… because the array is "unfolded". The document:
+… because the masking is applied to each array element individually
+including the elements of the sub-array. The document:
 
 ```json
-{ 
-  "email" : { 
-    "address" : "email address" 
-  } 
+{
+  "email" : {
+    "address" : "email address"
+  }
 }
 ```
 
 … will not be changed because `email` is not a leaf attribute.
+To mask the email address, you could use the paths `email.address`
+or `.address`.
 
 
 Masking Functions
@@ -229,33 +286,25 @@ Masking Functions
 
 {% hint 'info' %}
 The following masking functions are only available in the
-[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/).
 {% endhint %}
 
-- xify front
-- zip
-- datetime
-- integral number
-- decimal number
-- credit card number
-- phone number
-- email address
+- [Xify Front](#xify-front)
+- [Zip](#zip)
+- [Datetime](#datetime)
+- [Integral Number](#integral-number)
+- [Decimal Number](#decimal-number)
+- [Credit Card Number](#credit-card-number)
+- [Phone Number](#phone-number)
+- [Email Address](#email-address)
 
-The function:
+The masking function:
 
-- random string
+- [Random String](#random-string)
 
-… is available on Community Edition and in the Enterprise Edition.
+… is available in the Community Edition as well as the Enterprise Edition.
 
-
-### Random string
-
-```json
-{
-  "path": ".name",
-  "type": "randomString"
-}
-```
+### Random String
 
 This masking type will replace all values of attributes with key
 `name` with an anonymized string. It is not guaranteed that the string
@@ -267,41 +316,56 @@ replacement string. If the string is longer than the hash then
 characters will be repeated as many times as needed to reach the full
 original string length.
 
+Masking settings:
+
+- `path` (string): which field to mask
+- `type` (string): masking function name `"randomString"`
+
 **Example**
 
-Masking name as above, the document:
+```json
+{
+  "path": ".name",
+  "type": "randomString"
+}
+```
+
+Above masking setting applies to all leaf attributes with name `.name`.
+A document like:
 
 ```json
-{ 
-  "_key" : "38937", 
-  "_id" : "examplecollection/38937", 
-  "_rev" : "_YFaGG1u--_", 
-  "name" : [ 
-    "My Name", 
-    { 
-      "other" : "Hallo Name" 
-    }, 
-    [ 
-      "Name One", 
-      "Name Two" 
-    ], 
-    true, 
-    false, 
+{
+  "_key" : "1234",
+  "name" : [
+    "My Name",
+    {
+      "other" : "Hallo Name"
+    },
+    [
+      "Name One",
+      "Name Two"
+    ],
+    true,
+    false,
     null,
     1.0,
     1234,
     "This is a very long name"
-  ] 
+  ],
+  "deeply": {
+    "nested": {
+      "name": "John Doe",
+      "not-a-name": "Pizza"
+    }
+  }
 }
 ```
 
-… will be converted into
+… will be converted to:
 
 ```json
 {
-  "_key": "38937",
-  "_id": "examplecollection/38937",
-  "_rev": "_YFaGG1u--_",
+  "_key": "1234",
   "name": [
     "+y5OQiYmp/o=",
     {
@@ -317,15 +381,35 @@ Masking name as above, the document:
     1.0,
     1234,
     "hwjAfNe5BGw=hwjAfNe5BGw="
-  ]
+  ],
+  "deeply": {
+    "nested": {
+      "name": "55fHctEM/wY=",
+      "not-a-name": "Pizza"
+    }
+  }
 }
 ```
 
-### Xify front
+### Xify Front
 
 This masking type replaces the front characters with `x` and
 blanks. Alphanumeric characters, `_` and `-` are replaced by `x`,
 everything else is replaced by a blank.
+
+Masking settings:
+
+- `path` (string): which field to mask
+- `type` (string): masking function name `"xifyFront"`
+- `unmaskedLength` (number, _default: `2`_): how many characters to
+  leave as-is on the right-hand side of each word as integer value
+- `hash` (bool, _default: `false`_): whether to append a hash value to the
+  masked string to avoid possible unique constraint violations caused by
+  the obfuscation
+- `seed` (integer, _default: `0`_): used as secret for computing the hash.
+  A value of `0` means a random seed
+
+**Examples**
 
 ```json
 {
@@ -336,12 +420,12 @@ everything else is replaced by a blank.
 ```
 
 This will mask all alphanumeric characters of a word except the last
-two characters.  Words of length 1 and 2 are unmasked. If the
+two characters. Words of length 1 and 2 are unmasked. If the
 attribute value is not a string the result will be `xxxx`.
 
     "This is a test!Do you agree?"
 
-… will become
+… will become:
 
     "xxis is a xxst Do xou xxxee "
 
@@ -366,7 +450,7 @@ This will add a hash at the end of the string.
 
     "xxis is a xxst Do xou xxxee  NAATm8c9hVQ="
 
-Note that the hash is based on a random secrect that is different for
+Note that the hash is based on a random secret that is different for
 each run. This avoids dictionary attacks which can be used to guess
 values based pre-computations on dictionaries.
 
@@ -386,9 +470,28 @@ a number which must not be `0`.
 
 ### Zip
 
-This masking type replaces a zip code with a random one.  If the
-attribute value is not a string then the default value of `"12345"` is
-used as no zip is known. You can change the default value, see below.
+This masking type replaces a zip code with a random one.
+It uses the following rules:
+
+- If a character of the original zip code is a digit it will be replaced
+  by a random digit.
+- If a character of the original zip code is a letter it
+  will be replaced by a random letter keeping the case.
+- If the attribute value is not a string then the default value is used.
+
+Note that this will generate random zip codes. Therefore there is a
+chance that the same zip code value is generated multiple times, which can
+cause unique constraint violations if a unique index is or will be
+used on the zip code attribute.
+
+Masking settings:
+
+- `path` (string): which field to mask
+- `type` (string): masking function name `"zip"`
+- `default` (string, _default: `"12345"`_): if the input field is not of
+  data type `string`, then this value is used
+
+**Examples**
 
 ```json
 {
@@ -397,10 +500,8 @@ used as no zip is known. You can change the default value, see below.
 }
 ```
 
-This will replace a real zip code with a random one. It uses the following
-rule: If a character of the original zip code is a digit it will be replaced
-by a random digit. If a character of the original zip code is a letter it
-will be replaced by a random letter keeping the case.
+This replaces real zip codes stored in fields called `code` at any level
+with random ones. `"12345"` is used as fallback value.
 
 ```json
 {
@@ -409,8 +510,6 @@ will be replaced by a random letter keeping the case.
   "default": "abcdef"
 }
 ```
-
-**Example**
 
 If the original zip code is:
 
@@ -428,64 +527,108 @@ If the original zip code is:
 
     OW91-JI
 
-Note that this will generate random zip code. Therefore there is a
-chance generate the same zip code value multiple times, which can
-cause unique constraint violations if a unique index is or will be
-used on the zip code attribute.
+If the original zip code is `null`, `true`, `false` or a number, then the
+user-defined default value of `"abcdef"` will be used.
 
 ### Datetime
 
 This masking type replaces the value of the attribute with a random
-date.
+date between two configured dates in a customizable format.
+
+Masking settings:
+
+- `path` (string): which field to mask
+- `type` (string): masking function name `"datetime"`
+- `begin` (string, _default: `"1970-01-01T00:00:00.000"`_):
+  earliest point in time to return. Date time string in ISO 8601 format.
+- `end` (string, _default: now_):
+  latest point in time to return. Date time string in ISO 8601 format.
+  In case a partial date time string is provided (e.g. `2010-06` without day
+  and time) the earliest date and time is assumed (`2010-06-01T00:00:00.000`).
+  The default value is the current system date and time.
+- `format` (string, _default: `""`_): the formatting string format is
+  described in [DATE_FORMAT()](../../../AQL/Functions/Date.html#dateformat).
+  If no format is specified, then the result will be an empty string.
+
+**Example**
 
 ```json
 {
+  "path": "eventDate",
   "type": "datetime",
   "begin" : "2019-01-01",
   "end": "2019-12-31",
-  "output": "%yyyy-%mm-%dd",
+  "format": "%yyyy-%mm-%dd",
 }
 ```
 
-`begin` and `end` are in ISO8601 format.
+Above example masks the field `eventDate` by returning a random date time
+string in the range of January 1st and December 31st in 2019 using a format
+like `2019-06-17`.
 
-The `output` format is described in
-[DATE_FORMAT](../../../AQL/Functions/Date.html#dateformat).
-
-### Integral number
+### Integral Number
 
 This masking type replaces the value of the attribute with a random
-integral number.  It will replace the value even if it is a string,
-boolean, or false.
+integral number. It will replace the value even if it is a string,
+Boolean, or `null`.
+
+Masking settings:
+
+- `path` (string): which field to mask
+- `type` (string): masking function name `"integer"`
+- `lower` (number, _default: `-100`_): smallest integer value to return
+- `upper` (number, _default: `100`_): largest integer value to return
+
+**Example**
 
 ```json
 {
+  "path": "count",
   "type": "integer",
   "lower" : -100,
   "upper": 100
 }
 ```
 
-### Decimal number
+This masks the field `count` with a random number between
+-100 and 100 (inclusive).
+
+### Decimal Number
 
 This masking type replaces the value of the attribute with a random
-decimal.  It will replace the value even if it is a string, boolean,
-or false.
+floating point number. It will replace the value even if it is a string,
+Boolean, or `null`.
+
+Masking settings:
+
+- `path` (string): which field to mask
+- `type` (string): masking function name `"decimal"`
+- `lower` (number, _default: `-1`_): smallest floating point value to return
+- `upper` (number, _default: `1`_): largest floating point value to return
+- `scale` (number, _default: `2`_): maximal amount of digits in the
+  decimal fraction part
+
+**Examples**
 
 ```json
 {
-  "type": "float",
+  "path": "rating",
+  "type": "decimal",
   "lower" : -0.3,
   "upper": 0.3
 }
 ```
 
-By default, the decimal has a scale of 2. I.e. it has at most 2
-decimal digits. The definition:
+This masks the field `rating` with a random floating point number between
+-0.3 and +0.3 (inclusive). By default, the decimal has a scale of 2.
+That means, it has at most 2 digits after the dot.
+
+The configuration:
 
 ```json
 {
-  "type": "float",
+  "path": "rating",
+  "type": "decimal",
   "lower" : -0.3,
   "upper": 0.3,
   "scale": 3
@@ -494,48 +637,92 @@ decimal digits. The definition:
 
 … will generate numbers with at most 3 decimal digits.
 
-### Credit card number
+### Credit Card Number
 
 This masking type replaces the value of the attribute with a random
-credit card number.
+credit card number (as integer number).
+See [Luhn algorithm](https://en.wikipedia.org/wiki/Luhn_algorithm)
+for details.
+
+Masking settings:
+
+- `path` (string): which field to mask
+- `type` (string): masking function name `"creditCard"`
+
+**Example**
 
 ```json
 {
-  "type": "creditCard",
+  "path": "ccNumber",
+  "type": "creditCard"
 }
 ```
 
-See [Luhn](https://en.wikipedia.org/wiki/Luhn_algorithm) for details.
+This generates a random credit card number to mask field `ccNumber`,
+e.g. `4111111414443302`.
 
-### Phone number
+### Phone Number
 
-This masking type replaces a phone number with a random one. If the
-attribute value is not a string it is replaced by the string
-`"+1234567890"`.
+This masking type replaces a phone number with a random one.
+It uses the following rule:
+
+- If a character of the original number is a digit
+  it will be replaced by a random digit.
+- If it is a letter it is replaced by a random letter.
+- All other characters are left unchanged.
+- If the attribute value is not a string it is replaced by the
+  default value.
+
+Masking settings:
+
+- `path` (string): which field to mask
+- `type` (string): masking function name `"phone"`
+- `default` (string, _default: `"+1234567890"`_): if the input field
+  is not of data type `string`, then this value is used
+
+**Examples**
 
 ```json
 {
+  "path": "phone.landline",
+  "type": "phone"
+}
+```
+
+This will replace an existing phone number with a random one, for instance
+`"+31 66-77-88-xx"` might get substituted by `"+75 10-79-52-sb"`.
+
+```json
+{
+  "path": "phone.landline",
   "type": "phone",
-  "default": "+4912345123456789"
+  "default": "+49 12345 123456789"
 }
 ```
 
-This will replace an existing phone number with a random one. It uses
-the following rule: If a character of the original number is a digit
-it will be replaced by a random digit. If it is a letter it is replaced
-by a letter. All other characters are unchanged.
+This masks a phone number as before, but falls back to a different default
+phone number in case the input value is not a string.
 
-```json
-{  "type": "zip",
-  "default": "+4912345123456789"
-}
-```
-
-If the attribute value is not a string use the value of default
-`"+4912345123456789"`.
-
-### Email address
+### Email Address
 
 This masking type takes an email address, computes a hash value and
-split it into three equal parts `AAAA`, `BBBB`, and `CCCC`. The
-resulting email address is `AAAA.BBBB@CCCC.invalid`.
+splits it into three equal parts `AAAA`, `BBBB`, and `CCCC`. The
+resulting email address is in the format `AAAA.BBBB@CCCC.invalid`.
+The hash is based on a random secret that is different for each run.
+
+Masking settings:
+
+- `path` (string): which field to mask
+- `type` (string): masking function name `"email"`
+
+**Example**
+
+```json
+{
+  "path": ".email",
+  "type": "email"
+}
+```
+
+This masks every leaf attribute `email` with a random email address
+similar to `"EHwG.3AOg@hGU=.invalid"`.

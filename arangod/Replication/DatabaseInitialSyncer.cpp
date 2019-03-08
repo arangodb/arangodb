@@ -395,6 +395,10 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
       response->getHeaderField(StaticStrings::ContentTypeHeader, found);
   if (found && (cType == StaticStrings::MimeTypeVPack)) {
     VPackOptions options;
+    options.validateUtf8Strings = true;
+    options.disallowExternals = true;
+    options.disallowCustom = true;
+    options.checkAttributeUniqueness = true;
     options.unsupportedTypeBehavior = VPackOptions::FailOnUnsupportedType;
     VPackValidator validator(&options);
 
@@ -1308,6 +1312,9 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
   if (_config.applier._includeSystem) {
     url += "&includeSystem=true";
   }
+  if (_config.applier._includeFoxxQueues) {
+    url += "&includeFoxxQueues=true";
+  }
 
   // send request
   _config.progress.set("fetching master inventory from " + url);
@@ -1381,7 +1388,8 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
                     "collection name is missing in response");
     }
 
-    if (TRI_ExcludeCollectionReplication(masterName, _config.applier._includeSystem)) {
+    if (TRI_ExcludeCollectionReplication(masterName, _config.applier._includeSystem,
+                                         _config.applier._includeFoxxQueues)) {
       continue;
     }
 

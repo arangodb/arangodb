@@ -323,7 +323,7 @@ static bool MustReplicateWalMarker(MMFilesReplicationDumpContext* dump,
   if (cid != 0) {
     std::string const& name = nameFromCid(dump, cid);
 
-    if (!name.empty() && TRI_ExcludeCollectionReplication(name, dump->_includeSystem)) {
+    if (!name.empty() && TRI_ExcludeCollectionReplication(name, dump->_includeSystem, /*includeFoxxQueues*/false)) {
       return false;
     }
   }
@@ -483,8 +483,6 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext* dump,
                               std::unordered_set<TRI_voc_tid_t> const& transactionIds,
                               TRI_voc_tick_t firstRegularTick, TRI_voc_tick_t tickMin,
                               TRI_voc_tick_t tickMax, bool outputAsArray) {
-  LOG_TOPIC(DEBUG, arangodb::Logger::REPLICATION)
-      << "dumping log, tick range " << tickMin << " - " << tickMax;
 
   // get a custom type handler
   auto customTypeHandler = dump->_transactionContext->orderCustomTypeHandler();
@@ -494,6 +492,12 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext* dump,
   bool fromTickIncluded = false;
   std::vector<arangodb::MMFilesWalLogfile*> logfiles =
       MMFilesLogfileManager::instance()->getLogfilesForTickRange(tickMin, tickMax, fromTickIncluded);
+  
+  // always return the logfiles we have used
+  TRI_DEFER(MMFilesLogfileManager::instance()->returnLogfiles(logfiles));
+  
+  LOG_TOPIC(DEBUG, arangodb::Logger::REPLICATION)
+      << "dumping log, tick range " << tickMin << " - " << tickMax << ", fromTickIncluded: " << fromTickIncluded;
 
   // setup some iteration state
   int res = TRI_ERROR_NO_ERROR;
@@ -520,6 +524,9 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext* dump,
       char const* ptr;
       char const* end;
       MMFilesLogfileManager::instance()->getActiveLogfileRegion(logfile, ptr, end);
+  
+      LOG_TOPIC(DEBUG, arangodb::Logger::REPLICATION)
+          << "dumping logfile " << logfile->id();
 
       while (ptr < end) {
         auto const* marker = reinterpret_cast<MMFilesMarker const*>(ptr);
@@ -654,9 +661,6 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext* dump,
     res = TRI_ERROR_INTERNAL;
   }
 
-  // always return the logfiles we have used
-  MMFilesLogfileManager::instance()->returnLogfiles(logfiles);
-
   dump->_fromTickIncluded = fromTickIncluded;
   dump->_lastScannedTick = lastScannedTick;
 
@@ -674,9 +678,11 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext* dump,
     }
     
     LOG_TOPIC(DEBUG, arangodb::Logger::REPLICATION)
-        << "dumped log, tick range "
-        << tickMin << " - " << tickMax << ", markers: " << numMarkers
+        << "dumped log, tick range " << tickMin << " - " << tickMax 
+        << ", markers: " << numMarkers
         << ", last found tick: " << dump->_lastFoundTick
+        << ", last scanned tick: " << dump->_lastScannedTick
+        << ", from tick included: " << dump->_fromTickIncluded
         << ", hasMore: " << dump->_hasMore << ", buffer full: " << dump->_bufferFull;
   }
 
@@ -696,12 +702,13 @@ int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* d
   bool fromTickIncluded = false;
   std::vector<arangodb::MMFilesWalLogfile*> logfiles =
       MMFilesLogfileManager::instance()->getLogfilesForTickRange(tickMin, tickMax, fromTickIncluded);
+  
+  // always return the logfiles we have used
+  TRI_DEFER(MMFilesLogfileManager::instance()->returnLogfiles(logfiles));
 
   // setup some iteration state
   TRI_voc_tick_t lastFoundTick = 0;
   int res = TRI_ERROR_NO_ERROR;
-
-  // LOG_TOPIC(INFO, arangodb::Logger::REPLICATION) << "found logfiles: " << logfiles.size();
 
   try {
     // iterate over the datafiles found
@@ -814,8 +821,6 @@ int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* d
 
     dump->_fromTickIncluded = fromTickIncluded;
     dump->_lastFoundTick = lastFoundTick;
-    // LOG_TOPIC(INFO, arangodb::Logger::REPLICATION) << "last tick2: " << lastFoundTick;
-
     dump->_slices.push_back(std::move(buffer));
 
   } catch (arangodb::basics::Exception const& ex) {
@@ -831,9 +836,6 @@ int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* d
         << "caught unknown exception while determining open transactions";
     res = TRI_ERROR_INTERNAL;
   }
-
-  // always return the logfiles we have used
-  MMFilesLogfileManager::instance()->returnLogfiles(logfiles);
 
   return res;
 }
