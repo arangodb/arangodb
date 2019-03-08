@@ -33,7 +33,6 @@ namespace methods {
 /// Code to create and initialize databases
 /// Replaces ugrade-database.js for good
 struct UpgradeTasks {
-  static bool upgradeUnnamedIndexes(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
   static bool upgradeGeoIndexes(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
   static bool setupGraphs(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
   static bool setupUsers(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);

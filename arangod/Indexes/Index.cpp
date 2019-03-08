@@ -156,6 +156,29 @@ bool typeMatch(char const* type, size_t len, char const* expected) {
   return (len == ::strlen(expected)) && (::memcmp(type, expected, len) == 0);
 }
 
+std::string defaultIndexName(VPackSlice const& slice) {
+  auto type =
+      arangodb::Index::type(slice.get(arangodb::StaticStrings::IndexType).copyString());
+  if (type == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    return arangodb::StaticStrings::IndexNamePrimary;
+  } else if (type == arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+    if (EngineSelectorFeature::isRocksDB()) {
+      auto fields = slice.get(arangodb::StaticStrings::IndexFields);
+      TRI_ASSERT(fields.isArray());
+      auto firstField = fields.at(0);
+      TRI_ASSERT(firstField.isString());
+      bool isFromIndex = firstField.isEqualString(arangodb::StaticStrings::FromString);
+      return isFromIndex ? arangodb::StaticStrings::IndexNameEdgeFrom
+                         : arangodb::StaticStrings::IndexNameEdgeTo;
+    }
+    return arangodb::StaticStrings::IndexNameEdge;
+  }
+
+  TRI_idx_iid_t id = arangodb::basics::VelocyPackHelper::getNumericValue<TRI_idx_iid_t>(
+      slice, arangodb::StaticStrings::IndexId.c_str(), 0);
+  return std::string("idx_").append(std::to_string(id));
+}
+
 }  // namespace
 
 // If the Index is on a coordinator instance the index may not access the
@@ -178,8 +201,8 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection,
 Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection, VPackSlice const& slice)
     : _iid(iid),
       _collection(collection),
-      _name(arangodb::basics::VelocyPackHelper::getStringValue(slice, arangodb::StaticStrings::IndexName,
-                                                               "")),
+      _name(arangodb::basics::VelocyPackHelper::getStringValue(
+          slice, arangodb::StaticStrings::IndexName, ::defaultIndexName(slice))),
       _fields(::parseFields(slice.get(arangodb::StaticStrings::IndexFields),
                             Index::allowExpansion(Index::type(
                                 slice.get(arangodb::StaticStrings::IndexType).copyString())))),

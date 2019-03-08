@@ -213,11 +213,6 @@ void methods::Upgrade::registerTasks() {
   auto& _tasks = upgradeFeature->_tasks;
   TRI_ASSERT(_tasks.empty());
 
-  addTask("upgradeUnnamedIndexes", "upgrade legacy unnamed indexes",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
-          &UpgradeTasks::upgradeUnnamedIndexes);
   addTask("upgradeGeoIndexes", "upgrade legacy geo indexes",
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
@@ -303,8 +298,6 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& 
   auto* upgradeFeature =
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::UpgradeFeature>(
           "Upgrade");
-
-  LOG_DEVEL << "running with cluster flag " << clusterFlag << " and dbFlag " << dbFlag;
 
   TRI_ASSERT(upgradeFeature);
   auto& _tasks = upgradeFeature->_tasks;

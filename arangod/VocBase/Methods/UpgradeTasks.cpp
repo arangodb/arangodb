@@ -161,64 +161,6 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
 }
 }  // namespace
 
-bool UpgradeTasks::upgradeUnnamedIndexes(TRI_vocbase_t& vocbase,
-                                         arangodb::velocypack::Slice const& slice) {
-  LOG_DEVEL << "running unnamed index upgrade";
-  auto collections = vocbase.collections(false);
-
-  for (auto collection : collections) {
-    auto indexes = collection->getIndexes();
-    bool collectionChanged = false;
-    for (auto index : indexes) {
-      if (index->name().empty()) {
-        std::string newName;
-
-        // need to generate and save new name
-        if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
-          newName = arangodb::StaticStrings::IndexNamePrimary;
-        } else if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
-          if (EngineSelectorFeature::engineName() == RocksDBEngine::EngineName ||
-              (EngineSelectorFeature::engineName() == ClusterEngine::EngineName &&
-               static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE)->isRocksDB())) {
-            if (index->coveredFields()[0][0].name == arangodb::StaticStrings::FromString) {
-              newName = arangodb::StaticStrings::IndexNameEdgeFrom;
-            } else {
-              newName = arangodb::StaticStrings::IndexNameEdgeTo;
-            }
-          } else {
-            newName = arangodb::StaticStrings::IndexNameEdge;
-          }
-        } else {
-          // no fixed type name; use ID for determinism
-          newName = "idx_" + std::to_string(index->id());
-        }
-
-        index->name(newName);
-        TRI_ASSERT(!index->name().empty());
-        collectionChanged = true;
-
-        if (ServerState::instance()->isCoordinator()) {
-          // ensure index methodology should actually persist properties to
-          // agency, even if it doesn't need to create a new index
-          auto indexProps = index->toVelocyPack(
-              static_cast<std::underlying_type<arangodb::Index::Serialize>::type>(
-                  arangodb::Index::Serialize::Basics));
-          LOG_DEVEL << indexProps->slice().toJson();
-          VPackBuilder outputBuilder;
-          Indexes::ensureIndex(collection.get(), indexProps->slice(), false, outputBuilder);
-        }
-      }
-    }
-
-    if (collectionChanged && !ServerState::instance()->isCoordinator()) {
-      // make the change in local storage based on what's currently in RAM
-      EngineSelectorFeature::ENGINE->changeCollection(vocbase, *collection, true);
-    }
-  }
-
-  return true;
-}
-
 bool UpgradeTasks::upgradeGeoIndexes(TRI_vocbase_t& vocbase,
                                      arangodb::velocypack::Slice const& slice) {
   if (EngineSelectorFeature::engineName() != RocksDBEngine::EngineName) {
@@ -253,7 +195,6 @@ bool UpgradeTasks::upgradeGeoIndexes(TRI_vocbase_t& vocbase,
 
 bool UpgradeTasks::setupGraphs(TRI_vocbase_t& vocbase,
                                arangodb::velocypack::Slice const& slice) {
-  LOG_DEVEL << "running setupGraphs";
   return ::createSystemCollection(&vocbase, "_graphs");
 }
 
