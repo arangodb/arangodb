@@ -1,8 +1,8 @@
 @Q:
   FOR v, e, p IN <span class="hljs-number">1.</span><span class="hljs-number">.5</span> OUTBOUND <span class="hljs-string">'circles/A'</span> GRAPH <span class="hljs-string">'traversalGraph'</span>
-    PRUNE v._key == <span class="hljs-string">'G'</span>
-    FILTER v._key == <span class="hljs-string">'G'</span>
-        RETURN { <span class="hljs-attr">vertices</span>: p.vertices[*]._key, <span class="hljs-attr">edges</span>: p.edges[*].label }
+      PRUNE v._key == <span class="hljs-string">'G'</span>
+      FILTER v._key == <span class="hljs-string">'G'</span>
+      RETURN { <span class="hljs-attr">vertices</span>: p.vertices[*]._key, <span class="hljs-attr">edges</span>: p.edges[*].label }
 
 @R
 [
