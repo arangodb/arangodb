@@ -79,7 +79,6 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
   //   1. create new Engine (e)
   //   2. query->setEngine(e)
   //   3. query->engine() -> e
-  //   4. query->trx()->setLockedShards()
   //   5. engine->createBlocks()
   //   6. Assert (engine->root() != nullptr)
   //   7. For all but the first:
@@ -130,10 +129,6 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
 
     fakeit::When(Method(mockQuery, trx)).Return(&trx);
     fakeit::When(Method(mockQuery, engine)).Return(&myEngine).Return(&myEngine);
-    fakeit::When(Method(mockTrx, setLockedShards))
-        .AlwaysDo([&](std::unordered_set<std::string> const& lockedShards) {
-          return;
-        });
     fakeit::When(Method(mockEngine, createBlocks)).Return(Result{TRI_ERROR_NO_ERROR});
     fakeit::When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock * ())).AlwaysReturn(&rootBlock);
 
@@ -158,8 +153,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
 
     // Validate that the query is wired up with the engine
     fakeit::Verify(Method(mockQuery, setEngine)).Exactly(1);
-    // Validate that lockedShards and createBlocks have been called!
-    fakeit::Verify(Method(mockTrx, setLockedShards)).Exactly(1);
+    // Validate that createBlocks has been called!
     fakeit::Verify(Method(mockEngine, createBlocks)).Exactly(1);
   }
 
@@ -238,10 +232,6 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
 
     fakeit::When(Method(mockQuery, trx)).Return(&trx);
     fakeit::When(Method(mockQuery, engine)).Return(&myEngine).Return(&myEngine);
-    fakeit::When(Method(mockTrx, setLockedShards))
-        .AlwaysDo([&](std::unordered_set<std::string> const& lockedShards) {
-          return;
-        });
     fakeit::When(Method(mockEngine, createBlocks))
         .Do([&](std::vector<ExecutionNode*> const& nodes,
                 std::unordered_set<std::string> const&, MapRemoteToSnippet const&) {
@@ -269,10 +259,6 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
 
     fakeit::When(Method(mockQueryClone, trx)).Return(&secondTrx);
     fakeit::When(Method(mockQueryClone, engine)).Return(&mySecondEngine);
-    fakeit::When(Method(mockSecondTrx, setLockedShards))
-        .AlwaysDo([&](std::unordered_set<std::string> const& lockedShards) {
-          return;
-        });
 
     fakeit::When(Method(mockSecondEngine, createBlocks))
         .Do([&](std::vector<ExecutionNode*> const& nodes,
@@ -325,14 +311,12 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
 
     // Validate that the query is wired up with the engine
     fakeit::Verify(Method(mockQuery, setEngine)).Exactly(1);
-    // Validate that lockedShards and createBlocks have been called!
-    fakeit::Verify(Method(mockTrx, setLockedShards)).Exactly(1);
+    // Validate that createBlocks has been called!
     fakeit::Verify(Method(mockEngine, createBlocks)).Exactly(1);
 
     // Validate that the second query is wired up with the second engine
     fakeit::Verify(Method(mockQueryClone, setEngine)).Exactly(1);
-    // Validate that lockedShards and createBlocks have been called!
-    fakeit::Verify(Method(mockSecondTrx, setLockedShards)).Exactly(1);
+    // Validate that createBlocks has been called!
     fakeit::Verify(Method(mockSecondEngine, createBlocks)).Exactly(1);
     fakeit::Verify(Method(mockRegistry, insert)).Exactly(1);
   }
@@ -456,10 +440,6 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     fakeit::When(Method(mockQuery, setEngine)).Do(setEngineCallback);
     fakeit::When(Method(mockQuery, trx)).Return(&trx);
     fakeit::When(Method(mockQuery, engine)).Return(&myEngine).Return(&myEngine);
-    fakeit::When(Method(mockTrx, setLockedShards))
-        .AlwaysDo([&](std::unordered_set<std::string> const& lockedShards) {
-          return;
-        });
     fakeit::When(Method(mockEngine, createBlocks))
         .Do([&](std::vector<ExecutionNode*> const& nodes,
                 std::unordered_set<std::string> const&, MapRemoteToSnippet const&) {
@@ -487,10 +467,6 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     fakeit::When(Method(mockQueryClone, setEngine)).Do(setEngineCallback);
     fakeit::When(Method(mockQueryClone, engine)).Return(&mySecondEngine);
     fakeit::When(Method(mockQueryClone, trx)).Return(&secondTrx);
-    fakeit::When(Method(mockSecondTrx, setLockedShards))
-        .AlwaysDo([&](std::unordered_set<std::string> const& lockedShards) {
-          return;
-        });
     fakeit::When(Method(mockSecondEngine, createBlocks))
         .Do([&](std::vector<ExecutionNode*> const& nodes,
                 std::unordered_set<std::string> const&, MapRemoteToSnippet const&) {
@@ -505,10 +481,6 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     fakeit::When(Method(mockQuerySecondClone, setEngine)).Do(setEngineCallback);
     fakeit::When(Method(mockQuerySecondClone, engine)).Return(&myThirdEngine);
     fakeit::When(Method(mockQuerySecondClone, trx)).Return(&thirdTrx);
-    fakeit::When(Method(mockThirdTrx, setLockedShards))
-        .AlwaysDo([&](std::unordered_set<std::string> const& lockedShards) {
-          return;
-        });
     fakeit::When(Method(mockThirdEngine, createBlocks))
         .Do([&](std::vector<ExecutionNode*> const& nodes,
                 std::unordered_set<std::string> const&, MapRemoteToSnippet const&) {
@@ -573,20 +545,17 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
 
     // Validate that the query is wired up with the engine
     fakeit::Verify(Method(mockQuery, setEngine)).Exactly(1);
-    // Validate that lockedShards and createBlocks have been called!
-    fakeit::Verify(Method(mockTrx, setLockedShards)).Exactly(1);
+    // Validate that createBlocks has been called!
     fakeit::Verify(Method(mockEngine, createBlocks)).Exactly(1);
 
     // Validate that the second query is wired up with the second engine
     fakeit::Verify(Method(mockQueryClone, setEngine)).Exactly(1);
-    // Validate that lockedShards and createBlocks have been called!
-    fakeit::Verify(Method(mockSecondTrx, setLockedShards)).Exactly(1);
+    // Validate that createBlocks has been called!
     fakeit::Verify(Method(mockSecondEngine, createBlocks)).Exactly(1);
 
     // Validate that the second query is wired up with the second engine
     fakeit::Verify(Method(mockQuerySecondClone, setEngine)).Exactly(1);
-    // Validate that lockedShards and createBlocks have been called!
-    fakeit::Verify(Method(mockThirdTrx, setLockedShards)).Exactly(1);
+    // Validate that createBlocks has been called!
     fakeit::Verify(Method(mockThirdEngine, createBlocks)).Exactly(1);
 
     // Validate two queries are registered correctly
@@ -663,10 +632,6 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     });
     fakeit::When(Method(mockQuery, engine)).Return(&myEngine).Return(&myEngine);
     fakeit::When(Method(mockQuery, trx)).Return(&trx);
-    fakeit::When(Method(mockTrx, setLockedShards))
-        .AlwaysDo([&](std::unordered_set<std::string> const& lockedShards) {
-          return;
-        });
     fakeit::When(Method(mockEngine, createBlocks)).AlwaysReturn(Result{TRI_ERROR_NO_ERROR});
     fakeit::When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock * ())).AlwaysReturn(&block);
 
@@ -681,10 +646,6 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
 
     fakeit::When(Method(mockQueryClone, engine)).Return(&mySecondEngine);
     fakeit::When(Method(mockQueryClone, trx)).Return(&secondTrx);
-    fakeit::When(Method(mockSecondTrx, setLockedShards))
-        .AlwaysDo([&](std::unordered_set<std::string> const& lockedShards) {
-          return;
-        });
     fakeit::When(Method(mockSecondEngine, createBlocks)).AlwaysReturn(Result{TRI_ERROR_NO_ERROR});
     fakeit::When(ConstOverloadedMethod(mockSecondEngine, root, ExecutionBlock * ()))
         .AlwaysReturn(&block);
@@ -776,14 +737,12 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
 
       // Validate that the query is wired up with the engine
       fakeit::Verify(Method(mockQuery, setEngine)).Exactly(1);
-      // Validate that lockedShards and createBlocks have been called!
-      fakeit::Verify(Method(mockTrx, setLockedShards)).Exactly(1);
+      // Validate that createBlocks has been called!
       fakeit::Verify(Method(mockEngine, createBlocks)).Exactly(1);
 
       // Validate that the second query is wired up with the second engine
       fakeit::Verify(Method(mockQueryClone, setEngine)).Exactly(1);
-      // Validate that lockedShards and createBlocks have been called!
-      fakeit::Verify(Method(mockSecondTrx, setLockedShards)).Exactly(1);
+      // Validate that createBlocks has been called!
       fakeit::Verify(Method(mockSecondEngine, createBlocks)).Exactly(1);
       fakeit::Verify(Method(mockRegistry, insert)).Exactly(1);
 
@@ -825,14 +784,12 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
 
       // Validate that the query is wired up with the engine
       fakeit::Verify(Method(mockQuery, setEngine)).Exactly(1);
-      // Validate that lockedShards and createBlocks have been called!
-      fakeit::Verify(Method(mockEngine, setLockedShards)).Exactly(1);
+      // Validate that createBlocks has been called!
       fakeit::Verify(Method(mockEngine, createBlocks)).Exactly(1);
 
       // Validate that the second query is wired up with the second engine
       fakeit::Verify(Method(mockQueryClone, setEngine)).Exactly(1);
-      // Validate that lockedShards and createBlocks have been called!
-      fakeit::Verify(Method(mockSecondEngine, setLockedShards)).Exactly(1);
+      // Validate that createBlocks has been called!
       fakeit::Verify(Method(mockSecondEngine, createBlocks)).Exactly(1);
       fakeit::Verify(Method(mockRegistry, insert)).Exactly(1);
 

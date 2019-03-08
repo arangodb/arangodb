@@ -282,10 +282,15 @@ class ClusterMethods {
   /// @brief commit a transaction on a subordinate
   static arangodb::Result abortTransaction(transaction::Methods& trx);
   
-  /// @brief set the transaction ID header
+  /// @brief add the transaction ID header for servers
   static void addTransactionHeader(transaction::Methods const& trx,
-                                   std::unordered_map<std::string, std::string>& headers,
-                                   ServerID const& server);
+                                   ServerID const& server,
+                                   std::unordered_map<std::string, std::string>& headers);
+  
+  /// @brief add transaction ID header for setting up AQL snippets
+  static void addAQLTransactionHeader(transaction::Methods const& trx,
+                                      ServerID const& server,
+                                      std::unordered_map<std::string, std::string>& headers);
 
  private:
   ////////////////////////////////////////////////////////////////////////////////

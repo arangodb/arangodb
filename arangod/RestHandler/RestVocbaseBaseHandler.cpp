@@ -555,10 +555,11 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
     TRI_ASSERT(mgr != nullptr);
     
     if (pos > 0 && pos < value.size()) {
-      if (value.compare(pos, std::string::npos, " aql") == 0) {
-        auto ctx = std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
-        return std::make_unique<SingleCollectionTransaction>(ctx, name, type);
-      } else if (value.compare(pos, std::string::npos, " begin") == 0) {
+//      if (value.compare(pos, std::string::npos, " aql") == 0) {
+//        auto ctx = std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
+//        return std::make_unique<SingleCollectionTransaction>(ctx, name, type);
+//      } else
+      if (value.compare(pos, std::string::npos, " begin") == 0) {
         value = _request->header(StaticStrings::TransactionBody, found);
         if (found) {
           auto trxOpts = VPackParser::fromJson(value);
@@ -572,7 +573,7 @@ std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTrans
       }
     }
     
-    auto ctx = mgr->leaseTrx(tid, AccessMode::Type::WRITE, transaction::Manager::Ownership::Lease);
+    auto ctx = mgr->leaseTrx(tid, type, transaction::Manager::Ownership::Lease);
     if (!ctx) {
       LOG_DEVEL << "1. Transaction " << tid << " not found";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NOT_FOUND);
@@ -590,23 +591,26 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createAQLTransacti
   TRI_ASSERT(ServerState::instance()->isDBServer());
   bool found = false;
   std::string value = _request->header(StaticStrings::TransactionId, found);
-  if (found) {
-    TRI_voc_tid_t tid = 0;
-    std::size_t pos = 0;
-    try {
-      tid = std::stoull(value, &pos, 10);
-    } catch (...) {}
-    if (tid == 0 || !transaction::isLeaderTransactionId(tid)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid transaction ID");
+  if (!found) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "missing transaction ID");
+  }
+    
+  TRI_voc_tid_t tid = 0;
+  std::size_t pos = 0;
+  try {
+    tid = std::stoull(value, &pos, 10);
+  } catch (...) {}
+  if (tid == 0 || !transaction::isLeaderTransactionId(tid)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid transaction ID");
+  }
+  
+  transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  TRI_ASSERT(mgr != nullptr);
+  
+  if (pos > 0 && pos < value.size()) {
+    if (value.compare(pos, std::string::npos, " aql") == 0) {
+      return std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
     }
-    
-    transaction::Manager* mgr = transaction::ManagerFeature::manager();
-    TRI_ASSERT(mgr != nullptr);
-    
-    if (pos > 0 && pos < value.size()) {
-      if (value.compare(pos, std::string::npos, " aql") == 0) {
-        return std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
-      }
 //      else if (value.compare(pos, std::string::npos, " begin") == 0) {
 //        value = _request->header(StaticStrings::TransactionBody, found);
 //        if (found) {
@@ -619,17 +623,14 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createAQLTransacti
 //          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "missing transaction config");
 //        }
 //      }
-    }
-    
-    auto ctx = mgr->leaseTrx(tid, AccessMode::Type::WRITE, transaction::Manager::Ownership::Lease);
-    if (!ctx) {
-      LOG_DEVEL << "2. Transaction " << tid << " not found";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NOT_FOUND);
-    }
-    return ctx;
-  } else {
-    return transaction::StandaloneContext::Create(_vocbase);
   }
+  
+  auto ctx = mgr->leaseTrx(tid, AccessMode::Type::WRITE, transaction::Manager::Ownership::Lease);
+  if (!ctx) {
+    LOG_DEVEL << "2. Transaction " << tid << " not found";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NOT_FOUND);
+  }
+  return ctx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

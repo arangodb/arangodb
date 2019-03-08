@@ -75,7 +75,6 @@ CollectionNameResolver const& transaction::SmartContext::resolver() {
 
 TRI_voc_tid_t transaction::SmartContext::generateId() const {
   TRI_ASSERT(!transaction::isLegacyTransactionId(_globalId));
-  LOG_DEVEL << "Using mananged ID " << _globalId << " mod 4: " << (_globalId % 4);
   return _globalId;
 }
   
@@ -87,7 +86,7 @@ ManagedContext::ManagedContext(TRI_voc_tid_t globalId,
   : SmartContext(state->vocbase(), globalId, state), _mode(mode) {}
   
 ManagedContext::~ManagedContext() {
-  if (_state) {
+  if (_state != nullptr) {
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
     mgr->returnManagedTrx(_globalId, _mode);
@@ -127,6 +126,7 @@ void AQLStandaloneContext::registerTransaction(TransactionState* state) {
 
 /// @brief unregister the transaction
 void AQLStandaloneContext::unregisterTransaction() noexcept {
+  TRI_ASSERT(_state != nullptr);
   _state = nullptr;
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);

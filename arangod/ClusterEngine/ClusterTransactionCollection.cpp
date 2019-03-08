@@ -37,8 +37,7 @@ ClusterTransactionCollection::ClusterTransactionCollection(TransactionState* trx
                                                            int nestingLevel)
     : TransactionCollection(trx, cid, accessType),
       _lockType(AccessMode::Type::NONE),
-      _nestingLevel(nestingLevel),
-      _usageLocked(false) {}
+      _nestingLevel(nestingLevel) {}
 
 ClusterTransactionCollection::~ClusterTransactionCollection() {}
 
@@ -107,7 +106,6 @@ int ClusterTransactionCollection::use(int nestingLevel) {
         !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
       // use and usage-lock
       LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
-      _usageLocked = true;
     }
   }
 
@@ -143,11 +141,6 @@ void ClusterTransactionCollection::release() {
   if (_collection != nullptr) {
     // unuse collection, remove usage-lock
     LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
-
-    if (_usageLocked) {
-      //_transaction->vocbase().releaseCollection(_collection.get());
-      _usageLocked = false;
-    }
     _collection = nullptr;
   }
 }

@@ -72,8 +72,6 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
 
   auto engine = query->engine();
 
-//  query->trx()->setLockedShards(lockedShards);
-
   auto res = engine->createBlocks(_nodes, restrictToShards, dbServerQueryIds);
   if (!res.ok()) {
     return res;

@@ -45,7 +45,7 @@ class Context;
 
 class Manager final {
   static constexpr size_t numBuckets = 16;
-  static constexpr double defaultTTL = 60.0;
+  static constexpr double defaultTTL = 600.0;
 
  public:
   Manager(bool keepData)

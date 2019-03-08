@@ -133,8 +133,6 @@ class Context {
  protected:
   /// @brief create a resolver
   CollectionNameResolver const* createResolver();
-
-  transaction::ContextData* contextData();
   
 protected:
 

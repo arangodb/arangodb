@@ -1020,7 +1020,7 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds,
     
     // add the transaction ID header
     std::unordered_map<std::string, std::string> headers;
-    ClusterMethods::addTransactionHeader(*trx, headers, /*server*/ it.first);
+    ClusterMethods::addAQLTransactionHeader(*trx, /*server*/ it.first, headers);
 
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
     auto res = cc->syncRequest(coordTransactionID, serverDest, RequestType::POST,

@@ -131,16 +131,6 @@ class ReadWriteSpinLock {
   bool isWriteLocked() const {
     return _state.load(std::memory_order_relaxed) & WRITE_LOCK;
   }
-  
-  void unlock() {
-    if (isWriteLocked()) {
-      // we were holding the write-lock
-      unlockWrite();
-    } else {
-      // we were holding a read-lock
-      unlockRead();
-    }
-  }
 
  private:
   /// @brief _state, lowest bit is write_lock, the next 15 bits is the number of

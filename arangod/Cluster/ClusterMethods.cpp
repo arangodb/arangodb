@@ -214,8 +214,7 @@ Result beginTransactionOnCoordinator(TransactionState& state,
   
 /// @brief add the correct header for the shard
 static void addTransactionHeaderForShard(transaction::Methods& trx,
-                                         ShardMap const& shardMap,
-                                         ShardID const& shard,
+                                         ShardMap const& shardMap, ShardID const& shard,
                                          std::unordered_map<std::string, std::string>& headers) {
   TRI_ASSERT(trx.state()->isCoordinator());
   if (trx.state()->hasHint(transaction::Hints::Hint::SINGLE_OPERATION) ||
@@ -230,7 +229,7 @@ static void addTransactionHeaderForShard(transaction::Methods& trx,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
     }
     ServerID const& leader = it->second[0];
-    ClusterMethods::addTransactionHeader(trx, headers, leader);
+    ClusterMethods::addTransactionHeader(trx, leader, headers);
   } else {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -967,10 +966,7 @@ int countOnCoordinator(transaction::Methods& trx, std::string const& cname,
   auto body = std::make_shared<std::string>();
   for (std::pair<ShardID, std::vector<ServerID>> const& p : *shards) {
     auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-    // workaround to avoid adding a trx header during AQL optimization
-    if (!p.second.empty() && trx.state()->knowsServer(p.second[0])) {
-      addTransactionHeaderForShard(trx, *shards, p.first, *headers);
-    }
+    ClusterMethods::addTransactionHeader(trx, /*leader*/p.second[0], *headers);
     requests.emplace_back("shard:" + p.first, arangodb::rest::RequestType::GET,
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               "/_api/collection/" +
@@ -1712,7 +1708,6 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string co
           keySlice = slice.get(StaticStrings::KeyString);
         }
 
-//        ::InjectNoLockHeader(trx, it.first, headers.get());
         // We send to single endpoint
         requests.emplace_back("shard:" + it.first, reqType,
                               baseUrl + StringUtils::urlEncode(it.first) + "/" +
@@ -1786,9 +1781,6 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string co
       if (addMatch) {
         headers->emplace("if-match", slice.get(StaticStrings::RevString).copyString());
       }
-//      auto headersCopy =
-//          std::make_unique<std::unordered_map<std::string, std::string>>(*headers);
-//      ::InjectNoLockHeader(trx, shard, headersCopy.get());
       requests.emplace_back("shard:" + shard, reqType,
                             baseUrl + StringUtils::urlEncode(shard) + "/" +
                                 StringUtils::urlEncode(keySlice.copyString()) + optsUrlPart,
@@ -3125,17 +3117,47 @@ Result ClusterMethods::abortTransaction(transaction::Methods& trx) {
 
 /// @brief set the transaction ID header
 void ClusterMethods::addTransactionHeader(transaction::Methods const& trx,
-                                          std::unordered_map<std::string, std::string>& headers,
-                                          ServerID const& server) {
+                                          ServerID const& server,
+                                          std::unordered_map<std::string, std::string>& headers) {
   TransactionState& state = *trx.state();
   TRI_ASSERT(state.isRunningInCluster());
-  if (state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION) ||
-      !(state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
+  if (!(state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
         state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL))) {
     return; // no need
   }
   TRI_voc_tid_t tidPlus = state.id() + 1;
-  TRI_ASSERT(tidPlus % 4 != 3);
+  TRI_ASSERT(!transaction::isLegacyTransactionId(tidPlus));
+  TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
+  
+  const bool addBegin = !state.knowsServer(server);
+  if (addBegin) {
+    TRI_ASSERT(state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+    if (state.isCoordinator()) {
+      return; // do not add header to server without a snippet
+    } else if (transaction::isLeaderTransactionId(state.id())) {
+      TRI_ASSERT(state.isDBServer());
+      transaction::BuilderLeaser builder(trx.transactionContextPtr());
+      ::buildTransactionBody(state, server, *builder.get());
+      headers.emplace(StaticStrings::TransactionBody, builder->toJson());
+      headers.emplace(arangodb::StaticStrings::TransactionId, std::to_string(tidPlus).append(" begin"));
+    }
+    // FIXME: only add server on a successful response ?
+    state.addServer(server);  // remember server
+  } else {
+    headers.emplace(arangodb::StaticStrings::TransactionId, std::to_string(tidPlus));
+  }
+}
+  
+/// @brief add transaction ID header for setting up AQL snippets
+void ClusterMethods::addAQLTransactionHeader(transaction::Methods const& trx,
+                                             ServerID const& server,
+                                             std::unordered_map<std::string, std::string>& headers) {
+  TransactionState& state = *trx.state();
+  TRI_ASSERT(state.isRunningInCluster());
+  
+  TRI_voc_tid_t tidPlus = state.id() + 1;
+  TRI_ASSERT(!transaction::isLegacyTransactionId(tidPlus));
+  TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
   
   std::string value = std::to_string(tidPlus);
   const bool addBegin = !state.knowsServer(server);
@@ -3146,14 +3168,13 @@ void ClusterMethods::addTransactionHeader(transaction::Methods const& trx,
     } else if (transaction::isLeaderTransactionId(state.id())) {
       TRI_ASSERT(state.isDBServer());
       value.append(" begin");
-      VPackBuilder builder;
-      ::buildTransactionBody(state, server, builder);
-      headers.emplace(StaticStrings::TransactionBody, builder.toJson());
+      transaction::BuilderLeaser builder(trx.transactionContextPtr());
+      ::buildTransactionBody(state, server, *builder.get());
+      headers.emplace(StaticStrings::TransactionBody, builder->toJson());
     }
     // FIXME: only add server on a successful response ?
     state.addServer(server);  // remember server
   }
-
   headers.emplace(arangodb::StaticStrings::TransactionId, std::move(value));
 }
 

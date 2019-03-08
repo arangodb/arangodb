@@ -2589,7 +2589,6 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
     TRI_ASSERT(followers != nullptr);
     
     TRI_ASSERT(!_state->hasHint(Hints::Hint::FROM_TOPLEVEL_AQL)); // truncate from AQL ?!!
-    // begin Transasction on followers
     if (_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
       auto const& followerInfo = collection->followers();
       res = ClusterMethods::beginTransactionOnFollowers(*this, *followerInfo, *followers);
@@ -2615,7 +2614,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
 
       for (auto const& f : *followers) {
         auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-        ClusterMethods::addTransactionHeader(*this, *headers, f);
+        ClusterMethods::addTransactionHeader(*this, f, *headers);
         requests.emplace_back("server:" + f, arangodb::rest::RequestType::PUT, path, body, std::move(headers));
       }
 
@@ -2638,6 +2637,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
         if (!replicationWorked) {
           auto const& followerInfo = collection->followers();
           if (followerInfo->remove((*followers)[i])) {
+            _state->removeServer((*followers)[i]);
             LOG_TOPIC(WARN, Logger::REPLICATION)
                 << "truncateLocal: dropping follower " << (*followers)[i]
                 << " for shard " << collectionName;
@@ -3118,19 +3118,6 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
 Result transaction::Methods::addCollection(std::string const& name, AccessMode::Type type) {
   return addCollection(resolver()->getCollectionId(name), name, type);
 }
-//
-//#warning TODO remove
-//bool transaction::Methods::isLockedShard(std::string const& shardName) const {
-//  return false;//_state->isLockedShard(shardName);
-//}
-//
-//void transaction::Methods::setLockedShard(std::string const& shardName) {
-////  _state->setLockedShard(shardName);
-//}
-//
-//void transaction::Methods::setLockedShards(std::unordered_set<std::string> const& lockedShards) {
-////  _state->setLockedShards(lockedShards);
-//}
 
 /// @brief test if a collection is already locked
 bool transaction::Methods::isLocked(LogicalCollection* document, AccessMode::Type type) const {
@@ -3184,14 +3171,8 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollection(
   LogicalCollection* document = documentCollection(trxCollection(cid));
   std::vector<std::shared_ptr<Index>> indexes = document->getIndexes();
   if (!withHidden) {
-    auto it = indexes.begin();
-    while (it != indexes.end()) {
-      if ((*it)->isHidden()) {
-        it = indexes.erase(it);
-      } else {
-        it++;
-      }
-    }
+    indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
+                                 [](std::shared_ptr<Index> x) {return x->isHidden();}), indexes.end());
   }
   return indexes;
 }
@@ -3425,7 +3406,7 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
 
   for (auto const& f : *followers) {
     auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-    ClusterMethods::addTransactionHeader(*this, *headers, f);
+    ClusterMethods::addTransactionHeader(*this, f, *headers);
     requests.emplace_back("server:" + f, requestType, path, body, std::move(headers));
   }
 
@@ -3461,6 +3442,8 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
     if (!replicationWorked) {
       auto const& followerInfo = collection.followers();
       if (followerInfo->remove((*followers)[i])) {
+        // TODO: what happens if a server is re-added during a transaction ?
+        _state->removeServer((*followers)[i]);
         LOG_TOPIC(WARN, Logger::REPLICATION)
             << "synchronous replication: dropping follower " << (*followers)[i]
             << " for shard " << collection.name();

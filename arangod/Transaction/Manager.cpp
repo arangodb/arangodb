@@ -191,23 +191,22 @@ void Manager::garbageCollect() {
       TRI_ASSERT(mtrx.state != nullptr);
       
       if (mtrx.state->isTopLevelTransaction()) {  // embedded means leased out
-        if (mtrx.type == MetaType::StandaloneAQL) {
-          LOG_DEVEL << "expired AQL query " << it->first;
-          return;
-        }
         // aborted transactions must be cleanead up by the aborting thread
-        if (mtrx.state->isRunning() && mtrx.expires > now) {
+        if (mtrx.state->isRunning() && mtrx.expires < now) {
+          if (mtrx.type == MetaType::StandaloneAQL) {
+            LOG_TOPIC(WARN, Logger::TRANSACTIONS) << "expired AQL query transaction '"
+              << it->first << "'";
+            continue;
+          }
           gcBuffer.emplace_back(mtrx.state->id());
         }
-      } else {
-        // auto extend lifetime of leased transactions
+      } else {  // auto extend lifetime of leased transactions
         mtrx.expires = defaultTTL + TRI_microtime();
       }
       
       ++it;  // next
     }
   }
-
   
   for (TRI_voc_tid_t tid : gcBuffer) {
     
@@ -215,8 +214,6 @@ void Manager::garbageCollect() {
     if (!ctx) {
       continue;
     }
-    
-    LOG_DEVEL << "gc collecting " << tid;
     
     transaction::Options trxOpts;
     MGMethods trx(ctx, trxOpts);
@@ -228,24 +225,10 @@ void Manager::garbageCollect() {
     TRI_ASSERT(!trx.state()->isRunning());
     
     if (res.fail()) {
-      LOG_DEVEL << "errror " << res.errorMessage();
+      LOG_TOPIC(INFO, Logger::TRANSACTIONS) << "error while GC collecting "
+      "transaction: '"<< res.errorMessage() << "'";
     }
   }
-  
-  /*const TRI_voc_tid_t tid = state->id();
-   auto ctx =
-   std::make_shared<transaction::SmartContext>(state->vocbase(),
-   state);
-   transaction::Options trxOpts;
-   GCTransaction trx(ctx, trxOpts);
-   TRI_ASSERT(trx.state()->status() == transaction::Status::RUNNING);
-   Result res = trx.abort(); // should delete state
-   if (res.ok()) {
-   LOG_TOPIC(WARN, Logger::TRANSACTIONS) << "failed to GC
-   transaction: " << res.errorMessage();
-   }
-   it = _transactions[bucket]._activeTransactions.erase(it);
-   _transactions[bucket]._failedTransactions.emplace(tid);*/
 }
 
 /// @brief register a transaction shard
@@ -264,7 +247,7 @@ void Manager::registerAQLTrx(TransactionState* state) {
                                    "transaction ID already used");
   }
   
-  LOG_DEVEL << "adding managed AQL query " << state->id();
+//  LOG_DEVEL << "adding managed AQL query " << state->id();
 
   buck._managed.emplace(std::piecewise_construct,
                         std::forward_as_tuple(state->id()),
@@ -291,7 +274,7 @@ void Manager::unregisterAQLTrx(TRI_voc_tid_t tid) noexcept {
     TRI_ASSERT(false);
     return;
   }
-  LOG_DEVEL << "removing managed AQL query " << tid;
+//  LOG_DEVEL << "removing managed AQL query " << tid;
   buck._managed.erase(it);
 }
   
@@ -461,8 +444,9 @@ std::shared_ptr<transaction::Context> Manager::leaseTrx(TRI_voc_tid_t tid, Acces
     writeLocker.unlock(); // failure;
     allTransactionsLocker.unlock();
     std::this_thread::yield();
-    if (i++ > 10000) {
-      LOG_DEVEL << "waiting on trx lock";
+    
+    if (i++ > 16) {
+      LOG_TOPIC(DEBUG, Logger::TRANSACTIONS) << "waiting on trx lock " << tid;
       i = 0;
     }
   } while (true);
@@ -483,7 +467,7 @@ void Manager::returnManagedTrx(TRI_voc_tid_t tid, AccessMode::Type mode) noexcep
   auto& buck = _transactions[bucket];
   auto it = buck._managed.find(tid);
   if (it == buck._managed.end()) {
-    LOG_TOPIC(ERR, Logger::TRANSACTIONS) << "a registered transaction was not found";
+    LOG_TOPIC(WARN, Logger::TRANSACTIONS) << "managed transaction was not found";
     TRI_ASSERT(false);
     return;
   }

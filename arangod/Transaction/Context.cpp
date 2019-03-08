@@ -81,6 +81,8 @@ transaction::Context::Context(TRI_vocbase_t& vocbase)
   /// which speculate on ASCII strings first and only fall back to slower
   /// multibyte strings on first actual occurrence of a multibyte character.
   _dumpOptions.escapeUnicode = true;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  _contextData = engine->createTransactionContextData();
 }
 
 /// @brief destroy the context
@@ -111,17 +113,15 @@ VPackCustomTypeHandler* transaction::Context::createCustomTypeHandler(
 
 /// @brief pin data for the collection
 void transaction::Context::pinData(LogicalCollection* collection) {
-  transaction::ContextData* data = contextData();
-  if (data) {
-    data->pinData(collection);
+  if (_contextData) {
+    _contextData->pinData(collection);
   }
 }
 
 /// @brief whether or not the data for the collection is pinned
 bool transaction::Context::isPinned(TRI_voc_cid_t cid) {
-  transaction::ContextData* data = contextData();
-  if (data) {
-    return data->isPinned(cid);
+  if (_contextData) {
+    return _contextData->isPinned(cid);
   }
   return true; // storage engine does not need pinning
 }
@@ -231,14 +231,6 @@ void transaction::Context::storeTransactionResult(TRI_voc_tid_t id,
     _transaction.id = id;
     _transaction.hasFailedOperations = hasFailedOperations;
   }
-}
-
-transaction::ContextData* transaction::Context::contextData() {
-  if (_contextData == nullptr) {
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    _contextData = engine->createTransactionContextData();
-  }
-  return _contextData.get();
 }
 
 TRI_voc_tid_t transaction::Context::generateId() const {

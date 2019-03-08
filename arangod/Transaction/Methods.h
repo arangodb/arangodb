@@ -384,31 +384,8 @@ class Methods {
 
   /// @brief test if a collection is already locked
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*, AccessMode::Type) const;
-  /**
-   * @brief Check if this shard is locked, used to send nolockheader
-   *
-   * @param shardName shard The name of the shard
-   *
-   * @return True if locked by this transaction.
-   */
-//  bool isLockedShard(std::string const& shardName) const;
-//
-//  /**
-//   * @brief Set that this shard is locked by this transaction
-//   *        Used to define nolockheaders
-//   *
-//   * @param shardName shard the shard name
-//   */
-//  void setLockedShard(std::string const& shardName);
-
-  /**
-   * @brief Overwrite the entire list of locked shards.
-   *
-   * @param lockedShards The list of locked shards.
-   */
-#warning remove
-  TEST_VIRTUAL void setLockedShards(std::unordered_set<std::string> const& lockedShards) {}
-
+  
+  /// @brief fetch the LogicalCollection by CID
   arangodb::LogicalCollection* documentCollection(TRI_voc_cid_t) const;
 
   /// @brief get the index by its identifier. Will either throw or

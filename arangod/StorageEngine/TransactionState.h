@@ -202,9 +202,15 @@ class TransactionState {
     return _servers.find(uuid) != _servers.end();
   }
   
-  /// @brief
+  /// @brief add a server to the known set
   void addServer(std::string const& uuid) {
     _servers.emplace(uuid);
+  }
+  
+  /// @brief remove a server from the known set
+
+  void removeServer(std::string const& uuid) {
+    _servers.erase(uuid);
   }
 
  protected:

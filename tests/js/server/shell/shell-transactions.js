@@ -1138,6 +1138,7 @@ function transactionCollectionsSuite () {
           write: [ cn1 ]
         },
         action: function () {
+          assertEqual(10, c1.count());
           var ops = db._query('FOR i IN @@cn1 REMOVE i._key IN @@cn1', { '@cn1': cn1 }).getExtra().stats;
           assertEqual(10, ops.writesExecuted);
           assertEqual(0, c1.count());
@@ -3976,7 +3977,9 @@ function transactionTraversalSuite () {
         action: function () {
           var db = require('internal').db;
 
-          var results = db._query('FOR v, e IN ANY "' + cn + 'Vertex/20" ' + cn + 'Edge FILTER v._id == "' + cn + 'Vertex/21" LIMIT 1 RETURN e').toArray();
+          var results = db._query('WITH ' + cn + 'Vertex FOR v, e IN ANY "' + cn + 'Vertex/20" ' + 
+                                  cn + 'Edge FILTER v._id == "' + cn + 
+                                  'Vertex/21" LIMIT 1 RETURN e').toArray();
 
           if (results.length > 0) {
             var result = results[0];
