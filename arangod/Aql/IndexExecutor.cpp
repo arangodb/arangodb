@@ -431,7 +431,7 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
       }
     }
     TRI_ASSERT(_input.isInitialized());
-    TRI_ASSERT(getCursor()->hasMore());
+    TRI_ASSERT(getCursor() != nullptr && getCursor()->hasMore());
 
     IndexIterator::DocumentCallback callback;
 
@@ -469,10 +469,9 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
     TRI_ASSERT(!getIndexesExhausted());
 
     // Read the next elements from the indexes
-    //    auto saveReturned = _infos.getReturned();
     bool more = readIndex(callback, hasWritten);
-    //    TRI_ASSERT(!more || _infos.getCursor()->hasMore());
-    TRI_ASSERT((getCursor() != nullptr || !more) || more == getCursor()->hasMore());
+    TRI_ASSERT(getCursor() != nullptr || !more);
+    TRI_ASSERT(getCursor() != nullptr && more == getCursor()->hasMore());
 
     if (!more) {
       _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
