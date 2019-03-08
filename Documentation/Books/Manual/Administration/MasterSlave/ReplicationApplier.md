@@ -178,7 +178,7 @@ collections, especially because it may lead to confusion on the slave because th
 have its own system collections in order to start and keep operational.
 
 {% hint 'warning' %}
-a seperate option *includeFoxxQueues* for controlling whether Foxx queue jobs from the system 
+There is a separate option *includeFoxxQueues* for controlling whether Foxx queue jobs from the system 
 collections `_jobs` and `_queues` collections should be replicated. Documents from these collections 
 are not replicated by default in order to avoid execution of Foxx queue jobs on the slave. 
 
