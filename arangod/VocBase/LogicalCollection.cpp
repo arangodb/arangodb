@@ -183,24 +183,32 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   _sharding = std::make_unique<ShardingInfo>(info, this);
 
 #ifdef USE_ENTERPRISE
-  if (ServerState::instance()->isCoordinator() &&
-      hasSmartJoinAttribute()) {
-    auto const& sk = _sharding->shardKeys();
-    TRI_ASSERT(!sk.empty());
-    if (sk.size() != 1) {
+  if (ServerState::instance()->isCoordinator()) {
+    if (!info.get(StaticStrings::SmartJoinAttribute).isNone() &&
+        !hasSmartJoinAttribute()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
-                                     "smartJoinAttribute can only be used for collections with a single shardKey value");
+                                     "smartJoinAttribute must contain a string attribute name");
     }
-    TRI_ASSERT(!sk.front().empty());
-    if (sk.front().back() != ':') {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
-                                     "smartJoinAttribute can only be used for shardKeys ending on ':'");
+
+    if (hasSmartJoinAttribute()) {
+      auto const& sk = _sharding->shardKeys();
+      TRI_ASSERT(!sk.empty());
+      if (sk.size() != 1) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
+                                      "smartJoinAttribute can only be used for collections with a single shardKey value");
+      }
+      TRI_ASSERT(!sk.front().empty());
+      if (sk.front().back() != ':') {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
+                                      "smartJoinAttribute can only be used for shardKeys ending on ':'");
+      }
     }
   }
 #else
-  TRI_ASSERT(_smartJoinAttribute.empty());
+  // whatever we got passed in, in a non-enterprise build, we just ignore
+  // any specification for the smartJoinAttribute
+  _smartJoinAttribute.clear();
 #endif
-
 
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
