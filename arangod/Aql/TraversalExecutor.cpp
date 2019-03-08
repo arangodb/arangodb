@@ -116,7 +116,22 @@ TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
       _input{CreateInvalidInputRowHint{}},
       _rowState(ExecutionState::HASMORE),
       _traverser(infos.traverser()) {}
-TraversalExecutor::~TraversalExecutor() = default;
+
+TraversalExecutor::~TraversalExecutor() {
+  auto opts = _traverser.options();
+  if (opts != nullptr) {
+    auto *evaluator = opts->getPruneEvaluator();
+    if (evaluator != nullptr) {
+      // The InAndOutRowExpressionContext in the PruneExpressionEvaluator holds
+      // an InputAqlItemRow. As the Plan holds the PruneExpressionEvaluator and
+      // is destroyed after the Engine, this must be deleted by
+      // unPrepareContext() - otherwise, the AqlItemBlockShell referenced by the
+      // row will return its AqlItemBlock to an already destroyed
+      // AqlItemBlockManager.
+      evaluator->unPrepareContext();
+    }
+  }
+};
 
 // Shutdown query
 std::pair<ExecutionState, Result> TraversalExecutor::shutdown(int errorCode) {
