@@ -75,6 +75,13 @@ class TtlFeature final : public application_features::ApplicationFeature {
   void start() override final;
   void stop() override final;
 
+  /// @brief allow the TTL thread to run or not
+  /// this is not a user-facing method, but it is used by the active-failover
+  /// setup internally. the value is orthogonal to the value of _active, so it
+  /// is possible that allowRunning is true (leader in active failover setup)
+  /// but the user has set _active to false.
+  void allowRunning(bool value);
+
   /// @brief turn expiring/removing outdated documents on
   void activate();
   /// @brief turn expiring/removing outdated documents off, blocks until
@@ -97,18 +104,23 @@ class TtlFeature final : public application_features::ApplicationFeature {
   void shutdownThread() noexcept;
   
  private:
-  // protects _properties and _active
+  /// @brief protects _properties and _active
   mutable Mutex _propertiesMutex;
   TtlProperties _properties;
   
-  // protects _statistics
+  /// @brief protects _statistics
   mutable Mutex _statisticsMutex; 
   TtlStatistics _statistics;
   
-  // protects _thread
+  /// @brief protects _thread
   mutable Mutex _threadMutex; 
   std::unique_ptr<TtlThread> _thread;
-  
+ 
+  /// @brief internal active flag, used by HeartbeatThread in active failover setups
+  /// the value is orthogonal to the user-facing _active flag
+  bool _allowRunning; 
+
+  /// @brief user-facing active flag, can be changed by end users
   bool _active;
 };
 

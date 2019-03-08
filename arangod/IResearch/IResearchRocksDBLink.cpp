@@ -18,8 +18,9 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov 
+/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "Basics/Common.h"  // required for RocksDBColumnFamily.h
 #include "IResearchLinkHelper.h"
 #include "IResearchView.h"
@@ -185,10 +186,15 @@ struct IResearchRocksDBLink::IndexFactory : public arangodb::IndexTypeFactory {
     return arangodb::Result();
   }
 
-  virtual arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                                     arangodb::velocypack::Slice definition,
-                                     bool isCreation) const override {
-    return IResearchLinkHelper::normalize(normalized, definition, isCreation);
+  virtual arangodb::Result normalize( // normalize definition
+      arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
+      arangodb::velocypack::Slice definition, // source definition
+      bool isCreation, // definition for index creation
+      TRI_vocbase_t const& vocbase // index vocbase
+  ) const override {
+    return IResearchLinkHelper::normalize( // normalize
+      normalized, definition, isCreation, vocbase // args
+    );
   }
 };
 

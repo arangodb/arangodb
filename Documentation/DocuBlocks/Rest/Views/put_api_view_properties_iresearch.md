@@ -31,7 +31,7 @@ Background:
 
 @RESTSTRUCT{commitIntervalMsec,post_api_view_props,integer,optional,uint64}
 Wait at least this many milliseconds between committing view data store
-changes and making documents visible to queries (default: 60000, to disable
+changes and making documents visible to queries (default: 1000, to disable
 use: 0).
 For the case where there are a lot of inserts/updates, a lower value, until
 commit, will cause the index not to account for them and memory usage would

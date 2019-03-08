@@ -116,7 +116,7 @@ class RocksDBIndex : public Index {
 
   RocksDBKeyBounds getBounds() const {
     return RocksDBIndex::getBounds(type(), _objectId, _unique);
-  };
+  }
 
   static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId, bool unique);
 

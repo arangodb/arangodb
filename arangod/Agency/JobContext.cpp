@@ -73,15 +73,15 @@ void JobContext::create(std::shared_ptr<VPackBuilder> b) {
   }
 }
 
-void JobContext::start() {
+void JobContext::start(bool& aborts) {
   if (_job != nullptr) {
-    _job->start();
+    _job->start(aborts);
   }
 }
 
-void JobContext::run() {
+void JobContext::run(bool& aborts) {
   if (_job != nullptr) {
-    _job->run();
+    _job->run(aborts);
   }
 }
 

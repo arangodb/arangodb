@@ -57,6 +57,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
@@ -175,8 +176,8 @@ SECTION("test_start") {
     CHECK((nullptr != function));
     CHECK((entry.second.first == function->arguments));
     CHECK((
-      entry.second.second == FunctionType::FILTER && arangodb::iresearch::isFilter(*function)
-      || entry.second.second == FunctionType::SCORER && arangodb::iresearch::isScorer(*function)
+            (entry.second.second == FunctionType::FILTER && arangodb::iresearch::isFilter(*function))
+            || (entry.second.second == FunctionType::SCORER && arangodb::iresearch::isScorer(*function))
     ));
   };
 }
@@ -399,13 +400,15 @@ SECTION("test_upgrade0_1") {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
     arangodb::DatabaseFeature* database;
     arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::QueryRegistryFeature(server)); // required for constructing TRI_vocbase_t
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
     server.addFeature(new arangodb::AuthenticationFeature(server)); // required for ClusterComm::instance()
     server.addFeature(new arangodb::ClusterFeature(server)); // required to create ClusterInfo instance
     server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(server)); // required for SimpleHttpClient::doRequest()
     server.addFeature(database = new arangodb::DatabaseFeature(server)); // required to skip IResearchView validation
     server.addFeature(new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for restoring link analyzers
-    server.addFeature(new arangodb::QueryRegistryFeature(server)); // required for constructing TRI_vocbase_t
     server.addFeature(new arangodb::ShardingFeature(server)); // required for LogicalCollection::LogicalCollection(...)
+    server.addFeature(new arangodb::SystemDatabaseFeature(server, &system)); // required for IResearchLinkHelper::normalize(...)
     server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {})); // required for upgrade tasks
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
 

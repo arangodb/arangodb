@@ -296,7 +296,7 @@ Result MMFilesPrimaryIndex::remove(transaction::Methods& trx, LocalDocumentId co
 
 /// @brief unload the index data from memory
 void MMFilesPrimaryIndex::unload() {
-  _primaryIndex->truncate([](MMFilesSimpleIndexElement const&) { return true; });
+  _primaryIndex->truncate(nullptr);
 }
 
 /// @brief looks up an element given a key

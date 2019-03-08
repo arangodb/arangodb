@@ -83,9 +83,12 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
     return arangodb::Result();
   }
 
-  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                             arangodb::velocypack::Slice definition,
-                             bool isCreation) const override {
+  virtual arangodb::Result normalize( // normalize definition
+      arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
+      arangodb::velocypack::Slice definition, // source definition
+      bool isCreation, // definition for index creation
+      TRI_vocbase_t const& vocbase // index vocbase
+  ) const override {
     if (isCreation) {
       // creating these indexes yourself is forbidden
       return TRI_ERROR_FORBIDDEN;
@@ -112,9 +115,12 @@ struct FulltextIndexFactory : public DefaultIndexFactory {
     return arangodb::Result();
   }
 
-  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                             arangodb::velocypack::Slice definition,
-                             bool isCreation) const override {
+  virtual arangodb::Result normalize( // normalize definition
+      arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
+      arangodb::velocypack::Slice definition, // source definition
+      bool isCreation, // definition for index creation
+      TRI_vocbase_t const& vocbase // index vocbase
+  ) const override {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(
@@ -138,9 +144,12 @@ struct GeoIndexFactory : public DefaultIndexFactory {
     return arangodb::Result();
   }
 
-  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                             arangodb::velocypack::Slice definition,
-                             bool isCreation) const override {
+  virtual arangodb::Result normalize( // normalize definition
+      arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
+      arangodb::velocypack::Slice definition, // source definition
+      bool isCreation, // definition for index creation
+      TRI_vocbase_t const& vocbase // index vocbase
+  ) const override {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
@@ -163,9 +172,12 @@ struct Geo1IndexFactory : public DefaultIndexFactory {
     return arangodb::Result();
   }
 
-  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                             arangodb::velocypack::Slice definition,
-                             bool isCreation) const override {
+  virtual arangodb::Result normalize( // normalize definition
+      arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
+      arangodb::velocypack::Slice definition, // source definition
+      bool isCreation, // definition for index creation
+      TRI_vocbase_t const& vocbase // index vocbase
+  ) const override {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
@@ -188,9 +200,12 @@ struct Geo2IndexFactory : public DefaultIndexFactory {
     return arangodb::Result();
   }
 
-  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                             arangodb::velocypack::Slice definition,
-                            bool isCreation) const override {
+  virtual arangodb::Result normalize( // normalize definition
+      arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
+      arangodb::velocypack::Slice definition, // source definition
+      bool isCreation, // definition for index creation
+      TRI_vocbase_t const& vocbase // index vocbase
+  ) const override {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
@@ -212,9 +227,12 @@ struct HashIndexFactory : public DefaultIndexFactory {
     return arangodb::Result();
   }
 
-  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                             arangodb::velocypack::Slice definition,
-                             bool isCreation) const override {
+  virtual arangodb::Result normalize( // normalize definition
+      arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
+      arangodb::velocypack::Slice definition, // source definition
+      bool isCreation, // definition for index creation
+      TRI_vocbase_t const& vocbase // index vocbase
+  ) const override {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_HASH_INDEX)));
@@ -241,9 +259,12 @@ struct PersistentIndexFactory : public DefaultIndexFactory {
     return arangodb::Result();
   }
 
-  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                             arangodb::velocypack::Slice definition,
-                             bool isCreation) const override {
+  virtual arangodb::Result normalize( // normalize definition
+      arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
+      arangodb::velocypack::Slice definition, // source definition
+      bool isCreation, // definition for index creation
+      TRI_vocbase_t const& vocbase // index vocbase
+  ) const override {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(
@@ -266,9 +287,12 @@ struct TtlIndexFactory : public DefaultIndexFactory {
     return arangodb::Result();
   }
 
-  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                             arangodb::velocypack::Slice definition,
-                             bool isCreation) const override {
+  virtual arangodb::Result normalize( // normalize definition
+      arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
+      arangodb::velocypack::Slice definition, // source definition
+      bool isCreation, // definition for index creation
+      TRI_vocbase_t const& vocbase // index vocbase
+  ) const override {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_TTL_INDEX)));
@@ -296,9 +320,12 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
     return arangodb::Result();
   }
 
-  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                             arangodb::velocypack::Slice definition,
-                             bool isCreation) const override {
+  virtual arangodb::Result normalize( // normalize definition
+      arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
+      arangodb::velocypack::Slice definition, // source definition
+      bool isCreation, // definition for index creation
+      TRI_vocbase_t const& vocbase // index vocbase
+  ) const override {
     if (isCreation) {
       // creating these indexes yourself is forbidden
       return TRI_ERROR_FORBIDDEN;
@@ -326,9 +353,12 @@ struct SkiplistIndexFactory : public DefaultIndexFactory {
     return arangodb::Result();
   }
 
-  arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                             arangodb::velocypack::Slice definition,
-                             bool isCreation) const override {
+  virtual arangodb::Result normalize( // normalize definition
+      arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
+      arangodb::velocypack::Slice definition, // source definition
+      bool isCreation, // definition for index creation
+      TRI_vocbase_t const& vocbase // index vocbase
+  ) const override {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(

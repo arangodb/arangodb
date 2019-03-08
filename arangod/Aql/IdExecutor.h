@@ -62,6 +62,7 @@ class IdExecutor {
   struct Properties {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = true;
+    static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = ConstFetcher;
   using Infos = IdExecutorInfos;

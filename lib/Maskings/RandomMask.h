@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,46 +17,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
+/// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_JOB_CONTEXT_H
-#define ARANGOD_CONSENSUS_JOB_CONTEXT_H 1
+#ifndef ARANGODB_MASKINGS_ATTRIBUTE_RANDOM_MASK_H
+#define ARANGODB_MASKINGS_ATTRIBUTE_RANDOM_MASK_H 1
 
-#include "Job.h"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include <string>
+#include "Maskings/RandomStringMask.h"
 
 namespace arangodb {
-namespace consensus {
-
-class JobContext {
+namespace maskings {
+class RandomMask : public RandomStringMask {
  public:
-  /// @brief Contextualize arbitrary Job
-  JobContext(JOB_STATUS status, std::string id, Node const& snapshot, AgentInterface* agent);
+  static ParseResult<AttributeMasking> create(Path, Maskings*, VPackSlice const& def);
 
-  /// @brief Create job
-  void create(std::shared_ptr<VPackBuilder> b = nullptr);
-
-  /// @brief Start job
-  void start(bool& aborts);
-
-  /// @brief Run job
-  void run(bool& aborts);
-
-  /// @brief Abort job
-  void abort();
+ public:
+  VPackValue mask(bool, std::string& buffer) const override;
+  VPackValue mask(int64_t, std::string& buffer) const override;
+  VPackValue mask(double, std::string& buffer) const override;
 
  private:
-  /// @brief Actual job context
-  std::unique_ptr<Job> _job;
+  explicit RandomMask(Maskings* maskings) : RandomStringMask(maskings) {}
 };
-
-}  // namespace consensus
+}  // namespace maskings
 }  // namespace arangodb
 
 #endif
