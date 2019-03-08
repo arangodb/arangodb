@@ -175,7 +175,9 @@ The *includeSystem* attribute controls whether changes to system collections (su
 *_users*) should be applied. If set to *true*, changes in these collections will be replicated, 
 otherwise, they will not be replicated. It is often not necessary to replicate data from system
 collections, especially because it may lead to confusion on the slave because the slave needs to 
-have its own system collections in order to start and keep operational. Please note that there is 
+have its own system collections in order to start and keep operational.
+
+{% hint 'warning' %}
 a seperate option *includeFoxxQueues* for controlling whether Foxx queue jobs from the system 
 collections `_jobs` and `_queues` collections should be replicated. Documents from these collections 
 are not replicated by default in order to avoid execution of Foxx queue jobs on the slave. 
