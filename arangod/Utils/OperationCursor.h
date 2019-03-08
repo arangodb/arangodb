@@ -42,7 +42,7 @@ struct OperationCursor {
       : _hasMore(false) {}
 
   /// @brief creates a cursor using an IndexIterator (which must be valid)
-  OperationCursor(std::unique_ptr<IndexIterator> iterator);
+  explicit OperationCursor(std::unique_ptr<IndexIterator> iterator);
 
   TEST_VIRTUAL ~OperationCursor() {}
 
