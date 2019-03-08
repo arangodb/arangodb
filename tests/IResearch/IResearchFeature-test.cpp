@@ -176,8 +176,8 @@ SECTION("test_start") {
     CHECK((nullptr != function));
     CHECK((entry.second.first == function->arguments));
     CHECK((
-      entry.second.second == FunctionType::FILTER && arangodb::iresearch::isFilter(*function)
-      || entry.second.second == FunctionType::SCORER && arangodb::iresearch::isScorer(*function)
+            (entry.second.second == FunctionType::FILTER && arangodb::iresearch::isFilter(*function))
+            || (entry.second.second == FunctionType::SCORER && arangodb::iresearch::isScorer(*function))
     ));
   };
 }
