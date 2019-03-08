@@ -217,6 +217,7 @@ SET(ARANGOD_SOURCES
   Aql/Graphs.cpp
   Aql/GraphNode.cpp
   Aql/IndexBlock.cpp
+  Aql/InAndOutRowExpressionContext.cpp
   Aql/IndexNode.cpp
   Aql/ModificationBlocks.cpp
   Aql/ModificationNodes.cpp
@@ -231,6 +232,7 @@ SET(ARANGOD_SOURCES
   Aql/PlanCache.cpp
   Aql/QueryExecutionState.cpp
   Aql/QueryProfile.cpp
+  Aql/PruneExpressionEvaluator.cpp
   Aql/Quantifier.cpp
   Aql/Query.cpp
   Aql/QueryCache.cpp
@@ -466,7 +468,7 @@ SET(ARANGOD_SOURCES
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
-  RestServer/SystemDatabaseFeature.cpp RestServer/SystemDatabaseFeature.h
+  RestServer/SystemDatabaseFeature.cpp
   RestServer/TransactionManagerFeature.cpp
   RestServer/TraverserEngineRegistryFeature.cpp
   RestServer/UpgradeFeature.cpp
