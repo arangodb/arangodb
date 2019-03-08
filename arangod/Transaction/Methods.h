@@ -363,7 +363,7 @@ class Methods {
   /// @brief Gets the best fitting index for an AQL sort condition
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
-  ENTERPRISE_VIRT std::pair<bool, bool> getIndexForSortCondition(
+  ENTERPRISE_VIRT bool getIndexForSortCondition(
       std::string const&, arangodb::aql::SortCondition const*,
       arangodb::aql::Variable const*, size_t, std::vector<IndexHandle>&,
       size_t& coveredAttributes);
@@ -376,12 +376,12 @@ class Methods {
                                                        ManagedDocumentResult*,
                                                        IndexIteratorOptions const&);
 
-  /// @brief factory for OperationCursor objects
+  /// @brief factory for IndexIterator objects
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
   ENTERPRISE_VIRT
-  std::unique_ptr<OperationCursor> indexScan(std::string const& collectionName,
-                                             CursorType cursorType);
+  std::unique_ptr<IndexIterator> indexScan(std::string const& collectionName,
+                                           CursorType cursorType);
 
   /// @brief test if a collection is already locked
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*, AccessMode::Type) const;
@@ -522,6 +522,9 @@ class Methods {
 
   /// @brief read- or write-unlock a collection
   ENTERPRISE_VIRT Result unlockRecursive(TRI_voc_cid_t, AccessMode::Type);
+
+  /// @brief returns an empty index iterator for the collection
+  std::unique_ptr<IndexIterator> createEmptyIndexIterator(std::string const& collectionName);
 
  private:
   /// @brief replicates operations from leader to follower(s)

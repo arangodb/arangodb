@@ -181,12 +181,12 @@ IndexExecutor::~IndexExecutor() = default;
 arangodb::OperationCursor* IndexExecutor::orderCursor(size_t currentIndex) {
   TRI_ASSERT(_infos.getIndexes().size() > currentIndex);
   
-  if (getCursor(currentIndex) == nullptr) {
+  OperationCursor* cursor = getCursor(currentIndex);
+  if (cursor == nullptr) {
     // first create an empty cursor object if none is there yet
-    resetCursor(currentIndex, std::make_unique<OperationCursor>()); 
+    cursor = resetCursor(currentIndex, std::make_unique<OperationCursor>()); 
   }
   
-  OperationCursor* cursor = getCursor(currentIndex);
   TRI_ASSERT(cursor != nullptr);
   
   // TODO: if we have _nonConstExpressions, we should also reuse the
@@ -469,7 +469,7 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
     //    auto saveReturned = _infos.getReturned();
     bool more = readIndex(callback, hasWritten);
     //    TRI_ASSERT(!more || _infos.getCursor()->hasMore());
-    TRI_ASSERT((getCursor() != nullptr || !more) || more == getCursor()->hasMore());
+    TRI_ASSERT((getCursor() != nullptr || !more) || (getCursor() != nullptr && more == getCursor()->hasMore()));
 
     if (!more) {
       _input = InputAqlItemRow{CreateInvalidInputRowHint{}};

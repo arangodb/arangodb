@@ -200,8 +200,9 @@ class IndexExecutor {
   void resetCursor(size_t pos) { _cursors[pos]->reset(); };
 
   /// @brief reset and initialize the cursor at given position
-  void resetCursor(size_t pos, std::unique_ptr<OperationCursor> cursor) {
+  OperationCursor* resetCursor(size_t pos, std::unique_ptr<OperationCursor> cursor) {
     _cursors[pos] = std::move(cursor);
+    return getCursor(pos);
   }
 
   /// @brief order a cursor for the index at the specified position
@@ -210,8 +211,8 @@ class IndexExecutor {
   /// @brief set a new cursor
   void setCursor(arangodb::OperationCursor* cursor) { _cursor = cursor; }
 
-  arangodb::OperationCursor* getCursor() { return _cursor; }
-  arangodb::OperationCursor* getCursor(size_t pos) {
+  inline arangodb::OperationCursor* getCursor() { return _cursor; }
+  inline arangodb::OperationCursor* getCursor(size_t pos) {
     return _cursors[pos].get();
   }
   std::vector<std::unique_ptr<OperationCursor>>& getCursors() {

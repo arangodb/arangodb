@@ -1078,10 +1078,9 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
     return OperationResult(lockResult);
   }
 
-  std::unique_ptr<OperationCursor> cursor =
-      indexScan(collectionName, transaction::Methods::CursorType::ANY);
+  OperationCursor cursor(indexScan(collectionName, transaction::Methods::CursorType::ANY));
 
-  cursor->nextDocument(
+  cursor.nextDocument(
       [&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
         resultBuilder.add(slice);
       },
@@ -2472,13 +2471,12 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
     return OperationResult(lockResult);
   }
 
-  std::unique_ptr<OperationCursor> cursor =
-      indexScan(collectionName, transaction::Methods::CursorType::ALL);
+  OperationCursor cursor(indexScan(collectionName, transaction::Methods::CursorType::ALL));
 
   auto cb = [&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
     resultBuilder.add(slice);
   };
-  cursor->allDocuments(cb, 1000);
+  cursor.allDocuments(cb, 1000);
 
   if (lockResult.is(TRI_ERROR_LOCKED)) {
     Result res = unlockRecursive(cid, AccessMode::Type::READ);
@@ -2871,7 +2869,7 @@ std::vector<std::vector<arangodb::basics::AttributeName>> transaction::Methods::
 /// @brief Gets the best fitting index for an AQL sort condition
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
-std::pair<bool, bool> transaction::Methods::getIndexForSortCondition(
+bool transaction::Methods::getIndexForSortCondition(
     std::string const& collectionName, arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     std::vector<IndexHandle>& usedIndexes, size_t& coveredAttributes) {
@@ -2905,13 +2903,13 @@ std::pair<bool, bool> transaction::Methods::getIndexForSortCondition(
       usedIndexes.emplace_back(bestIndex);
     }
 
-    return std::make_pair(false, bestIndex != nullptr);
+    return bestIndex != nullptr;
   }
 
   // No Index and no sort condition that
   // can be supported by an index.
   // Nothing to do here.
-  return std::make_pair(false, false);
+  return false;
 }
 
 /// @brief factory for IndexIterator objects from AQL
@@ -2936,11 +2934,11 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
   return std::unique_ptr<IndexIterator>(idx->iteratorForCondition(this, mmdr, condition, var, opts));
 }
 
-/// @brief factory for OperationCursor objects
+/// @brief factory for IndexIterator objects
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
-std::unique_ptr<OperationCursor> transaction::Methods::indexScan(std::string const& collectionName,
-                                                                 CursorType cursorType) {
+std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const& collectionName,
+                                                               CursorType cursorType) {
   // For now we assume indexId is the iid part of the index.
 
   if (_state->isCoordinator()) {
@@ -2974,8 +2972,7 @@ std::unique_ptr<OperationCursor> transaction::Methods::indexScan(std::string con
 
   // the above methods must always return a valid iterator or throw!  
   TRI_ASSERT(iterator != nullptr);
-
-  return std::make_unique<OperationCursor>(std::move(iterator));
+  return iterator;
 }
 
 /// @brief return the collection
@@ -3437,4 +3434,15 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
   }
 
   return Result{};
+}
+  
+/// @brief returns an empty index iterator for the collection
+std::unique_ptr<IndexIterator> Methods::createEmptyIndexIterator(std::string const& collectionName) {
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+  TransactionCollection* trxColl = trxCollection(cid);
+  if (trxColl == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "unable to determine transaction collection");
+  }
+  return std::make_unique<EmptyIndexIterator>(documentCollection(trxColl), this);
 }

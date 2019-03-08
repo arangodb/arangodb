@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // In order to implement a new IndexIterator the following functions need to be
-// implmeneted.
+// implemented.
 //
 // typeName() returns a string descibing the type of the indexIterator
 //
