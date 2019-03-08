@@ -5676,14 +5676,19 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     // yet, as many traversal internals depend on the number of vertices
     // found/built
     auto outVariable = traversal->edgeOutVariable();
-    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
+    std::vector<Variable const*> pruneVars;
+    traversal->getPruneVariables(pruneVars);
+
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
+        std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
       // traversal edge outVariable not used later
       traversal->setEdgeOutput(nullptr);
       modified = true;
     }
 
     outVariable = traversal->pathOutVariable();
-    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
+        std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
       // traversal path outVariable not used later
       traversal->setPathOutput(nullptr);
       modified = true;
@@ -5833,8 +5838,11 @@ void arangodb::aql::removeTraversalPathVariable(Optimizer* opt,
   for (auto const& n : tNodes) {
     TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
 
+    std::vector<Variable const*> pruneVars;
+    traversal->getPruneVariables(pruneVars);
     auto outVariable = traversal->pathOutVariable();
-    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
+        std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
       // traversal path outVariable not used later
       traversal->setPathOutput(nullptr);
       modified = true;

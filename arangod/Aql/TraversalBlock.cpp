@@ -27,6 +27,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Functions.h"
+#include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/Query.h"
 #include "Basics/StringRef.h"
 #include "Cluster/ClusterComm.h"
@@ -76,7 +77,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
   _opts = static_cast<TraverserOptions*>(ep->options());
   TRI_ASSERT(_opts != nullptr);
   _mmdr.reset(new ManagedDocumentResult);
-
+  
   if (arangodb::ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
     if (ep->isSmart()) {
@@ -144,6 +145,31 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     _pathReg = it->second.registerId;
+  }
+
+  if (ep->pruneExpression() != nullptr) {
+    std::vector<Variable const*> pruneVars;
+    ep->getPruneVariables(pruneVars);
+    std::vector<RegisterId> pruneRegs;
+    // Create List for _pruneVars
+    pruneRegs.reserve(pruneVars.size());
+    size_t vertexRegIdx = std::numeric_limits<std::size_t>::max();
+    size_t edgeRegIdx = std::numeric_limits<std::size_t>::max();
+    size_t pathRegIdx = std::numeric_limits<std::size_t>::max();
+    for (auto const v : pruneVars) {
+      auto it = varInfo.find(v->id);
+      TRI_ASSERT(it != varInfo.end());
+      if (v == _vertexVar) {
+        vertexRegIdx = pruneRegs.size();
+      } else if (v == _edgeVar) {
+        edgeRegIdx = pruneRegs.size();
+      } else if (v == _pathVar) {
+        pathRegIdx = pruneRegs.size();
+      }
+      pruneRegs.emplace_back(it->second.registerId);
+    }
+    _opts->activatePrune(std::move(pruneVars), std::move(pruneRegs),
+                         vertexRegIdx, edgeRegIdx, pathRegIdx, ep->pruneExpression());
   }
 }
 
@@ -291,6 +317,11 @@ void TraversalBlock::initializeExpressions(AqlItemBlock const* items, size_t pos
   TRI_ASSERT(_inVars.size() == _inRegs.size());
   for (size_t i = 0; i < _inVars.size(); ++i) {
     _opts->setVariableValue(_inVars[i], items->getValueReference(pos, _inRegs[i]));
+  }
+  if (_opts->usesPrune()) {
+    auto* evaluator = _opts->getPruneEvaluator();
+    // Replace by inputRow
+    evaluator->prepareContext(items, pos);
   }
   // IF cluster => Transfer condition.
 }
