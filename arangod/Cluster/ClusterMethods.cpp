@@ -2863,8 +2863,6 @@ ClusterCommRequest beginTransactionRequest(transaction::Methods const* trx,
                                            TransactionState& state,
                                            ServerID const& server) {
   TRI_voc_tid_t tid = state.id() + 1;
-  LOG_DEVEL << "begin TRX ID " << tid << " mod 4 : " << (tid % 4);
-  
   TRI_ASSERT(!transaction::isLegacyTransactionId(tid));
   
   VPackBuilder builder;
@@ -2926,7 +2924,7 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
   arangodb::TransactionState& state = *trx.state();
   TRI_ASSERT(state.isRunning());
   
-  if (state.servers().empty()) {
+  if (state.knownServers().empty()) {
     return res;
   }
   
@@ -2939,7 +2937,6 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
   TRI_ASSERT(!state.isDBServer() || !transaction::isFollowerTransactionId(state.id()));
   
   TRI_voc_tid_t tid = trx.state()->id();
-  LOG_DEVEL << transaction::statusString(status) << " TRX ID " << tid << " mod 4 : " << (tid % 4);
 
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
@@ -2961,12 +2958,9 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
   
   std::shared_ptr<std::string> body;
   std::vector<ClusterCommRequest> requests;
-  for (std::string const& server : state.servers()) {
-    if (status == transaction::Status::COMMITTED) {
-      LOG_DEVEL << "Commit transaction " << state.id() << " on " << server;
-    } else if (status == transaction::Status::ABORTED) {
-      LOG_DEVEL << "Abort transaction " << state.id() << " on " << server;
-    }
+  for (std::string const& server : state.knownServers()) {
+    LOG_TOPIC(DEBUG, Logger::TRANSACTIONS) << transaction::statusString(status)
+      << " on " << server;
     requests.emplace_back("server:" + server, rtype, url, body);
   }
   
@@ -2993,21 +2987,29 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
     for (size_t i = 0; i < requests.size(); ++i) {
       Result res = ::checkTransactionResult(state, status, requests[i]);
       if (res.fail()) {  // remove follower from all collections
-        ServerID server = requests[i].result.serverID;
-        state.allCollections([&server](TransactionCollection& tc) {
+        ServerID const& follower = requests[i].result.serverID;
+        state.allCollections([&](TransactionCollection& tc) {
           auto cc = tc.collection();
           if (cc) {
-            cc->followers()->remove(server);
+            if (cc->followers()->remove(follower)) {
+              // TODO: what happens if a server is re-added during a transaction ?
+              LOG_TOPIC(WARN, Logger::REPLICATION)
+              << "synchronous replication: dropping follower " << follower
+              << " for shard " << tc.collectionName();
+            } else {
+              LOG_TOPIC(ERR, Logger::REPLICATION)
+              << "synchronous replication: could not drop follower "
+              << follower << " for shard " << tc.collectionName();
+              res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+              return false; // cancel transaction
+            }
           }
           return true;
         });
-        
-        LOG_DEVEL << "dropping follower because it did not start trx " << state.id()
-        << ", error: '" << res.errorMessage() << "'";
       }
     }
     
-    return res; // alwas succeed even if some followers did not
+    return res; // succeed even if some followers did not commit
   }
 }
 }  // namespace
@@ -3027,7 +3029,7 @@ arangodb::Result ClusterMethods::beginTransactionOnLeaders(TransactionState& sta
     if (state.knowsServer(leader)) {
       continue;  // already send a begin transaction there
     }
-    state.addServer(leader);
+    state.addKnownServer(leader);
     
     LOG_DEVEL << "Begin transaction " << state.id() << " on " << leader;
     requests.emplace_back(::beginTransactionRequest(nullptr, state, leader));
@@ -3071,7 +3073,7 @@ Result ClusterMethods::beginTransactionOnFollowers(transaction::Methods& trx,
     if (state.knowsServer(follower)) {
       continue;  // already send a begin transaction there
     }
-    state.addServer(follower);
+    state.addKnownServer(follower);
     requests.emplace_back(::beginTransactionRequest(&trx, state, follower));
   }
 
@@ -3142,7 +3144,7 @@ void ClusterMethods::addTransactionHeader(transaction::Methods const& trx,
       headers.emplace(arangodb::StaticStrings::TransactionId, std::to_string(tidPlus).append(" begin"));
     }
     // FIXME: only add server on a successful response ?
-    state.addServer(server);  // remember server
+    state.addKnownServer(server);  // remember server
   } else {
     headers.emplace(arangodb::StaticStrings::TransactionId, std::to_string(tidPlus));
   }
@@ -3173,7 +3175,7 @@ void ClusterMethods::addAQLTransactionHeader(transaction::Methods const& trx,
       headers.emplace(StaticStrings::TransactionBody, builder->toJson());
     }
     // FIXME: only add server on a successful response ?
-    state.addServer(server);  // remember server
+    state.addKnownServer(server);  // remember server
   }
   headers.emplace(arangodb::StaticStrings::TransactionId, std::move(value));
 }

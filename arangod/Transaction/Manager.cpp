@@ -31,6 +31,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/SmartContext.h"
+#include "Utils/CollectionNameResolver.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>

@@ -40,6 +40,7 @@
 #include "Graph/BaseOptions.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #ifdef USE_IRESEARCH

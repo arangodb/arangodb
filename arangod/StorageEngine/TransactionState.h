@@ -32,7 +32,6 @@
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 
@@ -194,23 +193,23 @@ class TransactionState {
   bool isOnlyExclusiveTransaction() const;
   
   /// @brief servers already contacted
-  std::set<std::string> const& servers() const {
-    return _servers;
+  arangodb::HashSet<std::string> const& knownServers() const {
+    return _knownServers;
   }
 
   bool knowsServer(std::string const& uuid) const {
-    return _servers.find(uuid) != _servers.end();
+    return _knownServers.find(uuid) != _knownServers.end();
   }
   
   /// @brief add a server to the known set
-  void addServer(std::string const& uuid) {
-    _servers.emplace(uuid);
+  void addKnownServer(std::string const& uuid) {
+    _knownServers.emplace(uuid);
   }
   
   /// @brief remove a server from the known set
 
-  void removeServer(std::string const& uuid) {
-    _servers.erase(uuid);
+  void removeKnownServer(std::string const& uuid) {
+    _knownServers.erase(uuid);
   }
 
  protected:
@@ -251,8 +250,7 @@ protected:
   std::map<void const*, Cookie::ptr> _cookies;
   
   /// @brief servers we already talked to for this transactions
-  //arangodb::HashSet<std::string> _servers;
-  std::set<std::string> _servers;
+  arangodb::HashSet<std::string> _knownServers;
   
   /// @brief reference counter of # of 'Methods' instances using this object
   std::atomic<int> _nestingLevel;

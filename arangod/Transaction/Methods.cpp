@@ -2637,7 +2637,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
         if (!replicationWorked) {
           auto const& followerInfo = collection->followers();
           if (followerInfo->remove((*followers)[i])) {
-            _state->removeServer((*followers)[i]);
+            _state->removeKnownServer((*followers)[i]);
             LOG_TOPIC(WARN, Logger::REPLICATION)
                 << "truncateLocal: dropping follower " << (*followers)[i]
                 << " for shard " << collectionName;
@@ -3443,7 +3443,7 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
       auto const& followerInfo = collection.followers();
       if (followerInfo->remove((*followers)[i])) {
         // TODO: what happens if a server is re-added during a transaction ?
-        _state->removeServer((*followers)[i]);
+        _state->removeKnownServer((*followers)[i]);
         LOG_TOPIC(WARN, Logger::REPLICATION)
             << "synchronous replication: dropping follower " << (*followers)[i]
             << " for shard " << collection.name();
