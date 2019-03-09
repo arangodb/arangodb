@@ -189,26 +189,35 @@ arangodb::OperationCursor* IndexExecutor::orderCursor(size_t currentIndex) {
   
   TRI_ASSERT(cursor != nullptr);
   
-  // TODO: if we have _nonConstExpressions, we should also reuse the
-  // cursors, but in this case we have to adjust the iterator's search condition
-  // from _condition
-  if (!_infos.getNonConstExpressions().empty() || cursor->indexIterator() == nullptr) {
-    AstNode const* conditionNode = nullptr;
-    if (_infos.getCondition() != nullptr) {
-      TRI_ASSERT(_infos.getIndexes().size() == _infos.getCondition()->numMembers());
-      TRI_ASSERT(_infos.getCondition()->numMembers() > currentIndex);
+  IndexIterator* iterator = cursor->indexIterator(); 
+  
+  AstNode const* conditionNode = nullptr;
+  if ((iterator == nullptr || !_infos.getNonConstExpressions().empty()) && 
+      _infos.getCondition() != nullptr) {
+    TRI_ASSERT(_infos.getIndexes().size() == _infos.getCondition()->numMembers());
+    TRI_ASSERT(_infos.getCondition()->numMembers() > currentIndex);
 
-      conditionNode = _infos.getCondition()->getMember(currentIndex);
-    }
+    conditionNode = _infos.getCondition()->getMember(currentIndex);
+  }
 
-    // inject the index iterator into the existing cursor
+  if (iterator != nullptr && _infos.getNonConstExpressions().empty()) {
+    // quick case. we can simply reset the existing cursor
+    resetCursor(currentIndex);
+  } else if (iterator == nullptr || !iterator->canRearm()) {
+    // inject a new index iterator into the existing cursor
     cursor->rearm(
                 _infos.getTrxPtr()->indexScanForCondition(
                     _infos.getIndexes()[currentIndex], conditionNode,
                     _infos.getOutVariable(), _mmdr.get(), _infos.getOptions()));
   } else {
-    // reset the cursor to its initial state
-    resetCursor(currentIndex);
+    // try to rearm an existing iterator
+    if (iterator->rearm(conditionNode, _infos.getOutVariable(), _infos.getOptions())) {
+      // rearming has worked. all good
+      resetCursor(currentIndex);
+    } else {
+      // iterator does not support the condition
+      cursor->rearm(std::make_unique<EmptyIndexIterator>(iterator->collection(), _infos.getTrxPtr()));
+    }
   }
     
   return cursor;

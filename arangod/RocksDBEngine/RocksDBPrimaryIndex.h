@@ -57,6 +57,14 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
   ~RocksDBPrimaryIndexEqIterator();
 
   char const* typeName() const override { return "primary-index-eq-iterator"; }
+  
+  /// @brief index supports rearming
+  bool canRearm() const override { return true; }
+  
+  /// @brief rearm the index iterator
+  bool rearm(arangodb::aql::AstNode const* condition,
+             arangodb::aql::Variable const* variable,
+             IndexIteratorOptions const& opts) override;
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
@@ -145,6 +153,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
 class RocksDBPrimaryIndex final : public RocksDBIndex {
   friend class RocksDBPrimaryIndexEqIterator;
+  friend class RocksDBPrimaryIndexRangeIterator;
   friend class RocksDBPrimaryIndexInIterator;
   friend class RocksDBAllIndexIterator;
   friend class RocksDBAnyIndexIterator;

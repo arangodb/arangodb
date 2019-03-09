@@ -53,9 +53,16 @@ namespace arangodb {
 class Index;
 class LogicalCollection;
 
+namespace aql {
+struct AstNode;
+struct Variable;
+};
+
 namespace transaction {
 class Methods;
 }
+
+struct IndexIteratorOptions;
 
 /// @brief a base class to iterate over the index. An iterator is requested
 /// at the index itself
@@ -78,6 +85,18 @@ class IndexIterator {
 
   LogicalCollection* collection() const { return _collection; }
   transaction::Methods* transaction() const { return _trx; }
+
+  /// @brief whether or not the index iterator supports rearming
+  virtual bool canRearm() const { return false; }
+
+  /// @brief rearm the iterator with a new condition
+  /// requires that canRearm() is true!
+  /// if returns true it means that rearming has worked
+  /// if returns true it means that the iterator does not support
+  /// the provided condition and would only produce an empty result
+  virtual bool rearm(arangodb::aql::AstNode const* condition,
+                     arangodb::aql::Variable const* var,
+                     IndexIteratorOptions const& opts);
 
   virtual bool hasExtra() const {
     // The default index has no extra information

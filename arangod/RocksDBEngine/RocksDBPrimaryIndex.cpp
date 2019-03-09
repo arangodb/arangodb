@@ -200,6 +200,34 @@ RocksDBPrimaryIndexEqIterator::~RocksDBPrimaryIndexEqIterator() {
     _trx->transactionContextPtr()->returnBuilder(_key.release());
   }
 }
+  
+/// @brief rearm the index iterator
+bool RocksDBPrimaryIndexEqIterator::rearm(arangodb::aql::AstNode const* node,
+                                          arangodb::aql::Variable const* variable,
+                                          IndexIteratorOptions const& opts) {
+  auto comp = node->getMember(0);
+  // assume a.b == value
+  auto attrNode = comp->getMember(0);
+  auto valNode = comp->getMember(1);
+
+  if (attrNode->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // value == a.b  ->  flip the two sides
+    attrNode = comp->getMember(1);
+    valNode = comp->getMember(0);
+  }
+
+  TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+
+  // handle the sole element
+  _key->clear();
+  _index->handleValNode(_trx, _key.get(), valNode, !_allowCoveringIndexOptimization);
+
+  TRI_IF_FAILURE("PrimaryIndex::noIterator") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  return !_key->isEmpty();
+}
 
 bool RocksDBPrimaryIndexEqIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   if (limit == 0 || _done) {

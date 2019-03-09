@@ -68,42 +68,42 @@ class IndexExecutorInfos : public ExecutorInfos {
   IndexExecutorInfos(IndexExecutorInfos const&) = delete;
   ~IndexExecutorInfos() = default;
 
-  ExecutionEngine* getEngine() { return _engine; };
-  Collection const* getCollection() { return _collection; };
-  Variable const* getOutVariable() { return _outVariable; };
-  std::vector<std::string> const& getProjections() { return _projections; };
-  transaction::Methods* getTrxPtr() { return _trxPtr; };
+  ExecutionEngine* getEngine() { return _engine; }
+  Collection const* getCollection() { return _collection; }
+  Variable const* getOutVariable() { return _outVariable; }
+  std::vector<std::string> const& getProjections() { return _projections; }
+  transaction::Methods* getTrxPtr() { return _trxPtr; }
   std::vector<size_t> const& getCoveringIndexAttributePositions() {
     return _coveringIndexAttributePositions;
-  };
-  std::vector<std::vector<Variable const*>> getInVars() { return _inVars; };
-  std::vector<std::vector<RegisterId>> getInRegs() { return _inRegs; };
-  bool getProduceResult() { return _produceResult; };
-  bool getUseRawDocumentPointers() { return _useRawDocumentPointers; };
+  }
+  std::vector<std::vector<Variable const*>> getInVars() { return _inVars; }
+  std::vector<std::vector<RegisterId>> getInRegs() { return _inRegs; }
+  bool getProduceResult() { return _produceResult; }
+  bool getUseRawDocumentPointers() { return _useRawDocumentPointers; }
   std::vector<transaction::Methods::IndexHandle> const& getIndexes() {
     return _indexes;
-  };
-  AstNode const* getCondition() { return _condition; };
-  bool getV8Expression() { return _hasV8Expression; };
-  RegisterId getOutputRegisterId() { return _outputRegisterId; };
+  }
+  AstNode const* getCondition() { return _condition; }
+  bool getV8Expression() { return _hasV8Expression; }
+  RegisterId getOutputRegisterId() { return _outputRegisterId; }
   std::vector<std::unique_ptr<NonConstExpression>> const& getNonConstExpressions() {
     return _nonConstExpression;
-  };
-  bool hasMultipleExpansions() { return _hasMultipleExpansions; };
+  }
+  bool hasMultipleExpansions() { return _hasMultipleExpansions; }
 
   /// @brief whether or not all indexes are accessed in reverse order
   IndexIteratorOptions getOptions() const { return _options; }
-  bool isAscending() { return _options.ascending; };
+  bool isAscending() { return _options.ascending; }
 
-  Ast* getAst() { return _ast; };
+  Ast* getAst() { return _ast; }
 
   std::vector<Variable const*> const& getExpInVars() const {
     return _expInVars;
-  };
-  std::vector<RegisterId> const& getExpInRegs() const { return _expInRegs; };
+  }
+  std::vector<RegisterId> const& getExpInRegs() const { return _expInRegs; }
 
   // setter
-  void setHasMultipleExpansions(bool flag) { _hasMultipleExpansions = flag; };
+  void setHasMultipleExpansions(bool flag) { _hasMultipleExpansions = flag; }
 
  private:
   /// @brief _indexes holds all Indexes used in this block
