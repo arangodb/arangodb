@@ -180,9 +180,6 @@ bool RocksDBEdgeIndexLookupIterator::next(LocalDocumentIdCallback const& cb, siz
     // We have exhausted local memory.
     // Now fill it again:
     VPackSlice fromToSlice = _keysIterator.value();
-    if (fromToSlice.isObject()) {
-      fromToSlice = fromToSlice.get(StaticStrings::IndexEq);
-    }
     TRI_ASSERT(fromToSlice.isString());
     arangodb::velocypack::StringRef fromTo(fromToSlice);
 
@@ -399,9 +396,6 @@ bool RocksDBEdgeIndexLookupIterator::nextExtra(ExtraCallback const& cb, size_t l
     // We have exhausted local memory.
     // Now fill it again:
     VPackSlice fromToSlice = _keysIterator.value();
-    if (fromToSlice.isObject()) {
-      fromToSlice = fromToSlice.get(StaticStrings::IndexEq);
-    }
     TRI_ASSERT(fromToSlice.isString());
     arangodb::velocypack::StringRef fromTo(fromToSlice);
 
@@ -978,7 +972,7 @@ IndexIterator* RocksDBEdgeIndex::createEqIterator(transaction::Methods* trx,
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
   transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
-  keys->openArray();
+  keys->openArray(true);
 
   handleValNode(keys.get(), valNode);
   TRI_IF_FAILURE("EdgeIndex::noIterator") {
@@ -1021,11 +1015,8 @@ void RocksDBEdgeIndex::handleValNode(VPackBuilder* keys,
     return;
   }
 
-  keys->openObject();
-  keys->add(StaticStrings::IndexEq,
-            VPackValuePair(valNode->getStringValue(),
+  keys->add(VPackValuePair(valNode->getStringValue(),
                            valNode->getStringLength(), VPackValueType::String));
-  keys->close();
 
   TRI_IF_FAILURE("EdgeIndex::collectKeys") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
