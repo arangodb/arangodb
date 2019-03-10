@@ -101,36 +101,36 @@ bool TRI_StartThread(TRI_thread_t* thread, char const* name,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_JoinThread(TRI_thread_t* thread) {
+  TRI_JoinThreadWithTimeout(thread, INFINITE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief waits for a thread to finish within the specified timeout (in ms).
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_JoinThreadWithTimeout(TRI_thread_t* thread, int timeout) {
   TRI_ASSERT(thread != nullptr);
-  DWORD result = WaitForSingleObject(*thread, INFINITE);
+  DWORD result = WaitForSingleObject(*thread, timeout);
 
   switch (result) {
-    case WAIT_ABANDONED: {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "could not join thread --> WAIT_ABANDONED";
-      break;
-    }
-
     case WAIT_OBJECT_0: {
       // everything ok
-      break;
+      return TRI_ERROR_NO_ERROR;
     }
 
     case WAIT_TIMEOUT: {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
           << "could not join thread --> WAIT_TIMEOUT";
-      break;
+      return TRI_ERROR_FAILED;
     }
 
     case WAIT_FAILED: {
       result = GetLastError();
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
           << "could not join thread --> WAIT_FAILED - reason -->" << result;
-      break;
+      return TRI_ERROR_FAILED;
     }
   }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

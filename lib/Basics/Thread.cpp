@@ -197,8 +197,12 @@ void Thread::shutdown() {
       // we must ignore any errors here, but TRI_DetachThread will log them
       TRI_DetachThread(&_thread);
     } else {
-      // we must ignore any errors here, but TRI_JoinThread will log them
-      TRI_JoinThread(&_thread);
+      auto timeout = 5 * 60 * 1000; // wait max 5min for the thread to terminate
+      if (TRI_JoinThreadWithTimeout(&_thread, timeout) != TRI_ERROR_NO_ERROR) {
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << "cannot shutdown thread '" << _name << "', giving up";
+        FATAL_ERROR_ABORT();
+      }
     }
   }
   TRI_ASSERT(_refs.load() == 0);
