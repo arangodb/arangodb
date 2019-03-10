@@ -1402,7 +1402,7 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
 
     if (n < numExpectedArguments.first || n > numExpectedArguments.second) {
       // unexpected number of arguments. now check if the spread operator
-      // is used
+      // was used
       bool hasSpread = false;
 
       for (size_t i = 0; i < n; ++i) {
@@ -1414,11 +1414,9 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
       }
       if (!hasSpread) {
         // no spread operator used, so the number of function call arguments
-        // is known now - and wrong
-        std::string const fname(functionName, length);
-
+        // is known at compile time - and wrong. so we can directly bail out
         THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
-                                      fname.c_str(),
+                                      func->name.c_str(),
                                       static_cast<int>(numExpectedArguments.first),
                                       static_cast<int>(numExpectedArguments.second));
       }
