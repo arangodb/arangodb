@@ -220,7 +220,7 @@ function destructuringSuite () {
       assertEqual({ foo: "foo", bar: "bar", baz: "baz", sub1: 1, sub3: 3, meow: "meow" }, res[0]);
     },
     
-    testObjectDestructuringNonArraySource : function ()  {
+    testObjectDestructuringNonObjectSource : function ()  {
       [ 
         null,
         false,
