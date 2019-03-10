@@ -118,10 +118,10 @@ in the source object.
 
 Please note that object destructuring is only supported in the `LET` statement.
 
-#### Array spread operator
+#### Spread operator
 
-The new array spread operator `...` can be used to expand an input array and put in all
-the array's members as individual values instead.
+The new spread operator `...` can be used to expand an input array and substitute it with
+all the array's members as individual values instead.
 
 For example, in the query
 
@@ -142,6 +142,18 @@ is equivalent to
     
     LET values = ['the', 'quick', 'foxx', 'jumps', 'over', 'the', 'dog'] 
     RETURN CONCAT(values[0], values[1], values[2], values[3], values[4], values[5], values[6])
+
+The spread operator can also be used on input objects. In this case it will add all the
+attributes of the input object into the target object. 
+
+Consider the following example query:
+    
+    LET name = { first: "John", middle: "J", last: "Doe" }
+    RETURN { id: "1234", age: 39, ...obj, active: true }
+
+The above query will return the merge object, which will be
+
+    { id: "1234", age: 39, first: "John", middle: "J", last: "Doe", active: true }
 
 #### Usability syntax improvements
 
