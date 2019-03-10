@@ -59,7 +59,12 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the expression
 Expression::Expression(ExecutionPlan* plan, Ast* ast, AstNode* node)
-    : _plan(plan), _ast(ast), _node(node), _type(UNPROCESSED), _expressionContext(nullptr) {
+    : _plan(plan), 
+      _ast(ast), 
+      _node(node), 
+      _type(UNPROCESSED), 
+      _validateFunctionCallArguments(false),
+      _expressionContext(nullptr) {
   _ast->query()->unPrepareV8Context();
   TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_node != nullptr);
@@ -838,6 +843,7 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(AstNode const* node,
     }
   };
 
+  bool foundSpread = false;
   size_t const n = member->numMembers();
 
   FunctionParameters params(n);
@@ -850,6 +856,7 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(AstNode const* node,
       params.destroyParameters.push_back(1);
     } else if (arg->type == NODE_TYPE_SPREAD) {
       // resolve spread
+      foundSpread = true;
       bool localMustDestroy;
       AqlValue a = executeSimpleExpression(arg->getMember(0), trx, localMustDestroy, false);
       AqlValueGuard guard(a, localMustDestroy);
@@ -872,7 +879,21 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(AstNode const* node,
   }
 
   TRI_ASSERT(params.parameters.size() == params.destroyParameters.size());
-  TRI_ASSERT(params.parameters.size() == n);
+   
+  if (foundSpread || _validateFunctionCallArguments) {
+    // have found a spread operator or must validate the number of function
+    // call arguments for another reason.
+    auto numExpectedArguments = func->numArguments();
+
+    if (params.parameters.size() < numExpectedArguments.first || 
+        params.parameters.size() > numExpectedArguments.second) {
+      // invalid number of function call arguments
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+                                    func->name.c_str(),
+                                    static_cast<int>(numExpectedArguments.first),
+                                    static_cast<int>(numExpectedArguments.second));
+    }
+  }
 
   AqlValue a = func->implementation(_expressionContext, trx, params.parameters);
   mustDestroy = true;  // function result is always dynamic

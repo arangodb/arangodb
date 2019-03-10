@@ -82,6 +82,8 @@ class Expression {
     }
   }
 
+  void enableFunctionCallArgumentsValidation() { _validateFunctionCallArguments = true; }
+
   /// @brief get the underlying AST
   Ast* ast() const noexcept { return _ast; }
 
@@ -352,6 +354,9 @@ class Expression {
 
   /// @brief type of expression
   ExpressionType _type;
+
+  /// @brief whether or not function call arguments need validation
+  bool _validateFunctionCallArguments;
 
   /// @brief variables only temporarily valid during execution
   std::unordered_map<Variable const*, arangodb::velocypack::Slice> _variables;

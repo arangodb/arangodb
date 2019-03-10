@@ -1401,12 +1401,27 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
     auto numExpectedArguments = func->numArguments();
 
     if (n < numExpectedArguments.first || n > numExpectedArguments.second) {
-      std::string const fname(functionName, length);
+      // unexpected number of arguments. now check if the spread operator
+      // is used
+      bool hasSpread = false;
 
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
-                                    fname.c_str(),
-                                    static_cast<int>(numExpectedArguments.first),
-                                    static_cast<int>(numExpectedArguments.second));
+      for (size_t i = 0; i < n; ++i) {
+        if (arguments->getMemberUnchecked(i)->type == NODE_TYPE_SPREAD) {
+          // found spread operator
+          hasSpread = true;
+          break;
+        }
+      }
+      if (!hasSpread) {
+        // no spread operator used, so the number of function call arguments
+        // is known now - and wrong
+        std::string const fname(functionName, length);
+
+        THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+                                      fname.c_str(),
+                                      static_cast<int>(numExpectedArguments.first),
+                                      static_cast<int>(numExpectedArguments.second));
+      }
     }
 
     if (!func->hasFlag(Function::Flags::CanRunOnDBServer)) {
@@ -1891,7 +1906,7 @@ void Ast::validateAndOptimize() {
     if (node == nullptr) {
       return nullptr;
     }
-
+  
     auto ctx = &context;
 
     // unary operators
@@ -3238,6 +3253,10 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
   }
 
   Expression exp(nullptr, this, node);
+  // turn on function call arguments validation here, as the function
+  // call arguments may have come from resolving spread operators...
+  exp.enableFunctionCallArgumentsValidation();
+
   FixedVarExpressionContext context(_query);
   bool mustDestroy;
 
