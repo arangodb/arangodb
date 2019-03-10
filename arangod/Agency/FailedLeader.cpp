@@ -320,6 +320,12 @@ bool FailedLeader::start(bool& aborts) {
 
   trans_ret_t res = generalTransaction(_agent, pending);
 
+  if (!res.accepted) {
+    LOG_TOPIC(INFO, Logger::SUPERVISION)
+      << "Agency transaction not successful";
+    return false;
+  }
+
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "FailedLeader result: " << res.result->toJson();
 
