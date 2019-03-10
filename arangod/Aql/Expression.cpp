@@ -580,6 +580,7 @@ AqlValue Expression::executeSimpleExpressionArray(AstNode const* node,
     bool localMustDestroy = false;
     if (member->type == NODE_TYPE_SPREAD) {
       AqlValue result = executeSimpleExpression(member->getMember(0), trx, localMustDestroy, false);
+      AqlValueGuard guard(result, localMustDestroy);
       if (result.isArray()) {
         size_t subLength = result.length();
         for (size_t sub = 0; sub < subLength; ++sub) {
