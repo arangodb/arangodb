@@ -21,7 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "composite_reader_impl.hpp"
 #include "search/bitset_doc_iterator.hpp"
 #include "store/store_utils.hpp"
 #include "utils/string_utils.hpp"

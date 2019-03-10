@@ -23,16 +23,12 @@
 
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
-#include "store/memory_directory.hpp"
-#include "formats/formats_10.hpp"
-#include "store/fs_directory.hpp"
 #include "search/column_existence_filter.hpp"
 #include "search/sort.hpp"
 
-NS_BEGIN(tests)
+NS_LOCAL
 
-class column_existence_filter_test_case
-    : public filter_test_case_base {
+class column_existence_filter_test_case : public tests::filter_test_case_base {
  protected:
   void simple_sequential_exact_match() {
     // add segment
@@ -491,15 +487,19 @@ class column_existence_filter_test_case
       filter.field(column_name);
 
       irs::order order;
-      size_t collector_collect_count = 0;
+      size_t collector_collect_field_count = 0;
+      size_t collector_collect_term_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
-      auto& sort = order.add<sort::custom_sort>(false);
+      auto& sort = order.add<tests::sort::custom_sort>(false);
 
-      sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
-        ++collector_collect_count;
+      sort.collector_collect_field = [&collector_collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void {
+        ++collector_collect_field_count;
       };
-      sort.collector_finish = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&)->void {
+      sort.collector_collect_term = [&collector_collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
+        ++collector_collect_term_count;
+      };
+      sort.collectors_collect_ = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++collector_finish_count;
       };
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
@@ -544,7 +544,8 @@ class column_existence_filter_test_case
       ASSERT_EQ(segment.docs_count(), docs_count);
       ASSERT_EQ(segment.live_docs_count(), docs_count);
 
-      ASSERT_EQ(0, collector_collect_count); // should not be executed
+      ASSERT_EQ(0, collector_collect_field_count); // should not be executed (field statistics not applicable to columnstore) FIXME TODO discuss
+      ASSERT_EQ(0, collector_collect_term_count); // should not be executed
       ASSERT_EQ(1, collector_finish_count);
       ASSERT_EQ(32, scorer_score_count);
 
@@ -567,15 +568,19 @@ class column_existence_filter_test_case
       filter.field(column_name);
 
       irs::order order;
-      size_t collector_collect_count = 0;
+      size_t collector_collect_field_count = 0;
+      size_t collector_collect_term_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
-      auto& sort = order.add<sort::custom_sort>(false);
+      auto& sort = order.add<tests::sort::custom_sort>(false);
 
-      sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
-        ++collector_collect_count;
+      sort.collector_collect_field = [&collector_collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void {
+        ++collector_collect_field_count;
       };
-      sort.collector_finish = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&)->void {
+      sort.collector_collect_term = [&collector_collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
+        ++collector_collect_term_count;
+      };
+      sort.collectors_collect_ = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++collector_finish_count;
       };
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
@@ -620,7 +625,8 @@ class column_existence_filter_test_case
       ASSERT_EQ(segment.docs_count(), docs_count);
       ASSERT_EQ(segment.live_docs_count(), docs_count);
 
-      ASSERT_EQ(0, collector_collect_count); // should not be executed
+      ASSERT_EQ(0, collector_collect_field_count); // should not be executed (field statistics not applicable to columnstore) FIXME TODO discuss
+      ASSERT_EQ(0, collector_collect_term_count); // should not be executed
       ASSERT_EQ(1, collector_finish_count);
       ASSERT_EQ(32, scorer_score_count);
 
@@ -644,15 +650,19 @@ class column_existence_filter_test_case
       filter.field(column_name);
 
       irs::order order;
-      size_t collector_collect_count = 0;
+      size_t collector_collect_field_count = 0;
+      size_t collector_collect_term_count = 0;
       size_t collector_finish_count = 0;
       size_t scorer_score_count = 0;
-      auto& sort = order.add<sort::custom_sort>(false);
+      auto& sort = order.add<tests::sort::custom_sort>(false);
 
-      sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
-        ++collector_collect_count;
+      sort.collector_collect_field = [&collector_collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void {
+        ++collector_collect_field_count;
       };
-      sort.collector_finish = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&)->void {
+      sort.collector_collect_term = [&collector_collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
+        ++collector_collect_term_count;
+      };
+      sort.collectors_collect_ = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++collector_finish_count;
       };
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
@@ -697,7 +707,8 @@ class column_existence_filter_test_case
       ASSERT_EQ(segment.docs_count(), docs_count);
       ASSERT_EQ(segment.live_docs_count(), docs_count);
 
-      ASSERT_EQ(0, collector_collect_count); // should not be executed
+      ASSERT_EQ(0, collector_collect_field_count); // should not be executed (field statistics not applicable to columnstore) FIXME TODO discuss
+      ASSERT_EQ(0, collector_collect_term_count); // should not be executed
       ASSERT_EQ(1, collector_finish_count);
       ASSERT_EQ(32 * 2, scorer_score_count); // 2 columns matched
 
@@ -713,7 +724,11 @@ class column_existence_filter_test_case
   }
 }; // column_existence_filter_test_case
 
-NS_END
+TEST_P(column_existence_filter_test_case, exact_prefix_match) {
+  simple_sequential_exact_match();
+  simple_sequential_prefix_match();
+  simple_sequential_order();
+}
 
 TEST(by_column_existence, ctor) {
   irs::by_column_existence filter;
@@ -762,52 +777,21 @@ TEST(by_column_existence, equal) {
   }
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                           memory_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
+INSTANTIATE_TEST_CASE_P(
+  column_existence_filter_test,
+  column_existence_filter_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_0")
+  ),
+  tests::to_string
+);
 
-class memory_column_existence_filter_test_case
-    : public tests::column_existence_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    return new irs::memory_directory();
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-};
-
-TEST_F(memory_column_existence_filter_test_case, exact_prefix_match) {
-  simple_sequential_exact_match();
-  simple_sequential_prefix_match();
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                               fs_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
-
-class fs_column_existence_test_case
-    : public tests::column_existence_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    auto dir = test_dir();
-
-    dir /= "index";
-
-    return new irs::fs_directory(dir.utf8());
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-};
-
-TEST_F(fs_column_existence_test_case, exact_prefix_match) {
-  simple_sequential_exact_match();
-  simple_sequential_prefix_match();
-  simple_sequential_order();
-}
+NS_END
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

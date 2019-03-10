@@ -103,6 +103,8 @@ class TransactionState {
   inline bool isRunning() const {
     return _status == transaction::Status::RUNNING;
   }
+  void setRegistered() noexcept { _registeredTransaction = true; }
+  bool wasRegistered() const noexcept { return _registeredTransaction; }
 
   int increaseNesting() { return ++_nestingLevel; }
   int decreaseNesting() {
@@ -245,6 +247,7 @@ class TransactionState {
 
   transaction::Hints _hints;  // hints;
   int _nestingLevel;
+  bool _registeredTransaction;
 
   transaction::Options _options;
 

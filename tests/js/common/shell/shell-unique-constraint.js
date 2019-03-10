@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, fail */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the unique constraint
@@ -97,17 +97,22 @@ function UniqueConstraintSuite() {
 
       assertNotEqual(0, id);
       assertEqual("hash", idx.type);
-      assertEqual(true, idx.unique);
+      assertTrue(idx.unique);
       assertEqual(["a","b"].sort(), idx.fields.sort());
-      assertEqual(true, idx.isNewlyCreated);
+      assertTrue(idx.isNewlyCreated);
 
       idx = collection.ensureUniqueConstraint("b", "a");
 
-      assertEqual(id, idx.id);
       assertEqual("hash", idx.type);
-      assertEqual(true, idx.unique);
+      assertTrue(idx.unique);
       assertEqual(["a","b"].sort(), idx.fields.sort());
-      assertEqual(false, idx.isNewlyCreated);
+      if (internal.db._engine().name === 'mmfiles') {
+        assertEqual(id, idx.id);
+        assertFalse(idx.isNewlyCreated);
+      } else {
+        assertNotEqual(id, idx.id);
+        assertTrue(idx.isNewlyCreated);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

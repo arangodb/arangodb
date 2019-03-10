@@ -107,10 +107,15 @@ struct IResearchMMFilesLink::IndexFactory : public arangodb::IndexTypeFactory {
     return arangodb::Result();
   }
 
-  virtual arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                                     arangodb::velocypack::Slice definition,
-                                     bool isCreation) const override {
-    return IResearchLinkHelper::normalize(normalized, definition, isCreation);
+  virtual arangodb::Result normalize( // normalize definition
+      arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
+      arangodb::velocypack::Slice definition, // source definition
+      bool isCreation, // definition for index creation
+      TRI_vocbase_t const& vocbase // index vocbase
+  ) const override {
+    return IResearchLinkHelper::normalize( // normalize
+      normalized, definition, isCreation, vocbase // args
+    );
   }
 };
 
@@ -165,7 +170,7 @@ bool IResearchMMFilesLink::isPersistent() const {
   auto* engine = arangodb::EngineSelectorFeature::ENGINE;
 
   // FIXME TODO remove once MMFilesEngine will fillIndex(...) during recovery
-  // currently the index is created but fill is deffered untill the end of
+  // currently the index is created but fill is deferred until the end of
   // recovery at the end of recovery only non-persistent indexes are filled
   if (engine && engine->inRecovery()) {
     return false;
@@ -178,5 +183,5 @@ bool IResearchMMFilesLink::isPersistent() const {
 }  // namespace arangodb
 
 // -----------------------------------------------------------------------------
-// --SECTION-- END-OF-FILE
+// --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

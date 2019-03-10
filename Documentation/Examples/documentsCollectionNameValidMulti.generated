@@ -3,11 +3,11 @@ arangosh&gt; db.example.document([<span class="hljs-string">"2873916"</span>,<sp
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2873916"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/2873916"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq56g6--_"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YOn1fba--_"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"2873917"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/2873917"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq56h---_"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YOn1fba--B"</span> 
   } 
 ]

@@ -74,8 +74,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
     std::vector<std::string> const& edgeCollections, VPackSlice const& params) {
   if (nullptr == Instance) {
     return std::make_pair(Result{TRI_ERROR_INTERNAL,
-                                 "pregel system not yet ready"},
-                          0);
+                                 "pregel system not ready"}, 0);
   }
   ServerState* ss = ServerState::instance();
 
@@ -225,10 +224,9 @@ void PregelFeature::start() {
   }
 }
 
-void PregelFeature::beginShutdown() {
-  cleanupAll();
-  Instance = nullptr;
-}
+void PregelFeature::beginShutdown() { cleanupAll(); }
+
+void PregelFeature::stop() { Instance = nullptr; }
 
 void PregelFeature::addConductor(std::unique_ptr<Conductor>&& c, uint64_t executionNumber) {
   MUTEX_LOCKER(guard, _mutex);

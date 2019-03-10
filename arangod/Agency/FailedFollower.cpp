@@ -78,7 +78,7 @@ FailedFollower::FailedFollower(Node const& snapshot, AgentInterface* agent,
 
 FailedFollower::~FailedFollower() {}
 
-void FailedFollower::run() { runHelper("", _shard); }
+void FailedFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 
 bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   using namespace std::chrono;
@@ -87,33 +87,40 @@ bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
 
   _created = system_clock::now();
 
-  _jb = std::make_shared<Builder>();
-  {
-    VPackArrayBuilder transaction(_jb.get());
-    {
-      VPackObjectBuilder operations(_jb.get());
-      // Todo entry
-      _jb->add(VPackValue(toDoPrefix + _jobId));
-      {
-        VPackObjectBuilder todo(_jb.get());
-        _jb->add("creator", VPackValue(_creator));
-        _jb->add("type", VPackValue("failedFollower"));
-        _jb->add("database", VPackValue(_database));
-        _jb->add("collection", VPackValue(_collection));
-        _jb->add("shard", VPackValue(_shard));
-        _jb->add("fromServer", VPackValue(_from));
-        _jb->add("jobId", VPackValue(_jobId));
-        _jb->add("timeCreated", VPackValue(timepointToString(_created)));
-      }
-    }
+  if (envelope == nullptr) {
+    _jb = std::make_shared<Builder>();
+    _jb->openArray();
+    _jb->openObject();
+  } else {
+    _jb = envelope;
   }
 
-  write_ret_t res = singleWriteTransaction(_agent, *_jb);
+  // Todo entry
+  _jb->add(VPackValue(toDoPrefix + _jobId));
+  {
+    VPackObjectBuilder todo(_jb.get());
+    _jb->add("creator", VPackValue(_creator));
+    _jb->add("type", VPackValue("failedFollower"));
+    _jb->add("database", VPackValue(_database));
+    _jb->add("collection", VPackValue(_collection));
+    _jb->add("shard", VPackValue(_shard));
+    _jb->add("fromServer", VPackValue(_from));
+    _jb->add("jobId", VPackValue(_jobId));
+    _jb->add("timeCreated", VPackValue(timepointToString(_created)));
+  }
 
-  return (res.accepted && res.indices.size() == 1 && res.indices[0]);
+  if (envelope == nullptr) {
+    _jb->close(); // object
+    _jb->close(); // array
+    write_ret_t res = singleWriteTransaction(_agent, *_jb);
+    return (res.accepted && res.indices.size() == 1 && res.indices[0]);
+  }
+
+  return true;
+
 }
 
-bool FailedFollower::start() {
+bool FailedFollower::start(bool& aborts) {
   using namespace std::chrono;
 
   std::vector<std::string> existing =
@@ -134,15 +141,33 @@ bool FailedFollower::start() {
   // Planned servers vector
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  auto plannedPair = _snapshot.hasAsSlice(planPath);  // if missing, what?
+  auto plannedPair = _snapshot.hasAsSlice(planPath);
   Slice const& planned = plannedPair.first;
   if (!plannedPair.second) {
-    // not clear what servers should or should not get failover ... retry later
+    finish("", _shard, true,
+        "Plan entry for collection " + _collection + " gone");
+    return false;
+  }
+
+  // Now check if _server is still in this plan, note that it could have
+  // been removed by RemoveFollower already, in which case we simply stop:
+  bool found = false;
+  if (planned.isArray()) {
+    for (auto const& s : VPackArrayIterator(planned)) {
+      if (s.isString() && _from == s.copyString()) {
+        found = true;
+        break;
+      }
+    }
+  }
+  if (!found) {
+    finish("", _shard, true, "Server no longer found in Plan for collection " +
+        _collection + ", our job is done.");
     return false;
   }
 
   // Get proper replacement
-  _to = randomIdleGoodAvailableServer(_snapshot, planned);
+  _to = randomIdleAvailableServer(_snapshot, planned);
   if (_to.empty()) {
     // retry later
     return false;
@@ -247,9 +272,11 @@ bool FailedFollower::start() {
     if (jobId.second && !abortable(_snapshot, jobId.first)) {
       return false;
     } else if (jobId.second) {
+      aborts = true;
       JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+      return false;
     }
-  }  // if
+  } 
 
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "FailedFollower start transaction: " << job.toJson();

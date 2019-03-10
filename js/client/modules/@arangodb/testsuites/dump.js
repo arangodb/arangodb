@@ -2,34 +2,36 @@
 /* global print */
 'use strict';
 
-// //////////////////////////////////////////////////////////////////////////////
-// / DISCLAIMER
-// /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
-// /
-// / Licensed under the Apache License, Version 2.0 (the "License")
-// / you may not use this file except in compliance with the License.
-// / You may obtain a copy of the License at
-// /
-// /     http://www.apache.org/licenses/LICENSE-2.0
-// /
-// / Unless required by applicable law or agreed to in writing, software
-// / distributed under the License is distributed on an "AS IS" BASIS,
-// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// / See the License for the specific language governing permissions and
-// / limitations under the License.
-// /
-// / Copyright holder is ArangoDB GmbH, Cologne, Germany
-// /
-// / @author Max Neunhoeffer
+// /////////////////////////////////////////////////////////////////////////////
+// DISCLAIMER
+// 
+// Copyright 2016-2019 ArangoDB GmbH, Cologne, Germany
+// Copyright 2014 triagens GmbH, Cologne, Germany
+// 
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//      http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// 
+// Copyright holder is ArangoDB GmbH, Cologne, Germany
+// 
+// @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
   'dump': 'dump tests',
+  'dump_authentication': 'dump tests with authentication',
   'dump_encrypted': 'encrypted dump tests',
-  'dump_authentication': 'dump tests with authentication'
+  'dump_maskings': 'masked dump tests'
 };
+
 const optionsDocumentation = [
   '   - `skipEncrypted` : if set to true the encryption tests are skipped'
 ];
@@ -48,16 +50,18 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 
 const testPaths = {
   'dump': [tu.pathForTesting('server/dump')],
+  'dump_authentication': [tu.pathForTesting('server/dump')],
   'dump_encrypted': [tu.pathForTesting('server/dump')],
-  'dump_authentication': [tu.pathForTesting('server/dump')]
+  'dump_maskings': [tu.pathForTesting('server/dump')]
 };
 
 class DumpRestoreHelper {
-  constructor(instanceInfo, options, clientAuth, dumpOptions, which, afterServerStart) {
+  constructor(instanceInfo, options, clientAuth, dumpOptions, restoreOptions, which, afterServerStart) {
     this.instanceInfo = instanceInfo;
     this.options = options;
     this.clientAuth = clientAuth;
     this.dumpOptions = dumpOptions;
+    this.restoreOptions = restoreOptions;
     this.which = which;
     this.fn = afterServerStart(instanceInfo);
     this.results = {failed: 1};
@@ -66,11 +70,15 @@ class DumpRestoreHelper {
     this.dumpConfig.setOutputDirectory('dump');
     this.dumpConfig.setIncludeSystem(true);
 
-    this.restoreConfig = pu.createBaseConfig('restore', this.dumpOptions, this.instanceInfo);
+    if (dumpOptions.hasOwnProperty("maskings")) {
+       this.dumpConfig.setMaskings(dumpOptions.maskings);
+    }
+
+    this.restoreConfig = pu.createBaseConfig('restore', this.restoreOptions, this.instanceInfo);
     this.restoreConfig.setInputDirectory('dump', true);
     this.restoreConfig.setIncludeSystem(true);
 
-    this.restoreOldConfig = pu.createBaseConfig('restore', this.dumpOptions, this.instanceInfo);
+    this.restoreOldConfig = pu.createBaseConfig('restore', this.restoreOptions, this.instanceInfo);
     this.restoreOldConfig.setInputDirectory('dump', true);
     this.restoreOldConfig.setIncludeSystem(true);
     this.restoreOldConfig.setDatabase('_system');
@@ -81,8 +89,8 @@ class DumpRestoreHelper {
       this.restoreOldConfig.activateEncryption();
     }
 
-    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.dumpOptions, this.instanceInfo.rootDir);
-    this.arangorestoreOld = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreOldConfig, this.dumpOptions, this.instanceInfo.rootDir);
+    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceInfo.rootDir);
+    this.arangorestoreOld = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreOldConfig, this.restoreOptions, this.instanceInfo.rootDir);
     this.arangodump = pu.run.arangoDumpRestoreWithConfig.bind(this, this.dumpConfig, this.dumpOptions, this.instanceInfo.rootDir);
   }
 
@@ -225,10 +233,7 @@ function getClusterStrings(options)
   }
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: dump
-// //////////////////////////////////////////////////////////////////////////////
-function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, which, tstFiles, afterServerStart) {
+function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart) {
   print(CYAN + which + ' tests...' + RESET);
 
   let instanceInfo = pu.startInstance('tcp', options, serverAuthInfo, which);
@@ -243,7 +248,7 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, which, 
     };
     return rc;
   }
-  const helper = new DumpRestoreHelper(instanceInfo, options, clientAuth, dumpOptions, which, afterServerStart);
+  const helper = new DumpRestoreHelper(instanceInfo, options, clientAuth, dumpOptions, restoreOptions, which, afterServerStart);
  
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
   const testFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpAgain));
@@ -267,20 +272,20 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, which, 
     }
   }
 
-  const foxxTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.foxxTest));
-  if (!helper.restoreFoxxComplete('UnitTestsDumpFoxxComplete') ||
-      !helper.testFoxxComplete(foxxTestFile, 'UnitTestsDumpFoxxComplete') ||
-      !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxAppsBundle') ||
-      !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
-      !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxBundleApps') ||
-      !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
-    return helper.extractResults();
+  if (tstFiles.hasOwnProperty("foxxTest")) {
+    const foxxTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.foxxTest));
+    if (!helper.restoreFoxxComplete('UnitTestsDumpFoxxComplete') ||
+        !helper.testFoxxComplete(foxxTestFile, 'UnitTestsDumpFoxxComplete') ||
+        !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxAppsBundle') ||
+        !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
+        !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxBundleApps') ||
+        !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
+      return helper.extractResults();
+    }
   }
 
   return helper.extractResults();
 }
-
-// /////////////////////////////////////////////////////////////////////////////
 
 function dump (options) {
   let c = getClusterStrings(options);
@@ -292,7 +297,7 @@ function dump (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(options, {}, {}, options, 'dump', tstFiles, function(){});
+  return dump_backend(options, {}, {}, options, options, 'dump', tstFiles, function(){});
 }
 
 function dumpAuthentication (options) {
@@ -332,7 +337,7 @@ function dumpAuthentication (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(options, serverAuthInfo, clientAuth, dumpAuthOpts, 'dump_authentication', tstFiles, function(){});
+  return dump_backend(options, serverAuthInfo, clientAuth, dumpAuthOpts, dumpAuthOpts, 'dump_authentication', tstFiles, function(){});
 }
 
 function dumpEncrypted (options) {
@@ -373,20 +378,57 @@ function dumpEncrypted (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(options, {}, {}, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart);
+  return dump_backend(options, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart);
 }
 
-// /////////////////////////////////////////////////////////////////////////////
+function dumpMaskings (options) {
+  // test is only meaningful in the enterprise version
+  let skip = true;
+  if (global.ARANGODB_CLIENT_VERSION) {
+    let version = global.ARANGODB_CLIENT_VERSION(true);
+    if (version.hasOwnProperty('enterprise-version')) {
+      skip = false;
+    }
+  }
+
+  if (skip) {
+    print('skipping dump_maskings test');
+    return {
+      dump_maskings: {
+        status: true,
+        skipped: true
+      }
+    };
+  }
+
+  let tstFiles = {
+    dumpSetup: 'dump-maskings-setup.js',
+    dumpAgain: 'dump-maskings.js',
+    dumpTearDown: 'dump-teardown.js'
+  };
+
+  let dumpMaskingsOpts = {
+    maskings: 'maskings1.json'
+  };
+
+  _.defaults(dumpMaskingsOpts, options);
+
+  return dump_backend(options, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){});
+}
+
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['dump'] = dump;
   defaultFns.push('dump');
 
+  testFns['dump_authentication'] = dumpAuthentication;
+  defaultFns.push('dump_authentication');
+
   testFns['dump_encrypted'] = dumpEncrypted;
   defaultFns.push('dump_encrypted');
 
-  testFns['dump_authentication'] = dumpAuthentication;
-  defaultFns.push('dump_authentication');
+  testFns['dump_maskings'] = dumpMaskings;
+  defaultFns.push('dump_maskings');
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }

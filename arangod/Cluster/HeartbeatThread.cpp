@@ -42,10 +42,10 @@
 #include "Logger/Logger.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Recovery.h"
-#include "Replication/GlobalInitialSyncer.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/TtlFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -206,10 +206,10 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
 /// @brief destroys a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 HeartbeatThread::~HeartbeatThread() {
+  shutdown();
   if (_maintenanceThread) {
     _maintenanceThread->stop();
   }
-  shutdown();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -252,9 +252,7 @@ void HeartbeatThread::run() {
   } else if (ServerState::instance()->isSingleServer(role)) {
     if (ReplicationFeature::INSTANCE->isActiveFailoverEnabled()) {
       runSingleServer();
-    } else {
-      // runSimpleServer();  // for later when CriticalThreads identified
-    }  // else
+    }
   } else if (ServerState::instance()->isAgent(role)) {
     runSimpleServer();
   } else {
@@ -513,6 +511,10 @@ void HeartbeatThread::runSingleServer() {
   GlobalReplicationApplier* applier = replication->globalReplicationApplier();
   ClusterInfo* ci = ClusterInfo::instance();
   TRI_ASSERT(applier != nullptr && ci != nullptr);
+      
+  TtlFeature* ttlFeature =
+      application_features::ApplicationServer::getFeature<TtlFeature>("Ttl");
+  TRI_ASSERT(ttlFeature != nullptr);
 
   std::string const leaderPath = "Plan/AsyncReplication/Leader";
   std::string const transientPath = "AsyncReplication/" + _myId;
@@ -607,7 +609,7 @@ void HeartbeatThread::runSingleServer() {
       if (!leader.isString() || leader.getStringLength() == 0) {
         // Case 1: No leader in agency. Race for leadership
         // ONLY happens on the first startup. Supervision performs failovers
-        LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Leadership vaccuum detected, "
+        LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Leadership vacuum detected, "
                                            << "attempting a takeover";
 
         // if we stay a slave, the redirect will be turned on again
@@ -657,7 +659,7 @@ void HeartbeatThread::runSingleServer() {
           applier->stopAndJoin();
         }
         lastTick = EngineSelectorFeature::ENGINE->currentTick();
-
+        
         // put the leader in optional read-only mode
         auto readOnlySlice = response.get(
             std::vector<std::string>({AgencyCommManager::path(), "Readonly"}));
@@ -671,13 +673,19 @@ void HeartbeatThread::runSingleServer() {
               << "Successful leadership takeover: "
               << "All your base are belong to us";
         }
+        
+        // server is now responsible for expiring outdated documents
+        ttlFeature->allowRunning(true);
         continue;  // nothing more to do
       }
 
       // Case 3: Current server is follower, should not get here otherwise
       std::string const leaderStr = leader.copyString();
       TRI_ASSERT(!leaderStr.empty());
-      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Following: " << leader;
+      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Following: " << leaderStr;
+        
+      // server is not responsible anymore for expiring outdated documents
+      ttlFeature->allowRunning(false);
 
       ServerState::instance()->setFoxxmaster(leaderStr);  // leader is foxxmater
       ServerState::instance()->setReadOnly(true);  // Disable writes with dirty-read header
@@ -697,7 +705,7 @@ void HeartbeatThread::runSingleServer() {
         // follower. We wait for all ongoing ops to stop, and make sure nothing
         // is committed
         LOG_TOPIC(INFO, Logger::HEARTBEAT)
-            << "Detected leader to follower switch";
+            << "Detected leader to follower switch, now following " << leaderStr;
         TRI_ASSERT(!applier->isActive());
         applier->forget();  // make sure applier is doing a resync
 
@@ -733,6 +741,7 @@ void HeartbeatThread::runSingleServer() {
         config._requireFromPresent = true;
         config._incremental = true;
         TRI_ASSERT(!config._skipCreateDrop);
+        config._includeFoxxQueues = true; // sync _queues and _jobs
 
         applier->forget();  // forget about any existing configuration
         applier->reconfigure(config);

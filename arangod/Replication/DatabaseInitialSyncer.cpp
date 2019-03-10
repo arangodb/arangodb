@@ -49,7 +49,6 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -144,6 +143,11 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
         << "client: getting master state to dump " << vocbase().name();
     Result r;
+    
+    r = sendFlush();
+    if (r.fail()) {
+      return r;
+    }
 
     if (!_config.isChild()) {
       r = _config.master.getState(_config.connection, _config.isChild());
@@ -168,10 +172,6 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
       }
     }
 
-    r = sendFlush();
-    if (r.fail()) {
-      return r;
-    }
 
     if (!_config.isChild()) {
       // create a WAL logfile barrier that prevents WAL logfile collection
@@ -394,6 +394,10 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
       response->getHeaderField(StaticStrings::ContentTypeHeader, found);
   if (found && (cType == StaticStrings::MimeTypeVPack)) {
     VPackOptions options;
+    options.validateUtf8Strings = true;
+    options.disallowExternals = true;
+    options.disallowCustom = true;
+    options.checkAttributeUniqueness = true;
     options.unsupportedTypeBehavior = VPackOptions::FailOnUnsupportedType;
     VPackValidator validator(&options);
 
@@ -1122,10 +1126,9 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
         if (col != nullptr) {
           bool truncate = false;
 
-          if (col->name() == TRI_COL_NAME_USERS) {
-            // better not throw away the _users collection. otherwise it is gone
-            // and this may be a problem if the
-            // server crashes in-between.
+          if (col->system()) {
+            // better not throw away system collections. otherwise they may be dropped
+            // and this can be a problem if the server crashes before they are recreated.
             truncate = true;
           }
 
@@ -1231,8 +1234,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
     std::string const& masterColl = !masterUuid.empty() ? masterUuid : itoa(masterCid);
     auto res = incremental && getSize(*col) > 0
-                   ? fetchCollectionSync(col, masterColl, _config.master.lastUncommittedLogTick)
-                   : fetchCollectionDump(col, masterColl, _config.master.lastUncommittedLogTick);
+                   ? fetchCollectionSync(col, masterColl, _config.master.lastLogTick)
+                   : fetchCollectionDump(col, masterColl, _config.master.lastLogTick);
 
     if (!res.ok()) {
       return res;
@@ -1307,6 +1310,9 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
   if (_config.applier._includeSystem) {
     url += "&includeSystem=true";
   }
+  if (_config.applier._includeFoxxQueues) {
+    url += "&includeFoxxQueues=true";
+  }
 
   // send request
   _config.progress.set("fetching master inventory from " + url);
@@ -1380,7 +1386,8 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
                     "collection name is missing in response");
     }
 
-    if (TRI_ExcludeCollectionReplication(masterName, _config.applier._includeSystem)) {
+    if (TRI_ExcludeCollectionReplication(masterName, _config.applier._includeSystem,
+                                         _config.applier._includeFoxxQueues)) {
       continue;
     }
 

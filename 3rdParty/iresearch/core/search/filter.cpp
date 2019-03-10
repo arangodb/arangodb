@@ -54,8 +54,6 @@ filter::filter(const type_id& type) NOEXCEPT
   : boost_(boost::no_boost()), type_(&type) {
 }
 
-filter::~filter() {}
-
 filter::prepared::ptr filter::prepared::empty() {
   // aliasing ctor
   return filter::prepared::ptr(
@@ -67,14 +65,12 @@ filter::prepared::prepared(attribute_store&& attrs) NOEXCEPT
   : attrs_(std::move(attrs)) {
 }
 
-filter::prepared::~prepared() {}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             empty
 // -----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(irs::empty);
-DEFINE_FACTORY_DEFAULT(irs::empty);
+DEFINE_FILTER_TYPE(irs::empty)
+DEFINE_FACTORY_DEFAULT(irs::empty)
 
 empty::empty(): filter(empty::type()) {
 }

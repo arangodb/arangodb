@@ -113,6 +113,9 @@ ExecutionBlockMock::getSome(size_t atMost) {
     needMore = false;
 
     if (_buffer.empty()) {
+      if (_upstreamState == arangodb::aql::ExecutionState::DONE) {
+        return {arangodb::aql::ExecutionState::DONE, nullptr};
+      }
       size_t const toFetch = (std::min)(DefaultBatchSize(), atMost);
       auto res = ExecutionBlock::getBlock(toFetch);
       if (res.first == arangodb::aql::ExecutionState::WAITING) {

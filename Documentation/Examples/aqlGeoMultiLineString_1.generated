@@ -7,6 +7,7 @@ RETURN GEO_MULTILINESTRING([
 @R
 [
   {
+    <span class="hljs-string">"type"</span>: <span class="hljs-string">"MultiLineString"</span>,
     <span class="hljs-string">"coordinates"</span>: [
       [
         [
@@ -28,7 +29,6 @@ RETURN GEO_MULTILINESTRING([
           <span class="hljs-number">2.3</span>
         ]
       ]
-    ],
-    <span class="hljs-string">"type"</span>: <span class="hljs-string">"MultiLineString"</span>
+    ]
   }
 ]

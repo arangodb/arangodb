@@ -80,6 +80,7 @@
 #include "RestHandler/RestTasksHandler.h"
 #include "RestHandler/RestTestHandler.h"
 #include "RestHandler/RestTransactionHandler.h"
+#include "RestHandler/RestTtlHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestUsersHandler.h"
 #include "RestHandler/RestVersionHandler.h"
@@ -460,6 +461,9 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler("/_api/transaction",
                               RestHandlerCreator<RestTransactionHandler>::createNoData);
+  
+  _handlerFactory->addPrefixHandler("/_api/ttl",
+                                    RestHandlerCreator<RestTtlHandler>::createNoData);
 
   // ...........................................................................
   // /_admin

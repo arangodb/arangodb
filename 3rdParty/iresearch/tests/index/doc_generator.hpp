@@ -51,7 +51,7 @@ NS_BEGIN(tests)
 //////////////////////////////////////////////////////////////////////////////
 struct ifield {
   DECLARE_SHARED_PTR(ifield);
-  virtual ~ifield() {}
+  virtual ~ifield() = default;
 
   virtual const irs::flags& features() const = 0;
   virtual irs::token_stream& get_tokens() const = 0;
@@ -66,7 +66,6 @@ struct ifield {
 class field_base : public ifield {
  public:
   field_base() = default;
-  virtual ~field_base();
 
   field_base(field_base&& rhs) NOEXCEPT;
   field_base& operator=(field_base&& rhs) NOEXCEPT;
@@ -209,7 +208,7 @@ class particle: irs::util::noncopyable {
   particle() = default;
   particle(particle&& rhs) NOEXCEPT;
   particle& operator=(particle&& rhs) NOEXCEPT;
-  virtual ~particle();
+  virtual ~particle() = default;
 
   size_t size() const { return fields_.size(); }
   void clear() { fields_.clear(); }
@@ -291,7 +290,7 @@ struct document: irs::util::noncopyable {
 /* Base class for document generators */
 struct doc_generator_base {
   DECLARE_UNIQUE_PTR( doc_generator_base );
-  DEFINE_FACTORY_INLINE( doc_generator_base );
+  DEFINE_FACTORY_INLINE(doc_generator_base)
 
   virtual const tests::document* next() = 0;
   virtual void reset() = 0;

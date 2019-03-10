@@ -177,7 +177,7 @@ bool TRI_vocbase_t::use() {
 void TRI_vocbase_t::forceUse() { _refCount += 2; }
 
 /// @brief decrease the reference counter for a database
-void TRI_vocbase_t::release() {
+void TRI_vocbase_t::release() noexcept {
   // decrease the reference counter by 2.
   // this is because we use odd values to indicate that the database has been
   // marked as deleted
@@ -1506,7 +1506,6 @@ arangodb::Result TRI_vocbase_t::renameCollection(TRI_voc_cid_t cid,
 
   // invalidate all entries for the two collections
   arangodb::aql::PlanCache::instance()->invalidate(this);
-  arangodb::aql::QueryCache::instance()->invalidate(this, std::vector<std::string>{oldName, newName});
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -2090,7 +2089,7 @@ void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
   TRI_ASSERT(slice.isObject());
   VPackObjectIterator it(slice);
   while (it.valid()) {
-    StringRef key(it.key());
+    arangodb::velocypack::StringRef key(it.key());
     if (key.empty() || key[0] != '_' ||
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
          key != StaticStrings::RevString)) {
@@ -2106,7 +2105,7 @@ void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) 
   TRI_ASSERT(slice.isObject());
   VPackObjectIterator it(slice, true);
   while (it.valid()) {
-    StringRef key(it.key());
+    arangodb::velocypack::StringRef key(it.key());
     if (key.empty() || key[0] != '_' ||
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
          key != StaticStrings::RevString && key != StaticStrings::FromString &&

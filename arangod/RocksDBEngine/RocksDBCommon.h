@@ -27,7 +27,6 @@
 #define ARANGO_ROCKSDB_ROCKSDB_COMMON_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Endian.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
 #include "RocksDBEngine/RocksDBComparator.h"

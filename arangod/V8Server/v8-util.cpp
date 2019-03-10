@@ -47,7 +47,8 @@ TRI_vocbase_t& GetContextVocBase(v8::Isolate* isolate) {
 /// @brief checks if argument is a document identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ParseDocumentHandle(v8::Handle<v8::Value> const arg, std::string& collectionName,
+static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const arg,
+                                std::string& collectionName,
                                 std::unique_ptr<char[]>& key) {
   TRI_ASSERT(collectionName.empty());
 
@@ -57,7 +58,7 @@ static bool ParseDocumentHandle(v8::Handle<v8::Value> const arg, std::string& co
 
   // the handle must always be an ASCII string. These is no need to normalize it
   // first
-  v8::String::Utf8Value str(arg);
+  v8::String::Utf8Value str(isolate, arg);
 
   if (*str == nullptr) {
     return false;
@@ -105,7 +106,7 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
 
   // extract the document identifier and revision from a string
   if (val->IsString()) {
-    bool res = ParseDocumentHandle(val, collectionName, key);
+    bool res = ParseDocumentHandle(isolate, val, collectionName, key);
     if (res) {
       if (key.get() == nullptr) {
         return false;
@@ -120,19 +121,20 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
   if (val->IsObject()) {
     TRI_GET_GLOBALS();
 
-    v8::Handle<v8::Object> obj = val->ToObject();
+    v8::Handle<v8::Object> obj =
+        val->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
     TRI_GET_GLOBAL_STRING(_IdKey);
     TRI_GET_GLOBAL_STRING(_KeyKey);
     if (obj->HasRealNamedProperty(_IdKey)) {
       v8::Handle<v8::Value> didVal = obj->Get(_IdKey);
 
-      if (!ParseDocumentHandle(didVal, collectionName, key)) {
+      if (!ParseDocumentHandle(isolate, didVal, collectionName, key)) {
         return false;
       }
     } else if (obj->HasRealNamedProperty(_KeyKey)) {
       v8::Handle<v8::Value> didVal = obj->Get(_KeyKey);
 
-      if (!ParseDocumentHandle(didVal, collectionName, key)) {
+      if (!ParseDocumentHandle(isolate, didVal, collectionName, key)) {
         return false;
       }
     } else {
@@ -157,7 +159,7 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
     if (!revObj->IsString()) {
       return true;
     }
-    v8::String::Utf8Value str(revObj);
+    v8::String::Utf8Value str(isolate, revObj);
     bool isOld;
     uint64_t rid = TRI_StringToRid(*str, str.length(), isOld, false);
 

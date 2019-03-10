@@ -51,7 +51,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _queryCacheMaxResultsSize(0),
       _queryCacheMaxEntrySize(0),
       _queryCacheIncludeSystem(false),
-      _queryRegistryTTL(DefaultQueryTTL) {
+      _queryRegistryTTL(0) {
   setOptional(false);
   startsAfter("V8Phase");
 
@@ -123,7 +123,9 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new UInt64Parameter(&_maxQueryPlans));
 
   options->addOption("--query.registry-ttl",
-                     "default time-to-live of query snippets (in seconds)",
+                     "default time-to-live of cursors and query snippets (in "
+                     "seconds); if <= 0, value will default to 30 for "
+                     "single-server instances or 600 for cluster instances",
                      new DoubleParameter(&_queryRegistryTTL),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
@@ -157,7 +159,8 @@ void QueryRegistryFeature::prepare() {
   arangodb::aql::QueryCache::instance()->properties(properties);
 
   if (_queryRegistryTTL <= 0) {
-    _queryRegistryTTL = DefaultQueryTTL;
+    // set to default value based on instance type
+    _queryRegistryTTL = ServerState::instance()->isSingleServer() ? 30 : 600;
   }
 
   // create the query registery

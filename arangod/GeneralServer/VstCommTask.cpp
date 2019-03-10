@@ -24,7 +24,6 @@
 #include "VstCommTask.h"
 
 #include "Basics/HybridLogicalClock.h"
-#include "Basics/MutexUnlocker.h"
 #include "Basics/Result.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
@@ -39,11 +38,13 @@
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Utils/Events.h"
 #include "VocBase/ticks.h"
 
-#include <limits>
 #include <stdexcept>
+
+#include <velocypack/Options.h>
+#include <velocypack/Validator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -53,6 +54,9 @@ using namespace arangodb::rest;
 inline void validateMessage(char const* vpStart, char const* vpEnd) {
   VPackOptions validationOptions = VPackOptions::Defaults;
   validationOptions.validateUtf8Strings = true;
+  validationOptions.checkAttributeUniqueness = true;
+  validationOptions.disallowExternals = true;
+  validationOptions.disallowCustom = true;
   VPackValidator validator(&validationOptions);
 
   // isSubPart allows the slice to be shorter than the checked buffer.

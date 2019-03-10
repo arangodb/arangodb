@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #define ARANGODB_BASICS_UTF8HELPER_H 1
 
 #include <velocypack/StringRef.h>
+
 #include "Basics/Common.h"
 
 #include <unicode/coll.h>
@@ -40,10 +41,6 @@ class Utf8Helper {
   Utf8Helper& operator=(Utf8Helper const&) = delete;
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a default helper
-  //////////////////////////////////////////////////////////////////////////////
-
   static Utf8Helper DefaultUtf8Helper;
 
  public:
@@ -140,21 +137,41 @@ class Utf8Helper {
   /// @brief builds a regex matcher for the specified pattern
   //////////////////////////////////////////////////////////////////////////////
 
-  RegexMatcher* buildMatcher(std::string const&);
+  icu::RegexMatcher* buildMatcher(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not value matches a regex
   //////////////////////////////////////////////////////////////////////////////
 
-  bool matches(RegexMatcher*, char const* pattern, size_t patternLength,
+  bool matches(icu::RegexMatcher*, char const* pattern, size_t patternLength,
                bool partial, bool& error);
 
-  std::string replace(RegexMatcher*, char const* pattern, size_t patternLength,
+  std::string replace(icu::RegexMatcher*, char const* pattern, size_t patternLength,
                       char const* replacement, size_t replacementLength,
                       bool partial, bool& error);
 
+  // append an UTF8 to a string. This will append 1 to 4 bytes.
+  static void appendUtf8Character(std::string& result, uint32_t ch) {
+    if (ch <= 0x7f) {
+      result.push_back((uint8_t)ch);
+    } else {
+      if (ch <= 0x7ff) {
+        result.push_back((uint8_t)((ch >> 6) | 0xc0));
+      } else {
+        if (ch <= 0xffff) {
+          result.push_back((uint8_t)((ch >> 12) | 0xe0));
+        } else {
+          result.push_back((uint8_t)((ch >> 18) | 0xf0));
+          result.push_back((uint8_t)(((ch >> 12) & 0x3f) | 0x80));
+        }
+        result.push_back((uint8_t)(((ch >> 6) & 0x3f) | 0x80));
+      }
+      result.push_back((uint8_t)((ch & 0x3f) | 0x80));
+    }
+  }
+
  private:
-  Collator* _coll;
+  icu::Collator* _coll;
 };
 }  // namespace basics
 }  // namespace arangodb

@@ -23,7 +23,7 @@
 
 #include "catch.hpp"
 #include "../IResearch/AgencyMock.h"
-#include "../IResearch/StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 #include "Agency/Store.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationPhase.h"
@@ -224,7 +224,7 @@ TEST_CASE("ClusterInfoTest", "[cluster]") {
   ClusterInfoSetup s;
   (void)(s);
 
-SECTION("test_drop_databse") {
+SECTION("test_drop_database") {
   auto* database = arangodb::DatabaseFeature::DATABASE;
   REQUIRE(nullptr != database);
   auto* ci = arangodb::ClusterInfo::instance();

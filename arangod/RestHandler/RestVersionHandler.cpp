@@ -66,6 +66,10 @@ RestStatus RestVersionHandler::execute() {
       auto server = application_features::ApplicationServer::server->getFeature<ServerFeature>(
           "Server");
       result.add("mode", VPackValue(server->operationModeString()));
+      auto serverState = ServerState::instance();
+      if (serverState != nullptr) {
+        result.add("role", VPackValue(ServerState::roleToString(serverState->getRole())));
+      }
     }
 
     std::string host = ServerState::instance()->getHost();

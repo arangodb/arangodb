@@ -12,7 +12,7 @@ is provided to interact with the database system.
 The [web interface](../Programs/WebInterface/README.md) that comes with
 ArangoDB, called *Aardvark*, provides graphical user interface that is easy to use.
 An [interactive shell](../Programs/Arangosh/README.md), called *Arangosh*, is also
-shipped. In addition, there are so called [drivers](https://arangodb.com/downloads/arangodb-drivers/)
+shipped. In addition, there are so called [drivers](../../Drivers/index.html)
 that make it easy to use the database system in various environments and
 programming languages. All these tools use the HTTP interface of the server and
 remove the necessity to roll own low-level code for basic communication in most

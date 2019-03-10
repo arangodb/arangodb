@@ -109,6 +109,12 @@ static uint64_t getNumericFilenamePartFromDatafile(MMFilesDatafile const* datafi
   return getNumericFilenamePartFromDatafile(datafile->getName());
 }
 
+std::vector<arangodb::MMFilesRecoveryHelper const*>& getRecoveryHelpers() {
+  static std::vector<arangodb::MMFilesRecoveryHelper const*> helpers;
+
+  return helpers;
+}
+
 struct DatafileComparator {
   bool operator()(MMFilesDatafile const* lhs, MMFilesDatafile const* rhs) const {
     return getNumericFilenamePartFromDatafile(lhs) <
@@ -377,6 +383,33 @@ Result MMFilesEngine::persistLocalDocumentIds(TRI_vocbase_t& vocbase) {
       << "done with upgrade task to persist LocalDocumentIds";
 
   return result;
+}
+
+/*static*/ arangodb::Result MMFilesEngine::registerRecoveryHelper(MMFilesRecoveryHelper const& helper) {
+  try {
+    getRecoveryHelpers().emplace_back(&helper);
+  } catch (std::bad_alloc const&) {
+    return arangodb::Result(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  return arangodb::Result();
+}
+
+/*static*/ bool MMFilesEngine::visitRecoveryHelpers(
+    std::function<bool(MMFilesRecoveryHelper const&)> const& visitor) {
+  if (!visitor) {
+    return false;
+  }
+
+  for (auto& helper : getRecoveryHelpers()) {
+    TRI_ASSERT(helper);  // non-nullptr ensured by registerRecoveryHelper(...)
+
+    if (!visitor(*helper)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 // fill the Builder object with an array of databases that were detected
@@ -3151,7 +3184,13 @@ char* MMFilesEngine::nextFreeMarkerPosition(LogicalCollection* collection, TRI_v
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
-    cache->addDitch(ditch);
+    try {
+      cache->addDitch(ditch);
+    } catch (...) {
+      // prevent leaking here
+      arangodb::MMFilesCollection::toMMFilesCollection(collection)->ditches()->freeDitch(ditch);
+      throw;
+    }
   }
 
   TRI_ASSERT(dst != nullptr);

@@ -30,9 +30,7 @@
 #include "search/same_position_filter.hpp"
 #include "search/term_filter.hpp" 
 
-NS_BEGIN(tests)
-
-class same_position_filter_test_case : public filter_test_case_base {
+class same_position_filter_test_case : public tests::filter_test_case_base {
  protected:
   void sub_objects_ordered() {
     // add segment
@@ -41,10 +39,10 @@ class same_position_filter_test_case : public filter_test_case_base {
         resource("phrase_sequential.json"),
         [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
           if (data.is_string()) { // field
-            doc.insert(std::make_shared<templates::text_field<std::string>>(name, data.str), true, false);
+            doc.insert(std::make_shared<tests::templates::text_field<std::string>>(name, data.str), true, false);
           } else if (data.is_number()) { // seq
             const auto value = std::to_string(data.as_number<uint64_t>());
-            doc.insert(std::make_shared<templates::string_field>(name, value), false, true);
+            doc.insert(std::make_shared<tests::templates::string_field>(name, value), false, true);
           }
       });
       add_segment(gen);
@@ -59,23 +57,32 @@ class same_position_filter_test_case : public filter_test_case_base {
     {
       irs::by_same_position filter;
 
-      size_t collect_count = 0;
+      size_t collect_field_count = 0;
+      size_t collect_term_count = 0;
       size_t finish_count = 0;
       irs::order order;
       auto& scorer = order.add<tests::sort::custom_sort>(false);
-      scorer.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
-        ++collect_count;
+
+      scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+        ++collect_field_count;
       };
-      scorer.collector_finish = [&finish_count](irs::attribute_store&, const irs::index_reader&)->void{
+      scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+        ++collect_term_count;
+      };
+      scorer.collectors_collect_ = [&finish_count](irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++finish_count;
       };
-      scorer.prepare_collector = [&scorer]()->irs::sort::collector::ptr{
+      scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr{
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+      };
+      scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr{
         return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
       };
 
       auto pord = order.prepare();
       auto prepared = filter.prepare(index, pord);
-      ASSERT_EQ(0, collect_count);
+      ASSERT_EQ(0, collect_field_count); // should not be executed
+      ASSERT_EQ(0, collect_term_count); // should not be executed
       ASSERT_EQ(0, finish_count); // no terms optimization
     }
 
@@ -84,23 +91,32 @@ class same_position_filter_test_case : public filter_test_case_base {
       irs::by_same_position filter;
       filter.push_back("phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
 
-      size_t collect_count = 0;
+      size_t collect_field_count = 0;
+      size_t collect_term_count = 0;
       size_t finish_count = 0;
       irs::order order;
       auto& scorer = order.add<tests::sort::custom_sort>(false);
-      scorer.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
-        ++collect_count;
+
+      scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+        ++collect_field_count;
       };
-      scorer.collector_finish = [&finish_count](irs::attribute_store&, const irs::index_reader&)->void{
+      scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+        ++collect_term_count;
+      };
+      scorer.collectors_collect_ = [&finish_count](irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++finish_count;
       };
-      scorer.prepare_collector = [&scorer]()->irs::sort::collector::ptr{
+      scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+      };
+      scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
         return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
       };
 
       auto pord = order.prepare();
       auto prepared = filter.prepare(index, pord);
-      ASSERT_EQ(2, collect_count); // 1 term in 2 segments
+      ASSERT_EQ(2, collect_field_count); // 1 field in 2 segments
+      ASSERT_EQ(2, collect_term_count); // 1 term in 2 segments
       ASSERT_EQ(1, finish_count); // 1 unique term
     }
 
@@ -110,23 +126,32 @@ class same_position_filter_test_case : public filter_test_case_base {
       filter.push_back("phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
       filter.push_back("phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
 
-      size_t collect_count = 0;
+      size_t collect_field_count = 0;
+      size_t collect_term_count = 0;
       size_t finish_count = 0;
       irs::order order;
       auto& scorer = order.add<tests::sort::custom_sort>(false);
-      scorer.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
-        ++collect_count;
+
+      scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+        ++collect_field_count;
       };
-      scorer.collector_finish = [&finish_count](irs::attribute_store&, const irs::index_reader&)->void{
+      scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+        ++collect_term_count;
+      };
+      scorer.collectors_collect_ = [&finish_count](irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++finish_count;
       };
-      scorer.prepare_collector = [&scorer]()->irs::sort::collector::ptr{
+      scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+      };
+      scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
         return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
       };
 
       auto pord = order.prepare();
       auto prepared = filter.prepare(index, pord);
-      ASSERT_EQ(4, collect_count); // 2 term in 2 segments
+      ASSERT_EQ(4, collect_field_count); // 2 fields (1 per term since treated as a disjunction) in 2 segments
+      ASSERT_EQ(4, collect_term_count); // 2 term in 2 segments
       ASSERT_EQ(2, finish_count); // 2 unique terms
     }
   }
@@ -136,7 +161,7 @@ class same_position_filter_test_case : public filter_test_case_base {
     tests::json_doc_generator gen(
       resource("same_position.json"),
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
-        typedef templates::text_field<std::string> text_field;
+        typedef tests::templates::text_field<std::string> text_field;
         if (data.is_string()) {
           // a || b || c
           doc.indexed.push_back(std::make_shared<text_field>(name, data.str));
@@ -369,7 +394,10 @@ class same_position_filter_test_case : public filter_test_case_base {
   }
 }; // same_position_filter_test_case 
 
-NS_END // tests
+TEST_P(same_position_filter_test_case, by_same_position) {
+  sub_objects_ordered();
+  sub_objects_unordered();
+}
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                      by_same_position base tests 
@@ -558,45 +586,19 @@ TEST(by_same_position_test, equal) {
   }
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                           memory_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
-
-class memory_same_position_filter_test_case : public tests::same_position_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    return new irs::memory_directory();
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-};
-
-TEST_F(memory_same_position_filter_test_case, by_same_position) {
-  sub_objects_ordered();
-  sub_objects_unordered();
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                               fs_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
-
-class fs_same_position_filter_test_case : public tests::same_position_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    return new irs::memory_directory();
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-};
-
-TEST_F(fs_same_position_filter_test_case, by_same_position) {
-  sub_objects_ordered();
-  sub_objects_unordered();
-}
+INSTANTIATE_TEST_CASE_P(
+  same_position_filter_test,
+  same_position_filter_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_0")
+  ),
+  tests::to_string
+);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

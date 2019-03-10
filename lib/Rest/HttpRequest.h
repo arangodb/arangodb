@@ -84,7 +84,7 @@ class HttpRequest final : public GeneralRequest {
   /// @brief the body content length
   size_t contentLength() const override { return _contentLength; }
   // Payload
-  arangodb::StringRef rawPayload() const override { return StringRef(_body); };
+  arangodb::velocypack::StringRef rawPayload() const override { return arangodb::velocypack::StringRef(_body); };
   VPackSlice payload(arangodb::velocypack::Options const*) override;
 
   /// @brief sets a key/value header

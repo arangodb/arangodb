@@ -31,9 +31,13 @@
 
 NS_ROOT
 
+void compressor::deleter::operator()(void *p) NOEXCEPT {
+  LZ4_freeStream(reinterpret_cast<LZ4_stream_t*>(p));
+}
+
 compressor::compressor(unsigned int chunk_size):
   dict_size_(0),
-  stream_(LZ4_createStream(), [](void* ptr)->void { LZ4_freeStream(reinterpret_cast<LZ4_stream_t*>(ptr)); }) {
+  stream_(LZ4_createStream()) {
   string_utils::oversize(buf_, LZ4_COMPRESSBOUND(chunk_size));
 }
 
@@ -83,8 +87,12 @@ void compressor::compress(const char* src, size_t size) {
   this->size_ = lz4_size;
 }
 
+void decompressor::deleter::operator()(void *p) NOEXCEPT {
+  LZ4_freeStreamDecode(reinterpret_cast<LZ4_streamDecode_t*>(p));
+}
+
 decompressor::decompressor()
-  : stream_(LZ4_createStreamDecode(), [](void* ptr)->void { LZ4_freeStreamDecode(reinterpret_cast<LZ4_streamDecode_t*>(ptr)); }) {
+  : stream_(LZ4_createStreamDecode()) {
 }
   
 size_t decompressor::deflate(

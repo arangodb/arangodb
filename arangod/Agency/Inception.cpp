@@ -41,9 +41,7 @@ Inception::Inception(Agent* agent) : Thread("Inception"), _agent(agent) {}
 
 // Shutdown if not already
 Inception::~Inception() {
-  if (!isStopping()) {
-    shutdown();
-  }
+  shutdown();
 }
 
 /// Gossip to others

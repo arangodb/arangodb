@@ -54,6 +54,8 @@ using namespace arangodb::basics;
 using namespace arangodb::consensus;
 using namespace fakeit;
 
+bool aborts = false;
+
 namespace arangodb {
 namespace tests {
 namespace move_shard_test {
@@ -165,12 +167,13 @@ SECTION("the job should fail if toServer does not exist") {
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, TODO, jobId);
-  moveShard.start();
+  moveShard.start(aborts);
   Verify(Method(mockAgent,write));
 }
 
-SECTION("the job should fail to start if toServer is already in plan") {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&, std::string const&)> createTestStructure = [&](VPackSlice const& s, std::string const& path) {
+SECTION("the job should fail to start if fromServer and toServer are planned followers") {
+  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&, std::string const&)> createTestStructure =
+    [&](VPackSlice const& s, std::string const& path) {
     std::unique_ptr<VPackBuilder> builder;
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
@@ -183,7 +186,7 @@ SECTION("the job should fail to start if toServer is already in plan") {
       }
 
       if (path == "/arango/Target/ToDo") {
-        builder->add(jobId, createJob(COLLECTION, SHARD_LEADER, SHARD_FOLLOWER1).slice());
+        builder->add(jobId, createJob(COLLECTION, SHARD_FOLLOWER1, SHARD_LEADER).slice());
       }
       builder->close();
     } else {
@@ -206,7 +209,7 @@ SECTION("the job should fail to start if toServer is already in plan") {
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, TODO, jobId);
-  moveShard.start();
+  moveShard.start(aborts);
   Verify(Method(mockAgent,write));
 }
 
@@ -245,7 +248,7 @@ SECTION("the job should fail if fromServer does not exist") {
   Fake(Method(spy, finish));
 
   Job& spyMoveShard = spy.get();
-  spyMoveShard.start();
+  spyMoveShard.start(aborts);
 
   Verify(Method(spy, finish).Matching([](std::string const& server, std::string const& shard, bool success, std::string const& reason, query_t const payload) -> bool {return !success;}));
 }
@@ -287,7 +290,7 @@ SECTION("the job should fail if fromServer is not in plan of the shard") {
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, TODO, jobId);
-  moveShard.start();
+  moveShard.start(aborts);
   Verify(Method(mockAgent,write));
 }
 
@@ -338,7 +341,7 @@ SECTION("the job should fail if fromServer does not exist") {
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, TODO, jobId);
-  moveShard.start();
+  moveShard.start(aborts);
   Verify(Method(mockAgent,write));
 }
 
@@ -377,7 +380,7 @@ SECTION("the job should remain in todo if the shard is currently locked") {
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, TODO, jobId);
-  moveShard.start();
+  moveShard.start(aborts);
 }
 
 SECTION("the job should remain in todo if the target server is currently locked") {
@@ -415,7 +418,7 @@ SECTION("the job should remain in todo if the target server is currently locked"
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, TODO, jobId);
-  moveShard.start();
+  moveShard.start(aborts);
 }
 
 SECTION("the job should fail if the target server was cleaned out") {
@@ -462,7 +465,7 @@ SECTION("the job should fail if the target server was cleaned out") {
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, TODO, jobId);
-  moveShard.start();
+  moveShard.start(aborts);
   Verify(Method(mockAgent,write));
 }
 
@@ -508,7 +511,7 @@ SECTION("the job should fail if the target server is failed") {
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, TODO, jobId);
-  moveShard.start();
+  moveShard.start(aborts);
   Verify(Method(mockAgent,write));
 }
 
@@ -548,7 +551,7 @@ SECTION("the job should wait until the target server is good") {
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, TODO, jobId);
-  moveShard.start();
+  moveShard.start(aborts);
 }
 
 SECTION("the job should fail if the shard distributes its shards like some other") {
@@ -591,7 +594,7 @@ SECTION("the job should fail if the shard distributes its shards like some other
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, TODO, jobId);
-  moveShard.start();
+  moveShard.start(aborts);
   Verify(Method(mockAgent,write));
 }
 
@@ -671,7 +674,7 @@ SECTION("the job should be moved to pending when everything is ok") {
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, TODO, jobId);
-  moveShard.start();
+  moveShard.start(aborts);
   Verify(Method(mockAgent,write));
 }
 
@@ -727,7 +730,7 @@ SECTION("moving from a follower should be possible") {
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, TODO, jobId);
-  moveShard.start();
+  moveShard.start(aborts);
   Verify(Method(mockAgent,write));
 }
 
@@ -855,7 +858,7 @@ SECTION("when moving a shard that is a distributeShardsLike leader move the rest
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, TODO, jobId);
-  moveShard.start();
+  moveShard.start(aborts);
   Verify(Method(mockAgent,write));
 }
 
@@ -910,7 +913,7 @@ SECTION("if the job is too old it should be aborted to prevent a deadloop") {
   Fake(Method(spy, abort));
 
   Job& spyMoveShard = spy.get();
-  spyMoveShard.run();
+  spyMoveShard.run(aborts);
 
   Verify(Method(spy, abort));
 }
@@ -966,7 +969,7 @@ SECTION("if the job is too old (leader case) it should be aborted to prevent a d
   Fake(Method(spy, abort));
 
   Job& spyMoveShard = spy.get();
-  spyMoveShard.run();
+  spyMoveShard.run(aborts);
 
   Verify(Method(spy, abort));
 }
@@ -1015,7 +1018,7 @@ SECTION("if the collection was dropped while moving finish the job") {
   Fake(Method(spy, finish));
 
   Job& spyMoveShard = spy.get();
-  spyMoveShard.run();
+  spyMoveShard.run(aborts);
 
   Verify(Method(spy, finish).Matching([](std::string const& server, std::string const& shard, bool success, std::string const& reason, query_t const payload) -> bool {
     return success;
@@ -1066,7 +1069,7 @@ SECTION("if the collection was dropped before the job could be started just fini
   Fake(Method(spy, finish));
 
   Job& spyMoveShard = spy.get();
-  spyMoveShard.start();
+  spyMoveShard.start(aborts);
 
   Verify(Method(spy, finish).Matching([](std::string const& server, std::string const& shard, bool success, std::string const& reason, query_t const payload) -> bool {return success;}));
 
@@ -1121,7 +1124,7 @@ SECTION("the job should wait until the planned shard situation has been created 
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  moveShard.run();
+  moveShard.run(aborts);
 }
 
 SECTION("if the job is done it should properly finish itself") {
@@ -1193,7 +1196,7 @@ SECTION("if the job is done it should properly finish itself") {
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  moveShard.run();
+  moveShard.run(aborts);
   Verify(Method(mockAgent,write));
 }
 
@@ -1318,7 +1321,7 @@ SECTION("the job should not finish itself when only parts of distributeShardsLik
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  moveShard.run();
+  moveShard.run(aborts);
 }
 
 SECTION("the job should finish when all distributeShardsLike shards have adapted") {
@@ -1496,7 +1499,7 @@ SECTION("the job should finish when all distributeShardsLike shards have adapted
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  moveShard.run();
+  moveShard.run(aborts);
   Verify(Method(mockAgent,write));
 }
 
@@ -1527,10 +1530,12 @@ SECTION("a moveshard job that just made it to ToDo can simply be aborted") {
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
-    REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+    REQUIRE(q->slice()[0].length() == 2); // we always simply override! no preconditions...
     auto writes = q->slice()[0][0];
     CHECK(writes.get("/arango/Target/ToDo/1").get("op").copyString() == "delete");
     CHECK(std::string(writes.get("/arango/Target/Finished/1").typeName()) == "object");
+    auto precond = q->slice()[0][1];
+    CHECK(precond.get("/arango/Target/ToDo/1").get("oldEmpty").isFalse());
 
     return fakeWriteResult;
   });
@@ -1591,9 +1596,10 @@ SECTION("a pending moveshard job should also put the original server back into p
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
+    LOG_DEVEL << q->slice().toJson() << " " << __LINE__;
     auto writes = q->slice()[0][0];
     CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
-    REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+    REQUIRE(q->slice()[0].length() == 2); // Precondition: to Server not leader yet 
     CHECK(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() == "delete");
     CHECK(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() == "delete");
     CHECK(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).typeName()) == "array");
@@ -1698,7 +1704,7 @@ SECTION("after the new leader has synchronized the new leader should resign") {
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  moveShard.run();
+  moveShard.run(aborts);
   Verify(Method(mockAgent,write));
 }
 
@@ -1762,7 +1768,7 @@ SECTION("when the old leader is not yet ready for resign nothing should happen")
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  moveShard.run();
+  moveShard.run(aborts);
 }
 
 SECTION("aborting the job while a leader transition is in progress (for example when job is timing out) should make the old leader leader again") {
@@ -1819,9 +1825,11 @@ SECTION("aborting the job while a leader transition is in progress (for example 
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WriteTransaction: " << q->slice().toJson());
+    LOG_DEVEL << q->slice().toJson() << " " << __LINE__;
+
     auto writes = q->slice()[0][0];
     CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
-    REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+    REQUIRE(q->slice()[0].length() == 2); // Precondition: to Server not leader yet 
     CHECK(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() == "delete");
     CHECK(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() == "delete");
     CHECK(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).typeName()) == "array");
@@ -1924,7 +1932,7 @@ SECTION("if we are ready to resign the old server then finally move to the new l
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  moveShard.run();
+  moveShard.run(aborts);
   Verify(Method(mockAgent,write));
 }
 
@@ -2005,7 +2013,7 @@ SECTION("if the new leader took over finish the job") {
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  moveShard.run();
+  moveShard.run(aborts);
   Verify(Method(mockAgent,write));
 }
 
@@ -2379,7 +2387,7 @@ SECTION("if the job fails while trying to switch over leadership it should be ab
   Fake(Method(spy, abort));
 
   Job& spyMoveShard = spy.get();
-  spyMoveShard.run();
+  spyMoveShard.run(aborts);
 
   Verify(Method(spy, abort));
 }
@@ -2434,7 +2442,7 @@ SECTION("if the job timeouts while the new leader is trying to take over the job
   Fake(Method(spy, abort));
 
   Job& spyMoveShard = spy.get();
-  spyMoveShard.run();
+  spyMoveShard.run(aborts);
 
   Verify(Method(spy, abort));
 }
@@ -2520,7 +2528,7 @@ SECTION("when promoting the new leader, the old one should become a resigned fol
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  moveShard.run();
+  moveShard.run(aborts);
   Verify(Method(mockAgent, write));
 }
 

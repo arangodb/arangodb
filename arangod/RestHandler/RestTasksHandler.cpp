@@ -208,7 +208,7 @@ void RestTasksHandler::registerTask(bool byId) {
 
   {
     Result res;
-    v8::Isolate* isolate = v8::Isolate::GetCurrent();
+    v8::Isolate* isolate = nullptr;
     try {
       V8ContextDealerGuard dealerGuard(res, isolate, &_vocbase, true);
       if (res.fail()) {

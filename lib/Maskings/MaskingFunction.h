@@ -25,6 +25,8 @@
 
 #include "Basics/Common.h"
 
+#include "Basics/Utf8Helper.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
@@ -37,9 +39,8 @@ class Maskings;
 
 class MaskingFunction {
  public:
-  static bool isNameChar(char c) {
-    return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') ||
-           ('0' <= c && c <= '9') || c == '_' || c == '-';
+  static bool isNameChar(UChar32 ch) {
+    return u_isalpha(ch) || u_isdigit(ch) || ch == U'_' || ch == U'-';
   }
 
  public:
@@ -47,10 +48,10 @@ class MaskingFunction {
   virtual ~MaskingFunction() {}
 
  public:
-  virtual VPackValue mask(bool) const = 0;
+  virtual VPackValue mask(bool, std::string& buffer) const = 0;
   virtual VPackValue mask(std::string const&, std::string& buffer) const = 0;
-  virtual VPackValue mask(int64_t) const = 0;
-  virtual VPackValue mask(double) const = 0;
+  virtual VPackValue mask(int64_t, std::string& buffer) const = 0;
+  virtual VPackValue mask(double, std::string& buffer) const = 0;
 
  protected:
   Maskings* _maskings;

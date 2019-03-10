@@ -81,7 +81,7 @@ FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
 
 FailedLeader::~FailedLeader() {}
 
-void FailedLeader::run() { runHelper("", _shard); }
+void FailedLeader::run(bool& aborts) { runHelper("", _shard, aborts); }
 
 void FailedLeader::rollback() {
   // Create new plan servers (exchange _to and _from)
@@ -132,31 +132,39 @@ bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
   LOG_TOPIC(INFO, Logger::SUPERVISION)
       << "Create failedLeader for " + _shard + " from " + _from;
 
-  _jb = std::make_shared<Builder>();
-  {
-    VPackArrayBuilder transaction(_jb.get());
-    {
-      VPackObjectBuilder operations(_jb.get());
-      // Todo entry
-      _jb->add(VPackValue(toDoPrefix + _jobId));
-      {
-        VPackObjectBuilder todo(_jb.get());
-        _jb->add("creator", VPackValue(_creator));
-        _jb->add("type", VPackValue("failedLeader"));
-        _jb->add("database", VPackValue(_database));
-        _jb->add("collection", VPackValue(_collection));
-        _jb->add("shard", VPackValue(_shard));
-        _jb->add("fromServer", VPackValue(_from));
-        _jb->add("jobId", VPackValue(_jobId));
-        _jb->add("timeCreated", VPackValue(timepointToString(system_clock::now())));
-      }
-    }
+  if (b == nullptr) {
+    _jb = std::make_shared<Builder>();
+    _jb->openArray();
+    _jb->openObject();
+  } else {
+    _jb = b;
   }
-  write_ret_t res = singleWriteTransaction(_agent, *_jb);
-  return (res.accepted && res.indices.size() == 1 && res.indices[0]);
+
+  _jb->add(VPackValue(toDoPrefix + _jobId));
+  {
+    VPackObjectBuilder todo(_jb.get());
+    _jb->add("creator", VPackValue(_creator));
+    _jb->add("type", VPackValue("failedLeader"));
+    _jb->add("database", VPackValue(_database));
+    _jb->add("collection", VPackValue(_collection));
+    _jb->add("shard", VPackValue(_shard));
+    _jb->add("fromServer", VPackValue(_from));
+    _jb->add("jobId", VPackValue(_jobId));
+    _jb->add("timeCreated", VPackValue(timepointToString(system_clock::now())));
+  }
+
+  if (b == nullptr) {
+    _jb->close(); // object
+    _jb->close(); // array
+    write_ret_t res = singleWriteTransaction(_agent, *_jb);
+    return (res.accepted && res.indices.size() == 1 && res.indices[0]);
+  }
+
+  return true;
+
 }
 
-bool FailedLeader::start() {
+bool FailedLeader::start(bool& aborts) {
   std::vector<std::string> existing =
       _snapshot.exists(planColPrefix + _database + "/" + _collection + "/" +
                        "distributeShardsLike");
@@ -224,7 +232,7 @@ bool FailedLeader::start() {
   }
 
   // Additional follower, if applicable
-  auto additionalFollower = randomIdleGoodAvailableServer(_snapshot, planned);
+  auto additionalFollower = randomIdleAvailableServer(_snapshot, planned);
   if (!additionalFollower.empty()) {
     planv.push_back(additionalFollower);
   }
@@ -301,7 +309,9 @@ bool FailedLeader::start() {
     if (jobId.second && !abortable(_snapshot, jobId.first)) {
       return false;
     } else if (jobId.second) {
+      aborts = true;
       JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+      return false;
     }
   }
 

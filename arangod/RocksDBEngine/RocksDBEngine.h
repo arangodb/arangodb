@@ -42,6 +42,7 @@
 namespace rocksdb {
 
 class TransactionDB;
+class EncryptionProvider;
 }
 
 namespace arangodb {
@@ -296,7 +297,17 @@ class RocksDBEngine final : public StorageEngine {
   static std::string const EngineName;
   static std::string const FeatureName;
 
-  bool canUseRangeDeleteInWal() const;
+  rocksdb::EncryptionProvider* encryptionProvider() const noexcept {
+#ifdef USE_ENTERPRISE
+    return _eeData._encryptionProvider;
+#else
+    return nullptr;
+#endif
+  }
+
+  /// @brief allow / disbable removal of WAL files
+  void disableWalFilePruning(bool disable);
+  bool disableWalFilePruning() const;
 
   rocksdb::Options const& rocksDBOptions() const { return _options; }
 

@@ -49,7 +49,7 @@ inline irs::filter::prepared::ptr compileQuery(
   irs::attribute_store attrs;
 
   // skip filed-level/term-level statistics because there are no fields/terms
-  order.prepare_stats().finish(attrs, index);
+  order.prepare_collectors().finish(attrs, index);
 
   // apply boost
   irs::boost::apply(attrs, boost);

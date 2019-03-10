@@ -47,7 +47,7 @@ namespace {
 
 std::vector<ExecutionNode::NodeType> const reduceExtractionToProjectionTypes = {
     ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::INDEX};
-
+          
 }  // namespace
 
 void RocksDBOptimizerRules::registerResources() {
@@ -91,7 +91,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
     ExecutionNode* current = n->getFirstParent();
     while (current != nullptr) {
       bool doRegularCheck = false;
-
+    
       if (current->getType() == EN::REMOVE) {
         RemoveNode const* removeNode = ExecutionNode::castTo<RemoveNode const*>(current);
         if (removeNode->inVariable() == v) {
@@ -145,6 +145,22 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
             attributes.emplace(it.attributePath[0]);
           }
         }
+      } else if (current->getType() == EN::INDEX) {
+        Condition const* condition = ExecutionNode::castTo<IndexNode const*>(current)->condition();
+
+        if (condition != nullptr && condition->root() != nullptr) {
+          AstNode const* node = condition->root();
+          vars.clear();
+          current->getVariablesUsedHere(vars);
+
+          if (vars.find(v) != vars.end()) {
+            if (!Ast::getReferencedAttributes(node, v, attributes)) {
+              stop = true;
+              break;
+            }
+            optimize = true;
+          }
+        }
       } else {
         // all other node types mandate a check
         doRegularCheck = true;
@@ -170,18 +186,67 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 
     // projections are currently limited (arbitrarily to 5 attributes)
     if (optimize && !stop && !attributes.empty() && attributes.size() <= 5) {
-      std::vector<std::string> r;
-      for (auto& it : attributes) {
-        r.emplace_back(std::move(it));
-      }
-      // store projections in DocumentProducingNode
-      e->projections(std::move(r));
+      if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION &&
+          std::find(attributes.begin(), attributes.end(), StaticStrings::IdString) == attributes.end()) { 
+        // the node is still an EnumerateCollection... now check if we should turn it into an index scan
+        // we must never have a projection on _id, as producing _id is not supported yet
+        // by the primary index iterator
+        EnumerateCollectionNode const* en = ExecutionNode::castTo<EnumerateCollectionNode const*>(n);
 
+        // now check all indexes if they cover the projection
+        std::shared_ptr<Index> picked;
+        auto indexes = en->collection()->getCollection()->getIndexes();
+
+        for (auto const& idx : indexes) {
+          if (!idx->hasCoveringIterator() || !idx->covers(attributes)) {
+            // index doesn't cover the projection
+            continue;
+          }
+          if (idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX &&
+              idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX &&
+              idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX &&
+              idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
+            // only the above index types are supported
+            continue;
+          }
+
+          if (picked == nullptr || 
+              picked->fields().size() > idx->fields().size()) {
+            // found an index that would cover the projection
+            picked = idx;
+          }
+        }
+
+        if (picked != nullptr) {
+          // turn the EnumerateCollection node into an IndexNode now
+          auto condition = std::make_unique<Condition>(plan->getAst());
+          condition->normalize(plan.get());
+          IndexIteratorOptions opts;
+          auto inode = new IndexNode(
+              plan.get(), plan->nextId(),
+              en->collection(), en->outVariable(),
+              std::vector<transaction::Methods::IndexHandle>{
+                  transaction::Methods::IndexHandle{picked}},
+              std::move(condition), opts);
+          plan->registerNode(inode);
+          plan->replaceNode(n, inode);
+          n = inode;
+          // need to update e, because it is used later
+          e = dynamic_cast<DocumentProducingNode*>(n);
+          if (e == nullptr) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot convert node to DocumentProducingNode");
+          }
+        }
+      } 
+        
+      // store projections in DocumentProducingNode
+      e->projections(std::move(attributes));
+      
       if (n->getType() == ExecutionNode::INDEX) {
         // need to update _indexCoversProjections value in an IndexNode
         ExecutionNode::castTo<IndexNode*>(n)->initIndexCoversProjections();
       }
-
+      
       modified = true;
     }
   }
