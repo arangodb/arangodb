@@ -51,9 +51,122 @@ For MMFiles this rule does not apply.
 
 ### AQL syntax improvements
 
+#### Array destructuring
+    
+AQL now supports array destructuring, that is the assignment of array values
+into one or multiple variables with a single `LET` assignment. This can be 
+achieved by putting the target assignment variables of the `LET` assignment
+into angular brackets. 
+
+For example, the statement
+ 
+    LET [y, z] = [1, 2]
+
+will assign the value `1` to variable `y` and the value `2` to variable `z`.
+The mapping of input array members to the target variables is positional.
+
+It is also possible to skip over unneeded array values. The following assignment
+will assign the value `2` to variable `y` and the value `3` to variable `z`. The
+array member with value `1` will not be assigned to any variable:
+
+    LET [, y, z] = [1, 2, 3]
+
+When there are more variables assigned than there are array members, the target
+variables that are mapped to non-existing array members are populated with a value
+of `null`. The assigned target variables will also receive a value of `null` when
+the destructuring is used on a non-array.
+
+Destructuring can also be applied on nested arrays, e.g.
+
+    LET [[sub1], [sub2, sub3]] = [["foo", "bar"], [1, 2, 3]]
+
+In the above example, the value of variable `sub1` will be `foo`, the value of variable
+`sub2` will be `1` and the value of variable `sub3` will be `2`.
+
+Please note that array destructuring is only supported in the `LET` statement.
+
+#### Object destructuring
+     
+In the same fashion, AQL now also supports object destructuring, i.e. the assignment
+of multiple target variables from a source object value. This is achieved by using the
+curly brackets after the `LET` assignment token:
+
+    LET { name, age } = { valid: true, age: 39, name: "John Doe" }
+
+The mapping of input object members to the target variables is by name.
+In the above example, the variable `name` will get a value of `John Doe`, the variable
+`age` will get a value of `39`. The attribute `valid` from the source object will be
+ignored.
+      
+Object destructuring also works with nested objects, e.g.
+
+    LET { name: {first, last} } = { name: { first: "John", middle: "J", last: "Doe" } }
+
+The above statement will assign the value `John` to the variable `first` and the value
+`Doe` to the variable `last`. The attribute `middle` from the source object is ignored.
+Note that here only variables `first` and `last` will be populated, but variable `name`
+is not.
+    
+It is also possible for the target variable to get a different name than in the source
+object, e.g.
+
+    LET { name: {first: firstName, last: lastName} } = { name: { first: "John", last: "Doe" } }
+
+The above statement assigns the value `John` to the target variable `firstName` and the
+value `Doe` to the target variable `lastName`. Note that neither of these attributes exist
+in the source object.
+
+Please note that object destructuring is only supported in the `LET` statement.
+
+#### Array spread operator
+
+The new array spread operator `...` can be used to expand an input array and put in all
+the array's members as individual values instead.
+
+For example, in the query
+
+    LET values = [2, 3, 4] 
+    RETURN [0, 1, ...values, 5]
+
+the `...values` is expand to the values `2`, `3` and `4`, which are individually inserted
+into the return array. This will produce a single flat return array `[0, 1, 2, 3, 4, 5]`.
+Note that without using the array spread operator, the query would have produced a nested
+array result `[0, 1, [2, 3, 4], 5]`.
+
+This is especially useful when used in function call contexts. For example
+
+    LET values = ['the', 'quick', 'foxx', 'jumps', 'over', 'the', 'dog'] 
+    RETURN CONCAT(...values)
+
+is equivalent to
+    
+    LET values = ['the', 'quick', 'foxx', 'jumps', 'over', 'the', 'dog'] 
+    RETURN CONCAT(values[0], values[1], values[2], values[3], values[4], values[5], values[6])
+
+#### Usability syntax improvements
+
 AQL now allows the usage of floating point values without leading zeros, e.g.
 `.1234`. Previous versions of ArangoDB required a leading zero in front of
 the decimal separator, i.e `0.1234`.
+
+Additionally AQL now allows array and object members declarations to optionally end with 
+a trailing comma after the final member value, e.g.
+
+    LET values = [
+      1,
+      2,
+      3,
+    ]
+
+or
+    
+    LET values = {
+      a: 1, 
+      b: 2,
+    }
+
+In previous versions of ArangoDB, ending an array or object members declaration
+with a trailing comma produced a parse error. 
 
 
 Background Index Creation
