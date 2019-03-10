@@ -320,9 +320,8 @@ bool FailedLeader::start(bool& aborts) {
 
   trans_ret_t res = generalTransaction(_agent, pending);
 
-  if (!res.accepted) {
-    LOG_TOPIC(INFO, Logger::SUPERVISION)
-      << "Agency transaction not successful";
+  if (!res.accepted) {  // lost leadership
+    LOG_TOPIC(INFO, Logger::SUPERVISION) << "Leadership lost! Job " << _jobId << " handed off.";
     return false;
   }
 
@@ -332,15 +331,11 @@ bool FailedLeader::start(bool& aborts) {
   // Something went south. Let's see
   auto result = res.result->slice()[0];
 
-  if (res.accepted && result.isNumber()) {
+  if (result.isNumber()) {
     return true;
   }
 
   TRI_ASSERT(result.isObject());
-
-  if (!res.accepted) {  // lost leadership
-    LOG_TOPIC(INFO, Logger::SUPERVISION) << "Leadership lost! Job " << _jobId << " handed off.";
-  }
 
   if (result.isObject()) {
     // Still failing _from?
