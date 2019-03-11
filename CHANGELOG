@@ -1,4 +1,4 @@
-v3.4.5 (2019-03-XX)
+v3.4.5 (XXXX-XX-XX)
 -------------------
 
 * add "PRUNE <condition>" to AQL Traversals. This allows to early abort searching of
@@ -28,6 +28,7 @@ v3.4.5 (2019-03-XX)
 
 * agents need to be able to overwrite a compacted state with same _key
 
+
 v3.4.4 (2019-03-08)
 -------------------
 
@@ -36,9 +37,9 @@ v3.4.4 (2019-03-08)
 
 * now also syncing _jobs and _queues collections in active failover mode
 
-* fixed overflow in windows NowNanos in RocksDB
+* fixed overflow in Windows NowNanos in RocksDB
 
-* fixed issue #8165: AQL optimizer does not pick up multiple Geo index
+* fixed issue #8165: AQL optimizer does not pick up multiple geo index
 
 * when creating a new database with an initial user, set the database permission
   for this user as specified in the documentation
@@ -72,6 +73,18 @@ v3.4.4 (2019-03-08)
 * Supervision fix: Satellite collections, various fixes
 
 * Add coordinator route for agency dump
+
+* speed up replication of transactions containing updates of existing documents.
+
+  The replication protocol does not provide any information on whether a document
+  was inserted on the master or updated/replaced. Therefore the slave will always
+  try an insert first, and move to a replace if the insert fails with "unique
+  constraint violation". This case is however very costly in a bigger transaction,
+  as the rollback of the insert will force the underlying RocksDB write batch to be
+  entirely rewritten. To circumvent rewriting entire write batches, we now do a
+  quick check if the target document already exists, and then branch to either
+  insert or replace internally.
+
 
 v3.4.3 (2019-02-19)
 -------------------
