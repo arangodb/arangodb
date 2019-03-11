@@ -26,6 +26,46 @@ v3.4.5 (XXXX-XX-XX)
 * display the server role when connecting arangosh against a server (e.g. 
   SINGLE, COORDINATOR)
 
+* added replication applier state figures `totalDocuments` and `totalRemovals` to 
+  access the number of document insert/replace operations and the number of document
+  removals operations separately. Also added figures `totalApplyTime` and 
+  `totalFetchTime` for determining the total time the replication spent for 
+  applying changes or fetching new data from the master. Also added are the figures
+  `averageApplyTime` and `averageFetchTime`, which show the average time spent
+  for applying a batch or for fetching data from the master, resp.
+
+* fixed race condition in which the value of the informational replication applier 
+  figure `ticksBehind` could underflow and thus show a very huge number of ticks.
+
+* always clear all ongoing replication transactions on the slave if the slave 
+  discovers the data it has asked for is not present anymore on the master and the
+  `requireFromPresent` value for the applier is set to `false`.
+  
+  In this case aborting the ongoing transactions on the slave is necessary because 
+  they may have held exclusive locks on collections, which may otherwise not be 
+  released.
+
+* added option `--rocksdb.wal-archive-size-limit` for controlling the
+  maximum total size (in bytes) of archived WAL files. The default is 0
+  (meaning: unlimited).
+
+  When setting the value to a size bigger than 0, the RocksDB storage engine
+  will force a removal of archived WAL files if the total size of the archive
+  exceeds the configured size. The option can be used to get rid of archived
+  WAL files in a disk size-constrained environment.
+  Note that archived WAL files are normally deleted automatically after a 
+  short while when there is no follower attached that may read from the archive.
+  However, in case when there are followers attached that may read from the
+  archive, WAL files normally remain in the archive until their contents have 
+  been streamed to the followers. In case there are slow followers that cannot
+  catch up this will cause a growth of the WAL files archive over time. 
+  The option `--rocksdb.wal-archive-size-limit` can now be used to force a 
+  deletion of WAL files from the archive even if there are followers attached
+  that may want to read the archive. In case the option is set and a leader
+  deletes files from the archive that followers want to read, this will abort
+  the replication on the followers. Followers can however restart the replication
+  doing a resync.
+
 * agents need to be able to overwrite a compacted state with same _key
 
 

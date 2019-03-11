@@ -307,6 +307,10 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
     return;
   }
 
+  // don't read over the last committed tick value, which we will return
+  // as part of our response as well
+  tickEnd = std::max(tickEnd, state.lastCommittedTick); 
+
   // check if a barrier id was specified in request
   TRI_voc_tid_t barrierId = 0;
   std::string const& value3 = _request->value("barrier", found);
