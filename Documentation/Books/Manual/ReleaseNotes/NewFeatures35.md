@@ -152,13 +152,17 @@ The spread operator can also be used on input objects. In this case it will add 
 attributes of the input object into the target object. 
 
 Consider the following example query:
-    
-    LET name = { first: "John", middle: "J", last: "Doe" }
-    RETURN { id: "1234", age: 39, ...obj, active: true }
 
-The above query will return the merge object, which will be
+    LET name = { first: "John", last: "Doe" }
+    RETURN { last: "Smith", age: 39}, ...name }
 
-    { id: "1234", age: 39, first: "John", middle: "J", last: "Doe", active: true }
+This is equivalent to the query:
+
+    RETURN MERGE( { last: "Smith", age: 39}, { first: "John", last: "Doe" } )
+
+Both queries will return the merged object, which will be:
+
+    { "first": "John", "last": "Doe", "age": 39 }
 
 #### Usability syntax improvements
 
