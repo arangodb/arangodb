@@ -145,7 +145,7 @@ ArangoCollection.prototype.index = function (id) {
   if (typeof id === 'string') {
     var pa = ArangoDatabase.indexRegex.exec(id);
 
-    if (pa === null && Number(id) !== NaN && Number(id) === Math.floor(Number(id))) {
+    if (pa === null && !Number(id).isNaN() && Number(id) === Math.floor(Number(id))) {
       id = this.name() + '/' + id;
     }
   } else if (typeof id === 'number') {
