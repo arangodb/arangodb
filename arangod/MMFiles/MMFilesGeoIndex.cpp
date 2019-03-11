@@ -33,7 +33,6 @@
 #include "Indexes/IndexIterator.h"
 #include "Logger/Logger.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/StringRef.h>
