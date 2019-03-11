@@ -236,6 +236,10 @@ Result IndexFactory::enhanceIndexDefinition(  // normalizze deefinition
       }
     }
 
+    if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(name))) {
+      return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    }
+
     normalized.add(StaticStrings::IndexName, arangodb::velocypack::Value(name));
 
     return factory.normalize(normalized, definition, isCreation, vocbase);
