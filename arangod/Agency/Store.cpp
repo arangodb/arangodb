@@ -214,7 +214,7 @@ std::vector<apply_ret_t> Store::applyTransactions(query_t const& query,
 
 /// Apply single transaction
 check_ret_t Store::applyTransaction(Slice const& query) {
-  check_ret_t ret(true);
+  check_ret_t ret;
 
   MUTEX_LOCKER(storeLocker, _storeLock);
   switch (query.length()) {
@@ -478,7 +478,7 @@ void Store::check(Node const& node, VPackSlice const& key, VPackSlice const& pre
     }
   }
     
-  
+
 }
 
 /// Check precodition object
@@ -503,6 +503,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
     }
 
     auto p = precond.value;
+    LOG_DEVEL << p.toJson();
     if (p.isObject()) {
       if (p.hasKey("and") && p.get("and").isArray()) {
         ret.open();
@@ -510,15 +511,13 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           check(node, precond.key, i, mode, found, ret);
         }
         ret.close();
-      }
-      if (p.hasKey("or") && p.get("or").isArray()) {
+      } else if (p.hasKey("or") && p.get("or").isArray()) {
         ret.open();
         for (auto i : VPackArrayIterator(p.get("or"))) {
           check(node, precond.key, i, mode, found, ret);
         }
         ret.close();
-      }
-      else {
+      } else {
         check(node, precond.key, p, mode, found, ret);
       }
     } else {

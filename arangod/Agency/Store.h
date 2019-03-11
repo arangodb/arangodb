@@ -31,21 +31,25 @@
 namespace arangodb {
 namespace consensus {
 
+
 struct check_ret_t {
-  bool success;
+  int64_t checks;
   query_t failed;
-
-  check_ret_t() : success(true), failed(nullptr) {
+  enum link_t {AND, OR};
+  link_t link;
+  
+  check_ret_t(link_t l = AND) : failed(nullptr), link(l) {
     failed = std::make_shared<VPackBuilder>();
   }
 
-  explicit check_ret_t(bool s) : success(s) {
-    failed = std::make_shared<VPackBuilder>();
+  inline bool successful() const {
+    TRI_ASSERT(failed != nullptr);
+    auto nf = 0;
+    if (failed->slice().isArray()) {
+      failed->slice().length();
+    }
+    return (link == AND) ? nf == 0 : nf < checks;
   }
-
-  inline bool successful() const { return success; }
-
-  inline void successful(bool s) { success = s; }
 
   inline void open() {
     failed->openArray();
@@ -53,7 +57,7 @@ struct check_ret_t {
 
   inline void push_back(VPackSlice const& key) {
     TRI_ASSERT(failed != nullptr);
-    success = false;
+    ++checks;
     failed->add(key);
   }
 
