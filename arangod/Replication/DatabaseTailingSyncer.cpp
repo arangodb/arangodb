@@ -199,6 +199,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
     }
     if (!fromIncluded && fromTick > 0) {
       until = fromTick;
+      abortOngoingTransactions();
       return Result(
           TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT,
           std::string("required follow tick value '") + StringUtils::itoa(lastIncludedTick) +
@@ -208,9 +209,9 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
               "number of historic logfiles on the master.");
     }
 
-    uint64_t processedMarkers = 0;
+    ApplyStats applyStats;
     uint64_t ignoreCount = 0;
-    Result r = applyLog(response.get(), fromTick, processedMarkers, ignoreCount);
+    Result r = applyLog(response.get(), fromTick, applyStats, ignoreCount);
     if (r.fail()) {
       until = fromTick;
       return r;
