@@ -23,6 +23,7 @@
 #include "RocksDBHotBackupCoord.h"
 
 #include <ctype.h>
+#include <thread>
 
 #include "Agency/TimeString.h"
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
@@ -33,6 +34,8 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/TransactionManagerFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionManager.h"
 
@@ -356,7 +359,13 @@ void RocksDBHotBackup::releaseRocksDBTransactions() {
 
 void RocksDBHotBackup::startGlobalShutdown() {
 
-  application_features::ApplicationServer::server->beginShutdown();
+  rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  scheduler->queue(RequestPriority::LOW, [](bool) {
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+      LOG_TOPIC(INFO, arangodb::Logger::ENGINES)
+        << "RocksDBHotBackupRestore:  restarting server with restored data";
+      application_features::ApplicationServer::server->beginShutdown();
+    });
 
 } // RocksDBHotBackup::startGlobalShutdown
 
