@@ -32,6 +32,9 @@ v3.4.5 (XXXX-XX-XX)
 v3.4.4 (2019-03-08)
 -------------------
 
+* added missing test for success in failed leader: this could lead
+  to a crash
+
 * follow up to fix JWT authentication in arangosh (#7530):
   also fix reconnect
 
