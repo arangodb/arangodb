@@ -39,7 +39,7 @@ class SocketUnixDomain final : public Socket {
   explicit SocketUnixDomain(rest::GeneralServer::IoContext& context)
       : Socket(context, false), _socket(context.newDomainSocket()) {}
 
-  SocketUnixDomain(SocketUnixDomain&& that) = default;
+  SocketUnixDomain(SocketUnixDomain&& that) = delete;
 
   std::string peerAddress() const override { return "local"; }
   int peerPort() const override { return 0; }

@@ -47,13 +47,13 @@ class Iterator;
 namespace arangodb {
 class RocksDBEdgeIndex;
 
-class RocksDBEdgeIndexIterator final : public IndexIterator {
+class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
  public:
-  RocksDBEdgeIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                           arangodb::RocksDBEdgeIndex const* index,
-                           std::unique_ptr<VPackBuilder> keys,
-                           std::shared_ptr<cache::Cache>);
-  ~RocksDBEdgeIndexIterator();
+  RocksDBEdgeIndexLookupIterator(LogicalCollection* collection, transaction::Methods* trx,
+                                 arangodb::RocksDBEdgeIndex const* index,
+                                 std::unique_ptr<VPackBuilder> keys,
+                                 std::shared_ptr<cache::Cache>);
+  ~RocksDBEdgeIndexLookupIterator();
   char const* typeName() const override { return "edge-index-iterator"; }
   bool hasExtra() const override { return true; }
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
@@ -104,7 +104,7 @@ class RocksDBEdgeIndexWarmupTask : public basics::LocalTask {
 };
 
 class RocksDBEdgeIndex final : public RocksDBIndex {
-  friend class RocksDBEdgeIndexIterator;
+  friend class RocksDBEdgeIndexLookupIterator;
   friend class RocksDBEdgeIndexWarmupTask;
 
  public:

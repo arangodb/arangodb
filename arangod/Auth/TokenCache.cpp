@@ -27,7 +27,6 @@
 #include "Agency/AgencyComm.h"
 #include "Auth/Handler.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/ReadUnlocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/tri-strings.h"

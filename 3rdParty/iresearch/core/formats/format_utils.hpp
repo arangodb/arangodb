@@ -30,31 +30,7 @@
 
 NS_ROOT
 
-void IRESEARCH_API validate_footer(iresearch::index_input& in);
-
-template<typename Type, typename Reader, typename Visitor>
-size_t read_all(const Visitor& visitor, Reader& reader, size_t count) {
-  for (size_t i = 0; i < count; ++i) {
-    Type value;
-
-    reader.read(value);
-
-    if (!visitor(value)) {
-      return count - i + 1; // +1 for current iteration
-    }
-  }
-
-  return count;
-}
-
-template<typename Iterator, typename Writer>
-Iterator write_all(Writer& writer, Iterator begin, Iterator end) {
-  for(; begin != end; ++begin) {
-    writer.write(*begin);
-  }
-
-  return begin;
-}
+IRESEARCH_API void validate_footer(iresearch::index_input& in);
 
 NS_BEGIN(format_utils)
 
@@ -62,14 +38,17 @@ const int32_t FORMAT_MAGIC = 0x3fd76c17;
 
 const int32_t FOOTER_MAGIC = -FORMAT_MAGIC;
 
-const uint32_t FOOTER_LEN = 2 * sizeof( int32_t ) + sizeof( int64_t );
+const uint32_t FOOTER_LEN = 2 * sizeof(int32_t) + sizeof(int64_t);
 
-void IRESEARCH_API write_header(index_output& out, const string_ref& format, int32_t ver);
+IRESEARCH_API void write_header(index_output& out, const string_ref& format, int32_t ver);
 
-void IRESEARCH_API write_footer(index_output& out);
+IRESEARCH_API void write_footer(index_output& out);
 
-int32_t IRESEARCH_API check_header(
-  index_input& in, const string_ref& format, int32_t min_ver, int32_t max_ver
+IRESEARCH_API int32_t check_header(
+  index_input& in,
+  const string_ref& format,
+  int32_t min_ver,
+  int32_t max_ver
 );
 
 inline int64_t read_checksum(index_input& in) {
@@ -91,26 +70,7 @@ inline int64_t check_footer(index_input& in, int64_t checksum) {
   return checksum;
 }
 
-inline int64_t checksum(const index_input& in) {
-  auto* stream = &in;
-
-  index_input::ptr dup;
-  if (0 != in.file_pointer()) {
-    dup = in.dup();
-
-    if (!dup) {
-      IR_FRMT_ERROR("Failed to duplicate input in: %s", __FUNCTION__);
-
-      throw io_error("failed to duplicate input");
-    }
-
-    dup->seek(0);
-    stream = dup.get();
-  }
-
-  assert(0 == stream->file_pointer());
-  return stream->checksum(stream->length() - sizeof(uint64_t));
-}
+IRESEARCH_API int64_t checksum(const index_input& in);
 
 NS_END
 NS_END

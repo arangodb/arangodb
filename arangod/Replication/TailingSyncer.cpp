@@ -55,6 +55,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -63,6 +64,10 @@ using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
 namespace {
+
+static arangodb::velocypack::StringRef const cnameRef("cname");
+static arangodb::velocypack::StringRef const dataRef("data");
+static arangodb::velocypack::StringRef const tickRef("tick");
 
 bool hasHeader(std::unique_ptr<httpclient::SimpleHttpResult> const& response,
                std::string const& name) {
@@ -104,7 +109,6 @@ TailingSyncer::TailingSyncer(ReplicationApplier* applier,
       _usersModified(false),
       _useTick(useTick),
       _requireFromPresent(configuration._requireFromPresent),
-      _supportsSingleOperations(false),
       _ignoreRenameCreateDrop(false),
       _ignoreDatabaseMarkers(true),
       _workInParallel(false) {
@@ -115,7 +119,6 @@ TailingSyncer::TailingSyncer(ReplicationApplier* applier,
 
   // FIXME: move this into engine code
   std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
-  _supportsSingleOperations = (engineName == "mmfiles");
 
   // Replication for RocksDB expects only one open transaction at a time
   _supportsMultipleOpenTransactions = (engineName != "rocksdb");
@@ -161,44 +164,32 @@ void TailingSyncer::abortOngoingTransactions() noexcept {
 }
 
 /// @brief whether or not a marker should be skipped
-bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick, VPackSlice const& slice) {
+bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick, VPackSlice const& slice,
+                               TRI_voc_tick_t actualMarkerTick, TRI_replication_operation_e type) {
   TRI_ASSERT(slice.isObject());
 
-  bool tooOld = false;
-  VPackSlice tickSlice = slice.get("tick");
+  bool tooOld = (actualMarkerTick < firstRegularTick);
 
-  if (tickSlice.isString() && tickSlice.getStringLength() > 0) {
-    VPackValueLength len = 0;
-    char const* str = tickSlice.getStringUnchecked(len);
-    tooOld = (NumberUtils::atoi_zero<TRI_voc_tick_t>(str, str + len) < firstRegularTick);
+  if (tooOld) {
+    // handle marker type
 
-    if (tooOld) {
-      int typeValue = VelocyPackHelper::getNumericValue<int>(slice, "type", 0);
-      // handle marker type
-      TRI_replication_operation_e type =
-          static_cast<TRI_replication_operation_e>(typeValue);
+    if (type == REPLICATION_MARKER_DOCUMENT || type == REPLICATION_MARKER_REMOVE ||
+        type == REPLICATION_TRANSACTION_START || type == REPLICATION_TRANSACTION_ABORT ||
+        type == REPLICATION_TRANSACTION_COMMIT) {
+      // read "tid" entry from marker
+      VPackSlice tidSlice = slice.get("tid");
+      if (tidSlice.isString() && tidSlice.getStringLength() > 0) {
+        VPackValueLength len;
+        char const* str = tidSlice.getStringUnchecked(len);
+        TRI_voc_tid_t tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(str, str + len);
 
-      if (type == REPLICATION_MARKER_DOCUMENT || type == REPLICATION_MARKER_REMOVE ||
-          type == REPLICATION_TRANSACTION_START || type == REPLICATION_TRANSACTION_ABORT ||
-          type == REPLICATION_TRANSACTION_COMMIT) {
-        // read "tid" entry from marker
-        VPackSlice tidSlice = slice.get("tid");
-        if (tidSlice.isString() && tidSlice.getStringLength() > 0) {
-          str = tidSlice.getStringUnchecked(len);
-          TRI_voc_tid_t tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(str, str + len);
-
-          if (tid > 0 && _ongoingTransactions.find(tid) != _ongoingTransactions.end()) {
-            // must still use this marker as it belongs to a transaction we need
-            // to finish
-            tooOld = false;
-          }
+        if (tid > 0 && _ongoingTransactions.find(tid) != _ongoingTransactions.end()) {
+          // must still use this marker as it belongs to a transaction we need
+          // to finish
+          tooOld = false;
         }
       }
     }
-  }
-
-  if (tooOld) {
-    return true;
   }
 
   // the transient applier state is just used for one shard / collection
@@ -211,7 +202,7 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick, VPackSlice const
     return false;
   }
 
-  VPackSlice const name = slice.get("cname");
+  VPackSlice const name = slice.get(::cnameRef);
   if (name.isString()) {
     return isExcludedCollection(name.copyString());
   }
@@ -346,10 +337,11 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
-  bool isSystem = coll->system();
+  bool const isSystem = coll->system();
+  bool const isUsers = coll->name() == TRI_COL_NAME_USERS; 
 
   // extract "data"
-  VPackSlice const data = slice.get("data");
+  VPackSlice const data = slice.get(::dataRef);
 
   if (!data.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -374,8 +366,8 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   }
 
   // extract "tid"
-  std::string const transactionId =
-      VelocyPackHelper::getStringValue(slice, "tid", "");
+  arangodb::velocypack::StringRef const transactionId =
+      VelocyPackHelper::getStringRef(slice, "tid", "");
   TRI_voc_tid_t tid = 0;
   if (!transactionId.empty()) {
     // operation is part of a transaction
@@ -415,54 +407,120 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
     trx->addCollectionAtRuntime(coll->id(), coll->name(), AccessMode::Type::EXCLUSIVE);
     Result r = applyCollectionDumpMarker(*trx, coll, type, applySlice);
+    TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
 
     if (r.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
       // ignore unique constraint violations for system collections
       r.reset();
     }
-    if (r.ok() && coll->name() == TRI_COL_NAME_USERS) {
+    if (r.ok() && isUsers) {
       _usersModified = true;
     }
 
     return r;  // done
   }
-
+    
   // standalone operation
-  // update the apply tick for all standalone operations
-  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(*vocbase),
+
+  // this variable will store the key of a conflicting document we will have to remove first
+  // it is initially empty, and may be populated by a failing operation
+  std::string conflictDocumentKey;
+    
+  // normally we will go into this while loop just once. only in the very exceptional case
+  // that there is a unique constraint violation in one of the secondary indexes we will
+  // get into the while loop a second time
+  int tries = 0;
+  while (tries++ < 10) {
+    if (!conflictDocumentKey.empty()) {
+      // a rather exceptional case in which we have to remove a conflicting document,
+      // which is conflicting with the to-be-inserted document in one the unique
+      // secondary indexes
+
+      // intentionally ignore the return code here, as the operation will be followed
+      // by yet another insert/replace
+      removeSingleDocument(coll, conflictDocumentKey);
+      conflictDocumentKey.clear();
+    }
+    
+    // update the apply tick for all standalone operations
+    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(*vocbase),
+                                    *coll, AccessMode::Type::EXCLUSIVE);
+
+    // we will always check if the target document already exists and then either
+    // carry out an insert or a replace.
+    // so we will be carrying out either a read-then-insert or a read-then-replace
+    // operation, which is a single write operation. and for MMFiles this is also
+    // safe as we have the exclusive lock on the underlying collection anyway 
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+
+    Result res = trx.begin();
+
+    // fix error handling here when function returns result
+    if (!res.ok()) {
+      return Result(res.errorNumber(),
+                    std::string("unable to create replication transaction: ") +
+                        res.errorMessage());
+    }
+
+    res = applyCollectionDumpMarker(trx, coll, type, applySlice);
+
+    if (res.is(TRI_ERROR_ARANGO_TRY_AGAIN)) {
+      // TRY_AGAIN we will only be getting when there is a conflicting document.
+      // the key of the conflicting document can be found in the errorMessage
+      // of the result :-|
+      TRI_ASSERT(type != REPLICATION_MARKER_REMOVE);
+      TRI_ASSERT(!res.errorMessage().empty());
+      conflictDocumentKey = std::move(res).errorMessage();
+      // restart the while loop above
+      continue;
+    }
+
+    if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
+      // ignore unique constraint violations for system collections
+      res.reset();
+    }
+
+    // fix error handling here when function returns result
+    if (res.ok()) {
+      res = trx.commit();
+
+      if (res.ok() && isUsers) {
+        _usersModified = true;
+      }
+    }
+
+    return res;
+  }
+
+  return Result(TRI_ERROR_INTERNAL, "invalid state reached in processDocument");
+}
+
+Result TailingSyncer::removeSingleDocument(LogicalCollection* coll, std::string const& key) {
+  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(coll->vocbase()),
                                   *coll, AccessMode::Type::EXCLUSIVE);
 
-  if (_supportsSingleOperations) {
-    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  }
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
-
-  // fix error handling here when function returns result
-  if (!res.ok()) {
-    return Result(res.errorNumber(),
-                  std::string("unable to create replication transaction: ") +
-                      res.errorMessage());
+  if (res.fail()) {
+    return res;
   }
 
-  std::string collectionName = trx.name();
-
-  res = applyCollectionDumpMarker(trx, coll, type, applySlice);
-  if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
-    // ignore unique constraint violations for system collections
-    res.reset();
+  OperationOptions options;
+  options.silent = true;
+  options.ignoreRevs = true;
+  options.isRestore = true;
+  options.waitForSync = false;
+            
+  VPackBuilder tmp;
+  tmp.add(VPackValue(key));
+  
+  OperationResult opRes = trx.remove(coll->name(), tmp.slice(), options);
+  if (opRes.fail()) {
+    return opRes.result;
   }
-
-  // fix error handling here when function returns result
-  if (res.ok()) {
-    res = trx.commit();
-
-    if (res.ok() && collectionName == TRI_COL_NAME_USERS) {
-      _usersModified = true;
-    }
-  }
-
-  return res;
+  
+  return trx.commit();
 }
 
 /// @brief starts a transaction, based on the VelocyPack provided
@@ -794,29 +852,8 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
 
 /// @brief apply a single marker from the continuous log
 Result TailingSyncer::applyLogMarker(VPackSlice const& slice, TRI_voc_tick_t firstRegularTick,
-                                     TRI_voc_tick_t& markerTick) {
-  // reset found tick value to 0
-  markerTick = 0;
-
-  if (!slice.isObject()) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  "marker slice is no object");
-  }
-
-  // fetch marker "type"
-  int typeValue = VelocyPackHelper::getNumericValue<int>(slice, "type", 0);
-
-  // fetch "tick"
-  VPackSlice tickSlice = slice.get("tick");
-  if (tickSlice.isString()) {
-    VPackValueLength length;
-    char const* p = tickSlice.getStringUnchecked(length);
-    // update the caller's tick
-    markerTick = NumberUtils::atoi_zero<TRI_voc_tick_t>(p, p + length);
-  }
-
+                                     TRI_voc_tick_t markerTick, TRI_replication_operation_e type) {
   // handle marker type
-  TRI_replication_operation_e type = static_cast<TRI_replication_operation_e>(typeValue);
   if (type == REPLICATION_MARKER_DOCUMENT || type == REPLICATION_MARKER_REMOVE) {
     try {
       return processDocument(type, slice);
@@ -963,7 +1000,7 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
   auto builder = std::make_shared<VPackBuilder>();
 
   while (p < end) {
-    char const* q = strchr(p, '\n');
+    char const* q = static_cast<char const*>(memchr(p, '\n', (end - p)));
 
     if (q == nullptr) {
       q = end;
@@ -985,8 +1022,9 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
     try {
       VPackParser parser(builder);
       parser.parse(p, static_cast<size_t>(q - p));
+    } catch (std::exception const& ex) {
+      return Result(TRI_ERROR_HTTP_CORRUPTED_JSON, ex.what());
     } catch (...) {
-      // TODO: improve error reporting
       return Result(TRI_ERROR_OUT_OF_MEMORY);
     }
 
@@ -999,38 +1037,45 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response, TRI_voc_tick_t firstR
                     "received invalid JSON data");
     }
 
-    Result res;
-    bool skipped;
+    int typeValue = VelocyPackHelper::getNumericValue<int>(slice, "type", 0);
+    TRI_replication_operation_e markerType = static_cast<TRI_replication_operation_e>(typeValue);
     TRI_voc_tick_t markerTick = 0;
 
-    if (skipMarker(firstRegularTick, slice)) {
-      // entry is skipped
-      skipped = true;
-    } else {
-      res = applyLogMarker(slice, firstRegularTick, markerTick);
-      skipped = false;
+    VPackSlice tickSlice = slice.get(::tickRef);
+
+    if (tickSlice.isString() && tickSlice.getStringLength() > 0) {
+      VPackValueLength len = 0;
+      char const* str = tickSlice.getStringUnchecked(len);
+      markerTick = NumberUtils::atoi_zero<TRI_voc_tick_t>(str, str + len);
     }
 
-    if (res.fail()) {
-      // apply error
-      std::string errorMsg = res.errorMessage();
+    // entry is skipped?
+    bool skipped = skipMarker(firstRegularTick, slice, markerTick, markerType);
 
-      if (ignoreCount == 0) {
-        if (lineLength > 1024) {
-          errorMsg +=
-              ", offending marker: " + std::string(lineStart, 1024) + "...";
-        } else {
-          errorMsg += ", offending marker: " + std::string(lineStart, lineLength);
+    if (!skipped) {
+      Result res = applyLogMarker(slice, firstRegularTick, markerTick, markerType);
+
+      if (res.fail()) {
+        // apply error
+        std::string errorMsg = res.errorMessage();
+
+        if (ignoreCount == 0) {
+          if (lineLength > 1024) {
+            errorMsg +=
+                ", offending marker: " + std::string(lineStart, 1024) + "...";
+          } else {
+            errorMsg += ", offending marker: " + std::string(lineStart, lineLength);
+          }
+
+          res.reset(res.errorNumber(), errorMsg);
+          return res;
         }
 
-        res.reset(res.errorNumber(), errorMsg);
-        return res;
+        ignoreCount--;
+        LOG_TOPIC(WARN, Logger::REPLICATION)
+            << "ignoring replication error for database '" << _state.databaseName
+            << "': " << errorMsg;
       }
-
-      ignoreCount--;
-      LOG_TOPIC(WARN, Logger::REPLICATION)
-          << "ignoring replication error for database '" << _state.databaseName
-          << "': " << errorMsg;
     }
 
     // update tick value
@@ -1275,6 +1320,8 @@ retry:
                   "caught unknown exception during initial replication");
       }
     }
+      
+    abortOngoingTransactions();
 
     _applier->stop(res);
     return res;
@@ -1785,9 +1832,12 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "applyLog. bumping tick";
   }
 
+  TRI_voc_tick_t lastAppliedTick;
   {
     WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
     _applier->_state._lastAvailableContinuousTick = tick;
+
+    lastAppliedTick = _applier->_state._lastAppliedContinuousTick;
   }
 
   if (!fromIncluded && fetchTick > 0 &&
@@ -1817,13 +1867,6 @@ Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> 
                            firstRegularTick]() {
       fetchMasterLog(sharedStatus, fetchTick, lastScannedTick, firstRegularTick);
     });
-  }
-
-  TRI_voc_tick_t lastAppliedTick;
-
-  {
-    READ_LOCKER(locker, _applier->_statusLock);
-    lastAppliedTick = _applier->_state._lastAppliedContinuousTick;
   }
 
   uint64_t processedMarkers = 0;

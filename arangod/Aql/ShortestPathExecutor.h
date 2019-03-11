@@ -64,7 +64,9 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
   };
 
   enum OutputName { VERTEX, EDGE };
-  struct OutputNameHash { size_t operator()(OutputName v) const noexcept { return size_t(v); } };
+  struct OutputNameHash {
+    size_t operator()(OutputName v) const noexcept { return size_t(v); }
+  };
 
   ShortestPathExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
                             std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
@@ -72,7 +74,7 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
                             std::unordered_set<RegisterId> registersToClear,
                             std::unordered_set<RegisterId> registersToKeep,
                             std::unique_ptr<graph::ShortestPathFinder>&& finder,
-    std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
+                            std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
                             InputVertex&& source, InputVertex&& target);
 
   ShortestPathExecutorInfos() = delete;
@@ -140,6 +142,7 @@ class ShortestPathExecutor {
   struct Properties {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
+    static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = ShortestPathExecutorInfos;
@@ -147,7 +150,7 @@ class ShortestPathExecutor {
 
   ShortestPathExecutor() = delete;
   ShortestPathExecutor(ShortestPathExecutor&&) = default;
-  ShortestPathExecutor(ShortestPathExecutor const&) = default;
+
   ShortestPathExecutor(Fetcher& fetcher, Infos&);
   ~ShortestPathExecutor();
 

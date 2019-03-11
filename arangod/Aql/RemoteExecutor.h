@@ -52,6 +52,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   ~ExecutionBlockImpl() override = default;
 
+
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override;
 
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;

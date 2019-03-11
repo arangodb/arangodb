@@ -75,8 +75,12 @@ struct IResearchLinkHelper {
   /// @brief validate and copy required fields from the 'definition' into
   ///        'normalized'
   //////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                                    velocypack::Slice definition, bool isCreation);
+  static arangodb::Result normalize( // normalize definition
+    arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
+    arangodb::velocypack::Slice definition, // source definition
+    bool isCreation, // definition for index creation
+    TRI_vocbase_t const& vocbase // index vocbase
+  );
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief IResearch Link index type string value

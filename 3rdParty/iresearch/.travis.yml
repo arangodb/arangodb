@@ -57,7 +57,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -71,7 +71,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -99,7 +99,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -113,7 +113,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -145,7 +145,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -159,7 +159,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -187,7 +187,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -201,7 +201,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -232,7 +232,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
 
     ############################################################################
     # Release build, static library (remaining tests)
@@ -245,7 +245,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
 
     ############################################################################
     # Debug build, shared library
@@ -271,7 +271,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
 
     ############################################################################
     # Release build, shared library (remaining tests)
@@ -284,7 +284,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
 
     ############################################################################
     # GCC 6
@@ -314,7 +314,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
 
     ############################################################################
     # Release build, static library (remaining tests)
@@ -327,7 +327,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
 
     ############################################################################
     # Debug build, shared library
@@ -353,7 +353,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
 
     ############################################################################
     # Release build, shared library (remaining tests)
@@ -366,7 +366,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
 
     ############################################################################
     # GCC 7
@@ -400,7 +400,7 @@ matrix:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
         - CMAKE_VERSION=3.2.3 # supports c++14
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
 
     ############################################################################
     # Release build, static library (remaining tests)
@@ -415,7 +415,7 @@ matrix:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
         - CMAKE_VERSION=3.2.3 # supports c++14
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
 
     ############################################################################
     # Debug build, shared library
@@ -445,7 +445,7 @@ matrix:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
         - CMAKE_VERSION=3.2.3 # supports c++14
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
 
     ############################################################################
     # Release build, shared library (remaining tests)
@@ -460,7 +460,7 @@ matrix:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
         - CMAKE_VERSION=3.2.3 # supports c++14
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
 
     ############################################################################
     # GCC 8
@@ -494,7 +494,7 @@ matrix:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
 
     ############################################################################
     # Release build, static library (remaining tests)
@@ -509,7 +509,7 @@ matrix:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
 
     ############################################################################
     # Debug build, shared library
@@ -539,7 +539,7 @@ matrix:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
 
     ############################################################################
     # Release build, shared library (remaining tests)
@@ -554,7 +554,7 @@ matrix:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
 
     ############################################################################
     # OSX
@@ -568,9 +568,9 @@ matrix:
       compiler: clang
       before_install:
         - brew update || true;
-          brew install bison || true;
+          brew install bison@2.7 || true;
       env:
-        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
@@ -583,12 +583,12 @@ matrix:
       compiler: clang
       before_install:
         - brew update || true;
-          brew install bison || true;
+          brew install bison@2.7 || true;
       env:
-        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
 
     ############################################################################
     # Release build, static library (remaining tests)
@@ -598,12 +598,12 @@ matrix:
       compiler: clang
       before_install:
         - brew update || true;
-          brew install bison || true;
+          brew install bison@2.7 || true;
       env:
-        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
 
     ############################################################################
     # Debug build, shared library
@@ -613,9 +613,9 @@ matrix:
       compiler: clang
       before_install:
         - brew update || true;
-          brew install bison || true;
+          brew install bison@2.7 || true;
       env:
-        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
@@ -628,12 +628,12 @@ matrix:
       compiler: clang
       before_install:
         - brew update || true;
-          brew install bison || true;
+          brew install bison@2.7 || true;
       env:
-        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
 
     ############################################################################
     # Release build, shared library (remaining tests)
@@ -643,12 +643,12 @@ matrix:
       compiler: clang
       before_install:
         - brew update || true;
-          brew install bison || true;
+          brew install bison@2.7 || true;
       env:
-        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
 
 before_install:
   - eval "${SET_ENV}"
@@ -769,8 +769,9 @@ install:
       GTEST_URL="https://github.com/google/googletest.git"
       cd ${DEPS_DIR}
       travis_retry git clone --depth 1 --recursive --quiet ${GTEST_URL} ${GTEST_DIR} || exit 1
+      cd ${GTEST_DIR}
       travis_retry git fetch --tags
-      travis_retrya git checkout tags/release-1.8.0
+      travis_retry git checkout tags/release-1.8.0
     fi
     export GTEST_ROOT=${GTEST_DIR}/googletest
 

@@ -225,6 +225,7 @@ SET(ARANGOD_SOURCES
   Aql/Functions.cpp
   Aql/GraphNode.cpp
   Aql/Graphs.cpp
+  Aql/InAndOutRowExpressionContext.cpp
   Aql/IdExecutor.cpp
   Aql/IndexExecutor.cpp
   Aql/IndexNode.cpp
@@ -243,6 +244,7 @@ SET(ARANGOD_SOURCES
   Aql/OutputAqlItemRow.cpp
   Aql/Parser.cpp
   Aql/PlanCache.cpp
+  Aql/PruneExpressionEvaluator.cpp
   Aql/Quantifier.cpp
   Aql/Query.cpp
   Aql/QueryCache.cpp
