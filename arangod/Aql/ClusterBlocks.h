@@ -210,69 +210,6 @@ class DistributeBlock final : public BlockWithClients {
   bool _allowSpecifiedKeys;
 };
 
-class RemoteBlock final : public ExecutionBlock {
-  /// @brief constructors/destructors
- public:
-  RemoteBlock(ExecutionEngine* engine, RemoteNode const* en, std::string const& server,
-              std::string const& ownName, std::string const& queryId);
-
-  /// @brief timeout
-  static double const defaultTimeOut;
-
-  /// @brief initializeCursor, could be called multiple times
-  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
-
-  /// @brief shutdown, will be called exactly once for the whole query
-  std::pair<ExecutionState, Result> shutdown(int) override final;
-
-  /// @brief getSome
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
-
-  /// @brief skipSome
-  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
-
-  /// @brief handleAsyncResult
-  bool handleAsyncResult(ClusterCommResult* result) override;
-
- private:
-  /**
-   * @brief Handle communication errors in Async case.
-   *
-   * @param result The network response we got from cluster comm.
-   *
-   * @return A wrapped Result Object, that is either ok() or contains
-   *         the error information to be thrown in get/skip some.
-   */
-  arangodb::Result handleCommErrors(ClusterCommResult* result) const;
-
-  /// @brief internal method to send a request. Will register a callback to be
-  /// reactivated
-  arangodb::Result sendAsyncRequest(rest::RequestType type, std::string const& urlPart,
-                                    std::shared_ptr<std::string const> body);
-
-  std::shared_ptr<velocypack::Builder> stealResultBody();
-
-  /// @brief our server, can be like "shard:S1000" or like "server:Claus"
-  std::string const _server;
-
-  /// @brief our own identity, in case of the coordinator this is empty,
-  /// in case of the DBservers, this is the shard ID as a string
-  std::string const _ownName;
-
-  /// @brief the ID of the query on the server as a string
-  std::string const _queryId;
-
-  /// @brief whether or not this block will forward initialize,
-  /// initializeCursor or shutDown requests
-  bool const _isResponsibleForInitializeCursor;
-
-  /// @brief the last unprocessed result. Make sure to reset it
-  ///        after it is processed.
-  std::shared_ptr<httpclient::SimpleHttpResult> _lastResponse;
-
-  /// @brief the last remote response Result object, may contain an error.
-  arangodb::Result _lastError;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct SortingStrategy

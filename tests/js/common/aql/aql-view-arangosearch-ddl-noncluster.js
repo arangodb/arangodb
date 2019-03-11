@@ -209,7 +209,7 @@ function IResearchFeatureDDLTestSuite () {
       properties = view.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(10, properties.cleanupIntervalStep);
-      assertEqual(60000, properties.commitIntervalMsec);
+      assertEqual(1000, properties.commitIntervalMsec);
       assertEqual(60000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
@@ -240,7 +240,7 @@ function IResearchFeatureDDLTestSuite () {
       properties = view.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(20, properties.cleanupIntervalStep);
-      assertEqual(60000, properties.commitIntervalMsec);
+      assertEqual(1000, properties.commitIntervalMsec);
       assertEqual(60000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
@@ -679,7 +679,7 @@ function IResearchFeatureDDLTestSuite () {
       properties = view.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(10, properties.cleanupIntervalStep);
-      assertEqual(60000, properties.commitIntervalMsec);
+      assertEqual(1000, properties.commitIntervalMsec);
       assertEqual(60000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);

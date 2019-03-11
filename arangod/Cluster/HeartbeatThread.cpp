@@ -42,7 +42,6 @@
 #include "Logger/Logger.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Recovery.h"
-#include "Replication/GlobalInitialSyncer.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -253,9 +252,7 @@ void HeartbeatThread::run() {
   } else if (ServerState::instance()->isSingleServer(role)) {
     if (ReplicationFeature::INSTANCE->isActiveFailoverEnabled()) {
       runSingleServer();
-    } else {
-      // runSimpleServer();  // for later when CriticalThreads identified
-    }  // else
+    }
   } else if (ServerState::instance()->isAgent(role)) {
     runSimpleServer();
   } else {

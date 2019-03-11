@@ -190,7 +190,7 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
 
 IResearchViewMeta::IResearchViewMeta()
     : _cleanupIntervalStep(10),
-      _commitIntervalMsec(60 * 1000),
+      _commitIntervalMsec(1000),
       _consolidationIntervalMsec(60 * 1000),
       _locale(std::locale::classic()),
       _version(LATEST_VERSION),
@@ -610,13 +610,6 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
   return true;
 }
 
-bool IResearchViewMeta::json(arangodb::velocypack::ObjectBuilder const& builder,
-                             IResearchViewMeta const* ignoreEqual /*= nullptr*/,
-                             Mask const* mask /*= nullptr*/
-                             ) const {
-  return builder.builder && json(*(builder.builder), ignoreEqual, mask);
-}
-
 size_t IResearchViewMeta::memory() const {
   auto size = sizeof(IResearchViewMeta);
 
@@ -748,13 +741,6 @@ bool IResearchViewMetaState::json(arangodb::velocypack::Builder& builder,
   }
 
   return true;
-}
-
-bool IResearchViewMetaState::json(arangodb::velocypack::ObjectBuilder const& builder,
-                                  IResearchViewMetaState const* ignoreEqual /*= nullptr*/,
-                                  Mask const* mask /*= nullptr*/
-                                  ) const {
-  return builder.builder && json(*(builder.builder), ignoreEqual, mask);
 }
 
 size_t IResearchViewMetaState::memory() const {

@@ -42,10 +42,14 @@ void Compactor::run() {
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting compactor personality";
 
   while (true) {
+    bool falseAlarm = true;
     {
       CONDITION_LOCKER(guard, _cv);
       if (!_wakeupCompactor) {
         _cv.wait(5000000);  // just in case we miss a wakeup call!
+      }
+      if (_wakeupCompactor) {
+        falseAlarm = false;
       }
       _wakeupCompactor = false;
     }
@@ -55,7 +59,9 @@ void Compactor::run() {
     }
 
     try {
-      _agent->compact();  // Note that this checks nextCompactionAfter again!
+      if (!falseAlarm) {
+        _agent->compact();  // Note that this checks nextCompactionAfter again!
+      }
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY)
           << "Exception during compaction, details: " << e.what();

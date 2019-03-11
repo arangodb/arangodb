@@ -197,7 +197,7 @@ class MMFilesFlushMarker final: public arangodb::MMFilesWalMarker {
 
     auto* data = reinterpret_cast<uint8_t const*>(&marker);
     auto* ptr = data + sizeof(MMFilesMarker);
-    auto* end = ptr + marker.getSize();
+    auto* end = ptr + marker.getSize() - sizeof(MMFilesMarker);
 
     if (sizeof(TRI_voc_tick_t) > size_t(end - ptr)) {
       THROW_ARANGO_EXCEPTION(arangodb::Result( // exception
@@ -550,7 +550,9 @@ namespace arangodb {
 std::atomic<bool> FlushFeature::_isRunning(false);
 
 FlushFeature::FlushFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Flush"), _flushInterval(1000000) {
+    : ApplicationFeature(server, "Flush"),
+      _flushInterval(1000000),
+      _stopped(false) {
   setOptional(true);
   startsAfter("BasicsPhase");
 
@@ -604,7 +606,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
     );
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
-    if (!_isRunning.load()) {
+    if (_stopped) {
       LOG_TOPIC(ERR, Logger::FLUSH)
         << "FlushFeature not running";
 
@@ -642,7 +644,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
     );
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
-    if (!_isRunning.load()) {
+    if (_stopped) {
       LOG_TOPIC(ERR, Logger::FLUSH)
         << "FlushFeature not running";
 
@@ -806,6 +808,7 @@ void FlushFeature::stop() {
       // release any remaining flush subscriptions so that they may get deallocated ASAP
       // subscriptions could survive after FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
       _flushSubscriptions.clear();
+      _stopped = true;
     }
   }
 }

@@ -140,16 +140,6 @@ struct IResearchViewMeta {
             IResearchViewMeta const* ignoreEqual = nullptr, Mask const* mask = nullptr) const;
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief fill and return a JSON description of a IResearchViewMeta object
-  ///        do not fill values identical to ones available in 'ignoreEqual'
-  ///        or (if 'mask' != nullptr) values in 'mask' that are set to false
-  ///        elements are appended to an existing object
-  ///        return success or set TRI_set_errno(...) and return false
-  ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::velocypack::ObjectBuilder const& builder,
-            IResearchViewMeta const* ignoreEqual = nullptr, Mask const* mask = nullptr) const;
-
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this iResearch Link meta
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const;
@@ -210,17 +200,6 @@ struct IResearchViewMetaState {
   ///        return success or set TRI_set_errno(...) and return false
   ////////////////////////////////////////////////////////////////////////////////
   bool json(arangodb::velocypack::Builder& builder,
-            IResearchViewMetaState const* ignoreEqual = nullptr,
-            Mask const* mask = nullptr) const;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief fill and return a JSON description of a IResearchViewMeta object
-  ///        do not fill values identical to ones available in 'ignoreEqual'
-  ///        or (if 'mask' != nullptr) values in 'mask' that are set to false
-  ///        elements are appended to an existing object
-  ///        return success or set TRI_set_errno(...) and return false
-  ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::velocypack::ObjectBuilder const& builder,
             IResearchViewMetaState const* ignoreEqual = nullptr,
             Mask const* mask = nullptr) const;
 

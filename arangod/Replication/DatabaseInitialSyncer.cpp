@@ -1126,10 +1126,9 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
         if (col != nullptr) {
           bool truncate = false;
 
-          if (col->name() == TRI_COL_NAME_USERS) {
-            // better not throw away the _users collection. otherwise it is gone
-            // and this may be a problem if the
-            // server crashes in-between.
+          if (col->system()) {
+            // better not throw away system collections. otherwise they may be dropped
+            // and this can be a problem if the server crashes before they are recreated.
             truncate = true;
           }
 

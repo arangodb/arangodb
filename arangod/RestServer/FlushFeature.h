@@ -112,6 +112,7 @@ class FlushFeature final : public application_features::ApplicationFeature {
   basics::ReadWriteLock _threadLock;
   std::unordered_set<std::shared_ptr<FlushSubscriptionBase>> _flushSubscriptions;
   std::mutex _flushSubscriptionsMutex;
+  bool _stopped;
 };
 
 }  // namespace arangodb

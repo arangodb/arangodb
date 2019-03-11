@@ -164,8 +164,6 @@ class LogicalCollection : public LogicalDataSource {
   bool isSmart() const;
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
-  /// @brief is this a cluster-wide Plan (ClusterInfo) collection
-  bool isClusterGlobal() const { return _isAStub; }
 
   void waitForSync(bool value) { _waitForSync = value; }
 

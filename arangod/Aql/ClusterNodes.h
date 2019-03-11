@@ -49,7 +49,6 @@ struct Collection;
 /// @brief class RemoteNode
 class RemoteNode final : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class RemoteBlock;
 
   /// @brief constructor with an id
  public:
