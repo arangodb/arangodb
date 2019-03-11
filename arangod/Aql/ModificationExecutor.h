@@ -174,7 +174,6 @@ struct ModificationExecutorBase {
  protected:
   ModificationExecutorInfos& _infos;
   Fetcher& _fetcher;
-  bool _copyBlock;
   bool _prepared = false;
 
   // /// @brief skips over the taken rows if the input value is no

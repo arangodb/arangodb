@@ -183,6 +183,7 @@ bool Insert::doModifications(ModificationExecutorInfos& info,
       // not relevant for ourselves... just pass it on to the next block
       _operations.push_back(ModOperationType::IGNORE_RETURN);
     }
+    this->_last_not_skip = _operations.size(); //always true for insert as here is no ignore skip
   });
 
   TRI_ASSERT(_operations.size() == _block->block().size());
@@ -193,39 +194,18 @@ bool Insert::doModifications(ModificationExecutorInfos& info,
   // At this point _tempbuilder contains the objects to insert
   // and _operations the information if the data is to be kept or not
 
-  TRI_ASSERT(toInsert.isArray());
-  try {
-    LOG_DEVEL << "num to insert: " << toInsert.length();
-  } catch (...) {
-  }
-
-  //TRI_ASSERT(toInsert.isArray());
-  //try {
-  //  LOG_DEVEL << "to insert: " << toInsert.toJson();
-  //} catch (...) {
-  //}
-
-  // former - skip empty
-  // no more to prepare
   if (toInsert.length() == 0) {
-//    executor._copyBlock = true;
-    LOG_DEVEL << "THIS IS BAD!";
-    TRI_ASSERT(false);
-    return true;
-  }
-
-  try {
-    LOG_DEVEL << "use overwrite: " << std::boolalpha << options.overwrite;
-    LOG_DEVEL << toInsert.toJson();
-  } catch (...){
-
+    // there is nothing to update we just need to copy
+    // if there is anything other than IGNORE_SKIP the
+    // block is prepared.
+    _justCopy = true;
+    return _last_not_skip != std::numeric_limits<decltype(_last_not_skip)>::max();
   }
 
   // execute insert
   TRI_ASSERT(info._trx);
   auto operationResult = info._trx->insert(info._aqlCollection->name(), toInsert, options);
   setOperationResult(std::move(operationResult));
-
 
   // handle statisitcs
   handleBabyStats(stats, info, _operationResult.countErrorCodes,
@@ -241,11 +221,13 @@ bool Insert::doModifications(ModificationExecutorInfos& info,
     TRI_ASSERT(_operationResult.buffer != nullptr);
     TRI_ASSERT(_operationResult.slice().isArray());
 
-    // former - skip empty
     if (_operationResultArraySlice.length() == 0) {
-//      executor._copyBlock = true;
+      // there is nothing to update we just need to copy
+      // if there is anything other than IGNORE_SKIP the
+      // block is prepared.
+      _justCopy = true;
       TRI_ASSERT(false);
-      return true;
+      return _last_not_skip != std::numeric_limits<decltype(_last_not_skip)>::max();
     }
   }
   return true;
@@ -254,12 +236,22 @@ bool Insert::doModifications(ModificationExecutorInfos& info,
 bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output) {
   TRI_ASSERT(_block);
   TRI_ASSERT(_block->hasBlock());
-  TRI_ASSERT(_blockIndex < _block->block().size());
+
+  std::size_t blockSize = _block->block().size();
+  TRI_ASSERT(_last_not_skip <= blockSize);
+  TRI_ASSERT(_blockIndex < blockSize);
 
   OperationOptions& options = info._options;
 
+  // skip ignore skip values
+  while (_operations[_blockIndex] == ModOperationType::IGNORE_SKIP && _blockIndex < blockSize) {
+    _blockIndex++;
+  }
+
   InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
-  if (!options.silent) {
+  if (_justCopy || options.silent) {
+    output.copyRow(input);
+  } else {
     if (_operations[_blockIndex] == ModOperationType::APPLY_RETURN) {
       TRI_ASSERT(_operationResultIterator.valid());
       auto elm = _operationResultIterator.value();
@@ -294,13 +286,13 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
     } else {
       TRI_ASSERT(false);
     }
-
-  } else {
-    output.copyRow(input);
   }
 
+
+
+
   // increase index and make sure next element is within the valid range
-  return ++_blockIndex < _block->block().size();
+  return ++_blockIndex < _last_not_skip;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -319,8 +311,8 @@ bool Remove::doModifications(ModificationExecutorInfos& info,
 
   const RegisterId& inReg = info._input1RegisterId.value();
   TRI_ASSERT(_block);
-  _block->forRowInBlock([this, &stats, &errorCode, &key, &rev, trx,
-                                   inReg, &info](InputAqlItemRow&& row) {
+  _block->forRowInBlock([this, &stats, &errorCode, &key, &rev, trx, inReg,
+                         &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inReg);
     if (!info._consultAqlWriteFilter ||
         info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
@@ -376,7 +368,7 @@ bool Remove::doModifications(ModificationExecutorInfos& info,
   // former - skip empty
   // no more to prepare
   if (toRemove.length() == 0) {
-//    executor._copyBlock = true;
+    //    executor._copyBlock = true;
     TRI_ASSERT(false);
     return true;
   }
@@ -385,7 +377,6 @@ bool Remove::doModifications(ModificationExecutorInfos& info,
   TRI_ASSERT(info._trx);
   auto operationResult = info._trx->remove(info._aqlCollection->name(), toRemove, options);
   setOperationResult(std::move(operationResult));
-
 
   // handle statisitcs
   handleBabyStats(stats, info, _operationResult.countErrorCodes,
@@ -403,7 +394,7 @@ bool Remove::doModifications(ModificationExecutorInfos& info,
 
     // former - skip empty
     if (_operationResultArraySlice.length() == 0) {
-//      executor._copyBlock = true;
+      //      executor._copyBlock = true;
       TRI_ASSERT(false);
       return true;
     }
@@ -478,9 +469,8 @@ bool Upsert::doModifications(ModificationExecutorInfos& info,
   const RegisterId& insertReg = info._input2RegisterId.value();
   const RegisterId& updateReg = info._input3RegisterId.value();
 
-  _block->forRowInBlock([this, &stats, &errorCode, &errorMessage,
-                                   &key, trx, inDocReg, insertReg, updateReg,
-                                   &info](InputAqlItemRow&& row) {
+  _block->forRowInBlock([this, &stats, &errorCode, &errorMessage, &key, trx, inDocReg,
+                         insertReg, updateReg, &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inDocReg);
     if (inVal.isObject()) /*update case, as old doc is present*/ {
       if (!info._consultAqlWriteFilter ||
@@ -547,7 +537,7 @@ bool Upsert::doModifications(ModificationExecutorInfos& info,
   // former - skip empty
   // no more to prepare
   if (toInsert.length() == 0 && toUpdate.length() == 0) {
-//    executor._copyBlock = true;
+    //    executor._copyBlock = true;
     TRI_ASSERT(false);
     return true;
   }
@@ -589,11 +579,10 @@ bool Upsert::doModifications(ModificationExecutorInfos& info,
 
     _tmpBuilder.clear();
     _updateBuilder.clear();
-
   }
   // former - skip empty
   if (_operationResultArraySlice.length() == 0) {
-//    executor._copyBlock = true;
+    //    executor._copyBlock = true;
     TRI_ASSERT(false);
     return true;
   }
@@ -679,9 +668,9 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
 
   // const RegisterId& updateReg = info._input3RegisterId.value();
 
-  _block->forRowInBlock([this, &options, &stats, &errorCode,
-                                   &errorMessage, &key, &rev, trx, inDocReg, keyReg,
-                                   hasKeyVariable, &info](InputAqlItemRow&& row) {
+  _block->forRowInBlock([this, &options, &stats, &errorCode, &errorMessage,
+                         &key, &rev, trx, inDocReg, keyReg, hasKeyVariable,
+                         &info](InputAqlItemRow&& row) {
     auto const& inVal = row.getValue(inDocReg);
     errorCode = TRI_ERROR_NO_ERROR;
     errorMessage.clear();
@@ -748,7 +737,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
   // former - skip empty
   // no more to prepare
   if (toUpdateOrReplace.length() == 0 && toUpdateOrReplace.length() == 0) {
-//    executor._copyBlock = true;
+    //    executor._copyBlock = true;
     TRI_ASSERT(false);
     return true;
   }
@@ -773,7 +762,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
 
   // former - skip empty
   if (_operationResultArraySlice.length() == 0) {
-//    executor._copyBlock = true;
+    //    executor._copyBlock = true;
     TRI_ASSERT(false);
     return true;
   }
@@ -781,7 +770,7 @@ bool UpdateReplace<ModType>::doModifications(ModificationExecutorInfos& info,
 }
 
 template <typename ModType>
-bool UpdateReplace<ModType>::doOutput(ModificationExecutorInfos &info,
+bool UpdateReplace<ModType>::doOutput(ModificationExecutorInfos& info,
                                       OutputAqlItemRow& output) {
   TRI_ASSERT(_block);
   TRI_ASSERT(_block->hasBlock());

@@ -111,7 +111,10 @@ void RemoveNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+
+
   return std::make_unique<RemoveBlock>(&engine, this);
+
   ExecutionNode const* previousNode = getFirstDependency();
 
   TRI_ASSERT(previousNode != nullptr);
@@ -139,7 +142,7 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
       _options.ignoreErrors, countStats(), false /*return interhited FIXME*/,
       false /*is replace (needed by upsert)*/, _options.ignoreDocumentNotFound);
 
-  return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Update>>>(&engine, this,
+  return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Remove>>>(&engine, this,
                                                                             std::move(infos));
 }
 

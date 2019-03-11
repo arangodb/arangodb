@@ -55,11 +55,15 @@ struct ModificationBase {
   velocypack::ArrayIterator _operationResultIterator;  // ctor init list
 
   std::vector<ModOperationType> _operations;
+  std::size_t _last_not_skip;
+  bool _justCopy = false;
 
   // SingleBlockFetcher<false>& _fetcher;
 
   void reset() {
     // MUST not reset _block
+    _justCopy = false;
+    _last_not_skip = std::numeric_limits<decltype(_last_not_skip)>::max();
     _prepared = false;
     _blockIndex = 0;
 
