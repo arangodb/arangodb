@@ -512,7 +512,14 @@ void RocksDBHotBackupCreate::executeCreate() {
       _result.add("forced", VPackValue(!gotLock));
       _result.close();
     } catch (...) {
-    }
+      _result.clear();
+      _success = false;
+      _respCode = rest::ResponseCode::BAD;
+      _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+      _errorMessage = "RocksDBHotBackupCreate caught exception.";
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "RocksDBHotBackupCreate caught exception.";
+    } // catch
   } else {
     // stat.ok() means CreateCheckpoint() never called ... so lock issue
     _respCode = stat.ok() ? rest::ResponseCode::REQUEST_TIMEOUT : rest::ResponseCode::EXPECTATION_FAILED;
@@ -663,11 +670,17 @@ void RocksDBHotBackupRestore::execute() {
     if (good) {
       /// Step 2. initiate shutdown and restart with new data directory
       restoreExistingPath = getRocksDBPath();
+
+      // do we keep the existing dataset forever, generating our standard
+      //  directory name plus "before_restore"
+      // or put existing dataset in FAILSAFE directory temporarily
       if (_saveCurrent) {
+        // keep standard named directory
         restoreFailsafePath = buildDirectoryPath(timepointToString(std::chrono::system_clock::now()),
                                                                    "before_restore");
         failsafeName = TRI_Basename(restoreFailsafePath.c_str());
       } else {
+        // keep for now in FAILSAFE directory
         failsafeName=dirFailsafeString;
         if (0==failsafeName.compare(_directoryRestore)) {
           failsafeName += ".1";
@@ -686,7 +699,14 @@ void RocksDBHotBackupRestore::execute() {
         _result.add("previous", VPackValue(failsafeName));
         _result.close();
       } catch (...) {
-      }
+        _result.clear();
+        _success = false;
+        _respCode = rest::ResponseCode::BAD;
+        _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+        _errorMessage = "RocksDBHotBackupRestore caught exception.";
+        LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+          << "RocksDBHotBackupRestore caught exception.";
+      } // catch
     } // if
   } else {
     // restartAction already populated, nothing we can do
@@ -738,9 +758,13 @@ bool RocksDBHotBackupRestore::createRestoringDirectory(std::string & restoreDirO
   if (!retFlag) {
     _respError = TRI_ERROR_CANNOT_CREATE_DIRECTORY;
     _respCode = rest::ResponseCode::BAD;
-    _result.add(VPackValue(VPackValueType::Object));
-    _result.add("failedDirectory", VPackValue(restoreDirOutput.c_str()));
-    _result.close();
+    try {
+      _result.add(VPackValue(VPackValueType::Object));
+      _result.add("failedDirectory", VPackValue(restoreDirOutput.c_str()));
+      _result.close();
+    } catch (...) {
+      _result.clear();
+    } // catch
     LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
       << "RocksDBHotBackupRestore unable to create/populate " << restoreDirOutput
       << " from " << fullDirectoryRestore << " (errors: " << errors << ")";
