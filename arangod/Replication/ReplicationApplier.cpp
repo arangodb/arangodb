@@ -434,9 +434,15 @@ void ReplicationApplier::reconfigure(ReplicationApplierConfiguration const& conf
 }
 
 /// @brief load the applier state from persistent storage
+bool ReplicationApplier::loadState() {
+  WRITE_LOCKER_EVENTUAL(readLocker, _statusLock);
+  return loadStateNoLock();
+}
+
+/// @brief load the applier state from persistent storage
 /// must currently be called while holding the write-lock
 /// returns whether a previous state was found
-bool ReplicationApplier::loadState() {
+bool ReplicationApplier::loadStateNoLock() {
   if (!applies()) {
     // unsupported
     return false;
@@ -581,7 +587,7 @@ void ReplicationApplier::setError(arangodb::Result const& r) {
 }
 
 Result ReplicationApplier::lastError() const {
-  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
+  READ_LOCKER_EVENTUAL(writeLocker, _statusLock);
   return Result(_state._lastError.code, _state._lastError.message);
 }
 
