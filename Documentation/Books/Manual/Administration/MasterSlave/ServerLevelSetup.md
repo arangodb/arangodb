@@ -7,8 +7,9 @@ all included databases will be replicated.
 **Note:** Server-level Setup is available only from version 3.3.0.
 
 Setting up a working master-slave replication requires two ArangoDB instances:
-* **master**: this is the instance where all data-modification operations should be directed to
-* **slave**: this is the instance that replicates the data from the master. We will start a _replication applier_ on it, and it will fetch data from the 
+- **master**: this is the instance where all data-modification operations should be directed to
+- **slave**: this is the instance that replicates the data from the master. We will start a _replication applier_
+  on it, and it will fetch data from the 
   master _write-ahead log_ and apply its operations locally
   
 For the following example setup, we will use the instance *tcp://master.domain.org:8529* as the 
