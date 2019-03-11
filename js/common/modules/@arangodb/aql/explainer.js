@@ -420,14 +420,14 @@ class PrintedTable {
   setHeader(index, value) {
     this.content[index].header = value;
     this.content[index].size = Math.max(this.content[index].size, value.length);
-    print(this.content[index].size, value);
   }
 
   addCell(index, value, valueLength) {
+    // Value might be empty
+    value = value || "";
     valueLength = valueLength || value.length;
     this.content[index].cells.push({ formatted: value, size: valueLength });
     this.content[index].size = Math.max(this.content[index].size, valueLength);
-    print(this.content[index].size, value);
   }
 
   alignNewEntry() {
@@ -445,7 +445,6 @@ class PrintedTable {
     let line = ' ';
     let isFirst = true;
     for (let c of this.content) {
-      print(c.size, c.header.length);
       line += (isFirst ? '' : pad(3)) + header(c.header) + pad(1 + c.size - c.header.length);
       isFirst = false;
     }
