@@ -29,7 +29,7 @@ v3.4.5 (XXXX-XX-XX)
 * agents need to be able to overwrite a compacted state with same _key
 
 
-v3.4.4 (2019-03-08)
+v3.4.4 (2019-03-12)
 -------------------
 
 * added missing test for success in failed leader: this could lead
