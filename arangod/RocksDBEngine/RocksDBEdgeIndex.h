@@ -39,11 +39,6 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/Slice.h>
 
-namespace rocksdb {
-class TransactionDB;
-class Iterator;
-}  // namespace rocksdb
-
 namespace arangodb {
 class RocksDBEdgeIndex;
 
@@ -133,6 +128,15 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   IndexIterator* createInIterator(transaction::Methods*, arangodb::aql::AstNode const*,
                                   arangodb::aql::AstNode const*) const;
+
+  /// @brief populate the keys builder with a single (string) lookup value
+  void fillLookupValue(arangodb::velocypack::Builder& keys,
+                       arangodb::aql::AstNode const* value) const;
+
+  /// @brief populate the keys builder with the keys from the array
+  void fillInLookupValues(transaction::Methods* trx,
+                          arangodb::velocypack::Builder& keys,
+                          arangodb::aql::AstNode const* values) const;
 
   /// @brief add a single value node to the iterator's keys
   void handleValNode(VPackBuilder* keys, arangodb::aql::AstNode const* valNode) const;

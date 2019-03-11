@@ -975,3 +975,24 @@ std::string const& Index::getAttribute() const {
   TRI_ASSERT(!field.shouldExpand);
   return field.name;
 }
+  
+AttributeAccessParts::AttributeAccessParts(arangodb::aql::AstNode const* comparison)
+   : comparison(comparison),
+     attribute(nullptr),
+     value(nullptr),
+     opType(arangodb::aql::NODE_TYPE_NOP) {
+
+  // first assume a.b == value
+  attribute = comparison->getMember(0);
+  value = comparison->getMember(1);
+  opType = comparison->type;
+  
+  if (attribute->type != arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // got value == a.b  ->  flip the two sides
+    attribute = comparison->getMember(1);
+    value = comparison->getMember(0);
+    opType = aql::Ast::ReverseOperator(opType);
+  }
+
+  TRI_ASSERT(attribute->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+}

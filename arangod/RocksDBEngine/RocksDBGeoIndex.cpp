@@ -35,6 +35,7 @@
 #include "VocBase/ManagedDocumentResult.h"
 
 #include <rocksdb/db.h>
+#include <s2/s2cell_id.h>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/StringRef.h>

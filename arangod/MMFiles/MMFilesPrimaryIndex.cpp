@@ -480,35 +480,21 @@ IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
-  auto comp = node;
+  TRI_ASSERT(node != nullptr);
   if (node->type == aql::NODE_TYPE_OPERATOR_NARY_AND) {
     TRI_ASSERT(node->numMembers() == 1);
-    comp = node->getMember(0);
+    node = node->getMember(0);
   }
+  AttributeAccessParts aap(node);
 
-  // assume a.b == value
-  auto attrNode = comp->getMember(0);
-  auto valNode = comp->getMember(1);
-
-  if (attrNode->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    // value == a.b  ->  flip the two sides
-    attrNode = comp->getMember(1);
-    valNode = comp->getMember(0);
-  }
-
-  TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS);
-
-  if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+  if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createEqIterator(trx, attrNode, valNode);
-  }
-
-  if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-    // a.b IN values
-    if (valNode->isArray()) {
-      // a.b IN array
-      return createInIterator(trx, attrNode, valNode);
-    }
+    return createEqIterator(trx, aap.attribute, aap.value);
+  } 
+  if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+      aap.value->isArray()) {
+    // a.b IN array
+    return createInIterator(trx, aap.attribute, aap.value);
   }
 
   // operator type unsupported or IN used on non-array

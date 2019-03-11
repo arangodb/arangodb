@@ -453,69 +453,33 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
              IndexIteratorOptions const& opts) override {
     TRI_ASSERT(!_index->isSorted() || opts.sorted);
     
-    // get computation node
     TRI_ASSERT(node != nullptr);
     TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
     TRI_ASSERT(node->numMembers() == 1);
-    auto comp = node->getMember(0);
+    AttributeAccessParts aap(node->getMember(0));
 
-    // assume a.b == value
-    auto attrNode = comp->getMember(0);
-    auto valNode = comp->getMember(1);
-
-    // got value == a.b  -> flip sides
-    if (attrNode->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-      attrNode = comp->getMember(1);
-      valNode = comp->getMember(0);
-    }
-
-    TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS);
-    TRI_ASSERT(attrNode->stringEquals(_index->_directionAttr));
+    TRI_ASSERT(aap.attribute->stringEquals(_index->_directionAttr));
       
     _keys->clear();
 
-    if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+    if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       // a.b == value
-      _keys->openArray(true);
-
-      _index->handleValNode(_keys.get(), valNode);
-      TRI_IF_FAILURE("EdgeIndex::noIterator") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-      _keys->close();
+      _index->fillLookupValue(*(_keys.get()), aap.value);
       _keysIterator = VPackArrayIterator(_keys->slice());
-
+      reset();
+      return true;
+    } 
+    
+    if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+        aap.value->isArray()) {
+      // a.b IN values
+      _index->fillInLookupValues(_trx, *(_keys.get()), aap.value);
+      _keysIterator = VPackArrayIterator(_keys->slice());
       reset();
       return true;
     }
 
-    if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-      // a.b IN values
-      if (valNode->isArray()) {
-        _keys->openArray();
-
-        size_t const n = valNode->numMembers();
-        for (size_t i = 0; i < n; ++i) {
-          _index->handleValNode(_keys.get(), valNode->getMemberUnchecked(i));
-          TRI_IF_FAILURE("EdgeIndex::iteratorValNodes") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-        }
-
-        TRI_IF_FAILURE("EdgeIndex::noIterator") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        _keys->close();
-        _keysIterator = VPackArrayIterator(_keys->slice());
-        reset();
-        return true;
-      }
-
-      // a.b IN non-array
-      // fallthrough to empty result
-    }
-
-    // operator type unsupported
+    // a.b IN non-array or operator type unsupported
     return false;
   }
 
@@ -765,34 +729,20 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
     
-  // get computation node
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
   TRI_ASSERT(node->numMembers() == 1);
-  auto comp = node->getMember(0);
+  AttributeAccessParts aap(node->getMember(0));
 
-  // assume a.b == value
-  auto attrNode = comp->getMember(0);
-  auto valNode = comp->getMember(1);
+  TRI_ASSERT(aap.attribute->stringEquals(_directionAttr));
 
-  // got value == a.b  -> flip sides
-  if (attrNode->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    attrNode = comp->getMember(1);
-    valNode = comp->getMember(0);
-  }
-
-  TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS);
-  TRI_ASSERT(attrNode->stringEquals(_directionAttr));
-
-  if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+  if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createEqIterator(trx, attrNode, valNode);
-  }
-
-  if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    return createEqIterator(trx, aap.attribute, aap.value);
+  } else if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // a.b IN values
-    if (valNode->isArray()) {
-      return createInIterator(trx, attrNode, valNode);
+    if (aap.value->isArray()) {
+      return createInIterator(trx, aap.attribute, aap.value);
     }
 
     // a.b IN non-array
@@ -1075,14 +1025,8 @@ IndexIterator* RocksDBEdgeIndex::createEqIterator(transaction::Methods* trx,
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
   transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
-  keys->openArray(true);
 
-  handleValNode(keys.get(), valNode);
-  TRI_IF_FAILURE("EdgeIndex::noIterator") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  keys->close();
-
+  fillLookupValue(*(keys.get()), valNode);
   return new RocksDBEdgeIndexLookupIterator(&_collection, trx, this, std::move(keys), _cache);
 }
 
@@ -1093,11 +1037,34 @@ IndexIterator* RocksDBEdgeIndex::createInIterator(transaction::Methods* trx,
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
   transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
-  keys->openArray();
 
-  size_t const n = valNode->numMembers();
+  fillInLookupValues(trx, *(keys.get()), valNode);
+  return new RocksDBEdgeIndexLookupIterator(&_collection, trx, this, std::move(keys), _cache);
+}
+  
+void RocksDBEdgeIndex::fillLookupValue(VPackBuilder& keys,
+                                       arangodb::aql::AstNode const* value) const {
+  keys.openArray(true);
+
+  handleValNode(&keys, value);
+  TRI_IF_FAILURE("EdgeIndex::noIterator") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  keys.close();
+}
+
+void RocksDBEdgeIndex::fillInLookupValues(transaction::Methods* trx,
+                                          VPackBuilder& keys,
+                                          arangodb::aql::AstNode const* values) const {
+  TRI_ASSERT(values != nullptr);
+  TRI_ASSERT(values->type == arangodb::aql::NODE_TYPE_ARRAY);
+
+  keys.clear();
+  keys.openArray();
+
+  size_t const n = values->numMembers();
   for (size_t i = 0; i < n; ++i) {
-    handleValNode(keys.get(), valNode->getMemberUnchecked(i));
+    handleValNode(&keys, values->getMemberUnchecked(i));
     TRI_IF_FAILURE("EdgeIndex::iteratorValNodes") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
@@ -1106,9 +1073,7 @@ IndexIterator* RocksDBEdgeIndex::createInIterator(transaction::Methods* trx,
   TRI_IF_FAILURE("EdgeIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  keys->close();
-
-  return new RocksDBEdgeIndexLookupIterator(&_collection, trx, this, std::move(keys), _cache);
+  keys.close();
 }
 
 /// @brief add a single value node to the iterator's keys
