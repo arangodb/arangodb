@@ -799,14 +799,20 @@ void RocksDBHotBackupList::parseParameters(rest::RequestType const type) {
   _valid = (rest::RequestType::POST == type);
 
   if (!_valid) {
-    _result.add(VPackValue(VPackValueType::Object));
-    _result.add("httpMethod", VPackValue("only POST allowed"));
-  } // if
-
-  if (!_valid) {
-    _result.close();
-    _respCode = rest::ResponseCode::BAD;
-    _respError = TRI_ERROR_HTTP_BAD_PARAMETER;
+    try {
+      _result.add(VPackValue(VPackValueType::Object));
+      _result.add("httpMethod", VPackValue("only POST allowed"));
+      _result.close();
+      _respCode = rest::ResponseCode::BAD;
+      _respError = TRI_ERROR_HTTP_BAD_PARAMETER;
+    } catch (...) {
+      _result.clear();
+      _respCode = rest::ResponseCode::BAD;
+      _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+      _errorMessage = "RocksDBHotBackupList::parseParameters caught exception.";
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "RocksDBHotBackupList::parseParameters caught exception.";
+    } // catch
   } // if
 
   return;
@@ -860,10 +866,12 @@ void RocksDBHotBackupList::execute() {
     _result.close();
     _success = true;
   } catch (...) {
+    _result.clear();
     _respCode = rest::ResponseCode::BAD;
     _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+    _errorMessage = "RocksDBHotBackupList::execute caught exception.";
     LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-      << "RocksDBHotBackupList exception generating response.";
+      << "RocksDBHotBackupList::execute caught exception.";
   } // catch
 
   return;
