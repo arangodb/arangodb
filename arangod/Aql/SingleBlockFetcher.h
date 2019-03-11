@@ -84,7 +84,7 @@ class SingleBlockFetcher {
   // there are no executors that could use this and not better use
   // SingleRowFetcher instead.
 
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock(bool prefetch = false) {
+  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock(std::size_t limit = ExecutionBlock::DefaultBatchSize() ,bool prefetch = false) {
     if (_prefetched) {
       LOG_DEVEL_IF(_currentBlock) << "FETCH - prefetched ";
       TRI_ASSERT(!prefetch);
@@ -99,7 +99,7 @@ class SingleBlockFetcher {
       return {_upstreamState, _currentBlock};
     }
 
-    auto res = _blockFetcher->fetchBlock();
+    auto res = _blockFetcher->fetchBlock(limit);
     _upstreamState = res.first;
     _currentBlock = res.second;
 

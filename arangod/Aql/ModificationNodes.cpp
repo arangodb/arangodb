@@ -446,7 +446,6 @@ void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<UpsertBlock>(&engine, this);
 
   using namespace arangodb::aql;
 
@@ -478,7 +477,7 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
       _options.ignoreErrors, countStats(), false /*return interhited FIXME*/,
       _isReplace, _options.ignoreDocumentNotFound);
 
-  return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Insert>>>(&engine, this,
+  return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Upsert>>>(&engine, this,
                                                                             std::move(infos));
 }
 

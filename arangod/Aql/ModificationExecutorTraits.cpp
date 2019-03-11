@@ -108,7 +108,7 @@ void handleBabyStats(ModificationExecutorBase::Stats& stats, ModificationExecuto
                      std::unordered_map<int, size_t> const& errorCounter, uint64_t numBabies,
                      bool ignoreErrors, bool ignoreDocumentNotFound = false) {
   size_t numberBabies = numBabies;  // from uint64_t to size_t
-
+  //LOG_DEVEL << "handleBabyStats " << numBabies << " errorCounter.empty():  " << errorCounter.empty() ;
   if (errorCounter.empty()) {
     // update the success counter
     // All successful.
@@ -356,7 +356,7 @@ bool Remove::doModifications(ModificationExecutorInfos& info,
   _tmpBuilder.close();
   auto toRemove = _tmpBuilder.slice();
 
-  // At this point _tempbuilder contains the objects to insert
+  // At this point _tempbuilder contains the objects to remove
   // and _operations the information if the data is to be kept or not
 
   if (toRemove.length() == 0) {
@@ -476,14 +476,20 @@ bool Upsert::doModifications(ModificationExecutorInfos& info,
 
   _block->forRowInBlock([this, &stats, &errorCode, &errorMessage, &key, trx, inDocReg,
                          insertReg, updateReg, &info](InputAqlItemRow&& row) {
+
+    errorMessage.clear();
+    errorCode = TRI_ERROR_NO_ERROR;
     auto const& inVal = row.getValue(inDocReg);
+
     if (inVal.isObject()) /*update case, as old doc is present*/ {
+      //LOG_DEVEL << "UPDATE case";
       if (!info._consultAqlWriteFilter ||
           info._aqlCollection->getCollection()->skipForAqlWrite(inVal.slice(),
                                                                 StaticStrings::Empty)) {
         key.clear();
         errorCode = extractKey(trx, inVal, key);
         if (errorCode == TRI_ERROR_NO_ERROR) {
+          //LOG_DEVEL << "key ok: '" << key << "'";
           auto const& updateDoc = row.getValue(updateReg);
           if (updateDoc.isObject()) {
             VPackSlice toUpdate = updateDoc.slice();
@@ -497,7 +503,9 @@ bool Upsert::doModifications(ModificationExecutorInfos& info,
                 VPackCollection::merge(toUpdate, _tmpBuilder.slice(), false, false);
             _updateBuilder.add(tmp.slice());
             _operations.push_back(ModOperationType::APPLY_UPDATE);
+            this->_last_not_skip = _operations.size();
           } else {
+            //LOG_DEVEL << "bad key";
             errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
             errorMessage = std::string("expecting 'Object', got: ") +
                            updateDoc.slice().typeName() +
@@ -506,28 +514,33 @@ bool Upsert::doModifications(ModificationExecutorInfos& info,
         }
       } else /*Doc is not relevant ourselves. Just pass Row to the next block*/ {
         _operations.push_back(ModOperationType::IGNORE_RETURN);
+        this->_last_not_skip = _operations.size();
       }
     } else /*insert case*/ {
+      //LOG_DEVEL << "INSERT case";
       auto const& toInsert = row.getValue(insertReg).slice();
       if (toInsert.isObject()) {
         if (!info._consultAqlWriteFilter ||
             !info._aqlCollection->getCollection()->skipForAqlWrite(toInsert, StaticStrings::Empty)) {
+          //LOG_DEVEL << "APPLY INSERT";
           _insertBuilder.add(toInsert);
           _operations.push_back(ModOperationType::APPLY_INSERT);
         } else {
           // not relevant for ourselves... just pass it on to the next block
           _operations.push_back(ModOperationType::IGNORE_RETURN);
         }
+        this->_last_not_skip = _operations.size();
       } else {
         errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
         errorMessage = std::string("expecting 'Object', got: ") + toInsert.typeName() +
                        std::string(" while handling: UPSERT");
       }
+    }
 
-      if (errorCode != TRI_ERROR_NO_ERROR) {
-        _operations.push_back(ModOperationType::IGNORE_SKIP);
-        handleStats(stats, info, errorCode, info._ignoreErrors, &errorMessage);
-      }
+    if (errorCode != TRI_ERROR_NO_ERROR) {
+      //LOG_DEVEL << "skipping doc";
+      _operations.push_back(ModOperationType::IGNORE_SKIP);
+      handleStats(stats, info, errorCode, info._ignoreErrors, &errorMessage);
     }
   });
 
@@ -539,19 +552,16 @@ bool Upsert::doModifications(ModificationExecutorInfos& info,
   auto toInsert = _insertBuilder.slice();
   auto toUpdate = _updateBuilder.slice();
 
-  // former - skip empty
-  // no more to prepare
   if (toInsert.length() == 0 && toUpdate.length() == 0) {
-    //    executor._copyBlock = true;
-    TRI_ASSERT(false);
-    return true;
+    // there is nothing to update we just need to copy
+    // if there is anything other than IGNORE_SKIP the
+    // block is prepared.
+    _justCopy = true;
+    return _last_not_skip != std::numeric_limits<decltype(_last_not_skip)>::max();
   }
 
-  // execute insert
   TRI_ASSERT(info._trx);
-  // we use _operationResult as insertResult
-  //
-  OperationResult opRes;  // temporaroy value
+  OperationResult opRes;  // temporary value
   if (toInsert.isArray() && toInsert.length() > 0) {
     OperationResult opRes =
         info._trx->insert(info._aqlCollection->name(), toInsert, options);
@@ -585,11 +595,13 @@ bool Upsert::doModifications(ModificationExecutorInfos& info,
     _tmpBuilder.clear();
     _updateBuilder.clear();
   }
-  // former - skip empty
-  if (_operationResultArraySlice.length() == 0) {
-    //    executor._copyBlock = true;
-    TRI_ASSERT(false);
-    return true;
+
+  if (_operationResultArraySlice.length() == 0 && _operationResultArraySliceUpdate.length() == 0) {
+    // there is nothing to update we just need to copy
+    // if there is anything other than IGNORE_SKIP the
+    // block is prepared.
+    _justCopy = true;
+    return _last_not_skip != std::numeric_limits<decltype(_last_not_skip)>::max();
   }
   return true;
 }
@@ -597,16 +609,26 @@ bool Upsert::doModifications(ModificationExecutorInfos& info,
 bool Upsert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output) {
   TRI_ASSERT(_block);
   TRI_ASSERT(_block->hasBlock());
-  TRI_ASSERT(_blockIndex < _block->block().size());
+
+  std::size_t blockSize = _block->block().size();
+  TRI_ASSERT(_last_not_skip <= blockSize);
+  TRI_ASSERT(_blockIndex < blockSize);
 
   OperationOptions& options = info._options;
 
+  // ignore-skip values
+  while (_operations[_blockIndex] == ModOperationType::IGNORE_SKIP && _blockIndex < blockSize) {
+    _blockIndex++;
+  }
+
   InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
-  if (!options.silent) {
+  if (_justCopy || options.silent) {
+    //LOG_DEVEL << "copy _just or silent";
+    output.copyRow(input);
+  } else {
     auto& op = _operations[_blockIndex];
     if (op == ModOperationType::APPLY_UPDATE || op == ModOperationType::APPLY_INSERT) {
-      TRI_ASSERT(_operationResultIterator.valid());        // insert
-      TRI_ASSERT(_operationResultUpdateIterator.valid());  // update
+      TRI_ASSERT(_operationResultIterator.valid() || _operationResultUpdateIterator.valid());
 
       // fetch operation type (insert or update/replace)
       VPackArrayIterator* iter = &_operationResultIterator;
@@ -619,26 +641,28 @@ bool Upsert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
           arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
 
       if (!wasError) {
+        //LOG_DEVEL << "not error";
         if (options.returnNew) {
           AqlValue value(elm.get("new"));
           AqlValueGuard guard(value, true);
           // store $NEW
           output.moveValueInto(info._outputNewRegisterId.value(), input, guard);
         }
+      } else {
+        //LOG_DEVEL << "error";
       }
       ++*iter;
     } else if (_operations[_blockIndex] == ModOperationType::IGNORE_SKIP) {
+      //LOG_DEVEL << "ignore skip";
       output.copyRow(input);
     } else {
       TRI_ASSERT(false);
     }
-
-  } else {
-    output.copyRow(input);
   }
 
   // increase index and make sure next element is within the valid range
-  return ++_blockIndex < _block->block().size();
+  //return ++_blockIndex < _block->block().size();
+  return ++_blockIndex < _last_not_skip;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

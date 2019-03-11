@@ -45,6 +45,7 @@ struct ModificationBase {
   ModificationBase()
       : _operationResultIterator(VPackSlice::emptyArraySlice()) {}
 
+  std::size_t _defaultBlockSize = ExecutionBlock::DefaultBatchSize();
   velocypack::Builder _tmpBuilder;  // default
   bool _prepared = false;
   std::size_t _blockIndex = 0;  // cursor to the current positon
@@ -111,7 +112,9 @@ struct Upsert : ModificationBase {
   VPackSlice _operationResultArraySliceUpdate = VPackSlice::nullSlice();
   velocypack::ArrayIterator _operationResultUpdateIterator;  // ctor init list
 
-  Upsert() : _operationResultUpdateIterator(VPackSlice::emptyArraySlice()) {}
+  Upsert() : _operationResultUpdateIterator(VPackSlice::emptyArraySlice()) {
+    _defaultBlockSize = 1;
+  }
 
   VPackBuilder _updateBuilder;
   VPackBuilder _insertBuilder;

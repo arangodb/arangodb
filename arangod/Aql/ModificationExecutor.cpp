@@ -82,7 +82,7 @@ ModificationExecutor<Modifier>::produceRow(OutputAqlItemRow& output) {
   //TODO - sane handling of prefetch
   while (!_prepared && ( _fetcher.upstreamState() != ExecutionState::DONE || _fetcher._prefetched)) {
     std::shared_ptr<AqlItemBlockShell> block;
-    std::tie(state, block) = _fetcher.fetchBlock();
+    std::tie(state, block) = _fetcher.fetchBlock(_modifier._defaultBlockSize);
     _modifier._block = block;
 
     if (state == ExecutionState::WAITING) {
@@ -109,8 +109,6 @@ ModificationExecutor<Modifier>::produceRow(OutputAqlItemRow& output) {
       _prepared = false;
     }
   }
-
-  // LOG_DEVEL << "prepared: " << _prepared;
 
   if (_prepared) {
     TRI_ASSERT(_modifier._block);
