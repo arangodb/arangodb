@@ -105,7 +105,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
     TRI_ASSERT(node != nullptr);
     TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
     TRI_ASSERT(node->numMembers() == 1);
-    AttributeAccessParts aap(node->getMember(0));
+    AttributeAccessParts aap(node->getMember(0), variable);
     TRI_ASSERT(aap.opType == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ);
 
     // handle the sole element
@@ -199,7 +199,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     TRI_ASSERT(node != nullptr);
     TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
     TRI_ASSERT(node->numMembers() == 1);
-    AttributeAccessParts aap(node->getMember(0));
+    AttributeAccessParts aap(node->getMember(0), variable);
     TRI_ASSERT(aap.opType == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
 
     if (aap.value->isArray()) {
@@ -662,7 +662,7 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
   TRI_ASSERT(n >= 1);
 
   if (n == 1) {
-    AttributeAccessParts aap(node->getMember(0));
+    AttributeAccessParts aap(node->getMember(0), reference);
 
     if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       // a.b == value
@@ -719,7 +719,7 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
   bool upperFound = false;
 
   for (size_t i = 0; i < n; ++i) {
-    AttributeAccessParts aap(node->getMemberUnchecked(i));
+    AttributeAccessParts aap(node->getMemberUnchecked(i), reference);
 
     auto type = aap.opType;
 

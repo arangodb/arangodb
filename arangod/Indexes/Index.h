@@ -405,8 +405,10 @@ class Index {
 /// splits it into the comparison operator, the attribute access and the 
 /// lookup value parts
 /// only works for conditions such as  a.b == 2   or   45 < a.xx.c
+/// the collection variable (a in the above examples) is passed in "variable"
 struct AttributeAccessParts {
-  explicit AttributeAccessParts(arangodb::aql::AstNode const* comparison);
+  AttributeAccessParts(arangodb::aql::AstNode const* comparison,
+                       arangodb::aql::Variable const* variable);
   
   /// @brief comparison operation, e.g. NODE_TYPE_OPERATOR_BINARY_EQ
   arangodb::aql::AstNode const* comparison;

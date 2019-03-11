@@ -485,12 +485,14 @@ IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
     TRI_ASSERT(node->numMembers() == 1);
     node = node->getMember(0);
   }
-  AttributeAccessParts aap(node);
+
+  AttributeAccessParts aap(node, reference);
 
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
     return createEqIterator(trx, aap.attribute, aap.value);
   } 
+  
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN &&
       aap.value->isArray()) {
     // a.b IN array

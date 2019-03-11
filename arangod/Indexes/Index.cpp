@@ -976,7 +976,8 @@ std::string const& Index::getAttribute() const {
   return field.name;
 }
   
-AttributeAccessParts::AttributeAccessParts(arangodb::aql::AstNode const* comparison)
+AttributeAccessParts::AttributeAccessParts(arangodb::aql::AstNode const* comparison,
+                                           arangodb::aql::Variable const* variable)
    : comparison(comparison),
      attribute(nullptr),
      value(nullptr),
@@ -995,4 +996,5 @@ AttributeAccessParts::AttributeAccessParts(arangodb::aql::AstNode const* compari
   }
 
   TRI_ASSERT(attribute->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+  TRI_ASSERT(attribute->isAttributeAccessForVariable(variable, true));
 }

@@ -456,7 +456,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     TRI_ASSERT(node != nullptr);
     TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
     TRI_ASSERT(node->numMembers() == 1);
-    AttributeAccessParts aap(node->getMember(0));
+    AttributeAccessParts aap(node->getMember(0), variable);
 
     TRI_ASSERT(aap.attribute->stringEquals(_index->_directionAttr));
       
@@ -732,7 +732,7 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
   TRI_ASSERT(node->numMembers() == 1);
-  AttributeAccessParts aap(node->getMember(0));
+  AttributeAccessParts aap(node->getMember(0), reference);
 
   TRI_ASSERT(aap.attribute->stringEquals(_directionAttr));
 

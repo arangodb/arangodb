@@ -91,11 +91,12 @@ class IndexIterator {
 
   /// @brief rearm the iterator with a new condition
   /// requires that canRearm() is true!
-  /// if returns true it means that rearming has worked
-  /// if returns true it means that the iterator does not support
+  /// if returns true it means that rearming has worked, and the iterator
+  /// is ready to be used
+  /// if returns false it means that the iterator does not support
   /// the provided condition and would only produce an empty result
-  virtual bool rearm(arangodb::aql::AstNode const* condition,
-                     arangodb::aql::Variable const* var,
+  virtual bool rearm(arangodb::aql::AstNode const* node,
+                     arangodb::aql::Variable const* variable,
                      IndexIteratorOptions const& opts);
 
   virtual bool hasExtra() const {

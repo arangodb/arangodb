@@ -409,12 +409,14 @@ IndexIterator* MMFilesEdgeIndex::iteratorForCondition(
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
   TRI_ASSERT(node->numMembers() == 1);
-  AttributeAccessParts aap(node->getMember(0));
+  
+  AttributeAccessParts aap(node->getMember(0), reference);
 
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
     return createEqIterator(trx, mdr, aap.attribute, aap.value);
-  } 
+  }
+   
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN &&
       aap.value->isArray()) {
     // a.b IN values
