@@ -1379,6 +1379,8 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
     return nullptr;
   }
 
+  status = TRI_ERROR_NO_ERROR;
+
   return std::make_unique<TRI_vocbase_t>(
     TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
     vocbaseCount++,

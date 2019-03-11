@@ -1031,8 +1031,10 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
 
   s.close();
 
-  Result r =
-      methods::Collections::create(&_vocbase, collection, TRI_COL_TYPE_DOCUMENT,
+  auto r = methods::Collections::create(
+    _vocbase, // collection vocbase
+    collection, // collection name
+    TRI_COL_TYPE_DOCUMENT, // collection type
                                    s.slice(), false, true,
                                    [](std::shared_ptr<LogicalCollection> const&) -> void {});
 
@@ -1050,7 +1052,9 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
 
   // check if the index on the collection must be created
   r = methods::Collections::lookup(
-      &_vocbase, collection, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
+    _vocbase, // vocbase to search
+    collection, // collection to find
+    [&](std::shared_ptr<LogicalCollection> const& coll)->void { // callback if found
         TRI_ASSERT(coll);
 
         VPackBuilder t;
