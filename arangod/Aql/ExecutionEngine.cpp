@@ -34,6 +34,7 @@
 #include "Aql/GraphNode.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/RemoteExecutor.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/WalkerWorker.h"
 #include "Cluster/ClusterComm.h"
@@ -85,7 +86,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
 
   std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
-  RemoteNode const* remoteNode = nullptr;
+  RemoteNode* remoteNode = nullptr;
 
   // We need to traverse the nodes from back to front, the walker collects
   // them in the wrong ordering
@@ -94,7 +95,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
     auto const nodeType = en->getType();
 
     if (nodeType == ExecutionNode::REMOTE) {
-      remoteNode = ExecutionNode::castTo<RemoteNode const*>(en);
+      remoteNode = ExecutionNode::castTo<RemoteNode*>(en);
       continue;
     }
 
@@ -150,9 +151,19 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
       // otherwise we potentially would try to get data from a query from
       // server B while the query was only instanciated on server A.
       for (auto const& serverToSnippet : serversForRemote->second) {
-        auto const& serverID = serverToSnippet.first;
-        for (auto const& snippetId : serverToSnippet.second) {
-          auto r = std::make_unique<RemoteBlock>(this, remoteNode, serverID, "", snippetId);
+        std::string const& serverID = serverToSnippet.first;
+        for (std::string const& snippetId : serverToSnippet.second) {
+          remoteNode->queryId(snippetId);
+          remoteNode->server(serverID);
+          remoteNode->ownName({""});
+          std::unique_ptr<ExecutionBlock> r = remoteNode->createBlock(*this, {});
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          auto remoteBlock = dynamic_cast<ExecutionBlockImpl<RemoteExecutor>*>(r.get());
+          TRI_ASSERT(remoteBlock->server() == serverID);
+          TRI_ASSERT(remoteBlock->ownName() == ""); // NOLINT(readability-container-size-empty)
+          TRI_ASSERT(remoteBlock->queryId() == snippetId);
+#endif
+
           TRI_ASSERT(r != nullptr);
           eb->addDependency(r.get());
           addBlock(r.get());
