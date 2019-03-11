@@ -75,8 +75,6 @@ SCENARIO("EnumerateCollectionExecutor",
     std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
     
     // setup required application features
-    features.emplace_back(new arangodb::DatabaseFeature(server), false); // required for LogicalViewStorageEngine::modify(...)
-    features.emplace_back(new arangodb::ShardingFeature(server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required by TRI_vocbase_t(...)
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
 
