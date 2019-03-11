@@ -88,7 +88,7 @@ FOR vertex[, edge[, path]]
     - "path" (default) – it is guaranteed that there is no path returned with a
       duplicate edge
     - "none" – no uniqueness check is applied on edges. **Note:**
-      Using this configuration the traversal will follow cycles in edges.
+      Using this configuration the traversal will follow edges in cycles.
 
 ### Working with collection sets
 
