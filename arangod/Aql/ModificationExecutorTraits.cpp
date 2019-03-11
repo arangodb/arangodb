@@ -230,6 +230,7 @@ bool Insert::doModifications(ModificationExecutorInfos& info,
       return _last_not_skip != std::numeric_limits<decltype(_last_not_skip)>::max();
     }
   }
+  //return false; //CHECK - ME -- false should be ok as we do not output anything
   return true;
 }
 
@@ -243,7 +244,7 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
 
   OperationOptions& options = info._options;
 
-  // skip ignore skip values
+  // ignore-skip values
   while (_operations[_blockIndex] == ModOperationType::IGNORE_SKIP && _blockIndex < blockSize) {
     _blockIndex++;
   }
@@ -287,9 +288,6 @@ bool Insert::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
       TRI_ASSERT(false);
     }
   }
-
-
-
 
   // increase index and make sure next element is within the valid range
   return ++_blockIndex < _last_not_skip;
@@ -340,6 +338,7 @@ bool Remove::doModifications(ModificationExecutorInfos& info,
           _tmpBuilder.add(StaticStrings::RevString, VPackValue(rev));
         }
         _tmpBuilder.close();
+        this->_last_not_skip = _operations.size(); //always true for insert as here is no ignore skip
       } else {
         // We have an error, handle it
         _operations.push_back(ModOperationType::IGNORE_SKIP);
@@ -348,6 +347,7 @@ bool Remove::doModifications(ModificationExecutorInfos& info,
     } else {
       // not relevant for ourselves... just pass it on to the next block
       _operations.push_back(ModOperationType::IGNORE_RETURN);
+      this->_last_not_skip = _operations.size(); //always true for insert as here is no ignore skip
     }
   });
 
@@ -359,21 +359,15 @@ bool Remove::doModifications(ModificationExecutorInfos& info,
   // At this point _tempbuilder contains the objects to insert
   // and _operations the information if the data is to be kept or not
 
-  // TRI_ASSERT(toInsert.isArray());
-  // try {
-  //  LOG_DEVEL << "num to insert" << toInsert.length();
-  //} catch (...) {
-  //}
-
-  // former - skip empty
-  // no more to prepare
   if (toRemove.length() == 0) {
-    //    executor._copyBlock = true;
-    TRI_ASSERT(false);
-    return true;
+    // there is nothing to update we just need to copy
+    // if there is anything other than IGNORE_SKIP the
+    // block is prepared.
+    _justCopy = true;
+    return _last_not_skip != std::numeric_limits<decltype(_last_not_skip)>::max();
   }
 
-  // execute insert
+  // execute remove
   TRI_ASSERT(info._trx);
   auto operationResult = info._trx->remove(info._aqlCollection->name(), toRemove, options);
   setOperationResult(std::move(operationResult));
@@ -392,11 +386,13 @@ bool Remove::doModifications(ModificationExecutorInfos& info,
     TRI_ASSERT(_operationResult.buffer != nullptr);
     TRI_ASSERT(_operationResult.slice().isArray());
 
-    // former - skip empty
     if (_operationResultArraySlice.length() == 0) {
-      //      executor._copyBlock = true;
+      // there is nothing to update we just need to copy
+      // if there is anything other than IGNORE_SKIP the
+      // block is prepared.
+      _justCopy = true;
       TRI_ASSERT(false);
-      return true;
+      return _last_not_skip != std::numeric_limits<decltype(_last_not_skip)>::max();
     }
   }
   return true;
@@ -405,12 +401,22 @@ bool Remove::doModifications(ModificationExecutorInfos& info,
 bool Remove::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output) {
   TRI_ASSERT(_block);
   TRI_ASSERT(_block->hasBlock());
-  TRI_ASSERT(_blockIndex < _block->block().size());
+
+  std::size_t blockSize = _block->block().size();
+  TRI_ASSERT(_last_not_skip <= blockSize);
+  TRI_ASSERT(_blockIndex < blockSize);
 
   OperationOptions& options = info._options;
 
+  // ignore-skip values
+  while (_operations[_blockIndex] == ModOperationType::IGNORE_SKIP && _blockIndex < blockSize) {
+    _blockIndex++;
+  }
+
   InputAqlItemRow input = InputAqlItemRow(_block, _blockIndex);
-  if (!options.silent) {
+  if (_justCopy || options.silent) {
+    output.copyRow(input);
+  } else {
     if (_operations[_blockIndex] == ModOperationType::APPLY_RETURN) {
       TRI_ASSERT(_operationResultIterator.valid());
       auto elm = _operationResultIterator.value();
@@ -442,12 +448,11 @@ bool Remove::doOutput(ModificationExecutorInfos& info, OutputAqlItemRow& output)
       TRI_ASSERT(false);
     }
 
-  } else {
-    output.copyRow(input);
   }
 
   // increase index and make sure next element is within the valid range
-  return ++_blockIndex < _block->block().size();
+  //return ++_blockIndex < _block->block().size();
+  return ++_blockIndex < _last_not_skip;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
