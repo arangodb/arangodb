@@ -135,9 +135,6 @@ bool RocksDBEdgeIndexIterator::initKey(VPackSlice& key) {
   }
 
   key = _keysIterator.value();
-  if (key.isObject()) {
-    key = key.get(StaticStrings::IndexEq);
-  }
   TRI_ASSERT(key.isString());
   _lastKey = key;
   return true;
@@ -183,9 +180,6 @@ bool RocksDBEdgeIndexIterator::next(LocalDocumentIdCallback const& cb, size_t li
     // We have exhausted local memory.
     // Now fill it again:
     VPackSlice fromToSlice = _keysIterator.value();
-    if (fromToSlice.isObject()) {
-      fromToSlice = fromToSlice.get(StaticStrings::IndexEq);
-    }
     TRI_ASSERT(fromToSlice.isString());
     StringRef fromTo(fromToSlice);
 
@@ -400,9 +394,6 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb, size_t limit) 
     // We have exhausted local memory.
     // Now fill it again:
     VPackSlice fromToSlice = _keysIterator.value();
-    if (fromToSlice.isObject()) {
-      fromToSlice = fromToSlice.get(StaticStrings::IndexEq);
-    }
     TRI_ASSERT(fromToSlice.isString());
     StringRef fromTo(fromToSlice);
 
@@ -1031,11 +1022,8 @@ void RocksDBEdgeIndex::handleValNode(VPackBuilder* keys,
     return;
   }
 
-  keys->openObject();
-  keys->add(StaticStrings::IndexEq,
-            VPackValuePair(valNode->getStringValue(),
+  keys->add(VPackValuePair(valNode->getStringValue(),
                            valNode->getStringLength(), VPackValueType::String));
-  keys->close();
 
   TRI_IF_FAILURE("EdgeIndex::collectKeys") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
