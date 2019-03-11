@@ -1386,11 +1386,8 @@ void Supervision::shrinkCluster() {
           if (replFact > maxReplFact) {
             maxReplFact = replFact;
           }
-        } else {
-          LOG_TOPIC(WARN, Logger::SUPERVISION)
-              << "Cannot retrieve replication factor for collection " << collptr.first;
-          return;
         }
+        // Note that this could be a satellite collection, in any case, ignore:
       }
     }
 
