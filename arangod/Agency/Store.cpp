@@ -503,7 +503,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
     }
 
     auto p = precond.value;
-    LOG_DEVEL << p.toJson();
+
     if (p.isObject()) {
       if (p.hasKey("and") && p.get("and").isArray()) {
         ret.open();

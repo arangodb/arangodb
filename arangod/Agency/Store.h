@@ -46,7 +46,7 @@ struct check_ret_t {
     TRI_ASSERT(failed != nullptr);
     auto nf = 0;
     if (failed->slice().isArray()) {
-      failed->slice().length();
+      nf = failed->slice().length();
     }
     return (link == AND) ? nf == 0 : nf < checks;
   }

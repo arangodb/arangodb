@@ -167,9 +167,7 @@ function agencyTestSuite () {
   }
 
   function transactAndCheck(list, code) {
-    require("console").error(list);
     var res = accessAgency("transact", list);
-    require("console").error(res);
     assertEqual(res.statusCode, code);
     return res.bodyParsed;
   }
