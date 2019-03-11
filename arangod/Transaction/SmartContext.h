@@ -36,19 +36,11 @@ class TransactionState;
   
 namespace transaction {
 
-#warning TODO change comment
 /// Transaction context that will manage the creation or acquisition of a
 /// TransactionState for transaction::Methods instances for cluster wide
 /// transactions. Cluster wide transactions essentially just mean that all
 /// operations will use a consistent transaction ID and on the same server the
-/// same TransactionState instance will be used. The class supports three
-/// different use-cases
-/// (1) Constructor with TID and Type::Default can be used to share a
-///     TransactionState between multiple transaction::Methods instances
-/// (2) Constructor with TID and Type::Global will try to lease an already
-///     existing TransactionState from the TransactionManager.
-///     This supports global transaction with explicit begin / end requests
-/// (3) Construcor with TransactionState* is used to manage a global transaction
+/// same TransactionState instance will be used.
 class SmartContext : public Context {
  public:
 
@@ -78,6 +70,7 @@ class SmartContext : public Context {
   arangodb::TransactionState* _state;
 };
   
+/// @brief Acquire a transaction from the Manager
 struct ManagedContext final : public SmartContext {
   
   ManagedContext(TRI_voc_tid_t globalId, TransactionState* state,
@@ -100,8 +93,8 @@ private:
   AccessMode::Type _mode;
 };
 
-/// Used for a standalone AQL query. Registers
-/// the TransactionState with the manager
+/// Used for a standalone AQL query. Always creates the state first.
+/// Registers the TransactionState with the manager
 struct AQLStandaloneContext final : public SmartContext {
   
   AQLStandaloneContext(TRI_vocbase_t& vocbase, TRI_voc_tid_t globalId)

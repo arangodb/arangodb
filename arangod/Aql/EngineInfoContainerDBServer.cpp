@@ -34,6 +34,7 @@
 #include "Basics/Result.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterTrxMethods.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "EngineInfoContainerDBServer.h"
@@ -999,7 +1000,7 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds,
       servers.emplace_back(it.first);
     }
     // start transaction on all servers with snippets
-    Result res = ClusterMethods::beginTransactionOnLeaders(*trx->state(), servers);
+    Result res = ClusterTrxMethods::beginTransactionOnLeaders(*trx->state(), servers);
     if (res.fail()) {
       return res;
     }
@@ -1021,7 +1022,7 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds,
     
     // add the transaction ID header
     std::unordered_map<std::string, std::string> headers;
-    ClusterMethods::addAQLTransactionHeader(*trx, /*server*/ it.first, headers);
+    ClusterTrxMethods::addAQLTransactionHeader(*trx, /*server*/ it.first, headers);
 
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
     auto res = cc->syncRequest(coordTransactionID, serverDest, RequestType::POST,

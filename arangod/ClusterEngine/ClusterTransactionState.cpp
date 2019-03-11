@@ -25,6 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterTrxMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -95,7 +96,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
         return true; // continue
       });
       
-      ClusterMethods::beginTransactionOnLeaders(*this, leaders);
+      ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders);
     }
     
   } else {

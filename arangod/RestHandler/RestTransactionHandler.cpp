@@ -27,15 +27,11 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterInfo.h"
-#include "Rest/HttpRequest.h"
+#include "Cluster/ServerState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
-#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
-#include "Transaction/Methods.h"
-#include "Transaction/SmartContext.h"
 #include "Transaction/Status.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
@@ -48,16 +44,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-namespace {
-  struct ManagingTransaction final : arangodb::transaction::Methods {
-    ManagingTransaction(std::shared_ptr<transaction::Context> const& ctx,
-                        transaction::Options const& opts)
-    : Methods(ctx, opts) {
-      TRI_ASSERT(_state->isEmbeddedTransaction());
-    }
-  };
-}
 
 RestTransactionHandler::RestTransactionHandler(GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response), _v8Context(nullptr), _lock() {}
@@ -188,21 +174,7 @@ void RestTransactionHandler::executeCommit() {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
   
-  auto ctx = mgr->leaseTrx(tid, AccessMode::Type::WRITE, transaction::Manager::Ownership::Move);
-  if (!ctx) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_TRANSACTION_NOT_FOUND);
-    return;
-  }
-  
-  transaction::Options trxOpts;
-  ::ManagingTransaction trx(ctx, trxOpts);
-  TRI_ASSERT(trx.state()->isRunning());
-  TRI_ASSERT(trx.state()->nestingLevel() == 1);
-  trx.state()->decreaseNesting();
-  TRI_ASSERT(trx.state()->isTopLevelTransaction());
-  Result res = trx.commit();
-  TRI_ASSERT(!trx.state()->isRunning());
-  
+  Result res = mgr->commitManagedTrx(tid);
   if (res.fail()) {
     generateError(res);
   } else {
@@ -225,21 +197,7 @@ void RestTransactionHandler::executeAbort() {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
   
-  auto ctx = mgr->leaseTrx(tid, AccessMode::Type::WRITE, transaction::Manager::Ownership::Move);
-  if (!ctx) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_TRANSACTION_NOT_FOUND);
-    return;
-  }
-  
-  transaction::Options trxOpts;
-  ::ManagingTransaction trx(ctx, trxOpts);
-  TRI_ASSERT(trx.state()->isRunning());
-  TRI_ASSERT(trx.state()->nestingLevel() == 1);
-  trx.state()->decreaseNesting();
-  TRI_ASSERT(trx.state()->isTopLevelTransaction());
-  Result res = trx.abort();
-  TRI_ASSERT(!trx.state()->isRunning());
-  
+  Result res = mgr->abortManagedTrx(tid);
   if (res.fail()) {
     generateError(res);
   } else {

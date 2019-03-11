@@ -45,7 +45,8 @@ class Context;
 
 class Manager final {
   static constexpr size_t numBuckets = 16;
-  static constexpr double defaultTTL = 600.0;
+  static constexpr double defaultTTL  = 10.0 * 60.0; // 10 minutes
+  static constexpr double tombstoneTTL = 5.0 * 60.0; // 5 minutes
 
  public:
   Manager(bool keepData)
@@ -80,8 +81,6 @@ class Manager final {
   /// @brief collect forgotten transactions
   void garbageCollect();
   
-  enum class Ownership : bool { Lease = true, Move = false };
-    
   /// @brief register a AQL transaction
   void registerAQLTrx(TransactionState*);
   void unregisterAQLTrx(TRI_voc_tid_t tid) noexcept;
@@ -91,32 +90,60 @@ class Manager final {
                           velocypack::Slice const trxOpts);
   
   /// @brief lease the transaction, increases nesting
-  std::shared_ptr<transaction::Context> leaseTrx(TRI_voc_tid_t, AccessMode::Type mode,
-                                                 Ownership action);
+  std::shared_ptr<transaction::Context> leaseTrx(TRI_voc_tid_t, AccessMode::Type mode);
   void returnManagedTrx(TRI_voc_tid_t, AccessMode::Type mode) noexcept;
   
   /// @brief get the meta transasction state
   transaction::Status getManagedTrxStatus(TRI_voc_tid_t) const;
+    
+  Result commitManagedTrx(TRI_voc_tid_t);
+  Result abortManagedTrx(TRI_voc_tid_t);
+  
+  /// @brief abort all transactions on a given collection / shard
+  void abortAllManagedTrx(TRI_voc_cid_t);
+  
+#ifdef USE_CATCH_TESTS
+  /// statistics struct
+  struct TrxCounts {
+    uint32_t numManaged;
+    uint32_t numStandaloneAQL;
+    uint32_t numTombstones;
+
+  };
+  /// @brief fetch managed trx counts
+  TrxCounts getManagedTrxCount() const;
+#endif
   
  private:
   // hashes the transaction id into a bucket
-  inline size_t getBucket(TRI_voc_tid_t id) const {
-    return std::hash<TRI_voc_cid_t>()(id) % numBuckets;
+  inline size_t getBucket(TRI_voc_tid_t tid) const {
+    return std::hash<TRI_voc_cid_t>()(tid) % numBuckets;
   }
+  
+  Result commitAbortTransaction(TRI_voc_tid_t tid, transaction::Status status);
+  
+ private:
     
   enum class MetaType : uint8_t {
     Managed = 1,  /// global single shard db transaction
     StandaloneAQL = 2,  /// used for a standalone transaction (AQL standalone)
+    Tombstone = 3  /// used to ensure we can acknowledge double commits / aborts
   };
   struct ManagedTrx {
     ManagedTrx(MetaType t, TransactionState* st, double ex)
-      : type(t), state(st), expires(ex), rwlock() {}
+      : type(t), expires(ex), state(st), finalStatus(Status::UNDEFINED),
+        rwlock() {}
     ~ManagedTrx();
     
     MetaType type;
-    TransactionState* state;
-    double expires; /// expiration timespamp
-    mutable basics::ReadWriteSpinLock rwlock; /// usage lock
+    double expires; /// expiration timestamp
+    TransactionState* state; /// Transaction, may be nullptr
+    /// @brief  final TRX state that is valid if this is a tombstone
+    /// necessary to avoid getting error on a 'diamond' commit or accidantally
+    /// repeated commit / abort messages
+    transaction::Status finalStatus;
+    /// cheap usage lock for *state
+    mutable basics::ReadWriteSpinLock rwlock;
   };
   
 private:

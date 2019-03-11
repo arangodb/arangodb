@@ -37,6 +37,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterTrxMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
@@ -971,7 +972,7 @@ Result transaction::Methods::commit() {
 
   if (_state->isRunningInCluster() && _state->isTopLevelTransaction()) {
     // first commit transaction on subordinate servers
-    Result res = ClusterMethods::commitTransaction(*this);
+    Result res = ClusterTrxMethods::commitTransaction(*this);
     if (res.fail()) {  // do not commit locally
       LOG_TOPIC(WARN, Logger::TRANSACTIONS)
           << "failed to commit on subordinates " << res.errorMessage();
@@ -999,7 +1000,7 @@ Result transaction::Methods::abort() {
 
   if (_state->isRunningInCluster() && _state->isTopLevelTransaction()) {
     // first commit transaction on subordinate servers
-    Result res = ClusterMethods::abortTransaction(*this);
+    Result res = ClusterTrxMethods::abortTransaction(*this);
     if (res.fail()) {  // do not commit locally
       LOG_TOPIC(WARN, Logger::TRANSACTIONS)
       << "failed to abort on subordinates: " << res.errorMessage();
@@ -2591,7 +2592,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
     TRI_ASSERT(!_state->hasHint(Hints::Hint::FROM_TOPLEVEL_AQL)); // truncate from AQL ?!!
     if (_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
       auto const& followerInfo = collection->followers();
-      res = ClusterMethods::beginTransactionOnFollowers(*this, *followerInfo, *followers);
+      res = ClusterTrxMethods::beginTransactionOnFollowers(*this, *followerInfo, *followers);
       if (res.fail()) {
         return OperationResult(res);
       }
@@ -2614,7 +2615,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
 
       for (auto const& f : *followers) {
         auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-        ClusterMethods::addTransactionHeader(*this, f, *headers);
+        ClusterTrxMethods::addTransactionHeader(*this, f, *headers);
         requests.emplace_back("server:" + f, arangodb::rest::RequestType::PUT, path, body, std::move(headers));
       }
 
@@ -3308,7 +3309,7 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
   if (_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // FIXME: we should be able to begin a transaction via a header
     auto const& followerInfo = collection.followers();
-    res = ClusterMethods::beginTransactionOnFollowers(*this, *followerInfo, *followers);
+    res = ClusterTrxMethods::beginTransactionOnFollowers(*this, *followerInfo, *followers);
     if (res.fail()) {
       return res;
     }
@@ -3406,7 +3407,7 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
 
   for (auto const& f : *followers) {
     auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-    ClusterMethods::addTransactionHeader(*this, f, *headers);
+    ClusterTrxMethods::addTransactionHeader(*this, f, *headers);
     requests.emplace_back("server:" + f, requestType, path, body, std::move(headers));
   }
 

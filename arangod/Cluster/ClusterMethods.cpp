@@ -31,6 +31,7 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterTrxMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Graph/Traverser.h"
 #include "Indexes/Index.h"
@@ -160,32 +161,6 @@ void recursiveAdd(VPackSlice const& value, std::shared_ptr<VPackBuilder>& builde
   TRI_ASSERT(builder->isClosed());
 }
 
-int handleGeneralCommErrors(arangodb::ClusterCommResult const* res) {
-  // This function creates an error code from a ClusterCommResult,
-  // but only if it is a communication error. If the communication
-  // was successful and there was an HTTP error code, this function
-  // returns TRI_ERROR_NO_ERROR.
-  // If TRI_ERROR_NO_ERROR is returned, then the result was CL_COMM_RECEIVED
-  // and .answer can safely be inspected.
-  if (res->status == CL_COMM_TIMEOUT) {
-    // No reply, we give up:
-    return TRI_ERROR_CLUSTER_TIMEOUT;
-  } else if (res->status == CL_COMM_ERROR) {
-    return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-  } else if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
-    if (res->result == nullptr) {
-      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-    }
-    if (!res->result->isComplete()) {
-      // there is no result
-      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-    }
-    return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief begin a transaction on shard leader
 template <typename ShardDocsMap>
 Result beginTransactionOnCoordinator(TransactionState& state,
@@ -209,7 +184,7 @@ Result beginTransactionOnCoordinator(TransactionState& state,
       leaders.emplace_back(leader);
     }
   }
-  return ClusterMethods::beginTransactionOnLeaders(state, leaders);
+  return ClusterTrxMethods::beginTransactionOnLeaders(state, leaders);
 }
   
 /// @brief add the correct header for the shard
@@ -229,7 +204,7 @@ static void addTransactionHeaderForShard(transaction::Methods& trx,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
     }
     ServerID const& leader = it->second[0];
-    ClusterMethods::addTransactionHeader(trx, leader, headers);
+    ClusterTrxMethods::addTransactionHeader(trx, leader, headers);
   } else {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -675,6 +650,33 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
   }
   return result;
 }
+  
+/// @brief convert ClusterComm error into arango error code
+int handleGeneralCommErrors(arangodb::ClusterCommResult const* res) {
+  // This function creates an error code from a ClusterCommResult,
+  // but only if it is a communication error. If the communication
+  // was successful and there was an HTTP error code, this function
+  // returns TRI_ERROR_NO_ERROR.
+  // If TRI_ERROR_NO_ERROR is returned, then the result was CL_COMM_RECEIVED
+  // and .answer can safely be inspected.
+  if (res->status == CL_COMM_TIMEOUT) {
+    // No reply, we give up:
+    return TRI_ERROR_CLUSTER_TIMEOUT;
+  } else if (res->status == CL_COMM_ERROR) {
+    return TRI_ERROR_CLUSTER_CONNECTION_LOST;
+  } else if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
+    if (res->result == nullptr) {
+      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
+    }
+    if (!res->result->isComplete()) {
+      // there is no result
+      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
+    }
+    return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+  }
+  
+  return TRI_ERROR_NO_ERROR;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a copy of all HTTP headers to forward
@@ -966,7 +968,7 @@ int countOnCoordinator(transaction::Methods& trx, std::string const& cname,
   auto body = std::make_shared<std::string>();
   for (std::pair<ShardID, std::vector<ServerID>> const& p : *shards) {
     auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-    ClusterMethods::addTransactionHeader(trx, /*leader*/p.second[0], *headers);
+    ClusterTrxMethods::addTransactionHeader(trx, /*leader*/p.second[0], *headers);
     requests.emplace_back("shard:" + p.first, arangodb::rest::RequestType::GET,
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               "/_api/collection/" +
@@ -1245,7 +1247,7 @@ Result createDocumentOnCoordinator(transaction::Methods& trx, std::string const&
     auto const& req = requests[0];
     auto& res = req.result;
 
-    int commError = ::handleGeneralCommErrors(&res);
+    int commError = handleGeneralCommErrors(&res);
     if (commError != TRI_ERROR_NO_ERROR) {
       return commError;
     }
@@ -1418,7 +1420,7 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
       auto const& req = requests[0];
       auto& res = req.result;
 
-      int commError = ::handleGeneralCommErrors(&res);
+      int commError = handleGeneralCommErrors(&res);
       if (commError != TRI_ERROR_NO_ERROR) {
         return commError;
       }
@@ -1499,7 +1501,7 @@ int deleteDocumentOnCoordinator(arangodb::transaction::Methods& trx,
   responseCode = rest::ResponseCode::SERVER_ERROR;
   for (auto const& req : requests) {
     auto res = req.result;
-    int error = ::handleGeneralCommErrors(&res);
+    int error = handleGeneralCommErrors(&res);
     if (error != TRI_ERROR_NO_ERROR) {
       // Local data structures are automatically freed
       return error;
@@ -1553,7 +1555,7 @@ Result truncateCollectionOnCoordinator(transaction::Methods& trx, std::string co
         leaders.emplace_back(shardServers.second[0]);
       }
     }
-    Result res = ClusterMethods::beginTransactionOnLeaders(*trx.state(), leaders);
+    Result res = ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), leaders);
     if (res.fail()) {
       return res;
     }
@@ -1740,7 +1742,7 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string co
       auto const& req = requests[0];
       auto res = req.result;
 
-      int commError = ::handleGeneralCommErrors(&res);
+      int commError = handleGeneralCommErrors(&res);
       if (commError != TRI_ERROR_NO_ERROR) {
         return commError;
       }
@@ -1820,7 +1822,7 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string co
           resultBody.swap(parsedResult);
         }
       } else {
-        commError = ::handleGeneralCommErrors(&res);
+        commError = handleGeneralCommErrors(&res);
       }
     }
     if (nrok == 0) {
@@ -1841,7 +1843,7 @@ int getDocumentOnCoordinator(arangodb::transaction::Methods& trx, std::string co
   responseCode = rest::ResponseCode::SERVER_ERROR;
   for (auto const& req : requests) {
     auto& res = req.result;
-    int error = ::handleGeneralCommErrors(&res);
+    int error = handleGeneralCommErrors(&res);
     if (error != TRI_ERROR_NO_ERROR) {
       // Local data structores are automatically freed
       return error;
@@ -1915,7 +1917,7 @@ int fetchEdgesFromEngines(std::string const& dbname,
   for (auto const& req : requests) {
     bool allCached = true;
     auto res = req.result;
-    int commError = ::handleGeneralCommErrors(&res);
+    int commError = handleGeneralCommErrors(&res);
     if (commError != TRI_ERROR_NO_ERROR) {
       // oh-oh cluster is in a bad state
       return commError;
@@ -2010,7 +2012,7 @@ void fetchVerticesFromEngines(
   // Now listen to the results:
   for (auto const& req : requests) {
     auto res = req.result;
-    int commError = ::handleGeneralCommErrors(&res);
+    int commError = handleGeneralCommErrors(&res);
     if (commError != TRI_ERROR_NO_ERROR) {
       // oh-oh cluster is in a bad state
       THROW_ARANGO_EXCEPTION(commError);
@@ -2115,7 +2117,7 @@ void fetchVerticesFromEngines(
   // Now listen to the results:
   for (auto const& req : requests) {
     auto res = req.result;
-    int commError = ::handleGeneralCommErrors(&res);
+    int commError = handleGeneralCommErrors(&res);
     if (commError != TRI_ERROR_NO_ERROR) {
       // oh-oh cluster is in a bad state
       THROW_ARANGO_EXCEPTION(commError);
@@ -2229,7 +2231,7 @@ int getFilteredEdgesOnCoordinator(arangodb::transaction::Methods const& trx,
   // All requests send, now collect results.
   for (auto const& req : requests) {
     auto& res = req.result;
-    int error = ::handleGeneralCommErrors(&res);
+    int error = handleGeneralCommErrors(&res);
     if (error != TRI_ERROR_NO_ERROR) {
       // Cluster is in bad state. Report.
       return error;
@@ -2452,7 +2454,7 @@ int modifyDocumentOnCoordinator(
       TRI_ASSERT(requests.size() == 1);
       auto res = requests[0].result;
 
-      int commError = ::handleGeneralCommErrors(&res);
+      int commError = handleGeneralCommErrors(&res);
       if (commError != TRI_ERROR_NO_ERROR) {
         return commError;
       }
@@ -2522,7 +2524,7 @@ int modifyDocumentOnCoordinator(
           resultBody.swap(parsedResult);
         }
       } else {
-        commError = ::handleGeneralCommErrors(&res);
+        commError = handleGeneralCommErrors(&res);
       }
     }
     if (nrok == 0) {
@@ -2542,7 +2544,7 @@ int modifyDocumentOnCoordinator(
   allResults.reserve(requests.size());
   for (auto const& req : requests) {
     auto res = req.result;
-    int error = ::handleGeneralCommErrors(&res);
+    int error = handleGeneralCommErrors(&res);
     if (error != TRI_ERROR_NO_ERROR) {
       // Cluster is in bad state. Just report.
       // Local data structores are automatically freed
@@ -2818,6 +2820,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator
 }
 #endif
   
+/*
 namespace {
 
 void buildTransactionBody(TransactionState& state, ServerID const& server,
@@ -2885,7 +2888,7 @@ Result checkTransactionResult(TransactionState const& state,
   
   ClusterCommResult const& res = request.result;
   
-  int commError = ::handleGeneralCommErrors(&res);
+  int commError = handleGeneralCommErrors(&res);
   if (commError != TRI_ERROR_NO_ERROR) {
     // oh-oh cluster is in a bad state
     return result.reset(commError);
@@ -2936,8 +2939,6 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
   }
   TRI_ASSERT(!state.isDBServer() || !transaction::isFollowerTransactionId(state.id()));
   
-  TRI_voc_tid_t tid = trx.state()->id();
-
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
@@ -3178,7 +3179,7 @@ void ClusterMethods::addAQLTransactionHeader(transaction::Methods const& trx,
     state.addKnownServer(server);  // remember server
   }
   headers.emplace(arangodb::StaticStrings::TransactionId, std::move(value));
-}
+}*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Persist collection in Agency and trigger shard creation process
@@ -3340,7 +3341,7 @@ int fetchEdgesFromEngines(std::string const& dbname,
   for (auto const& req : requests) {
     bool allCached = true;
     auto res = req.result;
-    int commError = ::handleGeneralCommErrors(&res);
+    int commError = handleGeneralCommErrors(&res);
     if (commError != TRI_ERROR_NO_ERROR) {
       // oh-oh cluster is in a bad state
       return commError;
