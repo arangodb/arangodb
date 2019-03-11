@@ -1,6 +1,6 @@
 @Q:
 RETURN GEO_MULTIPOINT([
-[<span class="hljs-number">35</span>, <span class="hljs-number">10</span>], [<span class="hljs-number">45</span>, <span class="hljs-number">45</span>]
+  [<span class="hljs-number">35</span>, <span class="hljs-number">10</span>], [<span class="hljs-number">45</span>, <span class="hljs-number">45</span>]
 ])
 
 @R
