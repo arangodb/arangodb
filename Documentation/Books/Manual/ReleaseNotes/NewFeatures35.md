@@ -143,6 +143,11 @@ is equivalent to
     LET values = ['the', 'quick', 'foxx', 'jumps', 'over', 'the', 'dog'] 
     RETURN CONCAT(values[0], values[1], values[2], values[3], values[4], values[5], values[6])
 
+and to
+
+    LET values = ['the', 'quick', 'foxx', 'jumps', 'over', 'the', 'dog'] 
+    RETURN APPLY("CONCAT", values)
+
 The spread operator can also be used on input objects. In this case it will add all the
 attributes of the input object into the target object. 
 
