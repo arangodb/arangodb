@@ -162,16 +162,20 @@ void V8ClientConnection::setInterrupted(bool interrupted) {
   }
 }
 
-bool V8ClientConnection::isConnected() {
-  if (_connection) {
-    return _connection->state() == fuerte::Connection::State::Connected;
+bool V8ClientConnection::isConnected() const {
+  std::weak_ptr<fuerte::Connection> connection = _connection;
+  auto s = connection.lock();
+  if (s) {
+    return s->state() == fuerte::Connection::State::Connected;
   }
   return false;
 }
 
 std::string V8ClientConnection::endpointSpecification() const {
-  if (_connection) {
-    return _connection->endpoint();
+  std::weak_ptr<fuerte::Connection> connection = _connection;
+  auto s = connection.lock();
+  if (s) {
+    return s->endpoint();
   }
   return "";
 }
@@ -1820,6 +1824,7 @@ void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Local<v8::Context>
 }
 
 void V8ClientConnection::shutdownConnection() {
+  std::lock_guard<std::mutex> guard(_lock);
   if (_connection) {
     _connection->cancel();
     _connection.reset();
