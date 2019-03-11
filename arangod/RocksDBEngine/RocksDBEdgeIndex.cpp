@@ -80,435 +80,537 @@ void RocksDBEdgeIndexWarmupTask::run() {
   _queue->join();
 }
 
-RocksDBEdgeIndexLookupIterator::RocksDBEdgeIndexLookupIterator(LogicalCollection* collection,
-                                                               transaction::Methods* trx,
-                                                               arangodb::RocksDBEdgeIndex const* index,
-                                                               std::unique_ptr<VPackBuilder> keys,
-                                                               std::shared_ptr<cache::Cache> cache)
-    : IndexIterator(collection, trx),
-      _keys(std::move(keys)),
-      _keysIterator(_keys->slice()),
-      _index(index),
-      _bounds(RocksDBKeyBounds::EdgeIndex(0)),
-      _cache(std::move(cache)),
-      _builderIterator(arangodb::velocypack::Slice::emptyArraySlice()),
-      _lastKey(VPackSlice::nullSlice()) {
-  TRI_ASSERT(_keys != nullptr);
-  TRI_ASSERT(_keys->slice().isArray());
+namespace arangodb {
+class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
+ public:
+  RocksDBEdgeIndexLookupIterator(LogicalCollection* collection,
+                                 transaction::Methods* trx,
+                                 arangodb::RocksDBEdgeIndex const* index,
+                                 std::unique_ptr<VPackBuilder> keys,
+                                 std::shared_ptr<cache::Cache> cache)
+      : IndexIterator(collection, trx),
+        _keys(std::move(keys)),
+        _keysIterator(_keys->slice()),
+        _index(index),
+        _bounds(RocksDBKeyBounds::EdgeIndex(0)),
+        _cache(std::move(cache)),
+        _builderIterator(arangodb::velocypack::Slice::emptyArraySlice()),
+        _lastKey(VPackSlice::nullSlice()) {
+    TRI_ASSERT(_keys != nullptr);
+    TRI_ASSERT(_keys->slice().isArray());
 
-  auto* mthds = RocksDBTransactionState::toMethods(trx);
-  // intentional copy of the options
-  rocksdb::ReadOptions options = mthds->iteratorReadOptions();
-  options.fill_cache = EdgeIndexFillBlockCache;
-  _iterator = mthds->NewIterator(options, index->columnFamily());
-}
-
-RocksDBEdgeIndexLookupIterator::~RocksDBEdgeIndexLookupIterator() {
-  if (_keys != nullptr) {
-    // return the VPackBuilder to the transaction context
-    _trx->transactionContextPtr()->returnBuilder(_keys.release());
+    auto* mthds = RocksDBTransactionState::toMethods(trx);
+    // intentional copy of the options
+    rocksdb::ReadOptions options = mthds->iteratorReadOptions();
+    options.fill_cache = EdgeIndexFillBlockCache;
+    _iterator = mthds->NewIterator(options, index->columnFamily());
   }
-}
 
-void RocksDBEdgeIndexLookupIterator::resetInplaceMemory() { _builder.clear(); }
+  ~RocksDBEdgeIndexLookupIterator() {
+    if (_keys != nullptr) {
+      // return the VPackBuilder to the transaction context
+      _trx->transactionContextPtr()->returnBuilder(_keys.release());
+    }
+  }
 
-void RocksDBEdgeIndexLookupIterator::reset() {
-  resetInplaceMemory();
-  _keysIterator.reset();
-  _lastKey = VPackSlice::nullSlice();
-  _builderIterator = VPackArrayIterator(arangodb::velocypack::Slice::emptyArraySlice());
-}
+  char const* typeName() const override { return "edge-index-iterator"; }
+  
+  bool hasExtra() const override { return true; }
+  
+  /// @brief we provide a method to provide the index attribute values
+  /// while scanning the index
+  bool hasCovering() const override { return true; }
 
-// returns true if we have one more key for the index lookup.
-// if true, sets the `key` Slice to point to the new key's value
-// note that the underlying data for the Slice must remain valid
-// as long as the iterator is used and the key is not moved forward.
-// returns false if there are no more keys to look for
-bool RocksDBEdgeIndexLookupIterator::initKey(VPackSlice& key) {
-  if (!_keysIterator.valid()) {
-    // no next key
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+    TRI_ASSERT(_trx->state()->isRunning());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+#else
+    // Gracefully return in production code
+    // Nothing bad has happened
+    if (limit == 0) {
+      return false;
+    }
+#endif
+
+    while (limit > 0) {
+      while (_builderIterator.valid()) {
+        // We still have unreturned edges in out memory.
+        // Just plainly return those.
+        TRI_ASSERT(_builderIterator.value().isNumber());
+        cb(LocalDocumentId{_builderIterator.value().getNumericValue<uint64_t>()});
+        limit--;
+
+        // Twice advance the iterator
+        _builderIterator.next();
+        // We always have <revision,_from> pairs
+        TRI_ASSERT(_builderIterator.valid());
+        _builderIterator.next();
+
+        if (limit == 0) {
+          // Limit reached bail out
+          return true;
+        }
+      }
+
+      if (!_keysIterator.valid()) {
+        // We are done iterating
+        return false;
+      }
+
+      // We have exhausted local memory.
+      // Now fill it again:
+      VPackSlice fromToSlice = _keysIterator.value();
+      TRI_ASSERT(fromToSlice.isString());
+      arangodb::velocypack::StringRef fromTo(fromToSlice);
+
+      bool needRocksLookup = true;
+      if (_cache) {
+        for (size_t attempts = 0; attempts < 10; ++attempts) {
+          // Try to read from cache
+          auto finding = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
+          if (finding.found()) {
+            needRocksLookup = false;
+            // We got sth. in the cache
+            VPackSlice cachedData(finding.value()->value());
+            TRI_ASSERT(cachedData.isArray());
+            if (cachedData.length() / 2 < limit) {
+              // Directly return it, no need to copy
+              _builderIterator = VPackArrayIterator(cachedData);
+              while (_builderIterator.valid()) {
+                TRI_ASSERT(_builderIterator.value().isNumber());
+                cb(LocalDocumentId{_builderIterator.value().getNumericValue<uint64_t>()});
+                limit--;
+
+                // Twice advance the iterator
+                _builderIterator.next();
+                // We always have <revision,_from> pairs
+                TRI_ASSERT(_builderIterator.valid());
+                _builderIterator.next();
+              }
+              _builderIterator =
+                  VPackArrayIterator(arangodb::velocypack::Slice::emptyArraySlice());
+            } else {
+              // We need to copy it.
+              // And then we just get back to beginning of the loop
+              _builder.clear();
+              _builder.add(cachedData);
+              TRI_ASSERT(_builder.slice().isArray());
+              _builderIterator = VPackArrayIterator(_builder.slice());
+              // Do not set limit
+            }
+            break;
+          }
+          if (finding.result().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+            // We really have not found an entry.
+            // Otherwise we do not know yet
+            break;
+          }
+        }  // attempts
+      }    // if (_cache)
+
+      if (needRocksLookup) {
+        lookupInRocksDB(fromTo);
+      }
+
+      _keysIterator.next();
+    }
+    TRI_ASSERT(limit == 0);
+    return _builderIterator.valid() || _keysIterator.valid();
+  }
+
+  bool nextCovering(DocumentCallback const& cb, size_t limit) override {
+    TRI_ASSERT(_trx->state()->isRunning());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+#else
+    // Gracefully return in production code
+    // Nothing bad has happened
+    if (limit == 0) {
+      return false;
+    }
+#endif
+
+    transaction::BuilderLeaser coveringBuilder(_trx);
+    while (limit > 0) {
+      while (_builderIterator.valid()) {
+        // We still have unreturned edges in memory.
+        // Just plainly return those.
+        TRI_ASSERT(_builderIterator.value().isNumber());
+        LocalDocumentId tkn{_builderIterator.value().getNumericValue<uint64_t>()};
+        // Advance the iterator
+        _builderIterator.next();
+        TRI_ASSERT(_builderIterator.valid());
+        TRI_ASSERT(_builderIterator.value().isString());
+        // We always have <revision,_from> pairs, so now we need this result for
+        // the covered attributes
+
+        coveringBuilder->clear();
+        coveringBuilder->openArray();
+        coveringBuilder->add(_lastKey);
+        coveringBuilder->add(_builderIterator.value());
+        coveringBuilder->close();
+        cb(tkn, coveringBuilder->slice());
+
+        limit--;
+
+        _builderIterator.next();
+
+        if (limit == 0) {
+          // Limit reached. bail out
+          return true;
+        }
+      }
+
+      VPackSlice fromToSlice;
+      if (!initKey(fromToSlice)) {
+        return false;
+      }
+
+      arangodb::velocypack::StringRef fromTo(fromToSlice);
+
+      bool needRocksLookup = true;
+      if (_cache) {
+        for (size_t attempts = 0; attempts < 10; ++attempts) {
+          // Try to read from cache
+          auto finding = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
+          if (finding.found()) {
+            needRocksLookup = false;
+            // We got sth. in the cache
+            VPackSlice cachedData(finding.value()->value());
+            TRI_ASSERT(cachedData.isArray());
+            if (cachedData.length() / 2 < limit) {
+              // Directly return it, no need to copy
+              _builderIterator = VPackArrayIterator(cachedData);
+              while (_builderIterator.valid()) {
+                TRI_ASSERT(_builderIterator.value().isNumber());
+                LocalDocumentId tkn{_builderIterator.value().getNumericValue<uint64_t>()};
+
+                // Advance the iterator
+                _builderIterator.next();
+                TRI_ASSERT(_builderIterator.valid());
+                TRI_ASSERT(_builderIterator.value().isString());
+                // We always have <revision,_from> pairs, so now we need this
+                // result for the covered attributes
+
+                coveringBuilder->clear();
+                coveringBuilder->openArray();
+                coveringBuilder->add(_lastKey);
+                coveringBuilder->add(_builderIterator.value());
+                coveringBuilder->close();
+
+                cb(tkn, coveringBuilder->slice());
+                limit--;
+
+                _builderIterator.next();
+              }
+              _builderIterator =
+                  VPackArrayIterator(arangodb::velocypack::Slice::emptyArraySlice());
+            } else {
+              // We need to copy it.
+              // And then we just get back to beginning of the loop
+              _builder.clear();
+              _builder.add(cachedData);
+              TRI_ASSERT(_builder.slice().isArray());
+              _builderIterator = VPackArrayIterator(_builder.slice());
+              // Do not set limit
+            }
+            break;
+          }
+          if (finding.result().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+            // We really have not found an entry.
+            // Otherwise we do not know yet
+            break;
+          }
+        }  // attempts
+      }    // if (_cache)
+
+      if (needRocksLookup) {
+        lookupInRocksDB(fromTo);
+      }
+
+      _keysIterator.next();
+    }
+    TRI_ASSERT(limit == 0);
+    return _builderIterator.valid() || _keysIterator.valid();
+  }
+
+  bool nextExtra(ExtraCallback const& cb, size_t limit) override {
+    TRI_ASSERT(_trx->state()->isRunning());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+#else
+    // Gracefully return in production code
+    // Nothing bad has happened
+    if (limit == 0) {
+      return false;
+    }
+#endif
+
+    while (limit > 0) {
+      while (_builderIterator.valid()) {
+        // We still have unreturned edges in out memory.
+        // Just plainly return those.
+        TRI_ASSERT(_builderIterator.value().isNumber());
+        LocalDocumentId tkn{_builderIterator.value().getNumericValue<uint64_t>()};
+        _builderIterator.next();
+        TRI_ASSERT(_builderIterator.valid());
+        // For now we store the complete opposite _from/_to value
+        TRI_ASSERT(_builderIterator.value().isString());
+
+        cb(tkn, _builderIterator.value());
+
+        _builderIterator.next();
+        limit--;
+
+        if (limit == 0) {
+          // Limit reached bail out
+          return true;
+        }
+      }
+
+      if (!_keysIterator.valid()) {
+        // We are done iterating
+        return false;
+      }
+
+      // We have exhausted local memory.
+      // Now fill it again:
+      VPackSlice fromToSlice = _keysIterator.value();
+      TRI_ASSERT(fromToSlice.isString());
+      arangodb::velocypack::StringRef fromTo(fromToSlice);
+
+      bool needRocksLookup = true;
+      if (_cache) {
+        for (size_t attempts = 0; attempts < 10; ++attempts) {
+          // Try to read from cache
+          auto finding = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
+          if (finding.found()) {
+            needRocksLookup = false;
+            // We got sth. in the cache
+            VPackSlice cachedData(finding.value()->value());
+            TRI_ASSERT(cachedData.isArray());
+            if (cachedData.length() / 2 < limit) {
+              // Directly return it, no need to copy
+              _builderIterator = VPackArrayIterator(cachedData);
+              while (_builderIterator.valid()) {
+                TRI_ASSERT(_builderIterator.value().isNumber());
+                LocalDocumentId tkn{_builderIterator.value().getNumericValue<uint64_t>()};
+
+                _builderIterator.next();
+
+                TRI_ASSERT(_builderIterator.valid());
+                TRI_ASSERT(_builderIterator.value().isString());
+                cb(tkn, _builderIterator.value());
+
+                _builderIterator.next();
+                limit--;
+              }
+              _builderIterator =
+                  VPackArrayIterator(arangodb::velocypack::Slice::emptyArraySlice());
+            } else {
+              // We need to copy it.
+              // And then we just get back to beginning of the loop
+              _builder.clear();
+              _builder.add(cachedData);
+              TRI_ASSERT(_builder.slice().isArray());
+              _builderIterator = VPackArrayIterator(_builder.slice());
+              // Do not set limit
+            }
+            break;
+          }  // finding found
+          if (finding.result().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+            // We really have not found an entry.
+            // Otherwise we do not know yet
+            break;
+          }
+        }  // attempts
+      }    // if (_cache)
+
+      if (needRocksLookup) {
+        lookupInRocksDB(fromTo);
+      }
+
+      _keysIterator.next();
+    }
+    TRI_ASSERT(limit == 0);
+    return _builderIterator.valid() || _keysIterator.valid();
+  }
+
+  void reset() override {
+    resetInplaceMemory();
+    _keysIterator.reset();
     _lastKey = VPackSlice::nullSlice();
-    return false;
+    _builderIterator = VPackArrayIterator(arangodb::velocypack::Slice::emptyArraySlice());
   }
+  
+  /// @brief index supports rearming
+  bool canRearm() const override { return true; }
+  
+  /// @brief rearm the index iterator
+  bool rearm(arangodb::aql::AstNode const* node,
+             arangodb::aql::Variable const* variable,
+             IndexIteratorOptions const& opts) override {
+    TRI_ASSERT(!_index->isSorted() || opts.sorted);
+    
+    // get computation node
+    TRI_ASSERT(node != nullptr);
+    TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
+    TRI_ASSERT(node->numMembers() == 1);
+    auto comp = node->getMember(0);
 
-  key = _keysIterator.value();
-  if (key.isObject()) {
-    key = key.get(StaticStrings::IndexEq);
-  }
-  TRI_ASSERT(key.isString());
-  _lastKey = key;
-  return true;
-}
+    // assume a.b == value
+    auto attrNode = comp->getMember(0);
+    auto valNode = comp->getMember(1);
 
-bool RocksDBEdgeIndexLookupIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
-  TRI_ASSERT(_trx->state()->isRunning());
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
-#else
-  // Gracefully return in production code
-  // Nothing bad has happened
-  if (limit == 0) {
-    return false;
-  }
-#endif
-
-  while (limit > 0) {
-    while (_builderIterator.valid()) {
-      // We still have unreturned edges in out memory.
-      // Just plainly return those.
-      TRI_ASSERT(_builderIterator.value().isNumber());
-      cb(LocalDocumentId{_builderIterator.value().getNumericValue<uint64_t>()});
-      limit--;
-
-      // Twice advance the iterator
-      _builderIterator.next();
-      // We always have <revision,_from> pairs
-      TRI_ASSERT(_builderIterator.valid());
-      _builderIterator.next();
-
-      if (limit == 0) {
-        // Limit reached bail out
-        return true;
-      }
+    // got value == a.b  -> flip sides
+    if (attrNode->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+      attrNode = comp->getMember(1);
+      valNode = comp->getMember(0);
     }
 
+    TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+    TRI_ASSERT(attrNode->stringEquals(_index->_directionAttr));
+      
+    _keys->clear();
+
+    if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+      // a.b == value
+      _keys->openArray(true);
+
+      _index->handleValNode(_keys.get(), valNode);
+      TRI_IF_FAILURE("EdgeIndex::noIterator") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+      _keys->close();
+      _keysIterator = VPackArrayIterator(_keys->slice());
+
+      reset();
+      return true;
+    }
+
+    if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+      // a.b IN values
+      if (valNode->isArray()) {
+        _keys->openArray();
+
+        size_t const n = valNode->numMembers();
+        for (size_t i = 0; i < n; ++i) {
+          _index->handleValNode(_keys.get(), valNode->getMemberUnchecked(i));
+          TRI_IF_FAILURE("EdgeIndex::iteratorValNodes") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+        }
+
+        TRI_IF_FAILURE("EdgeIndex::noIterator") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        _keys->close();
+        _keysIterator = VPackArrayIterator(_keys->slice());
+        reset();
+        return true;
+      }
+
+      // a.b IN non-array
+      // fallthrough to empty result
+    }
+
+    // operator type unsupported
+    return false;
+  }
+
+ private:
+  // returns true if we have one more key for the index lookup.
+  // if true, sets the `key` Slice to point to the new key's value
+  // note that the underlying data for the Slice must remain valid
+  // as long as the iterator is used and the key is not moved forward.
+  // returns false if there are no more keys to look for
+  bool initKey(VPackSlice& key) {
     if (!_keysIterator.valid()) {
-      // We are done iterating
+      // no next key
+      _lastKey = VPackSlice::nullSlice();
       return false;
     }
 
-    // We have exhausted local memory.
-    // Now fill it again:
-    VPackSlice fromToSlice = _keysIterator.value();
-    TRI_ASSERT(fromToSlice.isString());
-    arangodb::velocypack::StringRef fromTo(fromToSlice);
+    key = _keysIterator.value();
+    if (key.isObject()) {
+      key = key.get(StaticStrings::IndexEq);
+    }
+    TRI_ASSERT(key.isString());
+    _lastKey = key;
+    return true;
+  }
 
-    bool needRocksLookup = true;
-    if (_cache) {
-      for (size_t attempts = 0; attempts < 10; ++attempts) {
-        // Try to read from cache
-        auto finding = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
-        if (finding.found()) {
-          needRocksLookup = false;
-          // We got sth. in the cache
-          VPackSlice cachedData(finding.value()->value());
-          TRI_ASSERT(cachedData.isArray());
-          if (cachedData.length() / 2 < limit) {
-            // Directly return it, no need to copy
-            _builderIterator = VPackArrayIterator(cachedData);
-            while (_builderIterator.valid()) {
-              TRI_ASSERT(_builderIterator.value().isNumber());
-              cb(LocalDocumentId{_builderIterator.value().getNumericValue<uint64_t>()});
-              limit--;
+  void resetInplaceMemory() { _builder.clear(); }
 
-              // Twice advance the iterator
-              _builderIterator.next();
-              // We always have <revision,_from> pairs
-              TRI_ASSERT(_builderIterator.valid());
-              _builderIterator.next();
-            }
-            _builderIterator =
-                VPackArrayIterator(arangodb::velocypack::Slice::emptyArraySlice());
-          } else {
-            // We need to copy it.
-            // And then we just get back to beginning of the loop
-            _builder.clear();
-            _builder.add(cachedData);
-            TRI_ASSERT(_builder.slice().isArray());
-            _builderIterator = VPackArrayIterator(_builder.slice());
-            // Do not set limit
+  void lookupInRocksDB(arangodb::velocypack::StringRef fromTo) {
+    // Bad case read from RocksDB
+    _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId, fromTo);
+    _iterator->Seek(_bounds.start());
+    resetInplaceMemory();
+    rocksdb::Comparator const* cmp = _index->comparator();
+
+    cache::Cache* cc = _cache.get();
+    _builder.openArray(true);
+    auto end = _bounds.end();
+    while (_iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0)) {
+      LocalDocumentId const documentId =
+          RocksDBKey::indexDocumentId(RocksDBEntryType::EdgeIndexValue, _iterator->key());
+
+      // adding revision ID and _from or _to value
+      _builder.add(VPackValue(documentId.id()));
+      arangodb::velocypack::StringRef vertexId = RocksDBValue::vertexId(_iterator->value());
+      _builder.add(VPackValuePair(vertexId.data(), vertexId.size(), VPackValueType::String));
+
+      _iterator->Next();
+    }
+    _builder.close();
+    if (cc != nullptr) {
+      // TODO Add cache retry on next call
+      // Now we have something in _inplaceMemory.
+      // It may be an empty array or a filled one, never mind, we cache both
+      auto entry =
+          cache::CachedValue::construct(fromTo.data(),
+                                        static_cast<uint32_t>(fromTo.size()),
+                                        _builder.slice().start(),
+                                        static_cast<uint64_t>(_builder.slice().byteSize()));
+      if (entry) {
+        bool inserted = false;
+        for (size_t attempts = 0; attempts < 10; attempts++) {
+          auto status = cc->insert(entry);
+          if (status.ok()) {
+            inserted = true;
+            break;
           }
-          break;
-        }
-        if (finding.result().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
-          // We really have not found an entry.
-          // Otherwise we do not know yet
-          break;
-        }
-      }  // attempts
-    }    // if (_cache)
-
-    if (needRocksLookup) {
-      lookupInRocksDB(fromTo);
-    }
-
-    _keysIterator.next();
-  }
-  TRI_ASSERT(limit == 0);
-  return _builderIterator.valid() || _keysIterator.valid();
-}
-
-bool RocksDBEdgeIndexLookupIterator::nextCovering(DocumentCallback const& cb, size_t limit) {
-  TRI_ASSERT(_trx->state()->isRunning());
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
-#else
-  // Gracefully return in production code
-  // Nothing bad has happened
-  if (limit == 0) {
-    return false;
-  }
-#endif
-
-  transaction::BuilderLeaser coveringBuilder(_trx);
-  while (limit > 0) {
-    while (_builderIterator.valid()) {
-      // We still have unreturned edges in memory.
-      // Just plainly return those.
-      TRI_ASSERT(_builderIterator.value().isNumber());
-      LocalDocumentId tkn{_builderIterator.value().getNumericValue<uint64_t>()};
-      // Advance the iterator
-      _builderIterator.next();
-      TRI_ASSERT(_builderIterator.valid());
-      TRI_ASSERT(_builderIterator.value().isString());
-      // We always have <revision,_from> pairs, so now we need this result for
-      // the covered attributes
-
-      coveringBuilder->clear();
-      coveringBuilder->openArray();
-      coveringBuilder->add(_lastKey);
-      coveringBuilder->add(_builderIterator.value());
-      coveringBuilder->close();
-      cb(tkn, coveringBuilder->slice());
-
-      limit--;
-
-      _builderIterator.next();
-
-      if (limit == 0) {
-        // Limit reached. bail out
-        return true;
-      }
-    }
-
-    VPackSlice fromToSlice;
-    if (!initKey(fromToSlice)) {
-      return false;
-    }
-
-    arangodb::velocypack::StringRef fromTo(fromToSlice);
-
-    bool needRocksLookup = true;
-    if (_cache) {
-      for (size_t attempts = 0; attempts < 10; ++attempts) {
-        // Try to read from cache
-        auto finding = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
-        if (finding.found()) {
-          needRocksLookup = false;
-          // We got sth. in the cache
-          VPackSlice cachedData(finding.value()->value());
-          TRI_ASSERT(cachedData.isArray());
-          if (cachedData.length() / 2 < limit) {
-            // Directly return it, no need to copy
-            _builderIterator = VPackArrayIterator(cachedData);
-            while (_builderIterator.valid()) {
-              TRI_ASSERT(_builderIterator.value().isNumber());
-              LocalDocumentId tkn{_builderIterator.value().getNumericValue<uint64_t>()};
-
-              // Advance the iterator
-              _builderIterator.next();
-              TRI_ASSERT(_builderIterator.valid());
-              TRI_ASSERT(_builderIterator.value().isString());
-              // We always have <revision,_from> pairs, so now we need this
-              // result for the covered attributes
-
-              coveringBuilder->clear();
-              coveringBuilder->openArray();
-              coveringBuilder->add(_lastKey);
-              coveringBuilder->add(_builderIterator.value());
-              coveringBuilder->close();
-
-              cb(tkn, coveringBuilder->slice());
-              limit--;
-
-              _builderIterator.next();
-            }
-            _builderIterator =
-                VPackArrayIterator(arangodb::velocypack::Slice::emptyArraySlice());
-          } else {
-            // We need to copy it.
-            // And then we just get back to beginning of the loop
-            _builder.clear();
-            _builder.add(cachedData);
-            TRI_ASSERT(_builder.slice().isArray());
-            _builderIterator = VPackArrayIterator(_builder.slice());
-            // Do not set limit
+          if (status.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
+            break;
           }
-          break;
         }
-        if (finding.result().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
-          // We really have not found an entry.
-          // Otherwise we do not know yet
-          break;
-        }
-      }  // attempts
-    }    // if (_cache)
-
-    if (needRocksLookup) {
-      lookupInRocksDB(fromTo);
-    }
-
-    _keysIterator.next();
-  }
-  TRI_ASSERT(limit == 0);
-  return _builderIterator.valid() || _keysIterator.valid();
-}
-
-bool RocksDBEdgeIndexLookupIterator::nextExtra(ExtraCallback const& cb, size_t limit) {
-  TRI_ASSERT(_trx->state()->isRunning());
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
-#else
-  // Gracefully return in production code
-  // Nothing bad has happened
-  if (limit == 0) {
-    return false;
-  }
-#endif
-
-  while (limit > 0) {
-    while (_builderIterator.valid()) {
-      // We still have unreturned edges in out memory.
-      // Just plainly return those.
-      TRI_ASSERT(_builderIterator.value().isNumber());
-      LocalDocumentId tkn{_builderIterator.value().getNumericValue<uint64_t>()};
-      _builderIterator.next();
-      TRI_ASSERT(_builderIterator.valid());
-      // For now we store the complete opposite _from/_to value
-      TRI_ASSERT(_builderIterator.value().isString());
-
-      cb(tkn, _builderIterator.value());
-
-      _builderIterator.next();
-      limit--;
-
-      if (limit == 0) {
-        // Limit reached bail out
-        return true;
-      }
-    }
-
-    if (!_keysIterator.valid()) {
-      // We are done iterating
-      return false;
-    }
-
-    // We have exhausted local memory.
-    // Now fill it again:
-    VPackSlice fromToSlice = _keysIterator.value();
-    TRI_ASSERT(fromToSlice.isString());
-    arangodb::velocypack::StringRef fromTo(fromToSlice);
-
-    bool needRocksLookup = true;
-    if (_cache) {
-      for (size_t attempts = 0; attempts < 10; ++attempts) {
-        // Try to read from cache
-        auto finding = _cache->find(fromTo.data(), (uint32_t)fromTo.size());
-        if (finding.found()) {
-          needRocksLookup = false;
-          // We got sth. in the cache
-          VPackSlice cachedData(finding.value()->value());
-          TRI_ASSERT(cachedData.isArray());
-          if (cachedData.length() / 2 < limit) {
-            // Directly return it, no need to copy
-            _builderIterator = VPackArrayIterator(cachedData);
-            while (_builderIterator.valid()) {
-              TRI_ASSERT(_builderIterator.value().isNumber());
-              LocalDocumentId tkn{_builderIterator.value().getNumericValue<uint64_t>()};
-
-              _builderIterator.next();
-
-              TRI_ASSERT(_builderIterator.valid());
-              TRI_ASSERT(_builderIterator.value().isString());
-              cb(tkn, _builderIterator.value());
-
-              _builderIterator.next();
-              limit--;
-            }
-            _builderIterator =
-                VPackArrayIterator(arangodb::velocypack::Slice::emptyArraySlice());
-          } else {
-            // We need to copy it.
-            // And then we just get back to beginning of the loop
-            _builder.clear();
-            _builder.add(cachedData);
-            TRI_ASSERT(_builder.slice().isArray());
-            _builderIterator = VPackArrayIterator(_builder.slice());
-            // Do not set limit
-          }
-          break;
-        }  // finding found
-        if (finding.result().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
-          // We really have not found an entry.
-          // Otherwise we do not know yet
-          break;
-        }
-      }  // attempts
-    }    // if (_cache)
-
-    if (needRocksLookup) {
-      lookupInRocksDB(fromTo);
-    }
-
-    _keysIterator.next();
-  }
-  TRI_ASSERT(limit == 0);
-  return _builderIterator.valid() || _keysIterator.valid();
-}
-
-void RocksDBEdgeIndexLookupIterator::lookupInRocksDB(arangodb::velocypack::StringRef fromTo) {
-  // Bad case read from RocksDB
-  _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId, fromTo);
-  _iterator->Seek(_bounds.start());
-  resetInplaceMemory();
-  rocksdb::Comparator const* cmp = _index->comparator();
-
-  cache::Cache* cc = _cache.get();
-  _builder.openArray(true);
-  auto end = _bounds.end();
-  while (_iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0)) {
-    LocalDocumentId const documentId =
-        RocksDBKey::indexDocumentId(RocksDBEntryType::EdgeIndexValue, _iterator->key());
-
-    // adding revision ID and _from or _to value
-    _builder.add(VPackValue(documentId.id()));
-    arangodb::velocypack::StringRef vertexId = RocksDBValue::vertexId(_iterator->value());
-    _builder.add(VPackValuePair(vertexId.data(), vertexId.size(), VPackValueType::String));
-
-    _iterator->Next();
-  }
-  _builder.close();
-  if (cc != nullptr) {
-    // TODO Add cache retry on next call
-    // Now we have something in _inplaceMemory.
-    // It may be an empty array or a filled one, never mind, we cache both
-    auto entry =
-        cache::CachedValue::construct(fromTo.data(),
-                                      static_cast<uint32_t>(fromTo.size()),
-                                      _builder.slice().start(),
-                                      static_cast<uint64_t>(_builder.slice().byteSize()));
-    if (entry) {
-      bool inserted = false;
-      for (size_t attempts = 0; attempts < 10; attempts++) {
-        auto status = cc->insert(entry);
-        if (status.ok()) {
-          inserted = true;
-          break;
-        }
-        if (status.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
-          break;
+        if (!inserted) {
+          LOG_TOPIC(DEBUG, arangodb::Logger::CACHE)
+              << "Failed to cache: " << fromTo.toString();
+          delete entry;
         }
       }
-      if (!inserted) {
-        LOG_TOPIC(DEBUG, arangodb::Logger::CACHE)
-            << "Failed to cache: " << fromTo.toString();
-        delete entry;
-      }
     }
+    TRI_ASSERT(_builder.slice().isArray());
+    _builderIterator = VPackArrayIterator(_builder.slice());
   }
-  TRI_ASSERT(_builder.slice().isArray());
-  _builderIterator = VPackArrayIterator(_builder.slice());
-}
+
+  std::unique_ptr<arangodb::velocypack::Builder> _keys;
+  arangodb::velocypack::ArrayIterator _keysIterator;
+  RocksDBEdgeIndex const* _index;
+
+  // the following 2 values are required for correct batch handling
+  std::unique_ptr<rocksdb::Iterator> _iterator;  // iterator position in rocksdb
+  RocksDBKeyBounds _bounds;
+  std::shared_ptr<cache::Cache> _cache;
+  arangodb::velocypack::ArrayIterator _builderIterator;
+  arangodb::velocypack::Builder _builder;
+  arangodb::velocypack::Slice _lastKey;
+};
+
+} // namespace
 
 // ============================= Index ====================================
 
@@ -689,11 +791,12 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
 
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // a.b IN values
-    if (!valNode->isArray()) {
-      // a.b IN non-array
-      return new EmptyIndexIterator(&_collection, trx);
+    if (valNode->isArray()) {
+      return createInIterator(trx, attrNode, valNode);
     }
-    return createInIterator(trx, attrNode, valNode);
+
+    // a.b IN non-array
+    // fallthrough to empty result
   }
 
   // operator type unsupported

@@ -47,43 +47,6 @@ namespace transaction {
 class Methods;
 }
 
-class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
- public:
-  RocksDBPrimaryIndexEqIterator(LogicalCollection* collection,
-                                transaction::Methods* trx, RocksDBPrimaryIndex* index,
-                                std::unique_ptr<VPackBuilder> key,
-                                bool allowCoveringIndexOptimization);
-
-  ~RocksDBPrimaryIndexEqIterator();
-
-  char const* typeName() const override { return "primary-index-eq-iterator"; }
-  
-  /// @brief index supports rearming
-  bool canRearm() const override { return true; }
-  
-  /// @brief rearm the index iterator
-  bool rearm(arangodb::aql::AstNode const* condition,
-             arangodb::aql::Variable const* variable,
-             IndexIteratorOptions const& opts) override;
-
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-
-  /// @brief extracts just _key. not supported for use with _id
-  bool nextCovering(DocumentCallback const& cb, size_t limit) override;
-
-  void reset() override;
-
-  /// @brief we provide a method to provide the index attribute values
-  /// while scanning the index
-  bool hasCovering() const override { return _allowCoveringIndexOptimization; }
-
- private:
-  RocksDBPrimaryIndex* _index;
-  std::unique_ptr<VPackBuilder> _key;
-  bool _done;
-  bool const _allowCoveringIndexOptimization;
-};
-
 class RocksDBPrimaryIndexInIterator final : public IndexIterator {
  public:
   RocksDBPrimaryIndexInIterator(LogicalCollection* collection,
