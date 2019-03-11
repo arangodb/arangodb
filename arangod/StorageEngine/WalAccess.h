@@ -148,7 +148,8 @@ class WalAccess {
                                            TransactionCallback const&) const = 0;
 
   virtual WalAccessResult tail(Filter const& filter, size_t chunkSize,
-                               TRI_voc_tid_t barrierId, MarkerCallback const&) const = 0;
+                               TRI_voc_tid_t barrierId,
+                               MarkerCallback const&) const = 0;
 };
 
 /// @brief helper class used to resolve vocbases

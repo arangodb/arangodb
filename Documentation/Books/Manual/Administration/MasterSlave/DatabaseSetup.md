@@ -178,6 +178,13 @@ It is often not necessary to replicate data from system collections, especially 
 lead to confusion on the slave because the slave needs to have its own system collections in 
 order to start and keep operational.
 
+{% hint 'warning' %}
+There is a separate option
+*includeFoxxQueues* for controlling whether Foxx queue jobs from the system collections `_jobs` 
+and `_queues` collections should be replicated. Documents from these collections are not replicated
+by default in order to avoid execution of Foxx queue jobs on the slave. 
+{% endhint %}
+
 The *requireFromPresent* attribute controls whether the applier will start synchronizing in case
 it detects that the master cannot provide data for the initial tick value provided by the slave. 
 This may be the case if the master does not have a big enough backlog of historic WAL logfiles,
