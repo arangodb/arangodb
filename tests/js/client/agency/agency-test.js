@@ -340,7 +340,7 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test to write a single top level key
 ////////////////////////////////////////////////////////////////////////////////
-/*
+
     testSingleTopLevel : function () {
       assertEqual(readAndCheck([["/x"]]), [{}]);
       writeAndCheck([[{x:12}]]);
@@ -1187,7 +1187,7 @@ function agencyTestSuite () {
       assertTrue(evalComp()>0);
 
     }    
-*/    
+    
   };
 }
 
