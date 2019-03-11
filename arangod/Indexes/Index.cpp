@@ -174,9 +174,10 @@ std::string defaultIndexName(VPackSlice const& slice) {
     return arangodb::StaticStrings::IndexNameEdge;
   }
 
-  TRI_idx_iid_t id = arangodb::basics::VelocyPackHelper::getNumericValue<TRI_idx_iid_t>(
-      slice, arangodb::StaticStrings::IndexId.c_str(), 0);
-  return std::string("idx_").append(std::to_string(id));
+  std::string idString = arangodb::basics::VelocyPackHelper::getStringValue(
+      slice, arangodb::StaticStrings::IndexId.c_str(),
+      std::to_string(TRI_NewTickServer()));
+  return std::string("idx_").append(idString);
 }
 
 }  // namespace
