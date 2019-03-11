@@ -374,6 +374,113 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
   return applied;
 }
 
+void Store::check(Node const& node, VPackSlice const& key, VPackSlice const& precond,
+                  CheckMode mode, bool found, check_ret_t& ret) const {
+
+  for (auto const& op : VPackObjectIterator(precond)) {
+    std::string const& oper = op.key.copyString();
+    if (oper == "old") {  // old
+      if (node != op.value) {
+        ret.push_back(key);
+        if (mode == FIRST_FAIL) {
+          break;
+        }
+      }
+    } else if (oper == "oldNot") {  // oldNot
+      if (node == op.value) {
+        ret.push_back(key);
+        if (mode == FIRST_FAIL) {
+          break;
+        }
+      }
+    } else if (oper == "isArray") {  // isArray
+      if (!op.value.isBoolean()) {
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << "Non boolean expression for 'isArray' precondition";
+        ret.push_back(key);
+        if (mode == FIRST_FAIL) {
+          break;
+        }
+      }
+      bool isArray = (node.type() == LEAF && node.slice().isArray());
+      if (op.value.getBool() ? !isArray : isArray) {
+        ret.push_back(key);
+        if (mode == FIRST_FAIL) {
+          break;
+        }
+      }
+    } else if (oper == "oldEmpty") {  // isEmpty
+      if (!op.value.isBoolean()) {
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << "Non boolsh expression for 'oldEmpty' precondition";
+        ret.push_back(key);
+        if (mode == FIRST_FAIL) {
+          break;
+        }
+      }
+      if (op.value.getBool() ? found : !found) {
+        ret.push_back(key);
+        if (mode == FIRST_FAIL) {
+          break;
+        }
+      }
+    } else if (oper == "in") {  // in
+      if (found) {
+        if (node.slice().isArray()) {
+          bool _found = false;
+          for (auto const& i : VPackArrayIterator(node.slice())) {
+            if (i == op.value) {
+              _found = true;
+              continue;
+            }
+          }
+          if (_found) {
+            continue;
+          } else {
+            ret.push_back(key);
+          }
+        }
+      }
+      ret.push_back(key);
+      if (mode == FIRST_FAIL) {
+        break;
+      }
+    } else if (oper == "notin") {  // in
+      if (!found) {
+        continue;
+      } else {
+        if (node.slice().isArray()) {
+          bool _found = false;
+          for (auto const& i : VPackArrayIterator(node.slice())) {
+            if (i == op.value) {
+              _found = true;
+              continue;
+            }
+          }
+          if (_found) {
+            ret.push_back(key);
+          } else {
+            continue;
+          }
+        }
+      }
+      ret.push_back(key);
+      if (mode == FIRST_FAIL) {
+        break;
+      }
+    } else {
+      // Objects without any of the above cases are not considered to
+      // be a precondition:
+      LOG_TOPIC(WARN, Logger::AGENCY)
+        << "Malformed object-type precondition was ignored: "
+        << "key: " << key.toJson()
+        << " value: " << precond.toJson();
+    }
+  }
+    
+  
+}
+
 /// Check precodition object
 check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
   TRI_ASSERT(slice.isObject());
@@ -395,109 +502,27 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
       node = _node(pv);
     }
 
-    if (precond.value.isObject()) {
-      for (auto const& op : VPackObjectIterator(precond.value)) {
-        std::string const& oper = op.key.copyString();
-        if (oper == "old") {  // old
-          if (node != op.value) {
-            ret.push_back(precond.key);
-            if (mode == FIRST_FAIL) {
-              break;
-            }
-          }
-        } else if (oper == "oldNot") {  // oldNot
-          if (node == op.value) {
-            ret.push_back(precond.key);
-            if (mode == FIRST_FAIL) {
-              break;
-            }
-          }
-        } else if (oper == "isArray") {  // isArray
-          if (!op.value.isBoolean()) {
-            LOG_TOPIC(ERR, Logger::AGENCY)
-                << "Non boolean expression for 'isArray' precondition";
-            ret.push_back(precond.key);
-            if (mode == FIRST_FAIL) {
-              break;
-            }
-          }
-          bool isArray = (node.type() == LEAF && node.slice().isArray());
-          if (op.value.getBool() ? !isArray : isArray) {
-            ret.push_back(precond.key);
-            if (mode == FIRST_FAIL) {
-              break;
-            }
-          }
-        } else if (oper == "oldEmpty") {  // isEmpty
-          if (!op.value.isBoolean()) {
-            LOG_TOPIC(ERR, Logger::AGENCY)
-                << "Non boolsh expression for 'oldEmpty' precondition";
-            ret.push_back(precond.key);
-            if (mode == FIRST_FAIL) {
-              break;
-            }
-          }
-          if (op.value.getBool() ? found : !found) {
-            ret.push_back(precond.key);
-            if (mode == FIRST_FAIL) {
-              break;
-            }
-          }
-        } else if (oper == "in") {  // in
-          if (found) {
-            if (node.slice().isArray()) {
-              bool _found = false;
-              for (auto const& i : VPackArrayIterator(node.slice())) {
-                if (i == op.value) {
-                  _found = true;
-                  continue;
-                }
-              }
-              if (_found) {
-                continue;
-              } else {
-                ret.push_back(precond.key);
-              }
-            }
-          }
-          ret.push_back(precond.key);
-          if (mode == FIRST_FAIL) {
-            break;
-          }
-        } else if (oper == "notin") {  // in
-          if (!found) {
-            continue;
-          } else {
-            if (node.slice().isArray()) {
-              bool _found = false;
-              for (auto const& i : VPackArrayIterator(node.slice())) {
-                if (i == op.value) {
-                  _found = true;
-                  continue;
-                }
-              }
-              if (_found) {
-                ret.push_back(precond.key);
-              } else {
-                continue;
-              }
-            }
-          }
-          ret.push_back(precond.key);
-          if (mode == FIRST_FAIL) {
-            break;
-          }
-        } else {
-          // Objects without any of the above cases are not considered to
-          // be a precondition:
-          LOG_TOPIC(WARN, Logger::AGENCY)
-              << "Malformed object-type precondition was ignored: "
-              << "key: " << precond.key.toJson()
-              << " value: " << precond.value.toJson();
+    auto p = precond.value;
+    if (p.isObject()) {
+      if (p.hasKey("and") && p.get("and").isArray()) {
+        ret.open();
+        for (auto i : VPackArrayIterator(p.get("and"))) {
+          check(node, precond.key, i, mode, found, ret);
         }
+        ret.close();
+      }
+      if (p.hasKey("or") && p.get("or").isArray()) {
+        ret.open();
+        for (auto i : VPackArrayIterator(p.get("or"))) {
+          check(node, precond.key, i, mode, found, ret);
+        }
+        ret.close();
+      }
+      else {
+        check(node, precond.key, p, mode, found, ret);
       }
     } else {
-      if (node != precond.value) {
+      if (node != p) {
         ret.push_back(precond.key);
         if (mode == FIRST_FAIL) {
           break;
@@ -505,7 +530,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
       }
     }
   }
-
+    
   ret.close();
   return ret;
 }

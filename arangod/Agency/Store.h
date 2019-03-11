@@ -35,17 +35,19 @@ struct check_ret_t {
   bool success;
   query_t failed;
 
-  check_ret_t() : success(true), failed(nullptr) {}
+  check_ret_t() : success(true), failed(nullptr) {
+    failed = std::make_shared<VPackBuilder>();
+  }
 
-  explicit check_ret_t(bool s) : success(s) {}
+  explicit check_ret_t(bool s) : success(s) {
+    failed = std::make_shared<VPackBuilder>();
+  }
 
   inline bool successful() const { return success; }
 
   inline void successful(bool s) { success = s; }
 
   inline void open() {
-    TRI_ASSERT(failed == nullptr);
-    failed = std::make_shared<VPackBuilder>();
     failed->openArray();
   }
 
@@ -150,6 +152,10 @@ class Store {
   /// @brief Check precondition
   check_ret_t check(arangodb::velocypack::Slice const&, CheckMode = FIRST_FAIL) const;
 
+  /// @brief Check precondition
+  void check(Node const& node, arangodb::velocypack::Slice const&,
+             arangodb::velocypack::Slice const&, CheckMode, bool, check_ret_t& ret) const;
+  
   /// @brief Clear entries, whose time to live has expired
   query_t clearExpired() const;
 
