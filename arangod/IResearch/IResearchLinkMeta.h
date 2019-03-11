@@ -116,10 +116,17 @@ struct IResearchLinkMeta {
   /// @brief initialize IResearchLinkMeta with values from a JSON description
   ///        return success or set 'errorField' to specific field with error
   ///        on failure state is undefined
+  /// @param defaultVocbase fallback vocbase for analyzer name normalization
+  ///                       nullptr == do not normalize
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(arangodb::velocypack::Slice const& slice, std::string& errorField,
-            IResearchLinkMeta const& defaults = DEFAULT(), Mask* mask = nullptr) noexcept;
+  bool init( // initialize meta
+    arangodb::velocypack::Slice const& slice, // definition
+    std::string& errorField, // field causing error (out-param)
+    IResearchLinkMeta const& defaults = DEFAULT(), // inherited defaults
+    TRI_vocbase_t const* defaultVocbase = nullptr, // fallback vocbase
+    Mask* mask = nullptr // initialized fields (out-param)
+  );
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLinkMeta object
@@ -127,19 +134,15 @@ struct IResearchLinkMeta {
   ///        or (if 'mask' != nullptr) values in 'mask' that are set to false
   ///        elements are appended to an existing object
   ///        return success or set TRI_set_errno(...) and return false
+  /// @param defaultVocbase fallback vocbase for analyzer name normalization
+  ///                       nullptr == do not normalize
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::velocypack::Builder& builder,
-            IResearchLinkMeta const* ignoreEqual = nullptr, Mask const* mask = nullptr) const;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief fill and return a JSON description of a IResearchLinkMeta object
-  ///        do not fill values identical to ones available in 'ignoreEqual'
-  ///        or (if 'mask' != nullptr) values in 'mask' that are set to false
-  ///        elements are appended to an existing object
-  ///        return success or set TRI_set_errno(...) and return false
-  ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::velocypack::ObjectBuilder const& builder,
-            IResearchLinkMeta const* ignoreEqual = nullptr, Mask const* mask = nullptr) const;
+  bool json( // append meta jSON
+    arangodb::velocypack::Builder& builder, // output buffer (out-param)
+    IResearchLinkMeta const* ignoreEqual = nullptr, // values to ignore if equal
+    TRI_vocbase_t const* defaultVocbase = nullptr, // fallback vocbase
+    Mask const* mask = nullptr // values to ignore always
+  ) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this iResearch Link meta

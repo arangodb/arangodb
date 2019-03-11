@@ -29,6 +29,7 @@
 #include "analysis/token_attributes.hpp"
 
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/QueryRegistry.h"
 
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"
@@ -44,6 +45,7 @@
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/KeyGenerator.h"
@@ -253,6 +255,141 @@ struct IResearchAnalyzerFeatureSetup {
 TEST_CASE("IResearchAnalyzerFeatureTest", "[iresearch][iresearch-feature]") {
   IResearchAnalyzerFeatureSetup s;
   UNUSED(s);
+
+SECTION("test_auth") {
+  // no ExecContext
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    CHECK((true == arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RW)));
+  }
+
+  // no vocbase read access
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(
+        arangodb::ExecContext::Type::Default, "", "testVocbase", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE
+      ) {}
+    } execContext;
+    arangodb::ExecContextScope execContextScope(&execContext);
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
+    userManager->setQueryRegistry(&queryRegistry);
+    CHECK((false == arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RO)));
+  }
+
+  // no collection read access (vocbase read access, no user)
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(
+        arangodb::ExecContext::Type::Default, "", "testVocbase", arangodb::auth::Level::NONE, arangodb::auth::Level::RO
+      ) {}
+    } execContext;
+    arangodb::ExecContextScope execContextScope(&execContext);
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
+    userManager->setQueryRegistry(&queryRegistry);
+    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(userManager, [](arangodb::auth::UserManager* ptr)->void { ptr->removeAllUsers(); });
+    arangodb::auth::UserMap userMap; // empty map, no user -> no permissions
+    userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+    CHECK((false == arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RO)));
+  }
+
+  // no collection read access (vocbase read access)
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(
+        arangodb::ExecContext::Type::Default, "", "testVocbase", arangodb::auth::Level::NONE, arangodb::auth::Level::RO
+      ) {}
+    } execContext;
+    arangodb::ExecContextScope execContextScope(&execContext);
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
+    userManager->setQueryRegistry(&queryRegistry);
+    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(userManager, [](arangodb::auth::UserManager* ptr)->void { ptr->removeAllUsers(); });
+    arangodb::auth::UserMap userMap;
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+    user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE); // system collections use vocbase auth level
+    userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+    CHECK((false == arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RO)));
+  }
+
+  // no vocbase write access
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(
+        arangodb::ExecContext::Type::Default, "", "testVocbase", arangodb::auth::Level::NONE, arangodb::auth::Level::RO
+      ) {}
+    } execContext;
+    arangodb::ExecContextScope execContextScope(&execContext);
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
+    userManager->setQueryRegistry(&queryRegistry);
+    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(userManager, [](arangodb::auth::UserManager* ptr)->void { ptr->removeAllUsers(); });
+    arangodb::auth::UserMap userMap;
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO); // system collections use vocbase auth level
+    userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+    CHECK((true == arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RO)));
+    CHECK((false == arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RW)));
+  }
+
+  // no collection write access (vocbase write access)
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(
+        arangodb::ExecContext::Type::Default, "", "testVocbase", arangodb::auth::Level::NONE, arangodb::auth::Level::RW
+      ) {}
+    } execContext;
+    arangodb::ExecContextScope execContextScope(&execContext);
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
+    userManager->setQueryRegistry(&queryRegistry);
+    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(userManager, [](arangodb::auth::UserManager* ptr)->void { ptr->removeAllUsers(); });
+    arangodb::auth::UserMap userMap;
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO); // system collections use vocbase auth level
+    userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+    CHECK((true == arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RO)));
+    CHECK((false == arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RW)));
+  }
+
+  // collection write access
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(
+        arangodb::ExecContext::Type::Default, "", "testVocbase", arangodb::auth::Level::NONE, arangodb::auth::Level::RW
+      ) {}
+    } execContext;
+    arangodb::ExecContextScope execContextScope(&execContext);
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
+    userManager->setQueryRegistry(&queryRegistry);
+    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(userManager, [](arangodb::auth::UserManager* ptr)->void { ptr->removeAllUsers(); });
+    arangodb::auth::UserMap userMap;
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW); // system collections use vocbase auth level
+    userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+    CHECK((true == arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RW)));
+  }
+}
 
 SECTION("test_emplace") {
   // add valid
@@ -522,6 +659,151 @@ SECTION("test_identity") {
     CHECK((analyzer->next()));
     CHECK((irs::ref_cast<irs::byte_type>(irs::string_ref("123 456")) == term->value()));
     CHECK((!analyzer->next()));
+  }
+}
+
+SECTION("test_normalize") {
+  TRI_vocbase_t active(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "active");
+  TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "system");
+
+  // normalize 'identity' (with prefix)
+  {
+    irs::string_ref analyzer = "identity";
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, true);
+    CHECK((std::string("identity") == normalized));
+  }
+
+  // normalize 'identity' (without prefix)
+  {
+    irs::string_ref analyzer = "identity";
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, true);
+    CHECK((std::string("identity") == normalized));
+  }
+
+  // normalize NIL (with prefix)
+  {
+    irs::string_ref analyzer = irs::string_ref::NIL;
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, true);
+    CHECK((std::string("active::") == normalized));
+  }
+
+  // normalize NIL (without prefix)
+  {
+    irs::string_ref analyzer = irs::string_ref::NIL;
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, false);
+    CHECK((std::string("") == normalized));
+  }
+
+  // normalize EMPTY (with prefix)
+  {
+    irs::string_ref analyzer = irs::string_ref::EMPTY;
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, true);
+    CHECK((std::string("active::") == normalized));
+  }
+
+  // normalize EMPTY (without prefix)
+  {
+    irs::string_ref analyzer = irs::string_ref::EMPTY;
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, false);
+    CHECK((std::string("") == normalized));
+  }
+
+  // normalize delimiter (with prefix)
+  {
+    irs::string_ref analyzer = "::";
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, true);
+    CHECK((std::string("system::") == normalized));
+  }
+
+  // normalize delimiter (without prefix)
+  {
+    irs::string_ref analyzer = "::";
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, false);
+    CHECK((std::string("::") == normalized));
+  }
+
+  // normalize delimiter + name (with prefix)
+  {
+    irs::string_ref analyzer = "::name";
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, true);
+    CHECK((std::string("system::name") == normalized));
+  }
+
+  // normalize delimiter + name (without prefix)
+  {
+    irs::string_ref analyzer = "::name";
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, false);
+    CHECK((std::string("::name") == normalized));
+  }
+
+  // normalize no-delimiter + name (with prefix)
+  {
+    irs::string_ref analyzer = "name";
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, true);
+    CHECK((std::string("active::name") == normalized));
+  }
+
+  // normalize no-delimiter + name (without prefix)
+  {
+    irs::string_ref analyzer = "name";
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, false);
+    CHECK((std::string("name") == normalized));
+  }
+
+  // normalize system + delimiter (with prefix)
+  {
+    irs::string_ref analyzer = "system::";
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, true);
+    CHECK((std::string("system::") == normalized));
+  }
+
+  // normalize system + delimiter (without prefix)
+  {
+    irs::string_ref analyzer = "system::";
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, false);
+    CHECK((std::string("::") == normalized));
+  }
+
+  // normalize vocbase + delimiter (with prefix)
+  {
+    irs::string_ref analyzer = "active::";
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, true);
+    CHECK((std::string("active::") == normalized));
+  }
+
+  // normalize vocbase + delimiter (without prefix)
+  {
+    irs::string_ref analyzer = "active::";
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, false);
+    CHECK((std::string("") == normalized));
+  }
+
+  // normalize system + delimiter + name (with prefix)
+  {
+    irs::string_ref analyzer = "system::name";
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, true);
+    CHECK((std::string("system::name") == normalized));
+  }
+
+  // normalize system + delimiter + name (without prefix)
+  {
+    irs::string_ref analyzer = "system::name";
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, false);
+    CHECK((std::string("::name") == normalized));
+  }
+
+  // normalize vocbase + delimiter + name (with prefix)
+  {
+    irs::string_ref analyzer = "active::name";
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, true);
+    CHECK((std::string("active::name") == normalized));
+  }
+
+  // normalize vocbase + delimiter + name (without prefix)
+  {
+    irs::string_ref analyzer = "active::name";
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active, system, false);
+    CHECK((std::string("name") == normalized));
   }
 }
 
@@ -1358,6 +1640,66 @@ SECTION("test_visit") {
     CHECK((false == result));
     CHECK((2 == expected.size()));
   }
+
+  TRI_vocbase_t vocbaseEmpty(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "vocbaseEmpty");
+  TRI_vocbase_t vocbaseNonEmpty(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "vocbase0");
+
+  // add database-prefixed analyzers
+  {
+    CHECK((false == !feature.emplace("vocbase0::test_analyzer3", "TestAnalyzer", "abc3").first));
+    CHECK((false == !feature.emplace("vocbase0::test_analyzer4", "TestAnalyzer", "abc4").first));
+    CHECK((false == !feature.emplace("vocbase1::test_analyzer5", "TestAnalyzer", "abc5").first));
+  }
+
+  // full visitation limited to a vocbase (empty)
+  {
+    std::set<std::pair<irs::string_ref, irs::string_ref>> expected = {};
+    auto result = feature.visit(
+      [&expected](
+        irs::string_ref const& name,
+        irs::string_ref const& type,
+        irs::string_ref const& properties
+      )->bool {
+        if (staticAnalyzers().find(name) != staticAnalyzers().end()) {
+          return true; // skip static analyzers
+        }
+
+        CHECK((type == "TestAnalyzer"));
+        CHECK((1 == expected.erase(std::make_pair<irs::string_ref, irs::string_ref>(irs::string_ref(name), irs::string_ref(properties)))));
+        return true;
+      },
+      &vocbaseEmpty
+    );
+    CHECK((true == result));
+    CHECK((expected.empty()));
+  }
+
+  // full visitation limited to a vocbase (non-empty)
+  {
+    std::set<std::pair<irs::string_ref, irs::string_ref>> expected = {
+      std::make_pair<irs::string_ref, irs::string_ref>("vocbase0::test_analyzer3", "abc3"),
+      std::make_pair<irs::string_ref, irs::string_ref>("vocbase0::test_analyzer4", "abc4"),
+    };
+    auto result = feature.visit(
+      [&expected](
+        irs::string_ref const& name,
+        irs::string_ref const& type,
+        irs::string_ref const& properties
+      )->bool {
+        if (staticAnalyzers().find(name) != staticAnalyzers().end()) {
+          return true; // skip static analyzers
+        }
+
+        CHECK((type == "TestAnalyzer"));
+        CHECK((1 == expected.erase(std::make_pair<irs::string_ref, irs::string_ref>(irs::string_ref(name), irs::string_ref(properties)))));
+        return true;
+      },
+      &vocbaseNonEmpty
+    );
+    CHECK((true == result));
+    CHECK((expected.empty()));
+  }
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////

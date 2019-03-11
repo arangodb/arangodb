@@ -81,13 +81,10 @@ class SupervisedScheduler : public Scheduler {
   // in a container class and store pointers. -- Maybe there is a better way?
   boost::lockfree::queue<WorkItem*> _queue[3];
 
-  char _padding1[64];
-  std::atomic<uint64_t> _jobsSubmitted;
-  char _padding2[64];
-  std::atomic<uint64_t> _jobsDequeued;
-  char _padding3[64];
-  std::atomic<uint64_t> _jobsDone;
-  char _padding5[64];
+  // aligning required to prevent false sharing - assumes cache line size is 64
+  alignas(64) std::atomic<uint64_t> _jobsSubmitted;
+  alignas(64) std::atomic<uint64_t> _jobsDequeued;
+  alignas(64) std::atomic<uint64_t> _jobsDone;
 
   // During a queue operation there a two reasons to manually wake up a worker
   //  1. the queue length is bigger than _wakeupQueueLength and the last submit time
@@ -96,7 +93,7 @@ class SupervisedScheduler : public Scheduler {
   //
   // The last submit time is a thread local variable that stores the time of the last
   // queue operation.
-  std::atomic<uint64_t> _wakeupQueueLength;                        // q1
+  alignas(64) std::atomic<uint64_t> _wakeupQueueLength;                        // q1
   std::atomic<uint64_t> _wakeupTime_ns, _definitiveWakeupTime_ns;  // t3, t4
 
   // each worker thread has a state block which contains configuration values.
