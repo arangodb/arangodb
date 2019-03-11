@@ -356,7 +356,7 @@ describe ArangoDB do
 
           cmd = api + "/tail?global=true&from=" + fromTick
           doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "", :format => :plain)
-          doc.code.should eq(200)
+          [200, 204].should include(doc.code)
         
           break if doc.headers["x-arango-replication-frompresent"] == "true"
         end
@@ -440,7 +440,7 @@ describe ArangoDB do
 
           cmd = api + "/tail?global=true&from=" + fromTick
           doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "", :format => :plain)
-          doc.code.should eq(200)
+          [200, 204].should include(doc.code)
           body = doc.response.body
           
           break if doc.headers["x-arango-replication-frompresent"] == "true"
@@ -554,7 +554,7 @@ describe ArangoDB do
 
           cmd = api + "/tail?global=true&from=" + fromTick
           doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "", :format => :plain)
-          doc.code.should eq(200)
+          [200, 204].should include(doc.code)
           body = doc.response.body
           
           break if doc.headers["x-arango-replication-frompresent"] == "true"
