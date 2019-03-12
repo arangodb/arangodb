@@ -794,8 +794,9 @@ void Supervision::run() {
           }
 
           auto result = _agent->waitFor(leaderIndex);
-          if (result == Agent::raft_commit_t::UNKNOWN ||
-              result == Agent::raft_commit_t::TIMEOUT) { // Oh snap
+          if (result == Agent::raft_commit_t::TIMEOUT) { // Oh snap
+            // Note that we can get UNKNOWN if we have lost leadership or
+            // if we are shutting down. In both cases we just leave the loop.
             LOG_TOPIC(WARN, Logger::SUPERVISION) << "Waiting for commits to be done ... ";
             continue; 
           } else {                                       // Good we can continue
@@ -1386,11 +1387,8 @@ void Supervision::shrinkCluster() {
           if (replFact > maxReplFact) {
             maxReplFact = replFact;
           }
-        } else {
-          LOG_TOPIC(WARN, Logger::SUPERVISION)
-              << "Cannot retrieve replication factor for collection " << collptr.first;
-          return;
         }
+        // Note that this could be a satellite collection, in any case, ignore:
       }
     }
 
