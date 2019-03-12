@@ -166,7 +166,7 @@ std::vector<std::string> split(std::string const& source,
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename C>
-std::string join(C const& source, std::string const& delim = ",") {
+std::string join(C const& source, std::string const& delim) {
   std::string result;
   bool first = true;
 

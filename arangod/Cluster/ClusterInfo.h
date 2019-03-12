@@ -269,6 +269,8 @@ class ClusterInfo {
 
   uint64_t uniqid(uint64_t = 1);
 
+  arangodb::Result agencyDump(std::shared_ptr<VPackBuilder> body);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief flush the caches (used for testing only)
   //////////////////////////////////////////////////////////////////////////////
@@ -534,7 +536,7 @@ class ClusterInfo {
 
   virtual std::unordered_map<ServerID, std::string> getServerAliases();
 
- private:
+private:
   void loadClusterId();
 
   //////////////////////////////////////////////////////////////////////////////

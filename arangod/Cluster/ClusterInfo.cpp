@@ -2994,6 +2994,14 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
   return ret;
 }
 
+arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
+
+  AgencyCommResult dump = _agency.dump();
+  body->add(dump.slice());
+  return Result();
+
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
