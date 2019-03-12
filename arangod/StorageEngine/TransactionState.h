@@ -205,9 +205,12 @@ class TransactionState {
   }
   
   /// @brief remove a server from the known set
-
   void removeKnownServer(std::string const& uuid) {
     _knownServers.erase(uuid);
+  }
+  
+  void clearKnownServers() {
+    _knownServers.clear();
   }
 
  protected:

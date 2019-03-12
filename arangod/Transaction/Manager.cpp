@@ -579,6 +579,7 @@ void Manager::abortAllManagedTrx(TRI_voc_cid_t cid, bool leader) {
         if (tryGuard.isLocked()) {
           TransactionCollection* tcoll = mtrx.state->collection(cid, AccessMode::Type::NONE);
           if (tcoll != nullptr) {
+            mtrx.state->clearKnownServers();  // do not replicate abort
             gcBuffer.emplace_back(it->first);
           }
         }
