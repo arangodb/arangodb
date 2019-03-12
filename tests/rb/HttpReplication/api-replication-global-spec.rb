@@ -358,7 +358,7 @@ describe ArangoDB do
           doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "", :format => :plain)
           [200, 204].should include(doc.code)
         
-          break if doc.headers["x-arango-replication-frompresent"] == "true"
+          break if doc.headers["x-arango-replication-frompresent"] == "true" and doc.headers["x-arango-replication-lastincluded"] != "0"
         end
         
         doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
@@ -443,7 +443,7 @@ describe ArangoDB do
           [200, 204].should include(doc.code)
           body = doc.response.body
           
-          break if doc.headers["x-arango-replication-frompresent"] == "true"
+          break if doc.headers["x-arango-replication-frompresent"] == "true" and doc.headers["x-arango-replication-lastincluded"] != "0"
         end
 
         doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
@@ -557,7 +557,7 @@ describe ArangoDB do
           [200, 204].should include(doc.code)
           body = doc.response.body
           
-          break if doc.headers["x-arango-replication-frompresent"] == "true"
+          break if doc.headers["x-arango-replication-frompresent"] == "true" and doc.headers["x-arango-replication-lastincluded"] != "0"
         end
 
         while 1
