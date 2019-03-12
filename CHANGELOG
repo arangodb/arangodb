@@ -33,6 +33,8 @@ v3.3.23 (XXXX-XX-XX)
 
 * fix shrinkCluster for satellite collections
 
+* fix an agency crash in case of a leader change
+
 v3.3.22 (2019-02-01)
 --------------------
 
