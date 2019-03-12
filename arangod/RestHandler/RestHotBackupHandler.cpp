@@ -25,6 +25,9 @@
 
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;
@@ -37,54 +40,72 @@ RestHotBackupHandler::RestHotBackupHandler(GeneralRequest* request, GeneralRespo
 }
 
 RestStatus RestHotBackupHandler::execute() {
-  if (nullptr == ExecContext::CURRENT || ExecContext::CURRENT->isAdminUser()) {
-
+  if (verifyPermitted()) {
     // extract the request specifics
     RequestType const type = _request->requestType();
     std::vector<std::string> const& suffixes = _request->suffixes();
     std::shared_ptr<RocksDBHotBackup> operation(parseHotBackupParams(type, suffixes));
 
-/// add test for rocksdb engine
-
-    auto reportError = [&]() {
-      if (!operation->result().isEmpty()) {
-        std::string msg = "Error, details: ";
-        msg += operation->resultSlice().toJson();
-        generateError(operation->restResponseCode(),
-                      operation->restResponseError(), msg);
-      } else if (operation->errorMessage().empty()) {
-        generateError(operation->restResponseCode(),
-                      operation->restResponseError());
-      } else {
-        generateError(operation->restResponseCode(),
-                      operation->restResponseError(),
-                      operation->errorMessage());
-      }
-    };
-
     if (operation) {
-      if (!operation->valid()) {
-        reportError();
-        return RestStatus::DONE;
-      }
-      operation->execute();
+      if (operation->valid()) {
+        operation->execute();
+      } // if
 
+      // if !valid() then !success() already set
       if (operation->success()) {
         generateOk(rest::ResponseCode::OK, operation->resultSlice());
       } else {
-        reportError();
-      }
+        if (!operation->result().isEmpty()) {
+          std::string msg = "Error, details: ";
+          msg += operation->resultSlice().toJson();
+          generateError(operation->restResponseCode(),
+                        operation->restResponseError(), msg);
+        } else if (operation->errorMessage().empty()) {
+          generateError(operation->restResponseCode(),
+                        operation->restResponseError());
+        } else {
+          generateError(operation->restResponseCode(),
+                        operation->restResponseError(),
+                        operation->errorMessage());
+        } // else
+      } // else
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     } // else
-  } else {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "you need admin rights for hotbackup operations");
-  } // else
+  } // if
 
   return RestStatus::DONE;
 
 } // RestHotBackupHandler::execute
+
+
+/// @brief check for administrator rights and rocksdb storage engine
+///        generate the error response if issues found
+bool RestHotBackupHandler::verifyPermitted() {
+  bool retFlag{true};
+
+  // first test:  do we have admin rights (if rights are active)
+  if (nullptr != ExecContext::CURRENT && !ExecContext::CURRENT->isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "you need admin rights for hotbackup operations");
+    retFlag = false;
+  } // if
+
+  // second test:  is rocksdb the storage engine
+  if (retFlag) {
+    // test for rocksdb engine
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    TRI_ASSERT(engine != nullptr);
+    if (0!=engine->typeName().compare(arangodb::RocksDBEngine::EngineName)) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "hotbackup current supports only the rocksdb storage engine");
+      retFlag = false;
+    } // if
+  } // if
+
+  return retFlag;
+
+} // RestHotBackupHandler::verifyPermitted
 
 
 std::shared_ptr<RocksDBHotBackup> RestHotBackupHandler::parseHotBackupParams(
