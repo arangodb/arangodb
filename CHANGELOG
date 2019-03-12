@@ -74,6 +74,8 @@ v3.4.5 (XXXX-XX-XX)
 
 * fix shrinkCluster for satelliteCollections
 
+* fix crash in agency supervision when leadership is lost
+
 v3.4.4 (2019-03-12)
 -------------------
 
