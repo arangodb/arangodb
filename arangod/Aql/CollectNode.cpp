@@ -208,7 +208,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
 
       std::vector<std::string> aggregateTypes;
       std::transform(aggregateVariables().begin(), aggregateVariables().end(),
-                     aggregateTypes.begin(),
+                     std::back_inserter(aggregateTypes),
                      [](auto& it) { return it.second.second; });
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
