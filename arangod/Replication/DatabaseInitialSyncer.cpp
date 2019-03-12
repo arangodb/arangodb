@@ -537,10 +537,11 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
       response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0, headers));
     });
 
+    t = TRI_microtime() - t;
     if (replutils::hasFailed(response.get())) {
-      stats.waitedForDump += TRI_microtime() - t;
+      stats.waitedForDump += t;
       sharedStatus->gotResponse(
-          replutils::buildHttpError(response.get(), url, _config.connection));
+          replutils::buildHttpError(response.get(), url, _config.connection), t);
       return;
     }
 
@@ -610,15 +611,15 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
       // fallthrough here in case everything went well
     }
 
-    stats.waitedForDump += TRI_microtime() - t;
+    stats.waitedForDump += t;
 
     if (replutils::hasFailed(response.get())) {
       // failure
       sharedStatus->gotResponse(
-          replutils::buildHttpError(response.get(), url, _config.connection));
+          replutils::buildHttpError(response.get(), url, _config.connection), t);
     } else {
       // success!
-      sharedStatus->gotResponse(std::move(response));
+      sharedStatus->gotResponse(std::move(response), t);
     }
   } catch (basics::Exception const& ex) {
     sharedStatus->gotResponse(Result(ex.code(), ex.what()));
