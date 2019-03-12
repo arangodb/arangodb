@@ -185,11 +185,15 @@ void ensureLink(arangodb::DatabaseFeature& db,
   json.close();
 
   bool created;
+
   // re-insert link
-  if (!col->dropIndex(link->id()) || !col->createIndex(json.slice(), created) || !created) {
+  if (!col->dropIndex(link->id()) // index drop failure
+      || !col->createIndex(json.slice(), created) // index creation failure
+      || !created) { // index not created
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
-        << "Failed to recreate the link '" << iid << "' to the collection '"
-        << cid << "' in the database '" << dbId;
+      << "Failed to recreate an arangosearch link '" << iid << "' to the collection '" << cid << "' in the database '" << dbId;
+
+    return;
   }
 }
 

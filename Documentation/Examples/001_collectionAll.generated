@@ -1,63 +1,63 @@
-arangosh&gt; db.five.save({ <span class="hljs-attr">name</span> : <span class="hljs-string">"one"</span> });
+arangosh&gt; db.five.insert({ <span class="hljs-attr">name</span> : <span class="hljs-string">"one"</span> });
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/130"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"130"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YMrdiaG--_"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YQtDPeq--_"</span> 
 }
-arangosh&gt; db.five.save({ <span class="hljs-attr">name</span> : <span class="hljs-string">"two"</span> });
+arangosh&gt; db.five.insert({ <span class="hljs-attr">name</span> : <span class="hljs-string">"two"</span> });
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/134"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"134"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YMrdiaK--_"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YQtDPey--_"</span> 
 }
-arangosh&gt; db.five.save({ <span class="hljs-attr">name</span> : <span class="hljs-string">"three"</span> });
+arangosh&gt; db.five.insert({ <span class="hljs-attr">name</span> : <span class="hljs-string">"three"</span> });
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/137"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"137"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YMrdiaO--_"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YQtDPey--B"</span> 
 }
-arangosh&gt; db.five.save({ <span class="hljs-attr">name</span> : <span class="hljs-string">"four"</span> });
+arangosh&gt; db.five.insert({ <span class="hljs-attr">name</span> : <span class="hljs-string">"four"</span> });
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/140"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"140"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YMrdiaO--B"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YQtDPe2--_"</span> 
 }
-arangosh&gt; db.five.save({ <span class="hljs-attr">name</span> : <span class="hljs-string">"five"</span> });
+arangosh&gt; db.five.insert({ <span class="hljs-attr">name</span> : <span class="hljs-string">"five"</span> });
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/143"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"143"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YMrdiaS--_"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YQtDPe2--B"</span> 
 }
 arangosh&gt; db.five.all().toArray();
 [ 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"134"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/134"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YMrdiaK--_"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YQtDPey--_"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"two"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"143"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/143"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YMrdiaS--_"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YQtDPe2--B"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"five"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"137"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/137"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YMrdiaO--_"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YQtDPey--B"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"three"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"130"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/130"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YMrdiaG--_"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YQtDPeq--_"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"one"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"140"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/140"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YMrdiaO--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YQtDPe2--_"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"four"</span> 
   } 
 ]

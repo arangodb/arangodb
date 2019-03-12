@@ -264,7 +264,7 @@ class LogicalCollection : public LogicalDataSource {
   Result read(transaction::Methods* trx, StringRef const& key,
               ManagedDocumentResult& mdr, bool lock);
   Result read(transaction::Methods*, arangodb::velocypack::Slice const&,
-              ManagedDocumentResult& result, bool);
+              ManagedDocumentResult& result, bool lock);
 
   /// @brief processes a truncate operation
   Result truncate(transaction::Methods* trx, OperationOptions&);

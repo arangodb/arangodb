@@ -349,7 +349,7 @@ Client tools
 Authentication
 --------------
 
-* added [LDAP](../Programs/Arangod/Ldap.md) authentication (Enterprise only)
+* added [LDAP](../Programs/Arangod/Ldap.md) authentication (Enterprise Edition only)
 
 
 Authorization
