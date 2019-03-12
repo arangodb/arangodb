@@ -29,7 +29,6 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/KeyGenerator.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -148,7 +147,6 @@ void Traverser::UniqueVertexGetter::reset(arangodb::velocypack::StringRef const&
 
 Traverser::Traverser(arangodb::traverser::TraverserOptions* opts, transaction::Methods* trx)
     : _trx(trx),
-      _mmdr(new arangodb::ManagedDocumentResult()),
       _startIdBuilder(),
       _done(true),
       _opts(opts),
