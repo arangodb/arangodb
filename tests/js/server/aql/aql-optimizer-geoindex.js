@@ -454,7 +454,10 @@ function optimizerRuleTestSuite() {
       let nodes = helper.findExecutionNodes(plan, "IndexNode");
       assertEqual(3, nodes.length);
       nodes.sort(function(l, r) {
-        return l.outVariable.name < r.outVariable.name;
+        if (l.outVariable.name !== r.outVariable.name) {
+          return (l.outVariable.name < r.outVariable.name ? -1 : 1);
+        }
+        return 0;
       });
       nodes.forEach(function(n, i) {
         assertEqual("IndexNode", n.type);
