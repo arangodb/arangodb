@@ -1,6 +1,9 @@
 v3.4.5 (XXXX-XX-XX)
 -------------------
 
+* when restarting a follower in active failover mode, try an incremental sync instead
+  of a full resync
+
 * add "PRUNE <condition>" to AQL Traversals. This allows to early abort searching of
   unnecessary branches within a traversal.
   PRUNE is only allowed in the Traversal statement and only between the graphdefinition
@@ -68,6 +71,13 @@ v3.4.5 (XXXX-XX-XX)
 
 * agents need to be able to overwrite a compacted state with same _key
 
+* in case of resigned leader, set isReady=false in clusterInventory
+
+* abort RemoveFollower job if not enough in-sync followers or leader failure
+
+* fix shrinkCluster for satelliteCollections
+
+* fix crash in agency supervision when leadership is lost
 
 v3.4.4 (2019-03-12)
 -------------------

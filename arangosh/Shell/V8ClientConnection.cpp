@@ -98,7 +98,7 @@ void V8ClientConnection::createConnection() {
     }
 
     if (_lastHttpReturnCode == 200) {
-      _connection = std::move(newConnection);
+      std::atomic_store<fuerte::Connection>(&_connection, newConnection);
 
       std::shared_ptr<VPackBuilder> parsedBody;
       VPackSlice body;
@@ -149,25 +149,26 @@ void V8ClientConnection::createConnection() {
 }
 
 void V8ClientConnection::setInterrupted(bool interrupted) {
-  std::lock_guard<std::mutex> guard(_lock);
-  if (interrupted && _connection.get() != nullptr) {
-    _connection->cancel();
-    _connection.reset();
-  } else if (!interrupted && _connection.get() == nullptr) {
+  auto connection = std::atomic_load<fuerte::Connection>(&_connection);
+  if (interrupted && connection != nullptr) {
+    shutdownConnection();
+  } else if (!interrupted && connection == nullptr) {
     createConnection();
   }
 }
 
-bool V8ClientConnection::isConnected() {
-  if (_connection) {
-    return _connection->state() == fuerte::Connection::State::Connected;
+bool V8ClientConnection::isConnected() const {
+  auto connection = std::atomic_load<fuerte::Connection>(&_connection);
+  if (connection) {
+    return connection->state() == fuerte::Connection::State::Connected;
   }
   return false;
 }
 
 std::string V8ClientConnection::endpointSpecification() const {
-  if (_connection) {
-    return _connection->endpoint();
+  auto connection = std::atomic_load<fuerte::Connection>(&_connection);
+  if (connection) {
+    return connection->endpoint();
   }
   return "";
 }
@@ -217,7 +218,7 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
     _builder.authenticationType(fuerte::AuthenticationType::Basic);
   }
 
-  auto oldConnection = std::move(_connection);
+  auto oldConnection = std::atomic_exchange<fuerte::Connection>(&_connection, std::shared_ptr<fuerte::Connection>());
   if (oldConnection) {
     oldConnection->cancel();
   }
@@ -291,7 +292,7 @@ static void ObjectToMap(v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief weak reference callback for queries (call the destructor here)
+/// @brief weak reference callback for connections (call the destructor here)
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DestroyV8ClientConnection(V8ClientConnection* v8connection) {
@@ -308,7 +309,7 @@ static void DestroyV8ClientConnection(V8ClientConnection* v8connection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief weak reference callback for queries (call the destructor here)
+/// @brief weak reference callback for connections (call the destructor here)
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_DestructorCallback(
@@ -1433,11 +1434,6 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     std::unordered_map<std::string, std::string> const& headerFields, bool isFile) {
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
-  if (!_connection) {
-    TRI_V8_SET_EXCEPTION_MESSAGE(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT,
-                                 "not connected");
-    return v8::Undefined(isolate);
-  }
 
   auto req = std::make_unique<fuerte::Request>();
   req->header.restVerb = method;
@@ -1483,10 +1479,17 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     req->header.acceptType(fuerte::ContentType::VPack);
   }
   req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
+  
+  auto connection = std::atomic_load<fuerte::Connection>(&_connection);
+  if (!connection) {
+    TRI_V8_SET_EXCEPTION_MESSAGE(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+                                 "not connected");
+    return v8::Undefined(isolate);
+  }
 
   std::unique_ptr<fuerte::Response> response;
   try {
-    response = _connection->sendRequest(std::move(req));
+    response = connection->sendRequest(std::move(req));
   } catch (fuerte::ErrorCondition const& ec) {
     return handleResult(isolate, nullptr, ec);
   }
@@ -1500,11 +1503,6 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     std::unordered_map<std::string, std::string> const& headerFields) {
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
-  if (!_connection) {
-    TRI_V8_SET_EXCEPTION_MESSAGE(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT,
-                                 "not connected");
-    return v8::Undefined(isolate);
-  }
 
   auto req = std::make_unique<fuerte::Request>();
   req->header.restVerb = method;
@@ -1540,10 +1538,17 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     req->header.acceptType(fuerte::ContentType::VPack);
   }
   req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
+  
+  auto connection = std::atomic_load<fuerte::Connection>(&_connection);
+  if (!connection) {
+    TRI_V8_SET_EXCEPTION_MESSAGE(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+                                 "not connected");
+    return v8::Undefined(isolate);
+  }
 
   std::unique_ptr<fuerte::Response> response;
   try {
-    response = _connection->sendRequest(std::move(req));
+    response = connection->sendRequest(std::move(req));
   } catch (fuerte::ErrorCondition const& e) {
     _lastErrorMessage.assign(fuerte::to_string(e));
     _lastHttpReturnCode = 503;
@@ -1817,8 +1822,9 @@ void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Local<v8::Context>
 }
 
 void V8ClientConnection::shutdownConnection() {
-  if (_connection) {
-    _connection->cancel();
-    _connection.reset();
+  auto connection = std::atomic_load<fuerte::Connection>(&_connection);
+  if (connection) {
+    connection->cancel();
+    std::atomic_store<fuerte::Connection>(&_connection, std::shared_ptr<fuerte::Connection>());
   }
 }
