@@ -408,7 +408,11 @@ index_t State::logFollower(query_t const& transactions) {
       auto term = slice.get("term").getUInt();
       auto clientId = slice.get("clientId").copyString();
       auto index = slice.get("index").getUInt();
-      auto tstamp = slice.get("timestamp").getUInt();
+
+      uint64_t tstamp = 0;
+      if (slice.hasKey("timestamp")) { // compatibility with older appendEntries protocol
+        tstamp = slice.get("timestamp").getUInt();
+      }
 
       bool reconfiguration = query.keyAt(0).isEqualString(RECONFIGURE);
 
