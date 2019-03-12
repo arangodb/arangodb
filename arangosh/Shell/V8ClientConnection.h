@@ -60,7 +60,7 @@ class V8ClientConnection {
 
  public:
   void setInterrupted(bool interrupted);
-  bool isConnected();
+  bool isConnected() const;
 
   void connect(ClientFeature*);
   void reconnect(ClientFeature*);
