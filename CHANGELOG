@@ -1,7 +1,18 @@
 devel
 -----
 
-* fix compation behaviour of followers
+* added option `--all-databases` to arangodump
+
+  When set to true, this makes arangodump dump all available databases
+  the current user has access to. The option `--all-databases` cannot be
+  used in combination with the option `--server.database`. 
+
+  When `--all-databases` is used, arangodump will create a subdirectory
+  with the data of each dumped database. Databases will be dumped one 
+  after the after. However, inside each database, the collections of the
+  database can be dumped in parallel using multiple threads.
+
+* fix compation behavior of followers
 
 * added "random" masking to mask any data type, added wildcard masking
 

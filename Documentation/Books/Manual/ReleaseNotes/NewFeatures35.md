@@ -192,6 +192,27 @@ The index types "hash", "skiplist" and "persistent" are just aliases of each oth
 when using the RocksDB engine, so there is no need to offer all of them in parallel.
 
 
+Client tools
+------------
+
+### arangodump
+
+arangodump got an option `--all-databases` to make it dump all available databases
+instead of just the single specified database.
+
+When set to true, this makes arangodump dump all available databases the current 
+user has access to. The option `--all-databases` cannot be used in combination with 
+the option `--server.database`. 
+
+When `--all-databases` is used, arangodump will create a subdirectory with the data 
+of each dumped database. Databases will be dumped one after the after. However, 
+inside each database, the collections of the database can be dumped in parallel 
+using multiple threads.
+When dumping all databases, the consistency guarantees of arangodump are the same
+as when dumping multiple single database indivually, so the dump does not provide
+cross-database consistency of the data.
+
+
 Miscellaneous
 -------------
 
