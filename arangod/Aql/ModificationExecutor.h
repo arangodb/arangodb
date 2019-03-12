@@ -163,7 +163,8 @@ struct ModificationExecutorBase {
     static const bool preservesOrder = true;
     static const bool allowsBlockPassthrough = false;
     static const bool inputSizeRestrictsOutputSize =
-        false;  // disabled because prefetch does not work in the cluster should be set to true
+        false;  // Disabled because prefetch does not work in the Cluster
+                // Maybe This should ask for a 1:1 relation.
   };
   using Infos = ModificationExecutorInfos;
   using Fetcher = SingleBlockFetcher<Properties::allowsBlockPassthrough>;
@@ -175,11 +176,6 @@ struct ModificationExecutorBase {
   ModificationExecutorInfos& _infos;
   Fetcher& _fetcher;
   bool _prepared = false;
-
-  // /// @brief skips over the taken rows if the input value is no
-  // /// array or empty. updates dstRow in this case and returns true!
-  // bool skipEmptyValues(VPackSlice const& values, size_t n, AqlItemBlock const* src,
-  //                      AqlItemBlock* dst, size_t& dstRow);
 };
 
 template <typename Modifier>

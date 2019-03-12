@@ -271,7 +271,6 @@ void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<UpdateBlock>(&engine, this);
 
   using namespace arangodb::aql;
 
@@ -281,7 +280,7 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
   RegisterId inDocRegister = variableToRegisterId(_inDocVariable);
 
   boost::optional<RegisterId> inKeyRegister;
-  if (_outVariableNew) {
+  if (_inKeyVariable) {
     inKeyRegister = variableToRegisterId(_inKeyVariable);
   }
 
@@ -351,7 +350,6 @@ void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<ReplaceBlock>(&engine, this);
 
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
@@ -359,7 +357,7 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
   RegisterId inDocRegister = variableToRegisterId(_inDocVariable);
 
   boost::optional<RegisterId> inKeyRegister;
-  if (_outVariableNew) {
+  if (_inKeyVariable) {
     inKeyRegister = variableToRegisterId(_inKeyVariable);
   }
 
