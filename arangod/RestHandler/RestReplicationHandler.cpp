@@ -1009,7 +1009,6 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
         // some collections must not be dropped
         auto ctx = transaction::StandaloneContext::Create(_vocbase);
         SingleCollectionTransaction trx(ctx, name, AccessMode::Type::EXCLUSIVE);
-        trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION); // immediately commit on follower
         
         Result res = trx.begin();
         if (!res.ok()) {
