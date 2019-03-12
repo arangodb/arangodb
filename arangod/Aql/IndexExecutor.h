@@ -256,9 +256,6 @@ class IndexExecutor {
   /// @brief set of already returned documents. Used to make the result distinct
   std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
 
-  /// @brief A managed document result to temporary hold one document
-  std::unique_ptr<ManagedDocumentResult> _mmdr;
-
   /// @brief Flag if all indexes are exhausted to be maintained accross several
   /// getSome() calls
   bool _indexesExhausted;

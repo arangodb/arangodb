@@ -395,9 +395,8 @@ double BaseOptions::costForLookupInfoList(std::vector<BaseOptions::LookupInfo> c
   return cost;
 }
 
-EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr, arangodb::velocypack::StringRef vid,
+EdgeCursor* BaseOptions::nextCursorLocal(arangodb::velocypack::StringRef vid,
                                          std::vector<LookupInfo>& list) {
-  TRI_ASSERT(mmdr != nullptr);
   auto allCursor = std::make_unique<SingleServerEdgeCursor>(this, list.size());
   auto& opCursors = allCursor->getCursors();
   for (auto& info : list) {
@@ -420,7 +419,7 @@ EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr, arangodb::
     csrs.reserve(info.idxHandles.size());
     IndexIteratorOptions opts;
     for (auto const& it : info.idxHandles) {
-      csrs.emplace_back(new OperationCursor(_trx->indexScanForCondition(it, node, _tmpVar, mmdr, opts)));
+      csrs.emplace_back(new OperationCursor(_trx->indexScanForCondition(it, node, _tmpVar, opts)));
     }
     opCursors.emplace_back(std::move(csrs));
   }

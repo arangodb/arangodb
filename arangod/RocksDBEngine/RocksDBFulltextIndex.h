@@ -81,7 +81,7 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
     return (_minWordLength == minWordLength && fieldString == field);
   }
 
-  IndexIterator* iteratorForCondition(transaction::Methods* trx, ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods* trx, 
                                       aql::AstNode const* condNode, aql::Variable const* var,
                                       IndexIteratorOptions const&) override;
 

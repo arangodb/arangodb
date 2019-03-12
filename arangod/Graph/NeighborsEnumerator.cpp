@@ -106,7 +106,7 @@ bool NeighborsEnumerator::next() {
         };
 
         std::unique_ptr<arangodb::graph::EdgeCursor> cursor(
-            _opts->nextCursor(_traverser->mmdr(), nextVertex, _searchDepth));
+            _opts->nextCursor(nextVertex, _searchDepth));
         cursor->readAll(callback);
       }
       if (_currentDepth.empty()) {

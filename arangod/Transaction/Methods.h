@@ -373,7 +373,6 @@ class Methods {
   /// calling this method
   std::unique_ptr<IndexIterator> indexScanForCondition(IndexHandle const&, arangodb::aql::AstNode const*,
                                                        arangodb::aql::Variable const*,
-                                                       ManagedDocumentResult*,
                                                        IndexIteratorOptions const&);
 
   /// @brief factory for IndexIterator objects

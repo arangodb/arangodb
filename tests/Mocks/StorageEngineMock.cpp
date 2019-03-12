@@ -286,7 +286,6 @@ class EdgeIndexMock final : public arangodb::Index {
 
   arangodb::IndexIterator* iteratorForCondition(
       arangodb::transaction::Methods* trx,
-      arangodb::ManagedDocumentResult* mmdr,
       arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const*,
       arangodb::IndexIteratorOptions const&
@@ -309,7 +308,7 @@ class EdgeIndexMock final : public arangodb::Index {
 
     if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       // a.b == value
-      return createEqIterator(trx, mmdr, attrNode, valNode);
+      return createEqIterator(trx, attrNode, valNode);
     }
 
     if (comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
@@ -319,7 +318,7 @@ class EdgeIndexMock final : public arangodb::Index {
         return new arangodb::EmptyIndexIterator(&_collection, trx);
       }
 
-      return createInIterator(trx, mmdr, attrNode, valNode);
+      return createInIterator(trx, attrNode, valNode);
     }
 
     // operator type unsupported
@@ -349,7 +348,6 @@ class EdgeIndexMock final : public arangodb::Index {
 
   arangodb::IndexIterator* createEqIterator(
       arangodb::transaction::Methods* trx,
-      arangodb::ManagedDocumentResult* mmdr,
       arangodb::aql::AstNode const* attrNode,
       arangodb::aql::AstNode const* valNode) const {
     // lease builder, but immediately pass it to the unique_ptr so we don't leak
@@ -378,7 +376,6 @@ class EdgeIndexMock final : public arangodb::Index {
   /// @brief create the iterator
   arangodb::IndexIterator* createInIterator(
       arangodb::transaction::Methods* trx,
-      arangodb::ManagedDocumentResult* mmdr,
       arangodb::aql::AstNode const* attrNode,
       arangodb::aql::AstNode const* valNode) const {
     // lease builder, but immediately pass it to the unique_ptr so we don't leak

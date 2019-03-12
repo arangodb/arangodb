@@ -32,8 +32,6 @@
 
 namespace arangodb {
 
-class ManagedDocumentResult;
-
 namespace velocypack {
 class Slice;
 }
@@ -85,12 +83,6 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
 
   std::vector<arangodb::velocypack::StringRef> _neighbors;
   std::vector<graph::EdgeDocumentToken> _edges;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Reusable ManagedDocumentResult that temporarily takes
-  ///        responsibility for one document.
-  //////////////////////////////////////////////////////////////////////////////
-  std::unique_ptr<ManagedDocumentResult> _mmdr;
 };
 
 }  // namespace graph

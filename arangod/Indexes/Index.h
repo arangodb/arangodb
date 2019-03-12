@@ -45,7 +45,6 @@ class LocalTaskQueue;
 
 class IndexIterator;
 class LogicalCollection;
-class ManagedDocumentResult;
 struct IndexIteratorOptions;
 
 namespace velocypack {
@@ -340,7 +339,6 @@ class Index {
                                                       arangodb::aql::Variable const*) const;
 
   virtual IndexIterator* iteratorForCondition(transaction::Methods* trx,
-                                              ManagedDocumentResult* result,
                                               aql::AstNode const* condNode,
                                               aql::Variable const* var,
                                               IndexIteratorOptions const& opts) = 0;

@@ -436,8 +436,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, ShardID const& edge
 
   traverser::EdgeCollectionInfo info(&trx, edgeShard, TRI_EDGE_OUT,
                                      StaticStrings::FromString, 0);
-  ManagedDocumentResult mmdr;
-  std::unique_ptr<OperationCursor> cursor = info.getEdges(documentID, &mmdr);
+  std::unique_ptr<OperationCursor> cursor = info.getEdges(documentID);
 
   auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
     if (slice.isExternal()) {

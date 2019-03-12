@@ -91,9 +91,9 @@ struct ShortestPathOptions : public BaseOptions {
   // Compute the weight of the given edge
   double weightEdge(arangodb::velocypack::Slice const);
 
-  EdgeCursor* nextCursor(ManagedDocumentResult*, arangodb::velocypack::StringRef vid);
+  EdgeCursor* nextCursor(arangodb::velocypack::StringRef vid);
 
-  EdgeCursor* nextReverseCursor(ManagedDocumentResult*, arangodb::velocypack::StringRef vid);
+  EdgeCursor* nextReverseCursor(arangodb::velocypack::StringRef vid);
 
   void fetchVerticesCoordinator(std::deque<arangodb::velocypack::StringRef> const& vertexIds);
 

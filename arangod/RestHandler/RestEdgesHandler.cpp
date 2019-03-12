@@ -31,7 +31,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -79,12 +78,9 @@ void RestEdgesHandler::readCursor(aql::AstNode* condition, aql::Variable const* 
         "Unable to find an edge index to identify matching edges.");
   }
 
-  ManagedDocumentResult mmdr;
   IndexIteratorOptions opts;
-  auto cursor = std::make_unique<OperationCursor>(
-      trx.indexScanForCondition(indexId, condition, var, &mmdr, opts));
-
-  cursor->all(cb);
+  OperationCursor cursor(trx.indexScanForCondition(indexId, condition, var, opts));
+  cursor.all(cb);
 }
 
 bool RestEdgesHandler::getEdgesForVertex(

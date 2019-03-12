@@ -98,7 +98,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                              arangodb::aql::Variable const*, size_t, double&,
                              size_t&) const override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods*, 
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;

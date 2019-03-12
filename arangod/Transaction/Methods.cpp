@@ -2917,7 +2917,7 @@ bool transaction::Methods::getIndexForSortCondition(
 /// calling this method
 std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
     IndexHandle const& indexId, arangodb::aql::AstNode const* condition,
-    arangodb::aql::Variable const* var, ManagedDocumentResult* mmdr,
+    arangodb::aql::Variable const* var, 
     IndexIteratorOptions const& opts) {
   if (_state->isCoordinator()) {
     // The index scan is only available on DBServers and Single Server.
@@ -2931,7 +2931,7 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
   }
 
   // Now create the Iterator
-  return std::unique_ptr<IndexIterator>(idx->iteratorForCondition(this, mmdr, condition, var, opts));
+  return std::unique_ptr<IndexIterator>(idx->iteratorForCondition(this, condition, var, opts));
 }
 
 /// @brief factory for IndexIterator objects

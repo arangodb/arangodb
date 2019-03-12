@@ -71,7 +71,7 @@ EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
-    std::string const& vertexId, arangodb::ManagedDocumentResult* mmdr) {
+    std::string const& vertexId) {
   _searchBuilder.setVertexId(vertexId);
   arangodb::aql::AstNode const* cond;
   if (_dir == TRI_EDGE_OUT) {
@@ -82,7 +82,7 @@ std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
     
   IndexIteratorOptions opts;
   return std::make_unique<OperationCursor>(_trx->indexScanForCondition(
-      _forwardIndexId, cond, _searchBuilder.getVariable(), mmdr, opts));
+      _forwardIndexId, cond, _searchBuilder.getVariable(), opts));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +109,7 @@ int EdgeCollectionInfo::getEdgesCoordinator(VPackSlice const& vertexId, VPackBui
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getReverseEdges(
-    std::string const& vertexId, arangodb::ManagedDocumentResult* mmdr) {
+    std::string const& vertexId) {
   _searchBuilder.setVertexId(vertexId);
   arangodb::aql::AstNode const* cond;
   if (_dir == TRI_EDGE_OUT) {
@@ -120,7 +120,7 @@ std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getReverseEdges(
     
   IndexIteratorOptions opts;
   return std::make_unique<OperationCursor>(_trx->indexScanForCondition(
-      _backwardIndexId, cond, _searchBuilder.getVariable(), mmdr, opts));
+      _backwardIndexId, cond, _searchBuilder.getVariable(), opts));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

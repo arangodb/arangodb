@@ -79,8 +79,7 @@ class EdgeCollectionInfo {
   /// @brief Get edges for the given direction and start vertex.
   ////////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::OperationCursor> getEdges(std::string const&,
-                                                      ManagedDocumentResult*);
+  std::unique_ptr<arangodb::OperationCursor> getEdges(std::string const&);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Get edges for the given direction and start vertex. On Coordinator.
@@ -92,8 +91,7 @@ class EdgeCollectionInfo {
   /// @brief Get edges for the given direction and start vertex. Reverse version
   ////////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::OperationCursor> getReverseEdges(std::string const&,
-                                                             ManagedDocumentResult*);
+  std::unique_ptr<arangodb::OperationCursor> getReverseEdges(std::string const&);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Get edges for the given direction and start vertex. Reverse version

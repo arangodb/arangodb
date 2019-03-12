@@ -40,7 +40,6 @@
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <lib/Logger/LogMacros.h>
 
@@ -110,7 +109,6 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       _cursors(_infos.getIndexes().size()),
       _indexesExhausted(false),
       _isLastIndex(false) {
-  _mmdr.reset(new ManagedDocumentResult);
 
   TRI_ASSERT(!_infos.getIndexes().empty());
 
@@ -208,7 +206,7 @@ arangodb::OperationCursor* IndexExecutor::orderCursor(size_t currentIndex) {
     cursor->rearm(
                 _infos.getTrxPtr()->indexScanForCondition(
                     _infos.getIndexes()[currentIndex], conditionNode,
-                    _infos.getOutVariable(), _mmdr.get(), _infos.getOptions()));
+                    _infos.getOutVariable(), _infos.getOptions()));
   } else {
     // try to rearm an existing iterator
     if (iterator->rearm(conditionNode, _infos.getOutVariable(), _infos.getOptions())) {

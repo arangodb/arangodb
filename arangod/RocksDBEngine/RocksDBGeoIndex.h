@@ -55,7 +55,7 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   char const* typeName() const override { return _typeName.c_str(); }
 
-  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods*, 
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;

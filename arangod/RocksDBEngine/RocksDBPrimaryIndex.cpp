@@ -645,7 +645,7 @@ bool RocksDBPrimaryIndex::supportsSortCondition(arangodb::aql::SortCondition con
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult*, arangodb::aql::AstNode const* node,
+    transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   if (node == nullptr) {

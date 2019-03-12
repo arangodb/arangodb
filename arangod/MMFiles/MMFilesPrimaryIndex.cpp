@@ -310,7 +310,7 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(transaction::Methods* t
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(transaction::Methods* trx,
                                                          VPackSlice const& key,
                                                          ManagedDocumentResult& mdr) const {
-  MMFilesIndexLookupContext context(trx, &_collection, &mdr, 1);
+  MMFilesIndexLookupContext context(&_collection, &mdr, 1);
   TRI_ASSERT(key.isString());
 
   return _primaryIndex->findByKey(&context, key.begin());
@@ -320,24 +320,7 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(transaction::Methods* t
 MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(transaction::Methods* trx,
                                                              VPackSlice const& key) const {
   ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(trx, &_collection, &result, 1);
-  TRI_ASSERT(key.isString());
-  MMFilesSimpleIndexElement* element =
-      _primaryIndex->findByKeyRef(&context, key.begin());
-  TRI_ASSERT(element != nullptr);
-
-  if (!element->isSet()) {
-    return nullptr;
-  }
-
-  return element;
-}
-
-/// @brief looks up an element given a key
-MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(transaction::Methods* trx,
-                                                             VPackSlice const& key,
-                                                             ManagedDocumentResult& mdr) const {
-  MMFilesIndexLookupContext context(trx, &_collection, &mdr, 1);
+  MMFilesIndexLookupContext context(&_collection, &result, 1);
   TRI_ASSERT(key.isString());
   MMFilesSimpleIndexElement* element =
       _primaryIndex->findByKeyRef(&context, key.begin());
@@ -358,7 +341,7 @@ MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(transaction::Method
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequential(
     transaction::Methods* trx, arangodb::basics::BucketPosition& position, uint64_t& total) {
   ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(trx, &_collection, &result, 1);
+  MMFilesIndexLookupContext context(&_collection, &result, 1);
 
   return _primaryIndex->findSequential(&context, position, total);
 }
@@ -384,7 +367,7 @@ IndexIterator* MMFilesPrimaryIndex::anyIterator(transaction::Methods* trx) const
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequentialReverse(
     transaction::Methods* trx, arangodb::basics::BucketPosition& position) {
   ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(trx, &_collection, &result, 1);
+  MMFilesIndexLookupContext context(&_collection, &result, 1);
 
   return _primaryIndex->findSequentialReverse(&context, position);
 }
@@ -401,7 +384,7 @@ Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
                                       LocalDocumentId const& documentId,
                                       VPackSlice const& doc,
                                       ManagedDocumentResult& mdr, OperationMode mode) {
-  MMFilesIndexLookupContext context(trx, &_collection, &mdr, 1);
+  MMFilesIndexLookupContext context(&_collection, &mdr, 1);
   MMFilesSimpleIndexElement element(buildKeyElement(documentId, doc));
   Result res;
 
@@ -433,7 +416,7 @@ Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
 Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
                                       LocalDocumentId const&, VPackSlice const& doc,
                                       ManagedDocumentResult& mdr, OperationMode mode) {
-  MMFilesIndexLookupContext context(trx, &_collection, &mdr, 1);
+  MMFilesIndexLookupContext context(&_collection, &mdr, 1);
   VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(doc));
   MMFilesSimpleIndexElement found =
       _primaryIndex->removeByKey(&context, keySlice.begin());
@@ -449,7 +432,7 @@ Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
 /// @brief resizes the index
 int MMFilesPrimaryIndex::resize(transaction::Methods* trx, size_t targetSize) {
   ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(trx, &_collection, &result, 1);
+  MMFilesIndexLookupContext context(&_collection, &result, 1);
   return _primaryIndex->resize(&context, targetSize);
 }
 
@@ -476,7 +459,7 @@ bool MMFilesPrimaryIndex::supportsFilterCondition(
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult*, arangodb::aql::AstNode const* node,
+    transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
