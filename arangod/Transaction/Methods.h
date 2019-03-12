@@ -50,7 +50,6 @@ namespace arangodb {
 
 namespace basics {
 struct AttributeName;
-class StringBuffer;
 }  // namespace basics
 
 namespace velocypack {
@@ -199,9 +198,9 @@ class Methods {
 
   /// @brief add a transaction hint
   void addHint(transaction::Hints::Hint hint) { _localHints.set(hint); }
-  bool hasHint(transaction::Hints::Hint hint) const {
-    return _localHints.has(hint);
-  }
+//  bool hasHint(transaction::Hints::Hint hint) const {
+//    return _localHints.has(hint);
+//  }
 
   /// @brief whether or not the transaction consists of a single operation only
   bool isSingleOperationTransaction() const;

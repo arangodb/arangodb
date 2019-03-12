@@ -48,9 +48,10 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
-#include "RestServer/TransactionManagerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/ManagerFeature.h"
+#include "StorageEngine/TransactionState.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -355,7 +356,7 @@ bool MMFilesLogfileManager::open() {
   for (auto const& it : _recoverState->failedTransactions) {
     failedTransactions.emplace(it.first);
   }
-  TransactionManagerFeature::manager()->registerFailedTransactions(failedTransactions);
+  transaction::ManagerFeature::manager()->registerFailedTransactions(failedTransactions);
   _droppedDatabases = _recoverState->droppedDatabases;
   _droppedCollections = _recoverState->droppedCollections;
 
@@ -574,8 +575,7 @@ void MMFilesLogfileManager::unprepare() {
 }
 
 // registers a transaction
-int MMFilesLogfileManager::registerTransaction(TRI_voc_tid_t transactionId,
-                                               bool isReadOnlyTransaction) {
+int MMFilesLogfileManager::registerTransaction(TransactionState& state) {
   auto lastCollectedId = _lastCollectedId.load();
   auto lastSealedId = _lastSealedId.load();
 
@@ -586,7 +586,7 @@ int MMFilesLogfileManager::registerTransaction(TRI_voc_tid_t transactionId,
 
   TRI_ASSERT(lastCollectedId <= lastSealedId);
 
-  if (isReadOnlyTransaction) {
+  if (state.isReadOnlyTransaction()) {
     // in case this is a read-only transaction, we are sure that the transaction
     // can only see committed data (as itself it will not write anything, and
     // write transactions run exclusively). we thus can allow the WAL collector
@@ -598,8 +598,7 @@ int MMFilesLogfileManager::registerTransaction(TRI_voc_tid_t transactionId,
 
   try {
     auto data = std::make_unique<MMFilesTransactionData>(lastCollectedId, lastSealedId);
-    TransactionManagerFeature::manager()->registerTransaction(transactionId,
-                                                              std::move(data));
+    transaction::ManagerFeature::manager()->registerTransaction(state.id(), std::move(data));
     return TRI_ERROR_NO_ERROR;
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -1425,7 +1424,7 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
   };
 
   // iterate over all active transactions and find their minimum used logfile id
-  TransactionManagerFeature::manager()->iterateActiveTransactions(cb);
+  transaction::ManagerFeature::manager()->iterateActiveTransactions(cb);
 
   {
     READ_LOCKER(readLocker, _logfilesLock);
@@ -1488,7 +1487,7 @@ MMFilesWalLogfile* MMFilesLogfileManager::getRemovableLogfile() {
     }
   };
 
-  TransactionManagerFeature::manager()->iterateActiveTransactions(cb);
+  transaction::ManagerFeature::manager()->iterateActiveTransactions(cb);
 
   {
     uint32_t numberOfLogfiles = 0;
@@ -1691,7 +1690,7 @@ std::tuple<size_t, MMFilesWalLogfile::IdType, MMFilesWalLogfile::IdType> MMFiles
   };
 
   // iterate over all active transactions
-  TransactionManagerFeature::manager()->iterateActiveTransactions(cb);
+  transaction::ManagerFeature::manager()->iterateActiveTransactions(cb);
 
   return std::tuple<size_t, MMFilesWalLogfile::IdType, MMFilesWalLogfile::IdType>(
       count, lastCollectedId, lastSealedId);

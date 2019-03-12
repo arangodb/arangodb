@@ -22,7 +22,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MMFiles/MMFilesEngine.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
@@ -39,6 +38,7 @@
 #include "MMFiles/MMFilesCompactorThread.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesIncrementalSync.h"
 #include "MMFiles/MMFilesIndexFactory.h"
 #include "MMFiles/MMFilesLogfileManager.h"
@@ -48,7 +48,6 @@
 #include "MMFiles/MMFilesRestHandlers.h"
 #include "MMFiles/MMFilesTransactionCollection.h"
 #include "MMFiles/MMFilesTransactionContextData.h"
-#include "MMFiles/MMFilesTransactionManager.h"
 #include "MMFiles/MMFilesTransactionState.h"
 #include "MMFiles/MMFilesV8Functions.h"
 #include "MMFiles/MMFilesWalAccess.h"
@@ -277,8 +276,8 @@ void MMFilesEngine::stop() {
   }
 }
 
-std::unique_ptr<TransactionManager> MMFilesEngine::createTransactionManager() {
-  return std::unique_ptr<TransactionManager>(new MMFilesTransactionManager());
+std::unique_ptr<transaction::Manager> MMFilesEngine::createTransactionManager() {
+  return std::make_unique<transaction::Manager>(/*keepData*/ true);
 }
 
 std::unique_ptr<transaction::ContextData> MMFilesEngine::createTransactionContextData() {
@@ -286,9 +285,8 @@ std::unique_ptr<transaction::ContextData> MMFilesEngine::createTransactionContex
 }
 
 std::unique_ptr<TransactionState> MMFilesEngine::createTransactionState(
-    TRI_vocbase_t& vocbase, transaction::Options const& options) {
-  return std::unique_ptr<TransactionState>(
-      new MMFilesTransactionState(vocbase, TRI_NewTickServer(), options));
+    TRI_vocbase_t& vocbase, TRI_voc_tick_t tid, transaction::Options const& options) {
+  return std::make_unique<MMFilesTransactionState>(vocbase, tid, options);
 }
 
 std::unique_ptr<TransactionCollection> MMFilesEngine::createTransactionCollection(
@@ -301,7 +299,6 @@ std::unique_ptr<TransactionCollection> MMFilesEngine::createTransactionCollectio
 std::unique_ptr<PhysicalCollection> MMFilesEngine::createPhysicalCollection(
     LogicalCollection& collection, velocypack::Slice const& info) {
   TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
-
   return std::unique_ptr<PhysicalCollection>(new MMFilesCollection(collection, info));
 }
 

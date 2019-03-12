@@ -26,18 +26,11 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-#include "Basics/SmallVector.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Hints.h"
-#include "Transaction/Methods.h"
-#include "VocBase/AccessMode.h"
-#include "VocBase/LocalDocumentId.h"
-#include "VocBase/voc-types.h"
 
-struct TRI_vocbase_t;
+#include "VocBase/LocalDocumentId.h"
 
 namespace rocksdb {
-
 class Transaction;
 }
 
@@ -46,15 +39,6 @@ namespace arangodb {
 class LogicalCollection;
 struct MMFilesDocumentOperation;
 class MMFilesWalMarker;
-
-namespace transaction {
-
-class Methods;
-struct Options;
-
-}  // namespace transaction
-
-class TransactionCollection;
 
 /// @brief transaction type
 class MMFilesTransactionState final : public TransactionState {
@@ -98,7 +82,7 @@ class MMFilesTransactionState final : public TransactionState {
       return (!isReadOnlyTransaction() && !isSingleOperation());
     }
 
-    return (_nestingLevel == 0 && _beginWritten && !isReadOnlyTransaction() &&
+    return (isTopLevelTransaction() && _beginWritten && !isReadOnlyTransaction() &&
             !isSingleOperation());
   }
 

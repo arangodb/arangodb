@@ -35,7 +35,7 @@
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/FlushFeature.h"
-#include "StorageEngine/TransactionManager.h"
+#include "Transaction/Manager.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -1172,13 +1172,14 @@ std::unique_ptr<arangodb::transaction::ContextData> StorageEngineMock::createTra
   );
 }
 
-std::unique_ptr<arangodb::TransactionManager> StorageEngineMock::createTransactionManager() {
+std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransactionManager() {
   TRI_ASSERT(false);
   return nullptr;
 }
 
 std::unique_ptr<arangodb::TransactionState> StorageEngineMock::createTransactionState(
     TRI_vocbase_t& vocbase,
+    TRI_voc_tid_t tid,
     arangodb::transaction::Options const& options
 ) {
   return std::unique_ptr<arangodb::TransactionState>(
@@ -1605,7 +1606,7 @@ TransactionStateMock::TransactionStateMock(
 arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::Methods* trx) {
   ++abortTransactionCount;
   updateStatus(arangodb::transaction::Status::ABORTED);
-  unuseCollections(_nestingLevel);
+  unuseCollections(nestingLevel());
   const_cast<TRI_voc_tid_t&>(_id) = 0; // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
 
   return arangodb::Result();
@@ -1616,7 +1617,7 @@ arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::H
   ++beginTransactionCount;
   _hints = hints;
 
-  auto res = useCollections(_nestingLevel);
+  auto res = useCollections(nestingLevel());
 
   if (!res.ok()) {
     updateStatus(arangodb::transaction::Status::ABORTED);
@@ -1634,7 +1635,7 @@ arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::H
 arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
-  unuseCollections(_nestingLevel);
+  unuseCollections(nestingLevel());
   const_cast<TRI_voc_tid_t&>(_id) = 0; // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
 
   return arangodb::Result();

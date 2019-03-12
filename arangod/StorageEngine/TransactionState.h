@@ -31,7 +31,6 @@
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 
@@ -54,10 +53,9 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 namespace transaction {
-
+class Context;
 class Methods;
 struct Options;
-
 }  // namespace transaction
 
 class ExecContext;
@@ -108,11 +106,11 @@ class TransactionState {
 
   int increaseNesting() { return ++_nestingLevel; }
   int decreaseNesting() {
-    TRI_ASSERT(_nestingLevel > 0);
+    TRI_ASSERT(nestingLevel() > 0);
     return --_nestingLevel;
   }
   int nestingLevel() const { return _nestingLevel; }
-  bool isTopLevelTransaction() const { return _nestingLevel == 0; }
+  bool isTopLevelTransaction() const { return nestingLevel() == 0; }
   bool isEmbeddedTransaction() const { return !isTopLevelTransaction(); }
 
   double timeout() const { return _options.lockTimeout; }
@@ -220,8 +218,7 @@ class TransactionState {
   TransactionCollection* findCollection(TRI_voc_cid_t cid, size_t& position) const;
 
   /// @brief check if current user can access this collection
-  int checkCollectionPermission(TRI_voc_cid_t cid, std::string const& cname,
-                                AccessMode::Type) const;
+  int checkCollectionPermission(std::string const& cname, AccessMode::Type) const;
 
   /// @brief release collection locks for a transaction
   int releaseCollections();
@@ -229,12 +226,12 @@ class TransactionState {
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
   void clearQueryCache();
+  
+protected:
 
-  /// @brief vocbase for this transaction
-  TRI_vocbase_t& _vocbase;
-
-  /// @brief local trx id
-  TRI_voc_tid_t const _id;
+  TRI_vocbase_t& _vocbase; /// @brief vocbase for this transaction
+  TRI_voc_tid_t const _id;  /// @brief local trx id
+  
   /// @brief access type (read|write)
   AccessMode::Type _type;
   /// @brief current status
@@ -243,11 +240,9 @@ class TransactionState {
   SmallVector<TransactionCollection*>::allocator_type::arena_type _arena;  // memory for collections
   SmallVector<TransactionCollection*> _collections;  // list of participating collections
 
-  ServerState::RoleEnum const _serverRole;  // role of the server
+  ServerState::RoleEnum const _serverRole;  /// role of the server
 
-  transaction::Hints _hints;  // hints;
-  int _nestingLevel;
-  bool _registeredTransaction;
+  transaction::Hints _hints;  // hints; set on _nestingLevel == 0
 
   transaction::Options _options;
 
@@ -257,6 +252,10 @@ class TransactionState {
 
   /// the list of locked shards (cluster only)
   std::unordered_set<std::string> _lockedShards;
+  /// @brief reference counter of # of 'Methods' instances using this object
+  int _nestingLevel;
+  
+  bool _registeredTransaction;
 };
 
 }  // namespace arangodb

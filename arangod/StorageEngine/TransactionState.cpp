@@ -22,12 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TransactionState.h"
+
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
+#include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
 #include "Utils/ExecContext.h"
@@ -37,7 +39,8 @@
 using namespace arangodb;
 
 /// @brief transaction type
-TransactionState::TransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+TransactionState::TransactionState(TRI_vocbase_t& vocbase,
+                                   TRI_voc_tid_t tid,
                                    transaction::Options const& options)
     : _vocbase(vocbase),
       _id(tid),
@@ -47,9 +50,9 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
       _collections{_arena},  // assign arena to vector
       _serverRole(ServerState::instance()->getRole()),
       _hints(),
+      _options(options),
       _nestingLevel(0),
-      _registeredTransaction(false),
-      _options(options) {}
+      _registeredTransaction(false) {}
 
 /// @brief free a transaction container
 TransactionState::~TransactionState() {
@@ -124,7 +127,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cname,
                   "AccessMode::Type total order fail");
     // we may need to recheck permissions here
     if (trxCollection->accessType() < accessType) {
-      int res = checkCollectionPermission(cid, cname, accessType);
+      int res = checkCollectionPermission(cname, accessType);
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
@@ -146,7 +149,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cname,
   }
 
   // now check the permissions
-  int res = checkCollectionPermission(cid, cname, accessType);
+  int res = checkCollectionPermission(cname, accessType);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -321,8 +324,9 @@ bool TransactionState::isOnlyExclusiveTransaction() const {
   return true;
 }
 
-int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid, std::string const& cname,
+int TransactionState::checkCollectionPermission(std::string const& cname,
                                                 AccessMode::Type accessType) const {
+  TRI_ASSERT(!cname.empty());
   ExecContext const* exec = ExecContext::CURRENT;
 
   // no need to check for superuser, cluster_sync tests break otherwise

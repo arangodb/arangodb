@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,57 +21,77 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_MMFILES_MMFILES_TRANSACTION_MANAGER_H
-#define ARANGOD_MMFILES_MMFILES_TRANSACTION_MANAGER_H 1
+#ifndef ARANGOD_TRANSACTION_MANAGER_H
+#define ARANGOD_TRANSACTION_MANAGER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 #include "Basics/ReadWriteLock.h"
-#include "StorageEngine/TransactionManager.h"
+#include "Basics/ReadWriteSpinLock.h"
+#include "Transaction/Status.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/AccessMode.h"
+
+#include <atomic>
+#include <vector>
 
 namespace arangodb {
+class TransactionState;
+// to be derived by storage engines
+struct TransactionData {};
+  
+namespace transaction {
+class Context;
 
-class MMFilesTransactionManager final : public TransactionManager {
+class Manager final {
   static constexpr size_t numBuckets = 16;
+  static constexpr double defaultTTL  = 10.0 * 60.0; // 10 minutes
+  static constexpr double tombstoneTTL = 5.0 * 60.0; // 5 minutes
 
  public:
-  MMFilesTransactionManager() : TransactionManager() {}
-  ~MMFilesTransactionManager() {}
+  Manager(bool keepData)
+    : _keepTransactionData(keepData), _nrRunning(0) {}
 
+ public:
+  typedef std::function<void(TRI_voc_tid_t, TransactionData const*)> TrxCallback;
+
+ public:
   // register a list of failed transactions
-  void registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) override;
+  void registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions);
 
   // unregister a list of failed transactions
-  void unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) override;
+  void unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions);
 
   // return the set of failed transactions
-  std::unordered_set<TRI_voc_tid_t> getFailedTransactions() override;
+  std::unordered_set<TRI_voc_tid_t> getFailedTransactions() const;
 
   // register a transaction
-  void registerTransaction(TRI_voc_tid_t transactionId,
-                           std::unique_ptr<TransactionData> data) override;
+  void registerTransaction(TRI_voc_tid_t, std::unique_ptr<TransactionData> data);
 
   // unregister a transaction
-  void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed) override;
+  void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed);
 
   // iterate all the active transactions
-  void iterateActiveTransactions(
-      std::function<void(TRI_voc_tid_t, TransactionData const*)> const& callback) override;
+  void iterateActiveTransactions(TrxCallback const&);
 
-  uint64_t getActiveTransactionCount() override;
-
+  uint64_t getActiveTransactionCount();
+  
  private:
   // hashes the transaction id into a bucket
-  inline size_t getBucket(TRI_voc_tid_t id) const {
-    return std::hash<TRI_voc_cid_t>()(id) % numBuckets;
+  inline size_t getBucket(TRI_voc_tid_t tid) const {
+    return std::hash<TRI_voc_cid_t>()(tid) % numBuckets;
   }
+  
+private:
+  
+  const bool _keepTransactionData;
 
   // a lock protecting ALL buckets in _transactions
-  basics::ReadWriteLock _allTransactionsLock;
+  mutable basics::ReadWriteLock _allTransactionsLock;
 
   struct {
     // a lock protecting _activeTransactions and _failedTransactions
-    basics::ReadWriteLock _lock;
+    mutable basics::ReadWriteLock _lock;
 
     // currently ongoing transactions
     std::unordered_map<TRI_voc_tid_t, std::unique_ptr<TransactionData>> _activeTransactions;
@@ -79,8 +99,11 @@ class MMFilesTransactionManager final : public TransactionManager {
     // set of failed transactions
     std::unordered_set<TRI_voc_tid_t> _failedTransactions;
   } _transactions[numBuckets];
-};
 
+  /// Nr of running transactions
+  std::atomic<uint64_t> _nrRunning;
+};
+}  // namespace transaction
 }  // namespace arangodb
 
 #endif
