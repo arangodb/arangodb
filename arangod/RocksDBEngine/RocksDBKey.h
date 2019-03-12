@@ -61,11 +61,8 @@ class RocksDBKey {
       : _type(other._type),
         _local(),
         _buffer(&_local) {
-      if (other.usesInlineBuffer()) {
-        _local.assign(std::move(other._local));
-      } else {
-        _local.assign(*(other._buffer));
-      }
+     _local.assign(std::move(*(other._buffer)));
+     other._buffer = &(other._local);
     }
 
   RocksDBKey& operator=(RocksDBKey const& other) = delete;

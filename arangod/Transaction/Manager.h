@@ -49,7 +49,7 @@ class Manager final {
   static constexpr double tombstoneTTL = 5.0 * 60.0;  // 5 minutes
 
  public:
-  Manager(bool keepData) : _keepTransactionData(keepData), _nrRunning(0) {}
+  explicit Manager(bool keepData) : _keepTransactionData(keepData), _nrRunning(0) {}
 
  public:
   typedef std::function<void(TRI_voc_tid_t, TransactionData const*)> TrxCallback;

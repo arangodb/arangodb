@@ -71,11 +71,15 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
     TRI_ASSERT(data != nullptr);
     const size_t bucket = getBucket(transactionId);
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
-
-    // insert into currently running list of transactions
-    _transactions[bucket]._activeTransactions.emplace(transactionId, std::move(data));
+    
+    try {
+      // insert into currently running list of transactions
+      _transactions[bucket]._activeTransactions.emplace(transactionId, std::move(data));
+    } catch (...) {
+      _nrRunning.fetch_sub(1, std::memory_order_relaxed);
+      throw;
+    }
   }
 }
 

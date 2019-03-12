@@ -25,8 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "Scheduler/Scheduler.h"
-
 namespace arangodb {
 namespace transaction {
 
@@ -37,8 +35,6 @@ class ManagerFeature final : public application_features::ApplicationFeature {
   explicit ManagerFeature(application_features::ApplicationServer& server);
 
   void prepare() override final;
-  void start() override;
-  void beginShutdown() override;
   void unprepare() override final;
 
   static transaction::Manager* manager() {
@@ -48,9 +44,6 @@ class ManagerFeature final : public application_features::ApplicationFeature {
 
  private:
   static std::unique_ptr<transaction::Manager> MANAGER;
-
-  Scheduler::WorkHandle _workItem;
-  std::function<void(bool)> _gcfunc;
 };
 
 }  // namespace transaction
