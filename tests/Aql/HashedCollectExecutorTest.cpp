@@ -65,7 +65,6 @@ SCENARIO("HashedCollectExecutor", "[AQL][EXECUTOR][HASHEDCOLLECTEXECUTOR]") {
     std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
     groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 2));
 
-    // TODO fixme
     std::vector<std::string> aggregateTypes;
 
     std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
