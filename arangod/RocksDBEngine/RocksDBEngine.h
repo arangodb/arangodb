@@ -49,6 +49,7 @@ namespace arangodb {
 class PhysicalCollection;
 class PhysicalView;
 class RocksDBBackgroundThread;
+class RocksDBEventListener;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
@@ -378,6 +379,9 @@ class RocksDBEngine final : public StorageEngine {
   // use write-throttling
   bool _useThrottle;
 
+  // activate generation of SHA256 files to parallel .sst files
+  bool _createShaFiles;
+
   // activate rocksdb's debug logging
   bool _debugLogging;
 
@@ -385,6 +389,10 @@ class RocksDBEngine final : public StorageEngine {
   // too far behind and blocking incoming writes
   // (will only be set if _useThrottle is true)
   std::shared_ptr<RocksDBThrottle> _listener;
+
+  // optional code to notice when rocksdb creates or deletes .ssh files.  Currently
+  //  uses that input to create or delete parallel sha256 files
+  std::shared_ptr<RocksDBEventListener> _shaListener;
 };
 
 }  // namespace arangodb

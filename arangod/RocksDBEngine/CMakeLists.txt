@@ -46,10 +46,12 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBComparator.cpp
   RocksDBEngine/RocksDBEdgeIndex.cpp
   RocksDBEngine/RocksDBEngine.cpp
+  RocksDBEngine/RocksDBEventListener.cpp
   RocksDBEngine/RocksDBFormat.cpp
   RocksDBEngine/RocksDBFulltextIndex.cpp
   RocksDBEngine/RocksDBGeoIndex.cpp
   RocksDBEngine/RocksDBHashIndex.cpp
+  RocksDBEngine/RocksDBHotBackup.cpp
   RocksDBEngine/RocksDBIncrementalSync.cpp
   RocksDBEngine/RocksDBIndex.cpp
   RocksDBEngine/RocksDBIndexFactory.cpp

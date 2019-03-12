@@ -426,6 +426,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestEngineHandler.cpp
   RestHandler/RestExplainHandler.cpp
   RestHandler/RestGraphHandler.cpp
+  RestHandler/RestHotBackupHandler.cpp
   RestHandler/RestImportHandler.cpp
   RestHandler/RestIndexHandler.cpp
   RestHandler/RestJobHandler.cpp

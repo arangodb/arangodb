@@ -1693,6 +1693,12 @@ constexpr int TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE                           
 /// graph attribute of the graph.
 constexpr int TRI_ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH                          = 4005;
 
+/// 4006: ERROR_REMOTE_REPOSITORY_CONFIG_BAD
+/// "remote hotback repository configuration error"
+/// The configuration given for upload or download operation to/from remote
+/// hotback repositories is wrong.
+constexpr int TRI_ERROR_REMOTE_REPOSITORY_CONFIG_BAD                            = 4006;
+
 /// 5000: ERROR_CLUSTER_REPAIRS_FAILED
 /// "error during cluster repairs"
 /// General error during cluster repairs
