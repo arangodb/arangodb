@@ -112,8 +112,6 @@ void ShortestPathOptions::buildEngineInfo(VPackBuilder& result) const {
     it.buildEngineInfo(result);
   }
   result.close();
-
-  result.close();
 }
 
 void ShortestPathOptions::setStart(std::string const& id) {
