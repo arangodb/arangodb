@@ -74,7 +74,7 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
   bool isHidden() const override { return IResearchLink::isHidden(); }
 
   virtual arangodb::IndexIterator* iteratorForCondition(
-      arangodb::transaction::Methods* trx, arangodb::ManagedDocumentResult* result,
+      arangodb::transaction::Methods* trx,
       arangodb::aql::AstNode const* condNode, arangodb::aql::Variable const* var,
       arangodb::IndexIteratorOptions const& opts) override {
     TRI_ASSERT(false);  // should not be called

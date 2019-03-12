@@ -715,16 +715,11 @@ Result Collections::revisionId(Context& ctxt, TRI_voc_rid_t& rid) {
     }
 
     // We directly read the entire cursor. so batchsize == limit
-    std::unique_ptr<OperationCursor> opCursor =
-        trx.indexScan(cname, transaction::Methods::CursorType::ALL);
+    OperationCursor opCursor(trx.indexScan(cname, transaction::Methods::CursorType::ALL));
 
-    if (!opCursor->hasMore()) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    opCursor->allDocuments([&](LocalDocumentId const& token,
-                               VPackSlice doc) { cb(doc.resolveExternal()); },
-                           1000);
+    opCursor.allDocuments([&](LocalDocumentId const& token,
+                              VPackSlice doc) { cb(doc.resolveExternal()); },
+                          1000);
 
     return trx.finish(res);
   }

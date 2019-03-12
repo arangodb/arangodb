@@ -99,7 +99,7 @@ struct OpenIteratorState {
         _primaryIndex(static_cast<MMFilesCollection*>(collection->getPhysical())->primaryIndex()),
         _stats(),
         _trx(trx),
-        _context(trx, collection, &_mdr, 1) {
+        _context(collection, &_mdr, 1) {
     TRI_ASSERT(collection != nullptr);
     TRI_ASSERT(trx != nullptr);
   }
@@ -375,7 +375,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(MMFilesMarker const* mar
   // no primary index lock required here because we are the only ones reading
   // from the index ATM
   MMFilesSimpleIndexElement* found =
-      state->_primaryIndex->lookupKeyRef(trx, keySlice, state->_mdr);
+      state->_primaryIndex->lookupKeyRef(trx, keySlice);
 
   // it is a new entry
   if (found == nullptr || !found->isSet()) {
@@ -479,7 +479,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(MMFilesMarker const* mar
   // no primary index lock required here because we are the only ones reading
   // from the index ATM
   MMFilesSimpleIndexElement found =
-      state->_primaryIndex->lookupKey(trx, keySlice, state->_mdr);
+      state->_primaryIndex->lookupKey(trx, keySlice);
 
   // it is a new entry, so we missed the create
   if (!found) {

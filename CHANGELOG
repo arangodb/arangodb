@@ -288,6 +288,13 @@ devel
 
 * use `-std=c++14` for ArangoDB compilation
 
+* in case of resigned leader, set isReady=false in clusterInventory
+
+* abort RemoveFollower job if not enough in-sync followers or leader failure
+
+* fix shrinkCluster for satelliteCollections
+
+* fix crash in agency supervision when leadership is lost
 
 v3.4.1 (XXXX-XX-XX)
 -------------------

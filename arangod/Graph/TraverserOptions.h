@@ -33,7 +33,6 @@
 #include <velocypack/StringRef.h>
 
 namespace arangodb {
-class ManagedDocumentResult;
 
 namespace velocypack {
 class Builder;
@@ -126,8 +125,7 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool evaluateVertexExpression(arangodb::velocypack::Slice, uint64_t) const;
 
-  graph::EdgeCursor* nextCursor(ManagedDocumentResult*,
-                                arangodb::velocypack::StringRef vid, uint64_t);
+  graph::EdgeCursor* nextCursor(arangodb::velocypack::StringRef vid, uint64_t);
 
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
 

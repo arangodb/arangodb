@@ -42,29 +42,29 @@ bool IndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
       },
       limit);
 }
+  
+/// @brief default implementation for rearm
+/// specialized index iterators can implement this method with some
+/// sensible behavior
+bool IndexIterator::rearm(arangodb::aql::AstNode const*,
+                          arangodb::aql::Variable const*,
+                          IndexIteratorOptions const&) {
+  TRI_ASSERT(canRearm());
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "requested rearming of an index iterator that does not support it");
+}
 
 /// @brief default implementation for nextCovering
 /// specialized index iterators can implement this method with some
 /// sensible behavior
 bool IndexIterator::nextCovering(DocumentCallback const&, size_t) {
-  TRI_ASSERT(!hasCovering());
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                 "Requested covering values from an index that "
-                                 "does not support it. This seems to be a bug "
-                                 "in ArangoDB. Please report the query you are "
-                                 "using + the indexes you have defined on the "
-                                 "relevant collections to arangodb.com");
+  TRI_ASSERT(hasCovering());
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "requested covering values from an index iterator that does not support it");
 }
 
 /// @brief default implementation for nextExtra
 bool IndexIterator::nextExtra(ExtraCallback const&, size_t) {
-  TRI_ASSERT(!hasExtra());
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                 "Requested extra values from an index that "
-                                 "does not support it. This seems to be a bug "
-                                 "in ArangoDB. Please report the query you are "
-                                 "using + the indexes you have defined on the "
-                                 "relevant collections to arangodb.com");
+  TRI_ASSERT(hasExtra());
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "requested extra values from an index iterator that does not support it");
 }
 
 /// @brief default implementation for reset

@@ -699,7 +699,8 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     for (auto const& p : *shardMap) {
       auto currentServerList = cic->servers(p.first /* shardId */);
       if (currentServerList.size() == 0 || p.second.size() == 0 ||
-          currentServerList[0] != p.second[0]) {
+          currentServerList[0] != p.second[0] ||
+          (!p.second[0].empty() && p.second[0][0] == '_')) {
         isReady = false;
       }
       if (!ClusterHelpers::compareServerLists(p.second, currentServerList)) {
