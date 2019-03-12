@@ -181,8 +181,6 @@ public:
   std::string getPersistedId() override
     {return "SNGL-9231534b-e1aa-4eb6-881a-0b6c798c6677";};
 
-  bool pauseRocksDB() override {return _pauseRocksDBReturn;};
-  bool restartRocksDB() override {return _restartRocksDBReturn;};
   bool holdRocksDBTransactions() override {return _holdTransactionsReturn;};
   void releaseRocksDBTransactions() override {};
 
@@ -287,6 +285,7 @@ public:
     writeFile(pathname.c_str(), "000333.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash", "");
   } // createHotDirectory
 
+  void startGlobalShutdown() {};
 
   std::string _directory;
   bool _pauseRocksDBReturn;
