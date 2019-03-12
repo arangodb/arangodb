@@ -103,7 +103,7 @@ TransactionState* ManagedContext::getParentTransaction() const {
 }
   
 void ManagedContext::unregisterTransaction() noexcept {
-  _state = nullptr; // commit is handled by transaction::Methods
+  _state = nullptr; // delete is handled by transaction::Methods
 }
 
 // ============= AQLStandaloneContext =============

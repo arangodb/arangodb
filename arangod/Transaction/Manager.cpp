@@ -29,6 +29,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/SmartContext.h"
 #include "Utils/CollectionNameResolver.h"
@@ -426,7 +427,7 @@ std::shared_ptr<transaction::Context> Manager::leaseTrx(TRI_voc_tid_t tid, Acces
   if (state) {
     return std::make_shared<ManagedContext>(tid, state, mode);
   }
-  
+  TRI_ASSERT(false); // should be unreachable
   return nullptr;
 }
   
@@ -485,7 +486,7 @@ Result Manager::commitManagedTrx(TRI_voc_tid_t tid) {
 Result Manager::abortManagedTrx(TRI_voc_tid_t tid) {
   return commitAbortTransaction(tid, transaction::Status::ABORTED);
 }
-  
+
 Result Manager::commitAbortTransaction(TRI_voc_tid_t tid, transaction::Status status) {
   TRI_ASSERT(status == transaction::Status::COMMITTED ||
              status == transaction::Status::ABORTED);
@@ -555,8 +556,9 @@ Result Manager::commitAbortTransaction(TRI_voc_tid_t tid, transaction::Status st
   return res;
 }
   
-/// @brief abort all transactions on a given collection / shard
-void Manager::abortAllManagedTrx(TRI_voc_cid_t cid) {
+/// @brief abort all transactions on a given shard
+void Manager::abortAllManagedTrx(TRI_voc_cid_t cid, bool leader) {
+  TRI_ASSERT(ServerState::instance()->isDBServer());
   std::vector<TRI_voc_tid_t> gcBuffer;
   
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
@@ -568,7 +570,10 @@ void Manager::abortAllManagedTrx(TRI_voc_cid_t cid) {
       
       ManagedTrx& mtrx = it->second;
       
-      if (mtrx.type == MetaType::Managed) {
+      // abort matching leader / follower transaction
+      if (mtrx.type == MetaType::Managed &&
+          ((leader && isLeaderTransactionId(it->first)) ||
+           (!leader && isFollowerTransactionId(it->first)) )) {
         TRI_ASSERT(mtrx.state != nullptr);
         TRY_READ_LOCKER(tryGuard, mtrx.rwlock); // needs lock to access state
         if (tryGuard.isLocked()) {
@@ -583,6 +588,7 @@ void Manager::abortAllManagedTrx(TRI_voc_cid_t cid) {
   }
   
   for (TRI_voc_tid_t tid : gcBuffer) {
+    LOG_DEVEL << "aborting " << tid << " mod 4 " << (tid % 4) << " leader: " << leader;
     Result res = abortManagedTrx(tid);
     if (res.fail()) {
       LOG_TOPIC(INFO, Logger::TRANSACTIONS) << "error while GC collecting "

@@ -99,8 +99,8 @@ class Manager final {
   Result commitManagedTrx(TRI_voc_tid_t);
   Result abortManagedTrx(TRI_voc_tid_t);
   
-  /// @brief abort all transactions on a given collection / shard
-  void abortAllManagedTrx(TRI_voc_cid_t);
+  /// @brief abort all transactions on a given shard
+  void abortAllManagedTrx(TRI_voc_cid_t, bool leader);
   
 #ifdef USE_CATCH_TESTS
   /// statistics struct
