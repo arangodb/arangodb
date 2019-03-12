@@ -68,6 +68,11 @@ v3.4.5 (XXXX-XX-XX)
 
 * agents need to be able to overwrite a compacted state with same _key
 
+* in case of resigned leader, set isReady=false in clusterInventory
+
+* abort RemoveFollower job if not enough in-sync followers or leader failure
+
+* fix shrinkCluster for satelliteCollections
 
 v3.4.4 (2019-03-12)
 -------------------
