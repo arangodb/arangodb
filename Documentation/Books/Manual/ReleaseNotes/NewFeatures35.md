@@ -52,14 +52,14 @@ For MMFiles this rule does not apply.
 ### AQL syntax improvements
 
 #### Array destructuring
-    
+
 AQL now supports array destructuring, that is the assignment of array values
 into one or multiple variables with a single `LET` assignment. This can be 
 achieved by putting the target assignment variables of the `LET` assignment
 into angular brackets. 
 
 For example, the statement
- 
+
     LET [y, z] = [1, 2]
 
 will assign the value `1` to variable `y` and the value `2` to variable `z`.
@@ -86,7 +86,7 @@ In the above example, the value of variable `sub1` will be `foo`, the value of v
 Please note that array destructuring is only supported in the `LET` statement.
 
 #### Object destructuring
-     
+
 In the same fashion, AQL now also supports object destructuring, i.e. the assignment
 of multiple target variables from a source object value. This is achieved by using the
 curly brackets after the `LET` assignment token:
@@ -97,7 +97,7 @@ The mapping of input object members to the target variables is by name.
 In the above example, the variable `name` will get a value of `John Doe`, the variable
 `age` will get a value of `39`. The attribute `valid` from the source object will be
 ignored.
-      
+
 Object destructuring also works with nested objects, e.g.
 
     LET { name: {first, last} } = { name: { first: "John", middle: "J", last: "Doe" } }
@@ -106,7 +106,7 @@ The above statement will assign the value `John` to the variable `first` and the
 `Doe` to the variable `last`. The attribute `middle` from the source object is ignored.
 Note that here only variables `first` and `last` will be populated, but variable `name`
 is not.
-    
+
 It is also possible for the target variable to get a different name than in the source
 object, e.g.
 
@@ -121,7 +121,7 @@ Please note that object destructuring is only supported in the `LET` statement.
 #### Spread operator
 
 The new spread operator `...` can be used to expand an input array and substitute it with
-all the array's members as individual values instead.
+all the array members as individual values instead.
 
 For example, in the query
 
@@ -135,7 +135,7 @@ array result `[0, 1, [2, 3, 4], 5]`.
 
 This is especially useful when used in function call contexts. For example
 
-    LET values = ['the', 'quick', 'foxx', 'jumps', 'over', 'the', 'dog'] 
+    LET values = ['the', 'quick', 'foxx', 'jumps', 'over', 'the', 'dog']
     RETURN CONCAT(...values)
 
 is equivalent to
@@ -145,7 +145,7 @@ is equivalent to
 
 and to
 
-    LET values = ['the', 'quick', 'foxx', 'jumps', 'over', 'the', 'dog'] 
+    LET values = ['the', 'quick', 'foxx', 'jumps', 'over', 'the', 'dog']
     RETURN APPLY("CONCAT", values)
 
 The spread operator can also be used on input objects. In this case it will add all the
@@ -154,7 +154,7 @@ attributes of the input object into the target object.
 Consider the following example query:
 
     LET name = { first: "John", last: "Doe" }
-    RETURN { last: "Smith", age: 39}, ...name }
+    RETURN { last: "Smith", age: 39, ...name }
 
 This is equivalent to the query:
 
