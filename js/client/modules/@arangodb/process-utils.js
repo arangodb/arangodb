@@ -1199,7 +1199,13 @@ function detectCurrentLeader(instanceInfo) {
 
   opts['method'] = 'GET';
   reply = download(instanceInfo.url + '/_api/cluster/endpoints', '', opts);
-  let res = JSON.parse(reply.body);
+  let res;
+  try {
+    res = JSON.parse(reply.body);
+  }
+  catch (x) {
+    throw "Failed to parse endpoints reply: " + JSON.stringify(reply);
+  }
   let leader = res.endpoints[0].endpoint;
   let leaderInstance;
   instanceInfo.arangods.forEach(d => {

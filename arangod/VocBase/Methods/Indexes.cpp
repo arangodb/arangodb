@@ -331,17 +331,17 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
     }
   }
 
+  TRI_ASSERT(collection);
   VPackBuilder normalized;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  auto res =
-      engine->indexFactory().enhanceIndexDefinition(input, normalized, create,
-                                                    ServerState::instance()->isCoordinator());
+  auto res = engine->indexFactory().enhanceIndexDefinition( // normalize definition
+    input, normalized, create, collection->vocbase() // args
+  );
 
   if (res.fail()) {
     return res;
   }
 
-  TRI_ASSERT(collection);
   auto const& dbname = collection->vocbase().name();
   std::string const collname(collection->name());
   VPackSlice indexDef = normalized.slice();

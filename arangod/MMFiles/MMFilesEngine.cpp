@@ -2040,10 +2040,15 @@ std::unique_ptr<TRI_vocbase_t> MMFilesEngine::openExistingDatabase(
       LogicalView::ptr view;
       auto res = LogicalView::instantiate(view, *vocbase, it);
 
-      if (!res.ok() || !view) {
-        auto const message = "failed to instantiate view '" + name + "'";
+      if (!res.ok()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
 
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message.c_str());
+      if (!view) {
+        THROW_ARANGO_EXCEPTION_MESSAGE( // exception
+          TRI_ERROR_INTERNAL, // code
+          std::string("failed to instantiate view in vocbase'") + vocbase->name() + "' from definition: " + it.toString()
+        );
       }
 
       StorageEngine::registerView(*vocbase, view);

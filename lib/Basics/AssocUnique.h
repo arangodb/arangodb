@@ -60,7 +60,7 @@ class AssocUnique {
  public:
   typedef std::function<bool(Element&)> CallbackElementFuncType;
 
-  typedef arangodb::basics::IndexBucket<Element, uint64_t, SIZE_MAX> Bucket;
+  typedef arangodb::basics::IndexBucket<Element, uint64_t> Bucket;
 
  private:
   AssocUniqueHelper _helper;
@@ -252,7 +252,9 @@ class AssocUnique {
  public:
   void truncate(CallbackElementFuncType callback) {
     for (auto& b : _buckets) {
-      invokeOnAllElements(callback, b);
+      if (callback) {
+        invokeOnAllElements(callback, b);
+      }
       b.deallocate();
       b.allocate(initialSize());
     }

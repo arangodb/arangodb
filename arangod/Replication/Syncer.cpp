@@ -142,10 +142,10 @@ arangodb::Result applyCollectionDumpMarkerInternal(
       bool useReplace = false;
       VPackSlice keySlice = arangodb::transaction::helpers::extractKeyFromDocument(slice);
 
-      // if we are about to process a single document marker (outside of a multi-document
-      // transaction), we first check if the target document exists. if yes, we don't
-      // try an insert (which would fail anyway) but carry on with a replace.
-      if (trx.isSingleOperationTransaction() && keySlice.isString()) {
+      // if we are about to process a single document marker we first check if the target 
+      // document exists. if yes, we don't try an insert (which would fail anyway) but carry 
+      // on with a replace.
+      if (keySlice.isString()) {
         arangodb::LocalDocumentId const oldDocumentId =
             coll->getPhysical()->lookupKey(&trx, keySlice);
         if (oldDocumentId.isSet()) {
@@ -250,7 +250,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
 namespace arangodb {
 
 Syncer::JobSynchronizer::JobSynchronizer(std::shared_ptr<Syncer const> const& syncer)
-    : _syncer(syncer), _gotResponse(false), _jobsInFlight(0) {}
+    : _syncer(syncer), _gotResponse(false), _time(0.0), _jobsInFlight(0) {}
 
 Syncer::JobSynchronizer::~JobSynchronizer() {
   // signal that we have got something
@@ -269,24 +269,26 @@ Syncer::JobSynchronizer::~JobSynchronizer() {
 
 /// @brief will be called whenever a response for the job comes in
 void Syncer::JobSynchronizer::gotResponse(
-    std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response) noexcept {
+    std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response, double time) noexcept {
   CONDITION_LOCKER(guard, _condition);
   _res.reset();  // no error!
   _response = std::move(response);
   _gotResponse = true;
+  _time = time;
 
   guard.signal();
 }
 
 /// @brief will be called whenever an error occurred
 /// expects "res" to be an error!
-void Syncer::JobSynchronizer::gotResponse(arangodb::Result&& res) noexcept {
+void Syncer::JobSynchronizer::gotResponse(arangodb::Result&& res, double time) noexcept {
   TRI_ASSERT(res.fail());
 
   CONDITION_LOCKER(guard, _condition);
   _res = std::move(res);
   _response.reset();
   _gotResponse = true;
+  _time = time;
 
   guard.signal();
 }
@@ -415,7 +417,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
   } else if (_state.applier._chunkSize < 16 * 1024) {
     _state.applier._chunkSize = 16 * 1024;
   }
-
+    
   // get our own server-id
   _state.localServerId = ServerIdFeature::getId();
   _state.localServerIdString = basics::StringUtils::itoa(_state.localServerId);

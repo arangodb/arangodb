@@ -136,7 +136,7 @@ void ReplicationFeature::stop() {
 
 void ReplicationFeature::unprepare() {
   if (_globalReplicationApplier != nullptr) {
-    _globalReplicationApplier->stop();
+    _globalReplicationApplier->stopAndJoin();
   }
   _globalReplicationApplier.reset();
 }
