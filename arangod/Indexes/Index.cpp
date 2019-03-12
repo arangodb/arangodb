@@ -413,18 +413,28 @@ bool Index::validateHandle(char const* key, size_t* split) {
 /// @brief generate a new index id
 TRI_idx_iid_t Index::generateId() { return TRI_NewTickServer(); }
 
+/// @brief check if two index definitions share any identifiers (_id, name)
+bool Index::CompareIdentifiers(velocypack::Slice const& lhs, velocypack::Slice const& rhs) {
+  VPackSlice lhsId = lhs.get(arangodb::StaticStrings::IndexId);
+  VPackSlice rhsId = rhs.get(arangodb::StaticStrings::IndexId);
+  if (lhsId.isString() && rhsId.isString() &&
+      arangodb::basics::VelocyPackHelper::compare(lhsId, rhsId, true) == 0) {
+    return true;
+  }
+
+  VPackSlice lhsName = lhs.get(arangodb::StaticStrings::IndexName);
+  VPackSlice rhsName = rhs.get(arangodb::StaticStrings::IndexName);
+  if (lhsName.isString() && rhsName.isString() &&
+      arangodb::basics::VelocyPackHelper::compare(lhsName, rhsName, true) == 0) {
+    return true;
+  }
+
+  return false;
+}
+
 /// @brief index comparator, used by the coordinator to detect if two index
 /// contents are the same
 bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
-  {
-    // short-circuit: any two indices with the same name count as the same
-    if (arangodb::basics::VelocyPackHelper::compare(lhs.get(arangodb::StaticStrings::IndexName),
-                                                    rhs.get(arangodb::StaticStrings::IndexName),
-                                                    true) == 0) {
-      return true;
-    }
-  }
-
   auto lhsType = lhs.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(lhsType.isString());
 

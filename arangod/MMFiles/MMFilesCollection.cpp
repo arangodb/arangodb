@@ -2238,7 +2238,14 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods& trx,
     other = PhysicalCollection::lookupIndex(idx->name());
   }
   if (other) {
-    return other;
+    // definition shares an identifier with an existing index with a
+    // different definition
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+                                   "duplicate value for `" + 
+                                       arangodb::StaticStrings::IndexId +
+                                       "` or `" + 
+                                       arangodb::StaticStrings::IndexName +
+                                       "`");
   }
 
   TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);

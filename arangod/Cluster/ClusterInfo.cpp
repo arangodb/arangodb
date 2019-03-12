@@ -2589,14 +2589,21 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
       TRI_ASSERT(other.isObject());
 
       if (true == arangodb::Index::Compare(slice, other)) {
-        {  // found an existing index...
-          // Copy over all elements in slice.
+        { // found an existing index... Copy over all elements in slice.
           VPackObjectBuilder b(&resultBuilder);
           resultBuilder.add(VPackObjectIterator(other));
           resultBuilder.add("isNewlyCreated", VPackValue(false));
         }
 
         return Result(TRI_ERROR_NO_ERROR);
+      }
+
+      if (true == arangodb::Index::CompareIdentifiers(slice, other)) {
+        // found an existing index with a same identifier (i.e. name)
+        // but different definition, throw an error
+        return Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+                      "duplicate value for `" + arangodb::StaticStrings::IndexId +
+                          "` or `" + arangodb::StaticStrings::IndexName + "`");
       }
     }
   }

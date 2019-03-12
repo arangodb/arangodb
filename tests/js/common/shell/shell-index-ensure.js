@@ -112,6 +112,23 @@ function ensureIndexSuite() {
       assertEqual(collection.name() + "/" + id, res.id);
     },
 
+    testEnsureId3 : function () {
+      var id = "2734752388";
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], id: id });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual(collection.name() + "/" + id, idx.id);
+
+      // expect duplicate id to fail and error out
+      try {
+        collection.ensureIndex({ type: "hash", fields: [ "a", "c" ], id: id });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DUPLICATE_IDENTIFIER.code, err.errorNum);
+      }
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: names
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,12 +176,13 @@ function ensureIndexSuite() {
       assertEqual([ "b", "d" ], idx.fields);
       assertEqual(name, idx.name);
 
-      // expect duplicate name to fail and return old index with same name
-      idx = collection.ensureIndex({ type: "hash", fields: [ "a", "c" ], name: name });
-      assertEqual("skiplist", idx.type);
-      assertFalse(idx.unique);
-      assertEqual([ "b", "d" ], idx.fields);
-      assertEqual(name, idx.name);
+      // expect duplicate name to fail and error out
+      try {
+        collection.ensureIndex({ type: "hash", fields: [ "a", "c" ], name: name });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DUPLICATE_IDENTIFIER.code, err.errorNum);
+      }
     },
 
     testEnsureName3 : function () {
@@ -1176,4 +1194,3 @@ jsunity.run(ensureIndexSuite);
 jsunity.run(ensureIndexEdgesSuite);
 
 return jsunity.done();
-

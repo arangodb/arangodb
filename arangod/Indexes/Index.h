@@ -236,6 +236,9 @@ class Index {
   /// @brief generate a new index id
   static TRI_idx_iid_t generateId();
 
+  /// @brief check if two index definitions share any identifiers (_id, name)
+  static bool CompareIdentifiers(velocypack::Slice const& lhs, velocypack::Slice const& rhs);
+
   /// @brief index comparator, used by the coordinator to detect if two index
   /// contents are the same
   static bool Compare(velocypack::Slice const& lhs, velocypack::Slice const& rhs);

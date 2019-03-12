@@ -365,7 +365,14 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     READ_LOCKER(guard, _indexesLock);
     for (auto const& other : _indexes) {  // conflicting index exists
       if (other->id() == idx->id() || other->name() == idx->name()) {
-        return other;  // index already exists
+        // definition shares an identifier with an existing index with a
+        // different definition
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+                                       "duplicate value for `" + 
+                                           arangodb::StaticStrings::IndexId +
+                                           "` or `" + 
+                                           arangodb::StaticStrings::IndexName +
+                                           "`");
       }
     }
   }
