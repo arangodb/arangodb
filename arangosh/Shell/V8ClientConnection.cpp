@@ -98,7 +98,7 @@ void V8ClientConnection::createConnection() {
     }
 
     if (_lastHttpReturnCode == 200) {
-      _connection = std::move(newConnection);
+      std::atomic_store<fuerte::Connection>(&_connection, newConnection);
 
       std::shared_ptr<VPackBuilder> parsedBody;
       VPackSlice body;
