@@ -84,9 +84,6 @@ v3.4.4 (2019-03-12)
 
 * now also syncing _jobs and _queues collections in active failover mode
 
-* follow up to fix JWT authentication in arangosh (#7530):
-  also fix reconnect
-
 * fixed overflow in Windows NowNanos in RocksDB
 
 * fixed issue #8165: AQL optimizer does not pick up multiple geo index
