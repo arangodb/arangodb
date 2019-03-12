@@ -374,6 +374,17 @@ function agencyTestSuite () {
       assertEqual(res.statusCode, 412);
       assertEqual(res.bodyParsed, {"results":[0]});
       writeAndCheck([[{a:{op:"delete"}}]]);
+      // fail precond and
+      res = accessAgency("write", [[{"/a":14},{"a":{"and":[{"/a":12}]}}]]); // fail precond {a:12}
+      assertEqual(res.statusCode, 412);
+      assertEqual(res.bodyParsed, {"results":[0]});
+
+      res = accessAgency("write", [[{"/a":14},{"a": {"and":[{"oldEmpty":false}]}}]]); // fail precond {a:12}
+      assertEqual(res.statusCode, 412);
+      assertEqual(res.bodyParsed, {"results":[0]});
+      
+      writeAndCheck([[{a:{op:"delete"}}]]);
+      
       // fail precond oldEmpty
       res = accessAgency("write",[[{"a":14},{"a":{"oldEmpty":false}}]]); 
       assertEqual(res.statusCode, 412);

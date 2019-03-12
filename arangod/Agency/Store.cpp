@@ -506,17 +506,13 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
 
     if (p.isObject()) {
       if (p.hasKey("and") && p.get("and").isArray()) {
-        ret.open();
         for (auto i : VPackArrayIterator(p.get("and"))) {
           check(node, precond.key, i, mode, found, ret);
         }
-        ret.close();
       } else if (p.hasKey("or") && p.get("or").isArray()) {
-        ret.open();
         for (auto i : VPackArrayIterator(p.get("or"))) {
           check(node, precond.key, i, mode, found, ret);
         }
-        ret.close();
       } else {
         check(node, precond.key, p, mode, found, ret);
       }
