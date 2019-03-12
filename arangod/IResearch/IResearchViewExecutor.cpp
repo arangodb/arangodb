@@ -35,6 +35,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+#include "search/score.hpp"
 
 // TODO Eliminate access to the node and the plan!
 #include "Aql/ExecutionPlan.h"
@@ -49,19 +50,26 @@ using namespace arangodb::iresearch;
 typedef std::vector<arangodb::LocalDocumentId> pks_t;
 
 IResearchViewExecutorInfos::IResearchViewExecutorInfos(
-    ExecutorInfos&& infos, std::shared_ptr<IResearchView::Snapshot const> reader,
-    RegisterId const outputRegister, Query& query, iresearch::IResearchViewNode const& node)
+    ExecutorInfos&& infos, std::shared_ptr<iresearch::IResearchView::Snapshot const> reader,
+    RegisterId firstOutputRegister, RegisterId numScoreRegisters, Query& query,
+    iresearch::IResearchViewNode const& node)
     : ExecutorInfos(std::move(infos)),
-      _outputRegister(outputRegister),
+      _outputRegister(firstOutputRegister),
+      _numScoreRegisters(numScoreRegisters),
       _reader(std::move(reader)),
       _query(query),
       _node(node) {
   TRI_ASSERT(_reader != nullptr);
-  TRI_ASSERT(getOutputRegisters()->find(outputRegister) != getOutputRegisters()->end());
+  TRI_ASSERT(getOutputRegisters()->find(firstOutputRegister) !=
+             getOutputRegisters()->end());
 }
 
 RegisterId IResearchViewExecutorInfos::getOutputRegister() const {
   return _outputRegister;
+};
+
+RegisterId IResearchViewExecutorInfos::getNumScoreRegisters() const {
+  return _numScoreRegisters;
 };
 
 Query& IResearchViewExecutorInfos::getQuery() const noexcept { return _query; }
@@ -72,6 +80,10 @@ IResearchViewNode const& IResearchViewExecutorInfos::getNode() const {
 
 std::shared_ptr<const IResearchView::Snapshot> IResearchViewExecutorInfos::getReader() const {
   return _reader;
+}
+
+bool IResearchViewExecutorInfos::isScoreReg(RegisterId reg) const {
+  return getOutputRegister() < reg && reg <= getOutputRegister() + getNumScoreRegisters();
 }
 
 template <bool ordered>
@@ -88,8 +100,9 @@ IResearchViewExecutor<ordered>::IResearchViewExecutor(IResearchViewExecutor::Fet
       _execCtx(*infos.getQuery().trx(), _ctx),
       _inflight(0),
       _hasMore(true),  // has more data initially
-      _volatileSort(true),
-      _volatileFilter(true) {
+      _volatileSort(ordered), // TODO Seems to me this should just be replaced by ordered everywhere
+      _volatileFilter(true) // TODO Set this correctly. It's always true when ordered is true, but not necessarily when ordered is false.
+      {
   TRI_ASSERT(infos.getQuery().trx() != nullptr);
 
   // add expression execution context
@@ -122,7 +135,7 @@ IResearchViewExecutor<ordered>::produceRow(OutputAqlItemRow& output) {
     reset();
   }
 
-  ReadContext ctx(infos().numberOfInputRegisters(), _inputRow, output);
+  ReadContext ctx(infos().getOutputRegister(), _inputRow, output);
   bool documentWritten = next(ctx);
 
   if (documentWritten) {
@@ -174,8 +187,22 @@ LocalDocumentId readPK(irs::doc_iterator& it,
 
   if (it.next()) {
     irs::bytes_ref key;
-    if (values(it.value(), key)) {
-      arangodb::iresearch::DocumentPrimaryKey::read(documentId, key);
+    irs::doc_id_t const docId = it.value();
+    if (values(docId, key)) {
+      bool const readSuccess =
+          arangodb::iresearch::DocumentPrimaryKey::read(documentId, key);
+
+      TRI_ASSERT(readSuccess == documentId.isSet());
+
+      if (!readSuccess) {
+        // TODO This warning was previously emitted only in the ordered case.
+        // Must it stay that way?
+        // TODO Maybe this should be an exception?
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+            << "failed to read document primary key while reading document "
+               "from arangosearch view, doc_id '"
+            << docId << "'";
+      }
     }
   }
 
@@ -184,7 +211,9 @@ LocalDocumentId readPK(irs::doc_iterator& it,
 
 template <bool ordered>
 bool IResearchViewExecutor<ordered>::next(ReadContext& ctx) {
-  TRI_ASSERT(_filter);
+  // TODO This is just taken from the previous implementation, but maybe _filter
+  // shouldn't be a nullptr in either case?
+  TRI_ASSERT(ordered || _filter != nullptr);
 
   size_t const count = _reader->size();
   for (; _readerOffset < count; ++_readerOffset, _itr.reset()) {
@@ -213,6 +242,31 @@ bool IResearchViewExecutor<ordered>::next(ReadContext& ctx) {
     if (documentId.isSet() &&
         collection->readDocumentWithCallback(infos().getQuery().trx(),
                                              documentId, ctx.callback)) {
+      // in the ordered case we have to write scores as well as a document
+      if /* constexpr */ (ordered) {
+        // evaluate scores
+        _scr->evaluate();
+
+        // in arangodb we assume all scorers return float_t
+        auto begin = reinterpret_cast<const float_t*>(_scrVal.begin());
+        auto end = reinterpret_cast<const float_t*>(_scrVal.end());
+
+        // scorer register are placed consecutively after the document output register
+        RegisterId scoreReg = ctx.docOutReg + 1;
+
+        // copy scores, registerId's are sequential
+        for (; begin != end; ++begin, ++scoreReg) {
+          TRI_ASSERT(infos().isScoreReg(scoreReg));
+          AqlValue a{AqlValueHintDouble{*begin}};
+          bool mustDestroy = false;
+          AqlValueGuard guard{a, mustDestroy};
+          ctx.outputRow.moveValueInto(scoreReg, ctx.inputRow, guard);
+        }
+
+        // we should have written exactly all score registers by now
+        TRI_ASSERT(!infos().isScoreReg(scoreReg));
+      }
+
       // we read and wrote a document, return true. we don't know if there are more.
       return true;  // do not change iterator if already reached limit
     }
@@ -247,6 +301,26 @@ bool IResearchViewExecutor<ordered>::resetIterator() {
 
   _itr = segmentReader.mask(_filter->execute(segmentReader, _order, _filterCtx));
 
+  if /* constexpr */ (ordered) {
+    _scr = _itr->attributes().get<irs::score>().get();
+
+    if (_scr) {
+      _scrVal = _scr->value();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto const numScores =
+        static_cast<size_t>(std::distance(_scrVal.begin(), _scrVal.end())) / sizeof(float_t);
+
+    auto const& viewNode =
+        *ExecutionNode::castTo<IResearchViewNode const*>(getPlanNode());
+
+    TRI_ASSERT(numScores == viewNode.scorers().size());
+#endif
+    } else {
+      _scr = &irs::score::no_score();
+      _scrVal = irs::bytes_ref::NIL;
+    }
+  }
+
   return true;
 }
 
@@ -265,7 +339,7 @@ IndexIterator::DocumentCallback IResearchViewExecutor<ordered>::ReadContext::cop
           AqlValue a{AqlValueHintCopy(doc.begin())};
           bool mustDestroy = true;
           AqlValueGuard guard{a, mustDestroy};
-          ctx.outputRow.moveValueInto(ctx.curRegs, ctx.inputRow, guard);
+          ctx.outputRow.moveValueInto(ctx.docOutReg, ctx.inputRow, guard);
         };
       },
 
@@ -275,7 +349,7 @@ IndexIterator::DocumentCallback IResearchViewExecutor<ordered>::ReadContext::cop
           AqlValue a{AqlValueHintDocumentNoCopy(doc.begin())};
           bool mustDestroy = true;
           AqlValueGuard guard{a, mustDestroy};
-          ctx.outputRow.moveValueInto(ctx.curRegs, ctx.inputRow, guard);
+          ctx.outputRow.moveValueInto(ctx.docOutReg, ctx.inputRow, guard);
         };
       }};
 
@@ -340,4 +414,28 @@ void IResearchViewExecutor<ordered>::reset() {
   }
 }
 
+template <bool ordered>
+bool IResearchViewExecutor<ordered>::readDocument(
+    LogicalCollection const& collection, irs::doc_id_t const docId,
+    irs::columnstore_reader::values_reader_f const& pkValues,
+    IndexIterator::DocumentCallback const& callback) {
+  TRI_ASSERT(pkValues);
+
+  arangodb::LocalDocumentId docPk;
+  irs::bytes_ref tmpRef;
+
+  if (!pkValues(docId, tmpRef) ||
+      !arangodb::iresearch::DocumentPrimaryKey::read(docPk, tmpRef)) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failed to read document primary key while reading document from "
+           "arangosearch view, doc_id '"
+        << docId << "'";
+
+    return false;  // not a valid document reference
+  }
+
+  return collection.readDocumentWithCallback(infos().getQuery().trx(), docPk, callback);
+}
+
 template class ::arangodb::aql::IResearchViewExecutor<false>;
+template class ::arangodb::aql::IResearchViewExecutor<true>;

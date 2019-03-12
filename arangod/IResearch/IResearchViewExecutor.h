@@ -32,6 +32,10 @@
 #include "Indexes/IndexIterator.h"
 #include "VocBase/LocalDocumentId.h"
 
+namespace iresearch {
+class score;
+}
+
 namespace arangodb {
 namespace aql {
 
@@ -42,10 +46,13 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
  public:
   explicit IResearchViewExecutorInfos(ExecutorInfos&& infos,
                                       std::shared_ptr<iresearch::IResearchView::Snapshot const> reader,
-                                      RegisterId outputRegister, Query& query,
+                                      RegisterId firstOutputRegister,
+                                      RegisterId numScoreRegisters, Query& query,
                                       iresearch::IResearchViewNode const& node);
 
   RegisterId getOutputRegister() const;
+
+  RegisterId getNumScoreRegisters() const;
 
   std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const;
 
@@ -53,8 +60,11 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
 
   iresearch::IResearchViewNode const& getNode() const;
 
+  bool isScoreReg(RegisterId reg) const;
+
  private:
   RegisterId _outputRegister;
+  RegisterId _numScoreRegisters;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> _reader;
   Query& _query;
   // TODO Remove this member! Instead, pass all its members that are needed
@@ -116,14 +126,14 @@ class IResearchViewExecutor {
     static IndexIterator::DocumentCallback copyDocumentCallback(ReadContext& ctx);
 
    public:
-    explicit ReadContext(aql::RegisterId curRegs, InputAqlItemRow& inputRow,
+    explicit ReadContext(aql::RegisterId docOutReg, InputAqlItemRow& inputRow,
                          OutputAqlItemRow& outputRow)
-        : curRegs(curRegs),
+        : docOutReg(docOutReg),
           inputRow(inputRow),
           outputRow(outputRow),
           callback(copyDocumentCallback(*this)) {}
 
-    aql::RegisterId const curRegs;
+    aql::RegisterId const docOutReg;
     size_t pos{};
     InputAqlItemRow& inputRow;
     OutputAqlItemRow& outputRow;
@@ -140,6 +150,11 @@ class IResearchViewExecutor {
   bool resetIterator();
 
   void reset();
+
+  // Currently used only in the ordered case.
+  bool readDocument(LogicalCollection const& collection, irs::doc_id_t docId,
+                    irs::columnstore_reader::values_reader_f const& pkValues,
+                    IndexIterator::DocumentCallback const& callback);
 
  private:
   Infos const& _infos;
@@ -165,6 +180,10 @@ class IResearchViewExecutor {
   irs::columnstore_reader::values_reader_f _pkReader;  // current primary key reader
   irs::doc_iterator::ptr _itr;
   size_t _readerOffset;
+
+  // IResearchViewBlock members (i.e., case ordered only):
+  irs::score const* _scr;
+  irs::bytes_ref _scrVal;
 };
 
 }  // namespace aql

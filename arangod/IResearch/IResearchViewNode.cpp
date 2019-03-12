@@ -982,24 +982,32 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "Finish getting snapshot for view '" << view.name() << "'";
 
-  if (_scorers.empty()) {
-    // unordered case
-    // We have exactly one output register here, namely the first register after
-    // the last input register.
-    aql::RegisterId const outputRegister = getNrInputRegisters();
-    std::shared_ptr<std::unordered_set<aql::RegisterId>> writableOutputRegisters =
-        aql::make_shared_unordered_set({outputRegister});
-    aql::ExecutorInfos infos =
-        createRegisterInfos({}, std::move(writableOutputRegisters));
-    // TODO Don't pass `this`, but only the necessary members.
-    aql::IResearchViewExecutorInfos executorInfos{std::move(infos), reader, outputRegister,
-                                                  *engine.getQuery(), *this};
+  bool const ordered = !_scorers.empty();
+
+  // We have exactly one output register here, namely the first register after
+  // the last input register.
+  aql::RegisterId const firstOutputRegister = getNrInputRegisters();
+  aql::RegisterId const numScoreRegisters =
+      getNrOutputRegisters() - getNrInputRegisters() - 1;
+  std::shared_ptr<std::unordered_set<aql::RegisterId>> writableOutputRegisters =
+      aql::make_shared_unordered_set(firstOutputRegister,
+                                     firstOutputRegister + numScoreRegisters + 1);
+  TRI_ASSERT(writableOutputRegisters->size() == 1 + numScoreRegisters);
+  TRI_ASSERT(*writableOutputRegisters->begin() == firstOutputRegister);
+  TRI_ASSERT((numScoreRegisters != 0) == ordered);
+  // TODO Don't we have to set some input registers here?
+  aql::ExecutorInfos infos = createRegisterInfos({}, std::move(writableOutputRegisters));
+  // TODO Don't pass `this`, but only the necessary members.
+  aql::IResearchViewExecutorInfos executorInfos{
+      std::move(infos),   reader, firstOutputRegister, numScoreRegisters,
+      *engine.getQuery(), *this};
+
+  if (!ordered) {
     return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false>>>(
         &engine, this, std::move(executorInfos));
   }
-
-  // generic case
-  return std::make_unique<IResearchViewBlock>(reader, engine, *this);
+  return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<true>>>(
+      &engine, this, std::move(executorInfos));
 }
 
 }  // namespace iresearch
