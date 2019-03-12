@@ -770,12 +770,13 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
   } else {  // non-embedded
     // now start our own transaction
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    
-    _state = engine->createTransactionState(_transactionContextPtr->vocbase(),
-                                            _transactionContextPtr->generateId(),
-                                            options).release();
+
+    _state = engine
+                 ->createTransactionState(_transactionContextPtr->vocbase(),
+                                          _transactionContextPtr->generateId(), options)
+                 .release();
     TRI_ASSERT(_state != nullptr && _state->isTopLevelTransaction());
-    
+
     // register the transaction in the context
     _transactionContextPtr->registerTransaction(_state);
   }
@@ -826,7 +827,7 @@ transaction::Methods::~Methods() {
     _transactionContextPtr->storeTransactionResult(_state->id(),
                                                    _state->hasFailedOperations(),
                                                    _state->wasRegistered());
-    
+
     delete _state;
     _state = nullptr;
   } else {
@@ -2916,8 +2917,7 @@ bool transaction::Methods::getIndexForSortCondition(
 /// calling this method
 std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
     IndexHandle const& indexId, arangodb::aql::AstNode const* condition,
-    arangodb::aql::Variable const* var, 
-    IndexIteratorOptions const& opts) {
+    arangodb::aql::Variable const* var, IndexIteratorOptions const& opts) {
   if (_state->isCoordinator()) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
@@ -2969,7 +2969,7 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const
     }
   }
 
-  // the above methods must always return a valid iterator or throw!  
+  // the above methods must always return a valid iterator or throw!
   TRI_ASSERT(iterator != nullptr);
   return iterator;
 }
@@ -3153,7 +3153,10 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollection(
   std::vector<std::shared_ptr<Index>> indexes = document->getIndexes();
   if (!withHidden) {
     indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
-                                 [](std::shared_ptr<Index> x) {return x->isHidden();}), indexes.end());
+                                 [](std::shared_ptr<Index> x) {
+                                   return x->isHidden();
+                                 }),
+                  indexes.end());
   }
   return indexes;
 }
@@ -3429,7 +3432,7 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
 
   return res;
 }
-  
+
 /// @brief returns an empty index iterator for the collection
 std::unique_ptr<IndexIterator> Methods::createEmptyIndexIterator(std::string const& collectionName) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);

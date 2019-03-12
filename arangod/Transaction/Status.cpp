@@ -39,12 +39,12 @@ Status statusFromString(char const* str, size_t len) {
   } else if (len == 7 && memcmp(str, "aborted", len) == 0) {
     return Status::ABORTED;
   }
-  
+
   TRI_ASSERT(false);
   return Status::UNDEFINED;
 }
-} // namespace transaction
-} // namespace arangodb
+}  // namespace transaction
+}  // namespace arangodb
 
 std::ostream& operator<<(std::ostream& stream, arangodb::transaction::Status const& s) {
   stream << arangodb::transaction::statusString(s);

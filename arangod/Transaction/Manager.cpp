@@ -37,10 +37,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-
 namespace arangodb {
 namespace transaction {
-  
+
 // register a list of failed transactions
 void Manager::registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
   TRI_ASSERT(!_keepTransactionData);
@@ -72,9 +71,9 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
     TRI_ASSERT(data != nullptr);
     const size_t bucket = getBucket(transactionId);
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-    
+
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
-    
+
     // insert into currently running list of transactions
     _transactions[bucket]._activeTransactions.emplace(transactionId, std::move(data));
   }
@@ -84,13 +83,13 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
 void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed) {
   uint64_t r = _nrRunning.fetch_sub(1, std::memory_order_relaxed);
   TRI_ASSERT(r > 0);
-  
+
   if (_keepTransactionData) {
     const size_t bucket = getBucket(transactionId);
     READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
-    
+
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
-    
+
     _transactions[bucket]._activeTransactions.erase(transactionId);
     if (markAsFailed) {
       _transactions[bucket]._failedTransactions.emplace(transactionId);
@@ -135,5 +134,5 @@ uint64_t Manager::getActiveTransactionCount() {
   return _nrRunning.load(std::memory_order_relaxed);
 }
 
-} // namespace transaction
-} // namespace arangodb
+}  // namespace transaction
+}  // namespace arangodb

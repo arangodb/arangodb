@@ -39,8 +39,7 @@
 using namespace arangodb;
 
 /// @brief transaction type
-TransactionState::TransactionState(TRI_vocbase_t& vocbase,
-                                   TRI_voc_tid_t tid,
+TransactionState::TransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                                    transaction::Options const& options)
     : _vocbase(vocbase),
       _id(tid),
@@ -182,11 +181,11 @@ Result TransactionState::ensureCollections(int nestingLevel) {
 }
 
 /// @brief run a callback on all collections
-void TransactionState::allCollections( // iterate
-    std::function<bool(TransactionCollection&)> const& cb // callback to invoke
+void TransactionState::allCollections(                     // iterate
+    std::function<bool(TransactionCollection&)> const& cb  // callback to invoke
 ) {
   for (auto& trxCollection : _collections) {
-    TRI_ASSERT(trxCollection); // ensured by addCollection(...)
+    TRI_ASSERT(trxCollection);  // ensured by addCollection(...)
     if (!cb(*trxCollection)) {
       // abort early
       return;
@@ -380,10 +379,10 @@ void TransactionState::clearQueryCache() {
     std::vector<std::string> collections;
 
     for (auto& trxCollection : _collections) {
-      if (trxCollection // valid instance
-          && trxCollection->collection() // has a valid collection
-          && trxCollection->hasOperations() // may have been modified
-         ) {
+      if (trxCollection                      // valid instance
+          && trxCollection->collection()     // has a valid collection
+          && trxCollection->hasOperations()  // may have been modified
+      ) {
         // we're only interested in collections that may have been modified
         collections.emplace_back(trxCollection->collection()->guid());
       }

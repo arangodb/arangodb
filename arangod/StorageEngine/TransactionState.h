@@ -226,12 +226,11 @@ class TransactionState {
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
   void clearQueryCache();
-  
-protected:
 
-  TRI_vocbase_t& _vocbase; /// @brief vocbase for this transaction
+ protected:
+  TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
   TRI_voc_tid_t const _id;  /// @brief local trx id
-  
+
   /// @brief access type (read|write)
   AccessMode::Type _type;
   /// @brief current status
@@ -254,7 +253,7 @@ protected:
   std::unordered_set<std::string> _lockedShards;
   /// @brief reference counter of # of 'Methods' instances using this object
   int _nestingLevel;
-  
+
   bool _registeredTransaction;
 };
 

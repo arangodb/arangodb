@@ -27,10 +27,10 @@
 #include "Cluster/ClusterInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Transaction/Manager.h"
-#include "Transaction/ManagerFeature.h"
 #include "Transaction/ContextData.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -122,7 +122,7 @@ bool transaction::Context::isPinned(TRI_voc_cid_t cid) {
   if (_contextData) {
     return _contextData->isPinned(cid);
   }
-  return true; // storage engine does not need pinning
+  return true;  // storage engine does not need pinning
 }
 
 /// @brief temporarily lease a StringBuffer object
@@ -141,7 +141,6 @@ void transaction::Context::returnStringBuffer(basics::StringBuffer* stringBuffer
   _stringBuffer.reset(stringBuffer);
 }
 
-
 /// @brief temporarily lease a std::string
 std::string* transaction::Context::leaseString() {
   if (_stdString == nullptr) {
@@ -149,7 +148,7 @@ std::string* transaction::Context::leaseString() {
   } else {
     _stdString->clear();
   }
-  
+
   return _stdString.release();
 }
 
@@ -221,8 +220,7 @@ CollectionNameResolver const* transaction::Context::createResolver() {
 
 /// @brief unregister the transaction
 /// this will save the transaction's id and status locally
-void transaction::Context::storeTransactionResult(TRI_voc_tid_t id,
-                                                  bool hasFailedOperations,
+void transaction::Context::storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations,
                                                   bool wasRegistered) noexcept {
   TRI_ASSERT(_transaction.id == 0);
 

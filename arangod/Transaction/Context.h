@@ -83,13 +83,13 @@ class Context {
 
   /// @brief return a temporary StringBuffer object
   void returnStringBuffer(basics::StringBuffer* stringBuffer);
-  
+
   /// @brief temporarily lease a std::string
   std::string* leaseString();
-  
+
   /// @brief return a temporary std::string object
   void returnString(std::string* str);
-  
+
   /// @brief temporarily lease a Builder object
   arangodb::velocypack::Builder* leaseBuilder();
 
@@ -104,12 +104,10 @@ class Context {
 
   /// @brief unregister the transaction
   /// this will save the transaction's id and status locally
-  void storeTransactionResult(TRI_voc_tid_t id,
-                              bool hasFailedOperations,
+  void storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations,
                               bool wasRegistered) noexcept;
-  
- public:
 
+ public:
   /// @brief get a custom type handler
   virtual std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() = 0;
 
@@ -133,9 +131,8 @@ class Context {
  protected:
   /// @brief create a resolver
   CollectionNameResolver const* createResolver();
-  
-protected:
 
+ protected:
   TRI_vocbase_t& _vocbase;
   CollectionNameResolver const* _resolver;
   std::shared_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
@@ -148,9 +145,8 @@ protected:
 
   arangodb::velocypack::Options _options;
   arangodb::velocypack::Options _dumpOptions;
-  
-private:
 
+ private:
   std::unique_ptr<transaction::ContextData> _contextData;
 
   struct {

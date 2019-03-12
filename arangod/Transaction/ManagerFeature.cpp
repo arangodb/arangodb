@@ -50,19 +50,15 @@ void ManagerFeature::prepare() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE != nullptr);
   MANAGER = EngineSelectorFeature::ENGINE->createTransactionManager();
 }
-  
+
 void ManagerFeature::start() {
   auto off = std::chrono::seconds(1);
   _workItem = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
 }
-  
-void ManagerFeature::beginShutdown() {
-  _workItem.reset();
-}
 
-void ManagerFeature::unprepare() {
-  MANAGER.reset();
-}
+void ManagerFeature::beginShutdown() { _workItem.reset(); }
+
+void ManagerFeature::unprepare() { MANAGER.reset(); }
 
 }  // namespace transaction
 }  // namespace arangodb

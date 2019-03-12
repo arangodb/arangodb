@@ -424,7 +424,6 @@ std::string transaction::helpers::makeIdFromCustom(CollectionNameResolver const*
   return resolved;
 }
 
-
 // ============== StringBufferLeaser ==============
 
 /// @brief constructor, leases a StringBuffer
@@ -446,13 +445,13 @@ transaction::StringBufferLeaser::~StringBufferLeaser() {
 
 /// @brief constructor, leases a std::string
 transaction::StringLeaser::StringLeaser(transaction::Methods* trx)
-: _transactionContext(trx->transactionContextPtr()),
-  _string(_transactionContext->leaseString()) {}
+    : _transactionContext(trx->transactionContextPtr()),
+      _string(_transactionContext->leaseString()) {}
 
 /// @brief constructor, leases a StringBuffer
 transaction::StringLeaser::StringLeaser(transaction::Context* transactionContext)
-: _transactionContext(transactionContext),
-  _string(_transactionContext->leaseString()) {}
+    : _transactionContext(transactionContext),
+      _string(_transactionContext->leaseString()) {}
 
 /// @brief destructor
 transaction::StringLeaser::~StringLeaser() {
