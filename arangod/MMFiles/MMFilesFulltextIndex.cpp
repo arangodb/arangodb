@@ -239,7 +239,7 @@ void MMFilesFulltextIndex::unload() {
 }
 
 IndexIterator* MMFilesFulltextIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult*, aql::AstNode const* condNode,
+    transaction::Methods* trx, aql::AstNode const* condNode,
     aql::Variable const* var, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(condNode != nullptr);

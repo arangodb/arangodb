@@ -37,8 +37,6 @@
 
 namespace arangodb {
 
-class ManagedDocumentResult;
-
 namespace graph {
 
 struct EdgeDocumentToken;
@@ -275,14 +273,6 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
 
   bool _intermediateSet;
   arangodb::velocypack::StringRef _intermediate;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Reusable ManagedDocumentResult that temporarily takes
-  ///        responsibility for one document.
-  //////////////////////////////////////////////////////////////////////////////
-
- private:
-  std::unique_ptr<ManagedDocumentResult> _mmdr;
 };
 
 }  // namespace graph

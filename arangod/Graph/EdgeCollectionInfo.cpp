@@ -71,19 +71,18 @@ EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
-    std::string const& vertexId, arangodb::ManagedDocumentResult* mmdr) {
+    std::string const& vertexId) {
   _searchBuilder.setVertexId(vertexId);
-  std::unique_ptr<arangodb::OperationCursor> res;
-  IndexIteratorOptions opts;
+  arangodb::aql::AstNode const* cond;
   if (_dir == TRI_EDGE_OUT) {
-    res.reset(_trx->indexScanForCondition(_forwardIndexId,
-                                          _searchBuilder.getOutboundCondition(),
-                                          _searchBuilder.getVariable(), mmdr, opts));
+    cond = _searchBuilder.getOutboundCondition();
   } else {
-    res.reset(_trx->indexScanForCondition(_forwardIndexId, _searchBuilder.getInboundCondition(),
-                                          _searchBuilder.getVariable(), mmdr, opts));
+    cond = _searchBuilder.getInboundCondition();
   }
-  return res;
+    
+  IndexIteratorOptions opts;
+  return std::make_unique<OperationCursor>(_trx->indexScanForCondition(
+      _forwardIndexId, cond, _searchBuilder.getVariable(), opts));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,20 +109,18 @@ int EdgeCollectionInfo::getEdgesCoordinator(VPackSlice const& vertexId, VPackBui
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getReverseEdges(
-    std::string const& vertexId, arangodb::ManagedDocumentResult* mmdr) {
+    std::string const& vertexId) {
   _searchBuilder.setVertexId(vertexId);
-  std::unique_ptr<arangodb::OperationCursor> res;
-  IndexIteratorOptions opts;
+  arangodb::aql::AstNode const* cond;
   if (_dir == TRI_EDGE_OUT) {
-    res.reset(_trx->indexScanForCondition(_backwardIndexId,
-                                          _searchBuilder.getInboundCondition(),
-                                          _searchBuilder.getVariable(), mmdr, opts));
+    cond = _searchBuilder.getInboundCondition();
   } else {
-    res.reset(_trx->indexScanForCondition(_backwardIndexId,
-                                          _searchBuilder.getOutboundCondition(),
-                                          _searchBuilder.getVariable(), mmdr, opts));
+    cond = _searchBuilder.getOutboundCondition();
   }
-  return res;
+    
+  IndexIteratorOptions opts;
+  return std::make_unique<OperationCursor>(_trx->indexScanForCondition(
+      _backwardIndexId, cond, _searchBuilder.getVariable(), opts));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

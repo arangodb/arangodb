@@ -27,10 +27,12 @@
 #include "Aql/ClusterBlocks.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/ExecutorInfos.h"
 #include "Aql/GraphNode.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
+#include "Aql/RemoteExecutor.h"
 #include "Transaction/Methods.h"
 
 #include <type_traits>
@@ -49,8 +51,7 @@ bool toSortMode(arangodb::velocypack::StringRef const& str, GatherNode::SortMode
   static std::map<arangodb::velocypack::StringRef, GatherNode::SortMode> const NameToValue{
       {SortModeMinElement, GatherNode::SortMode::MinElement},
       {SortModeHeap, GatherNode::SortMode::Heap},
-      {SortModeUnset, GatherNode::SortMode::Default}
-  };
+      {SortModeUnset, GatherNode::SortMode::Default}};
 
   auto const it = NameToValue.find(str);
 
@@ -92,7 +93,43 @@ RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<RemoteBlock>(&engine, this, server(), ownName(), queryId());
+
+  RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
+  RegisterId const nrInRegs = nrOutRegs;
+
+  std::unordered_set<RegisterId> regsToKeep{};
+  {  // This block sets regsToKeep.
+    // It's essentially a copy of ExecutionNode::calcRegsToKeep(), but it
+    // doesn't use the previous node, which we do not have here.
+    regsToKeep.reserve(getVarsUsedLater().size());
+    std::unordered_map<VariableId, VarInfo> const& varInfo = getRegisterPlan()->varInfo;
+    for (auto const var : getVarsUsedLater()) {
+      auto const it = varInfo.find(var->id);
+      TRI_ASSERT(it != varInfo.end());
+      RegisterId const reg = it->second.registerId;
+      if (reg < nrInRegs) {
+        bool inserted;
+        std::tie(std::ignore, inserted) = regsToKeep.emplace(reg);
+        TRI_ASSERT(inserted);
+      }
+    }
+  }
+
+  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // TODO This is only for me to find out about the current behaviour. Should
+  // probably be either removed, or made into an assert.
+  if (!regsToClear.empty()) {
+    LOG_TOPIC(WARN, Logger::AQL) << "RemoteBlock has registers to clear. "
+                                 << "Shouldn't this be done before network?";
+  }
+#endif
+  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
+                      std::move(regsToKeep));
+
+  return std::make_unique<ExecutionBlockImpl<RemoteExecutor>>(&engine, this,
+                                                              std::move(infos), server(),
+                                                              ownName(), queryId());
 }
 
 /// @brief toVelocyPack, for RemoteNode

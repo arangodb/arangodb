@@ -116,7 +116,7 @@ bool BreadthFirstEnumerator::next() {
     arangodb::velocypack::StringRef vId;
 
     std::unique_ptr<EdgeCursor> cursor(
-        _opts->nextCursor(_traverser->mmdr(), nextVertex, _currentDepth));
+        _opts->nextCursor(nextVertex, _currentDepth));
     if (cursor != nullptr) {
       bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
       bool didInsert = false;
